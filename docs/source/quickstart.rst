@@ -10,4 +10,4 @@ Quickstart Tutorial
 
 .. code-block:: python
 
-  import configure_package_name
+  import sp-validation

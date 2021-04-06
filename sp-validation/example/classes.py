@@ -57,7 +57,7 @@ class StefBoltz(object):
         --------
         Calculate the luminosity of the Sun
 
-        >>> from configure_package_name.example.classes import StefBoltz
+        >>> from sp-validation.example.classes import StefBoltz
         >>> r_sun = 7e8
         >>> t_sun = 5800
         >>> StefBoltz(r_sun, t_sun).luminosity()

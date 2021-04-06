@@ -14,7 +14,7 @@
    :titlesonly:
    :caption: API Documentation
 
-   configure_package_name
+   sp-validation
    scripts
    z_ref
 

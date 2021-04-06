@@ -76,7 +76,7 @@ jobs:
       - name: Build API documentation
         shell: bash -l {0}
         run: |
-          sphinx-apidoc -t docs/_templates -feTMo docs/source configure_package_name
+          sphinx-apidoc -t docs/_templates -feTMo docs/source sp-validation
           sphinx-apidoc -t docs/_script_templates -feTMo docs/source scripts
           sphinx-build -E docs/source docs/_build
 

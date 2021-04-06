@@ -11,7 +11,7 @@ from unittest import TestCase
 import numpy as np
 from numpy import testing as npt
 
-from configure_package_name.example import classes, hello, math
+from sp-validation.example import classes, hello, math
 
 
 class ClassesTestCase(TestCase):
@@ -30,11 +30,11 @@ class ClassesTestCase(TestCase):
         self._expected_out = None
 
     def test_luminosity(self):
-        """Test ``configure_package_name.example.classes.StefBoltz.luminosity`` method.
+        """Test ``sp-validation.example.classes.StefBoltz.luminosity`` method.
 
         See Also
         --------
-        configure_package_name.example.classes.StefBoltz : Implementation of the
+        sp-validation.example.classes.StefBoltz : Implementation of the
             ``StefBoltz`` class.
 
         """
@@ -57,11 +57,11 @@ class HelloTestCase(TestCase):
         self._expected_out = None
 
     def test_hello_world(self):
-        """Test ``configure_package_name.example.hello.hello_world`` function.
+        """Test ``sp-validation.example.hello.hello_world`` function.
 
         See Also
         --------
-        configure_package_name.example.hello.hello_world : Implementation of the
+        sp-validation.example.hello.hello_world : Implementation of the
             ``hello_world`` function.
 
         """
@@ -96,11 +96,11 @@ class MathTestCase(TestCase):
         self._mad_res = None
 
     def test_add_two_ints(self):
-        """Test ``configure_package_name.example.math.add_two_ints`` function.
+        """Test ``sp-validation.example.math.add_two_ints`` function.
 
         See Also
         --------
-        configure_package_name.example.math.test_add_two_ints : Implementation of the
+        sp-validation.example.math.test_add_two_ints : Implementation of the
             ``test_add_two_ints`` function.
 
         """
@@ -115,11 +115,11 @@ class MathTestCase(TestCase):
         )
 
     def test_drake_equation(self):
-        """Test ``configure_package_name.example.math.drake_equation`` function.
+        """Test ``sp-validation.example.math.drake_equation`` function.
 
         See Also
         --------
-        configure_package_name.example.math.drake_equation : Implementation of the
+        sp-validation.example.math.drake_equation : Implementation of the
             ``drake_equation`` function.
 
         """
@@ -130,11 +130,11 @@ class MathTestCase(TestCase):
         )
 
     def test_mad(self):
-        """Test ``configure_package_name.example.math.mad`` function.
+        """Test ``sp-validation.example.math.mad`` function.
 
         See Also
         --------
-        configure_package_name.example.math.mad : Implementation of the
+        sp-validation.example.math.mad : Implementation of the
             ``mad`` function.
 
         """

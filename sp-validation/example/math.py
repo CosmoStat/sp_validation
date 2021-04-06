@@ -45,7 +45,7 @@ def add_two_ints(first_value: int, second_value: int) -> int:
 
     Examples
     --------
-    >>> from configure_package_name.example.math import add_two_ints
+    >>> from sp-validation.example.math import add_two_ints
     >>> add_two_ints(1, 2)
     3
 
@@ -90,7 +90,7 @@ def drake_equation(drake_parameters: list) -> int:
 
     Examples
     --------
-    >>> from configure_package_name.example.math import drake_equation
+    >>> from sp-validation.example.math import drake_equation
     >>> drake_equation([1, 0.2, 1, 1, 1, 0.1, 1000])
     20
 
@@ -145,7 +145,7 @@ def mad(input_data: np.ndarray) -> float:
     Examples
     --------
     >>> import numpy as np
-    >>> from configure_package_name.example.math import mad
+    >>> from sp-validation.example.math import mad
     >>> data = np.arange(9).reshape(3, 3)
     >>> mad(data)
     2.0

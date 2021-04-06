@@ -25,7 +25,7 @@ jobs:
         continue-on-error: true
         with:
           reporter: 'github-pr-review'
-          path: './configure_package_name'
+          path: './sp-validation'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -76,7 +76,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda install -c conda-forge pandoc
-          sphinx-apidoc -t docs/_templates -feTMo docs/source configure_package_name
+          sphinx-apidoc -t docs/_templates -feTMo docs/source sp-validation
           sphinx-apidoc -t docs/_script_templates -feTMo docs/source scripts
           sphinx-build -b doctest -E docs/source docs/_build
 

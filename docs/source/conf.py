@@ -15,13 +15,13 @@ sys.path.insert(0, os.path.abspath('../../scripts'))
 # -- General configuration ------------------------------------------------
 
 # General information about the project.
-project = 'configure_package_name'
+project = 'sp-validation'
 
 mdata = metadata(project)
 author = mdata['Author']
 version = mdata['Version']
-copyright = 'configure_year, {}'.format(author)
-gh_user = 'configure_ghuser'
+copyright = '2021, {}'.format(author)
+gh_user = 'martin.kilbinger'
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '3.3'

@@ -10,14 +10,14 @@ minor = 0
 patch = 0
 
 # Set the package details
-name = 'configure_package_name'
+name = 'sp-validation'
 version = '.'.join(str(value) for value in (major, minor, patch))
-author = 'configure_author'
-email = 'configure_email'
-gh_user = 'configure_ghuser'
+author = 'Martin Kilbinger'
+email = 'martin.kilbinger@cea.fr'
+gh_user = 'martin.kilbinger'
 url = 'https://github.com/{0}/{1}'.format(gh_user, name)
-year = 'configure_year'
-description = 'configure_description'
+year = '2021'
+description = 'Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by ShapePipe'
 license = 'MIT'
 
 # Set the package classifiers
