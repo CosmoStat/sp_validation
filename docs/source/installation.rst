@@ -9,12 +9,12 @@ Installation
 Users
 -----
 
-You can install the latest release from `PyPi <https://pypi.org/project/sp-validation/>`_
+You can install the latest release from `PyPi <https://pypi.org/project/sp_validation/>`_
 as follows:
 
 .. code-block:: bash
 
-  pip install sp-validation
+  pip install sp_validation
 
 
 Alternatively clone the repository and build the package locally as follows:

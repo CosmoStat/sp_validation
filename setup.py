@@ -10,7 +10,7 @@ minor = 0
 patch = 0
 
 # Set the package details
-name = 'sp-validation'
+name = 'sp_validation'
 version = '.'.join(str(value) for value in (major, minor, patch))
 author = 'Martin Kilbinger'
 email = 'martin.kilbinger@cea.fr'

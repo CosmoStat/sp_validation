@@ -10,4 +10,4 @@ Quickstart Tutorial
 
 .. code-block:: python
 
-  import sp-validation
+  import sp_validation

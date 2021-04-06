@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath('../../scripts'))
 # -- General configuration ------------------------------------------------
 
 # General information about the project.
-project = 'sp-validation'
+project = 'sp_validation'
 
 mdata = metadata(project)
 author = mdata['Author']

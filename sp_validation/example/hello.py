@@ -19,7 +19,7 @@ def hello_world() -> str:
 
     Examples
     --------
-    >>> from sp-validation.example.hello import hello_world
+    >>> from sp_validation.example.hello import hello_world
     >>> print(hello_world())
     Hello World!
 

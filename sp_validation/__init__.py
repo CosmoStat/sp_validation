@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""sp-validation PACKAGE.
+"""sp_validation PACKAGE.
 
 Provide a basic description of what your package contains.
 
@@ -28,7 +28,7 @@ from warnings import warn
 from importlib_metadata import version
 
 try:
-    _version = version('sp-validation')
+    _version = version('sp_validation')
 except Exception:  # pragma: no cover
     _version = 'Unkown'
     warn(
