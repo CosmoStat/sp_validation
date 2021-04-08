@@ -1,3 +1,16 @@
+"""
+:Name: plot_style.py
+
+:Description: Commands to set plot styles for matplotlib.
+
+:Author: Axel Guinot
+
+:Date: 01/2021
+
+:Package: sp_validation
+
+"""
+
 import matplotlib as mpl
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
