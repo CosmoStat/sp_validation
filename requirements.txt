@@ -1,5 +1,6 @@
 importlib_metadata==3.1.1
-astropy
+astropy==4.1
 numpy
 scipy
 jupyterlab
+seaborn
