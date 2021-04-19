@@ -295,6 +295,7 @@ class metacal:
 
         self.R_shear = np.array([[self.R11, self.R12], [self.R21, self.R22]])
 
+
     def _shear_response_w(self, step=0.01, stat_operator=np.average):
         """
         """
@@ -321,6 +322,35 @@ class metacal:
 
         self.R_selection = np.array([[self.R11_s, 0.], [0., self.R22_s]])
 
+######## Emma test #########
+
+    def _selection_response_px(self,x,y,npix):
+        """
+        """
+
+        sign = 1
+        if self._prefix == 'GALSIM':
+            sign = -1
+
+#        self.R11a = bin2d(x, y, npix=npix, v=(self.ns['g1'][self.mask_dict['p1']]))
+#        self.R11b = bin2d(x, y, npix=npix, v=(self.ns['g1'][self.mask_dict['m1']]))
+#        self.R22a, self.R22b = bin2d(x, y, npix=npix, v=(self.ns['g2'][self.mask_dict['p2']],self.ns['g2'][self.mask_dict['m2']]))
+#        self.R12a, self.R12b = bin2d(x, y, npix=npix, v=(self.ns['g1'][self.mask_dict['p2']],self.ns['g1'][self.mask_dict['m2']]))
+#        self.R21a, self.R21b = bin2d(x, y, npix=npix, v=(self.ns['g2'][self.mask_dict['p1']],self.ns['g2'][self.mask_dict['m1']]))
+
+
+#        self.R11_s = (self.R11a-self.R11b)/0.02
+#        self.R22_s = (self.R22a-self.R22b)/0.02
+#        self.R12_s = (self.R12a-self.R12b)/0.02
+#        self.R21_s = (self.R21a-self.R21b)/0.02
+
+#        self.R_selection_px = np.array([[self.R11_s, self.R12s], [self.R21s, self.R22_s]])
+        self.R_selection_px = bin2d(x[self.mask_dict['p1']],y[self.mask_dict['p1']],npix=npix,v=(self.ns['g1'][self.mask_dict['p1']]))
+        print('test2')
+#        self.R_selection_px = self.R11a
+######### End test #########
+
+
     def _selection_response_weighted(self, stat_operator=np.average):
         """
         """
@@ -331,7 +361,6 @@ class metacal:
         self.R21_s_w = (stat_operator(self.ns['g2'][self.mask_dict['p1']], weights=self.ns['w'][self.mask_dict['p1']]) - stat_operator(self.ns['g2'][self.mask_dict['m1']], weights=self.ns['w'][self.mask_dict['m1']]))/0.02
 
         self.R_selection_w = np.array([[self.R11_s_w, 0.], [0., self.R22_s_w]])
-
 
     def _total_response(self, stat_operator=np.mean):
         """
