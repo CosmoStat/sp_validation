@@ -3,3 +3,4 @@ astropy==4.1
 numpy
 scipy
 jupyterlab
+seaborn
