@@ -23,7 +23,8 @@ verbose = True
 # Paths
 
 ## Shapepipe path
-SP_BASE = '{}/astro/repositories/github/shapepipe'.format(os.environ['HOME'])
+BASE = '{}/astro/repositories/github'.format(os.environ['HOME']) 
+SP_BASE = '{}/shapepipe'.format(BASE)
 
 ## Input tile IDs
 path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_W3.txt'.format(SP_BASE)
