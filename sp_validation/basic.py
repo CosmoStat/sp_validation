@@ -19,7 +19,6 @@ from astropy import units as u
 from astropy import coordinates as coords
 from astropy.wcs import WCS
 from astropy.table import Table
-
 #import galsim
 
 import numpy as np
@@ -140,6 +139,7 @@ class metacal:
         self._shear_response(step)
         self._selection_response(stat_operator)
         self._total_response(stat_operator)
+        self._selection_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
 
     def _read_data_ngmix(self, data, mask, prefix):
         """
@@ -310,7 +310,6 @@ class metacal:
     def _selection_response(self, stat_operator=np.mean):
         """
         """
-
         sign = 1
         if self._prefix == 'GALSIM':
             sign = -1
@@ -320,36 +319,24 @@ class metacal:
         self.R12_s = (stat_operator(self.ns['g1'][self.mask_dict['p2']]) - stat_operator(self.ns['g1'][self.mask_dict['m2']]))/0.02
         self.R21_s = (stat_operator(self.ns['g2'][self.mask_dict['p1']]) - stat_operator(self.ns['g2'][self.mask_dict['m1']]))/0.02
 
-        self.R_selection = np.array([[self.R11_s, 0.], [0., self.R22_s]])
+        self.R_selection = np.array([[self.R11_s, self.R12_s], [self.R21_s, self.R22_s]])
 
-######## Emma test #########
+### Test std R selec ###
 
-    def _selection_response_px(self,x,y,npix):
+    def _selection_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
         """
         """
+        if (len(self.ns['g1'][self.mask_dict['ns']])==0):
+            self.R_selection_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
+        else:
+            self.R11_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g1'][self.mask_dict['p1']])[1]**2 + stat_operator(self.ns['g1'][self.mask_dict['m1']])[1]**2)
+            self.R22_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g2'][self.mask_dict['p2']])[1]**2 + stat_operator(self.ns['g2'][self.mask_dict['m2']])[1]**2)
+            self.R12_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g1'][self.mask_dict['p2']])[1]**2 + stat_operator(self.ns['g1'][self.mask_dict['m2']])[1]**2)
+            self.R21_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g2'][self.mask_dict['p1']])[1]**2 + stat_operator(self.ns['g2'][self.mask_dict['m1']])[1]**2)
 
-        sign = 1
-        if self._prefix == 'GALSIM':
-            sign = -1
+            self.R_selection_std = np.array([[self.R11_std, self.R12_std], [self.R21_std, self.R22_std]])
 
-#        self.R11a = bin2d(x, y, npix=npix, v=(self.ns['g1'][self.mask_dict['p1']]))
-#        self.R11b = bin2d(x, y, npix=npix, v=(self.ns['g1'][self.mask_dict['m1']]))
-#        self.R22a, self.R22b = bin2d(x, y, npix=npix, v=(self.ns['g2'][self.mask_dict['p2']],self.ns['g2'][self.mask_dict['m2']]))
-#        self.R12a, self.R12b = bin2d(x, y, npix=npix, v=(self.ns['g1'][self.mask_dict['p2']],self.ns['g1'][self.mask_dict['m2']]))
-#        self.R21a, self.R21b = bin2d(x, y, npix=npix, v=(self.ns['g2'][self.mask_dict['p1']],self.ns['g2'][self.mask_dict['m1']]))
-
-
-#        self.R11_s = (self.R11a-self.R11b)/0.02
-#        self.R22_s = (self.R22a-self.R22b)/0.02
-#        self.R12_s = (self.R12a-self.R12b)/0.02
-#        self.R21_s = (self.R21a-self.R21b)/0.02
-
-#        self.R_selection_px = np.array([[self.R11_s, self.R12s], [self.R21s, self.R22_s]])
-        self.R_selection_px = bin2d(x[self.mask_dict['p1']],y[self.mask_dict['p1']],npix=npix,v=(self.ns['g1'][self.mask_dict['p1']]))
-        print('test2')
-#        self.R_selection_px = self.R11a
-######### End test #########
-
+### End test std ###
 
     def _selection_response_weighted(self, stat_operator=np.average):
         """
@@ -373,7 +360,7 @@ class metacal:
         """
         """
 
-        return self.m1, self.p1, self.p1, self.p2, self.ns, self.R
+        return self.m1, self.p1, self.p1, self.p2, self.ns, self.R, self.R_selection_std
 
 
 class footprint_mask:
@@ -777,6 +764,84 @@ def jackknif_weighted_average(data, weights, remove_size=0.1, n_realization=100)
     return np.mean(all_est), np.std(all_est)
 
 
+####
+
+def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=False):
+    """
+    """
+
+    def lin(x, a, b):
+        return a * x + b
+
+    def gauss(x, x0, sig):
+        return 1. / (sig * np.sqrt(2. * np.pi)) * np.exp(-0.5 * ((x - x0)/sig)**2.)
+    if weights is None:
+        weights = np.ones_like(e1)
+
+    size_all = len(e1)
+    size_bin = int(size_all/n_bin)
+    diff_size = size_all-size_bin
+
+    psf_e1_arg_sort = np.argsort(psf_e1)
+
+    psf1 = []
+    m_e1 = []
+    s_e1 = []
+    for i in tqdm(range(n_bin), total=n_bin):
+        if i < diff_size:
+            bin_size_tmp = size_bin + 1
+            starter = 0
+        else:
+            bin_size_tmp = size_bin
+            starter = diff_size
+        ind_1 = psf_e1_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
+
+        ####
+        psf1.append(np.mean(psf_e1[ind_1]))
+
+        r_jk = jackknif_weighted_average(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
+        m_e1.append(r_jk[0])
+        s_e1.append(r_jk[1])
+
+    psf1 = np.array(psf1)
+    s_e1 = np.array(s_e1)
+    m_e1 = np.array(m_e1)
+
+    mpl.rcParams['lines.linewidth'] = 3
+    mpl.rcParams['lines.markersize'] = 10
+    mpl.rcParams['font.size'] = 35
+    mpl.rcParams['xtick.minor.size'] = 7
+    mpl.rcParams['ytick.minor.size'] = 7
+    mpl.rcParams['xtick.major.size'] = 10
+    mpl.rcParams['ytick.major.size'] = 10
+    mpl.rcParams['xtick.major.width'] = 3
+    mpl.rcParams['ytick.major.width'] = 3
+    mpl.rcParams['boxplot.boxprops.linewidth'] = 2.
+    mpl.rcParams['boxplot.medianprops.linewidth'] = 2.
+    mpl.rcParams['boxplot.flierprops.markersize'] = 12
+    mpl.rcParams['boxplot.whiskerprops.linewidth'] = 2.
+    mpl.rcParams['boxplot.capprops.linewidth'] = 2.
+
+
+    mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
+
+    plt.figure(figsize=(15,7))
+    res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
+    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.', label='e1')
+    plt_xmin, plt_xmax = plt.xlim()
+    plt.xlim(plt_xmin, plt_xmax)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    print('c',res[0][1])
+    print(plt.ylim())
+    plt.legend()
+    if save_plot and (plot_dir is not None):
+        plt.savefig('./corr/'+name+'.png')
+    plt.show()
+
+####
+
 
 def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_plot=False, plot_dir=None):
     """
@@ -956,7 +1021,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
 
     mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
 
-    plt.figure(figsize=(30,20))
+    plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
     # plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
     plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
@@ -978,8 +1043,9 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     plt.legend()
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + 'PSF_e1_vs_e_gal.png')
+    plt.show()
 
-    plt.figure(figsize=(30,20))
+    plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e2, e2, sigma=1./np.sqrt(weights))
     # plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
     plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
@@ -1001,9 +1067,10 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     plt.legend()
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + 'PSF_e2_vs_e_gal.png')
+    plt.show()
 
 
-    plt.figure(figsize=(30,20))
+    plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_size, e1, sigma=1./np.sqrt(weights))
     # plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
     plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
@@ -1331,7 +1398,6 @@ def NegDash(x_in, y_in, yerr_in, plot_name='', vertical_lines=True,
     if plot_name:
         plt.savefig(plot_name)
         plt.close()
-
 
 
 # d = vx.open('final_cat.arrow')
