@@ -50,5 +50,15 @@ mmap_mode = None
 
 # Survey parameters
 
+## Field or patch name. Put None if n/a
+name = 'W3'
+
 ## Area of a tile in deg^2
 area_tile = 0.25
+
+
+# Catalog(s)
+
+## Matching threshold [deg]
+thresh = 0.0002
+
