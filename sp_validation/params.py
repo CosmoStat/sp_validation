@@ -60,8 +60,12 @@ name = 'W3'
 area_tile = 0.25
 
 
-# Catalog(s)
+# Catalog parameters
 
 ## Matching threshold [deg]
 thresh = 0.0002
 
+# Calibration
+
+## Spatial type, global or local
+cal_spatial = 'local'
