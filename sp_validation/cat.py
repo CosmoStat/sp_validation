@@ -68,7 +68,7 @@ def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, verbose=Fals
 def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbose=False):
     """Check matching
 
-    Checks matching between two catalogues.
+    Check matching between two catalogues.
 
     Parameters
     ----------
@@ -87,6 +87,8 @@ def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbos
     -------
     ind : array of int
         index list of d2 of objects that were matched to d1
+    mask_area_tiles : array of int
+        index list of tiles in footprint
     """
     
 
@@ -104,24 +106,25 @@ def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbos
     ind = basic.match_stars2(d2['XWIN_WORLD'], d2['YWIN_WORLD'], d1['RA'][mask_area_tiles],
                              d1['DEC'][mask_area_tiles], thresh=thresh)
 
-    msg = 'Number of matched stars from exposures to total catalogue = {} = {:.1f}%' \
-        ''.format(len(ind), len(ind) / len(d1['RA'][mask_area_tiles])*100)
+    n_tot = len(d1[keys_1[0]][mask_area_tiles])
+    msg = 'Number of matched stars from exposures to total catalogue = {}/{} = {:.1f}%' \
+        ''.format(len(ind), n_tot, len(ind) / n_tot * 100)
     io.print_stats(msg, stats_file, verbose=verbose)
 
     # Remove stars matched to more than one target object
     ind = np.array(list(set(ind)))
 
-    msg = 'Number of matched stars after removing multiple matches = {} = {:.1f}%' \
-        ''.format(len(ind), len(ind) / len(d1['RA'][mask_area_tiles])*100)
+    msg = 'Number of matched stars after removing multiple matches = {}/{} = {:.1f}%' \
+        ''.format(len(ind), n_tot, len(ind) / n_tot * 100)
     io.print_stats(msg, stats_file, verbose=verbose)
 
-    return ind
+    return ind, mask_area_tiles, n_tot
 
 
 def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
     """Check invalid objects
 
-    Checks whether objects have invalid values.
+    Check whether objects have invalid values.
 
     Parameters
     ----------
@@ -153,3 +156,73 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
         msg = 'Invalid {} found for {}/{} = {:.1g}% objects' \
               ''.format(name[i], n_inv_psf, n_all, n_inv_psf / n_all)
         io.print_stats(msg, stats_file, verbose=verbose)
+
+
+def match_subsample(dd, ind, mask, pos_key, ell_key, n_ref, stats_file, verbose=False):
+    """Match subsample
+
+    Match subsample of catalogue.
+
+    Parameters
+    ----------
+    dd : dict
+        catalog
+    ind : array of int
+        index list of d2 of objects that were matched to d1
+    mask : array of bool
+        boolean mask
+    pos_key : array(2) of string
+        key names for position columns
+    ell_key : string
+        key name for ellipticity column
+    n_ref : int
+        reference number of objects
+    stats_file : file handler
+        summary statistics output file handler
+    verbose : bool, optional, default=False
+        verbose output if True
+
+    Returns
+    -------
+    ra, dec : array of float
+        positions
+    g : array(2) of float
+        ellipticities
+    """
+    
+    msg = 'Number of stars matched to valid sample = {}/{} = {:.1f}%' \
+          ''.format(len(dd[pos_key[0]][ind][mask]), n_ref,
+                    len(dd[pos_key[0]][ind][mask]) / n_ref * 100)
+    io.print_stats(msg, stats_file, verbose=verbose)
+
+    ra = dd[pos_key[0]][ind][mask]
+    dec = dd[pos_key[1]][ind][mask]
+    g1 = dd[ell_key][:,0][ind][mask]
+    g2 = dd[ell_key][:,1][ind][mask]
+    g = np.array([g1, g2])
+    
+    return ra, dec, g
+
+
+def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
+    """Match spread class
+
+    Match
+    """
+    
+    tot_star = n_ref
+    tot_as_star = len(np.where(dd['SPREAD_CLASS'][ind][mask] == 0)[0])
+    tot_as_gal = len(np.where(dd['SPREAD_CLASS'][ind][mask] == 1)[0])
+    tot_as_other = len(np.where(dd['SPREAD_CLASS'][ind][mask] == 2)[0])
+
+    msg = 'Number of stars selected as star (SPREAD_CLASS=0)   = {}/{} = {:.1f}%' \
+      ''.format(tot_as_star, tot_star, tot_as_star/tot_star*100)
+    io.print_stats(msg, stats_file, verbose=verbose)
+
+    msg = 'Number of stars selected as galaxy (SPREAD_CLASS=1) = {}/{} = {:.1f}%' \
+          ''.format(tot_as_gal, tot_star, tot_as_gal/tot_star*100)
+    io.print_stats(msg, stats_file, verbose=verbose)
+ 
+    msg = 'Number of stars selected as other (SPREAD_CLASS=2)  = {}/{} = {:.1f}%' \
+          ''.format(tot_as_other,tot_star, tot_as_other/tot_star*100)
+    io.print_stats(msg, stats_file, verbose=verbose)

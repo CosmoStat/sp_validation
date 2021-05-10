@@ -35,6 +35,9 @@ path_missing_ID = './missing_ID.txt'
 ## Weak-lensing galaxy catalog name
 galaxy_cat_path = './final_cat.npy'
 
+## Star and PSF catalog name
+star_cat_path = './psf_validation_merged/psf_cat_full.fits'
+
 ## Output plot directory and subdirs
 plot_dir = './plots/'
 plot_subdirs = ['psf_leak_ngmix', 'psf_leak_galsim']
