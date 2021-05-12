@@ -23,17 +23,18 @@ verbose = True
 # Paths
 
 ## Shapepipe path
-BASE = '{}/astro/repositories/github'.format(os.environ['HOME']) 
-SP_BASE = '{}/shapepipe'.format(BASE)
+#BASE = '{}/astro/repositories/github'.format(os.environ['HOME']) 
+#SP_BASE = '{}/shapepipe'.format(BASE)
+SP_BASE = '{}/shapepipe'.format(os.environ['HOME'])
 
 ## Input tile IDs
-path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_W3.txt'.format(SP_BASE)
+path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_P3.txt'.format(SP_BASE)
 
 ## Output file for missing tile ID, can be used as input for re-run
 path_missing_ID = './missing_ID.txt'
 
 ## Weak-lensing galaxy catalog name
-galaxy_cat_path = './final_cat.npy'
+galaxy_cat_path = './P3/final_cat.npy'
 
 ## Output plot directory and subdirs
 plot_dir = './plots/'
