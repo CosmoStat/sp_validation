@@ -28,7 +28,7 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
     plt.hexbin(ra, dec, gridsize=n_grid)
 
     cbar = plt.colorbar()
-    cbar.set_label(cbar_label, rotation=270)
+    cbar.set_label(cbar_label, rotation=270, labelpad=40)
 
     plt.title(title)
     plt.xlabel(x_label)
