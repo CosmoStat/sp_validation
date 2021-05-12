@@ -15,8 +15,6 @@
 
 import os
 
-import params
-
 
 def get_area(dd, area_tile, verbose=False):
     """Get area
@@ -50,7 +48,7 @@ def get_area(dd, area_tile, verbose=False):
     else:    
         # Set number of tiles by hand if information is not in catalogue
         tile_IDs = None
-        n_tiles = params.n_tiles
+        n_tiles = 1
 
     area_deg2 = n_tile * area_tile
     area_amin2 = area_deg2 * 3600

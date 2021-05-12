@@ -37,3 +37,5 @@ except Exception:  # pragma: no cover
     )
 
 __version__ = _version
+
+__all__ = ['survey', 'io', 'cat', 'basic', 'util', 'plot_style', 'plots']
