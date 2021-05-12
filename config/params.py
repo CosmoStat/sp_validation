@@ -55,6 +55,7 @@ mmap_mode = None
 
 ## Field or patch name. Put None if n/a
 name = 'W3'
+print('Field name = {}'.format(name))
 
 ## Area of a tile in deg^2
 area_tile = 0.25
