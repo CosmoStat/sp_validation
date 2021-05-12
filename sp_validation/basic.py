@@ -140,6 +140,7 @@ class metacal:
         self._selection_response(stat_operator)
         self._total_response(stat_operator)
         self._selection_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
+        self._shear_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
 
     def _read_data_ngmix(self, data, mask, prefix):
         """
@@ -294,6 +295,23 @@ class metacal:
         self.R21 = (self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*step)
 
         self.R_shear = np.array([[self.R11, self.R12], [self.R21, self.R22]])
+        
+### Test std R shear ###
+
+    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
+        """
+        """
+        if (len(self.ns['g1'][self.mask_dict['ns']])==0):
+            self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
+        else:
+            self.R11_stds = stat_operator((self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*step))[1]
+            self.R22_stds = stat_operator((self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*step))[1]
+            self.R12_stds = stat_operator((self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*step))[1]
+            self.R21_stds = stat_operator((self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*step))[1]
+
+            self.R_shear_std = np.array([[self.R11_stds, self.R12_stds], [self.R21_stds, self.R22_stds]])
+
+### End test std ###
 
 
     def _shear_response_w(self, step=0.01, stat_operator=np.average):
@@ -360,7 +378,7 @@ class metacal:
         """
         """
 
-        return self.m1, self.p1, self.p1, self.p2, self.ns, self.R, self.R_selection_std
+        return self.m1, self.p1, self.p1, self.p2, self.ns, self.R, self.R_selection_std, self.R_shear_std
 
 
 class footprint_mask:
