@@ -21,7 +21,7 @@ from sp_validation import io
 from sp_validation import basic
 
 
-def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, verbose=False):
+def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, invalid=-10, verbose=False):
     """Print some quantities.
 
     Output some summary statistics from a catalogue.
@@ -37,6 +37,8 @@ def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, verbose=Fals
         Should be 1 or 2.
     stats_file : file handler
         summary statistics output file handler
+    invalid : float, optional, default -10
+        flag objects with ellipticty value = invalid
     verbose : bool, optional, default=False
         verbose output if True
     """
@@ -47,20 +49,49 @@ def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, verbose=Fals
         print(dd.dtype.names)
         print('')
 
-    # Mean ellipticity looks reasonable, no `nan`?
-    ell = np.zeros(2)
-    if ell_n_comp == 1:
-        for i in (0, 1):
-            ell[i] = dd[ell_col_name[i]].mean()
-    elif ell_n_comp == 2:
-        for i in (0, 1):
-            ell[i] = dd[ell_col_name][:,i].mean()
-
     n_tot = len(dd)
-    msg = 'Total number of objects = {} = {}\n'.format(n_tot, util.millify(n_tot))
+    msg = 'Total number of objects = {} = {}'.format(n_tot, util.millify(n_tot))
     io.print_stats(msg, stats_file, verbose=verbose)
 
-    io.print_stats('Mean ellipticity:', stats_file, verbose=verbose)
+    # Get ellipticity columns
+    all_ell = []
+    if ell_n_comp == 1:
+        for i in (0, 1):
+            all_ell.append(dd[ell_col_name[i]])
+    elif ell_n_comp == 2:
+        for i in (0, 1):
+            all_ell.append(dd[ell_col_name][:,i])
+
+    # Tolerance around invalid value
+    EPS = 0.0001
+
+    # Index list of valid objects
+    ind_val = np.zeros(shape=(2, n_tot), dtype=np.bool)
+    for i in (0, 1):
+       ind_val[i] = np.abs(all_ell[i] - invalid) > EPS
+    # Valid objects = those for which both ellipticity
+    # are valid
+    ind_v = ind_val[0] & ind_val[1]
+
+    # Select valid objects
+    for i in (0, 1):
+        all_ell[i] = all_ell[i][ind_v]
+
+    n_tot_val = len(np.where(ind_v)[0])
+    msg = 'Total number of valid objects = {} = {}'.format(n_tot_val, util.millify(n_tot_val))
+    io.print_stats(msg, stats_file, verbose=verbose)
+
+    msg = 'Fraction of invalid objects = {}/{} = {:.3g}%\n' \
+          ''.format(n_tot - n_tot_val, n_tot,
+                    (n_tot - n_tot_val) / n_tot * 100)
+    io.print_stats(msg, stats_file, verbose=verbose)
+
+    # Mean ellipticity
+    ell = np.zeros(2)
+    for i in (0, 1):
+        ell[i] = all_ell[i].mean()
+
+    io.print_stats('Mean ellipticity of valid objects:', stats_file, verbose=verbose)
     for i in (0, 1):
         msg = '<e_{}> = {:.3g}'.format(i+1, ell[i])
         io.print_stats(msg, stats_file, verbose=verbose)
@@ -280,8 +311,8 @@ def write_shape_catalog(output_path, ra, dec, g1, g2, w, mag, snr,
 
     table_hdu = fits.BinTableHDU.from_columns(cols)
 
-    table_hdu.header['TTYPE3'] = ('g1', 'Calibrated reduced shear estimate, first component')
-    table_hdu.header['TTYPE4'] = ('g2', 'Calibrated reduced shear estimate, second component')
+    table_hdu.header['TTYPE3'] = ('g1', 'Calibrated reduced shear estimate, 1st comp')
+    table_hdu.header['TTYPE4'] = ('g2', 'Calibrated reduced shear estimate, 2nd comp')
     table_hdu.header['TTYPE5'] = ('w', 'Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
     table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
@@ -300,26 +331,26 @@ def write_shape_catalog(output_path, ra, dec, g1, g2, w, mag, snr,
     primary_header = fits.Header()
 
     primary_header['R'] = (r'<R>', r'Mean full response matrix <R> = <R_shear> + <R_select>')
-    primary_header['R_11'] = (R[0,0], 'Full response matrix component 1, 1')
-    primary_header['R_12'] = (R[0,1], 'Full response matrix component 1, 2')
-    primary_header['R_21'] = (R[1,0], 'Full response matrix component 2, 1')
-    primary_header['R_22'] = (R[1,1], 'Full response matrix component 2, 2')
+    primary_header['R_11'] = (R[0,0], 'Full response matrix comp 1 1')
+    primary_header['R_12'] = (R[0,1], 'Full response matrix comp 1 2')
+    primary_header['R_21'] = (R[1,0], 'Full response matrix comp 2 1')
+    primary_header['R_22'] = (R[1,1], 'Full response matrix comp 2 2')
 
     primary_header['R_g'] = (r'<R_g>', r'Mean shear response matrix <R_shear>')
-    primary_header['R_g11'] = (R_shear[0,0], 'Mean shear response matrix component 1, 1')
-    primary_header['R_g12'] = (R_shear[0,1], 'Mean shear response matrix component 1, 2')
-    primary_header['R_g21'] = (R_shear[1,0], 'Mean shear response matrix component 2, 1')
-    primary_header['R_g22'] = (R_shear[1,1], 'Mean shear response matrix component 2, 2')
+    primary_header['R_g11'] = (R_shear[0,0], 'Mean shear response matrix comp 1 1')
+    primary_header['R_g12'] = (R_shear[0,1], 'Mean shear response matrix comp 1 2')
+    primary_header['R_g21'] = (R_shear[1,0], 'Mean shear response matrix comp 2 1')
+    primary_header['R_g22'] = (R_shear[1,1], 'Mean shear response matrix comp 2 2')
 
     primary_header['R_S'] = (r'<R_S>', r'Global selection response matrix <R_select>')
-    primary_header['R_S11'] = (R_select[0,0], 'Global selection response matrix component 1, 1')
-    primary_header['R_S12'] = (R_select[0,1], 'Global selection response matrix component 1, 2')
-    primary_header['R_S21'] = (R_select[1,0], 'Global selection response matrix component 2, 1')
-    primary_header['R_S22'] = (R_select[1,1], 'Global selection response matrix component 2, 2')
+    primary_header['R_S11'] = (R_select[0,0], 'Global selection response matrix comp 1 1')
+    primary_header['R_S12'] = (R_select[0,1], 'Global selection response matrix comp 1 2')
+    primary_header['R_S21'] = (R_select[1,0], 'Global selection response matrix comp 2 1')
+    primary_header['R_S22'] = (R_select[1,1], 'Global selection response matrix comp 2 2')
 
-    primary_header['c_1'] = (c[0], 'Additive bias first component')
+    primary_header['c_1'] = (c[0], 'Additive bias 1st comp')
     primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
-    primary_header['c2'] = (c[1], 'Additive bias second component')
+    primary_header['c2'] = (c[1], 'Additive bias 2nd comp')
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
     primary_header['w'] = ('Weight', r'1 / (2*sig_SN^2 + sig^2(g_1) + sig^2(g_2)')

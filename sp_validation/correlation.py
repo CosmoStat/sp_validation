@@ -40,47 +40,6 @@ def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1
     return ng
 
 
-def T_to_fwhm(T):
-    """T to fwhm
-
-    Transform from size T to FWHM.
-
-    Parameters
-    ----------
-    T : (array of) float
-        input size(s)
-
-    Returns
-    -------
-    fwhm : (array of) float
-        output fwhm(s)
-    """
-
-    return T / 1.17741 * 2.355
-
-
-def sigma_to_fwhm(sigma, pixel_size=1):
-    """sigma to fwhm
-
-    Transform from size sigma to FWHM.
-
-    Parameters
-    ----------
-    sigma : (array of) float
-        input size(s)
-    pixel_size : float, optional, default=1
-        pixel size in arcsec, set to 1 if no scaling
-        required
-
-    Returns
-    -------
-    fwhm : (array of) float
-        output fwhm(s)
-    """
-
-    return sigma * 2.355 * pixel_size
-
-
 def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_2):
     """Correlation 12 22
 

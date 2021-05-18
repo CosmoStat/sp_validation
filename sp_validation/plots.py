@@ -152,6 +152,9 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
 
     if labels is None:
         labels = [''] * len(x)
+        do_legend = False
+    else:
+        do_legend = True
     if colors is None:
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
@@ -178,6 +181,7 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    plt.legend()
+    if do_legend:
+        plt.legend()
 
     plt.savefig(out_path)
