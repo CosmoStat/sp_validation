@@ -298,7 +298,7 @@ class metacal:
         
 ### Test std R shear ###
 
-    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
+    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)), step=0.01):
         """
         """
         if (len(self.ns['g1'][self.mask_dict['ns']])==0):
@@ -858,8 +858,6 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
         plt.savefig('./corr/'+name+'.png')
     plt.show()
 
-####
-
 
 def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_plot=False, plot_dir=None):
     """
@@ -908,10 +906,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         ind_2 = psf_e2_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
         ind_s = psf_size_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
 
-        ####
         psf1.append(np.mean(psf_e1[ind_1]))
-        # m_e1.append(np.average(e1[ind_1], weights=weights[ind_1]))
-        # m_e21.append(np.average(e2[ind_1], weights=weights[ind_1]))
 
         r_jk = jackknif_weighted_average(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
         m_e1.append(r_jk[0])
@@ -920,28 +915,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         m_e21.append(r_jk[0])
         s_e21.append(r_jk[1])
 
-        # hist_err = np.histogram(e1[ind_1], 50, weights=weights[ind_1])[0]
-        # hist_tmp = np.histogram(e1[ind_1], 50, weights=weights[ind_1], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e1.append(res[0][0])
-        # hist_err = np.histogram(e2[ind_1], 50, weights=weights[ind_1])[0]
-        # hist_tmp = np.histogram(e2[ind_1], 50, weights=weights[ind_1], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e21.append(res[0][0])
-        # m_e1.append(np.median(e1[ind_1]))
-        # m_e21.append(np.median(e2[ind_1]))
-
-        # s_e1.append(np.std(e1[ind_1])/np.sqrt(len(e1[ind_1])))
-        # s_e21.append(np.std(e2[ind_1])/np.sqrt(len(e2[ind_1])))
-
-        # s_e1.append(weighted_std(e1[ind_1], weights[ind_1])/np.sqrt(len(e1[ind_1])))
-        # s_e21.append(weighted_std(e2[ind_1], weights[ind_1])/np.sqrt(len(e2[ind_1])))
-        ####
-
-        ####
         psf2.append(np.mean(psf_e2[ind_2]))
-        # m_e2.append(np.average(e2[ind_2], weights=weights[ind_2]))
-        # m_e12.append(np.average(e1[ind_2], weights=weights[ind_2]))
 
         r_jk = jackknif_weighted_average(e2[ind_2], weights[ind_2], remove_size=0.2, n_realization=50)
         m_e2.append(r_jk[0])
@@ -950,28 +924,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         m_e12.append(r_jk[0])
         s_e12.append(r_jk[1])
 
-        # hist_err = np.histogram(e2[ind_2], 50, weights=weights[ind_2])[0]
-        # hist_tmp = np.histogram(e2[ind_2], 50, weights=weights[ind_2], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e2.append(res[0][0])
-        # hist_err = np.histogram(e1[ind_2], 50, weights=weights[ind_2])[0]
-        # hist_tmp = np.histogram(e1[ind_2], 50, weights=weights[ind_2], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e12.append(res[0][0])
-        # m_e2.append(np.median(e2[ind_2]))
-        # m_e12.append(np.median(e1[ind_2]))
-
-        # s_e2.append(np.std(e2[ind_2])/np.sqrt(len(e2[ind_2])))
-        # s_e12.append(np.std(e1[ind_2])/np.sqrt(len(e1[ind_2])))
-
-        # s_e2.append(weighted_std(e2[ind_2], weights[ind_2])/np.sqrt(len(e2[ind_2])))
-        # s_e12.append(weighted_std(e1[ind_2], weights[ind_2])/np.sqrt(len(e1[ind_2])))
-        ####
-
-        ####
         psfs.append(np.mean(psf_size[ind_s]))
-        # m_s1.append(np.average(e1[ind_s], weights=weights[ind_s]))
-        # m_s2.append(np.average(e2[ind_s], weights=weights[ind_s]))
 
         r_jk = jackknif_weighted_average(e1[ind_s], weights[ind_s], remove_size=0.2, n_realization=50)
         m_s1.append(r_jk[0])
@@ -979,24 +932,6 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         r_jk = jackknif_weighted_average(e2[ind_s], weights[ind_s], remove_size=0.2, n_realization=50)
         m_s2.append(r_jk[0])
         s_s2.append(r_jk[1])
-
-        # m_s1.append(np.median(e1[ind_s]))
-        # m_s2.append(np.median(e2[ind_s]))
-
-        # s_s1.append(np.std(e1[ind_s])/np.sqrt(len(e1[ind_s])))
-        # s_s2.append(np.std(e2[ind_s])/np.sqrt(len(e2[ind_s])))
-
-        # s_s1.append(weighted_std(e1[ind_s], weights[ind_s])/np.sqrt(len(e1[ind_s])))
-        # s_s2.append(weighted_std(e2[ind_s], weights[ind_s])/np.sqrt(len(e2[ind_s])))
-        ####
-
-    #     plt.figure()
-    #     plt.title('psf e1 = {}'.format(psf1[-1]))
-    #     plt.hist(e2[ind_1], 500, weights=weights[ind_1])
-    #     plt.vlines(m_e21[-1], ymin=plt.ylim()[0], ymax=plt.ylim()[1], label='m = {:.5f}'.format(m_e21[-1]))
-    #     plt.legend()
-    #
-    # plt.show()
 
 
     psf1 = np.array(psf1)
@@ -1015,49 +950,19 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     m_s1 = np.array(m_s1)
     m_s2 = np.array(m_s2)
 
-    # res = curve_fit(lin, psf_e1, e2, sigma=1./np.sqrt(weights))
-    # plt.figure()
-    # plt.hexbin(psf_e1, e2, gridsize=300)
-    # plt.plot(psf2, lin(psf2, *res[0]), c='k', label = 'm = {:.3f}'.format(res[0][0]))
-    # plt.show()
-
-    mpl.rcParams['lines.linewidth'] = 3
-    mpl.rcParams['lines.markersize'] = 10
-    mpl.rcParams['font.size'] = 35
-    mpl.rcParams['xtick.minor.size'] = 7
-    mpl.rcParams['ytick.minor.size'] = 7
-    mpl.rcParams['xtick.major.size'] = 10
-    mpl.rcParams['ytick.major.size'] = 10
-    mpl.rcParams['xtick.major.width'] = 3
-    mpl.rcParams['ytick.major.width'] = 3
-    mpl.rcParams['boxplot.boxprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.medianprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.flierprops.markersize'] = 12
-    mpl.rcParams['boxplot.whiskerprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.capprops.linewidth'] = 2.
-
-
-    mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
-
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
-    # plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf1, m_e1, sigma=s_e1, p0=[0.,0.])
-    # plt.plot(psf1, lin(psf1, *res[0])-res[0][1], '--b', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.', label='e1')
 
     res = curve_fit(lin, psf_e1, e2, sigma=1./np.sqrt(weights))
-    # plt.plot(psf1, lin(psf1, *res[0]), c='r', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf1, lin(psf1, *res[0]), c='r', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf1, m_e21, sigma=s_e21, p0=[0.,0.])
-    # plt.plot(psf1, lin(psf1, *res[0])-res[0][1], '--r', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+    plt.plot(psf1, lin(psf1, *res[0]), c='r', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psf1, m_e21, yerr=s_e21, c='r', fmt='.', label='e2')
     plt_xmin, plt_xmax = plt.xlim()
     plt.hlines(y=0, xmin=plt_xmin*5, xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
-    plt.xlabel(r'$e_{1}^{PSF}$')
-    plt.ylabel(r'$<e_{1,2}^{gal}>$')
+    plt.xlabel(r'$e_{1}^{\rm PSF}$')
+    plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + 'PSF_e1_vs_e_gal.png')
@@ -1065,23 +970,17 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
 
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e2, e2, sigma=1./np.sqrt(weights))
-    # plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf2, m_e2, sigma=s_e2, p0=[0.,0.])
-    # plt.plot(psf2, lin(psf2, *res[0])-res[0][1], '--r', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+    plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psf2, m_e2, yerr=s_e2, c='r', fmt='.', label='e2')
 
     res = curve_fit(lin, psf_e2, e1, sigma=1./np.sqrt(weights))
-    # plt.plot(psf2, lin(psf2, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf2, lin(psf2, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf2, m_e12, sigma=s_e12, p0=[0.,0.])
-    # plt.plot(psf2, lin(psf2, *res[0])-res[0][1], '--b', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+    plt.plot(psf2, lin(psf2, *res[0]), c='b', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psf2, m_e12, yerr=s_e12, c='b', fmt='.', label='e1')
     plt_xmin, plt_xmax = plt.xlim()
-    plt.hlines(y=0, xmin=plt_xmin*5, xmax=plt_xmax*5, linestyles='dashed', color='k')
+    plt.hlines(y=0, xmin=plt_xmin, xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
-    plt.xlabel(r'$e_{2}^{PSF}$')
-    plt.ylabel(r'$<e_{1,2}^{gal}>$')
+    plt.xlabel(r'$e_{2}^{\rm PSF}$')
+    plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + 'PSF_e2_vs_e_gal.png')
@@ -1090,19 +989,17 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
 
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_size, e1, sigma=1./np.sqrt(weights))
-    # plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psfs, m_s1, yerr=s_s1, c='b', fmt='.', label='e1')
 
     res = curve_fit(lin, psf_size, e2, sigma=1./np.sqrt(weights))
-    # plt.plot(psfs, lin(psfs, *res[0]), c='r', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psfs, lin(psfs, *res[0]), c='r', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    plt.plot(psfs, lin(psfs, *res[0]), c='r', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psfs, m_s2, yerr=s_s2, c='r', fmt='.', label='e2')
     plt_xmin, plt_xmax = plt.xlim()
     plt.hlines(y=0, xmin=plt_xmin*(-5), xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
-    plt.xlabel(r'$\mathrm{FWHM}^{PSF}$ (arcsec)')
-    plt.ylabel(r'$<e_{1,2}^{gal}>$')
+    plt.xlabel(r'$\mathrm{FWHM}^{\rm PSF}$ [arcsec]')
+    plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + 'PSF_size_vs_e_gal.png')

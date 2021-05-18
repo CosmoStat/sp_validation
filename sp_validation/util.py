@@ -14,6 +14,7 @@
 
 import math
 import io
+import numpy as np
 from nbformat import current
 
 
@@ -38,14 +39,45 @@ def execute_notebook(nbfile):
     
     ip = get_ipython()
     
+    res = -1
     for cell in nb.worksheets[0].cells:
         if cell.cell_type == 'code':
             print('#'*80)
-            ip.run_cell(cell.input)
+            res = ip.run_cell(cell.input)
             print()
         elif cell.cell_type == 'markdown':
-            #print('#', '-'*80)
             print(cell.source)
             print()
         else:
             continue
+
+    if res.error_in_exec:
+        print('Error of last cell call = {}'.format(res.error_in_exec))
+
+    return res
+
+
+def transform_nan(value):
+    """Transform Nan
+
+    Transform a nan to a very large number.
+
+    Parameters
+    ----------
+    value : float
+        input value
+
+    Returns
+    -------
+    res : float
+        output value
+    """
+
+    large = 1e30
+
+    if np.isnan(value) or np.isinf(value):
+        res = 1e30
+    else:
+        res = value
+
+    return res
