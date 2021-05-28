@@ -139,8 +139,8 @@ class metacal:
         self._shear_response(step)
         self._selection_response(stat_operator)
         self._total_response(stat_operator)
-        self._selection_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
-        self._shear_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
+        self._selection_response_std(stat_operator=lambda x:jackknif_weighted_average2(x, np.ones_like(x)))
+        self._shear_response_std(stat_operator=lambda x:jackknif_weighted_average2(x, np.ones_like(x)))
 
     def _read_data_ngmix(self, data, mask, prefix):
         """
@@ -298,11 +298,13 @@ class metacal:
         
 ### Test std R shear ###
 
-    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
+    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average2(x, np.ones_like(x))):
         """
         """
         if (len(self.ns['g1'][self.mask_dict['ns']])==0):
             self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
+        #elif (np.sum(x)==0):
+            #self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
         else:
             self.R11_stds = stat_operator((self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*0.01))[1]
             self.R22_stds = stat_operator((self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*0.01))[1]
@@ -341,11 +343,13 @@ class metacal:
 
 ### Test std R selec ###
 
-    def _selection_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
+    def _selection_response_std(self, stat_operator=lambda x:jackknif_weighted_average2(x, np.ones_like(x))):
         """
         """
         if (len(self.ns['g1'][self.mask_dict['ns']])==0):
             self.R_selection_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
+        #elif (np.sum(x)==0):
+            #self.R_selection_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
         else:
             self.R11_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g1'][self.mask_dict['p1']])[1]**2 + stat_operator(self.ns['g1'][self.mask_dict['m1']])[1]**2)
             self.R22_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g2'][self.mask_dict['p2']])[1]**2 + stat_operator(self.ns['g2'][self.mask_dict['m2']])[1]**2)
@@ -379,6 +383,37 @@ class metacal:
         """
 
         return self.m1, self.p1, self.p1, self.p2, self.ns, self.R, self.R_selection_std, self.R_shear_std
+        
+##### TEST ######
+
+def jackknif_weighted_average2(data, weights, remove_size=0.1, n_realization=100):
+    """
+    """
+
+    samp_size = len(data)
+    keep_size_pc = 1-remove_size
+
+    if keep_size_pc < 0:
+        raise ValueError('remove size should be in [0, 1]')
+
+    subsamp_size = int(samp_size*keep_size_pc)
+
+    all_ind = np.arange(samp_size)
+
+    all_est = []
+    for i in range(n_realization):
+        sub_data_ind = np.random.choice(all_ind, subsamp_size)
+
+        if (sum(data[sub_data_ind])==0):
+            all_est.append(np.nan)
+        else:
+            all_est.append(np.average(data[sub_data_ind], weights=weights[sub_data_ind]))
+
+    all_est = np.array(all_est)
+
+    return np.mean(all_est), np.std(all_est)
+
+##### TEST ####
 
 
 class footprint_mask:
