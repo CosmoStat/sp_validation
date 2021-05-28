@@ -6,4 +6,4 @@ jupyterlab
 seaborn
 lenspack
 tqdm
-pyccl
+#pyccl

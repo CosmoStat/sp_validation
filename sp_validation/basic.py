@@ -58,6 +58,7 @@ def weighted_std(x, w):
 
     return np.sqrt(len(x)/(len(x) - 1) * np.average((x - np.average(x, weights=w))**2, weights=w))
 
+
 def weighted_median(values, weights):
     ''' Compute the weighted median of values list. 
     The weighted median is computed as follows:
@@ -120,30 +121,55 @@ def get_Isaac_nz(mag, weight, z, alpha=1.79, sigma=1.3, mu=1):
 
 
 class metacal:
-    """
+    """Metacal
+
+    Metacalibration.
+
+    Parameters
+    ----------
+    data :
+        input galaxy catalogue
+    mask : array of bool
+        mask according to galaxy selection, e.g. spread_model
+    masking_type : string, optional, default='gal'
+        masking type, one in 'gal', 'gal_mom', 'star'
+    step : float, optional, default=0.01
+        step h in finite differences
+    stat_operator : optional, default=np.mean
+        summary statistic for response matrices
+    prefix : string, optional, default='NGMIX'
+        to specify columns in input catalogue
+    snr_min : float, optional, default=10
+        signal-to-noise minimum
+    snr_max;; float, optional, default=500
+        signal-to-noise maximum
+    
     """
 
-    def __init__(self, data, mask, masking_type='gal', step=0.01, stat_operator=np.mean, prefix='NGMIX'):
+    def __init__(self, data, mask, masking_type='gal', step=0.01, stat_operator=np.mean, prefix='NGMIX',
+                 snr_min=10, snr_max=500, rel_size_min=0.5, verbose=False):
+
+        self._masking_type = masking_type
+        self._step = step
+        self._stat_operator = stat_operator
+
+        # Cuts
+        self._snr_min = snr_min
+        self._snr_max = snr_max
+        self._rel_size_min = rel_size_min
+        print('Metacal cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
+
+        self._verbose = verbose
 
         self._prefix = prefix
-        if prefix == 'NGMIX':
-            self._read_data_ngmix(data, mask, prefix)
-        elif prefix == 'GALSIM':
-            self._read_data_galsim(data, mask, prefix)
-        if masking_type == 'gal':
-            self._masking_gal()
-        elif masking_type == 'galmom':
-            self._masking_gal_mom()
-        elif masking_type == 'star':
-            self._masking_star()
-        self._shear_response(step)
-        self._selection_response(stat_operator)
-        self._total_response(stat_operator)
-        self._selection_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
-        self._shear_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
 
-    def _read_data_ngmix(self, data, mask, prefix):
-        """
+        self._read_data(data, mask)
+        self._compute_calibration()
+
+    def _read_data(self, data, mask):
+        """Read Data
+
+        Read relevant data columns.
         """
 
         m1 = {}
@@ -151,26 +177,11 @@ class metacal:
         m2 = {}
         p2 = {}
         ns = {}
-        for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
-            print('Extracting {}'.format(name_shear))
-            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['g1'] = data['{}_ELL_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            dict_tmp['g2'] = data['{}_ELL_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['s2n'] = data['{}_SNR_{}'.format(prefix, name_shear.upper())][mask]
-            if prefix == 'NGMIX':
-                dict_tmp['flux'] = data['{}_FLUX_{}'.format(prefix, name_shear.upper())][mask]
-                dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['T'] = data['{}_T_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['T_err'] = data['{}_T_ERR_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['Tpsf'] = data['{}_Tpsf_{}'.format(prefix, name_shear.upper())][mask]
-            # dict_tmp['C11'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            # dict_tmp['C22'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
-        if prefix == 'GALSIM':
-            self.snr_sextractor = data['SNR_WIN'][mask]
-        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,0][mask]
-        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,1][mask]
-        ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+
+        if self._prefix == 'NGMIX':
+            m1, p1, m2, p2, ns = self._read_data_ngmix(data, mask, m1, p1, m2, p2, ns)
+        elif prefix == 'GALSIM':
+            m1, p1, m2, p2, ns = self._read_data_galsim(data, mask, m1, p1, m2, p2, ns)
 
         self.m1 = m1
         self.p1 = p1
@@ -178,69 +189,125 @@ class metacal:
         self.p2 = p2
         self.ns = ns
 
-    def _read_data_galsim(self, data, mask, prefix):
+    def _read_data_ngmix(self, data, mask, m1, p1, m2, p2, ns):
+        """Read Data Ngmix
+
+        Read data from ngmix catalogue.
         """
+
+        for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
+
+            if self._verbose:
+                print('Extracting {}'.format(name_shear))
+
+            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['g1'] = data['{}_ELL_{}'.format(self._prefix, name_shear.upper())][:,0][mask]
+            dict_tmp['g2'] = data['{}_ELL_{}'.format(self._prefix, name_shear.upper())][:,1][mask]
+
+            if self._prefix == 'NGMIX':
+                dict_tmp['flux'] = data['{}_FLUX_{}'.format(self._prefix, name_shear.upper())][mask]
+                dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['T'] = data['{}_T_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['T_err'] = data['{}_T_ERR_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['Tpsf'] = data['{}_Tpsf_{}'.format(self._prefix, name_shear.upper())][mask]
+
+        if self._prefix == 'GALSIM':
+            self.snr_sextractor = data['SNR_WIN'][mask]
+        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,0][mask]
+        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,1][mask]
+        ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+
+        return m1, p1, m2, p2, ns
+
+    def _read_data_galsim(self, data, mask, m1, p1, m2, p2, ns):
+        """Read Data Galsim
+
+        Read data from galsim catalogue.
         """
     
-        prefix2 = prefix
+        prefix2 = self._prefix
         prefix = 'GALSIM_GAL'
 
-        m1 = {}
-        p1 = {}
-        m2 = {}
-        p2 = {}
-        ns = {}
         for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
             print('Extracting {}'.format(name_shear))
             dict_tmp['flag'] = data['{}_FLAGS_{}'.format(prefix2, name_shear.upper())][mask]
             dict_tmp['g1'] = data['{}_ELL_UNCORR_{}'.format(prefix, name_shear.upper())][:,0][mask]
             dict_tmp['g2'] = data['{}_ELL_UNCORR_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['s2n'] = data['{}_SNR_{}'.format(prefix, name_shear.upper())][mask]
+
             if prefix == 'NGMIX':
                 dict_tmp['flux'] = data['{}_FLUX_{}'.format(prefix, name_shear.upper())][mask]
                 dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(prefix, name_shear.upper())][mask]
             dict_tmp['T'] = data['{}_SIGMA_{}'.format(prefix, name_shear.upper())][mask]
             dict_tmp['Tpsf'] = data['{}_PSF_SIGMA_{}'.format(prefix2, name_shear.upper())][mask]
-            # dict_tmp['C11'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            # dict_tmp['C22'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+
         if prefix2 == 'GALSIM':
             self.snr_sextractor = data['SNR_WIN'][mask]
         ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,0][mask]
         ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,1][mask]
         ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
 
-        self.m1 = m1
-        self.p1 = p1
-        self.m2 = m2
-        self.p2 = p2
-        self.ns = ns
+    def _compute_calibration(self):
+        """Compute Calibration
+
+        Perform masking and compute calibration.
+        """
+
+        if self._masking_type == 'gal':
+            self._masking_gal()
+        elif self._masking_type == 'galmom':
+            self._masking_gal_mom()
+        elif self._masking_type == 'star':
+            self._masking_star()
+        else:
+            raise ValueError('Invalid masking type \'{}\''.format(self._masking_type))
+
+        self._shear_response()
+        self._selection_response()
+        self._total_response()
+        #self._shear_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
+
+    def add_cuts(self, snr_min=10, snr_max=500, rel_size_min=0.5):
+        """Add Cuts
+
+           Apply additional cuts to metacal galaxy catalogue.
+        """
+
+        if snr_min < self._snr_min or \
+           snr_max > self._snr_max or \
+           rel_size_min < self._rel_size_min:
+            print('At least on cut is less stringend than existing one, skipping...')
+            return
+
+        self._snr_min = snr_min
+        self._snr_max = snr_max
+        self._rel_size_min = rel_size_min
+        print('Metacal new cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
+
+        self._compute_calibration()
 
     def _masking_gal(self):
-        """
+        """Masking Gal
+
+        Mask metacal catalogue, i.e. apply cuts.
         """
 
         self.mask_dict = {}
         for data, name in zip([self.ns, self.m1, self.p1, self.m2, self.p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-            Tr_tmp = data['T'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
-            #Tr_err_tmp = data['T_err'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
+            Tr_tmp = data['T'] * (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
             if hasattr(self, 'snr_sextractor'):
                 snr_flux = self.snr_sextractor
             else:
                 snr_flux = data['flux']/data['flux_err']
-            # T_psf = np.sqrt(data['Tpsf']/2) * 1.17741
-            # mask_tmp = (data['flag'] == 0) & (data['s2n'] > 20) & (data['s2n'] < 10000) & (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
 
-            mask_tmp = (data['flag'] == 0) & (Tr_tmp/data['Tpsf'] > 0.5) & (snr_flux > 10) & (snr_flux < 500) #& (data['s2n'] > 100) & (data['s2n'] < 5000)
-
-            # mask_tmp = (data['flag'] == 0) & (Tr_tmp/T_psf > 1.) & (snr_flux > 10) & (snr_flux < 500)
-
-            # mask_tmp = (data['flag'] == 0) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 > 0.2) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 < 25*0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 > 0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 < 0.9) & ((Tr_tmp +3.*Tr_err_tmp)/data['Tpsf'] > 0.5) & (np.sqrt(data['C11']) < 0.5) & (np.sqrt(data['C22']) < 0.5) & (data['s2n'] > 50) & (data['s2n'] < 5000) #((data['T'] +3.*np.sqrt(data['T_err']))/data['Tpsf'] > 0.5) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 > 0.2) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 < 25*0.186)
+            mask_tmp = \
+                (data['flag'] == 0) \
+                & (Tr_tmp/data['Tpsf'] > self._rel_size_min) \
+                & (snr_flux > self._snr_min) \
+                & (snr_flux < self._snr_max)
 
             # Take care of rotated version
             ind_masked = np.where(mask_tmp == True)[0]
 
-            # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
             self.mask_dict[name] = ind_masked
 
     def _masking_gal_mom(self):
@@ -249,17 +316,21 @@ class metacal:
 
         self.mask_dict = {}
         for data, name in zip([self.ns, self.m1, self.p1, self.m2, self.p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-            Tr_tmp = data['T'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
-            # Tr_err_tmp = data['T_err'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
+            Tr_tmp = data['T'] * (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
+
             snr_flux = data['flux']/data['flux_err']
-            # mask_tmp = (data['flag'] == 0) & (data['s2n'] > 20) & (data['s2n'] < 10000) & (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
-            mask_tmp = (data['flag'] == 0)  & (data['s2n'] > 10) & (data['s2n'] < 500) & (data['g1'] != -10) & (data['g1'] != 0) & (1-data['Tpsf']/data['T'] > 0.4) #& (data['s2n'] > 100) & (data['s2n'] < 5000)
-            # mask_tmp = (data['flag'] == 0) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 > 0.2) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 < 25*0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 > 0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 < 0.9) & ((Tr_tmp +3.*Tr_err_tmp)/data['Tpsf'] > 0.5) & (np.sqrt(data['C11']) < 0.5) & (np.sqrt(data['C22']) < 0.5) & (data['s2n'] > 50) & (data['s2n'] < 5000) #((data['T'] +3.*np.sqrt(data['T_err']))/data['Tpsf'] > 0.5) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 > 0.2) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 < 25*0.186)
+
+            mask_tmp = \
+                (data['flag'] == 0) \
+                & (1-data['Tpsf']/data['T'] > 0.4) \
+                & (data['s2n'] > self._snr_min) \
+                & (data['s2n'] < self._snr_max) \
+                & (data['g1'] != -10) \
+                & (data['g1'] != 0)
 
             # Take care of rotated version
             ind_masked = np.where(mask_tmp == True)[0]
 
-            # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
             self.mask_dict[name] = ind_masked
 
     def _masking_star(self):
@@ -273,105 +344,71 @@ class metacal:
                 snr_flux = self.snr_sextractor
             else:
                 snr_flux = data['flux']/data['flux_err']
-            mask_tmp = (data['flag'] == 0) & (snr_flux > 10) & (snr_flux < 500) #& (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
+            mask_tmp = (data['flag'] == 0) & (snr_flux > 10) & (snr_flux < 500)
 
             # Take care of rotated version
             ind_masked = np.where(mask_tmp == True)[0]
 
-            # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
             self.mask_dict[name] = ind_masked
 
-    def _shear_response(self, step=0.01):
-        """
+    def _shear_response(self):
+        """Shear Response
+
+        Compute shear response matrix
         """
         
         sign = 1
         if self._prefix == 'GALSIM':
             sign = -1
 
-        self.R11 = (self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*step)
-        self.R22 = sign*(self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*step)
-        self.R12 = (self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*step)
-        self.R21 = (self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*step)
+        ma = self.mask_dict['ns']
+        h2 = 2 * self._step
+
+        self.R11 = (self.p1['g1'][ma] - self.m1['g1'][ma]) / h2
+        self.R22 = sign*(self.p2['g2'][ma] - self.m2['g2'][ma]) / h2
+        self.R12 = (self.p2['g1'][ma] - self.m2['g1'][ma]) / h2
+        self.R21 = (self.p1['g2'][ma] - self.m1['g2'][ma]) / h2
 
         self.R_shear = np.array([[self.R11, self.R12], [self.R21, self.R22]])
         
 ### Test std R shear ###
 
-    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)), step=0.01):
+    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
         """
         """
         if (len(self.ns['g1'][self.mask_dict['ns']])==0):
             self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
         else:
-            self.R11_stds = stat_operator((self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*step))[1]
-            self.R22_stds = stat_operator((self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*step))[1]
-            self.R12_stds = stat_operator((self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*step))[1]
-            self.R21_stds = stat_operator((self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*step))[1]
+            self.R11_stds = stat_operator((self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*self._step))[1]
+            self.R22_stds = stat_operator((self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*self._step))[1]
+            self.R12_stds = stat_operator((self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*self._step))[1]
+            self.R21_stds = stat_operator((self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*self._step))[1]
 
             self.R_shear_std = np.array([[self.R11_stds, self.R12_stds], [self.R21_stds, self.R22_stds]])
 
 ### End test std ###
 
 
-    def _shear_response_w(self, step=0.01, stat_operator=np.average):
-        """
-        """
-
-        self.R11_w = (stat_operator(self.p1['g1'][self.mask_dict['ns']], weights=self.p1['w'][self.mask_dict['ns']]) - stat_operator(self.m1['g1'][self.mask_dict['ns']], weights=self.m1['w'][self.mask_dict['ns']]))/(2.*step)
-        self.R22_w = (stat_operator(self.p2['g2'][self.mask_dict['ns']], weights=self.p2['w'][self.mask_dict['ns']]) - stat_operator(self.m2['g2'][self.mask_dict['ns']], weights=self.m2['w'][self.mask_dict['ns']]))/(2.*step)
-        self.R12_w = (stat_operator(self.p2['g1'][self.mask_dict['ns']], weights=self.p2['w'][self.mask_dict['ns']]) - stat_operator(self.m2['g1'][self.mask_dict['ns']], weights=self.m2['w'][self.mask_dict['ns']]))/(2.*step)
-        self.R21_w = (stat_operator(self.p1['g2'][self.mask_dict['ns']], weights=self.p1['w'][self.mask_dict['ns']]) - stat_operator(self.m1['g2'][self.mask_dict['ns']], weights=self.m1['w'][self.mask_dict['ns']]))/(2.*step)
-
-        self.R_shear_w = np.array([[self.R11_w, self.R12_w], [self.R21_w, self.R22_w]])
-
-    def _selection_response(self, stat_operator=np.mean):
+    def _selection_response(self):
         """
         """
         sign = 1
         if self._prefix == 'GALSIM':
             sign = -1
 
-        self.R11_s = (stat_operator(self.ns['g1'][self.mask_dict['p1']]) - stat_operator(self.ns['g1'][self.mask_dict['m1']]))/0.02
-        self.R22_s = sign*(stat_operator(self.ns['g2'][self.mask_dict['p2']]) - stat_operator(self.ns['g2'][self.mask_dict['m2']]))/0.02
-        self.R12_s = (stat_operator(self.ns['g1'][self.mask_dict['p2']]) - stat_operator(self.ns['g1'][self.mask_dict['m2']]))/0.02
-        self.R21_s = (stat_operator(self.ns['g2'][self.mask_dict['p1']]) - stat_operator(self.ns['g2'][self.mask_dict['m1']]))/0.02
+        self.R11_s = (self._stat_operator(self.ns['g1'][self.mask_dict['p1']]) - self._stat_operator(self.ns['g1'][self.mask_dict['m1']]))/0.02
+        self.R22_s = sign*(self._stat_operator(self.ns['g2'][self.mask_dict['p2']]) - self._stat_operator(self.ns['g2'][self.mask_dict['m2']]))/0.02
+        self.R12_s = (self._stat_operator(self.ns['g1'][self.mask_dict['p2']]) - self._stat_operator(self.ns['g1'][self.mask_dict['m2']]))/0.02
+        self.R21_s = (self._stat_operator(self.ns['g2'][self.mask_dict['p1']]) - self._stat_operator(self.ns['g2'][self.mask_dict['m1']]))/0.02
 
         self.R_selection = np.array([[self.R11_s, self.R12_s], [self.R21_s, self.R22_s]])
 
-### Test std R selec ###
 
-    def _selection_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
-        """
-        """
-        if (len(self.ns['g1'][self.mask_dict['ns']])==0):
-            self.R_selection_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
-        else:
-            self.R11_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g1'][self.mask_dict['p1']])[1]**2 + stat_operator(self.ns['g1'][self.mask_dict['m1']])[1]**2)
-            self.R22_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g2'][self.mask_dict['p2']])[1]**2 + stat_operator(self.ns['g2'][self.mask_dict['m2']])[1]**2)
-            self.R12_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g1'][self.mask_dict['p2']])[1]**2 + stat_operator(self.ns['g1'][self.mask_dict['m2']])[1]**2)
-            self.R21_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g2'][self.mask_dict['p1']])[1]**2 + stat_operator(self.ns['g2'][self.mask_dict['m1']])[1]**2)
-
-            self.R_selection_std = np.array([[self.R11_std, self.R12_std], [self.R21_std, self.R22_std]])
-
-### End test std ###
-
-    def _selection_response_weighted(self, stat_operator=np.average):
+    def _total_response(self):
         """
         """
 
-        self.R11_s_w = (stat_operator(self.ns['g1'][self.mask_dict['p1']], weights=self.ns['w'][self.mask_dict['p1']]) - stat_operator(self.ns['g1'][self.mask_dict['m1']], weights=self.ns['w'][self.mask_dict['m1']]))/0.02
-        self.R22_s_w = (stat_operator(self.ns['g2'][self.mask_dict['p2']], weights=self.ns['w'][self.mask_dict['p2']]) - stat_operator(self.ns['g2'][self.mask_dict['m2']], weights=self.ns['w'][self.mask_dict['m2']]))/0.02
-        self.R12_s_w = (stat_operator(self.ns['g1'][self.mask_dict['p2']], weights=self.ns['w'][self.mask_dict['p2']]) - stat_operator(self.ns['g1'][self.mask_dict['m2']], weights=self.ns['w'][self.mask_dict['m2']]))/0.02
-        self.R21_s_w = (stat_operator(self.ns['g2'][self.mask_dict['p1']], weights=self.ns['w'][self.mask_dict['p1']]) - stat_operator(self.ns['g2'][self.mask_dict['m1']], weights=self.ns['w'][self.mask_dict['m1']]))/0.02
-
-        self.R_selection_w = np.array([[self.R11_s_w, 0.], [0., self.R22_s_w]])
-
-    def _total_response(self, stat_operator=np.mean):
-        """
-        """
-
-        R_ws = stat_operator(self.R_shear, 2)
+        R_ws = self._stat_operator(self.R_shear, 2)
         self.R = R_ws + self.R_selection
 
     def _return():
@@ -1314,97 +1351,6 @@ def NegDash(x_in, y_in, yerr_in, plot_name='', vertical_lines=True,
         plt.savefig(plot_name)
         plt.close()
 
-
-# d = vx.open('final_cat.arrow')
-# dd = {key:d[key].values for key in d.column_names}
-# # (dd['SPREAD_CLASS'] == 0) & (dd['MAG_AUTO'] > 17) & (dd['MAG_AUTO'] < 21) \
-# # (dd['SPREAD_CLASS'] == 1) & (dd['MAG_AUTO'] > 21) & (dd['MAG_AUTO'] < 30) \
-# m = (dd['SPREAD_CLASS'] == 1) & (dd['MAG_AUTO'] > 21) & (dd['MAG_AUTO'] < 25) \
-#     & (dd['FLAGS'] == 0) & (dd['IMAFLAGS_ISO'] == 0) & (dd['NGMIX_MCAL_FLAGS'] == 0) \
-#     & (dd['PSF_E1'] != 0) \
-#     & (dd['PSF_E2'] != 0) \
-#     & (dd['N_EPOCH'] >= 3) \
-#     & (dd['NGMIX_N_EPOCH'] >= 1)
-#     # & (dd['XWIN_WORLD'] > 113.6) & (dd['XWIN_WORLD'] < 270.8) & (dd['YWIN_WORLD'] > 30.2) & (dd['YWIN_WORLD'] < 32.8)
-#     # & (dd['XWIN_WORLD'] > 193) & (dd['XWIN_WORLD'] < 240) & (dd['YWIN_WORLD'] > 54) & (dd['YWIN_WORLD'] < 64)
-#
-#
-# print('Getting data ...')
-# m1 = {}
-# p1 = {}
-# m2 = {}
-# p2 = {}
-# ns = {}
-# for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
-#     print('Extracting {}'.format(name_shear))
-#     dict_tmp['flag'] = dd['NGMIX_FLAGS_{}'.format(name_shear.upper())][m]
-#     dict_tmp['g1'] = dd['NGMIX_E1_{}'.format(name_shear.upper())][m]
-#     dict_tmp['g2'] = dd['NGMIX_E2_{}'.format(name_shear.upper())][m]
-#     dict_tmp['s2n'] = dd['NGMIX_SNR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['T'] = dd['NGMIX_T_{}'.format(name_shear.upper())][m]
-#     dict_tmp['T_err'] = dd['NGMIX_T_ERR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['Tpsf'] = dd['NGMIX_Tpsf_{}'.format(name_shear.upper())][m]
-#     dict_tmp['C11'] = dd['NGMIX_E1_ERR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['C22'] = dd['NGMIX_E2_ERR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
-# print('Done.')
-#
-# psf_e1 = dd['PSF_E1'][m]
-# psf_e2 = dd['PSF_E2'][m]
-# psf_e = np.sqrt(psf_e1**2. + psf_e2**2.)
-#
-#
-# # Shear Response
-# R11 = (p1['g1'] - m1['g1'])/0.02
-# R22 = (p2['g2'] - m2['g2'])/0.02
-# R12 = (p2['g1'] - m2['g1'])/0.02
-# R21 = (p1['g2'] - m1['g2'])/0.02
-#
-# # Masking
-# mask_dict = {}
-# for data, name in zip([ns, m1, p1, m2, p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-#     Tr_tmp = data['T'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
-#     mask_tmp = (data['flag'] == 0) & (data['s2n'] > 20) & (data['s2n'] < 10000) & (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
-#
-#     # Take care of rotated version
-#     ind_masked = np.where(mask_tmp == True)[0]
-#
-#     # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
-#     mask_dict[name] = ind_masked
-#
-# # Final shear response
-# R_shear = np.array([[R11[mask_dict['ns']], R12[mask_dict['ns']]], [R21[mask_dict['ns']], R22[mask_dict['ns']]]])
-# # R_value = np.mean([R11[mask_dict['ns']], R22[mask_dict['ns']]], 0)
-# # R_shear = np.array([[R_value, np.zeros_like(R_value)], [np.zeros_like(R_value), R_value]])
-# # R_shear = np.array([[R11, R12], [R21, R22]])
-#
-# # m_R_shear = (np.abs(R_shear[0,0,:]) < 3) & (np.abs(R_shear[1,0,:]) < 3) & (np.abs(R_shear[0,1,:]) < 3) & (np.abs(R_shear[1,1,:]) < 3)
-#
-# # Selection response
-# # R11_s = (np.mean(ns['g1'][mask_dict['p1']]) - np.mean(ns['g1'][mask_dict['m1']]))/0.02
-# # R22_s = (np.mean(ns['g2'][mask_dict['p2']]) - np.mean(ns['g2'][mask_dict['m2']]))/0.02
-# # R12_s = (np.mean(ns['g1'][mask_dict['p2']]) - np.mean(ns['g1'][mask_dict['m2']]))/0.02
-# # R21_s = (np.mean(ns['g2'][mask_dict['p1']]) - np.mean(ns['g2'][mask_dict['m1']]))/0.02
-# R11_s = (np.median(ns['g1'][mask_dict['p1']]) - np.median(ns['g1'][mask_dict['m1']]))/0.02
-# R22_s = (np.median(ns['g2'][mask_dict['p2']]) - np.median(ns['g2'][mask_dict['m2']]))/0.02
-# R12_s = (np.median(ns['g1'][mask_dict['p2']]) - np.median(ns['g1'][mask_dict['m2']]))/0.02
-# R21_s = (np.median(ns['g2'][mask_dict['p1']]) - np.median(ns['g2'][mask_dict['m1']]))/0.02
-# # R11_s = (np.average(ns['g1'][mask_dict['p1']], weights=ns['w'][mask_dict['p1']]) - np.average(ns['g1'][mask_dict['m1']], weights=ns['w'][mask_dict['m1']]))/0.02
-# # R22_s = (np.average(ns['g2'][mask_dict['p2']], weights=ns['w'][mask_dict['p2']]) - np.average(ns['g2'][mask_dict['m2']], weights=ns['w'][mask_dict['m2']]))/0.02
-# # R12_s = (np.average(ns['g1'][mask_dict['p2']], weights=ns['w'][mask_dict['p2']]) - np.average(ns['g1'][mask_dict['m2']], weights=ns['w'][mask_dict['m2']]))/0.02
-# # R21_s = (np.average(ns['g2'][mask_dict['p1']], weights=ns['w'][mask_dict['p1']]) - np.average(ns['g2'][mask_dict['m1']], weights=ns['w'][mask_dict['m1']]))/0.02
-#
-# # Final selection response
-# R_selection = np.array([[R11_s, R12_s], [R21_s, R22_s]])
-#
-# # Final response
-# # R_ws = np.mean(R_shear, 2)
-# R_ws = np.median(R_shear, 2)
-# R = R_ws + R_selection
-#
-# # all_R['R'].append(R)
-# # all_R['R_select'].append(R_selection)
-# # all_R['R'].append(R_shear)
 
 def guess_surface(ra, dec, min_nbins=100, max_nbins=1e6, n_nbins=100):
     """

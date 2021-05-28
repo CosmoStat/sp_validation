@@ -25,6 +25,19 @@ verbose = True
 np.set_printoptions(precision=3, formatter={'float': '{: .3g}'.format})
 
 
+# Survey parameters
+
+## Field or patch name. Put None if n/a
+name = 'W3'
+print('Field name = {}'.format(name))
+
+## Area of a tile in deg^2
+area_tile = 0.25
+
+## Pixel size in arcsec
+pixel_size = 0.187
+
+
 # Paths
 
 ## Shapepipe path
@@ -34,7 +47,7 @@ SP_BASE = '{}/shapepipe'.format(BASE)
 ## Input paths
 
 ### Tile IDs
-path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_W3.txt'.format(SP_BASE)
+path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_{}.txt'.format(SP_BASE, name)
 
 ### Weak-lensing galaxy catalog name
 galaxy_cat_path = './final_cat.npy'
@@ -61,19 +74,6 @@ stats_file_name = 'stats_file.txt'
 
 ## Memory mode, set to None unless very large file
 mmap_mode = None
-
-
-# Survey parameters
-
-## Field or patch name. Put None if n/a
-name = 'W3'
-print('Field name = {}'.format(name))
-
-## Area of a tile in deg^2
-area_tile = 0.25
-
-## Pixel size in arcsec
-pixel_size = 0.187
 
 
 # Catalog parameters
