@@ -6,4 +6,5 @@ jupyterlab
 seaborn
 lenspack
 tqdm
+uncertainties
 #pyccl

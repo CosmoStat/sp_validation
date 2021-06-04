@@ -125,7 +125,7 @@ def plot_histograms(xs, labels, title, x_label, y_label, x_range, n_bin, out_pat
 
 
 def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=False, labels=None,
-                 colors=None, linestyles=None, eb_linestyles=None):
+                 colors=None, linestyles=None, eb_linestyles=None, ylim=None):
     """plot points errors
 
     Plot one-dimensional data points with errorbars.
@@ -148,6 +148,8 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         linestyle indicators, '-' if None
     eb_linestyle : array of string, optional, default=None
         errorbar linestyle indicators, '-' if None
+    ylim : array(float, 2), optional, default=None
+        y-axis limits, automatic if None
     """
 
     if labels is None:
@@ -177,6 +179,9 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         plt.xticks([2, 5, 10, 20, 50, 100, 200], labels=['2', '5', '10', '20', '50', '100', '200'])
     if ylog == True:
         plt.yscale('log')
+
+    if ylim:
+        plt.ylim(ylim)
 
     plt.title(title)
     plt.xlabel(xlabel)

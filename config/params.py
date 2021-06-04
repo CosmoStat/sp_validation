@@ -78,5 +78,22 @@ mmap_mode = None
 
 # Catalog parameters
 
-## Matching threshold [deg]
+## Star matching threshold [deg]
 thresh = 0.0002
+
+## Galaxy selection for metacal
+
+### Signal-to-noise
+gal_snr_min = 10
+gal_snr_max = 500
+
+### Relative size, T_gal / T_psf
+gal_rel_size_min = 0.5
+
+# Plotting parameters
+
+## PSF leakage limits
+leakage_alpha_ylim = [-0.1, 0.065]
+leakage_xi_sys_ylim = [-4e-5, 5e-5]
+leakage_xi_sys_log_ylim = [2e-13, 5e-5]
+

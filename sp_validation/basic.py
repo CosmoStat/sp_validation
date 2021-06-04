@@ -47,6 +47,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.patches import Patch
 
+from uncertainties import ufloat
+
 
 def mad(data, axis=None):
     return np.median(np.abs(data - np.median(data, axis)), axis)*1.4826
@@ -157,7 +159,8 @@ class metacal:
         self._snr_min = snr_min
         self._snr_max = snr_max
         self._rel_size_min = rel_size_min
-        print('Metacal cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
+        if verbose:
+            print('Metacal cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
 
         self._verbose = verbose
 
@@ -180,7 +183,7 @@ class metacal:
 
         if self._prefix == 'NGMIX':
             m1, p1, m2, p2, ns = self._read_data_ngmix(data, mask, m1, p1, m2, p2, ns)
-        elif prefix == 'GALSIM':
+        elif self._prefix == 'GALSIM':
             m1, p1, m2, p2, ns = self._read_data_galsim(data, mask, m1, p1, m2, p2, ns)
 
         self.m1 = m1
@@ -204,47 +207,45 @@ class metacal:
             dict_tmp['g1'] = data['{}_ELL_{}'.format(self._prefix, name_shear.upper())][:,0][mask]
             dict_tmp['g2'] = data['{}_ELL_{}'.format(self._prefix, name_shear.upper())][:,1][mask]
 
-            if self._prefix == 'NGMIX':
-                dict_tmp['flux'] = data['{}_FLUX_{}'.format(self._prefix, name_shear.upper())][mask]
-                dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['flux'] = data['{}_FLUX_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(self._prefix, name_shear.upper())][mask]
+
             dict_tmp['T'] = data['{}_T_{}'.format(self._prefix, name_shear.upper())][mask]
             dict_tmp['T_err'] = data['{}_T_ERR_{}'.format(self._prefix, name_shear.upper())][mask]
             dict_tmp['Tpsf'] = data['{}_Tpsf_{}'.format(self._prefix, name_shear.upper())][mask]
 
-        if self._prefix == 'GALSIM':
-            self.snr_sextractor = data['SNR_WIN'][mask]
         ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,0][mask]
         ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,1][mask]
         ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
 
         return m1, p1, m2, p2, ns
-
+
     def _read_data_galsim(self, data, mask, m1, p1, m2, p2, ns):
         """Read Data Galsim
 
         Read data from galsim catalogue.
         """
+
+        prefix_mom = 'GALSIM_GAL'
     
-        prefix2 = self._prefix
-        prefix = 'GALSIM_GAL'
-
         for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
-            print('Extracting {}'.format(name_shear))
-            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(prefix2, name_shear.upper())][mask]
-            dict_tmp['g1'] = data['{}_ELL_UNCORR_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            dict_tmp['g2'] = data['{}_ELL_UNCORR_{}'.format(prefix, name_shear.upper())][:,1][mask]
 
-            if prefix == 'NGMIX':
-                dict_tmp['flux'] = data['{}_FLUX_{}'.format(prefix, name_shear.upper())][mask]
-                dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['T'] = data['{}_SIGMA_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['Tpsf'] = data['{}_PSF_SIGMA_{}'.format(prefix2, name_shear.upper())][mask]
+            if self._verbose:
+                print('Extracting {}'.format(name_shear))
 
-        if prefix2 == 'GALSIM':
-            self.snr_sextractor = data['SNR_WIN'][mask]
-        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,0][mask]
-        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,1][mask]
+            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['g1'] = data['{}_ELL_UNCORR_{}'.format(prefix_mom, name_shear.upper())][:,0][mask]
+            dict_tmp['g2'] = data['{}_ELL_UNCORR_{}'.format(prefix_mom, name_shear.upper())][:,1][mask]
+
+            dict_tmp['T'] = data['{}_SIGMA_{}'.format(prefix_mom, name_shear.upper())][mask]
+            dict_tmp['Tpsf'] = data['{}_PSF_SIGMA_{}'.format(self._prefix, name_shear.upper())][mask]
+
+        self.snr_sextractor = data['SNR_WIN'][mask]
+        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix_mom)][:,0][mask]
+        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix_mom)][:,1][mask]
         ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+
+        return m1, p1, m2, p2, ns
 
     def _compute_calibration(self):
         """Compute Calibration
@@ -281,7 +282,8 @@ class metacal:
         self._snr_min = snr_min
         self._snr_max = snr_max
         self._rel_size_min = rel_size_min
-        print('Metacal new cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
+        if self._verbose:
+            print('Metacal new cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
 
         self._compute_calibration()
 
@@ -851,17 +853,56 @@ def jackknif_weighted_average(data, weights, remove_size=0.1, n_realization=100)
     return np.mean(all_est), np.std(all_est)
 
 
-####
+def frexp10(x):
+    """Frexp19
 
-def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=False):
+        Return the mantissa and exponent of x, as pair (m, e).
+        m is a float and e is an int, such that x = m * 10.0**e.
+        See math.frexp()
+
+        Example
+        -------
+        > frexp10(1240)
+        (1.24, 3)
+    """
+
+    if x == 0: return (0, 0)
+    if x < 0:
+        sign = -1
+    else:
+        sign = +1
+    try:
+        l = np.log10(np.abs(x))
+    except:
+        print('Error with math.log10(|' + (str(x)) + '|)')
+        return None, None
+    if l < 1: l = l - 1 + 1e-10
+    exp = int(l)
+    return sign * x / 10**exp, exp
+
+
+def lin_product(x, precision=2):
+    thres = 1
+    if abs(x) < thres:
+        m, e = frexp10(x)
+        if (m, e) == (0, 0): res = '$0\,$'
+        else:
+            if m == 1:
+                res = f'10^{{{e:g}}}'
+            else:
+                res = f'{m:.{precision}g} \\cdot 10^{{{e:g}}}'
+    else:
+        res = '{0:g}'.format(x)
+    return res
+
+
+def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, out_path=None, title=''):
     """
     """
 
     def lin(x, a, b):
         return a * x + b
 
-    def gauss(x, x0, sig):
-        return 1. / (sig * np.sqrt(2. * np.pi)) * np.exp(-0.5 * ((x - x0)/sig)**2.)
     if weights is None:
         weights = np.ones_like(e1)
 
@@ -883,7 +924,6 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
             starter = diff_size
         ind_1 = psf_e1_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
 
-        ####
         psf1.append(np.mean(psf_e1[ind_1]))
 
         r_jk = jackknif_weighted_average(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
@@ -894,37 +934,25 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
     s_e1 = np.array(s_e1)
     m_e1 = np.array(m_e1)
 
-    mpl.rcParams['lines.linewidth'] = 3
-    mpl.rcParams['lines.markersize'] = 10
-    mpl.rcParams['font.size'] = 35
-    mpl.rcParams['xtick.minor.size'] = 7
-    mpl.rcParams['ytick.minor.size'] = 7
-    mpl.rcParams['xtick.major.size'] = 10
-    mpl.rcParams['ytick.major.size'] = 10
-    mpl.rcParams['xtick.major.width'] = 3
-    mpl.rcParams['ytick.major.width'] = 3
-    mpl.rcParams['boxplot.boxprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.medianprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.flierprops.markersize'] = 12
-    mpl.rcParams['boxplot.whiskerprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.capprops.linewidth'] = 2.
+    plt.figure(figsize=(15, 10))
+    res = curve_fit(lin, psf_e1, e1, sigma=1/np.sqrt(weights))
 
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
 
-    mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
+    plt.plot(psf1, lin(psf1, *res[0]), c='b', label='$m={:.2ugL}$'.format(m_dm))
+    plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.')
 
-    plt.figure(figsize=(15,7))
-    res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
-    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.', label='e1')
     plt_xmin, plt_xmax = plt.xlim()
     plt.xlim(plt_xmin, plt_xmax)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    print('c',res[0][1])
-    print(plt.ylim())
     plt.legend()
-    if save_plot and (plot_dir is not None):
-        plt.savefig('./corr/'+name+'.png')
+
+    plt.title(title)
+    plt.tight_layout()
+
+    if out_path:
+        plt.savefig(out_path, bbox_inches='tight')
     plt.show()
 
 
@@ -934,9 +962,6 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
 
     def lin(x, a, b):
         return a * x + b
-
-    def gauss(x, x0, sig):
-        return 1. / (sig * np.sqrt(2. * np.pi)) * np.exp(-0.5 * ((x - x0)/sig)**2.)
 
     if weights is None:
         weights = np.ones_like(e1)
@@ -1021,12 +1046,16 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
 
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
-    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf1, lin(psf1, *res[0]), c='b', label='$m={:.2ugL}$'.format(m_dm))
     plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.', label='e1')
 
     res = curve_fit(lin, psf_e1, e2, sigma=1./np.sqrt(weights))
-    plt.plot(psf1, lin(psf1, *res[0]), c='r', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf1, lin(psf1, *res[0]), c='r', label='$m = {:.2ugL}$'.format(m_dm))
     plt.errorbar(psf1, m_e21, yerr=s_e21, c='r', fmt='.', label='e2')
+
     plt_xmin, plt_xmax = plt.xlim()
     plt.hlines(y=0, xmin=plt_xmin*5, xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
@@ -1034,17 +1063,20 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
-        plt.savefig(plot_dir + 'PSF_e1_vs_e_gal.png')
+        plt.savefig(plot_dir + '/PSF_e1_vs_e_gal.png', bbox_inches='tight')
     plt.show()
 
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e2, e2, sigma=1./np.sqrt(weights))
-    plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf2, lin(psf2, *res[0]), c='r', label='$m = {:.2ugL}$'.format(m_dm))
     plt.errorbar(psf2, m_e2, yerr=s_e2, c='r', fmt='.', label='e2')
 
     res = curve_fit(lin, psf_e2, e1, sigma=1./np.sqrt(weights))
-    plt.plot(psf2, lin(psf2, *res[0]), c='b', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf2, lin(psf2, *res[0]), c='b', label='$m = {:.2ugL}$'.format(m_dm))
     plt.errorbar(psf2, m_e12, yerr=s_e12, c='b', fmt='.', label='e1')
+
     plt_xmin, plt_xmax = plt.xlim()
     plt.hlines(y=0, xmin=plt_xmin, xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
@@ -1052,7 +1084,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
-        plt.savefig(plot_dir + 'PSF_e2_vs_e_gal.png')
+        plt.savefig(plot_dir + '/PSF_e2_vs_e_gal.png', bbox_inches='tight')
     plt.show()
 
 
@@ -1071,7 +1103,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
-        plt.savefig(plot_dir + 'PSF_size_vs_e_gal.png')
+        plt.savefig(plot_dir + '/PSF_size_vs_e_gal.png', bbox_inches='tight')
 
     plt.show()
 
@@ -1380,7 +1412,7 @@ def NegDash(x_in, y_in, yerr_in, plot_name='', vertical_lines=True,
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     if plot_name:
-        plt.savefig(plot_name)
+        plt.savefig(plot_name, bbox_inches='tight')
         plt.close()
 
 

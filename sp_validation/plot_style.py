@@ -25,6 +25,7 @@ mpl.rcParams['ytick.minor.size'] = 5
 
 mpl.rcParams['xtick.major.size'] = 7
 mpl.rcParams['ytick.major.size'] = 7
+
 mpl.rcParams['xtick.major.width'] = 2
 mpl.rcParams['ytick.major.width'] = 2
 
