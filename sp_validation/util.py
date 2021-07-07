@@ -14,7 +14,7 @@
 
 import math
 import io
-from nbformat import current
+import numpy as np
 
 
 def millify(n):
@@ -28,24 +28,27 @@ def millify(n):
     return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
 
 
-# Define function to read and run external notebook
+def transform_nan(value):
+    """Transform Nan
 
-# See https://nbviewer.jupyter.org/gist/minrk/5491090/analysis.ipynb
-def execute_notebook(nbfile):
-    
-    with io.open(nbfile) as f:
-        nb = current.read(f, 'json')
-    
-    ip = get_ipython()
-    
-    for cell in nb.worksheets[0].cells:
-        if cell.cell_type == 'code':
-            print('#'*80)
-            ip.run_cell(cell.input)
-            print()
-        elif cell.cell_type == 'markdown':
-            #print('#', '-'*80)
-            print(cell.source)
-            print()
-        else:
-            continue
+    Transform a nan to a very large number.
+
+    Parameters
+    ----------
+    value : float
+        input value
+
+    Returns
+    -------
+    res : float
+        output value
+    """
+
+    large = 1e30
+
+    if np.isnan(value) or np.isinf(value):
+        res = 1e30
+    else:
+        res = value
+
+    return res

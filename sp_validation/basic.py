@@ -47,6 +47,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.patches import Patch
 
+from uncertainties import ufloat
+
 
 def mad(data, axis=None):
     return np.median(np.abs(data - np.median(data, axis)), axis)*1.4826
@@ -57,6 +59,7 @@ def weighted_std(x, w):
     """
 
     return np.sqrt(len(x)/(len(x) - 1) * np.average((x - np.average(x, weights=w))**2, weights=w))
+
 
 def weighted_median(values, weights):
     ''' Compute the weighted median of values list. 
@@ -120,30 +123,56 @@ def get_Isaac_nz(mag, weight, z, alpha=1.79, sigma=1.3, mu=1):
 
 
 class metacal:
-    """
+    """Metacal
+
+    Metacalibration.
+
+    Parameters
+    ----------
+    data :
+        input galaxy catalogue
+    mask : array of bool
+        mask according to galaxy selection, e.g. spread_model
+    masking_type : string, optional, default='gal'
+        masking type, one in 'gal', 'gal_mom', 'star'
+    step : float, optional, default=0.01
+        step h in finite differences
+    stat_operator : optional, default=np.mean
+        summary statistic for response matrices
+    prefix : string, optional, default='NGMIX'
+        to specify columns in input catalogue
+    snr_min : float, optional, default=10
+        signal-to-noise minimum
+    snr_max;; float, optional, default=500
+        signal-to-noise maximum
+    
     """
 
-    def __init__(self, data, mask, masking_type='gal', step=0.01, stat_operator=np.mean, prefix='NGMIX'):
+    def __init__(self, data, mask, masking_type='gal', step=0.01, stat_operator=np.mean, prefix='NGMIX',
+                 snr_min=10, snr_max=500, rel_size_min=0.5, verbose=False):
+
+        self._masking_type = masking_type
+        self._step = step
+        self._stat_operator = stat_operator
+
+        # Cuts
+        self._snr_min = snr_min
+        self._snr_max = snr_max
+        self._rel_size_min = rel_size_min
+        if verbose:
+            print('Metacal cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
+
+        self._verbose = verbose
 
         self._prefix = prefix
-        if prefix == 'NGMIX':
-            self._read_data_ngmix(data, mask, prefix)
-        elif prefix == 'GALSIM':
-            self._read_data_galsim(data, mask, prefix)
-        if masking_type == 'gal':
-            self._masking_gal()
-        elif masking_type == 'galmom':
-            self._masking_gal_mom()
-        elif masking_type == 'star':
-            self._masking_star()
-        self._shear_response(step)
-        self._selection_response(stat_operator)
-        self._total_response(stat_operator)
-        self._selection_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
-        self._shear_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
 
-    def _read_data_ngmix(self, data, mask, prefix):
-        """
+        self._read_data(data, mask)
+        self._compute_calibration()
+
+    def _read_data(self, data, mask):
+        """Read Data
+
+        Read relevant data columns.
         """
 
         m1 = {}
@@ -151,26 +180,11 @@ class metacal:
         m2 = {}
         p2 = {}
         ns = {}
-        for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
-            print('Extracting {}'.format(name_shear))
-            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['g1'] = data['{}_ELL_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            dict_tmp['g2'] = data['{}_ELL_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['s2n'] = data['{}_SNR_{}'.format(prefix, name_shear.upper())][mask]
-            if prefix == 'NGMIX':
-                dict_tmp['flux'] = data['{}_FLUX_{}'.format(prefix, name_shear.upper())][mask]
-                dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['T'] = data['{}_T_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['T_err'] = data['{}_T_ERR_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['Tpsf'] = data['{}_Tpsf_{}'.format(prefix, name_shear.upper())][mask]
-            # dict_tmp['C11'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            # dict_tmp['C22'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
-        if prefix == 'GALSIM':
-            self.snr_sextractor = data['SNR_WIN'][mask]
-        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,0][mask]
-        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,1][mask]
-        ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+
+        if self._prefix == 'NGMIX':
+            m1, p1, m2, p2, ns = self._read_data_ngmix(data, mask, m1, p1, m2, p2, ns)
+        elif self._prefix == 'GALSIM':
+            m1, p1, m2, p2, ns = self._read_data_galsim(data, mask, m1, p1, m2, p2, ns)
 
         self.m1 = m1
         self.p1 = p1
@@ -178,69 +192,124 @@ class metacal:
         self.p2 = p2
         self.ns = ns
 
-    def _read_data_galsim(self, data, mask, prefix):
+    def _read_data_ngmix(self, data, mask, m1, p1, m2, p2, ns):
+        """Read Data Ngmix
+
+        Read data from ngmix catalogue.
         """
+
+        for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
+
+            if self._verbose:
+                print('Extracting {}'.format(name_shear))
+
+            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['g1'] = data['{}_ELL_{}'.format(self._prefix, name_shear.upper())][:,0][mask]
+            dict_tmp['g2'] = data['{}_ELL_{}'.format(self._prefix, name_shear.upper())][:,1][mask]
+
+            dict_tmp['flux'] = data['{}_FLUX_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(self._prefix, name_shear.upper())][mask]
+
+            dict_tmp['T'] = data['{}_T_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['T_err'] = data['{}_T_ERR_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['Tpsf'] = data['{}_Tpsf_{}'.format(self._prefix, name_shear.upper())][mask]
+
+        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,0][mask]
+        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,1][mask]
+        ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+
+        return m1, p1, m2, p2, ns
+
+    def _read_data_galsim(self, data, mask, m1, p1, m2, p2, ns):
+        """Read Data Galsim
+
+        Read data from galsim catalogue.
         """
+
+        prefix_mom = 'GALSIM_GAL'
     
-        prefix2 = prefix
-        prefix = 'GALSIM_GAL'
-
-        m1 = {}
-        p1 = {}
-        m2 = {}
-        p2 = {}
-        ns = {}
         for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
-            print('Extracting {}'.format(name_shear))
-            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(prefix2, name_shear.upper())][mask]
-            dict_tmp['g1'] = data['{}_ELL_UNCORR_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            dict_tmp['g2'] = data['{}_ELL_UNCORR_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['s2n'] = data['{}_SNR_{}'.format(prefix, name_shear.upper())][mask]
-            if prefix == 'NGMIX':
-                dict_tmp['flux'] = data['{}_FLUX_{}'.format(prefix, name_shear.upper())][mask]
-                dict_tmp['flux_err'] = data['{}_FLUX_ERR_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['T'] = data['{}_SIGMA_{}'.format(prefix, name_shear.upper())][mask]
-            dict_tmp['Tpsf'] = data['{}_PSF_SIGMA_{}'.format(prefix2, name_shear.upper())][mask]
-            # dict_tmp['C11'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,0][mask]
-            # dict_tmp['C22'] = data['{}_ELL_ERR_{}'.format(prefix, name_shear.upper())][:,1][mask]
-            # dict_tmp['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
-        if prefix2 == 'GALSIM':
-            self.snr_sextractor = data['SNR_WIN'][mask]
-        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,0][mask]
-        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix)][:,1][mask]
+
+            if self._verbose:
+                print('Extracting {}'.format(name_shear))
+
+            dict_tmp['flag'] = data['{}_FLAGS_{}'.format(self._prefix, name_shear.upper())][mask]
+            dict_tmp['g1'] = data['{}_ELL_UNCORR_{}'.format(prefix_mom, name_shear.upper())][:,0][mask]
+            dict_tmp['g2'] = data['{}_ELL_UNCORR_{}'.format(prefix_mom, name_shear.upper())][:,1][mask]
+
+            dict_tmp['T'] = data['{}_SIGMA_{}'.format(prefix_mom, name_shear.upper())][mask]
+            dict_tmp['Tpsf'] = data['{}_PSF_SIGMA_{}'.format(self._prefix, name_shear.upper())][mask]
+
+        self.snr_sextractor = data['SNR_WIN'][mask]
+        ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix_mom)][:,0][mask]
+        ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix_mom)][:,1][mask]
         ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
 
-        self.m1 = m1
-        self.p1 = p1
-        self.m2 = m2
-        self.p2 = p2
-        self.ns = ns
+        return m1, p1, m2, p2, ns
+
+    def _compute_calibration(self):
+        """Compute Calibration
+
+        Perform masking and compute calibration.
+        """
+
+        if self._masking_type == 'gal':
+            self._masking_gal()
+        elif self._masking_type == 'galmom':
+            self._masking_gal_mom()
+        elif self._masking_type == 'star':
+            self._masking_star()
+        else:
+            raise ValueError('Invalid masking type \'{}\''.format(self._masking_type))
+
+        self._shear_response()
+        self._selection_response()
+        self._total_response()
+        #self._shear_response_std(stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x)))
+
+    def add_cuts(self, snr_min=10, snr_max=500, rel_size_min=0.5):
+        """Add Cuts
+
+           Apply additional cuts to metacal galaxy catalogue.
+        """
+
+        if snr_min < self._snr_min or \
+           snr_max > self._snr_max or \
+           rel_size_min < self._rel_size_min:
+            print('At least on cut is less stringend than existing one, skipping...')
+            return
+
+        self._snr_min = snr_min
+        self._snr_max = snr_max
+        self._rel_size_min = rel_size_min
+        if self._verbose:
+            print('Metacal new cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
+
+        self._compute_calibration()
 
     def _masking_gal(self):
-        """
+        """Masking Gal
+
+        Mask metacal catalogue, i.e. apply cuts.
         """
 
         self.mask_dict = {}
         for data, name in zip([self.ns, self.m1, self.p1, self.m2, self.p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-            Tr_tmp = data['T'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
-            #Tr_err_tmp = data['T_err'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
+            Tr_tmp = data['T'] * (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
             if hasattr(self, 'snr_sextractor'):
                 snr_flux = self.snr_sextractor
             else:
                 snr_flux = data['flux']/data['flux_err']
-            # T_psf = np.sqrt(data['Tpsf']/2) * 1.17741
-            # mask_tmp = (data['flag'] == 0) & (data['s2n'] > 20) & (data['s2n'] < 10000) & (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
 
-            mask_tmp = (data['flag'] == 0) & (Tr_tmp/data['Tpsf'] > 0.5) & (snr_flux > 10) & (snr_flux < 500) #& (data['s2n'] > 100) & (data['s2n'] < 5000)
-
-            # mask_tmp = (data['flag'] == 0) & (Tr_tmp/T_psf > 1.) & (snr_flux > 10) & (snr_flux < 500)
-
-            # mask_tmp = (data['flag'] == 0) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 > 0.2) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 < 25*0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 > 0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 < 0.9) & ((Tr_tmp +3.*Tr_err_tmp)/data['Tpsf'] > 0.5) & (np.sqrt(data['C11']) < 0.5) & (np.sqrt(data['C22']) < 0.5) & (data['s2n'] > 50) & (data['s2n'] < 5000) #((data['T'] +3.*np.sqrt(data['T_err']))/data['Tpsf'] > 0.5) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 > 0.2) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 < 25*0.186)
+            mask_tmp = \
+                (data['flag'] == 0) \
+                & (Tr_tmp/data['Tpsf'] > self._rel_size_min) \
+                & (snr_flux > self._snr_min) \
+                & (snr_flux < self._snr_max)
 
             # Take care of rotated version
             ind_masked = np.where(mask_tmp == True)[0]
 
-            # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
             self.mask_dict[name] = ind_masked
 
     def _masking_gal_mom(self):
@@ -249,17 +318,21 @@ class metacal:
 
         self.mask_dict = {}
         for data, name in zip([self.ns, self.m1, self.p1, self.m2, self.p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-            Tr_tmp = data['T'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
-            # Tr_err_tmp = data['T_err'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
+            Tr_tmp = data['T'] * (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
+
             snr_flux = data['flux']/data['flux_err']
-            # mask_tmp = (data['flag'] == 0) & (data['s2n'] > 20) & (data['s2n'] < 10000) & (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
-            mask_tmp = (data['flag'] == 0)  & (data['s2n'] > 10) & (data['s2n'] < 500) & (data['g1'] != -10) & (data['g1'] != 0) & (1-data['Tpsf']/data['T'] > 0.4) #& (data['s2n'] > 100) & (data['s2n'] < 5000)
-            # mask_tmp = (data['flag'] == 0) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 > 0.2) & (np.sqrt((Tr_tmp + 3.*Tr_err_tmp)/2.) * 2.355 < 25*0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 > 0.2) & (np.sqrt(data['Tpsf']/2.)*2.355 < 0.9) & ((Tr_tmp +3.*Tr_err_tmp)/data['Tpsf'] > 0.5) & (np.sqrt(data['C11']) < 0.5) & (np.sqrt(data['C22']) < 0.5) & (data['s2n'] > 50) & (data['s2n'] < 5000) #((data['T'] +3.*np.sqrt(data['T_err']))/data['Tpsf'] > 0.5) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 > 0.2) & (np.sqrt((data['T'] + 3.*np.sqrt(data['T_err']))/2.) * 2.355 < 25*0.186)
+
+            mask_tmp = \
+                (data['flag'] == 0) \
+                & (1-data['Tpsf']/data['T'] > 0.4) \
+                & (data['s2n'] > self._snr_min) \
+                & (data['s2n'] < self._snr_max) \
+                & (data['g1'] != -10) \
+                & (data['g1'] != 0)
 
             # Take care of rotated version
             ind_masked = np.where(mask_tmp == True)[0]
 
-            # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
             self.mask_dict[name] = ind_masked
 
     def _masking_star(self):
@@ -273,105 +346,72 @@ class metacal:
                 snr_flux = self.snr_sextractor
             else:
                 snr_flux = data['flux']/data['flux_err']
-            mask_tmp = (data['flag'] == 0) & (snr_flux > 10) & (snr_flux < 500) #& (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
+            mask_tmp = (data['flag'] == 0) & (snr_flux > 10) & (snr_flux < 500)
 
             # Take care of rotated version
             ind_masked = np.where(mask_tmp == True)[0]
 
-            # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
             self.mask_dict[name] = ind_masked
 
-    def _shear_response(self, step=0.01):
-        """
+    def _shear_response(self):
+        """Shear Response
+
+        Compute shear response matrix
         """
         
         sign = 1
         if self._prefix == 'GALSIM':
             sign = -1
 
-        self.R11 = (self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*step)
-        self.R22 = sign*(self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*step)
-        self.R12 = (self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*step)
-        self.R21 = (self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*step)
+        ma = self.mask_dict['ns']
+        h2 = 2 * self._step
+
+        self.R11 = (self.p1['g1'][ma] - self.m1['g1'][ma]) / h2
+        self.R22 = sign*(self.p2['g2'][ma] - self.m2['g2'][ma]) / h2
+        self.R12 = (self.p2['g1'][ma] - self.m2['g1'][ma]) / h2
+        self.R21 = (self.p1['g2'][ma] - self.m1['g2'][ma]) / h2
 
         self.R_shear = np.array([[self.R11, self.R12], [self.R21, self.R22]])
         
 ### Test std R shear ###
 
-    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
+    def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average2(x, np.ones_like(x))):
         """
         """
         if (len(self.ns['g1'][self.mask_dict['ns']])==0):
             self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
+        #elif (np.sum(x)==0):
+            #self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
         else:
-            self.R11_stds = stat_operator((self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*step))[1]
-            self.R22_stds = stat_operator((self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*step))[1]
-            self.R12_stds = stat_operator((self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*step))[1]
-            self.R21_stds = stat_operator((self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*step))[1]
+            self.R11_stds = stat_operator((self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*self._step))[1]
+            self.R22_stds = stat_operator((self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*self._step))[1]
+            self.R12_stds = stat_operator((self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*self._step))[1]
+            self.R21_stds = stat_operator((self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*self._step))[1]
 
             self.R_shear_std = np.array([[self.R11_stds, self.R12_stds], [self.R21_stds, self.R22_stds]])
 
 ### End test std ###
 
 
-    def _shear_response_w(self, step=0.01, stat_operator=np.average):
-        """
-        """
-
-        self.R11_w = (stat_operator(self.p1['g1'][self.mask_dict['ns']], weights=self.p1['w'][self.mask_dict['ns']]) - stat_operator(self.m1['g1'][self.mask_dict['ns']], weights=self.m1['w'][self.mask_dict['ns']]))/(2.*step)
-        self.R22_w = (stat_operator(self.p2['g2'][self.mask_dict['ns']], weights=self.p2['w'][self.mask_dict['ns']]) - stat_operator(self.m2['g2'][self.mask_dict['ns']], weights=self.m2['w'][self.mask_dict['ns']]))/(2.*step)
-        self.R12_w = (stat_operator(self.p2['g1'][self.mask_dict['ns']], weights=self.p2['w'][self.mask_dict['ns']]) - stat_operator(self.m2['g1'][self.mask_dict['ns']], weights=self.m2['w'][self.mask_dict['ns']]))/(2.*step)
-        self.R21_w = (stat_operator(self.p1['g2'][self.mask_dict['ns']], weights=self.p1['w'][self.mask_dict['ns']]) - stat_operator(self.m1['g2'][self.mask_dict['ns']], weights=self.m1['w'][self.mask_dict['ns']]))/(2.*step)
-
-        self.R_shear_w = np.array([[self.R11_w, self.R12_w], [self.R21_w, self.R22_w]])
-
-    def _selection_response(self, stat_operator=np.mean):
+    def _selection_response(self):
         """
         """
         sign = 1
         if self._prefix == 'GALSIM':
             sign = -1
 
-        self.R11_s = (stat_operator(self.ns['g1'][self.mask_dict['p1']]) - stat_operator(self.ns['g1'][self.mask_dict['m1']]))/0.02
-        self.R22_s = sign*(stat_operator(self.ns['g2'][self.mask_dict['p2']]) - stat_operator(self.ns['g2'][self.mask_dict['m2']]))/0.02
-        self.R12_s = (stat_operator(self.ns['g1'][self.mask_dict['p2']]) - stat_operator(self.ns['g1'][self.mask_dict['m2']]))/0.02
-        self.R21_s = (stat_operator(self.ns['g2'][self.mask_dict['p1']]) - stat_operator(self.ns['g2'][self.mask_dict['m1']]))/0.02
+        self.R11_s = (self._stat_operator(self.ns['g1'][self.mask_dict['p1']]) - self._stat_operator(self.ns['g1'][self.mask_dict['m1']]))/0.02
+        self.R22_s = sign*(self._stat_operator(self.ns['g2'][self.mask_dict['p2']]) - self._stat_operator(self.ns['g2'][self.mask_dict['m2']]))/0.02
+        self.R12_s = (self._stat_operator(self.ns['g1'][self.mask_dict['p2']]) - self._stat_operator(self.ns['g1'][self.mask_dict['m2']]))/0.02
+        self.R21_s = (self._stat_operator(self.ns['g2'][self.mask_dict['p1']]) - self._stat_operator(self.ns['g2'][self.mask_dict['m1']]))/0.02
 
         self.R_selection = np.array([[self.R11_s, self.R12_s], [self.R21_s, self.R22_s]])
 
-### Test std R selec ###
-
-    def _selection_response_std(self, stat_operator=lambda x:jackknif_weighted_average(x, np.ones_like(x))):
-        """
-        """
-        if (len(self.ns['g1'][self.mask_dict['ns']])==0):
-            self.R_selection_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
-        else:
-            self.R11_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g1'][self.mask_dict['p1']])[1]**2 + stat_operator(self.ns['g1'][self.mask_dict['m1']])[1]**2)
-            self.R22_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g2'][self.mask_dict['p2']])[1]**2 + stat_operator(self.ns['g2'][self.mask_dict['m2']])[1]**2)
-            self.R12_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g1'][self.mask_dict['p2']])[1]**2 + stat_operator(self.ns['g1'][self.mask_dict['m2']])[1]**2)
-            self.R21_std = (1/0.02)*np.sqrt(stat_operator(self.ns['g2'][self.mask_dict['p1']])[1]**2 + stat_operator(self.ns['g2'][self.mask_dict['m1']])[1]**2)
-
-            self.R_selection_std = np.array([[self.R11_std, self.R12_std], [self.R21_std, self.R22_std]])
-
-### End test std ###
-
-    def _selection_response_weighted(self, stat_operator=np.average):
+    def _total_response(self):
         """
         """
 
-        self.R11_s_w = (stat_operator(self.ns['g1'][self.mask_dict['p1']], weights=self.ns['w'][self.mask_dict['p1']]) - stat_operator(self.ns['g1'][self.mask_dict['m1']], weights=self.ns['w'][self.mask_dict['m1']]))/0.02
-        self.R22_s_w = (stat_operator(self.ns['g2'][self.mask_dict['p2']], weights=self.ns['w'][self.mask_dict['p2']]) - stat_operator(self.ns['g2'][self.mask_dict['m2']], weights=self.ns['w'][self.mask_dict['m2']]))/0.02
-        self.R12_s_w = (stat_operator(self.ns['g1'][self.mask_dict['p2']], weights=self.ns['w'][self.mask_dict['p2']]) - stat_operator(self.ns['g1'][self.mask_dict['m2']], weights=self.ns['w'][self.mask_dict['m2']]))/0.02
-        self.R21_s_w = (stat_operator(self.ns['g2'][self.mask_dict['p1']], weights=self.ns['w'][self.mask_dict['p1']]) - stat_operator(self.ns['g2'][self.mask_dict['m1']], weights=self.ns['w'][self.mask_dict['m1']]))/0.02
-
-        self.R_selection_w = np.array([[self.R11_s_w, 0.], [0., self.R22_s_w]])
-
-    def _total_response(self, stat_operator=np.mean):
-        """
-        """
-
-        R_ws = stat_operator(self.R_shear, 2)
+        R_ws = self._stat_operator(self.R_shear, 2)
         self.R = R_ws + self.R_selection
 
     def _return():
@@ -379,6 +419,37 @@ class metacal:
         """
 
         return self.m1, self.p1, self.p1, self.p2, self.ns, self.R, self.R_selection_std, self.R_shear_std
+        
+##### TEST ######
+
+def jackknif_weighted_average2(data, weights, remove_size=0.1, n_realization=100):
+    """
+    """
+
+    samp_size = len(data)
+    keep_size_pc = 1-remove_size
+
+    if keep_size_pc < 0:
+        raise ValueError('remove size should be in [0, 1]')
+
+    subsamp_size = int(samp_size*keep_size_pc)
+
+    all_ind = np.arange(samp_size)
+
+    all_est = []
+    for i in range(n_realization):
+        sub_data_ind = np.random.choice(all_ind, subsamp_size)
+
+        if (sum(data[sub_data_ind])==0):
+            all_est.append(np.nan)
+        else:
+            all_est.append(np.average(data[sub_data_ind], weights=weights[sub_data_ind]))
+
+    all_est = np.array(all_est)
+
+    return np.mean(all_est), np.std(all_est)
+
+##### TEST ####
 
 
 class footprint_mask:
@@ -782,17 +853,56 @@ def jackknif_weighted_average(data, weights, remove_size=0.1, n_realization=100)
     return np.mean(all_est), np.std(all_est)
 
 
-####
+def frexp10(x):
+    """Frexp19
 
-def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=False):
+        Return the mantissa and exponent of x, as pair (m, e).
+        m is a float and e is an int, such that x = m * 10.0**e.
+        See math.frexp()
+
+        Example
+        -------
+        > frexp10(1240)
+        (1.24, 3)
+    """
+
+    if x == 0: return (0, 0)
+    if x < 0:
+        sign = -1
+    else:
+        sign = +1
+    try:
+        l = np.log10(np.abs(x))
+    except:
+        print('Error with math.log10(|' + (str(x)) + '|)')
+        return None, None
+    if l < 1: l = l - 1 + 1e-10
+    exp = int(l)
+    return sign * x / 10**exp, exp
+
+
+def lin_product(x, precision=2):
+    thres = 1
+    if abs(x) < thres:
+        m, e = frexp10(x)
+        if (m, e) == (0, 0): res = '$0\,$'
+        else:
+            if m == 1:
+                res = f'10^{{{e:g}}}'
+            else:
+                res = f'{m:.{precision}g} \\cdot 10^{{{e:g}}}'
+    else:
+        res = '{0:g}'.format(x)
+    return res
+
+
+def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, out_path=None, title=''):
     """
     """
 
     def lin(x, a, b):
         return a * x + b
 
-    def gauss(x, x0, sig):
-        return 1. / (sig * np.sqrt(2. * np.pi)) * np.exp(-0.5 * ((x - x0)/sig)**2.)
     if weights is None:
         weights = np.ones_like(e1)
 
@@ -814,7 +924,6 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
             starter = diff_size
         ind_1 = psf_e1_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
 
-        ####
         psf1.append(np.mean(psf_e1[ind_1]))
 
         r_jk = jackknif_weighted_average(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
@@ -825,40 +934,26 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
     s_e1 = np.array(s_e1)
     m_e1 = np.array(m_e1)
 
-    mpl.rcParams['lines.linewidth'] = 3
-    mpl.rcParams['lines.markersize'] = 10
-    mpl.rcParams['font.size'] = 35
-    mpl.rcParams['xtick.minor.size'] = 7
-    mpl.rcParams['ytick.minor.size'] = 7
-    mpl.rcParams['xtick.major.size'] = 10
-    mpl.rcParams['ytick.major.size'] = 10
-    mpl.rcParams['xtick.major.width'] = 3
-    mpl.rcParams['ytick.major.width'] = 3
-    mpl.rcParams['boxplot.boxprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.medianprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.flierprops.markersize'] = 12
-    mpl.rcParams['boxplot.whiskerprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.capprops.linewidth'] = 2.
+    plt.figure(figsize=(15, 10))
+    res = curve_fit(lin, psf_e1, e1, sigma=1/np.sqrt(weights))
 
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
 
-    mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
+    plt.plot(psf1, lin(psf1, *res[0]), c='b', label='$m={:.2ugL}$'.format(m_dm))
+    plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.')
 
-    plt.figure(figsize=(15,7))
-    res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
-    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.', label='e1')
     plt_xmin, plt_xmax = plt.xlim()
     plt.xlim(plt_xmin, plt_xmax)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    print('c',res[0][1])
-    print(plt.ylim())
     plt.legend()
-    if save_plot and (plot_dir is not None):
-        plt.savefig('./corr/'+name+'.png')
-    plt.show()
 
-####
+    plt.title(title)
+    plt.tight_layout()
+
+    if out_path:
+        plt.savefig(out_path, bbox_inches='tight')
+    plt.show()
 
 
 def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_plot=False, plot_dir=None):
@@ -867,9 +962,6 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
 
     def lin(x, a, b):
         return a * x + b
-
-    def gauss(x, x0, sig):
-        return 1. / (sig * np.sqrt(2. * np.pi)) * np.exp(-0.5 * ((x - x0)/sig)**2.)
 
     if weights is None:
         weights = np.ones_like(e1)
@@ -908,10 +1000,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         ind_2 = psf_e2_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
         ind_s = psf_size_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
 
-        ####
         psf1.append(np.mean(psf_e1[ind_1]))
-        # m_e1.append(np.average(e1[ind_1], weights=weights[ind_1]))
-        # m_e21.append(np.average(e2[ind_1], weights=weights[ind_1]))
 
         r_jk = jackknif_weighted_average(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
         m_e1.append(r_jk[0])
@@ -920,28 +1009,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         m_e21.append(r_jk[0])
         s_e21.append(r_jk[1])
 
-        # hist_err = np.histogram(e1[ind_1], 50, weights=weights[ind_1])[0]
-        # hist_tmp = np.histogram(e1[ind_1], 50, weights=weights[ind_1], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e1.append(res[0][0])
-        # hist_err = np.histogram(e2[ind_1], 50, weights=weights[ind_1])[0]
-        # hist_tmp = np.histogram(e2[ind_1], 50, weights=weights[ind_1], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e21.append(res[0][0])
-        # m_e1.append(np.median(e1[ind_1]))
-        # m_e21.append(np.median(e2[ind_1]))
-
-        # s_e1.append(np.std(e1[ind_1])/np.sqrt(len(e1[ind_1])))
-        # s_e21.append(np.std(e2[ind_1])/np.sqrt(len(e2[ind_1])))
-
-        # s_e1.append(weighted_std(e1[ind_1], weights[ind_1])/np.sqrt(len(e1[ind_1])))
-        # s_e21.append(weighted_std(e2[ind_1], weights[ind_1])/np.sqrt(len(e2[ind_1])))
-        ####
-
-        ####
         psf2.append(np.mean(psf_e2[ind_2]))
-        # m_e2.append(np.average(e2[ind_2], weights=weights[ind_2]))
-        # m_e12.append(np.average(e1[ind_2], weights=weights[ind_2]))
 
         r_jk = jackknif_weighted_average(e2[ind_2], weights[ind_2], remove_size=0.2, n_realization=50)
         m_e2.append(r_jk[0])
@@ -950,28 +1018,7 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         m_e12.append(r_jk[0])
         s_e12.append(r_jk[1])
 
-        # hist_err = np.histogram(e2[ind_2], 50, weights=weights[ind_2])[0]
-        # hist_tmp = np.histogram(e2[ind_2], 50, weights=weights[ind_2], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e2.append(res[0][0])
-        # hist_err = np.histogram(e1[ind_2], 50, weights=weights[ind_2])[0]
-        # hist_tmp = np.histogram(e1[ind_2], 50, weights=weights[ind_2], density=True)
-        # res = curve_fit(gauss, (hist_tmp[1][:-1] + hist_tmp[1][1:])/2., hist_tmp[0], sigma=1./np.sqrt(hist_err))
-        # m_e12.append(res[0][0])
-        # m_e2.append(np.median(e2[ind_2]))
-        # m_e12.append(np.median(e1[ind_2]))
-
-        # s_e2.append(np.std(e2[ind_2])/np.sqrt(len(e2[ind_2])))
-        # s_e12.append(np.std(e1[ind_2])/np.sqrt(len(e1[ind_2])))
-
-        # s_e2.append(weighted_std(e2[ind_2], weights[ind_2])/np.sqrt(len(e2[ind_2])))
-        # s_e12.append(weighted_std(e1[ind_2], weights[ind_2])/np.sqrt(len(e1[ind_2])))
-        ####
-
-        ####
         psfs.append(np.mean(psf_size[ind_s]))
-        # m_s1.append(np.average(e1[ind_s], weights=weights[ind_s]))
-        # m_s2.append(np.average(e2[ind_s], weights=weights[ind_s]))
 
         r_jk = jackknif_weighted_average(e1[ind_s], weights[ind_s], remove_size=0.2, n_realization=50)
         m_s1.append(r_jk[0])
@@ -979,24 +1026,6 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
         r_jk = jackknif_weighted_average(e2[ind_s], weights[ind_s], remove_size=0.2, n_realization=50)
         m_s2.append(r_jk[0])
         s_s2.append(r_jk[1])
-
-        # m_s1.append(np.median(e1[ind_s]))
-        # m_s2.append(np.median(e2[ind_s]))
-
-        # s_s1.append(np.std(e1[ind_s])/np.sqrt(len(e1[ind_s])))
-        # s_s2.append(np.std(e2[ind_s])/np.sqrt(len(e2[ind_s])))
-
-        # s_s1.append(weighted_std(e1[ind_s], weights[ind_s])/np.sqrt(len(e1[ind_s])))
-        # s_s2.append(weighted_std(e2[ind_s], weights[ind_s])/np.sqrt(len(e2[ind_s])))
-        ####
-
-    #     plt.figure()
-    #     plt.title('psf e1 = {}'.format(psf1[-1]))
-    #     plt.hist(e2[ind_1], 500, weights=weights[ind_1])
-    #     plt.vlines(m_e21[-1], ymin=plt.ylim()[0], ymax=plt.ylim()[1], label='m = {:.5f}'.format(m_e21[-1]))
-    #     plt.legend()
-    #
-    # plt.show()
 
 
     psf1 = np.array(psf1)
@@ -1015,97 +1044,66 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     m_s1 = np.array(m_s1)
     m_s2 = np.array(m_s2)
 
-    # res = curve_fit(lin, psf_e1, e2, sigma=1./np.sqrt(weights))
-    # plt.figure()
-    # plt.hexbin(psf_e1, e2, gridsize=300)
-    # plt.plot(psf2, lin(psf2, *res[0]), c='k', label = 'm = {:.3f}'.format(res[0][0]))
-    # plt.show()
-
-    mpl.rcParams['lines.linewidth'] = 3
-    mpl.rcParams['lines.markersize'] = 10
-    mpl.rcParams['font.size'] = 35
-    mpl.rcParams['xtick.minor.size'] = 7
-    mpl.rcParams['ytick.minor.size'] = 7
-    mpl.rcParams['xtick.major.size'] = 10
-    mpl.rcParams['ytick.major.size'] = 10
-    mpl.rcParams['xtick.major.width'] = 3
-    mpl.rcParams['ytick.major.width'] = 3
-    mpl.rcParams['boxplot.boxprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.medianprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.flierprops.markersize'] = 12
-    mpl.rcParams['boxplot.whiskerprops.linewidth'] = 2.
-    mpl.rcParams['boxplot.capprops.linewidth'] = 2.
-
-
-    mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
-
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
-    # plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf1, m_e1, sigma=s_e1, p0=[0.,0.])
-    # plt.plot(psf1, lin(psf1, *res[0])-res[0][1], '--b', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf1, lin(psf1, *res[0]), c='b', label='$m={:.2ugL}$'.format(m_dm))
     plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.', label='e1')
 
     res = curve_fit(lin, psf_e1, e2, sigma=1./np.sqrt(weights))
-    # plt.plot(psf1, lin(psf1, *res[0]), c='r', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf1, lin(psf1, *res[0]), c='r', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf1, m_e21, sigma=s_e21, p0=[0.,0.])
-    # plt.plot(psf1, lin(psf1, *res[0])-res[0][1], '--r', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf1, lin(psf1, *res[0]), c='r', label='$m = {:.2ugL}$'.format(m_dm))
     plt.errorbar(psf1, m_e21, yerr=s_e21, c='r', fmt='.', label='e2')
+
     plt_xmin, plt_xmax = plt.xlim()
     plt.hlines(y=0, xmin=plt_xmin*5, xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
-    plt.xlabel(r'$e_{1}^{PSF}$')
-    plt.ylabel(r'$<e_{1,2}^{gal}>$')
+    plt.xlabel(r'$e_{1}^{\rm PSF}$')
+    plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
-        plt.savefig(plot_dir + 'PSF_e1_vs_e_gal.png')
+        plt.savefig(plot_dir + '/PSF_e1_vs_e_gal.png', bbox_inches='tight')
     plt.show()
 
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e2, e2, sigma=1./np.sqrt(weights))
-    # plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf2, lin(psf2, *res[0]), c='r', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf2, m_e2, sigma=s_e2, p0=[0.,0.])
-    # plt.plot(psf2, lin(psf2, *res[0])-res[0][1], '--r', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf2, lin(psf2, *res[0]), c='r', label='$m = {:.2ugL}$'.format(m_dm))
     plt.errorbar(psf2, m_e2, yerr=s_e2, c='r', fmt='.', label='e2')
 
     res = curve_fit(lin, psf_e2, e1, sigma=1./np.sqrt(weights))
-    # plt.plot(psf2, lin(psf2, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psf2, lin(psf2, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    # res = curve_fit(lin, psf2, m_e12, sigma=s_e12, p0=[0.,0.])
-    # plt.plot(psf2, lin(psf2, *res[0])-res[0][1], '--b', label = 'm = {:.3f} a = {:.3f} from point'.format(*res[0]))
+    m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+    plt.plot(psf2, lin(psf2, *res[0]), c='b', label='$m = {:.2ugL}$'.format(m_dm))
     plt.errorbar(psf2, m_e12, yerr=s_e12, c='b', fmt='.', label='e1')
+
     plt_xmin, plt_xmax = plt.xlim()
-    plt.hlines(y=0, xmin=plt_xmin*5, xmax=plt_xmax*5, linestyles='dashed', color='k')
+    plt.hlines(y=0, xmin=plt_xmin, xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
-    plt.xlabel(r'$e_{2}^{PSF}$')
-    plt.ylabel(r'$<e_{1,2}^{gal}>$')
+    plt.xlabel(r'$e_{2}^{\rm PSF}$')
+    plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
-        plt.savefig(plot_dir + 'PSF_e2_vs_e_gal.png')
+        plt.savefig(plot_dir + '/PSF_e2_vs_e_gal.png', bbox_inches='tight')
     plt.show()
 
 
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_size, e1, sigma=1./np.sqrt(weights))
-    # plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    plt.plot(psfs, lin(psfs, *res[0]), c='b', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psfs, m_s1, yerr=s_s1, c='b', fmt='.', label='e1')
 
     res = curve_fit(lin, psf_size, e2, sigma=1./np.sqrt(weights))
-    # plt.plot(psfs, lin(psfs, *res[0]), c='r', label = 'm = {:.3f}  c = {:.3f}'.format(res[0][0], res[0][1]))
-    plt.plot(psfs, lin(psfs, *res[0]), c='r', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    plt.plot(psfs, lin(psfs, *res[0]), c='r', label = 'm = {:.2g} +- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
     plt.errorbar(psfs, m_s2, yerr=s_s2, c='r', fmt='.', label='e2')
     plt_xmin, plt_xmax = plt.xlim()
     plt.hlines(y=0, xmin=plt_xmin*(-5), xmax=plt_xmax*5, linestyles='dashed', color='k')
     plt.xlim(plt_xmin, plt_xmax)
-    plt.xlabel(r'$\mathrm{FWHM}^{PSF}$ (arcsec)')
-    plt.ylabel(r'$<e_{1,2}^{gal}>$')
+    plt.xlabel(r'$\mathrm{FWHM}^{\rm PSF}$ [arcsec]')
+    plt.ylabel(r'$<e_{1,2}^{\rm gal}>$')
     plt.legend()
     if save_plot and (plot_dir is not None):
-        plt.savefig(plot_dir + 'PSF_size_vs_e_gal.png')
+        plt.savefig(plot_dir + '/PSF_size_vs_e_gal.png', bbox_inches='tight')
 
     plt.show()
 
@@ -1414,100 +1412,9 @@ def NegDash(x_in, y_in, yerr_in, plot_name='', vertical_lines=True,
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     if plot_name:
-        plt.savefig(plot_name)
+        plt.savefig(plot_name, bbox_inches='tight')
         plt.close()
 
-
-# d = vx.open('final_cat.arrow')
-# dd = {key:d[key].values for key in d.column_names}
-# # (dd['SPREAD_CLASS'] == 0) & (dd['MAG_AUTO'] > 17) & (dd['MAG_AUTO'] < 21) \
-# # (dd['SPREAD_CLASS'] == 1) & (dd['MAG_AUTO'] > 21) & (dd['MAG_AUTO'] < 30) \
-# m = (dd['SPREAD_CLASS'] == 1) & (dd['MAG_AUTO'] > 21) & (dd['MAG_AUTO'] < 25) \
-#     & (dd['FLAGS'] == 0) & (dd['IMAFLAGS_ISO'] == 0) & (dd['NGMIX_MCAL_FLAGS'] == 0) \
-#     & (dd['PSF_E1'] != 0) \
-#     & (dd['PSF_E2'] != 0) \
-#     & (dd['N_EPOCH'] >= 3) \
-#     & (dd['NGMIX_N_EPOCH'] >= 1)
-#     # & (dd['XWIN_WORLD'] > 113.6) & (dd['XWIN_WORLD'] < 270.8) & (dd['YWIN_WORLD'] > 30.2) & (dd['YWIN_WORLD'] < 32.8)
-#     # & (dd['XWIN_WORLD'] > 193) & (dd['XWIN_WORLD'] < 240) & (dd['YWIN_WORLD'] > 54) & (dd['YWIN_WORLD'] < 64)
-#
-#
-# print('Getting data ...')
-# m1 = {}
-# p1 = {}
-# m2 = {}
-# p2 = {}
-# ns = {}
-# for name_shear, dict_tmp in zip(['1m', '1p', '2m', '2p', 'noshear'], [m1, p1, m2, p2, ns]):
-#     print('Extracting {}'.format(name_shear))
-#     dict_tmp['flag'] = dd['NGMIX_FLAGS_{}'.format(name_shear.upper())][m]
-#     dict_tmp['g1'] = dd['NGMIX_E1_{}'.format(name_shear.upper())][m]
-#     dict_tmp['g2'] = dd['NGMIX_E2_{}'.format(name_shear.upper())][m]
-#     dict_tmp['s2n'] = dd['NGMIX_SNR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['T'] = dd['NGMIX_T_{}'.format(name_shear.upper())][m]
-#     dict_tmp['T_err'] = dd['NGMIX_T_ERR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['Tpsf'] = dd['NGMIX_Tpsf_{}'.format(name_shear.upper())][m]
-#     dict_tmp['C11'] = dd['NGMIX_E1_ERR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['C22'] = dd['NGMIX_E2_ERR_{}'.format(name_shear.upper())][m]
-#     dict_tmp['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
-# print('Done.')
-#
-# psf_e1 = dd['PSF_E1'][m]
-# psf_e2 = dd['PSF_E2'][m]
-# psf_e = np.sqrt(psf_e1**2. + psf_e2**2.)
-#
-#
-# # Shear Response
-# R11 = (p1['g1'] - m1['g1'])/0.02
-# R22 = (p2['g2'] - m2['g2'])/0.02
-# R12 = (p2['g1'] - m2['g1'])/0.02
-# R21 = (p1['g2'] - m1['g2'])/0.02
-#
-# # Masking
-# mask_dict = {}
-# for data, name in zip([ns, m1, p1, m2, p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-#     Tr_tmp = data['T'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
-#     mask_tmp = (data['flag'] == 0) & (data['s2n'] > 20) & (data['s2n'] < 10000) & (data['T'] + np.sqrt(data['T_err']) > 0.02) & (Tr_tmp/data['Tpsf'] > 0.5)  & (data['T'] < 2. * np.sqrt(20*0.187/2.355)) #& (dict_tmp['C11'] < 0.7) & (dict_tmp['C22'] < 0.7)
-#
-#     # Take care of rotated version
-#     ind_masked = np.where(mask_tmp == True)[0]
-#
-#     # mask_dict[name] = np.array(list(set(np.arange(len(data))) - set(ind_masked)))
-#     mask_dict[name] = ind_masked
-#
-# # Final shear response
-# R_shear = np.array([[R11[mask_dict['ns']], R12[mask_dict['ns']]], [R21[mask_dict['ns']], R22[mask_dict['ns']]]])
-# # R_value = np.mean([R11[mask_dict['ns']], R22[mask_dict['ns']]], 0)
-# # R_shear = np.array([[R_value, np.zeros_like(R_value)], [np.zeros_like(R_value), R_value]])
-# # R_shear = np.array([[R11, R12], [R21, R22]])
-#
-# # m_R_shear = (np.abs(R_shear[0,0,:]) < 3) & (np.abs(R_shear[1,0,:]) < 3) & (np.abs(R_shear[0,1,:]) < 3) & (np.abs(R_shear[1,1,:]) < 3)
-#
-# # Selection response
-# # R11_s = (np.mean(ns['g1'][mask_dict['p1']]) - np.mean(ns['g1'][mask_dict['m1']]))/0.02
-# # R22_s = (np.mean(ns['g2'][mask_dict['p2']]) - np.mean(ns['g2'][mask_dict['m2']]))/0.02
-# # R12_s = (np.mean(ns['g1'][mask_dict['p2']]) - np.mean(ns['g1'][mask_dict['m2']]))/0.02
-# # R21_s = (np.mean(ns['g2'][mask_dict['p1']]) - np.mean(ns['g2'][mask_dict['m1']]))/0.02
-# R11_s = (np.median(ns['g1'][mask_dict['p1']]) - np.median(ns['g1'][mask_dict['m1']]))/0.02
-# R22_s = (np.median(ns['g2'][mask_dict['p2']]) - np.median(ns['g2'][mask_dict['m2']]))/0.02
-# R12_s = (np.median(ns['g1'][mask_dict['p2']]) - np.median(ns['g1'][mask_dict['m2']]))/0.02
-# R21_s = (np.median(ns['g2'][mask_dict['p1']]) - np.median(ns['g2'][mask_dict['m1']]))/0.02
-# # R11_s = (np.average(ns['g1'][mask_dict['p1']], weights=ns['w'][mask_dict['p1']]) - np.average(ns['g1'][mask_dict['m1']], weights=ns['w'][mask_dict['m1']]))/0.02
-# # R22_s = (np.average(ns['g2'][mask_dict['p2']], weights=ns['w'][mask_dict['p2']]) - np.average(ns['g2'][mask_dict['m2']], weights=ns['w'][mask_dict['m2']]))/0.02
-# # R12_s = (np.average(ns['g1'][mask_dict['p2']], weights=ns['w'][mask_dict['p2']]) - np.average(ns['g1'][mask_dict['m2']], weights=ns['w'][mask_dict['m2']]))/0.02
-# # R21_s = (np.average(ns['g2'][mask_dict['p1']], weights=ns['w'][mask_dict['p1']]) - np.average(ns['g2'][mask_dict['m1']], weights=ns['w'][mask_dict['m1']]))/0.02
-#
-# # Final selection response
-# R_selection = np.array([[R11_s, R12_s], [R21_s, R22_s]])
-#
-# # Final response
-# # R_ws = np.mean(R_shear, 2)
-# R_ws = np.median(R_shear, 2)
-# R = R_ws + R_selection
-#
-# # all_R['R'].append(R)
-# # all_R['R_select'].append(R_selection)
-# # all_R['R'].append(R_shear)
 
 def guess_surface(ra, dec, min_nbins=100, max_nbins=1e6, n_nbins=100):
     """
