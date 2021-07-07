@@ -852,7 +852,7 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
         ####
         psf1.append(np.mean(psf_e1[ind_1]))
 
-        r_jk = jackknif_weighted_average(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
+        r_jk = jackknif_weighted_average2(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
         m_e1.append(r_jk[0])
         s_e1.append(r_jk[1])
 
