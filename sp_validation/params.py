@@ -34,7 +34,7 @@ path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_P3.txt'.format(SP_BASE)
 path_missing_ID = './missing_ID.txt'
 
 ## Weak-lensing galaxy catalog name
-galaxy_cat_path = './W3/final_cat.npy'
+galaxy_cat_path = './final_cat.npy'
 
 ## Output plot directory and subdirs
 plot_dir = './plots/'
