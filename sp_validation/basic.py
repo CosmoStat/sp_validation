@@ -373,25 +373,24 @@ class metacal:
 
         self.R_shear = np.array([[self.R11, self.R12], [self.R21, self.R22]])
         
-### Test std R shear ###
-
     def _shear_response_std(self, stat_operator=lambda x:jackknif_weighted_average2(x, np.ones_like(x))):
+        """Shear Response Std
+
+        Standard deviation of shear response
         """
-        """
-        if (len(self.ns['g1'][self.mask_dict['ns']])==0):
-            self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
-        #elif (np.sum(x)==0):
-            #self.R_shear_std = np.array([[np.nan,np.nan],[np.nan,np.nan]])
+
+        ma = self.mask_dict['ns']
+        h2 = 2 * self._step
+
+        if len(self.ns['g1'][ma]) == 0:
+            self.R_shear_std = np.array([[np.nan, np.nan], [np.nan, np.nan]])
         else:
-            self.R11_stds = stat_operator((self.p1['g1'][self.mask_dict['ns']] - self.m1['g1'][self.mask_dict['ns']])/(2.*self._step))[1]
-            self.R22_stds = stat_operator((self.p2['g2'][self.mask_dict['ns']] - self.m2['g2'][self.mask_dict['ns']])/(2.*self._step))[1]
-            self.R12_stds = stat_operator((self.p2['g1'][self.mask_dict['ns']] - self.m2['g1'][self.mask_dict['ns']])/(2.*self._step))[1]
-            self.R21_stds = stat_operator((self.p1['g2'][self.mask_dict['ns']] - self.m1['g2'][self.mask_dict['ns']])/(2.*self._step))[1]
+            self.R11_stds = stat_operator((self.p1['g1'][ma] - self.m1['g1'][ma]) / h2)[1]
+            self.R22_stds = stat_operator((self.p2['g2'][ma] - self.m2['g2'][ma]) / h2)[1]
+            self.R12_stds = stat_operator((self.p2['g1'][ma] - self.m2['g1'][ma]) / h2)[1]
+            self.R21_stds = stat_operator((self.p1['g2'][ma] - self.m1['g2'][ma]) / h2)[1]
 
             self.R_shear_std = np.array([[self.R11_stds, self.R12_stds], [self.R21_stds, self.R22_stds]])
-
-### End test std ###
-
 
     def _selection_response(self):
         """
@@ -400,10 +399,16 @@ class metacal:
         if self._prefix == 'GALSIM':
             sign = -1
 
-        self.R11_s = (self._stat_operator(self.ns['g1'][self.mask_dict['p1']]) - self._stat_operator(self.ns['g1'][self.mask_dict['m1']]))/0.02
-        self.R22_s = sign*(self._stat_operator(self.ns['g2'][self.mask_dict['p2']]) - self._stat_operator(self.ns['g2'][self.mask_dict['m2']]))/0.02
-        self.R12_s = (self._stat_operator(self.ns['g1'][self.mask_dict['p2']]) - self._stat_operator(self.ns['g1'][self.mask_dict['m2']]))/0.02
-        self.R21_s = (self._stat_operator(self.ns['g2'][self.mask_dict['p1']]) - self._stat_operator(self.ns['g2'][self.mask_dict['m1']]))/0.02
+        ma_p1 = self.mask_dict['p1']
+        ma_m1 = self.mask_dict['m1']
+        ma_p2 = self.mask_dict['p2']
+        ma_m2 = self.mask_dict['m2']
+        h2 = 2 * self._step
+
+        self.R11_s = (self._stat_operator(self.ns['g1'][ma_p1]) - self._stat_operator(self.ns['g1'][ma_m1])) / h2
+        self.R22_s = sign*(self._stat_operator(self.ns['g2'][ma_p2]]) - self._stat_operator(self.ns['g2'][ma_m2])) / h2
+        self.R12_s = (self._stat_operator(self.ns['g1'][ma_p2]]) - self._stat_operator(self.ns['g1'][ma_m2])) / h2
+        self.R21_s = (self._stat_operator(self.ns['g2'][ma_p1]) - self._stat_operator(self.ns['g2'][ma_m1])) / h2
 
         self.R_selection = np.array([[self.R11_s, self.R12_s], [self.R21_s, self.R22_s]])
 
