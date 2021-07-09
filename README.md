@@ -47,4 +47,12 @@ The run directory needs to contain all files in `notebook`, i.e. `params.py` and
       by clicking on `Python 3` on the top left of the notebook.
    3. Run notebook.
 
+Run the notebooks in the following order:
+   1. `main_set_up.ipynb` (main notebook)
+   2. `metacal_global.ipynb`
+     a. `metacal_local.ipynb`     
+   4. `psf_leakage.ipynb'
+   5. `write_cat.ipynb`
+   6. `cosmology.ipynb`
+
 
