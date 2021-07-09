@@ -27,7 +27,7 @@ See [pyraliddemo](https://github.com/sfarrens/pyraliddemo) for a demo package cr
 Edit the file `notebooks/params.py` according to your data.
 
 Make sure that all input files set in `params.py` are accessible from the run directory.
-The run directory needs to contain all files in `notebook`, i.e. `params.py` and all `.ipybn` notebooks
+The run directory needs to contain all files in `notebook`, i.e. `params.py` and all `.ipynb` notebooks
 
 ### Run
 
@@ -36,13 +36,13 @@ The run directory needs to contain all files in `notebook`, i.e. `params.py` and
   jupyer-lab
   ```
 
-2. Load and run first notebook `main_set_up`:
+2. Load and run first notebook `main_set_up.ipynb`:
    1. Double-click in file manager tab on the left.
    2. Run notebook.
 
 3. Run all further notebooks:
    1. Double-click as above.
-   2. Change kernel to `main_set_up`:
+   2. Change kernel to `main_set_up.ipynb`:
       Either via the menu `Kernel -> Change Kernel` or
       by clicking on `Python 3` on the top left of the notebook.
    3. Run notebook.
