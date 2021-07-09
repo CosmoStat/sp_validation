@@ -1,6 +1,6 @@
 # sp_validation
 
-Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by [ShapePipe](https://github.com/CosmoStat/shapepipe).
+Validational of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by [ShapePipe](https://github.com/CosmoStat/shapepipe).
 
 | Usage | Development | Release |
 | ----- | ----------- | ------- |
@@ -11,7 +11,7 @@ Validation of weak-lensing catalogues (galaxy and star shapes and other paramete
 | [![coc](https://img.shields.io/badge/conduct-read-lightgrey)](https://github.com/martin.kilbinger/sp_validation/blob/master/CODE_OF_CONDUCT.md) | [![Updates](https://pyup.io/repos/github/martin.kilbinger/sp_validation/shield.svg)](https://pyup.io/repos/github/martin.kilbinger/sp_validation/) | |
 
 ---
-> Author: <a href="www.cosmostat.org/people/kilbinger" target="_blank" style="text-decoration:none; color: #F08080">Axel Guinot, Martin Kilbinger, Samuel Farrens</a>  
+> Author: <a href="www.cosmostat.org/people/kilbinger" target="_blank" style="text-decoration:none; color: #F08080">Axel Guinot, Martin Kilbinger, Samuel Farrens, Emma Ayçoberry</a>  
 > Email: <a href="mailto:samuel.farrens@cea.fr" style="text-decoration:none; color: #F08080">axel.guinot.astro@gmail.com</a>  
 > Year: 2021  
 ---
@@ -20,5 +20,19 @@ See [pyraliddemo](https://github.com/sfarrens/pyraliddemo) for a demo package cr
 
 ## Contents
 
-TBD.
+## Run the validation notebooks
+
+### Set up
+
+Edit the file `notebooks/params.py` according to your data.
+
+Make sure that all input files set in `params.py` are accessible from the run directory.
+The run directory needs to contain all files in `notebook`, i.e. `params.py` and all `.ipybn` notebooks
+
+### R
+
+In the run directory start JupyterLab:
+```bash
+jupyer-lab
+```
 
