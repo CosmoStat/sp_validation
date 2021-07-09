@@ -37,7 +37,8 @@ The run directory needs to contain all files in `notebook`, i.e. `params.py` and
   ```
 
 2. Load and run first notebook `main_set_up`:
-   Double-click in file manager tab on the left and run.
+   1. Double-click in file manager tab on the left.
+   2. Run notebook.
 
 3. Run all further notebooks:
    1. Double-click as above.
