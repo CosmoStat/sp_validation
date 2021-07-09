@@ -50,7 +50,7 @@ The run directory needs to contain all files in `notebook`, i.e. `params.py` and
 Run the notebooks in the following order:
    1. `main_set_up.ipynb` (main notebook)
    2. `metacal_global.ipynb`
-     a. `metacal_local.ipynb`     
+   3. [`metacal_local.ipynb`] optional     
    4. `psf_leakage.ipynb'
    5. `write_cat.ipynb`
    6. `cosmology.ipynb`
