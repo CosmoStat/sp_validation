@@ -14,6 +14,7 @@
 
 import os
 
+
 def make_out_dirs(plot_dir, plot_subdirs, verbose=False):
     """Make output directories
 
@@ -80,3 +81,32 @@ def print_stats(msg, stats_file, verbose=False):
 
     if verbose:
         print(msg)
+
+
+def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
+    """Print Ratio
+
+    pretty-print ratio of two numbers
+
+    msg : string
+        message
+    numerator : float
+        ratio numerator
+    denominator : float
+        ratio denominator
+    stats_file : file handler
+        output staistic file
+    verbose : bool, optional, default=False
+        verbose output if True
+    """
+
+    if denominator != 0:
+        ratio = numerator/denominator*100
+    else:
+        ratio = 0
+
+    print_stats(
+        f'{msg} = {numerator}/{denominator}'
+        + f' = {ratio:.1f}%',
+        stats_file, verbose=verbose
+    )

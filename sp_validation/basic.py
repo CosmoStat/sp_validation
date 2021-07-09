@@ -145,6 +145,8 @@ class metacal:
         signal-to-noise minimum
     snr_max;; float, optional, default=500
         signal-to-noise maximum
+    verbose : bool, optional, default=False
+        verbose output if True
     
     """
 
@@ -406,8 +408,8 @@ class metacal:
         h2 = 2 * self._step
 
         self.R11_s = (self._stat_operator(self.ns['g1'][ma_p1]) - self._stat_operator(self.ns['g1'][ma_m1])) / h2
-        self.R22_s = sign*(self._stat_operator(self.ns['g2'][ma_p2]]) - self._stat_operator(self.ns['g2'][ma_m2])) / h2
-        self.R12_s = (self._stat_operator(self.ns['g1'][ma_p2]]) - self._stat_operator(self.ns['g1'][ma_m2])) / h2
+        self.R22_s = sign*(self._stat_operator(self.ns['g2'][ma_p2]) - self._stat_operator(self.ns['g2'][ma_m2])) / h2
+        self.R12_s = (self._stat_operator(self.ns['g1'][ma_p2]) - self._stat_operator(self.ns['g1'][ma_m2])) / h2
         self.R21_s = (self._stat_operator(self.ns['g2'][ma_p1]) - self._stat_operator(self.ns['g2'][ma_m1])) / h2
 
         self.R_selection = np.array([[self.R11_s, self.R12_s], [self.R21_s, self.R22_s]])
