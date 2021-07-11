@@ -65,7 +65,7 @@ path_missing_ID = './missing_ID.txt'
 
 ### Plot directory and subdirs
 plot_dir = './plots/'
-plot_subdirs = ['psf_leak_ngmix', 'psf_leak_galsim']
+plot_subdirs = ['psf_leak_ngmix', 'psf_leak_galsim', 'local_cal_ngmix']
 
 ### Statistics text file
 stats_file_name = 'stats_file.txt'
