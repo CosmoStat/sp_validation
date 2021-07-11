@@ -1,6 +1,6 @@
 # sp_validation
 
-Validational of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by [ShapePipe](https://github.com/CosmoStat/shapepipe).
+Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by [ShapePipe](https://github.com/CosmoStat/shapepipe).
 
 | Usage | Development | Release |
 | ----- | ----------- | ------- |
