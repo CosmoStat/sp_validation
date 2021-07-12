@@ -72,7 +72,7 @@ def plot_histograms(
     colors=None,
     linestyles=None,
     vline_x=None,
-    vline_lab=None
+    vline_lab=None,
     density=True,
 ):
     """Plot Histograms
