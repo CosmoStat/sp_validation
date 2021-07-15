@@ -14,8 +14,206 @@ auto- and cross-correlations.
 """
 
 import numpy as np
+import matplotlib.pylab as plt
+from scipy.optimize import curve_fit
+from uncertainties import ufloat
+
+from tqdm import tqdm
+
+from sp_validation.basic import jackknif_weighted_average
+from sp_validation.plot_style import *
+from sp_validation.io import print_stats
 
 import treecorr
+
+
+def affine_corr(
+    x,
+    y,
+    xlabel,
+    ylabel,
+    mlabel=None,
+    weights=None,
+    n_bin=30,
+    out_path=None,
+    title='',
+    colors=None,
+    stats_file=None,
+    verbose=False):
+    """Affine Corr
+    
+    Computes and plots affine correlation of y(n) as function of x.
+ 
+    Parameters
+    -----------
+    x: array(double)
+        input x value
+    y: array(m) of double
+        input y arrays
+    xlabel, ylabel : string
+        x-and y-axis labels
+    mlabel : string(m), optional, default=None
+        label for slope in the plot legend
+    weights : array of double, optional, default=None
+        weights of x points
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    out_path : string, optional, default=None
+        output file path, if not given, plot is not saved to file
+    title : string, optional, default=''
+        plot title
+    colors : array(m) of string, optional, default=None
+        line colors
+    stats_file : filehandler, optional, default=None
+        output file for statistics
+    verbose : bool, optional, default=False
+        verbose output if True
+    """
+    
+    def lin(x, a, b):
+        return a * x + b
+
+    if mlabel is None:
+        mlabel = np.ones('m')
+        
+    if weights is None:
+        weights = np.ones_like(y[0])
+
+    if colors is None:
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+
+    size_all = len(y[0])
+    for j in range(1, len(y)):
+        if len(y[j]) != size_all:
+            raise IndexError
+            (
+                f'Size {len(y[j])} of input #{i} different from  size {size_all} of input #0'
+            )
+    size_bin = int(size_all / n_bin)
+    diff_size = size_all - size_bin
+
+    # Prepare arrays for binned data
+    x_arg_sort = np.argsort(x)
+    x_bin = []
+    y_bin = []
+    err_bin = []
+    
+    for j in range(len(y)):
+        y_bin.append([])
+        err_bin.append([])
+
+    # Bin data
+    for i in tqdm(range(n_bin), total=n_bin, disable=not verbose):
+        if i < diff_size:
+            bin_size_tmp = size_bin + 1
+            starter = 0
+        else:
+            bin_size_tmp = size_bin
+            starter = diff_size
+        ind = x_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
+
+        x_bin.append(np.mean(x[ind]))
+
+        for j in range(len(y)):
+            r_jk = jackknif_weighted_average(y[j][ind], weights[ind], remove_size=0.2, n_realization=50)
+            y_bin[j].append(r_jk[0])
+            err_bin[j].append(r_jk[1])
+
+    x_bin = np.array(x_bin)
+    for j in range(len(y)):
+        y_bin[j] = np.array(y_bin[j])
+        err_bin[j] = np.array(err_bin[j])
+ 
+    # Fit affine functions, plot function and data
+    plt.figure(figsize=(10, 6))
+    for j in range(len(y)):
+        res = curve_fit(lin, x, y[j], sigma=1/np.sqrt(weights))
+        m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+
+        label = '${}={:.2ugL}$'.format(mlabel[j], m_dm)
+        plt.plot(x_bin, lin(x_bin, *res[0]), c=colors[j], label=label)
+        plt.errorbar(x_bin, y_bin[j], yerr=err_bin[j], c=colors[j], fmt='.')
+
+        if stats_file:
+            msg = '{}: {}={:.2ugP}'.format(xlabel, mlabel[j], m_dm)
+            print_stats(msg, stats_file, verbose=verbose)
+
+    # Finalise plots
+    plt_xmin, plt_xmax = plt.xlim()
+    plt.xlim(plt_xmin, plt_xmax)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.legend()
+
+    plt.title(title)
+    plt.tight_layout()
+
+    if out_path:
+        plt.savefig(out_path, bbox_inches='tight')
+    plt.show()
+
+    
+def affine_corr_n(
+    x_arr,
+    y,
+    xlabel_arr,
+    ylabel,
+    mlabel=None,
+    weights=None,
+    n_bin=30,
+    out_path_arr=None,
+    title='',
+    colors=None,
+    stats_file=None,
+    verbose=False):
+    """Affine Corr N
+    
+    Compute n affine correlations of y(m) versus x_arr[n].
+
+    Parameters
+    -----------
+    x_arr: array(n, double)
+        input x value
+    y: array(m) of double
+        input y arrays
+    xlabel, ylabel : string
+        x-and y-axis labels
+    mlabel(m) : string, optional, default=None
+        label for slope in the plot legend
+    weights : array of double, optional, default=None
+        weights of x points
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    out_path_arr) : array(n) of string, optional, default=None
+        output file path, if not given, plot is not saved to file
+    title : string, optional, default=''
+        plot title
+    colors(m) : array of string, optional, default=None
+        line colors
+    stats_file : filehandler, optional, default=None
+        output file for statistics
+    verbose : bool, optional, default=False
+        verbose output if True
+    """
+    
+    if out_path_arr is None:
+        out_path_arr = [None]*len(y_arr)
+    for x, xlabel, out_path in zip(x_arr, xlabel_arr, out_path_arr):
+        affine_corr(
+            x,
+            y,
+            xlabel,
+            ylabel,
+            mlabel=mlabel,
+            weights=weights,
+            n_bin=n_bin,
+            out_path=out_path,
+            title=title,
+            colors=colors,
+            stats_file=stats_file,
+            verbose=verbose
+        ) 
 
 
 def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star=None):

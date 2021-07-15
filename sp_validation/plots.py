@@ -59,10 +59,22 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
     plt.show()
 
 
-def plot_histograms(xs, labels, title, x_label, y_label, x_range, n_bin, out_path,
-                    weights=None,
-                    colors=None, linestyles=None,
-                    vline_x=None, vline_lab=None):
+def plot_histograms(
+    xs,
+    labels,
+    title,
+    x_label,
+    y_label,
+    x_range,
+    n_bin,
+    out_path,
+    weights=None,
+    colors=None,
+    linestyles=None,
+    vline_x=None,
+    vline_lab=None,
+    density=True,
+):
     """Plot Histograms
 
     Plot one or more 1D distributions.
@@ -91,6 +103,8 @@ def plot_histograms(xs, labels, title, x_label, y_label, x_range, n_bin, out_pat
         x-values of vertical lines if not None
     vline_lab : array of string, optional, default=None
         labels of vertical lines if not None
+    density : bool, optional, default=True
+        (normalised) density histogram if True
     """
 
     if weights is None:
@@ -107,7 +121,7 @@ def plot_histograms(xs, labels, title, x_label, y_label, x_range, n_bin, out_pat
     for x, w, label, color, linestyle in zip(xs, weights, labels, colors, linestyles):
         plt.hist(x, n_bin, weights=w, range=x_range, histtype='step',
                  color=color, linestyle=linestyle,
-                 linewidth=1, density=True, label=label)
+                 linewidth=1, density=density, label=label)
  
     # Horizontal lines
     if vline_x:
