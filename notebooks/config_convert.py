@@ -7,6 +7,7 @@ inp_str = '.ipynb '.join(input_base)
 
 cmd = f'jupyter nbconvert --to script {inp_str} --stdout > validation.py'
 
+print(cmd)
 os.system(cmd)
 
 # Run validation from command line via
