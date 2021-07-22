@@ -815,31 +815,27 @@ def jackknif_weighted_average(data, weights, remove_size=0.1, n_realization=100)
     all_est = np.array(all_est)
 
     return np.mean(all_est), np.std(all_est)
-
-
-####
-
-def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=False):
-    """
+    
+    
+def correlation(data1,data2,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=False):
+    """ Correlation between data1 and data2
     """
 
     def lin(x, a, b):
         return a * x + b
 
-    def gauss(x, x0, sig):
-        return 1. / (sig * np.sqrt(2. * np.pi)) * np.exp(-0.5 * ((x - x0)/sig)**2.)
     if weights is None:
-        weights = np.ones_like(e1)
+        weights = np.ones_like(data1)
 
-    size_all = len(e1)
+    size_all = len(data1)
     size_bin = int(size_all/n_bin)
     diff_size = size_all-size_bin
 
-    psf_e1_arg_sort = np.argsort(psf_e1)
+    data2_arg_sort = np.argsort(data2)
 
-    psf1 = []
-    m_e1 = []
-    s_e1 = []
+    fit = []
+    m_data1 = []
+    s_data1 = []
     for i in tqdm(range(n_bin), total=n_bin):
         if i < diff_size:
             bin_size_tmp = size_bin + 1
@@ -847,18 +843,18 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
         else:
             bin_size_tmp = size_bin
             starter = diff_size
-        ind_1 = psf_e1_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
+        ind_1 = data2_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
 
         ####
-        psf1.append(np.mean(psf_e1[ind_1]))
+        fit.append(np.mean(data2[ind_1]))
 
-        r_jk = jackknif_weighted_average2(e1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
-        m_e1.append(r_jk[0])
-        s_e1.append(r_jk[1])
+        r_jk = jackknif_weighted_average2(data1[ind_1], weights[ind_1], remove_size=0.2, n_realization=50)
+        m_data1.append(r_jk[0])
+        s_data1.append(r_jk[1])
 
-    psf1 = np.array(psf1)
-    s_e1 = np.array(s_e1)
-    m_e1 = np.array(m_e1)
+    fit = np.array(fit)
+    s_data1 = np.array(s_data1)
+    m_data1 = np.array(m_data1)
 
     mpl.rcParams['lines.linewidth'] = 3
     mpl.rcParams['lines.markersize'] = 10
@@ -879,21 +875,17 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, save_plot=F
     mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
 
     plt.figure(figsize=(15,7))
-    res = curve_fit(lin, psf_e1, e1, sigma=1./np.sqrt(weights))
-    plt.plot(psf1, lin(psf1, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
-    plt.errorbar(psf1, m_e1, yerr=s_e1, c='b', fmt='.', label='e1')
+    res = curve_fit(lin, data2, data1, sigma=1./np.sqrt(weights))
+    plt.plot(fit, lin(fit, *res[0]), c='b', label = 'm = {:.2g} +/- {:.2g}'.format(res[0][0], np.sqrt(res[1][0,0])))
+    plt.errorbar(fit, m_data1, yerr=s_data1, c='b', fmt='.', label=ylabel)
     plt_xmin, plt_xmax = plt.xlim()
     plt.xlim(plt_xmin, plt_xmax)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
-    print('c',res[0][1])
-    print(plt.ylim())
     plt.legend()
-    if save_plot and (plot_dir is not None):
+    if save_plot:
         plt.savefig('./corr/'+name+'.png')
     plt.show()
-
-####
 
 
 def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_plot=False, plot_dir=None):
