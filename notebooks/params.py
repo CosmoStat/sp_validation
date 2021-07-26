@@ -28,7 +28,7 @@ np.set_printoptions(precision=3, formatter={'float': '{: .3g}'.format})
 # Survey parameters
 
 ## Field or patch name. Put None if n/a
-name = 'W3'
+name = 'P3'
 print('Field name = {}'.format(name))
 
 ## Area of a tile in deg^2
@@ -50,10 +50,10 @@ SP_BASE = '{}/shapepipe'.format(os.environ['HOME'])
 path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_{}.txt'.format(SP_BASE, name)
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/W3/final_cat.npy'
+galaxy_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/P3X/final_cat.npy'
 
 ### Star and PSF catalog name
-star_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/W3/psf_validation_merged/psf_cat_full.fits'
+star_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/P3X/psf_validation_merged/psf_cat_full.fits'
 
 ## Output paths
 
