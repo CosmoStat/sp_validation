@@ -646,7 +646,6 @@ def stack_mm(clust_ra, clust_dec, ra, dec, g1, g2, w, output_size=50):
     plt.figure(figsize=(30,20))
     plt.imshow(ke)
     plt.plot(ra_pix, dec_pix, 'k+')
-    plt.show()
 
 
     mean_dec = np.mean(dec)
