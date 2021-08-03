@@ -81,7 +81,7 @@ def classification_galaxy_base(dd):
 
     return cut_common
 
-def classification_galaxy_ngmix(dd, cut_common, stats_file, verbose=False):
+def classification_galaxy_ngmix(dd, cut_common, stats_file=None, verbose=False):
     """Classification Galaxy Ngmx
     
     Return mask corresponding to ngmix classification of galaxies 
@@ -98,12 +98,13 @@ def classification_galaxy_ngmix(dd, cut_common, stats_file, verbose=False):
     n_gal_ngmix = len(np.where(m_gal_ngmix)[0])
     n_tot = len(dd)
 
-    io.print_ratio(
-        'ngmix: Objects selected as galaxies',
-        n_gal_ngmix,
-        n_tot,
-        stats_file,
-        verbose=verbose)
+    if stats_file:
+        io.print_ratio(
+            'ngmix: Objects selected as galaxies',
+            n_gal_ngmix,
+            n_tot,
+            stats_file,
+            verbose=verbose)
     
     return m_gal_ngmix
 
