@@ -56,7 +56,6 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
     plt.ylabel(y_label)
 
     plt.savefig(out_path)
-    plt.show()
 
 
 def plot_histograms(

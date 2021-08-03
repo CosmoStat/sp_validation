@@ -960,7 +960,6 @@ def psf_e_corr2(e1,psf_e1,name,xlabel,ylabel,weights=None, n_bin=30, out_path=No
 
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
-    plt.show()
 
 
 def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_plot=False, plot_dir=None):
@@ -1071,7 +1070,6 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     plt.legend()
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + '/PSF_e1_vs_e_gal.png', bbox_inches='tight')
-    plt.show()
 
     plt.figure(figsize=(10,6))
     res = curve_fit(lin, psf_e2, e2, sigma=1./np.sqrt(weights))
@@ -1092,7 +1090,6 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     plt.legend()
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + '/PSF_e2_vs_e_gal.png', bbox_inches='tight')
-    plt.show()
 
 
     plt.figure(figsize=(10,6))
@@ -1112,7 +1109,6 @@ def psf_e_corr(e1, e2, psf_e1, psf_e2, psf_size, weights=None, n_bin=30, save_pl
     if save_plot and (plot_dir is not None):
         plt.savefig(plot_dir + '/PSF_size_vs_e_gal.png', bbox_inches='tight')
 
-    plt.show()
 
 
 def cluster_mass_plot(ra_gal, dec_gal, e1, e2, weights, ra_cluster, dec_cluster, m_cluster, n_bin=4):
@@ -1166,7 +1162,6 @@ def cluster_mass_plot(ra_gal, dec_gal, e1, e2, weights, ra_cluster, dec_cluster,
     # plt.figure()
     # plt.hexbin(psf_e1, e2, gridsize=300)
     # plt.plot(psf2, lin(psf2, *res[0]), c='k', label = 'm = {:.3f}'.format(res[0][0]))
-    # plt.show()
 
     plt.figure(figsize=(30,20))
     # plt.errorbar(logR_p, gamT_p, yerr=gam_sig_p, capsize = 3, label='gamma_T')
@@ -1191,7 +1186,6 @@ def cluster_mass_plot(ra_gal, dec_gal, e1, e2, weights, ra_cluster, dec_cluster,
 
     # plt.legend([errplot, Patch(facecolor='w', edgecolor='k')], [r'$\gamma_{t}$ known clusters', r'random positions'])
     # plt.savefig('new_cat/cluster_profile_bp.png')
-    plt.show()
 
 
 def match_stars(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0005):

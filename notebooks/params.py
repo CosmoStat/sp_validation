@@ -50,10 +50,10 @@ SP_BASE = '{}/shapepipe'.format(os.environ['HOME'])
 path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_{}.txt'.format(SP_BASE, name)
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/W3/final_cat.npy'
+galaxy_cat_path = './final_cat.npy'
 
 ### Star and PSF catalog name
-star_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/W3/psf_validation_merged/psf_cat_full.fits'
+star_cat_path = './psf_validation_merged/psf_cat_full.fits'
 
 ## Output paths
 
