@@ -957,8 +957,6 @@ def cluster_mass_plot(ra_gal, dec_gal, e1, e2, weights, ra_cluster, dec_cluster,
 
     plt.legend()
 
-    plt.show()
-
 
 def match_stars(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0005):
     """

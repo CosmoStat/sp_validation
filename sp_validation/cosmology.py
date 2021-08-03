@@ -646,7 +646,6 @@ def stack_mm(clust_ra, clust_dec, ra, dec, g1, g2, w, output_size=50):
     plt.figure(figsize=(30,20))
     plt.imshow(ke)
     plt.plot(ra_pix, dec_pix, 'k+')
-    plt.show()
 
 
     mean_dec = np.mean(dec)
@@ -725,8 +724,8 @@ def get_theo_xi(theta, z, nz, Omega_m=0.295, h=0.672, Omega_b=0.0516, sig8=0.774
     ell = np.logspace(0, np.log10(10000), 1000)
     cl = ccl.angular_cl(cosmo, lens1, lens1, ell)
 
-    xip_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+', method='Bessel')
-    xim_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-', method='Bessel')
+    xip_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG+', method='Bessel')
+    xim_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG-', method='Bessel')
 
     return xip_fit, xim_fit
 

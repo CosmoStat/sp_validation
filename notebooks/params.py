@@ -42,7 +42,7 @@ pixel_size = 0.187
 
 ## Shapepipe path
 BASE = '{}/astro/repositories/github'.format(os.environ['HOME']) 
-SP_BASE = '{}/shapepipe'.format(BASE)
+SP_BASE = '{}/shapepipe'.format(os.environ['HOME'])
 
 ## Input paths
 
