@@ -4,3 +4,7 @@ numpy
 scipy
 jupyterlab
 seaborn
+lenspack
+tqdm
+uncertainties
+#pyccl

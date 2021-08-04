@@ -14,6 +14,7 @@
 
 """
 
+import numpy as np
 from astropy import cosmology
 
 # For theoretical modelling of cluster lensing
@@ -36,7 +37,10 @@ from scipy import fftpack
 import treecorr
 
 # For theoretical modelling of the shear-shear correlation function
-import pyccl as ccl
+try:
+    import pyccl as ccl
+except:
+    print('Could not import pyccl')
 
 
 
@@ -642,7 +646,6 @@ def stack_mm(clust_ra, clust_dec, ra, dec, g1, g2, w, output_size=50):
     plt.figure(figsize=(30,20))
     plt.imshow(ke)
     plt.plot(ra_pix, dec_pix, 'k+')
-    plt.show()
 
 
     mean_dec = np.mean(dec)
@@ -689,23 +692,6 @@ def gamma_T_tc(ra_cluster, dec_cluster, ra_cat, dec_cat, e1_cat, e2_cat, w_cat =
     return ng.meanr, ng.meanlogr, ng.xi, ng.xi_im, np.sqrt(ng.varxi)
 
 
-def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star = None):
-    """
-    """
-
-    cat_gal = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=e1_gal, g2=e2_gal, w=w_gal, ra_units='degrees', dec_units='degrees')
-    cat_star = treecorr.Catalog(ra=ra_star, dec=dec_star, g1=e1_star, g2=e2_star, w=w_star, ra_units='degrees', dec_units='degrees')
-
-    TreeCorrConfig = {'ra_units': 'degrees', 'dec_units': 'degrees',
-                      'max_sep': 200, 'min_sep': 2, 'sep_units': 'arcminutes',
-                      'nbins': 20}
-
-    ng = treecorr.GGCorrelation(TreeCorrConfig)
-
-    ng.process(cat_gal, cat_star)
-
-    return ng
-
 def xi_gal_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star = None):
     """
     """
@@ -738,8 +724,8 @@ def get_theo_xi(theta, z, nz, Omega_m=0.295, h=0.672, Omega_b=0.0516, sig8=0.774
     ell = np.logspace(0, np.log10(10000), 1000)
     cl = ccl.angular_cl(cosmo, lens1, lens1, ell)
 
-    xip_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+', method='Bessel')
-    xim_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-', method='Bessel')
+    xip_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG+', method='Bessel')
+    xim_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG-', method='Bessel')
 
     return xip_fit, xim_fit
 
