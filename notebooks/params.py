@@ -70,6 +70,7 @@ plot_subdirs = ['psf_leak_ngmix', 'psf_leak_galsim', 'local_cal_ngmix']
 ### Statistics text file
 stats_file_name = 'stats_file.txt'
 
+
 # Other IO options
 
 ## Memory mode, set to None unless very large file
@@ -89,6 +90,20 @@ gal_snr_max = 500
 
 ### Relative size, T_gal / T_psf
 gal_rel_size_min = 0.5
+
+
+# Convergence and other map parameters
+
+## Number of pixels for gamma -> kappa (KS93), in arcmin
+pixel_size_emap_amin = 0.4
+
+## Smoothing scale in pixel
+smoothing_scale_pix = 16
+
+## Sign convention for gamma -> kappa (KS93), -1 or +1
+g1_sign = +1
+g2_sign = -1
+
 
 # Plotting parameters
 

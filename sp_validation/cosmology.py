@@ -16,6 +16,11 @@
 
 import numpy as np
 from astropy import cosmology
+from astropy.io import fits
+
+from shapepipe.utilities.canfar import download
+
+import basic
 
 # For theoretical modelling of cluster lensing
 try:
@@ -45,6 +50,46 @@ except:
 
 
 # Cluster lensing
+
+def get_clusters(cat_name, vos_dir, field_name):
+    """Get Clusters
+    
+    Get cluster data from file on vos.
+    
+    Parameters
+    ----------
+    cat_name : string
+        cataogue name (on VOs and locally after download)
+    vos_dir : string
+        directory on VOs
+    field_name : string
+        field name, e.g. 'W3', 'P2', for fooprint
+
+    Returns
+    -------
+    cluster :
+        dictionary with informat ion about clusters
+    """
+
+    source = f'{vos_dir}/{cat_name}'
+    download(source, cat_name, verbose=True)
+
+    cluster_cat = fits.getdata(cat_name)
+    m_valid = (cluster_cat['MSZ'] != 0) & (cluster_cat['COSMO'] == True)
+
+    # Get footprint masking function
+    get_mask = getattr(basic, 'get_mask_footprint_{}'.format(field_name))
+
+    m_cluster_foot = get_mask(cluster_cat['RA'][m_valid], cluster_cat['DEC'][m_valid])
+    cluster_cut = {
+        'ra': cluster_cat['RA'][m_valid][m_cluster_foot],
+        'dec': cluster_cat['DEC'][m_valid][m_cluster_foot],
+        'z': cluster_cat['REDSHIFT'][m_valid][m_cluster_foot],
+        'M': cluster_cat['MSZ'][m_valid][m_cluster_foot] * 1e14
+    }
+    
+    return cluster_cut
+
 
 def gamma_T_tc_spatial(cluster_cat, ra_cat, dec_cat, e1_cat, e2_cat, w_cat = None):
     """
