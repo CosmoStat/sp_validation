@@ -40,14 +40,10 @@ pixel_size = 0.187
 
 # Paths
 
-## Shapepipe path
-BASE = '{}/astro/repositories/github'.format(os.environ['HOME']) 
-SP_BASE = '{}/shapepipe'.format(os.environ['HOME'])
-
 ## Input paths
 
 ### Tile IDs
-path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_{}.txt'.format(SP_BASE, name)
+path_tile_ID = f'./tiles_{name}.txt'
 
 ### Weak-lensing galaxy catalog name
 galaxy_cat_path = './final_cat.npy'

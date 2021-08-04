@@ -14,37 +14,26 @@
 
 """
 
-from astropy.io import fits
-from astropy import units as u
-from astropy import coordinates as coords
-from astropy.wcs import WCS
-from astropy.table import Table
-#import galsim
-
 import numpy as np
-
-import operator as op
-import itertools as itools
-
 from scipy.integrate import simps
 from scipy.interpolate import interp1d
 from scipy.spatial import cKDTree
 from scipy.special import gamma
 
-from shapepipe.pipeline import file_io as io
+import matplotlib.pyplot as plt
 
 from tqdm import tqdm
 from joblib import Parallel, delayed
+import operator as op
+import itertools as itools
 
+from astropy.io import fits
+from astropy import units as u
+from astropy import coordinates as coords
+from astropy.wcs import WCS
+from astropy.table import Table
 
-from lenspack.utils import bin2d
-from lenspack.image.inversion import ks93
 from lenspack.geometry.projections.gnom import radec2xy
-
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
-from matplotlib.patches import Patch
 
 
 def mad(data, axis=None):
