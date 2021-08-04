@@ -151,7 +151,6 @@ def affine_corr(
 
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
-    plt.show()
 
     
 def affine_corr_n(

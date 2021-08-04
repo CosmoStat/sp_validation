@@ -1060,63 +1060,6 @@ def c_XRAY(z, m, h):
     return A/(1+z) * (m/M_star)**alpha
 
 
-def write_catalog(output_path, ra, dec, g1, g2, w, mag, snr, R, R_select, c1, c2, c1_err, c2_err, alpha_leak):
-    """
-    """
-
-    # Data HDU
-    c_ra = fits.Column(name='ra', array=ra, format='D', unit='deg')
-    c_dec = fits.Column(name='dec', array=dec, format='D', unit='deg')
-    c_g1 = fits.Column(name='g1', array=g1, format='D')
-    c_g2 = fits.Column(name='g2', array=g2, format='D')
-    c_w = fits.Column(name='w', array=w, format='D')
-    c_mag = fits.Column(name='mag', array=mag, format='D')
-    c_snr = fits.Column(name='snr', array=snr, format='D')
-    table_hdu = fits.BinTableHDU.from_columns([c_ra, c_dec, c_g1, c_g2, c_w, c_mag, c_snr])
-
-    table_hdu.header['TTYPE3'] = ('g1', 'Reduced shear (a-b)/(a+b)')
-    table_hdu.header['TTYPE4'] = ('g2', 'Reduced shear (a-b)/(a+b)')
-    table_hdu.header['TTYPE5'] = ('w', 'Ellipticity weight')
-    table_hdu.header['TTYPE6'] = ('mag', 'From SExtractor: MAG_AUTO')
-    table_hdu.header['TTYPE7'] = ('snr', 'SNR compute on metacal noshear: flux/flux_std')
-
-    # Primary HDU with information in header
-    primary_header = fits.Header()
-
-    primary_header['R'] = (r'<R>', r'Full response: <R> = <R_shear> + <R_select>')
-
-    primary_header['R1_1'] = (R[0,0], 'Full response matrix')
-    primary_header['R1_2'] = (R[0,1], 'Full response matrix')
-    primary_header['R2_1'] = (R[1,0], 'Full response matrix')
-    primary_header['R2_2'] = (R[1,1], 'Full response matrix')
-
-    primary_header['RS'] = (r'<RS>', r'Selection response matrix: <R_select>')
-    primary_header['RS1_1'] = (R_select[0,0], 'Selection response matrix')
-    primary_header['RS1_2'] = (R_select[0,1], 'Selection response matrix')
-    primary_header['RS2_1'] = (R_select[1,0], 'Selection response matrix')
-    primary_header['RS2_2'] = (R_select[1,1], 'Selection response matrix')
-
-    primary_header['g_corr'] = ('Apply correction', r'g_corr = R**(-1).g')
-
-    primary_header['c'] = ('', 'Additive bias computed with JackKnife')
-    primary_header['c1'] = (c1, 'Additive bias for g1')
-    primary_header['c1_err'] = (c1_err, 'Standard deviation for c1')
-    primary_header['c2'] = (c2, 'Additive bias for g2')
-    primary_header['c2_err'] = (c2_err, 'Standard deviation for c2')
-
-    primary_header['w'] = ('Ellipticity weight', r'1 / (2*sig_SN**2 + g1_var + g2_var)')
-    primary_header['sig_SN'] = (0.34, 'Sigma_shape_noise')
-
-    primary_header['alpha'] = (alpha_leak, 'PSF leakage alpha') 
-
-    primary_hdu = fits.PrimaryHDU(header=primary_header)
-
-    # Final file
-    hdu_list = fits.HDUList([primary_hdu, table_hdu])
-
-    hdu_list.writeto(output_path, overwrite=True)
-
-
 def NegDash(x_in, y_in, yerr_in, plot_name='', vertical_lines=True,
             xlabel='', ylabel='',
             ylim=None, semilogx=False, semilogy=False,

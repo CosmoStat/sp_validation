@@ -259,10 +259,27 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     io.print_stats(msg, stats_file, verbose=verbose)
 
 
-def write_shape_catalog(output_path, ra, dec, g1, g2, w, mag, snr,
-                        R, R_shear, R_select, c, c_err, alpha_leakage,
-                        g1_uncal=None, g2_uncal=None, R_11=None,
-                        R_22=None, R_12=None, R_21=None):
+def write_shape_catalog(
+    output_path,
+    ra,
+    dec,
+    g,
+    w,
+    mag,
+    snr,
+    R,
+    R_shear,
+    R_select,
+    c,
+    c_err,
+    alpha_leakage,
+    g1_uncal=None,
+    g2_uncal=None,
+    R_11=None,
+    R_22=None,
+    R_12=None,
+    R_21=None
+):
     """Write Shape Catalog
 
     Write catalogue with galaxy shapes = shear estimates.
@@ -273,9 +290,9 @@ def write_shape_catalog(output_path, ra, dec, g1, g2, w, mag, snr,
         output file path
     ra, dec : arrays of float
         coordinates in deg
-    g1, g2 : arrays of float
+    g : arrays(2, ngal) of float
         calibrated reduced shear estimate components, corrected for multiplicative
-        and additive bias, gi = R^-1 gi_uncal - ci
+        and additive bias, g = R^-1 g_uncal - c
     w : array of float
         weights
     mag, snr : arrays of float
@@ -297,8 +314,8 @@ def write_shape_catalog(output_path, ra, dec, g1, g2, w, mag, snr,
     # Data HDU
     c_ra = fits.Column(name='ra', array=ra, format='D', unit='deg')
     c_dec = fits.Column(name='dec', array=dec, format='D', unit='deg')
-    c_g1 = fits.Column(name='g1', array=g1, format='D')
-    c_g2 = fits.Column(name='g2', array=g2, format='D')
+    c_g1 = fits.Column(name='g1', array=g[0], format='D')
+    c_g2 = fits.Column(name='g2', array=g[1], format='D')
     c_w = fits.Column(name='w', array=w, format='D')
     c_mag = fits.Column(name='mag', array=mag, format='D')
     c_snr = fits.Column(name='snr', array=snr, format='D')
@@ -337,16 +354,16 @@ def write_shape_catalog(output_path, ra, dec, g1, g2, w, mag, snr,
     primary_header['R_22'] = (R[1,1], 'Full response matrix comp 2 2')
 
     primary_header['R_g'] = (r'<R_g>', r'Mean shear response matrix <R_shear>')
-    primary_header['R_g11'] = (R_shear[0,0], 'Mean shear response matrix comp 1 1')
-    primary_header['R_g12'] = (R_shear[0,1], 'Mean shear response matrix comp 1 2')
-    primary_header['R_g21'] = (R_shear[1,0], 'Mean shear response matrix comp 2 1')
-    primary_header['R_g22'] = (R_shear[1,1], 'Mean shear response matrix comp 2 2')
+    primary_header['R_g11'] = (R_shear[0,0], 'Mean shear resp matrix comp 1 1')
+    primary_header['R_g12'] = (R_shear[0,1], 'Mean shear resp matrix comp 1 2')
+    primary_header['R_g21'] = (R_shear[1,0], 'Mean shear resp matrix comp 2 1')
+    primary_header['R_g22'] = (R_shear[1,1], 'Mean shear resp matrix comp 2 2')
 
     primary_header['R_S'] = (r'<R_S>', r'Global selection response matrix <R_select>')
-    primary_header['R_S11'] = (R_select[0,0], 'Global selection response matrix comp 1 1')
-    primary_header['R_S12'] = (R_select[0,1], 'Global selection response matrix comp 1 2')
-    primary_header['R_S21'] = (R_select[1,0], 'Global selection response matrix comp 2 1')
-    primary_header['R_S22'] = (R_select[1,1], 'Global selection response matrix comp 2 2')
+    primary_header['R_S11'] = (R_select[0,0], 'Global selection resp matrix comp 1 1')
+    primary_header['R_S12'] = (R_select[0,1], 'Global selection resp matrix comp 1 2')
+    primary_header['R_S21'] = (R_select[1,0], 'Global selection resp matrix comp 2 1')
+    primary_header['R_S22'] = (R_select[1,1], 'Global selection resp matrix comp 2 2')
 
     primary_header['c_1'] = (c[0], 'Additive bias 1st comp')
     primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')

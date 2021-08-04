@@ -15,7 +15,15 @@
 """
 
 import numpy as np
+from scipy.spatial import cKDTree
+from tqdm import tqdm
+
 from astropy import cosmology
+from astropy.io import fits
+
+from lenspack.geometry.projections.gnom import radec2xy
+
+from sp_validation import basic
 
 # For theoretical modelling of cluster lensing
 try:
@@ -724,8 +732,44 @@ def get_theo_xi(theta, z, nz, Omega_m=0.295, h=0.672, Omega_b=0.0516, sig8=0.774
     ell = np.logspace(0, np.log10(10000), 1000)
     cl = ccl.angular_cl(cosmo, lens1, lens1, ell)
 
-    xip_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG+', method='Bessel')
-    xim_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='GG-', method='Bessel')
+    xip_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='L+', method='Bessel')
+    xim_fit = ccl.correlation(cosmo, ell, cl, theta/60, corr_type='L-', method='Bessel')
 
     return xip_fit, xim_fit
 
+
+def get_clusters(cluster_cat_name, vos_dir, field_name):
+    """Get Clusters
+
+    Return cluster information from file on VOspace
+
+    Parameters
+    ----------
+    cluster_cat_name : string
+        cluster catalogue file name
+    vos_dir : string
+        directory on VOspace
+    field_name : string
+        survey footprint name
+
+    Parameters
+    ----------
+    clusters_cut :
+        cluster information (ra, dec, z, SZ-mass)
+    """
+
+    cluster_cat = fits.getdata(cluster_cat_name)
+    m_good_cluster = (cluster_cat['MSZ'] != 0) & (cluster_cat['COSMO'] == True)
+
+    # Get footprint masking function
+    get_mask = getattr(basic, 'get_mask_footprint_{}'.format(field_name))
+
+    m_cluster_foot = get_mask(cluster_cat['RA'][m_good_cluster], cluster_cat['DEC'][m_good_cluster])
+    cluster_cut = {
+        'ra': cluster_cat['RA'][m_good_cluster][m_cluster_foot],
+        'dec': cluster_cat['DEC'][m_good_cluster][m_cluster_foot],
+        'z': cluster_cat['REDSHIFT'][m_good_cluster][m_cluster_foot],
+        'M': cluster_cat['MSZ'][m_good_cluster][m_cluster_foot] * 1e14,
+    }
+
+    return cluster_cut

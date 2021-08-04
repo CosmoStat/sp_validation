@@ -97,3 +97,17 @@ leakage_alpha_ylim = [-0.1, 0.065]
 leakage_xi_sys_ylim = [-4e-5, 5e-5]
 leakage_xi_sys_log_ylim = [2e-13, 5e-5]
 
+# Maps parameters
+
+## Pixel size of ellipticty maps in arc minutes
+pixel_size_emap_amin = 0.4
+
+## Pixel size of smoothed convergence map, in pixels
+## of size pixel_size_emap_amin
+smoothing_scale_pix = 20
+
+## Sign of shear components, to correct for lef-handed
+## coordinate system
+g1_sign = +1
+g2_sign = -1
+
