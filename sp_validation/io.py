@@ -15,7 +15,7 @@
 import os
 
 
-def make_out_dirs(plot_dir, plot_subdirs, verbose=False):
+def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
     """Make output directories
 
     Create output directories and subdirs
@@ -30,10 +30,11 @@ def make_out_dirs(plot_dir, plot_subdirs, verbose=False):
         verbose output if True
     """
 
-    if not os.path.isdir(plot_dir):
-        if verbose:
-            print('Creating dir {}'.format(plot_dir))
-        os.mkdir(plot_dir)
+    for d in (output_dir, plot_dir):
+        if not os.path.isdir(d):
+            if verbose:
+                print('Creating dir {}'.format(d))
+            os.mkdir(d)
     for sd in plot_subdirs:
         dsd = '{}/{}'.format(plot_dir, sd)
         if not os.path.isdir(dsd):

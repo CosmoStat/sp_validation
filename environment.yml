@@ -1,0 +1,11 @@
+name: sp_validation
+channels:
+  - conda-forge
+dependencies:
+  - python==3.8
+  - pip>=21
+  - astropy==4.1
+  - joblib==1.0.1
+  - numpy==1.19.5
+  - pip:
+    - -r requirements.txt

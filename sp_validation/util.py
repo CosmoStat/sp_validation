@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
   
 :Name: util.py
@@ -18,8 +20,22 @@ import os
 import math
 import numpy as np
 
-`
+
 def millify(n):
+    """Millify
+
+    Return human-readible names of large numbers
+
+    Parameters
+    ----------
+    n : int
+        input number
+
+    Returns
+    -------
+    s : string
+        output name
+    """
 
     millnames = ['',' Thousand',' Million',' Billion',' Trillion']
 

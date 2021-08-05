@@ -42,25 +42,32 @@ pixel_size = 0.187
 
 ## Input paths
 
+### Input data directory
+data_dir = f'{os.environ["HOME"]}/data'
+#data_dir = '.'
+
 ### Tile IDs
-path_tile_ID = f'./tiles_{name}.txt'
+path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = './final_cat.npy'
+galaxy_cat_path = f'{data_dir}/final_cat.npy'
 
 ### Star and PSF catalog name
-star_cat_path = './psf_validation_merged/psf_cat_full.fits'
+star_cat_path = f'{data_dir}/psf_validation_merged/psf_cat_full.fits'
 
 ## Output paths
 
+### Output base directory
+output_dir = f'{data_dir}/sp_output'
+
 ### Galaxy shape catalogue name
-output_shape_cat_path = './shape_catalog.fits'
+output_shape_cat_path = '{data_dir}/shape_catalog.fits'
 
 ### File for missing tile ID, can be used as input for re-run
-path_missing_ID = './missing_ID.txt'
+path_missing_ID = f'{output_dir}/missing_ID.txt'
 
 ### Plot directory and subdirs
-plot_dir = './plots/'
+plot_dir = f'{output_dir}/plots/'
 plot_subdirs = ['psf_leak_ngmix', 'psf_leak_galsim', 'local_cal_ngmix']
 
 ### Statistics text file
