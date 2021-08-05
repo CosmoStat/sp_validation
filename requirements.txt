@@ -6,3 +6,4 @@ seaborn==0.11.1
 tqdm==4.60.0
 treecorr==4.1.7
 uncertainties==3.1.5
+git+https://github.com/LSSTDESC/CLMM.git

@@ -20,6 +20,14 @@ import os
 import math
 import numpy as np
 
+try:
+    import vos.commands as vosc
+except ImportError:  # pragma: no cover
+    import_fail = True
+else:
+    import_fail = False
+
+
 
 def millify(n):
     """Millify

@@ -25,6 +25,7 @@ from astropy.io import fits
 from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation import basic
+from sp_validation import util
 
 # For theoretical modelling of cluster lensing
 try:
@@ -739,7 +740,7 @@ def get_theo_xi(theta, z, nz, Omega_m=0.295, h=0.672, Omega_b=0.0516, sig8=0.774
     return xip_fit, xim_fit
 
 
-def get_clusters(cluster_cat_name, vos_dir, field_name):
+def get_clusters(cluster_cat_name, vos_dir, output_dir, field_name, verbose=False):
     """Get Clusters
 
     Return cluster information from file on VOspace
@@ -752,6 +753,8 @@ def get_clusters(cluster_cat_name, vos_dir, field_name):
         directory on VOspace
     field_name : string
         survey footprint name
+    verbose : bool, optional, default=False
+        verbose output if True
 
     Parameters
     ----------
@@ -759,7 +762,14 @@ def get_clusters(cluster_cat_name, vos_dir, field_name):
         cluster information (ra, dec, z, SZ-mass)
     """
 
-    cluster_cat = fits.getdata(cluster_cat_name)
+    out_path = f'{output_dir}/{cluster_cat_name}'
+    util.download(
+        f'{vos_dir}/{cluster_cat_name}',
+        out_path,
+        verbose=verbose
+    )
+
+    cluster_cat = fits.getdata(out_path)
     m_good_cluster = (cluster_cat['MSZ'] != 0) & (cluster_cat['COSMO'] == True)
 
     # Get footprint masking function

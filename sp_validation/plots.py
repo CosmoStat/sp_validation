@@ -153,7 +153,7 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         output file path
     xlog, ylog : bool, optional, default=False
         logscale on x, y if True
-    label : array of string, optional, default=None
+    labels : array of string, optional, default=None
         plot labels, no labels if None
     color : array of string, optional, default=None
         line colors, matplotlib default colors if None
@@ -181,9 +181,12 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
     plt.figure(figsize=(15,10))
 
     for i in range(len(x)):
-        eb = plt.errorbar(x[i], y[i], yerr=yerr[i], label=labels[i], color=colors[i], linestyle=linestyles[i],
-                          marker='o', markerfacecolor='none', capsize=4)
-        eb[-1][0].set_linestyle(eb_linestyles[i])
+        if np.isnan(yerr[i]).all():
+            eb = plt.plot(x[i], y[i], label=labels[i], color=colors[i], linestyle=linestyles[i])
+        else:
+            eb = plt.errorbar(x[i], y[i], yerr=yerr[i], label=labels[i], color=colors[i], linestyle=linestyles[i],
+                            marker='o', markerfacecolor='none', capsize=4)
+            eb[-1][0].set_linestyle(eb_linestyles[i])
 
     plt.hlines(y=0, xmin=plt.xlim()[0], xmax=plt.xlim()[1], linestyles='dashed')
 
