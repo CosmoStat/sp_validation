@@ -114,3 +114,11 @@ smoothing_scale_pix = 20
 g1_sign = +1
 g2_sign = -1
 
+# Cosmology
+
+## Basic cosmological parameters
+Om = 0.3153
+sig8 = 0.8111
+ns = 0.9649
+Ob = 0.0493
+h = 0.6736

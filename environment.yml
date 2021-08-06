@@ -6,6 +6,8 @@ dependencies:
   - pip>=21
   - astropy==4.1
   - joblib==1.0.1
+  - jupyterlab
   - numpy==1.19.5
+  - pyccl==2.2.0
   - pip:
     - -r requirements.txt
