@@ -61,7 +61,7 @@ star_cat_path = f'{data_dir}/psf_validation_merged/psf_cat_full.fits'
 output_dir = f'{data_dir}/sp_output'
 
 ### Galaxy shape catalogue name
-output_shape_cat_path = f'{data_dir}/shape_catalog.fits'
+output_shape_cat_path = f'{output_dir}/shape_catalog.fits'
 
 ### File for missing tile ID, can be used as input for re-run
 path_missing_ID = f'{output_dir}/missing_ID.txt'

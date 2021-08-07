@@ -15,6 +15,8 @@
 import numpy as np
 import matplotlib.pylab as plt
 
+from lenspack.geometry.projections.gnom import radec2xy
+
 from sp_validation import util
 from sp_validation import io
 from sp_validation import basic
@@ -245,7 +247,7 @@ def get_ticks(loc, N, new_min, new_max):
     return loc_new, labels_new
 
 
-def plot_map(m, ra, dec, title, out_path, vlim=None, clusters=None):
+def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vlim=None, clusters=None):
     """Plot Map
     
     Plots 2D map.
@@ -283,8 +285,10 @@ def plot_map(m, ra, dec, title, out_path, vlim=None, clusters=None):
     plt.colorbar()
 
     # Transform axis labels to ra, dec
-    ra_min, ra_max = ra_ngmix.min(), ra_ngmix.max()
-    dec_min, dec_max = dec_ngmix.min(), dec_ngmix.max()
+    ra_min, ra_max = ra.min(), ra.max()
+    ra_mean = np.mean(ra)
+    dec_min, dec_max = dec.min(), dec.max()
+    dec_mean = np.mean(dec)
 
     loc, labels = plt.xticks()
     loc_ra, labels_ra = get_ticks(loc, Nx, ra_min, ra_max)
@@ -318,7 +322,7 @@ def plot_map(m, ra, dec, title, out_path, vlim=None, clusters=None):
     mean_y = (min_y + max_y) / 2
 
     for grid_line_ra, grid_line_dec in zip(grid_lines_ra, grid_lines_dec):
-        x, y = radec2xy(ra_ngmix_mean, dec_ngmix_mean, grid_line_ra, grid_line_dec)
+        x, y = radec2xy(ra_mean, dec_mean, grid_line_ra, grid_line_dec)
         xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
         yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
         plt.plot(xx, yy, 'w:', linewidth=0.5)
@@ -346,7 +350,7 @@ def plot_map(m, ra, dec, title, out_path, vlim=None, clusters=None):
     return vlim
 
 
-def plot_map_stacked(kappa, title, output_path, vlim=None):
+def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
     """Plot Map Stacked
     
     Plot stacked convergence map.

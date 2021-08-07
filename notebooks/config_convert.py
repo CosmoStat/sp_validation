@@ -15,7 +15,7 @@ os.system(cmd)
 """
 sp_base = f"{os.environ['HOME']}/sp_validation"
 
-for sc in ['util']:
+for sc in ['cosmology']:
     script = os.path.join(sp_base, 'sp_validation', sc)
     %run $script
 """
