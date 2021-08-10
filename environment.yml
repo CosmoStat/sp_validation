@@ -1,4 +1,4 @@
-name: sp_validation
+name: sp_validation2
 channels:
   - conda-forge
 dependencies:
