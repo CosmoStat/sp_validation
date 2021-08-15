@@ -34,9 +34,10 @@ except:
     print('Could not import clmm, continuing...')
 
 try:
-    import clmm.modeling as cm
+    #import clmm.modeling as cm
+    from clmm import Cosmology
 except:
-    print('Could not import clmm.modeling, continuing...')
+    print('Could not import clmm.Cosmology, continuing...')
 
 
 # For (obsolete?) convergence maps
@@ -206,7 +207,7 @@ def get_theo_gamT(cluster_mass, cluster_z, z_source=0.65, H0=72., Omega_m=0.3, O
 
         return int_nz/z_norm, z_mean
 
-    def get_gt_model(m, concentration, cluster_z, z_distrib, cosmo_ccl, n_bins=500):
+    def get_gt_model(m, concentration, cluster_z, z_distrib, cosmo, n_bins=500):
         """
         """
         nz, bins_z = np.histogram(z_distrib, n_bins, density=True, range=(0, np.max(z_distrib)))
@@ -215,7 +216,7 @@ def get_theo_gamT(cluster_mass, cluster_z, z_source=0.65, H0=72., Omega_m=0.3, O
         for i in range(n_bins):
             gt_tmp = clmm.predict_reduced_tangential_shear(R*H0/100.,
                                                              m, concentration,
-                                                             cluster_z, meanbin_z[i], cosmo_ccl,
+                                                             cluster_z, meanbin_z[i], cosmo,
                                                              delta_mdef=delta_mdef,
                                                              halo_profile_model='nfw')
             gt_models.append(gt_tmp)
@@ -225,7 +226,7 @@ def get_theo_gamT(cluster_mass, cluster_z, z_source=0.65, H0=72., Omega_m=0.3, O
         final_gt = np.array([simps(integrand[:,i], meanbin_z) for i in range(integrand.shape[1])])
         return final_gt
 
-    def get_gt_model2(m, concentration, cluster_z, meanbin_z, nz, cosmo_ccl, n_bins=500):
+    def get_gt_model2(m, concentration, cluster_z, meanbin_z, nz, cosmo, n_bins=500):
         """
         """
         f = interp1d(meanbin_z, nz)
@@ -234,7 +235,7 @@ def get_theo_gamT(cluster_mass, cluster_z, z_source=0.65, H0=72., Omega_m=0.3, O
         for i in range(n_bins):
             gt_tmp = clmm.predict_reduced_tangential_shear(R*H0/100.,
                                                              m, concentration,
-                                                             cluster_z, zz[i], cosmo_ccl,
+                                                             cluster_z, zz[i], cosmo,
                                                              delta_mdef=delta_mdef,
                                                              halo_profile_model='nfw')
             gt_models.append(gt_tmp)
@@ -250,7 +251,8 @@ def get_theo_gamT(cluster_mass, cluster_z, z_source=0.65, H0=72., Omega_m=0.3, O
 
     astropy_cosmo = cosmology.FlatLambdaCDM(H0=H0, Om0=Omega_m, Ob0=Omega_b)
 
-    cosmo_ccl = cm.cclify_astropy_cosmo(astropy_cosmo)
+    #cosmo_ccl = cm.cclify_astropy_cosmo(astropy_cosmo)
+    cosmo = Cosmology(H0=100*h, Omega_dm0=Om - Ob, Omega_b0=Ob, Omega_k0=0)
 
     d_ang = astropy_cosmo.angular_diameter_distance(cluster_z).value
 
@@ -272,9 +274,9 @@ def get_theo_gamT(cluster_mass, cluster_z, z_source=0.65, H0=72., Omega_m=0.3, O
             factor, z_mean_src = get_norm_gamT2(meanbin_z, nz, cluster_z, norm_nz)
 
     if z_distrib != None:
-        gt = get_gt_model(cluster_mass, cluster_concentration, cluster_z, z_distrib, cosmo_ccl, n_bins=500)
+        gt = get_gt_model(cluster_mass, cluster_concentration, cluster_z, z_distrib, cosmo, n_bins=500)
     else:
-        gt = get_gt_model2(cluster_mass, cluster_concentration, cluster_z, meanbin_z, nz, cosmo_ccl, n_bins=500)
+        gt = get_gt_model2(cluster_mass, cluster_concentration, cluster_z, meanbin_z, nz, cosmo, n_bins=500)
 
     return gt
 
@@ -343,9 +345,10 @@ def get_theo_mass(cluster_z, theta, gt_profile, gt_sig, z_source, H0=72., Omega_
 
     astropy_cosmo = cosmology.FlatLambdaCDM(H0=H0, Om0=Omega_m, Ob0=Omega_b)
 
-    cosmo_ccl = cm.cclify_astropy_cosmo(astropy_cosmo)
+    #cosmo_ccl = cm.cclify_astropy_cosmo(astropy_cosmo)
+    cosmo = Cosmology(H0=100*h, Omega_dm0=Om - Ob, Omega_b0=Ob, Omega_k0=0)
 
-    def get_gt_model(m, concentration, cluster_z, z_distrib, cosmo_ccl, n_bins=500):
+    def get_gt_model(m, concentration, cluster_z, z_distrib, cosmo, n_bins=500):
         """
         """
         nz, bins_z = np.histogram(z_distrib, n_bins, density=True, range=(0, np.max(z_distrib)))
@@ -354,7 +357,7 @@ def get_theo_mass(cluster_z, theta, gt_profile, gt_sig, z_source, H0=72., Omega_
         for i in range(n_bins):
             gt_tmp = clmm.predict_reduced_tangential_shear(R*H0/100.,
                                                              m, concentration,
-                                                             cluster_z, meanbin_z[i], cosmo_ccl,
+                                                             cluster_z, meanbin_z[i], cosmo,
                                                              delta_mdef=delta_mdef,
                                                              halo_profile_model='nfw')
             gt_models.append(gt_tmp)
@@ -364,7 +367,7 @@ def get_theo_mass(cluster_z, theta, gt_profile, gt_sig, z_source, H0=72., Omega_
         final_gt = np.array([simps(integrand[:,i], meanbin_z) for i in range(integrand.shape[1])])
         return final_gt
 
-    def get_gt_model2(m, concentration, cluster_z, meanbin_z, nz, cosmo_ccl, n_bins=500):
+    def get_gt_model2(m, concentration, cluster_z, meanbin_z, nz, cosmo, n_bins=500):
         """
         """
         f = interp1d(meanbin_z, nz)
@@ -373,7 +376,7 @@ def get_theo_mass(cluster_z, theta, gt_profile, gt_sig, z_source, H0=72., Omega_
         for i in range(n_bins):
             gt_tmp = clmm.predict_reduced_tangential_shear(R*H0/100.,
                                                              m, concentration,
-                                                             cluster_z, zz[i], cosmo_ccl,
+                                                             cluster_z, zz[i], cosmo,
                                                              delta_mdef=delta_mdef,
                                                              halo_profile_model='nfw')
             gt_models.append(gt_tmp)
@@ -388,7 +391,7 @@ def get_theo_mass(cluster_z, theta, gt_profile, gt_sig, z_source, H0=72., Omega_
         m = 10.**logm
         print(m/1e14)
         concentration = c_XRAY(cluster_z, m, h=H0/100.)
-        gt_model = get_gt_model(m, concentration, cluster_z, z_source, cosmo_ccl)
+        gt_model = get_gt_model(m, concentration, cluster_z, z_source, cosmo)
         return sum((gt_model - gt_profile)**2/gt_sig**2.)
 
     def nfw_to_shear_profile2(logm, profile_info):
@@ -396,7 +399,7 @@ def get_theo_mass(cluster_z, theta, gt_profile, gt_sig, z_source, H0=72., Omega_
         m = 10.**logm
         print(m/1e14)
         concentration = c_XRAY(cluster_z, m, h=H0/100.)
-        gt_model = get_gt_model2(m, concentration, cluster_z, meanbin_z, nz, cosmo_ccl)
+        gt_model = get_gt_model2(m, concentration, cluster_z, meanbin_z, nz, cosmo)
         return sum((gt_model - gt_profile)**2/gt_sig**2.)
 
     def minimizer(func, x0, args, tolerence=1e-6):
@@ -443,13 +446,13 @@ def get_theo_mass(cluster_z, theta, gt_profile, gt_sig, z_source, H0=72., Omega_
                                 args=[R, gt_profile, gt_sig, z_distrib],
                                 tolerence=1e-3)
         m_est = 10.**logm_est
-        final_model = get_gt_model(m_est, c_XRAY(cluster_z, m_est, h=H0/100.), cluster_z, z_distrib, cosmo_ccl, n_bins=100)
+        final_model = get_gt_model(m_est, c_XRAY(cluster_z, m_est, h=H0/100.), cluster_z, z_distrib, cosmo, n_bins=100)
     else:
         logm_est, cov = get_best_m(nfw_to_shear_profile2,
                                 args=[R, gt_profile, gt_sig, meanbin_z, nz],
                                 tolerence=1e-3)
         m_est = 10.**logm_est
-        final_model = get_gt_model2(m_est, c_XRAY(cluster_z, m_est, h=H0/100.), cluster_z, meanbin_z, nz, cosmo_ccl, n_bins=100)
+        final_model = get_gt_model2(m_est, c_XRAY(cluster_z, m_est, h=H0/100.), cluster_z, meanbin_z, nz, cosmo, n_bins=100)
 
     return m_est, final_model, cov
 
