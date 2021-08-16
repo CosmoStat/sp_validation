@@ -37,6 +37,12 @@ area_tile = 0.25
 ## Pixel size in arcsec
 pixel_size = 0.187
 
+## Shape measurement method list, implemented are
+##  'ngix': multi-epoch model fitting
+##  'galsim': stacked-image moments (experimental)
+shapes = ['ngmix']
+#shapes = ['ngmix', 'galsim']
+print('Shape measurement methods:', shapes)
 
 # Paths
 
@@ -51,6 +57,7 @@ path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 
 ### Weak-lensing galaxy catalog name
 galaxy_cat_path = f'{data_dir}/final_cat.npy'
+print(f'Galaxy catalogue = {galaxy_cat_path}')
 
 ### Star and PSF catalog name
 star_cat_path = f'{data_dir}/psf_validation_merged/psf_cat_full.fits'
@@ -68,7 +75,10 @@ path_missing_ID = f'{output_dir}/missing_ID.txt'
 
 ### Plot directory and subdirs
 plot_dir = f'{output_dir}/plots/'
-plot_subdirs = ['psf_leak_ngmix', 'psf_leak_galsim', 'local_cal_ngmix']
+plot_subdirs = []
+for sh in shapes:
+    plot_subdirs.append(f'psf_leak_{sh}')
+    plot_subdirs.append(f'local_cal_{sh}')
 
 ### Statistics text file
 stats_file_name = 'stats_file.txt'
