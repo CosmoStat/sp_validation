@@ -687,11 +687,44 @@ def stack_mm(clust_ra, clust_dec, ra, dec, g1, g2, w, output_size=50):
 
 # Correlation functions (shear-shear, shear-cluster positions, shear-stars)
 
-def gamma_T_tc(ra_cluster, dec_cluster, ra_cat, dec_cat, e1_cat, e2_cat, w_cat = None):
-    """
+def gamma_T_tc(ra_pos, dec_pos, ra_cat, dec_cat, e1_cat, e2_cat, w_cat=None):
+    """gamma T tc
+
+    Compute cross-correlation between positions (forground) and lensing (background)
+    catalogue. Also called galaxy-galaxy lensing or population lensing.
+
+    Parameters
+    ---------
+    ra_pos : array of float
+        RA coordinates of foreground catalogue
+    dec_pos : array of float
+        DEC coordinates of foreground catalogue
+    ra_cat : array of float
+        RA coordinates of background catalogue
+    dec_cat : array of float
+        DEC coordinates of background catalogue
+    e1_cat : array of float
+        ellipticity component 1 of background catalogue
+    e2_cat : array of float
+        ellipticity component 2 of background catalogue
+    w_cat : array of float, optional, default=None
+        weight of background catalogue
+
+    Returns
+    -------
+    meanr : array of float
+        spatial bin centres
+    meanlogr : array of float
+        log of spatial bin centres
+    xi : array of float
+        tangential shear (E-mode)
+    xi_im : array of float
+        cross-component shear (B- or parity mode)
+    rms : array of float
+        R.M.S of both xi and xi_im
     """
 
-    cat_cluster = treecorr.Catalog(ra=ra_cluster, dec=dec_cluster, ra_units='degrees', dec_units='degrees')
+    cat_pos = treecorr.Catalog(ra=ra_pos, dec=dec_pos, ra_units='degrees', dec_units='degrees')
     cat_gal = treecorr.Catalog(ra=ra_cat, dec=dec_cat, g1=e1_cat, g2=e2_cat, w=w_cat, ra_units='degrees', dec_units='degrees')
 
     TreeCorrConfig = {'ra_units': 'degrees', 'dec_units': 'degrees',
@@ -700,7 +733,7 @@ def gamma_T_tc(ra_cluster, dec_cluster, ra_cat, dec_cat, e1_cat, e2_cat, w_cat =
 
     ng = treecorr.NGCorrelation(TreeCorrConfig)
 
-    ng.process(cat_cluster, cat_gal)
+    ng.process(cat_pos, cat_gal)
 
     return ng.meanr, ng.meanlogr, ng.xi, ng.xi_im, np.sqrt(ng.varxi)
 

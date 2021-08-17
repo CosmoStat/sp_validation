@@ -25,9 +25,9 @@ This package makes use of the following third-party packages:
 
 from warnings import warn
 
-from importlib_metadata import version
 
 try:
+    from importlib_metadata import version
     _version = version('sp_validation')
 except Exception:  # pragma: no cover
     _version = 'Unkown'
