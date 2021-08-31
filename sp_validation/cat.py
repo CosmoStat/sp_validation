@@ -21,10 +21,10 @@ from sp_validation import io
 from sp_validation import basic
 
 
-def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, invalid=-10, verbose=False):
-    """Print some quantities.
+def print_mean_ellipticity(dd, ell_col_name, ell_n_comp, n_tot, stats_file, invalid=-10, verbose=False):
+    """Print Mean Ellipticity
 
-    Output some summary statistics from a catalogue.
+    Output mean ellipticity from a catalogue.
 
     Parameters
     ----------
@@ -35,6 +35,8 @@ def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, invalid=-10,
     ell_n_comp : int
         dimension (= number of components) of ellipticity column.
         Should be 1 or 2.
+    n_tot : int
+        number of total objects
     stats_file : file handler
         summary statistics output file handler
     invalid : float, optional, default -10
@@ -43,24 +45,17 @@ def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, invalid=-10,
         verbose output if True
     """
 
-    # Print all column names
-    if verbose:
-        print('Column names:')
-        print(dd.dtype.names)
-        print('')
-
-    n_tot = len(dd)
-    msg = 'Total number of objects = {} = {}'.format(n_tot, util.millify(n_tot))
-    io.print_stats(msg, stats_file, verbose=verbose)
-
     # Get ellipticity columns
     all_ell = []
+    ell_str = ''
     if ell_n_comp == 1:
         for i in (0, 1):
             all_ell.append(dd[ell_col_name[i]])
+            ell_str = f'{ell_str}{ell_col_name[i]} '
     elif ell_n_comp == 2:
         for i in (0, 1):
             all_ell.append(dd[ell_col_name][:,i])
+        ell_str = ell_col_name
 
     # Tolerance around invalid value
     EPS = 0.0001
@@ -73,10 +68,6 @@ def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, invalid=-10,
     # are valid
     ind_v = ind_val[0] & ind_val[1]
 
-    # Select valid objects
-    for i in (0, 1):
-        all_ell[i] = all_ell[i][ind_v]
-
     n_tot_val = len(np.where(ind_v)[0])
     msg = 'Total number of valid objects = {} = {}'.format(n_tot_val, util.millify(n_tot_val))
     io.print_stats(msg, stats_file, verbose=verbose)
@@ -86,15 +77,52 @@ def print_some_quantities(dd, ell_col_name, ell_n_comp, stats_file, invalid=-10,
                     (n_tot - n_tot_val) / n_tot * 100)
     io.print_stats(msg, stats_file, verbose=verbose)
 
+    # Select valid objects
+    for i in (0, 1):
+        all_ell[i] = all_ell[i][ind_v]
+ 
     # Mean ellipticity
     ell = np.zeros(2)
     for i in (0, 1):
         ell[i] = all_ell[i].mean()
 
-    io.print_stats('Mean ellipticity of valid objects:', stats_file, verbose=verbose)
+    io.print_stats(f'Mean ellipticity of valid objects ({ell_str}):', stats_file, verbose=verbose)
     for i in (0, 1):
         msg = '<e_{}> = {:.3g}'.format(i+1, ell[i])
         io.print_stats(msg, stats_file, verbose=verbose)
+
+
+def print_some_quantities(dd, stats_file, verbose=False):
+    """Print some quantities.
+
+    Output some summary statistics from a catalogue.
+
+    Parameters
+    ----------
+    dd : dict
+        galaxy catalog
+    stats_file : file handler
+        summary statistics output file handler
+    verbose : bool, optional, default=False
+        verbose output if True
+
+    Returns
+    -------
+    n_tot : int
+        number of objects
+    """
+
+    # Print all column names
+    if verbose:
+        print('Column names:')
+        print(dd.dtype.names)
+        print('')
+
+    n_tot = len(dd)
+    msg = 'Total number of objects = {} = {}'.format(n_tot, util.millify(n_tot))
+    io.print_stats(msg, stats_file, verbose=verbose)
+
+    return n_tot
 
 
 def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbose=False):
