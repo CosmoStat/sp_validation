@@ -37,35 +37,49 @@ area_tile = 0.25
 ## Pixel size in arcsec
 pixel_size = 0.187
 
+## Shape measurement method list, implemented are
+##  'ngix': multi-epoch model fitting
+##  'galsim': stacked-image moments (experimental)
+#shapes = ['ngmix']
+shapes = ['ngmix', 'galsim']
+print('Shape measurement methods:', shapes)
 
 # Paths
 
-## Shapepipe path
-BASE = '{}/astro/repositories/github'.format(os.environ['HOME']) 
-SP_BASE = '{}/shapepipe'.format(os.environ['HOME'])
-
 ## Input paths
 
+### Input data directory
+data_dir = f'{os.environ["HOME"]}/data_WL'
+#data_dir = '.'
+
 ### Tile IDs
-path_tile_ID = '{}/aux/CFIS/tiles_202007/tiles_{}.txt'.format(SP_BASE, name)
+path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/W3/final_cat.npy'
+galaxy_cat_path = f'{data_dir}/final_cat.npy'
+print(f'Galaxy catalogue = {galaxy_cat_path}')
 
 ### Star and PSF catalog name
-star_cat_path = '/Users/emmaaycoberry/Documents/Stage/M2_SUTS/local_calib/W3/psf_validation_merged/psf_cat_full.fits'
+star_cat_path = f'{data_dir}/psf_validation_merged/psf_cat_full.fits'
 
 ## Output paths
 
-### Galaxy shape catalogue name
-output_shape_cat_path = './shape_catalog.fits'
+### Output base directory
+output_dir = f'{data_dir}/sp_output'
+
+### Galaxy shape catalogue base name.
+### Will be appended by '_{sh}.fits'
+output_shape_cat_base= f'{output_dir}/shape_catalog'
 
 ### File for missing tile ID, can be used as input for re-run
-path_missing_ID = './missing_ID.txt'
+path_missing_ID = f'{output_dir}/missing_ID.txt'
 
 ### Plot directory and subdirs
-plot_dir = './plots/'
-plot_subdirs = ['psf_leak_ngmix', 'psf_leak_galsim', 'local_cal_ngmix']
+plot_dir = f'{output_dir}/plots/'
+plot_subdirs = []
+for sh in shapes:
+    plot_subdirs.append(f'psf_leak_{sh}')
+    plot_subdirs.append(f'local_cal_{sh}')
 
 ### Statistics text file
 stats_file_name = 'stats_file.txt'
@@ -84,10 +98,13 @@ thresh = 0.0002
 ## Galaxy selection for metacal
 
 ### Signal-to-noise
+#### minimum to cut noisy objects
 gal_snr_min = 10
+#### maximum to cut too bright objects, potentially too large for the postage stamp
 gal_snr_max = 500
 
 ### Relative size, T_gal / T_psf
+### to select objects that are not too small compared to the PSF, thus not likely to be point-like
 gal_rel_size_min = 0.5
 
 # Plotting parameters
@@ -97,3 +114,25 @@ leakage_alpha_ylim = [-0.1, 0.065]
 leakage_xi_sys_ylim = [-4e-5, 5e-5]
 leakage_xi_sys_log_ylim = [2e-13, 5e-5]
 
+# Maps parameters
+
+## Pixel size of ellipticty maps in arc minutes
+pixel_size_emap_amin = 0.4
+
+## Pixel size of smoothed convergence map, in pixels
+## of size pixel_size_emap_amin
+smoothing_scale_pix = 20
+
+## Sign of shear components, to correct for lef-handed
+## coordinate system
+g1_sign = +1
+g2_sign = -1
+
+# Cosmology
+
+## Basic cosmological parameters
+Om = 0.3153
+sig8 = 0.8111
+ns = 0.9649
+Ob = 0.0493
+h = 0.6736
