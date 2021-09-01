@@ -685,8 +685,6 @@ def stack_mm(clust_ra, clust_dec, ra, dec, g1, g2, w, output_size=50):
     return stacked_img_e, stacked_img_b
 
 
-# Correlation functions (shear-shear, shear-cluster positions, shear-stars)
-
 def gamma_T_tc(ra_pos, dec_pos, ra_cat, dec_cat, e1_cat, e2_cat, w_cat=None):
     """gamma T tc
 
