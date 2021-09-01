@@ -128,7 +128,7 @@ def affine_corr(
     # Fit affine functions, plot function and data
     plt.figure(figsize=(10, 6))
     for j in range(len(y)):
-        res = curve_fit(lin, x, y[j], sigma=1/np.sqrt(weights))
+        res = curve_fit(lin, x, y[j], p0=[0.01, 0.01], sigma=1/np.sqrt(weights))
         m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
 
         label = '${}={:.2ugL}$'.format(mlabel[j], m_dm)

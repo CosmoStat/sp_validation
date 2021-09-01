@@ -337,6 +337,10 @@ def write_shape_catalog(
         error of c
     alpha_leakage : float
         Mean scale-dependent PSF leakage
+    g1_uncal, g2_uncal : arrays of float, optional, default=None
+        uncalibrated shear estimates
+    R_11, R_22, R_12, R_21 : arrays of float, optional, default=None
+        total response matrix elemencts per galaxy
     """
 
     # Data HDU

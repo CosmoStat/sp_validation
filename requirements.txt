@@ -8,4 +8,5 @@ setuptools==45.2.0
 tqdm==4.60.0
 treecorr==4.1.7
 uncertainties==3.1.5
+#vos==3.1.1
 #git+https://github.com/LSSTDESC/CLMM.git

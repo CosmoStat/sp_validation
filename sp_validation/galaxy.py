@@ -66,18 +66,26 @@ def classification_galaxy_base(dd):
     Return mask corresponding to basic classification for galaxies.
     """
     
+    # Duplicate objects due to tile overlaps
+    cut_overlap = (
+        dd['FLAG_TILING'] == 1
+    )
+
     # spread model class, add two times the uncertainty to be conservative
     sm_classif = dd['SPREAD_MODEL'] + 2 * dd['SPREADERR_MODEL']
+    cut_sm = sm_classif > 0.0035
 
-    cut_common = \
-        (sm_classif > 0.0035) \
-        & (dd['SPREAD_MODEL'] > 0) \
-        & (dd['SPREAD_MODEL'] < 0.03) \
-        & (dd['MAG_AUTO'] < 26) \
-        & (dd['MAG_AUTO'] > 20) \
-        & (dd['FLAGS'] == 0) \
-        & (dd['IMAFLAGS_ISO'] == 0) \
+    cut_common = (
+        cut_overlap
+        & cut_sm
+        & (dd['SPREAD_MODEL'] > 0)
+        & (dd['SPREAD_MODEL'] < 0.03)
+        & (dd['MAG_AUTO'] < 26)
+        & (dd['MAG_AUTO'] > 20)
+        & (dd['FLAGS'] == 0)
+        & (dd['IMAFLAGS_ISO'] == 0)
         & (dd['N_EPOCH'] > 0)
+    )
 
     return cut_common
 
