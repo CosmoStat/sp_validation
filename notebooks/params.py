@@ -40,8 +40,8 @@ pixel_size = 0.187
 ## Shape measurement method list, implemented are
 ##  'ngix': multi-epoch model fitting
 ##  'galsim': stacked-image moments (experimental)
-#shapes = ['ngmix']
-shapes = ['ngmix', 'galsim']
+shapes = ['ngmix']
+#shapes = ['ngmix', 'galsim']
 print('Shape measurement methods:', shapes)
 
 # Paths
@@ -49,8 +49,8 @@ print('Shape measurement methods:', shapes)
 ## Input paths
 
 ### Input data directory
-data_dir = f'{os.environ["HOME"]}/data_WL'
-#data_dir = '.'
+#data_dir = f'{os.environ["HOME"]}/data_WL'
+data_dir = '.'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'
@@ -60,7 +60,7 @@ galaxy_cat_path = f'{data_dir}/final_cat.npy'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
 
 ### Star and PSF catalog name
-star_cat_path = f'{data_dir}/psf_validation_merged/psf_cat_full.fits'
+star_cat_path = f'{data_dir}/output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
 
 ## Output paths
 
