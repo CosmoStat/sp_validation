@@ -116,3 +116,5 @@ def missing_tiles(tile_IDs, path_tile_ID, path_missing_ID, verbose=False):
         if verbose:
             print('Tile ID file \'{}\' not found'
                 ''.format(path_tile_ID))
+
+        return None, None
