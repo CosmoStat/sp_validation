@@ -49,8 +49,8 @@ print('Shape measurement methods:', shapes)
 ## Input paths
 
 ### Input data directory
-#data_dir = f'{os.environ["HOME"]}/data_WL'
-data_dir = '.'
+data_dir = f'{os.environ["HOME"]}/data_WL'
+#data_dir = '.'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'

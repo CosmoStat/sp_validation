@@ -126,7 +126,7 @@ def print_all(results, stats_files):
             if key == 'N_gal':
                 print(f'{val:>12d}', end=' ')
             else:
-                print(f'{val:12.5g}', end=' ')
+                print(f'{val:12.7f}', end=' ')
         print()
 
     # Write total
@@ -137,7 +137,7 @@ def print_all(results, stats_files):
         if key == 'N_gal':
             print(f'{val:>12d}', end=' ')
         else:
-            print(f'{val:12.5g}', end=' ')
+            print(f'{val:12.7f}', end=' ')
     print()
 
 
@@ -147,14 +147,18 @@ def main(argv=None):
     Main program
     """
 
-    #n_patch = 7
-    #patches = [f'P{x}' for x in np.arange(n_patch) + 1]
-    patches = ['P7', 'W3', 'S4']
+    if argv[1] == 'v1':
+        n_patch = 7
+        patches = [f'P{x}' for x in np.arange(n_patch) + 1]
+    elif argv[1] == 'test':
+        patches = ['P7', 'W3', 'S4']
+    elif argv[1] == 'comb':
+        # Validate with combined catalogue
+        patches = ['comb']
 
-    # Validate with combined catalogue
-    #patches = ['comb']
+    n_patch = len(patches)
 
-    ##n_patch = len(patches)
+    print('combine_results.py:', patches)
 
     directory = 'sp_output/plots'
     fname = 'stats_file.txt'
@@ -180,14 +184,29 @@ def main(argv=None):
     for patch in stats_files:
         results['value'][key][patch] = get_match(stats_files, patch, 'Number of galaxies after metacal = (\d+)/', previous=[f'^{shape}$'], typ=int)
 
-    # Additive bias
+    # Additive bias (unweighted mean)
     for comp in (1, 2):
         key = f'c_{comp}'
         init_key(results, key, 'w_avg', extra='N_gal')
         for patch in stats_files:
+            c = get_match(stats_files, patch, f'cw{comp} = (\S+)', previous=[f'^{shape}:$'], n_previous=[comp*2], typ=float)
+            results['value'][key][patch] = c
+
+    # Additive bias (weighted mean)
+    for comp in (1, 2):
+        key = f'cw_{comp}'
+        init_key(results, key, 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            c = get_match(stats_files, patch, f'cw_{comp} = (\S+)', previous=[f'^{shape}:$'], n_previous=[comp*2 + 1], typ=float)
+            results['value'][key][patch] = c
+
+    # Additive bias (jackknife)
+    for comp in (1, 2):
+        key = f'cjk_{comp}'
+        init_key(results, key, 'w_avg', extra='N_gal')
+        for patch in stats_files:
             c, dc = get_match(stats_files, patch, f'c_{comp} = (\S+)', previous=[f'^{shape}:$'], n_previous=[comp], typ='ufloat')
             results['value'][key][patch] = c
-            # TODO: dc
 
     # Ellipticity dispersion
     key = 'sigma_eps'
@@ -210,22 +229,22 @@ def main(argv=None):
         results['value']['R_tot_22'][patch] = tmp
 
     # Object-wise PSF leakage
-    keys = ['m_11', 'm_12', 'm_21', 'm_22', 'm_s1', 'm_s2']
-    for key in keys:
-        init_key(results, key, 'w_avg', extra='N_gal')
-    for patch in stats_files:
-        m, dm = get_match(stats_files, patch, '\$e_\{1\}\^\{\\\\rm PSF\}\$: m_1=(\S*)', previous=['ngmix'], n_previous=[1], typ='ufloat')
-        results['value']['m_11'][patch] = m
-        m, dm = get_match(stats_files, patch, '\$e_\{1\}\^\{\\\\rm PSF\}\$: m_2=(\S*)', previous=['ngmix'], n_previous=[2], typ='ufloat')
-        results['value']['m_12'][patch] = m
-        m, dm = get_match(stats_files, patch, '\$e_\{2\}\^\{\\\\rm PSF\}\$: m_1=(\S*)', previous=['ngmix'], n_previous=[3], typ='ufloat')
-        results['value']['m_21'][patch] = m
-        m, dm = get_match(stats_files, patch, '\$e_\{2\}\^\{\\\\rm PSF\}\$: m_2=(\S*)', previous=['ngmix'], n_previous=[4], typ='ufloat')
-        results['value']['m_22'][patch] = m
-        m, dm = get_match(stats_files, patch, '\$\\\\mathrm\{FWHM\}\^\{\\\\rm PSF\}\$ \[arcsec]: m_1=(\S+)', previous=['ngmix'], n_previous=[5], typ='ufloat')
-        results['value']['m_s1'][patch] = m
-        m, dm = get_match(stats_files, patch, '\$\\\\mathrm\{FWHM\}\^\{\\\\rm PSF\}\$ \[arcsec]: m_2=(\S+)', previous=['ngmix'], n_previous=[6], typ='ufloat')
-        results['value']['m_s2'][patch] = m
+    #keys = ['m_11', 'm_12', 'm_21', 'm_22', 'm_s1', 'm_s2']
+    ##for key in keys:
+        #init_key(results, key, 'w_avg', extra='N_gal')
+    #for patch in stats_files:
+        #m, dm = get_match(stats_files, patch, '\$e_\{1\}\^\{\\\\rm PSF\}\$: m_1=(\S*)', previous=['ngmix'], n_previous=[1], typ='ufloat')
+        #results['value']['m_11'][patch] = m
+        #m, dm = get_match(stats_files, patch, '\$e_\{1\}\^\{\\\\rm PSF\}\$: m_2=(\S*)', previous=['ngmix'], n_previous=[2], typ='ufloat')
+        #results['value']['m_12'][patch] = m
+        #m, dm = get_match(stats_files, patch, '\$e_\{2\}\^\{\\\\rm PSF\}\$: m_1=(\S*)', previous=['ngmix'], n_previous=[3], typ='ufloat')
+        #results['value']['m_21'][patch] = m
+        #m, dm = get_match(stats_files, patch, '\$e_\{2\}\^\{\\\\rm PSF\}\$: m_2=(\S*)', previous=['ngmix'], n_previous=[4], typ='ufloat')
+        #results['value']['m_22'][patch] = m
+        #m, dm = get_match(stats_files, patch, '\$\\\\mathrm\{FWHM\}\^\{\\\\rm PSF\}\$ \[arcsec]: m_1=(\S+)', previous=['ngmix'], n_previous=[5], typ='ufloat')
+        #results['value']['m_s1'][patch] = m
+        #m, dm = get_match(stats_files, patch, '\$\\\\mathrm\{FWHM\}\^\{\\\\rm PSF\}\$ \[arcsec]: m_2=(\S+)', previous=['ngmix'], n_previous=[6], typ='ufloat')
+        #results['value']['m_s2'][patch] = m
 
     # Scale-dependent PSF leakage
     key = 'alpha'
