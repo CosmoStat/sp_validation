@@ -26,6 +26,8 @@ from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation import basic
 from sp_validation import util
+from sp_validation.survey import get_footprint
+
 
 # For theoretical modelling of cluster lensing
 try:
@@ -806,10 +808,7 @@ def get_clusters(cluster_cat_name, vos_dir, output_dir, field_name, verbose=Fals
     cluster_cat = fits.getdata(out_path)
     m_good_cluster = (cluster_cat['MSZ'] != 0) & (cluster_cat['COSMO'] == True)
 
-    # Get footprint masking function
-    get_mask = getattr(basic, 'get_mask_footprint_{}'.format(field_name))
-
-    m_cluster_foot = get_mask(cluster_cat['RA'][m_good_cluster], cluster_cat['DEC'][m_good_cluster])
+    m_cluster_foot = get_footprint(field_name, cluster_cat['RA'][m_good_cluster], cluster_cat['DEC'][m_good_cluster])
     cluster_cut = {
         'ra': cluster_cat['RA'][m_good_cluster][m_cluster_foot],
         'dec': cluster_cat['DEC'][m_good_cluster][m_cluster_foot],

@@ -19,6 +19,7 @@ from astropy.io import fits
 from sp_validation import util
 from sp_validation import io
 from sp_validation import basic
+from sp_validation.survey import get_footprint
 
 
 def print_mean_ellipticity(dd, ell_col_name, ell_n_comp, n_tot, stats_file, invalid=-10, verbose=False):
@@ -153,8 +154,7 @@ def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbos
     
     if name is not None:
         # Filter stars outside footprint for efficiency
-        get_mask = getattr(basic, 'get_mask_footprint_{}'.format(name))
-        mask_area_tiles = get_mask(d1[keys_1[0]], d1[keys_1[1]])
+        mask_area_tiles = get_footprint(name, d1[keys_1[0]], d1[keys_1[1]])
         if len(np.where(mask_area_tiles)[0]) == 0:
             raise ValueError('Error: no object found in field \'{}\''.format(name))
     else:
@@ -287,6 +287,53 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     io.print_stats(msg, stats_file, verbose=verbose)
 
 
+def read_shape_catalog(
+    input_path
+):
+    """Read Shape Catalog
+
+    Read catalogu with galaxy shapes = shear estimates.
+
+    Parameters
+    ----------
+    input_path : str
+        input file path
+
+    Returns
+    -------
+    ra : array of float
+        right ascension in degrees
+    dec : array of float
+        declination in degrees
+    g1 : array of float
+        uncalibrated shear estimate component 1
+    g2 : array of float
+        uncalibrated shear estimate component 1
+    w : array of float
+        weight
+    mag : array of float
+        magnitude
+    snr : array of float
+        signal-to-noise ratio
+    """
+
+    dat = fits.open(input_path)
+
+    hdu_no = 1
+
+    ra = dat[hdu_no].data['ra']
+    dec = dat[hdu_no].data['dec']
+
+    g = [np.empty_like(ra), np.empty_like(ra)]
+    g1 = dat[hdu_no].data['g1_uncal']
+    g2 = dat[hdu_no].data['g2_uncal']
+    w = dat[hdu_no].data['w']
+    mag = dat[hdu_no].data['mag']
+    snr = dat[hdu_no].data['snr']
+
+    return ra, dec, g1, g2, w, mag, snr
+
+
 def write_shape_catalog(
     output_path,
     ra,
@@ -306,7 +353,7 @@ def write_shape_catalog(
     R_11=None,
     R_22=None,
     R_12=None,
-    R_21=None
+    R_21=None,
 ):
     """Write Shape Catalog
 
@@ -360,6 +407,7 @@ def write_shape_catalog(
 
     table_hdu = fits.BinTableHDU.from_columns(cols)
 
+
     table_hdu.header['TTYPE3'] = ('g1', 'Calibrated reduced shear estimate, 1st comp')
     table_hdu.header['TTYPE4'] = ('g2', 'Calibrated reduced shear estimate, 2nd comp')
     table_hdu.header['TTYPE5'] = ('w', 'Weight')
@@ -379,7 +427,7 @@ def write_shape_catalog(
     # Primary HDU with information in header
     primary_header = fits.Header()
 
-    primary_header['R'] = (r'<R>', r'Mean full response matrix <R> = <R_shear> + <R_select>')
+    primary_header['R'] = (r'<R>', r'Mean full response <R_shear> + <R_select>')
     primary_header['R_11'] = (R[0,0], 'Full response matrix comp 1 1')
     primary_header['R_12'] = (R[0,1], 'Full response matrix comp 1 2')
     primary_header['R_21'] = (R[1,0], 'Full response matrix comp 2 1')

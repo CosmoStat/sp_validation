@@ -118,3 +118,82 @@ def missing_tiles(tile_IDs, path_tile_ID, path_missing_ID, verbose=False):
                 ''.format(path_tile_ID))
 
         return None, None
+
+def get_footprint(patch, ra, dec):
+    """Get Footprint
+
+    Return coordinates within footprint of patch
+
+    Parameters
+    ----------
+    patch : str
+        patch name
+    ra : array of float
+        R,A, coordintates
+    dec : array of float
+        DEC coordinates
+
+    Returns
+    -------
+    ra, dec : arrays of float
+        list of coordinates withint footprint
+    """
+
+    ra_14 = 157.5
+    ra_45 = 207
+    ra2_45 = 220
+    ra_36 = 230
+    dec_3456 = 48
+
+    ra2_34 = 190
+
+    dec_min = 29
+    dec_max = 60
+
+    if patch == 'P1':
+
+        return (ra > 100) & (ra < ra_14) & (dec > dec_min) & (dec < dec_max)
+
+    elif patch == 'P2':
+
+        # -30 < ra < 60
+        return (
+            ((ra > 0) & (ra < 60))
+            | ((ra > 330) & (ra < 360))
+            & (dec > dec_min) & (dec < dec_max)
+        )
+
+    elif patch == 'P3':
+
+        return (ra > ra2_34) & (ra < ra_36) & (dec > dec_3456) & (dec < 70)
+
+    elif patch == 'P4':
+
+        return (
+            ((ra > ra_14) & (ra < ra_45) & (dec > dec_min) & (dec < dec_3456))
+            | ((ra > ra_14) & (ra < ra2_34) & (dec > dec_min) & (dec < 70))
+            | ((ra > ra_45) & (ra < ra4_45) * (dec > dec_min) & (dec < 36))
+        )
+
+    elif patch == 'P5':
+
+        return (
+            ((ra > ra2_45) & (ra < 330) & (dec > dec_min) & (dec < dec_3456))
+            | ((ra > ra_45) & (ra < ra2_45) & (dec > 36) & (dec < dec_3456))
+        )
+
+    elif patch == 'P6':
+
+        return (ra > ra_36) & (ra < 330) & (dec > dec_3456) & (dec > 70)
+
+    elif patch == 'P7':
+
+        return (ra > 60) & (ra < 180) & (dec > 60) & (dec < 90)
+
+    elif patch == 'W3':
+
+        return (ra > 208) & (ra < 221) & (dec > 51) & (dec < 58)
+
+    else:
+
+        return (dec > dec_min)

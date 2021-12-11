@@ -471,29 +471,6 @@ def get_mask_footprint(ra, dec):
            | ((ra > 225.5) & (ra < 270) & (dec > 30.3) & (dec < 40)) \
            | ((ra > 197) & (ra < 237.5) & (dec > 54) & (dec < 61.7))
 
-def get_mask_footprint_2(ra, dec):
-    """
-    """
-
-    return (ra > 112) & (ra < 200) & (dec > 30.6) & (dec < 40.4)
-
-def get_mask_footprint_2A(ra, dec):
-    """
-    """
-
-    return (ra > 112) & (ra < 160) & (dec > 30.6) & (dec < 40.4)
-
-def get_mask_footprint_2B(ra, dec):
-    """
-    """
-
-    return (ra > 160) & (ra < 200) & (dec > 30.6) & (dec < 40.4)
-
-def get_mask_footprint_3(ra, dec):
-    """
-    """
-
-    return (ra > 225.5) & (ra < 270) & (dec > 30.3) & (dec < 40)
 
 def get_mask_footprint_P1(ra, dec):
     """
@@ -507,15 +484,6 @@ def get_mask_footprint_P2(ra, dec):
 
     return (((ra > 0) & (ra < 38)) | ((ra > 340) & (ra < 360))) & (dec > 29) & (dec < 37)
 
-def get_mask_footprint_P22(ra, dec):
-    """
-    """
-
-    # ra2 = ra + 100
-    # m_ra = np.where(ra2 > 360)
-    # ra2[m_ra] -= 360
-
-    return (ra > 80) & (ra < 138) & (dec > 29) & (dec < 37)
 
 def get_mask_footprint_P3(ra, dec):
     """
