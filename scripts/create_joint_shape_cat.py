@@ -8,6 +8,26 @@ from astropy.io import ascii
 from sp_validation.cat import *
 
 
+def get_R(fname_base, key_base=None):
+
+    dat = ascii.read(f'{fname_base}.txt')
+    if dat[-1]['patch'] != 'all':
+        raise ValueError(
+            f'Invalid file {fname}, last row does not correspond to patch=\'all\''
+        )
+    R = np.empty(shape=(2, 2))
+
+    if not key_base:
+        key_base = fname_base
+
+    R[0, 0] = dat[-1][f'{key_base}_11']
+    R[0, 1] = dat[-1][f'{key_base}_12']
+    R[1, 0] = dat[-1][f'{key_base}_21']
+    R[1, 1] = dat[-1][f'{key_base}_22']
+
+    return R
+
+
 def main(argv=None):
     """Main
 
@@ -19,30 +39,16 @@ def main(argv=None):
         patches = [f'P{x}' for x in np.arange(n_patch) + 1]
     elif argv[1] == 'test':
         patches = ['P7', 'W3', 'S4']
-        #patches = ['S4', 'W3']
 
     sh = 'ngmix'
 
+    R = get_R('R', key_base='R_tot')
+    R_shear = get_R('R_shear')
+    R_select = get_R('R_select')
 
-    # Response matrices
-    #R_shear = np.loadtxt('R_shear')
-    #R_select = np.loadtxt('R_select')
+    print('R - R_shear + R_select = 0 ?')
+    print(R - R_shear - R_select)
 
-    fname = 'R.txt'
-    dat = ascii.read(fname)
-    if dat[-1]['patch'] != 'all':
-        raise ValueError(
-            f'Invalid file {fname}, last row does not correspond to patch=\'all\''
-        )
-    R = np.empty(shape=(2, 2))
-    R[0, 0] = dat[-1]['R_tot_11']
-    R[0, 1] = dat[-1]['R_tot_12']
-    R[1, 0] = dat[-1]['R_tot_21']
-    R[1, 1] = dat[-1]['R_tot_22']
-
-    # TODO
-    R_shear = np.zeros(shape=(2, 2))
-    R_select = np.zeros(shape=(2, 2))
     alpha = 0.0
 
     fname = 'c.txt'
@@ -59,6 +65,7 @@ def main(argv=None):
     c_err[1] = dat[-1]['dmcw_2']
 
 
+    # Invert total response matrix
     Rm1 = np.linalg.inv(R)
 
     ra_all = np.array([])

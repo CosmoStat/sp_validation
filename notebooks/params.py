@@ -95,6 +95,11 @@ mmap_mode = None
 ## Star matching threshold [deg]
 thresh = 0.0002
 
+## Number of jackknife resamples for additive bias
+## (0: no jackknife computation).
+## If < 2000 the jackknife mean fluctuates a lot. 
+n_jack = 0
+
 ## Galaxy selection for metacal
 
 ### Signal-to-noise
@@ -107,7 +112,13 @@ gal_snr_max = 500
 ### to select objects that are not too small compared to the PSF, thus not likely to be point-like
 gal_rel_size_min = 0.5
 
+### Correct galaxy size for ellipticity
+gal_size_corr_ell = False
+
 # Plotting parameters
+
+## Wrap coordinates around this value [deg], set to != 0 if ra=0 is within coordinate range
+wrap_ra = 0
 
 ## PSF leakage limits
 leakage_alpha_ylim = [-0.1, 0.065]

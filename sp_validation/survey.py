@@ -172,7 +172,7 @@ def get_footprint(patch, ra, dec):
         return (
             ((ra > ra_14) & (ra < ra_45) & (dec > dec_min) & (dec < dec_3456))
             | ((ra > ra_14) & (ra < ra2_34) & (dec > dec_min) & (dec < 70))
-            | ((ra > ra_45) & (ra < ra4_45) * (dec > dec_min) & (dec < 36))
+            | ((ra > ra_45) & (ra < ra2_45) * (dec > dec_min) & (dec < 36))
         )
 
     elif patch == 'P5':

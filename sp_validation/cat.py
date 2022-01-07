@@ -292,7 +292,7 @@ def read_shape_catalog(
 ):
     """Read Shape Catalog
 
-    Read catalogu with galaxy shapes = shear estimates.
+    Read catalogue with galaxy shapes = shear estimates.
 
     Parameters
     ----------
@@ -308,7 +308,7 @@ def read_shape_catalog(
     g1 : array of float
         uncalibrated shear estimate component 1
     g2 : array of float
-        uncalibrated shear estimate component 1
+        uncalibrated shear estimate component 2
     w : array of float
         weight
     mag : array of float
@@ -415,7 +415,7 @@ def write_shape_catalog(
     table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
     
     ntype = 8
-    for x in ([g1_uncal, g2_uncal], ['g1_uncal', 'g2_uncal']):
+    for x, name in zip([g1_uncal, g2_uncal], ['g1_uncal', 'g2_uncal']):
         if x is not None:
             table_hdu.header['TTYPE{}'.format(ntype)] = (name, 'uncalibrated reduced shear')
             ntype += 1
