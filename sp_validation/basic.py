@@ -322,7 +322,7 @@ class metacal:
 
             mask_tmp = \
                 (data['flag'] == 0) \
-                & (1-data['Tpsf']/data['T'] > self._rel_size_min \
+                & (1-data['Tpsf']/data['T'] > self._rel_size_min) \
                 & (data['s2n'] > self._snr_min) \
                 & (data['s2n'] < self._snr_max) \
                 & (data['g1'] != -10) \
