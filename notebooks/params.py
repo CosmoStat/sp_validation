@@ -49,8 +49,8 @@ print('Shape measurement methods:', shapes)
 ## Input paths
 
 ### Input data directory
-data_dir = f'{os.environ["HOME"]}/data_WL'
-#data_dir = '.'
+#data_dir = f'{os.environ["HOME"]}/data_WL'
+data_dir = '.'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'
@@ -71,7 +71,10 @@ output_dir = f'{data_dir}/sp_output'
 ### Will be appended by '_{sh}.fits'
 output_shape_cat_base= f'{output_dir}/shape_catalog'
 
-### File for missing tile ID, can be used as input for re-run
+### File for found tile IDs
+path_found_ID = f'{output_dir}/found_ID.txt'
+
+### File for missing tile IDs
 path_missing_ID = f'{output_dir}/missing_ID.txt'
 
 ### Plot directory and subdirs
@@ -104,16 +107,16 @@ n_jack = 0
 
 ### Signal-to-noise
 #### minimum to cut noisy objects
-gal_snr_min = 10
+gal_snr_min = 8
 #### maximum to cut too bright objects, potentially too large for the postage stamp
 gal_snr_max = 500
 
 ### Relative size, T_gal / T_psf
 ### to select objects that are not too small compared to the PSF, thus not likely to be point-like
-gal_rel_size_min = 0.5
+gal_rel_size_min = 0.3
 
 ### Correct galaxy size for ellipticity
-gal_size_corr_ell = False
+gal_size_corr_ell = True
 
 # Plotting parameters
 
