@@ -92,6 +92,9 @@ stats_file_name = 'stats_file.txt'
 ## Memory mode, set to None unless very large file
 mmap_mode = None
 
+## Additional output columns
+add_cols = None
+
 
 # Catalog parameters
 
