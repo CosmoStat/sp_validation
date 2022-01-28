@@ -19,6 +19,7 @@ from astropy.io import fits
 from sp_validation import util
 from sp_validation import io
 from sp_validation import basic
+from sp_validation.survey import get_footprint
 
 
 def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
@@ -90,8 +91,7 @@ def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbos
     
     if name is not None:
         # Filter stars outside footprint for efficiency
-        get_mask = getattr(basic, 'get_mask_footprint_{}'.format(name))
-        mask_area_tiles = get_mask(d1[keys_1[0]], d1[keys_1[1]])
+        mask_area_tiles = get_footprint(name, d1[keys_1[0]], d1[keys_1[1]])
         if len(np.where(mask_area_tiles)[0]) == 0:
             raise ValueError('Error: no object found in field \'{}\''.format(name))
     else:
@@ -222,110 +222,3 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     msg = 'Number of stars selected as other (SPREAD_CLASS=2)  = {}/{} = {:.1f}%' \
           ''.format(tot_as_other,tot_star, tot_as_other/tot_star*100)
     io.print_stats(msg, stats_file, verbose=verbose)
-
-
-def write_shape_catalog(output_path, ra, dec, g1, g2, w, mag, snr,
-                        R, R_shear, R_select, c, c_err, alpha_leakage,
-                        g1_uncal=None, g2_uncal=None, R_11=None,
-                        R_22=None, R_12=None, R_21=None):
-    """Write Shape Catalog
-
-    Write catalogue with galaxy shapes = shear estimates.
-
-    Parameters
-    ----------
-    output_path : string
-        output file path
-    ra, dec : arrays of float
-        coordinates in deg
-    g1, g2 : arrays of float
-        calibrated reduced shear estimate components, corrected for multiplicative
-        and additive bias, gi = R^-1 gi_uncal - ci
-    w : array of float
-        weights
-    mag, snr : arrays of float
-        magnitude, signal-to-noise ratio
-    R : 2x2 matrix of float
-        Mean full response matrix
-    R_shear : 2x2 matrix of float
-        Mean shear response matrix
-    R_select : 2x2 matrix of float
-        Global selection response matrix
-    c : array(2) of float
-        additive shear bias
-    c_err : array(2) of float
-        error of c
-    alpha_leakage : float
-        Mean scale-dependent PSF leakage
-    """
-
-    # Data HDU
-    c_ra = fits.Column(name='ra', array=ra, format='D', unit='deg')
-    c_dec = fits.Column(name='dec', array=dec, format='D', unit='deg')
-    c_g1 = fits.Column(name='g1', array=g1, format='D')
-    c_g2 = fits.Column(name='g2', array=g2, format='D')
-    c_w = fits.Column(name='w', array=w, format='D')
-    c_mag = fits.Column(name='mag', array=mag, format='D')
-    c_snr = fits.Column(name='snr', array=snr, format='D')
-    cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag, c_snr]
-
-    for x, name in zip([g1_uncal, g2_uncal, R_11, R_22, R_12, R_21],
-                       ['g1_uncal', 'g2_uncal', 'R_11', 'R_22', 'R_12', 'R_21']):
-        if x is not None:
-            cols.append(fits.Column(name=name, array=x, format='D'))
-
-    table_hdu = fits.BinTableHDU.from_columns(cols)
-
-    table_hdu.header['TTYPE3'] = ('g1', 'Calibrated reduced shear estimate, 1st comp')
-    table_hdu.header['TTYPE4'] = ('g2', 'Calibrated reduced shear estimate, 2nd comp')
-    table_hdu.header['TTYPE5'] = ('w', 'Weight')
-    table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
-    table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
-    
-    ntype = 8
-    for x in ([g1_uncal, g2_uncal], ['g1_uncal', 'g2_uncal']):
-        if x is not None:
-            table_hdu.header['TTYPE{}'.format(ntype)] = (name, 'uncalibrated reduced shear')
-            ntype += 1
-    for x, name in zip([R_11, R_22, R_12, R_21], ['R_11', 'R_22', 'R_12', 'R_21']):
-        if x is not None:
-            table_hdu.header['TTYPE{}'.format(ntype)] = (name, f'full response matrix {name}')
-            ntype += 1
-
-    # Primary HDU with information in header
-    primary_header = fits.Header()
-
-    primary_header['R'] = (r'<R>', r'Mean full response matrix <R> = <R_shear> + <R_select>')
-    primary_header['R_11'] = (R[0,0], 'Full response matrix comp 1 1')
-    primary_header['R_12'] = (R[0,1], 'Full response matrix comp 1 2')
-    primary_header['R_21'] = (R[1,0], 'Full response matrix comp 2 1')
-    primary_header['R_22'] = (R[1,1], 'Full response matrix comp 2 2')
-
-    primary_header['R_g'] = (r'<R_g>', r'Mean shear response matrix <R_shear>')
-    primary_header['R_g11'] = (R_shear[0,0], 'Mean shear response matrix comp 1 1')
-    primary_header['R_g12'] = (R_shear[0,1], 'Mean shear response matrix comp 1 2')
-    primary_header['R_g21'] = (R_shear[1,0], 'Mean shear response matrix comp 2 1')
-    primary_header['R_g22'] = (R_shear[1,1], 'Mean shear response matrix comp 2 2')
-
-    primary_header['R_S'] = (r'<R_S>', r'Global selection response matrix <R_select>')
-    primary_header['R_S11'] = (R_select[0,0], 'Global selection response matrix comp 1 1')
-    primary_header['R_S12'] = (R_select[0,1], 'Global selection response matrix comp 1 2')
-    primary_header['R_S21'] = (R_select[1,0], 'Global selection response matrix comp 2 1')
-    primary_header['R_S22'] = (R_select[1,1], 'Global selection response matrix comp 2 2')
-
-    primary_header['c_1'] = (c[0], 'Additive bias 1st comp')
-    primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
-    primary_header['c2'] = (c[1], 'Additive bias 2nd comp')
-    primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
-
-    primary_header['w'] = ('Weight', r'1 / (2*sig_SN^2 + sig^2(g_1) + sig^2(g_2)')
-    primary_header['sig_SN'] = (0.34, 'Shape noise RMS')
-
-    primary_header['alpha'] = (alpha_leakage, 'Mean scale-dependent PSF leakage')
-
-    primary_hdu = fits.PrimaryHDU(header=primary_header)
-
-    # Final file
-    hdu_list = fits.HDUList([primary_hdu, table_hdu])
-
-    hdu_list.writeto(output_path, overwrite=True)

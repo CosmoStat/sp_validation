@@ -1,6 +1,14 @@
+importlib_metadata==3.1.1
+astropy==4.1
+jupyterlab
+numpy
+seaborn
+scipy
+tqdm
+treecorr
+uncertainties
 lenspack==1.0.0
 #pyccl
-importlib_metadata
 joblib
 scipy==1.5.4
 seaborn==0.11.1

@@ -48,7 +48,11 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
 
     plt.figure(figsize=(30, 30))
 
-    plt.hexbin(ra, dec, gridsize=n_grid)
+    if max(ra) > 360:
+        ra_plot = ra - 360
+    else:
+        ra_plot = ra
+    plt.hexbin(ra_plot, dec, gridsize=n_grid)
 
     cbar = plt.colorbar()
     cbar.set_label(cbar_label, rotation=270, labelpad=40)
