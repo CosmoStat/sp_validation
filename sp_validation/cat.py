@@ -292,7 +292,7 @@ def read_shape_catalog(
 ):
     """Read Shape Catalog
 
-    Read catalogu with galaxy shapes = shear estimates.
+    Read catalogue with galaxy shapes = shear estimates.
 
     Parameters
     ----------
@@ -308,7 +308,7 @@ def read_shape_catalog(
     g1 : array of float
         uncalibrated shear estimate component 1
     g2 : array of float
-        uncalibrated shear estimate component 1
+        uncalibrated shear estimate component 2
     w : array of float
         weight
     mag : array of float
@@ -354,6 +354,7 @@ def write_shape_catalog(
     R_22=None,
     R_12=None,
     R_21=None,
+    add_cols=None,
 ):
     """Write Shape Catalog
 
@@ -363,14 +364,14 @@ def write_shape_catalog(
     ----------
     output_path : string
         output file path
-    ra, dec : arrays of float
+    ra, dec : arrays(ngal) of float
         coordinates in deg
     g : arrays(2, ngal) of float
         calibrated reduced shear estimate components, corrected for multiplicative
         and additive bias, g = R^-1 g_uncal - c
-    w : array of float
+    w : array(ngal) of float
         weights
-    mag, snr : arrays of float
+    mag, snr : arrays(ngal) of float
         magnitude, signal-to-noise ratio
     R : 2x2 matrix of float
         Mean full response matrix
@@ -384,10 +385,12 @@ def write_shape_catalog(
         error of c
     alpha_leakage : float
         Mean scale-dependent PSF leakage
-    g1_uncal, g2_uncal : arrays of float, optional, default=None
+    g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
         uncalibrated shear estimates
-    R_11, R_22, R_12, R_21 : arrays of float, optional, default=None
+    R_11, R_22, R_12, R_21 : arrays(ngal) of float, optional, default=None
         total response matrix elemencts per galaxy
+    add_cols : dict, optional, default=None
+        data for n additional columns to add
     """
 
     # Data HDU
@@ -405,6 +408,10 @@ def write_shape_catalog(
         if x is not None:
             cols.append(fits.Column(name=name, array=x, format='D'))
 
+    if add_cols:
+        for name in add_cols:
+            cols.append(fits.Column(name=name, array=add_cols[name], format='D'))
+
     table_hdu = fits.BinTableHDU.from_columns(cols)
 
 
@@ -415,7 +422,7 @@ def write_shape_catalog(
     table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
     
     ntype = 8
-    for x in ([g1_uncal, g2_uncal], ['g1_uncal', 'g2_uncal']):
+    for x, name in zip([g1_uncal, g2_uncal], ['g1_uncal', 'g2_uncal']):
         if x is not None:
             table_hdu.header['TTYPE{}'.format(ntype)] = (name, 'uncalibrated reduced shear')
             ntype += 1

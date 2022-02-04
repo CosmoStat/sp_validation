@@ -59,7 +59,7 @@ def get_area(dd, area_tile, verbose=False):
     return area_deg2, area_amin2, tile_IDs
 
 
-def missing_tiles(tile_IDs, path_tile_ID, path_missing_ID, verbose=False):
+def missing_tiles(tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbose=False):
     """Missing tiles
     Compute completeness and identify missing tiles
 
@@ -69,6 +69,8 @@ def missing_tiles(tile_IDs, path_tile_ID, path_missing_ID, verbose=False):
         input tile IDs in catalogue
     path_tile_ID : string
         input tile ID path to match
+    path_found_ID : string
+        output found tile ID path
     path_missing_ID : string
         output missing tile ID path
     verbose : bool
@@ -102,13 +104,20 @@ def missing_tiles(tile_IDs, path_tile_ID, path_missing_ID, verbose=False):
             print('{}/{} = {:.2g}% tiles missing'
                 ''.format(n_missing, n_tile, n_missing / n_tile * 100))
 
+        # Create output files with found and missing IDs
+        if n_found > 0:
+            if verbose:
+                print('Creating file \'{}\''.format(path_found_ID))
+            with open(path_found_ID, 'w') as f_out:
+                for ID in found_IDs:
+                    print(ID, file=f_out)
+
         if n_missing > 0:
             if verbose:
                 print('Creating file \'{}\''.format(path_missing_ID))
             with open(path_missing_ID, 'w') as f_out:
                 for ID in missing_IDs:
                     print(ID, file=f_out)
-            f_out.close()
 
         return n_found, n_missing
             
@@ -172,7 +181,7 @@ def get_footprint(patch, ra, dec):
         return (
             ((ra > ra_14) & (ra < ra_45) & (dec > dec_min) & (dec < dec_3456))
             | ((ra > ra_14) & (ra < ra2_34) & (dec > dec_min) & (dec < 70))
-            | ((ra > ra_45) & (ra < ra4_45) * (dec > dec_min) & (dec < 36))
+            | ((ra > ra_45) & (ra < ra2_45) * (dec > dec_min) & (dec < 36))
         )
 
     elif patch == 'P5':

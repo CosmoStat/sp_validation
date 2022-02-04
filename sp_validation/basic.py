@@ -128,15 +128,18 @@ class metacal:
         to specify columns in input catalogue
     snr_min : float, optional, default=10
         signal-to-noise minimum
-    snr_max;; float, optional, default=500
+    snr_max; float, optional, default=500
         signal-to-noise maximum
+    rel_size_min : float, optional, default=0.5
+        relative size minimum
+    size_corr_ell : bool, optional, default=True
     verbose : bool, optional, default=False
         verbose output if True
     
     """
 
     def __init__(self, data, mask, masking_type='gal', step=0.01, stat_operator=np.mean, prefix='NGMIX',
-                 snr_min=10, snr_max=500, rel_size_min=0.5, verbose=False):
+                 snr_min=10, snr_max=500, rel_size_min=0.5, size_corr_ell=True, verbose=False):
 
         self._masking_type = masking_type
         self._step = step
@@ -146,8 +149,13 @@ class metacal:
         self._snr_min = snr_min
         self._snr_max = snr_max
         self._rel_size_min = rel_size_min
+        self._size_corr_ell = size_corr_ell
         if verbose:
-            print('Metacal cuts: {}<snr<{}, rel_size_min={}'.format(snr_min, snr_max, rel_size_min))
+            print(
+                f'Metacal cuts: {snr_min}<snr<{snr_max}, '
+                + f'rel_size_min={rel_size_min}, '
+                + f'size_corr_ell={size_corr_ell}'
+            )
 
         self._verbose = verbose
 
@@ -282,7 +290,9 @@ class metacal:
 
         self.mask_dict = {}
         for data, name in zip([self.ns, self.m1, self.p1, self.m2, self.p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-            Tr_tmp = data['T'] * (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
+            Tr_tmp = data['T']
+            if self._size_corr_ell:
+                Tr_tmp *= (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
             if hasattr(self, 'snr_sextractor'):
                 snr_flux = self.snr_sextractor
             else:
@@ -305,13 +315,14 @@ class metacal:
 
         self.mask_dict = {}
         for data, name in zip([self.ns, self.m1, self.p1, self.m2, self.p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-            Tr_tmp = data['T'] * (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
-
+            Tr_tmp = data['T']
+            if self._size_corr_ell:
+                Tr_tmp *= (1 - (data['g1']**2 + data['g2']**2))/(1 + (data['g1']**2 + data['g2']**2))
             snr_flux = data['flux']/data['flux_err']
 
             mask_tmp = \
                 (data['flag'] == 0) \
-                & (1-data['Tpsf']/data['T'] > 0.4) \
+                & (1-data['Tpsf']/data['T'] > self._rel_size_min) \
                 & (data['s2n'] > self._snr_min) \
                 & (data['s2n'] < self._snr_max) \
                 & (data['g1'] != -10) \
@@ -328,7 +339,6 @@ class metacal:
 
         self.mask_dict = {}
         for data, name in zip([self.ns, self.m1, self.p1, self.m2, self.p2], ['ns', 'm1', 'p1', 'm2', 'p2']):
-            Tr_tmp = data['T'] * (1 - (data['g1']**2. + data['g2']**2.))/(1 + (data['g1']**2. + data['g2']**2.))
             if hasattr(self, 'snr_sextractor'):
                 snr_flux = self.snr_sextractor
             else:

@@ -7,8 +7,8 @@ import re
 
 import numpy as np
 import uncertainties as unc
+from pathlib import Path
 from astropy.io import ascii
-from uncertainties import ufloat
 
 
 def get_match(stats_files, patch, pattern, previous=None, n_previous=[1], typ=str):
@@ -161,7 +161,7 @@ def init_key(results, key, typ, extra=None):
         results['extra'][key] = extra
 
 
-def print_all(results, stats_files, use_keys=None, fout=sys.stdout, header=True):
+def print_all(results, stats_files, use_keys=None, fout=sys.stdout, header=True, all=True):
 
     if use_keys:
         keys = use_keys
@@ -185,27 +185,28 @@ def print_all(results, stats_files, use_keys=None, fout=sys.stdout, header=True)
             val = results['value'][key][patch]
             if key == 'N_gal':
                 print(f'{val:>11.0f}', end=' ', file=fout)
-            elif key == 'w_tot':
-                print(f'{val:>11.1f}', end=' ', file=fout)
+            elif key in ('w_tot', 'n_gal_am2'):
+                print(f'{val:>11.2f}', end=' ', file=fout)
             else:
                 print(f'{val:>11.7f}', end=' ', file=fout)
                 #print(f'{val:>11.3e}', end=' ', file=fout)
         print(file=fout)
 
     # Write total
-    p = 'all'
-    if p in results:
-        print(f'{p:11s}', end=' ', file=fout)
-        for key in keys:
-            val = results[p][key]
-            if key == 'N_gal':
-                print(f'{val:>11d}', end=' ', file=fout)
-            elif key == 'w_tot':
-                print(f'{val:>11.1f}', end=' ', file=fout)
-            else:
-                print(f'{val:>11.7f}', end=' ', file=fout)
-                #print(f'{val:>11.3e}', end=' ', file=fout)
-        print(file=fout)
+    if all:
+        p = 'all'
+        if p in results:
+            print(f'{p:11s}', end=' ', file=fout)
+            for key in keys:
+                val = results[p][key]
+                if key == 'N_gal':
+                    print(f'{val:>11d}', end=' ', file=fout)
+                elif key == 'w_tot':
+                    print(f'{val:>11.1f}', end=' ', file=fout)
+                else:
+                    print(f'{val:>11.7f}', end=' ', file=fout)
+                    #print(f'{val:>11.3e}', end=' ', file=fout)
+            print(file=fout)
 
 
 def get_values(results, stats_files, shape):
@@ -236,7 +237,7 @@ def get_values(results, stats_files, shape):
         'R_tot_' : 1,
         'R_shear_' : 1,
         'R_select_' : 1,
-        'm_' : 0,
+        'm_' : 1,
         'alpha' : 0,
     }
 
@@ -246,6 +247,13 @@ def get_values(results, stats_files, shape):
         init_key(results, key, 'sum')
         for patch in stats_files:
             results['value'][key][patch] = get_match(stats_files, patch, 'Number of galaxies after metacal = (\d+)/', previous=[f'^{shape}$'], typ=int)
+
+        print('n_gal_am2 to be fixed!')
+        key_der = 'n_gal_am2'
+        area_deg2 = 50.622
+        init_key(results, key_der, 'sum')
+        for patch in stats_files:
+            results['value'][key_der][patch] = results['value']['N_gal'][patch] / (area_deg2 * 3600)
 
     # Sum of weights
     key = 'w_tot'
@@ -348,6 +356,18 @@ def get_values(results, stats_files, shape):
             tmp = get_match(stats_files, patch, ' \[\s?\S+\s+(\S+)\]\]', previous=['ngmix galaxies:', 'total response matrix:'], n_previous=[3, 2], typ=float)
             results['value'][keys[3]][patch] = tmp
 
+        # Noralised trace = mean diagonal
+        key_der = 'trN_R_tot'
+        init_key(results, key_der, 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            results['value'][key_der][patch] = (results['value']['R_tot_11'][patch] + results['value']['R_tot_22'][patch]) / 2
+
+        # Sum of absolute off-diagonal
+        key_der = 'abs_off_R_tot'
+        init_key(results, key_der, 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            results['value'][key_der][patch] = np.abs(results['value']['R_tot_12'][patch]) + np.abs(results['value']['R_tot_21'][patch])
+
     # Galaxy shear response matrix
     key_base = 'R_shear_'
     if use_keys[key_base]:
@@ -364,6 +384,19 @@ def get_values(results, stats_files, shape):
             tmp = get_match(stats_files, patch, ' \[\s?\S+\s+(\S+)\]\]', previous=['ngmix galaxies:', 'shear response matrix:'], n_previous=[6, 2], typ=float)
             results['value'][keys[3]][patch] = tmp
 
+        # Noralised trace = mean diagonal
+        key_der = 'trN_R_shear'
+        init_key(results, key_der, 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            results['value'][key_der][patch] = (results['value']['R_shear_11'][patch] + results['value']['R_shear_22'][patch]) / 2
+
+        # Sum of absolute off-diagonal
+        key_der = 'abs_off_R_shear'
+        init_key(results, key_der, 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            results['value'][key_der][patch] = np.abs(results['value']['R_shear_12'][patch]) + np.abs(results['value']['R_shear_21'][patch])
+
+
     # Galaxy selection response matrix
     key_base = 'R_select_'
     if use_keys[key_base]:
@@ -379,6 +412,18 @@ def get_values(results, stats_files, shape):
             results['value'][keys[2]][patch] = tmp
             tmp = get_match(stats_files, patch, ' \[\s?\S+\s+(\S+)\]\]', previous=['ngmix galaxies:', 'selection response matrix:'], n_previous=[9, 2], typ=float)
             results['value'][keys[3]][patch] = tmp
+
+        # Noralised trace = mean diagonal
+        key_der = 'trN_R_select'
+        init_key(results, key_der, 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            results['value'][key_der][patch] = (results['value']['R_select_11'][patch] + results['value']['R_select_22'][patch]) / 2
+
+        # Sum of absolute off-diagonal
+        key_der = 'abs_off_R_select'
+        init_key(results, key_der, 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            results['value'][key_der][patch] = np.abs(results['value']['R_select_12'][patch]) + np.abs(results['value']['R_select_21'][patch])
 
 
 
@@ -442,8 +487,10 @@ def latex_table(file_base, cols=None, col_names=None):
         for col in cols:
             if len(col) == 2:
                 # value and error bar
-                val_err = ufloat(dat[col[0]][nl], dat[col[1]][nl])
+                val_err = unc.ufloat(dat[col[0]][nl], dat[col[1]][nl])
                 str_line = f'{str_line} ${val_err:+.2eL}$\t&'
+            else:
+                str_line = f'{str_line} ${dat[col][nl]:.3g}$\t&'
         print(rf'{str_line[:len(str_line)-2]} \\', file=fout)
 
     print(r'\hline', file=fout)
@@ -452,18 +499,35 @@ def latex_table(file_base, cols=None, col_names=None):
     fout.close()
 
 
+def get_matrix_elements(base, me):
+
+    res = []
+
+    for m in me:
+        res.append(f'{base}_{{{m}}}')
+
+    return res
+
+
 def main(argv=None):
     """Main
 
     Main program
     """
+    if len(argv) == 1:
+        argv.append('snr')
 
-    if argv[1] == 'v1':
+    all = True
+
+    if argv[1] == 'snr':
+        # All directories
+        patches = [f.path for f in os.scandir('.') if f.is_dir()]
+        all = False
+    elif argv[1] == 'v1':
         n_patch = 7
         patches = [f'P{x}' for x in np.arange(n_patch) + 1]
     elif argv[1] == 'test':
         patches = ['P7', 'W3', 'S4']
-        #patches = ['W3']
     elif argv[1] == 'comb':
         # Validate with combined catalogue
         patches = ['comb']
@@ -496,10 +560,10 @@ def main(argv=None):
     combine(results)
 
     # Print all keys to terminal
-    print_all(results, stats_files)
+    print_all(results, stats_files, all=all)
 
 
-    # Get value of combined run
+    # Get value of combined run for precision check
     if argv[1] == 'test':
         stats_file_comb = read_stats_files(['comb'], path, verbose=verbose)
         n_patch_comb = len(stats_files)
@@ -519,22 +583,74 @@ def main(argv=None):
         print_all(results_comb, stats_file_comb, header=False)
 
 
-    # Print some key (combinatsions) to text and LaTeX file
-    if argv[1] != 'comb':
+    # Print some key (combinations) to text and LaTeX file
+    if argv[1] not in ['comb', 'v1']:
+
+        file_base_arr = []
 
         file_base = 'c'
+        file_base_arr.append(file_base)
         f = open(f'{file_base}.txt', 'w')
-        print_all(results, stats_files, use_keys=['cw_1', 'dmcw_1', 'cw_2', 'dmcw_2'], fout=f)
+        print_all(results, stats_files, use_keys=['cw_1', 'dmcw_1', 'cw_2', 'dmcw_2'], fout=f, all=all)
         f.close()
         latex_table(file_base, cols=[['cw_1', 'dmcw_1'], ['cw_2', 'dmcw_2']], col_names=['c_1', 'c_2'])
 
+        me = ['11', '12', '21', '22']
+
         file_base = 'R'
+        file_base_arr.append(file_base)
         f = open(f'{file_base}.txt', 'w')
         key_base = 'R_tot_'
         use_keys=[f'{key_base}11', f'{key_base}12', f'{key_base}21', f'{key_base}22']
-        print_all(results, stats_files, use_keys=use_keys, fout=f)
+        print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
         f.close()
-        #latex_table(file_base, cols=use_keys, col_names=['c_1', 'c_2'])
+        col_names = get_matrix_elements('R^{\\textrm{tot}}', me)
+        latex_table(file_base, cols=use_keys, col_names=col_names)
+
+        file_base = 'R_shear'
+        file_base_arr.append(file_base)
+        f = open(f'{file_base}.txt', 'w')
+        key_base = 'R_shear_'
+        use_keys=[f'{key_base}11', f'{key_base}12', f'{key_base}21', f'{key_base}22']
+        print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
+        f.close()
+        col_names = get_matrix_elements('R^{\\textrm{shear}}', me)
+        latex_table(file_base, cols=use_keys, col_names=col_names)
+
+        file_base = 'R_select'
+        file_base_arr.append(file_base)
+        f = open(f'{file_base}.txt', 'w')
+        key_base = 'R_select_'
+        use_keys=[f'{key_base}11', f'{key_base}12', f'{key_base}21', f'{key_base}22']
+        print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
+        f.close()
+        col_names = get_matrix_elements('R^{\\textrm{select}}', me)
+        latex_table(file_base, cols=use_keys, col_names=col_names)
+
+        file_base = 'summary_Rc'
+        file_base_arr.append(file_base)
+        f = open(f'{file_base}.txt', 'w')
+        use_keys=['cw_1', 'dmcw_1', 'cw_2', 'dmcw_2', 'trN_R_tot', 'abs_off_R_tot', 'trN_R_shear', 'trN_R_select']
+        print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
+        f.close()
+        col_names = ['c_1', '\Delta c_1', 'c_2', '\Delta c_2', '\langle R^{\\rm tot}_{ii} \\rangle',
+                     '\\sum | R^{\\ tot}_{i \\ne j}|', '\langle R^{\\rm shear}_{ii} \\rangle', '\langle R^{\\rm select}_{ii} \\rangle']
+        latex_table(file_base, cols=use_keys, col_names=col_names)
+
+        file_base = 'summary_leakage'
+        file_base_arr.append(file_base)
+        f = open(f'{file_base}.txt', 'w')
+        use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2']
+        print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
+        f.close()
+        col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}']
+        latex_table(file_base, cols=use_keys, col_names=col_names)
+
+
+        for file_base in file_base_arr:
+
+            os.system(f'~/txt2tex.pl {file_base}.tex > {file_base}_out.tex')
+            os.system(f'pdflatex {file_base}_out 2&>/dev/null')
 
 
 if __name__ == "__main__":

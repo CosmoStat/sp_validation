@@ -49,8 +49,8 @@ print('Shape measurement methods:', shapes)
 ## Input paths
 
 ### Input data directory
-data_dir = f'{os.environ["HOME"]}/data_WL'
-#data_dir = '.'
+#data_dir = f'{os.environ["HOME"]}/data_WL'
+data_dir = '.'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'
@@ -71,7 +71,10 @@ output_dir = f'{data_dir}/sp_output'
 ### Will be appended by '_{sh}.fits'
 output_shape_cat_base= f'{output_dir}/shape_catalog'
 
-### File for missing tile ID, can be used as input for re-run
+### File for found tile IDs
+path_found_ID = f'{output_dir}/found_ID.txt'
+
+### File for missing tile IDs
 path_missing_ID = f'{output_dir}/missing_ID.txt'
 
 ### Plot directory and subdirs
@@ -89,25 +92,39 @@ stats_file_name = 'stats_file.txt'
 ## Memory mode, set to None unless very large file
 mmap_mode = None
 
+## Additional output columns
+add_cols = None
+
 
 # Catalog parameters
 
 ## Star matching threshold [deg]
 thresh = 0.0002
 
+## Number of jackknife resamples for additive bias
+## (0: no jackknife computation).
+## If < 2000 the jackknife mean fluctuates a lot. 
+n_jack = 0
+
 ## Galaxy selection for metacal
 
 ### Signal-to-noise
 #### minimum to cut noisy objects
-gal_snr_min = 10
+gal_snr_min = 8
 #### maximum to cut too bright objects, potentially too large for the postage stamp
 gal_snr_max = 500
 
 ### Relative size, T_gal / T_psf
 ### to select objects that are not too small compared to the PSF, thus not likely to be point-like
-gal_rel_size_min = 0.5
+gal_rel_size_min = 0.3
+
+### Correct galaxy size for ellipticity
+gal_size_corr_ell = True
 
 # Plotting parameters
+
+## Wrap coordinates around this value [deg], set to != 0 if ra=0 is within coordinate range
+wrap_ra = 0
 
 ## PSF leakage limits
 leakage_alpha_ylim = [-0.1, 0.065]
