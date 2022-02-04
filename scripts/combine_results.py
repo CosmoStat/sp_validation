@@ -56,8 +56,6 @@ def read_stats_files(patches, path, verbose=False):
     return stats_files
 
 
-
-
 def combine(results):
 
     for key in results['type']:
@@ -153,8 +151,6 @@ def combine(results):
 
             # Take square root
             results['all'][key] = np.sqrt(res_tmp / sum(w))
-
-
 
 
 def init_key(results, key, typ, extra=None):
@@ -543,4 +539,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
-
