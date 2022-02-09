@@ -409,7 +409,7 @@ def write_shape_catalog(
             cols.append(fits.Column(name=name, array=x, format='D'))
 
     if add_cols:
-        for name in add_cols:
+        for i, name in enumerate(add_cols):
             cols.append(fits.Column(name=name, array=add_cols[name], format='D'))
 
     table_hdu = fits.BinTableHDU.from_columns(cols)
