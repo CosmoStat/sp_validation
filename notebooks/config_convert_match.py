@@ -5,7 +5,7 @@ input_base = ['main_set_up', 'match_stats', 'metacal_global', 'psf_leakage', 'wr
 inp_str = '.ipynb '.join(input_base)
 
 
-cmd = f'jupyter nbconvert --to script {inp_str} --stdout > validation.py'
+cmd = f'jupyter nbconvert --to script {inp_str} --stdout > validation_match.py'
 
 os.system(cmd)
 
