@@ -468,3 +468,29 @@ def write_shape_catalog(
     hdu_list = fits.HDUList([primary_hdu, table_hdu])
 
     hdu_list.writeto(output_path, overwrite=True)
+
+def write_galaxy_cat(output_path, ra, dec, tile_id):
+    """Write Galaxy Cat
+
+    Write catalogue with  position information only, no shapes. E.g.
+    random object catalogue.
+
+    Parameters
+    ----------
+    output_path : string
+        output file path
+    ra, dec : arrays(ngal) of float
+        coordinates in deg
+    tile_id : array(ngal) of float
+        tile ID of objects
+    """
+
+    c_ra = fits.Column(name='ra', array=ra, format='E', unit='deg')
+    c_dec = fits.Column(name='dec', array=dec, format='E', unit='deg')
+    c_id = fits.Column(name='tile_id', array=tile_id, format='E')
+    cols = [c_ra, c_dec, c_id]
+
+    table_hdu = fits.BinTableHDU.from_columns(cols)
+    primary_hdu = fits.PrimaryHDU()
+    hdu_list = fits.HDUList([primary_hdu, table_hdu])
+    hdu_list.writeto(output_path, overwrite=True)

@@ -59,18 +59,25 @@ def sigma_to_fwhm(sigma, pixel_size=1):
 
     return sigma * 2.355 * pixel_size
 
+def classification_galaxy_overlap(dd):
+    """Classification Galaxy Overlap
 
-def classification_galaxy_base(dd):
-    """Classification Galaxy Base
-    
-    Return mask corresponding to basic classification for galaxies.
+    Return mask corresponding to non-overlapping tile areas.
+
     """
-    
     # Duplicate objects due to tile overlaps
     cut_overlap = (
         dd['FLAG_TILING'] == 1
     )
 
+    return cut_overlap
+
+def classification_galaxy_base(dd, cut_overlap):
+    """Classification Galaxy Base
+    
+    Return mask corresponding to basic classification for galaxies.
+
+    """
     # spread model class, add two times the uncertainty to be conservative
     sm_classif = dd['SPREAD_MODEL'] + 2 * dd['SPREADERR_MODEL']
     cut_sm = sm_classif > 0.0035
