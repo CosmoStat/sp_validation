@@ -354,6 +354,7 @@ def write_shape_catalog(
     R_22=None,
     R_12=None,
     R_21=None,
+    sigma_epsilon=None,
     add_cols=None,
 ):
     """Write Shape Catalog
@@ -389,7 +390,9 @@ def write_shape_catalog(
         uncalibrated shear estimates
     R_11, R_22, R_12, R_21 : arrays(ngal) of float, optional, default=None
         total response matrix elemencts per galaxy
-    add_cols : dict, optional, default=None
+    sigma_epsilon: float, optional
+        shape noise, default is `None`
+    add_cols : dict, optional, default is `None`
         data for n additional columns to add
     """
 
@@ -457,8 +460,9 @@ def write_shape_catalog(
     primary_header['c2'] = (c[1], 'Additive bias 2nd comp')
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
-    primary_header['w'] = ('Weight', r'1 / (2*sig_SN^2 + sig^2(g_1) + sig^2(g_2)')
-    primary_header['sig_SN'] = (0.34, 'Shape noise RMS')
+    primary_header['w'] = ('Weight', r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2)')
+    if sigma_epsilon:
+        primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
 
     primary_header['alpha'] = (alpha_leakage, 'Mean scale-dependent PSF leakage')
 
@@ -468,6 +472,7 @@ def write_shape_catalog(
     hdu_list = fits.HDUList([primary_hdu, table_hdu])
 
     hdu_list.writeto(output_path, overwrite=True)
+
 
 def write_galaxy_cat(output_path, ra, dec, tile_id):
     """Write Galaxy Cat

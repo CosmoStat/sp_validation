@@ -106,20 +106,26 @@ thresh = 0.0002
 ## If < 2000 the jackknife mean fluctuates a lot. 
 n_jack = 0
 
-## Galaxy selection for metacal
+## Galaxy selection
 
-### Signal-to-noise
+### Spread-model
+do_spread_model = True
+
+## Minimum number of epochs
+n_epoch_min = 1
+
+### Signal-to-noise (selection within metacal)
 #### minimum to cut noisy objects
 gal_snr_min = 8
 #### maximum to cut too bright objects, potentially too large for the postage stamp
 gal_snr_max = 500
 
-### Relative size, T_gal / T_psf
+### Relative size, T_gal / T_psf (selection within metacal)
 ### to select objects that are not too small compared to the PSF, thus not likely to be point-like
 gal_rel_size_min = 0.3
 
 ### Correct galaxy size for ellipticity
-gal_size_corr_ell = True
+gal_size_corr_ell = False
 
 # Plotting parameters
 

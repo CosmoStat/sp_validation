@@ -52,6 +52,13 @@ def read_stats_files(patches, path, verbose=False):
                 print(f'Reading stats file \'{fname}\'')
             with open(fname) as f:
                 stats_files[p] = f.readlines()
+        else:
+            print(f'Warning: stas file {fname} not found')
+
+    if len(stats_files) == 0:
+        raise ValueError('No stats file found')
+
+    print(f'Found {len(stats_files)} stats files')
 
     return stats_files
 
@@ -80,7 +87,11 @@ def combine(results):
             w = np.array(list(results['value'][key_w].values()))
 
             # Compute weighted average
-            results['all'][key] = sum(values * w) / sum(w)
+            s = sum(w)
+            if s > 0:
+                results['all'][key] = sum(values * w) / s
+            else:
+                raise ZeroDivisionError(f'sum(w) = {s} for key={key}, key_w={key_w}')
 
         elif results['type'][key] == 'sqr_w_avg':
             # Weight key
@@ -187,9 +198,10 @@ def print_all(results, stats_files, use_keys=None, fout=sys.stdout, header=True,
                 print(f'{val:>11.0f}', end=' ', file=fout)
             elif key in ('w_tot', 'n_gal_am2'):
                 print(f'{val:>11.2f}', end=' ', file=fout)
+            elif key in ['xi_sys_p', 'xi_sys_m']:
+                print(f'{val:>11.3e}', end=' ', file=fout)
             else:
                 print(f'{val:>11.7f}', end=' ', file=fout)
-                #print(f'{val:>11.3e}', end=' ', file=fout)
         print(file=fout)
 
     # Write total
@@ -209,7 +221,23 @@ def print_all(results, stats_files, use_keys=None, fout=sys.stdout, header=True,
             print(file=fout)
 
 
-def get_values(results, stats_files, shape):
+def get_area(fname):
+
+    if os.path.exists(fname):
+
+        with open(fname) as f:
+            lines = f.readlines()
+        for line in lines:
+            m = re.search('nmasked patch area without overlap = (.*) deg', line)
+            if m:
+                return float(m[1])
+
+    else:
+        print(f'Warning: No file {fname} found to obtain area')
+        return 1
+
+
+def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
     """Get Values
 
     Get values from stats files for all patches.
@@ -222,25 +250,12 @@ def get_values(results, stats_files, shape):
         stats files content for each patch
     shape : str
         shape measurement method
+    use_keys : dict
+        keys to include
+    area_deg2 : float, optional
+        area in square degree, optional is -1 (to be retrieved
+        for each patch)
     """
-
-    use_keys = {
-        'N_gal' : 1,
-        'w_tot' : 1,
-        'c_' : 0,
-        'cw_' : 1,
-        'dc_' : 0,
-        'dmc_' : 0,
-        'dmcw_' : 1,
-        'cjk_' : 0,
-        'sigma_eps' : 0,
-        'R_tot_' : 1,
-        'R_shear_' : 1,
-        'R_select_' : 1,
-        'm_' : 1,
-        'alpha' : 0,
-    }
-
     # Number of galaxies
     key = 'N_gal'
     if use_keys[key]:
@@ -248,12 +263,21 @@ def get_values(results, stats_files, shape):
         for patch in stats_files:
             results['value'][key][patch] = get_match(stats_files, patch, 'Number of galaxies after metacal = (\d+)/', previous=[f'^{shape}$'], typ=int)
 
-        print('n_gal_am2 to be fixed!')
+        area_deg2_tot = 0
         key_der = 'n_gal_am2'
-        area_deg2 = 50.622
-        init_key(results, key_der, 'sum')
+        init_key(results, key_der, 'w_avg', extra='N_gal')
         for patch in stats_files:
-            results['value'][key_der][patch] = results['value']['N_gal'][patch] / (area_deg2 * 3600)
+            if area_deg2 < 0:
+                area_deg2_patch = get_area(f'{patch}/area.txt')
+                area_deg2_tot += area_deg2_patch
+                print(f'area({patch}) = {area_deg2_patch} deg^2')
+            else:
+                area_deg2_patch = area_deg2
+            results['value'][key_der][patch] = results['value']['N_gal'][patch] / (area_deg2_patch * 3600)
+
+    if area_deg2 < 0:
+        with open('area_deg2_tot.txt', 'w') as f:
+            print(area_deg2_tot, file=f)
 
     # Sum of weights
     key = 'w_tot'
@@ -334,9 +358,9 @@ def get_values(results, stats_files, shape):
                 results['value'][key_s][patch] = dc
 
     # Ellipticity dispersion
-    key = 'sigma_eps'
+    key = 'sigma2_epsilon'
     if use_keys[key]:
-        init_key(results, key, 'sqr_w_avg', extra='N_gal')
+        init_key(results, key, 'w_avg', extra='N_gal')
         for patch in stats_files:
             results['value'][key][patch] = get_match(stats_files, patch, 'Dispersion of complex ellipticity = (\S+)', previous=[f'^{shape}$'], typ=float)
 
@@ -426,7 +450,6 @@ def get_values(results, stats_files, shape):
             results['value'][key_der][patch] = np.abs(results['value']['R_select_12'][patch]) + np.abs(results['value']['R_select_21'][patch])
 
 
-
     # Object-wise PSF leakage
     key_base = 'm_'
     if use_keys[key_base]:
@@ -454,12 +477,22 @@ def get_values(results, stats_files, shape):
         for patch in stats_files:
             results['value'][key][patch] = get_match(stats_files, patch, 'ngmix: Weighted average alpha =(\s?\S+)', typ=float)
 
+    # xi_sys
+    key_base = 'xi_sys'
+    if use_keys[key_base]:
+        init_key(results, 'xi_sys_p', 'w_avg', extra='N_gal')
+        init_key(results, 'xi_sys_m', 'w_avg', extra='N_gal')
+        for patch in stats_files:
+            tmp = get_match(stats_files, patch, 'ngmix: <\|xi_sys_\+\|> = (\S*)', typ=float)
+            results['value']['xi_sys_p'][patch] = tmp
+            tmp = get_match(stats_files, patch, 'ngmix: <\|xi_sys_\-\|> = (\S*)', typ=float)
+            results['value']['xi_sys_m'][patch] = tmp
+
 
 def latex_table(file_base, cols=None, col_names=None):
 
     dat = ascii.read(f'{file_base}.txt')
 
-    #fout = sys.stdout
     fout = open(f'{file_base}.tex', 'w')
 
     n_lines = len(dat)
@@ -554,7 +587,30 @@ def main(argv=None):
         'all' : {}
     }
 
-    get_values(results, stats_files, shape)
+    use_keys = {
+        'N_gal' : 1,
+        'w_tot' : 1,
+        'c_' : 1,
+        'cw_' : 1,
+        'dc_' : 0,
+        'dmc_' : 0,
+        'dmcw_' : 1,
+        'cjk_' : 0,
+        'sigma2_epsilon' : 1,
+        'R_tot_' : 1,
+        'R_shear_' : 1,
+        'R_select_' : 1,
+        'm_' : 1,
+        'alpha' : 0,
+        'xi_sys' : 1,
+    }
+
+
+    if argv[1] == 'snr':
+        area_deg2 = get_area('area.txt')
+    else:
+        area_deg2 = -1
+    get_values(results, stats_files, shape, use_keys, area_deg2=area_deg2)
 
     # Combine all keys
     combine(results)
@@ -572,7 +628,7 @@ def main(argv=None):
             'type' : {},
             'extra' : {},
         }
-        get_values(results_comb, stats_file_comb, shape)
+        get_values(results_comb, stats_file_comb, shape, use_keys)
         print('\nCombined data:')
         print_all(results_comb, stats_file_comb, header=False)
 
@@ -584,7 +640,7 @@ def main(argv=None):
 
 
     # Print some key (combinations) to text and LaTeX file
-    if argv[1] not in ['comb', 'v1']:
+    if argv[1] not in ['comb']:
 
         file_base_arr = []
 
@@ -595,17 +651,26 @@ def main(argv=None):
         f.close()
         latex_table(file_base, cols=[['cw_1', 'dmcw_1'], ['cw_2', 'dmcw_2']], col_names=['c_1', 'c_2'])
 
-        me = ['11', '12', '21', '22']
-
-        file_base = 'R'
+        file_base = 'sigma2_epsilon'
         file_base_arr.append(file_base)
         f = open(f'{file_base}.txt', 'w')
-        key_base = 'R_tot_'
-        use_keys=[f'{key_base}11', f'{key_base}12', f'{key_base}21', f'{key_base}22']
-        print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
+        print_all(results, stats_files, use_keys=['sigma2_epsilon'], fout=f, all=all)
         f.close()
-        col_names = get_matrix_elements('R^{\\textrm{tot}}', me)
-        latex_table(file_base, cols=use_keys, col_names=col_names)
+        latex_table(file_base, cols=['sigma2_epsilon'], col_names=['\sigma^2_\epsilon'])
+        
+
+        me = ['11', '12', '21', '22']
+
+        key_base = 'R_tot_'
+        if use_keys[key_base]:
+            file_base = 'R'
+            file_base_arr.append(file_base)
+            f = open(f'{file_base}.txt', 'w')
+            use_keys=[f'{key_base}11', f'{key_base}12', f'{key_base}21', f'{key_base}22']
+            print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
+            f.close()
+            col_names = get_matrix_elements('R^{\\textrm{tot}}', me)
+            latex_table(file_base, cols=use_keys, col_names=col_names)
 
         file_base = 'R_shear'
         file_base_arr.append(file_base)
@@ -627,6 +692,8 @@ def main(argv=None):
         col_names = get_matrix_elements('R^{\\textrm{select}}', me)
         latex_table(file_base, cols=use_keys, col_names=col_names)
 
+    if argv[1] not in ['comb', 'v1']:
+
         file_base = 'summary_Rc'
         file_base_arr.append(file_base)
         f = open(f'{file_base}.txt', 'w')
@@ -640,17 +707,20 @@ def main(argv=None):
         file_base = 'summary_leakage'
         file_base_arr.append(file_base)
         f = open(f'{file_base}.txt', 'w')
-        use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2']
+        #use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2', 'xi_sys_p', 'xi_sys_m']
+        use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'xi_sys_p', 'xi_sys_m']
         print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
         f.close()
-        col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}']
+        #col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}',
+        col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}',
+                     '\\langle|\\xi^{\\rm sys}_+|\\rangle', '\\langle|\\xi^{\\rm sys}_-|\\rangle']
         latex_table(file_base, cols=use_keys, col_names=col_names)
 
 
-        for file_base in file_base_arr:
+    for file_base in file_base_arr:
 
-            os.system(f'~/txt2tex.pl {file_base}.tex > {file_base}_out.tex')
-            os.system(f'pdflatex {file_base}_out 2&>/dev/null')
+        os.system(f'~/txt2tex.pl {file_base}.tex > {file_base}_out.tex')
+        os.system(f'pdflatex {file_base}_out 2&>/dev/null')
 
 
 if __name__ == "__main__":

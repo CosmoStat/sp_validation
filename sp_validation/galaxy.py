@@ -72,29 +72,38 @@ def classification_galaxy_overlap(dd):
 
     return cut_overlap
 
-def classification_galaxy_base(dd, cut_overlap):
+def classification_galaxy_base(dd, cut_overlap, n_epoch_min=1, do_spread_model=True):
     """Classification Galaxy Base
     
     Return mask corresponding to basic classification for galaxies.
 
     """
-    # spread model class, add two times the uncertainty to be conservative
-    sm_classif = dd['SPREAD_MODEL'] + 2 * dd['SPREADERR_MODEL']
-    cut_sm = sm_classif > 0.0035
+    if do_spread_model:
+        # spread model class, add two times the uncertainty to be conservative
+        sm_classif = dd['SPREAD_MODEL'] + 2 * dd['SPREADERR_MODEL']
+        cut_sm = sm_classif > 0.0035
+
+        cut_sm_all = (
+            cut_sm
+            & (dd['SPREAD_MODEL'] > 0)
+            & (dd['SPREAD_MODEL'] < 0.03)
+        )
+    else:
+        # Do not use spread model
+        cut_sm_all = True
 
     cut_common = (
         cut_overlap
-        & cut_sm
-        & (dd['SPREAD_MODEL'] > 0)
-        & (dd['SPREAD_MODEL'] < 0.03)
+        & cut_sm_all
         & (dd['MAG_AUTO'] < 26)
         & (dd['MAG_AUTO'] > 20)
         & (dd['FLAGS'] == 0)
         & (dd['IMAFLAGS_ISO'] == 0)
-        & (dd['N_EPOCH'] > 0)
+        & (dd['N_EPOCH'] >= n_epoch_min)
     )
 
     return cut_common
+
 
 def classification_galaxy_ngmix(dd, cut_common, stats_file=None, verbose=False):
     """Classification Galaxy Ngmx
@@ -107,7 +116,6 @@ def classification_galaxy_ngmix(dd, cut_common, stats_file=None, verbose=False):
         & (dd['NGMIX_MCAL_FLAGS'] == 0)
         & (dd['NGMIX_ELL_PSFo_NOSHEAR'][:,0] != -10)
         & (dd['NGMIX_MOM_FAIL'] == 0)
-        & (dd['NGMIX_N_EPOCH'] > 0)
     )
 
     n_gal_ngmix = len(np.where(m_gal_ngmix)[0])
