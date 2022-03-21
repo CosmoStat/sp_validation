@@ -215,7 +215,8 @@ def affine_corr_n(
         ) 
 
 
-def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star=None):
+def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star=None,
+    theta_min_amin=2, theta_max_amin=200, n_theta=20):
     """xi star gal tc
 
     Cross-correlation between galaxy and star ellipticities.
@@ -226,9 +227,14 @@ def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1
     cat_star = treecorr.Catalog(ra=ra_star, dec=dec_star, g1=e1_star, g2=e2_star,
                                 w=w_star, ra_units='degrees', dec_units='degrees')
 
-    TreeCorrConfig = {'ra_units': 'degrees', 'dec_units': 'degrees',
-                      'max_sep': 200, 'min_sep': 2, 'sep_units': 'arcminutes',
-                      'nbins': 20}
+    TreeCorrConfig = {
+        'ra_units': 'degrees',
+        'dec_units': 'degrees',
+        'sep_units': 'arcminutes',
+        'min_sep': theta_min_amin,
+        'max_sep': theta_max_amin,
+        'nbins': n_theta
+    }
 
     ng = treecorr.GGCorrelation(TreeCorrConfig)
 
@@ -237,7 +243,8 @@ def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1
     return ng
 
 
-def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_2):
+def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_2,
+    theta_min_amin=2, theta_max_amin=200, n_theta=20):
     """Correlation 12 22
 
     Correlation functions between two samples 1 and 2. Compute xi_12 and xi_22.
@@ -254,6 +261,12 @@ def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_
         coordinates of sample 2
     e1_2, e2_2 : array of float
         ellipticities of sample 2
+    theta_min_amin : float, optional
+        minimum angular scale in arcmin, default is 2
+    theta_max_amin : float, optional
+        maximum angular scale in arcmin, default is 200
+    n_theta : int, optional
+        number of angular scales, default is 20
 
     Returns
     -------
@@ -261,10 +274,34 @@ def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_
         correlations 12, and 22
     """
 
-    r_corr_12 = xi_star_gal_tc(ra_1, dec_1, e1_1, e2_1, weights_1,
-                               ra_2, dec_2, e1_2, e2_2)
-    r_corr_22 = xi_star_gal_tc(ra_2, dec_2, e1_2, e2_2, np.ones_like(ra_2),
-                               ra_2, dec_2, e1_2, e2_2)
+    r_corr_12 = xi_star_gal_tc(
+        ra_1,
+        dec_1,
+        e1_1,
+        e2_1,
+        weights_1,
+        ra_2,
+        dec_2,
+        e1_2,
+        e2_2,
+        theta_min_amin=theta_min_amin,
+        theta_max_amin=theta_max_amin,
+        n_theta=n_theta
+    )
+    r_corr_22 = xi_star_gal_tc(
+        ra_2,
+        dec_2,
+        e1_2,
+        e2_2,
+        np.ones_like(ra_2),
+        ra_2,
+        dec_2,
+        e1_2,
+        e2_2,
+        theta_min_amin=theta_min_amin,
+        theta_max_amin=theta_max_amin,
+        n_theta=n_theta
+    )
 
     return r_corr_12, r_corr_22
 
@@ -291,13 +328,20 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
         mean and std of alpha
     """
 
-    complex_gal = np.average(e1_gal, weights=weights_gal) + np.average(e2_gal, weights=weights_gal)*1j
+    complex_gal = (
+        np.average(e1_gal, weights=weights_gal)
+        + np.average(e2_gal, weights=weights_gal)*1j
+    )
     complex_psf = np.mean(e1_star) + np.mean(e2_star)*1j
 
-    alpha_leak = (r_corr_gp.xip - np.real(np.conj(complex_gal)*complex_psf)) \
-                       / (r_corr_pp.xip - np.abs(complex_psf)**2)
-    sig_alpha_leak = np.abs(alpha_leak) \
-                           * np.sqrt((np.sqrt(r_corr_gp.varxip) / r_corr_gp.xip)**2
-                                     + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip)**2)
+    alpha_leak = (
+        (r_corr_gp.xip - np.real(np.conj(complex_gal)*complex_psf))
+        / (r_corr_pp.xip - np.abs(complex_psf)**2)
+    )
+    sig_alpha_leak = (
+        np.abs(alpha_leak) * np.sqrt((np.sqrt(r_corr_gp.varxip) 
+        / r_corr_gp.xip)**2
+        + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip)**2)
+    )
 
     return alpha_leak, sig_alpha_leak

@@ -72,7 +72,14 @@ def classification_galaxy_overlap(dd):
 
     return cut_overlap
 
-def classification_galaxy_base(dd, cut_overlap, n_epoch_min=1, do_spread_model=True):
+def classification_galaxy_base(
+    dd,
+    cut_overlap,
+    gal_mag_bright=20,
+    gal_mag_faint=26,
+    n_epoch_min=1,
+    do_spread_model=True
+    ):
     """Classification Galaxy Base
     
     Return mask corresponding to basic classification for galaxies.
@@ -95,8 +102,8 @@ def classification_galaxy_base(dd, cut_overlap, n_epoch_min=1, do_spread_model=T
     cut_common = (
         cut_overlap
         & cut_sm_all
-        & (dd['MAG_AUTO'] < 26)
-        & (dd['MAG_AUTO'] > 20)
+        & (dd['MAG_AUTO'] < gal_mag_faint)
+        & (dd['MAG_AUTO'] > gal_mag_bright)
         & (dd['FLAGS'] == 0)
         & (dd['IMAFLAGS_ISO'] == 0)
         & (dd['N_EPOCH'] >= n_epoch_min)

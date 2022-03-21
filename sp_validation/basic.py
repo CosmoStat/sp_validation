@@ -133,13 +133,16 @@ class metacal:
     rel_size_min : float, optional, default=0.5
         relative size minimum
     size_corr_ell : bool, optional, default=True
+    sigma_eps : float, optional
+        ellipticity dispersion (one component) for computation
+        of weights; default is 0.34
     verbose : bool, optional, default=False
         verbose output if True
     
     """
 
     def __init__(self, data, mask, masking_type='gal', step=0.01, stat_operator=np.mean, prefix='NGMIX',
-                 snr_min=10, snr_max=500, rel_size_min=0.5, size_corr_ell=True, verbose=False):
+                 snr_min=10, snr_max=500, rel_size_min=0.5, size_corr_ell=True, sigma_eps=0.34, verbose=False):
 
         self._masking_type = masking_type
         self._step = step
@@ -156,6 +159,8 @@ class metacal:
                 + f'rel_size_min={rel_size_min}, '
                 + f'size_corr_ell={size_corr_ell}'
             )
+
+        self._sigma_eps = sigma_eps
 
         self._verbose = verbose
 
@@ -211,7 +216,7 @@ class metacal:
 
         ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,0][mask]
         ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(self._prefix)][:,1][mask]
-        ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+        ns['w'] = 1./(2 * self._sigma_eps**2 + dict_tmp['C11'] + dict_tmp['C22'])
 
         return m1, p1, m2, p2, ns
 
@@ -238,7 +243,7 @@ class metacal:
         self.snr_sextractor = data['SNR_WIN'][mask]
         ns['C11'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix_mom)][:,0][mask]
         ns['C22'] = data['{}_ELL_ERR_NOSHEAR'.format(prefix_mom)][:,1][mask]
-        ns['w'] = 1./(2*0.34**2. + dict_tmp['C11'] + dict_tmp['C22'])
+        ns['w'] = 1./(2 * self._sigma_eps**2 + dict_tmp['C11'] + dict_tmp['C22'])
 
         return m1, p1, m2, p2, ns
 

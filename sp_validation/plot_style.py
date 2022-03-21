@@ -37,3 +37,6 @@ mpl.rcParams['boxplot.capprops.linewidth'] = 2.
 
 
 mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
+
+import matplotlib.pylab as plt
+plt.rcParams['font.size'] = 20

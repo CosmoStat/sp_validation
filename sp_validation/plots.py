@@ -23,6 +23,34 @@ from sp_validation import basic
 from sp_validation.plot_style import *
 
 
+def figure(figsize=(30, 30)):
+    """Figure
+
+    Create figure
+
+    Parameters
+    ----------
+    figsize : tuple, optional
+        figure size, default is (30, 30)
+
+    """
+    plt.figure(figsize=figsize, facecolor='none')
+
+
+def savefig(fname):
+    """Save Figure
+
+    Save figure to file.
+
+    Parameters
+    ----------
+    fname : str
+        output file name
+
+    """
+    plt.savefig(fname, facecolor='w', bbox_inches='tight')
+
+
 def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path, n_grid=1000, verbose=False):
     """Plot Spatial Density
 
@@ -46,7 +74,7 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
         verbose output if True
     """
 
-    plt.figure(figsize=(30, 30))
+    figure(figsize=(30, 30))
 
     if max(ra) > 360:
         ra_plot = ra - 360
@@ -61,7 +89,7 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
     plt.xlabel(x_label)
     plt.ylabel(y_label)
 
-    plt.savefig(out_path)
+    savefig(out_path)
 
 
 def plot_histograms(
@@ -120,7 +148,7 @@ def plot_histograms(
     if linestyles is None:
         linestyles = ['-'] * len(labels)
 
-    plt.figure(figsize=(15,10))
+    figure(figsize=(15,10))
 
     # Histogramsh
     for x, w, label, color, linestyle in zip(xs, weights, labels, colors, linestyles):
@@ -140,7 +168,7 @@ def plot_histograms(
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.legend()
-    plt.savefig(out_path)
+    savefig(out_path)
 
 
 def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=False, labels=None,
@@ -184,7 +212,7 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
     if eb_linestyles is None:
         eb_linestyles = ['-'] * len(x)
 
-    plt.figure(figsize=(15,10))
+    figure(figsize=(15,10))
 
     for i in range(len(x)):
         if np.isnan(yerr[i]).all():
@@ -198,7 +226,10 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
 
     if xlog == True:
         plt.xscale('log')
-        plt.xticks([2, 5, 10, 20, 50, 100, 200], labels=['2', '5', '10', '20', '50', '100', '200'])
+        plt.xticks(
+            [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500],
+            labels=['0.1', '0.2', '0.5', '1', 2', '5', '10', '20', '50', '100', '200', '500'])
+        )
     if ylog == True:
         plt.yscale('log')
 
@@ -211,7 +242,7 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
     if do_legend:
         plt.legend()
 
-    plt.savefig(out_path)
+    savefig(out_path)
 
 
 def get_ticks(loc, N, new_min, new_max):
@@ -272,7 +303,7 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
         dictionary of cluster information, optional, default=None
     """
     
-    plt.figure(figsize=(10, 10))
+    figure(figsize=(10, 10))
 
     # plot image
     plt.imshow(m)
@@ -349,7 +380,7 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
 
     plt.title(title)
 
-    plt.savefig(out_path)
+    savefig(out_path)
     
     return vlim
 
@@ -377,7 +408,7 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
         map limits
     """
     
-    plt.figure(figsize=(10, 10))
+    figure(figsize=(10, 10))
 
     # plot image
     plt.imshow(kappa)
@@ -409,6 +440,6 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
     
     plt.title(title)
 
-    plt.savefig(output_path)
+    savefig(output_path)
     
     return vlim

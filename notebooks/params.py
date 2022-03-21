@@ -108,15 +108,19 @@ n_jack = 0
 
 ## Galaxy selection
 
+## Magnitude limits
+gal_mag_bright = 15
+gal_mag_faint = 30
+
 ### Spread-model
-do_spread_model = True
+do_spread_model = False
 
 ## Minimum number of epochs
-n_epoch_min = 1
+n_epoch_min = 2
 
 ### Signal-to-noise (selection within metacal)
 #### minimum to cut noisy objects
-gal_snr_min = 8
+gal_snr_min = 10
 #### maximum to cut too bright objects, potentially too large for the postage stamp
 gal_snr_max = 500
 
@@ -127,12 +131,26 @@ gal_rel_size_min = 0.3
 ### Correct galaxy size for ellipticity
 gal_size_corr_ell = False
 
+### prior ellipticity dispersion (one component), *only* used for galaxy weight
+sigma_eps_prior = 0.34
+
+
+# Correlation parameters
+
+## Minimum and maximum angular scales, in arcmin
+theta_min_amin = 0.5
+theta_max_amin = 300
+
+## Number of bins
+n_theta = 20
+
+
 # Plotting parameters
 
 ## Wrap coordinates around this value [deg], set to != 0 if ra=0 is within coordinate range
 wrap_ra = 0
 
-## PSF leakage limits
+## PSF leakage y-axis limits
 leakage_alpha_ylim = [-0.1, 0.065]
 leakage_xi_sys_ylim = [-4e-5, 5e-5]
 leakage_xi_sys_log_ylim = [2e-13, 5e-5]

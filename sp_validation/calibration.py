@@ -117,43 +117,6 @@ def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbos
     return ind, mask_area_tiles, n_tot
 
 
-def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
-    """Check invalid objects
-
-    Check whether objects have invalid values.
-
-    Parameters
-    ----------
-    dd : dict
-        catalog
-    key : array of string
-        key names of columns to check
-    comp : array of int
-        components for above columns
-    val : array of float
-        values for above columns indicating invalid entries
-    stats_file : file handler
-        summary statistics output file handler
-    name : array of string, optional, default=None
-        for output message. If None, key strings are used
-    verbose : bool, optional, default=False
-        verbose output if True
-    """
-
-    if name is None:
-        name = key
-
-    n_all = len(dd)
-
-    for i in range(len(key)):
-    
-        w = dd[key[i]][:,comp[i]] == val[i]
-        n_inv_psf = len(np.where(w)[0])
-        msg = 'Invalid {} found for {}/{} = {:.1g}% objects' \
-              ''.format(name[i], n_inv_psf, n_all, n_inv_psf / n_all)
-        io.print_stats(msg, stats_file, verbose=verbose)
-
-
 def match_subsample(dd, ind, mask, pos_key, ell_key, n_ref, stats_file, verbose=False):
     """Match subsample
 

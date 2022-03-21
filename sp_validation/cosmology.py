@@ -738,16 +738,22 @@ def gamma_T_tc(ra_pos, dec_pos, ra_cat, dec_cat, e1_cat, e2_cat, w_cat=None):
     return ng.meanr, ng.meanlogr, ng.xi, ng.xi_im, np.sqrt(ng.varxi)
 
 
-def xi_gal_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star = None):
+def xi_gal_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star=None,
+    theta_min_amin=2, theta_max_amin=200, n_theta=20):
     """
     """
 
     cat_gal = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=e1_gal, g2=e2_gal, w=w_gal, ra_units='degrees', dec_units='degrees')
     cat_star = treecorr.Catalog(ra=ra_star, dec=dec_star, g1=e1_star, g2=e2_star, w=w_star, ra_units='degrees', dec_units='degrees')
 
-    TreeCorrConfig = {'ra_units': 'degrees', 'dec_units': 'degrees',
-                      'max_sep': 200, 'min_sep': 2, 'sep_units': 'arcminutes',
-                      'nbins': 20}
+    TreeCorrConfig = {
+        'ra_units': 'degrees',
+        'dec_units': 'degrees',
+        'sep_units': 'arcminutes',
+        'min_sep': theta_min_amin,
+        'max_sep': theta_max_amin,
+        'nbins': n_theta
+    }
 
     ng = treecorr.GGCorrelation(TreeCorrConfig)
 
