@@ -228,7 +228,7 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         plt.xscale('log')
         plt.xticks(
             [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500],
-            labels=['0.1', '0.2', '0.5', '1', 2', '5', '10', '20', '50', '100', '200', '500'])
+            labels=['0.1', '0.2', '0.5', '1', '2', '5', '10', '20', '50', '100', '200', '500']
         )
     if ylog == True:
         plt.yscale('log')

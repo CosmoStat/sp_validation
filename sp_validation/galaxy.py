@@ -102,8 +102,8 @@ def classification_galaxy_base(
     cut_common = (
         cut_overlap
         & cut_sm_all
-        & (dd['MAG_AUTO'] < gal_mag_faint)
-        & (dd['MAG_AUTO'] > gal_mag_bright)
+        & (dd['MAG_AUTO'] <= gal_mag_faint)
+        & (dd['MAG_AUTO'] >= gal_mag_bright)
         & (dd['FLAGS'] == 0)
         & (dd['IMAFLAGS_ISO'] == 0)
         & (dd['N_EPOCH'] >= n_epoch_min)

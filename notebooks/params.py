@@ -138,8 +138,8 @@ sigma_eps_prior = 0.34
 # Correlation parameters
 
 ## Minimum and maximum angular scales, in arcmin
-theta_min_amin = 0.5
-theta_max_amin = 300
+theta_min_amin = 1
+theta_max_amin = 350
 
 ## Number of bins
 n_theta = 20

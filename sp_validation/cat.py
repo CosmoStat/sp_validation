@@ -12,7 +12,10 @@
 
 """
 
+import os
 import numpy as np
+
+from datetime import datetime
 
 from astropy.io import fits
 
@@ -20,6 +23,7 @@ from sp_validation import util
 from sp_validation import io
 from sp_validation import basic
 from sp_validation.survey import get_footprint
+from sp_validation import __version__, __name__
 
 
 def print_mean_ellipticity(dd, ell_col_name, ell_n_comp, n_tot, stats_file, invalid=-10, verbose=False):
@@ -321,17 +325,37 @@ def read_shape_catalog(
 
     hdu_no = 1
 
-    ra = dat[hdu_no].data['ra']
-    dec = dat[hdu_no].data['dec']
+    ra = dat[hdu_no].data['RA']
+    dec = dat[hdu_no].data['Dec']
 
     g = [np.empty_like(ra), np.empty_like(ra)]
-    g1 = dat[hdu_no].data['g1_uncal']
-    g2 = dat[hdu_no].data['g2_uncal']
+    g1 = dat[hdu_no].data['e1_uncal']
+    g2 = dat[hdu_no].data['e2_uncal']
     w = dat[hdu_no].data['w']
     mag = dat[hdu_no].data['mag']
-    snr = dat[hdu_no].data['snr']
+    if 'snr' in data[hdu_no].data:
+        snr = dat[hdu_no].data['snr']
+    else:
+        snr = None
 
     return ra, dec, g1, g2, w, mag, snr
+
+def write_header_info_sp(primary_header):
+    """Write Header Info sp_validation
+
+    Write information about software and run to FITS header
+    """
+
+    if 'USER' in os.environ:
+        author = os.environ['USER']
+    else:
+        author = 'unknown'
+    primary_header['AUTHOR'] = (author, 'Who ran the software')
+    primary_header['SOFTNAME'] = (__name__, 'Name of the software')
+    primary_header['SOFTVERS'] = (__version__, 'Version of the software')
+    primary_header['DATE'] = (datetime.now().strftime('%Y-%m-%d_%H-%M-%S'), 'When it was started')
+
+    return primary_header
 
 
 def write_shape_catalog(
@@ -341,13 +365,13 @@ def write_shape_catalog(
     g,
     w,
     mag,
-    snr,
     R,
     R_shear,
     R_select,
     c,
     c_err,
     alpha_leakage,
+    snr=None,
     g1_uncal=None,
     g2_uncal=None,
     R_11=None,
@@ -372,7 +396,7 @@ def write_shape_catalog(
         and additive bias, g = R^-1 g_uncal - c
     w : array(ngal) of float
         weights
-    mag, snr : arrays(ngal) of float
+    mag : arrays(ngal) of float
         magnitude, signal-to-noise ratio
     R : 2x2 matrix of float
         Mean full response matrix
@@ -386,6 +410,8 @@ def write_shape_catalog(
         error of c
     alpha_leakage : float
         Mean scale-dependent PSF leakage
+    snr : arrays(ngal) of float, optional
+        signal-to-noise ratio, default is `None`
     g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
         uncalibrated shear estimates
     R_11, R_22, R_12, R_21 : arrays(ngal) of float, optional, default=None
@@ -397,17 +423,19 @@ def write_shape_catalog(
     """
 
     # Data HDU
-    c_ra = fits.Column(name='ra', array=ra, format='D', unit='deg')
-    c_dec = fits.Column(name='dec', array=dec, format='D', unit='deg')
-    c_g1 = fits.Column(name='g1', array=g[0], format='D')
-    c_g2 = fits.Column(name='g2', array=g[1], format='D')
+    c_ra = fits.Column(name='RA', array=ra, format='D', unit='deg')
+    c_dec = fits.Column(name='Dec', array=dec, format='D', unit='deg')
+    c_g1 = fits.Column(name='e1', array=g[0], format='D')
+    c_g2 = fits.Column(name='e2', array=g[1], format='D')
     c_w = fits.Column(name='w', array=w, format='D')
     c_mag = fits.Column(name='mag', array=mag, format='D')
-    c_snr = fits.Column(name='snr', array=snr, format='D')
-    cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag, c_snr]
+    cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag]
+    if snr:
+        c_snr = fits.Column(name='snr', array=snr, format='D')
+        cols.append(c_snr)
 
     for x, name in zip([g1_uncal, g2_uncal, R_11, R_22, R_12, R_21],
-                       ['g1_uncal', 'g2_uncal', 'R_11', 'R_22', 'R_12', 'R_21']):
+                       ['e1_uncal', 'e2_uncal', 'R_11', 'R_22', 'R_12', 'R_21']):
         if x is not None:
             cols.append(fits.Column(name=name, array=x, format='D'))
 
@@ -417,15 +445,15 @@ def write_shape_catalog(
 
     table_hdu = fits.BinTableHDU.from_columns(cols)
 
-
-    table_hdu.header['TTYPE3'] = ('g1', 'Calibrated reduced shear estimate, 1st comp')
-    table_hdu.header['TTYPE4'] = ('g2', 'Calibrated reduced shear estimate, 2nd comp')
+    table_hdu.header['TTYPE3'] = ('e1', 'Calibrated reduced shear estimate, 1st comp')
+    table_hdu.header['TTYPE4'] = ('e2', 'Calibrated reduced shear estimate, 2nd comp')
     table_hdu.header['TTYPE5'] = ('w', 'Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
-    table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
+    if snr:
+        table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
     
     ntype = 8
-    for x, name in zip([g1_uncal, g2_uncal], ['g1_uncal', 'g2_uncal']):
+    for x, name in zip([g1_uncal, g2_uncal], ['e1_uncal', 'e2_uncal']):
         if x is not None:
             table_hdu.header['TTYPE{}'.format(ntype)] = (name, 'uncalibrated reduced shear')
             ntype += 1
@@ -436,6 +464,8 @@ def write_shape_catalog(
 
     # Primary HDU with information in header
     primary_header = fits.Header()
+
+    primary_header = write_header_info_sp(primary_header)
 
     primary_header['R'] = (r'<R>', r'Mean full response <R_shear> + <R_select>')
     primary_header['R_11'] = (R[0,0], 'Full response matrix comp 1 1')
@@ -460,7 +490,7 @@ def write_shape_catalog(
     primary_header['c2'] = (c[1], 'Additive bias 2nd comp')
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
-    primary_header['w'] = ('Weight', r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2)')
+    primary_header['w'] = ('Weight', r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2))')
     if sigma_epsilon:
         primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
 
