@@ -333,7 +333,7 @@ def read_shape_catalog(
     g2 = dat[hdu_no].data['e2_uncal']
     w = dat[hdu_no].data['w']
     mag = dat[hdu_no].data['mag']
-    if 'snr' in data[hdu_no].data:
+    if 'snr' in dat[hdu_no].data:
         snr = dat[hdu_no].data['snr']
     else:
         snr = None
@@ -370,7 +370,7 @@ def write_shape_catalog(
     R_select,
     c,
     c_err,
-    alpha_leakage,
+    alpha_leakage=None,
     snr=None,
     g1_uncal=None,
     g2_uncal=None,
@@ -408,8 +408,8 @@ def write_shape_catalog(
         additive shear bias
     c_err : array(2) of float
         error of c
-    alpha_leakage : float
-        Mean scale-dependent PSF leakage
+    alpha_leakage : float, optional
+        Mean scale-dependent PSF leakage, default is None
     snr : arrays(ngal) of float, optional
         signal-to-noise ratio, default is `None`
     g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
@@ -494,7 +494,8 @@ def write_shape_catalog(
     if sigma_epsilon:
         primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
 
-    primary_header['alpha'] = (alpha_leakage, 'Mean scale-dependent PSF leakage')
+    if alpha_leakage:
+        primary_header['alpha'] = (alpha_leakage, 'Mean scale-dependent PSF leakage')
 
     primary_hdu = fits.PrimaryHDU(header=primary_header)
 

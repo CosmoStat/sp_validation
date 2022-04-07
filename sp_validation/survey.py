@@ -15,6 +15,8 @@
 
 import os
 
+from collections import Counter
+
 
 def get_area(dd, area_tile, verbose=False):
     """Get area
@@ -127,6 +129,40 @@ def missing_tiles(tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbos
                 ''.format(path_tile_ID))
 
         return None, None
+
+
+def write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname):
+    """Write Tile ID Galaxy Counts
+    
+    Write number of galaxies per tile ID to file.
+    
+    Parameters
+    ----------
+    detection_IDs : list
+        input tile ID for each detected object
+    galaxy_IDs : list
+        input tile ID for each selected galaxy
+    shape_IDs : list
+        input tile ID for each galaxy with measured shape
+    fname : str
+        output file name
+
+    """
+    detection_counts = Counter(detection_IDs)
+    galaxy_counts = Counter(galaxy_IDs)
+    shape_counts = Counter(shape_IDs)
+    
+    with open(fname, 'w') as f:
+        for tile_id in detection_counts:
+            print(f'{tile_id:007.3f}', end=' ', file=f)
+            for x in detection_counts, galaxy_counts, shape_counts:
+                if tile_id in x:
+                    num = x[tile_id]
+                else:
+                    num = 0
+                print(num, end=' ', file=f)
+            print(file=f)
+
 
 def get_footprint(patch, ra, dec):
     """Get Footprint

@@ -601,7 +601,7 @@ def main(argv=None):
         'R_shear_' : 1,
         'R_select_' : 1,
         'm_' : 1,
-        'alpha' : 0,
+        'alpha' : 1,
         'xi_sys' : 1,
     }
 
