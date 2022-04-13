@@ -5,7 +5,7 @@ fbase_found_wsh='found_ID_wshapes'
 fbase_lf='CFIS3500_THELI'
 rm -f ${fbase_found}_all.txt
 rm -f ${fbase_found_wsh}_all.txt
-rm -rf $fbase_lf}_all.txt
+rm -f ${fbase_lf}_all.txt
 
 for patch in P1 P2 P3 P4 P5 P6 P7; do
 

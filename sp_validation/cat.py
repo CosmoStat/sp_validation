@@ -374,10 +374,10 @@ def write_shape_catalog(
     snr=None,
     g1_uncal=None,
     g2_uncal=None,
-    R_11=None,
-    R_22=None,
-    R_12=None,
-    R_21=None,
+    R_g11=None,
+    R_g22=None,
+    R_g12=None,
+    R_g21=None,
     sigma_epsilon=None,
     add_cols=None,
 ):
@@ -396,7 +396,7 @@ def write_shape_catalog(
         and additive bias, g = R^-1 g_uncal - c
     w : array(ngal) of float
         weights
-    mag : arrays(ngal) of float
+    mag : array(ngal) of float
         magnitude, signal-to-noise ratio
     R : 2x2 matrix of float
         Mean full response matrix
@@ -410,12 +410,12 @@ def write_shape_catalog(
         error of c
     alpha_leakage : float, optional
         Mean scale-dependent PSF leakage, default is None
-    snr : arrays(ngal) of float, optional
+    snr : array(ngal) of float, optional
         signal-to-noise ratio, default is `None`
     g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
         uncalibrated shear estimates
-    R_11, R_22, R_12, R_21 : arrays(ngal) of float, optional, default=None
-        total response matrix elemencts per galaxy
+    R_g11, R_g22, R_g12, R_g21 : arrays(ngal) of float, optional, default=None
+        shear response matrix elemencts per galaxy
     sigma_epsilon: float, optional
         shape noise, default is `None`
     add_cols : dict, optional, default is `None`
@@ -430,18 +430,20 @@ def write_shape_catalog(
     c_w = fits.Column(name='w', array=w, format='D')
     c_mag = fits.Column(name='mag', array=mag, format='D')
     cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag]
-    if snr:
+    if snr is not None:
         c_snr = fits.Column(name='snr', array=snr, format='D')
         cols.append(c_snr)
 
-    for x, name in zip([g1_uncal, g2_uncal, R_11, R_22, R_12, R_21],
-                       ['e1_uncal', 'e2_uncal', 'R_11', 'R_22', 'R_12', 'R_21']):
+    for x, name in zip([g1_uncal, g2_uncal, R_g11, R_g22, R_g12, R_g21],
+                       ['e1_uncal', 'e2_uncal', 'R_g11', 'R_g22', 'R_g12', 'R_g21']):
         if x is not None:
             cols.append(fits.Column(name=name, array=x, format='D'))
 
+    ntype = 0
     if add_cols:
         for i, name in enumerate(add_cols):
             cols.append(fits.Column(name=name, array=add_cols[name], format='D'))
+        ntype += len(add_cols)
 
     table_hdu = fits.BinTableHDU.from_columns(cols)
 
@@ -449,23 +451,43 @@ def write_shape_catalog(
     table_hdu.header['TTYPE4'] = ('e2', 'Calibrated reduced shear estimate, 2nd comp')
     table_hdu.header['TTYPE5'] = ('w', 'Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
-    if snr:
+    ntype += 4
+    if snr is not None:
         table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
+        ntype += 1
     
-    ntype = 8
     for x, name in zip([g1_uncal, g2_uncal], ['e1_uncal', 'e2_uncal']):
         if x is not None:
-            table_hdu.header['TTYPE{}'.format(ntype)] = (name, 'uncalibrated reduced shear')
+            table_hdu.header[f'TTYPE{ntype}'] = (name, 'uncalibrated reduced shear')
             ntype += 1
-    for x, name in zip([R_11, R_22, R_12, R_21], ['R_11', 'R_22', 'R_12', 'R_21']):
+    for x, name in zip([R_g11, R_g22, R_g12, R_g21], ['R_g11', 'R_g22', 'R_g12', 'R_g21']):
         if x is not None:
-            table_hdu.header['TTYPE{}'.format(ntype)] = (name, f'full response matrix {name}')
+            table_hdu.header[f'TTYPE{ntype}'] = (name, f'shear response matrix {name}')
             ntype += 1
 
     # Primary HDU with information in header
     primary_header = fits.Header()
-
     primary_header = write_header_info_sp(primary_header)
+    add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
+    primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
+    primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
+
+    primary_header['w'] = ('Weight', r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2))')
+    if sigma_epsilon:
+        primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
+
+    if alpha_leakage:
+        primary_header['alpha'] = (alpha_leakage, 'Mean scale-dependent PSF leakage')
+
+    primary_hdu = fits.PrimaryHDU(header=primary_header)
+
+    # Final file
+    hdu_list = fits.HDUList([primary_hdu, table_hdu])
+
+    hdu_list.writeto(output_path, overwrite=True)
+
+
+def add_shear_bias_to_header(primary_header, R, R_shear, R_select, c):
 
     primary_header['R'] = (r'<R>', r'Mean full response <R_shear> + <R_select>')
     primary_header['R_11'] = (R[0,0], 'Full response matrix comp 1 1')
@@ -486,22 +508,40 @@ def write_shape_catalog(
     primary_header['R_S22'] = (R_select[1,1], 'Global selection resp matrix comp 2 2')
 
     primary_header['c_1'] = (c[0], 'Additive bias 1st comp')
-    primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
-    primary_header['c2'] = (c[1], 'Additive bias 2nd comp')
-    primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
+    primary_header['c_2'] = (c[1], 'Additive bias 2nd comp')
 
-    primary_header['w'] = ('Weight', r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2))')
-    if sigma_epsilon:
-        primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
 
-    if alpha_leakage:
-        primary_header['alpha'] = (alpha_leakage, 'Mean scale-dependent PSF leakage')
+def write_fits_BinTable_file(cols, output_path, R=None, R_shear=None, R_select=None, c=None):
+    """Write Fits Bin Table File
 
+    Write columns to FITS file as BinaryTable
+
+    Parameters
+    ----------
+    cols : list of fits.Column
+        column data
+    output_path : str
+        output file path
+    R : np.matrix(2, 2), optional
+        total response matrix
+    R_shear : np.matrix(2, 2), optional
+        shear response matrix
+    R_select : np.matrix(2, 2), optional
+        selection response matrix
+    c : np.array(2), optional
+        additive bias components
+
+    """
+    table_hdu = fits.BinTableHDU.from_columns(cols)
+
+    # Primary HDU with information in header
+    primary_header = fits.Header()
+    primary_header = write_header_info_sp(primary_header)
+    if R is not None: 
+        add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
     primary_hdu = fits.PrimaryHDU(header=primary_header)
 
-    # Final file
     hdu_list = fits.HDUList([primary_hdu, table_hdu])
-
     hdu_list.writeto(output_path, overwrite=True)
 
 
@@ -526,7 +566,30 @@ def write_galaxy_cat(output_path, ra, dec, tile_id):
     c_id = fits.Column(name='tile_id', array=tile_id, format='E')
     cols = [c_ra, c_dec, c_id]
 
-    table_hdu = fits.BinTableHDU.from_columns(cols)
-    primary_hdu = fits.PrimaryHDU()
-    hdu_list = fits.HDUList([primary_hdu, table_hdu])
-    hdu_list.writeto(output_path, overwrite=True)
+    write_fits_BinTable_file(cols, output_path)
+
+
+def write_PSF_cat(output_path, ra, dec, e1, e2):
+    """Write PSF Cat
+
+    Write PSF catalogue to file.
+
+    Parameters
+    ----------
+    output_path : string
+        output file path
+    ra, dec : list of float
+        coordinates in deg
+    e1 : list of float
+        first ellipticity  component
+    e2 : list of float
+        second ellipticity  component
+    """
+
+    c_ra = fits.Column(name='RA', array=ra, format='D', unit='deg')
+    c_dec = fits.Column(name='Dec', array=dec, format='D', unit='deg')
+    c_e1 = fits.Column(name='e1', array=e1, format='D')
+    c_e2 = fits.Column(name='e2', array=e2, format='D')
+    cols = [c_ra, c_dec, c_e1, c_e2]
+
+    write_fits_BinTable_file(cols, output_path)

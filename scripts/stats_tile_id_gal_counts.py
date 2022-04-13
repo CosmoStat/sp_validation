@@ -203,7 +203,7 @@ def main(argv=None):
             mask_n_shape = dat[patch][:, 3] > 0
             tile_ID_masked = dat[patch][mask_n_shape, 0]
             for ID in tile_ID_masked:
-                print(ID, file=f_out)
+                print(f'{ID:07.3f}', file=f_out)
 
     # Plot histograms
     print('Plotting histograms')

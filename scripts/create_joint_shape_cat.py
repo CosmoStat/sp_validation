@@ -3,11 +3,13 @@
 import sys
 
 import numpy as np
+import copy
 from astropy.io import ascii
+from astropy.io import fits
+from optparse import OptionParser
 
 from sp_validation.cat import *
 
-from optparse import OptionParser
 
 
 class param:
@@ -74,7 +76,14 @@ def parse_options(p_def):
         '--survey',
         dest='survey',
         type='string',
-        help='survey, one in \'v1\'|\'test\''
+        help='survey, one in \'v1\'|\'test\'|\'v1_small\''
+    )
+    parser.add_option(
+        '-v',
+        '--verbose',
+        dest='verbose',
+        action='store_true',
+        help=f'verbose output'
     )
 
     options, args = parser.parse_args()
@@ -105,7 +114,7 @@ def update_param(p_def, options):
     ----------
     p_def:  class param
         parameter values
-    optiosn: tuple
+    options: tuple
         command line options
     
     Returns
@@ -149,6 +158,88 @@ def get_R(fname_base, key_base=None):
 
     return R
 
+def merge_catalogues(
+    patches,
+    input_sub_path,
+    output_path,
+    R_select=None,
+    return_mean_e=False,
+    return_mean_R_shear=False,
+    verbose=False
+):
+    """Merge Catalogues
+
+    Merge catalogues from sub-patches into one FITS file.
+
+    Parameters
+    ----------
+    patches : list of str
+        list of patches/sub-directories
+    input_sub_path : str
+        common part of input path (below patch)
+    output_path : str
+        output file path
+    R_select : np.array(2, 2), optional
+        selection matrix
+    return_mean_e : bool, optional
+        return mean ellipticity if `True`; default is `False`
+    return_mean_R_shear : bool, optional
+        return mean response matrix if `True`; default is `False`
+    verbose : bool, optional
+        verbose output if `True`; default is `False`
+
+    Returns
+    -------
+    dict
+        additive bias
+    dict
+        response matrix (multiplicative bias component)
+
+    """
+    dat_all = {}
+    for idx, patch in enumerate(patches):
+
+        if verbose:
+            print(' ', patch)
+
+        input_path = f'{patch}/{input_sub_path}'
+        dat = fits.getdata(input_path, 1)
+
+        if idx == 0:
+            col_names = dat.dtype.names
+            for name in col_names:
+                dat_all[name] = []
+        for name in col_names:
+            dat_all[name] = np.append(dat_all[name], dat[name])
+
+        column_all = []
+    for name in col_names:
+        column = fits.Column(name=name, array=dat_all[name], format='D')
+        column_all.append(column)
+
+    # Compute bias parameters if required
+    c = np.empty(shape=(2))
+    if return_mean_e:
+        for idx in (0, 1):
+            c[idx] = np.average(
+                dat_all[f'e{idx+1}_uncal'],
+                weights=dat_all['w']
+        )
+
+    R_shear = np.empty(shape=(2, 2))
+    if return_mean_R_shear:
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                R_shear[idx][jdx] = np.mean(dat_all[f'R_g{idx+1}{jdx+1}'])
+
+    if R_select is not None:
+        R = R_shear + R_select
+        write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
+    else:
+        write_fits_BinTable_file(column_all, output_path)
+
+    return c, R_shear
+
 
 def main(argv=None):
     """Main
@@ -156,7 +247,7 @@ def main(argv=None):
     Main program
     """
 
-   # Set default parameters
+    # Set default parameters
     p_def = params_default()
 
     # Command line options
@@ -173,6 +264,8 @@ def main(argv=None):
         patches = [f'P{x}' for x in np.arange(n_patch) + 1]
     elif param.survey == 'test':
         patches = ['P7', 'W3', 'S4']
+    elif param.survey == 'v1_small':
+        patches = ['W3', 'P7']
 
     sh = 'ngmix'
 
@@ -180,12 +273,35 @@ def main(argv=None):
     pipeline = 'SP'
     version = '1.0'
 
-    R = get_R('R', key_base='R_tot')
-    R_shear = get_R('R_shear')
+    additive_bias = 'from_extended'
+    shear_response = 'from_extended'
+
+    
+    if additive_bias == 'from_extended':
+        return_mean_e = True
+    else:
+        return_mean_e = False
+    if shear_response == 'from_extended':
+        return_mean_R_shear = True
+    else:
+        return_mean_R_shear = False
+
     R_select = get_R('R_select')
 
-    print('R - R_shear + R_select = 0 ?')
-    print(R - R_shear - R_select)
+    # Extended catalogue
+    if param.verbose:
+        print('Merging extended catalogue')
+    input_sub_path = f'sp_output/shape_catalog_extended_{sh}.fits'
+    output_path = f'{survey}_{pipeline}_extended_v{version}.fits'
+    c_ext, R_shear_ext = merge_catalogues(
+        patches,
+        input_sub_path,
+        output_path,
+        R_select=R_select,
+        verbose=param.verbose,
+        return_mean_e=return_mean_e,
+        return_mean_R_shear=return_mean_R_shear
+    )
 
     fname = 'c.txt'
     dat = ascii.read(fname)
@@ -193,17 +309,35 @@ def main(argv=None):
         raise ValueError(
             f'Invalid file {fname}, last row does not correspond to patch=\'all\''
         )
-    c = np.empty(2)
     c_err = np.empty(2)
-    c[0] = dat[-1]['cw_1']
-    c[1] = dat[-1]['cw_2']
     c_err[0] = dat[-1]['dmcw_1']
     c_err[1] = dat[-1]['dmcw_2']
 
+    c = np.empty(2)
+    if additive_bias == 'from_extended':
+        print('Getting additive bias from extended catalog')
+        c = c_ext
+    else:
+        print('Getting additive bias from combined run')
+        c[0] = dat[-1]['cw_1']
+        c[1] = dat[-1]['cw_2']
+
+    if shear_response == 'from_extended':
+        print('Getting shear response from extended catalog')
+        R_shear = R_shear_ext
+        R = R_shear + R_select
+    else:
+        R_shear = get_R('R_shear', key_base='R_shear')
+
+        # Check of total R
+        R = get_R('R', key_base='R_tot')
+        print('R - R_shear + R_select = 0 ?')
+        print(R - R_shear - R_select)
 
     # Invert total response matrix
     Rm1 = np.linalg.inv(R)
 
+    # Base catalogue
     ra_all = np.array([])
     dec_all = np.array([])
     g1_corr_mc_all = np.array([])
@@ -211,10 +345,12 @@ def main(argv=None):
     w_all = np.array([])
     mag_all = np.array([])
     snr_all = np.array([])
-
+    if param.verbose:
+        print('Merging base catalogue')
     for patch in patches:
 
-        print(patch)
+        if param.verbose:
+            print(' ', patch)
 
         input_path = f'{patch}/sp_output/shape_catalog_{sh}.fits'
         ra, dec, g1, g2, w, mag, _ = read_shape_catalog(input_path)
@@ -238,6 +374,13 @@ def main(argv=None):
     output_path = f'{survey}_{pipeline}_v{version}.fits'
     g_corr_mc_all = np.array([g1_corr_mc_all, g2_corr_mc_all])
     write_shape_catalog(output_path, ra_all, dec_all, g_corr_mc_all, w_all, mag_all, R, R_shear, R_select, c, c_err)
+
+    # PSF catalogue
+    if param.verbose:
+        print('Merging PSF catalogue')
+    input_sub_path = f'sp_output/psf_catalog_{sh}.fits'
+    output_path = f'{survey}_{pipeline}_psf_v{version}.fits'
+    merge_catalogues(patches, input_sub_path, output_path, verbose=param.verbose)
 
 
 if __name__ == "__main__":

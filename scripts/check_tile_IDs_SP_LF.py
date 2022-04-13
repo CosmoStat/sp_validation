@@ -13,6 +13,9 @@ def main(argv=None):
     IDs_sp_base = 'found_ID_wshapes.txt' 
     tile_ID_gal_counts_sp_base = 'tile_id_gal_counts_ngmix.txt'
 
+    n_SP_not_in_LF_all = 0
+    n_LF_not_in_SP_all = 0
+
     for patch in patches:
 
         print(patch)
@@ -58,6 +61,7 @@ def main(argv=None):
                 n_SP_not_in_LF += 1
                 if n_SP_not_in_LF == -1:
                     print(f'  SP {ID} not in LF')
+        n_SP_not_in_LF_all += n_SP_not_in_LF
 
         # LensFit tiles not contained in ShapePipe
         n_LF_not_in_SP = 0
@@ -67,9 +71,15 @@ def main(argv=None):
                 if n_LF_not_in_SP == -1:
                     print(f'  LF {ID} not in SP')
                     print(f'   [{ID}]')
+        n_LF_not_in_SP_all += n_LF_not_in_SP
 
         print(f' # SP not in LF = {n_SP_not_in_LF}')
         print(f' # LF not in SP = {n_LF_not_in_SP}')
+
+    print()
+    print('All patches')
+    print(f' # SP not in LF = {n_SP_not_in_LF_all}')
+    print(f' # LF not in SP = {n_LF_not_in_SP_all}')
 
     return 0
         

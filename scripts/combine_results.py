@@ -596,13 +596,13 @@ def main(argv=None):
         'dmc_' : 0,
         'dmcw_' : 1,
         'cjk_' : 0,
-        'sigma2_epsilon' : 1,
+        'sigma2_epsilon' : 0,
         'R_tot_' : 1,
         'R_shear_' : 1,
         'R_select_' : 1,
         'm_' : 1,
-        'alpha' : 1,
-        'xi_sys' : 1,
+        'alpha' : 0,
+        'xi_sys' : 0,
     }
 
 
@@ -651,12 +651,13 @@ def main(argv=None):
         f.close()
         latex_table(file_base, cols=[['cw_1', 'dmcw_1'], ['cw_2', 'dmcw_2']], col_names=['c_1', 'c_2'])
 
-        file_base = 'sigma2_epsilon'
-        file_base_arr.append(file_base)
-        f = open(f'{file_base}.txt', 'w')
-        print_all(results, stats_files, use_keys=['sigma2_epsilon'], fout=f, all=all)
-        f.close()
-        latex_table(file_base, cols=['sigma2_epsilon'], col_names=['\sigma^2_\epsilon'])
+        key = 'sigma2_epsilon'
+        if use_keys[key]:
+            file_base_arr.append(key)
+            f = open(f'{file_base}.txt', 'w')
+            print_all(results, stats_files, use_keys=[key], fout=f, all=all)
+            f.close()
+            latex_table(file_base, cols=[key], col_names=['\sigma^2_\epsilon'])
         
 
         me = ['11', '12', '21', '22']
@@ -707,13 +708,10 @@ def main(argv=None):
         file_base = 'summary_leakage'
         file_base_arr.append(file_base)
         f = open(f'{file_base}.txt', 'w')
-        #use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2', 'xi_sys_p', 'xi_sys_m']
-        use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'xi_sys_p', 'xi_sys_m']
+        use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2']
         print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
         f.close()
-        #col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}',
-        col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}',
-                     '\\langle|\\xi^{\\rm sys}_+|\\rangle', '\\langle|\\xi^{\\rm sys}_-|\\rangle']
+        col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}']
         latex_table(file_base, cols=use_keys, col_names=col_names)
 
 

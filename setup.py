@@ -7,7 +7,7 @@ import os
 # Set the package release version
 major = 0
 minor = 3
-patch = 1
+patch = 2
 
 # Set the package details
 name = 'sp_validation'
