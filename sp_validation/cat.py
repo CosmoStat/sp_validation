@@ -380,6 +380,7 @@ def write_shape_catalog(
     R_g21=None,
     sigma_epsilon=None,
     add_cols=None,
+    add_cols_format=None,
 ):
     """Write Shape Catalog
 
@@ -420,6 +421,9 @@ def write_shape_catalog(
         shape noise, default is `None`
     add_cols : dict, optional, default is `None`
         data for n additional columns to add
+    add_cols_format : dict, optional
+        format for n additional columns to add, default is `None`, for which
+        'float' format is used
     """
 
     # Data HDU
@@ -445,7 +449,11 @@ def write_shape_catalog(
 
     if add_cols:
         for i, name in enumerate(add_cols):
-            cols.append(fits.Column(name=name, array=add_cols[name], format='D'))
+            if add_cols_format:
+                my_format = add_cols_format[name]
+            else:
+                my_format = 'D'
+            cols.append(fits.Column(name=name, array=add_cols[name], format=my_format))
         ntype += len(add_cols)
 
     table_hdu = fits.BinTableHDU.from_columns(cols)

@@ -209,12 +209,21 @@ def merge_catalogues(
             col_names = dat.dtype.names
             for name in col_names:
                 dat_all[name] = []
+            dat_all['patch'] = []
         for name in col_names:
             dat_all[name] = np.append(dat_all[name], dat[name])
 
-        column_all = []
+        # Add patch number
+        dat_all['patch'] = np.append(dat_all['patch'], [idx + 1] * len(dat))
+
+    column_all = []
     for name in col_names:
-        column = fits.Column(name=name, array=dat_all[name], format='D')
+        print(name)
+        if name != 'patch':
+            my_format = 'D'
+        else:
+            my_format = 'I'
+        column = fits.Column(name=name, array=dat_all[name], format=my_format)
         column_all.append(column)
 
     # Compute bias parameters if required
@@ -348,7 +357,7 @@ def main(argv=None):
     patch_all = np.array([])
     if param.verbose:
         print('Merging base catalogue')
-    for patch in patches:
+    for idx, patch in enumerate(patches):
 
         if param.verbose:
             print(' ', patch)
@@ -360,7 +369,7 @@ def main(argv=None):
         dec_all = np.append(dec_all, dec)
         w_all = np.append(w_all, w)
         mag_all = np.append(mag_all, mag)
-        patch_all = np.append([patch] * len(ra))
+        patch_all = np.append(patch_all, [idx + 1] * len(ra))
         
         g = np.array([g1, g2])
 
@@ -376,9 +385,22 @@ def main(argv=None):
     output_path = f'{survey}_{pipeline}_v{version}.fits'
     g_corr_mc_all = np.array([g1_corr_mc_all, g2_corr_mc_all])
 
-    add_col_data = {}
-    add_col_data['patch'] = patch_all
-    write_shape_catalog(output_path, ra_all, dec_all, g_corr_mc_all, w_all, mag_all, R, R_shear, R_select, c, c_err, add_cols=add_col_data)
+    add_col_data = { 'patch' : patch_all }
+    add_col_format = { 'patch' : 'I' }
+    write_shape_catalog(
+        output_path, 
+        ra_all,
+        dec_all,
+        g_corr_mc_all,
+        w_all,
+        mag_all,
+        R,
+        R_shear, 
+        R_select,
+        c,
+        c_err,
+        add_cols=add_col_data,
+        add_cols_format=add_col_format)
 
     # PSF catalogue
     if param.verbose:
