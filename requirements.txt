@@ -4,6 +4,7 @@ jupyterlab
 numpy
 lenspack
 joblib
+regions
 scipy
 seaborn
 setuptools
