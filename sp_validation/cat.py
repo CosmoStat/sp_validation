@@ -430,16 +430,19 @@ def write_shape_catalog(
     c_w = fits.Column(name='w', array=w, format='D')
     c_mag = fits.Column(name='mag', array=mag, format='D')
     cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag]
+
+    ntype = 6
     if snr is not None:
         c_snr = fits.Column(name='snr', array=snr, format='D')
         cols.append(c_snr)
+        ntype += 1
 
     for x, name in zip([g1_uncal, g2_uncal, R_g11, R_g22, R_g12, R_g21],
                        ['e1_uncal', 'e2_uncal', 'R_g11', 'R_g22', 'R_g12', 'R_g21']):
         if x is not None:
             cols.append(fits.Column(name=name, array=x, format='D'))
+            nytpe += 1
 
-    ntype = 0
     if add_cols:
         for i, name in enumerate(add_cols):
             cols.append(fits.Column(name=name, array=add_cols[name], format='D'))
@@ -451,7 +454,6 @@ def write_shape_catalog(
     table_hdu.header['TTYPE4'] = ('e2', 'Calibrated reduced shear estimate, 2nd comp')
     table_hdu.header['TTYPE5'] = ('w', 'Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
-    ntype += 4
     if snr is not None:
         table_hdu.header['TTYPE7'] = ('snr', 'Signal-to-noise ratio = flux/flux_std')
         ntype += 1
