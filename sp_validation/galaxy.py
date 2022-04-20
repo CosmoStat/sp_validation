@@ -286,6 +286,38 @@ def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
     """
     """
 
+    def get_tile_wcs_new(xxx, yyy):
+        """Get tile WCS.
+
+        Create an astropy.wcs.WCS object from the name of the tile.
+
+        Parameters
+        ----------
+        xxx : int
+            First 3 numbers in the tile name.
+        yyy : int
+            Last 3 numbers in the tile name.
+
+        Returns
+        -------
+        astropy.wcs.WCS
+            WCS for the tile.
+
+        """
+        ra, dec = get_tile_coord_from_nixy(xxx, yyy)
+
+        w = WCS(naxis=2)
+        w.wcs.crval = np.array([ra.deg, dec.deg])
+        w.wcs.crpix = np.array([5000, 5000])
+        w.wcs.cd = np.array(
+            [[0.187 / 3600, 0], [0, 0.187 / 3600]]
+        )
+        w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
+        w.wcs.cunit = ['deg', 'deg']
+        w._naxis = [10000, 10000]
+
+        return w
+
     def get_tile_wcs(xxx, yyy):
         dec=float(yyy)/2-90
         ra=float(xxx)/2/np.cos(np.deg2rad(dec))
