@@ -141,5 +141,5 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-notebooks/validation.py
+notebooks/validation*.py
 notebooks/main_set_up.py
