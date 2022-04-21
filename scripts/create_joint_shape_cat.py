@@ -57,17 +57,17 @@ def parse_options(p_def):
 
     Parameters
     ----------
-    p_def: class param
+    p_def : class param
         parameter values
 
     Returns
     -------
-    options: tuple
+    tuple
         Command line options
-    args: string
+    string
         Command line string
-    """
 
+    """
     usage  = "%prog [OPTIONS]"
     parser = OptionParser(usage=usage)
 
@@ -101,11 +101,12 @@ def check_options(options):
 
     Returns
     -------
-    erg: bool
+    bool
         Result of option check. False if invalid option value.
-    """
 
+    """
     return True
+
 
 def update_param(p_def, options):
     """Return default parameter, updated and complemented according to options.
