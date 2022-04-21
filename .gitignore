@@ -143,3 +143,4 @@ cython_debug/
 
 notebooks/validation*.py
 notebooks/main_set_up.py
+notebooks/analyse_shear_cat/tutorial_UNIONS_SP_v1.0.py
