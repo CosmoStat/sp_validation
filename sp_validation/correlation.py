@@ -33,6 +33,7 @@ def affine_corr(
     xlabel,
     ylabel,
     mlabel=None,
+    clabel=None,
     weights=None,
     n_bin=30,
     out_path=None,
@@ -52,8 +53,10 @@ def affine_corr(
         input y arrays
     xlabel, ylabel : string
         x-and y-axis labels
-    mlabel : string(m), optional, default=None
+    mlabel : string, optional, default=None
         label for slope in the plot legend
+    clabel : string, optional, default=None
+        label for offset in the plot legend
     weights : array of double, optional, default=None
         weights of x points
     n_bin : double, optional, default=30
@@ -74,7 +77,9 @@ def affine_corr(
         return a * x + b
 
     if mlabel is None:
-        mlabel = np.ones('m')
+        mlabel = np.full(len(y), 'm')
+    if clabel is None:
+        clabel = np.full(len(y), 'c')
         
     if weights is None:
         weights = np.ones_like(y[0])
@@ -129,9 +134,10 @@ def affine_corr(
     plt.figure(figsize=(10, 6))
     for j in range(len(y)):
         res = curve_fit(lin, x, y[j], p0=[0.01, 0.01], sigma=1/np.sqrt(weights))
-        m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+        m_dm = ufloat(res[0][0], np.sqrt(res[1][0, 0]))
+        c_dc = ufloat(res[0][1], np.sqrt(res[1][1, 1]))
 
-        label = '${}={:.2ugL}$'.format(mlabel[j], m_dm)
+        label = f'${mlabel[j]}={m_dm: .2ugL}, {clabel[j]}={c_dc: .2ugL}$'
         plt.plot(x_bin, lin(x_bin, *res[0]), c=colors[j], label=label)
         plt.errorbar(x_bin, y_bin[j], yerr=err_bin[j], c=colors[j], fmt='.')
 
@@ -159,6 +165,7 @@ def affine_corr_n(
     xlabel_arr,
     ylabel,
     mlabel=None,
+    clabel=None,
     weights=None,
     n_bin=30,
     out_path_arr=None,
@@ -178,8 +185,10 @@ def affine_corr_n(
         input y arrays
     xlabel, ylabel : string
         x-and y-axis labels
-    mlabel(m) : string, optional, default=None
+    mlabel : string, optional, default=None
         label for slope in the plot legend
+    clabel : string, optional, default=None
+        label for offset in the plot legend
     weights : array of double, optional, default=None
         weights of x points
     n_bin : double, optional, default=30
@@ -205,6 +214,7 @@ def affine_corr_n(
             xlabel,
             ylabel,
             mlabel=mlabel,
+            clabel=clabel,
             weights=weights,
             n_bin=n_bin,
             out_path=out_path,

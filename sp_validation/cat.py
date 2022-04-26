@@ -224,7 +224,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
 def match_subsample(dd, ind, mask, pos_key, ell_key, n_ref, stats_file, verbose=False):
     """Match subsample
 
-    Match subsample of catalogue.
+    Match subsamples of catalogues.
 
     Parameters
     ----------
@@ -445,7 +445,7 @@ def write_shape_catalog(
                        ['e1_uncal', 'e2_uncal', 'R_g11', 'R_g22', 'R_g12', 'R_g21']):
         if x is not None:
             cols.append(fits.Column(name=name, array=x, format='D'))
-            nytpe += 1
+            ntype += 1
 
     if add_cols:
         for i, name in enumerate(add_cols):

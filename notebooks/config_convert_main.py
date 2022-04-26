@@ -9,8 +9,8 @@ cmd = f'jupyter nbconvert --to script {inp_str} --stdout > main_set_up.py'
 
 os.system(cmd)
 
-# Run validation from command line via
-# ipython validation.py
+# Run from command line via
+# ipython main_set_up.py
 
 """
 sp_base = f"{os.environ['HOME']}/sp_validation"

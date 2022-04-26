@@ -412,8 +412,7 @@ def main(argv=None):
 
     # PSF catalogue
     if param.verbose:
-        print('Merging PSF catalogue')
-    #input_sub_path = f'sp_output/psf_catalog_{sh}.fits'
+        print('Merging PSF catalogues')
     input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
 
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'

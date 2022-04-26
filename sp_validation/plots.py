@@ -171,9 +171,26 @@ def plot_histograms(
     savefig(out_path)
 
 
-def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=False, labels=None,
-                 colors=None, linestyles=None, eb_linestyles=None, ylim=None):
-    """plot points errors
+def plot_data_1d(
+    x,
+    y,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    xlog=False, 
+    ylog=False,
+    log=False,
+    labels=None,
+    colors=None,
+    linestyles=None,
+    eb_linestyles=None,
+    linewidths=None,
+    xlim=None,
+    ylim=None
+):
+    """Plot Data 1D
 
     Plot one-dimensional data points with errorbars.
 
@@ -193,8 +210,12 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         line colors, matplotlib default colors if None
     linestyle : array of string, optional, default=None
         linestyle indicators, '-' if None
+    linewidths : array of float, optional
+        line widths, default is `2`
     eb_linestyle : array of string, optional, default=None
         errorbar linestyle indicators, '-' if None
+    xlim : array(float, 2), optional, default=None
+        x-axis limits, automatic if None
     ylim : array(float, 2), optional, default=None
         y-axis limits, automatic if None
     """
@@ -211,18 +232,19 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         linestyles = ['-'] * len(x)
     if eb_linestyles is None:
         eb_linestyles = ['-'] * len(x)
+    if linewidths is None:
+        linewidths = [2] * len(x)
 
     figure(figsize=(15,10))
 
     for i in range(len(x)):
         if np.isnan(yerr[i]).all():
-            eb = plt.plot(x[i], y[i], label=labels[i], color=colors[i], linestyle=linestyles[i])
+            eb = plt.plot(x[i], y[i], label=labels[i], color=colors[i], linestyle=linestyles[i], linewidth=linewidths[i])
         else:
-            eb = plt.errorbar(x[i], y[i], yerr=yerr[i], label=labels[i], color=colors[i], linestyle=linestyles[i],
+            eb = plt.errorbar(x[i], y[i], yerr=yerr[i], label=labels[i], color=colors[i], linestyle=linestyles[i], linewidth=linewidths[i],
                             marker='o', markerfacecolor='none', capsize=4)
             eb[-1][0].set_linestyle(eb_linestyles[i])
 
-    plt.hlines(y=0, xmin=plt.xlim()[0], xmax=plt.xlim()[1], linestyles='dashed')
 
     if xlog == True:
         plt.xscale('log')
@@ -233,8 +255,12 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
     if ylog == True:
         plt.yscale('log')
 
+    if xlim:
+        plt.xlim(xlim)
     if ylim:
         plt.ylim(ylim)
+
+    plt.hlines(y=0, xmin=plt.xlim()[0], xmax=plt.xlim()[1], linestyles='dashed')
 
     plt.title(title)
     plt.xlabel(xlabel)
