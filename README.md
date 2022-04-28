@@ -122,12 +122,14 @@ Leakage for the joint v1.0 catalogue can be computed via
 leakage.py -i SP/unions_shapepipe_extended_2022_v1.0.fits -I SP/unions_shapepipe_psf_2022_v1.0.1.fits -o leakage -v
 ```
 assuming `SP` is a link to the v1.0 ShapePipe data directory.
-If this call was done in a subdirectory from where in `..` are the patch runs, joint plots of the leakage can be produced by
+If this call was done in a subdirectory from where in `..` are the patch runs, joint plots of the scale-dependent leakage can be produced by
 ```bash
 plot_leakage.py leakage/alpha_leakage_ngmix.txt ../P[1234567]/leakage/alpha_leakage_ngmix.txt`
 ```
 This will read in the text files produces by the previous calls of `leakage.py`.
 
+A summary table of the object-wise leakage linear parameters will be created by `combine_results.py`, see above.
+This call will add the leakage from the joint catalogue, assuming the results are stored in `joint/leakage`.
 
 
 
