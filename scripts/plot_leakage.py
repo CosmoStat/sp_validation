@@ -7,7 +7,7 @@ from glob import glob
 from optparse import OptionParser
 from astropy.io import ascii
 
-from shapepipe.utilities.cfis import param
+from shapepipe.utilities.cfis import param, log_command
 
 from sp_validation.cat import *
 from sp_validation.plots import *
@@ -145,6 +145,7 @@ def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, sh, output_dir, xmin, 
     linewidths[0] = 3
 
     colors = ['grey', 'k', 'b', 'r', 'c', 'm', 'g', 'orange']
+    labels = ['all', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7']
 
     plot_data_1d(
         theta,
@@ -158,7 +159,8 @@ def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, sh, output_dir, xmin, 
         xlim=[xmin, xmax],
         ylim=ylim,
         linewidths=linewidths,
-        colors=colors
+        colors=colors,
+        labels=labels,
     )
 
 
@@ -179,6 +181,9 @@ def main(argv=None):
         return 1
 
     param = update_param(p_def, options)
+
+    # save calling command
+    log_command(argv)
 
     sys.path.append('.')
     import params as config
