@@ -14,6 +14,9 @@
 
 import os
 
+from astropy.io import ascii
+from astropy.table import Table
+
 
 def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
     """Make output directories
@@ -111,3 +114,48 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
         + f' = {ratio:.1f}%',
         stats_file, verbose=verbose
     )
+
+
+def write_ascii_table_file(cols, names, fname):
+    """Write Ascii Table File
+
+    Write ASCII file with table data
+
+    Parameters
+    ----------
+    cols : list
+        data columns
+    names : list of str
+        column names
+    fname : str
+        output file name
+
+    """
+    t = Table(cols, names=names)
+    with open(fname, 'w') as fout:
+        ascii.write(t, fout, delimiter='\t')
+
+
+def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
+    """Save Alpha
+
+    Save scale-dependent alpha
+
+    Parameters
+    ----------
+    theta : list
+        angular scales
+    alpha_leak : list
+        leakage alpha(theta)
+    sig_alpha_leak : list
+        standard deviation of alpha(theta)
+    sh : str
+        shape measurement method, e.g. 'ngmix'
+    output_dir : str
+        output directory
+
+    """
+    cols = [theta, alpha_leak, sig_alpha_leak]
+    names = ['# theta', 'alpha', 'sig_alpha']
+    fname = f'{output_dir}/alpha_leakage_{sh}.txt'
+    write_ascii_table_file(cols, names, fname)
