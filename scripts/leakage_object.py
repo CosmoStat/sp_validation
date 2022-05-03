@@ -152,6 +152,13 @@ def parse_options(p_def):
         action='store_true',
         help=f'verbose output'
     )
+    parser.add_option(
+        '-t',
+        '--test',
+        dest='test',
+        action='store_true',
+        help=f'test of 2D fit'
+    )
 
     options, args = parser.parse_args()
 
@@ -172,8 +179,11 @@ def check_options(options):
         Result of option check. False if invalid option value.
     """
 
-    if not options.input_path_shear:
-        print('Input path for shear catalogue (option \'-i\') required')
+    if not options.input_path_shear and not options.test:
+        print(
+            'Input path for shear catalogue (option \'-i\') '
+            + 'required unless in test mode (option \'-t\')'
+        )
         return False
 
     if options.e1_PSF_col == options.e2_PSF_col:
@@ -217,6 +227,99 @@ def update_param(p_def, options):
     return param
 
 
+def leakage_test(param):
+    """Leakage Test
+
+    Test object-by-object leakage relations.
+
+    """
+    plot_dir_leakage = param.output_dir
+
+    n_bin = 20
+
+    colors = ['b', 'r']
+    ylabel_arr = ['$y_1$', '$y_2$']
+    mlabel = ['m_1', 'm_2']
+    clabel = ['c_1', 'c_2']
+
+    xlabel_arr = [
+        r'$x_1$',
+        r'$x_2$',
+    ]
+
+    # For testing
+    np.random.seed(seed=6121975)
+    
+    xm = 1.0
+    size = 2000
+    sig_x = 0.5
+    x_arr = [
+        np.random.uniform(-xm, xm, size=size),
+        np.random.uniform(-xm, xm, size=size)
+    ]
+
+    # Ground-truth parameters
+    pars_gt = {
+        'q111' : -0.9,
+        'q222' : 0.3,
+        'q112' : 1.8,
+        'q122' : -1.3,
+        'q212' : -2.0,
+        'q211' : 0.25,
+        'm11' :  -0.4,
+        'm22' : 0.3,
+        'm12' : 0.3,
+        'c1' : 0.2,
+        'c2' : -0.3,
+    }
+
+    # Ground truth
+    p_gt = Parameters()
+    for par in pars_gt:
+        p_gt.add(par, value=pars_gt[par])
+
+    # Ground-truth data
+    y1 = np.zeros_like(x_arr[0])
+    y2 = np.zeros_like(x_arr[1])
+    for idx in range(size):
+        y1[idx], y2[idx] =  func_bias_2d(
+        p_gt,
+        x_arr[0][idx],
+        x_arr[1][idx],
+        order='quad',
+        mix=False
+    )
+
+    dy1 = np.random.normal(scale=sig_x, size=size)
+    dy2 = np.random.normal(scale=sig_x, size=size)
+
+    for new in [False, True]:
+        for order in ['lin']: #, 'quad']:
+
+            for mix in [False]: #, True]:
+
+                out_path = f'{plot_dir_leakage}/test_{new}_{order}_{mix}'
+                affine_corr_2d(
+                    x_arr,
+                    [y1 + dy1, y2 + dy2],
+                    xlabel_arr,
+                    ylabel_arr,
+                    order=order,
+                    mix=mix,
+                    title=f'test {new} {order} {mix}',
+                    n_bin=n_bin,
+                    out_path=out_path,
+                    colors=colors,
+                    y_ground_truth=[y1, y2],
+                    verbose=param.verbose,
+                    new=new
+            )
+
+    print('Ground truth:')
+    for par in p_gt:
+        print(par, p_gt[par].value)
+
+ 
 def leakage(dat, param, stats_file):
     """Leakage
 
@@ -239,8 +342,6 @@ def leakage(dat, param, stats_file):
 
     colors = ['b', 'r']
     ylabel = r'$e_{1,2}^{\rm gal}$'
-    mlabel = ['m_1', 'm_2']
-    clabel = ['c_1', 'c_2']
 
     xlabel_arr = [
         r'$e_{1}^{\rm PSF}$',
@@ -263,6 +364,26 @@ def leakage(dat, param, stats_file):
         'PSF_e2_vs_e_gal',
         'PSF_size_vs_e_gal'
     ]
+
+    ylabel_arr = [r'$e_1^{\rm gal}$', r'$e_2^{\rm gal}$']
+
+    for order in ['lin_sep', 'lin_mix']:
+        out_path = f'{plot_dir_leakage}/PSF_e_vs_e_gal_2D_{order}'
+        affine_corr_2d(
+            x_arr[:2],
+            e,
+            xlabel_arr[:2],
+            ylabel_arr,
+            order=order,
+            title=param.sh,
+            weights=weights,
+            n_bin=n_bin,
+            out_path=out_path,
+            colors=colors[:2],
+            stats_file=stats_file,
+            verbose=param.verbose
+        )
+
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
     affine_corr_n(
         x_arr,
@@ -279,6 +400,9 @@ def leakage(dat, param, stats_file):
         stats_file=stats_file,
         verbose=param.verbose
     )
+
+    
+
 
 
 def main(argv=None):
@@ -301,6 +425,10 @@ def main(argv=None):
 
     # Save calling command
     cfis.log_command(argv)
+
+    if param.test:
+        leakage_test(param)
+        sys.exit(0)
 
     sys.path.append('.')
     import params as config

@@ -5,7 +5,6 @@ import copy
 import numpy as np
 from optparse import OptionParser
 from astropy.io import ascii
-from astropy.table import Table, Column
 
 from shapepipe.utilities import cfis
 from shapepipe.utilities import file_system
@@ -53,8 +52,10 @@ def params_default():
     p_def = param(
         output_dir='.',
         hdu_psf=1,
-        e1_PSF_col='E1_PSF_HSM',
-        e2_PSF_col='E2_PSF_HSM',
+        e1_col='e1_uncal',
+        e2_col='e2_uncal',
+        e1_PSF_star_col='E1_PSF_HSM',
+        e2_PSF_star_col='E2_PSF_HSM',
     )
 
     return p_def
@@ -111,19 +112,35 @@ def parse_options(p_def):
     )
     parser.add_option(
         '',
-        '--e1_PSF_col',
-        dest='e1_PSF_col',
-        default=p_def.e1_PSF_col,
+        '--e1_uncal',
+        dest='e1_uncal',
+        default=p_def.e1_PSF_star_col,
         type='string',
-        help=f'e1 PSF column name, default=\'{p_def.e1_PSF_col}\''
+        help=f'e1 column name in galaxy catalogue, default=\'{p_def.e1_uncal}\''
     )
     parser.add_option(
         '',
-        '--e2_PSF_col',
-        dest='e2_PSF_col',
-        default=p_def.e2_PSF_col,
+        '--e2_uncal',
+        dest='e2_uncal',
+        default=p_def.e2_PSF_star_col,
         type='string',
-        help=f'e2 PSF column name, default=\'{p_def.e2_PSF_col}\''
+        help=f'e2 column name in galaxy catalogue, default=\'{p_def.e2_uncal}\''
+    )
+    parser.add_option(
+        '',
+        '--e1_PSF_star_col',
+        dest='e1_PSF_star_col',
+        default=p_def.e1_PSF_star_col,
+        type='string',
+        help=f'e1 PSF column name in star catalogue, default=\'{p_def.e1_PSF_star_col}\''
+    )
+    parser.add_option(
+        '',
+        '--e2_PSF_star_col',
+        dest='e2_PSF_star_col',
+        default=p_def.e2_PSF_star_col,
+        type='string',
+        help=f'e2 PSF column name in star catalogue, default=\'{p_def.e2_PSF_star_col}\''
     )
     parser.add_option(
         '-v',
@@ -156,7 +173,7 @@ def check_options(options):
         print('Input path for shear catalogue (option \'-i\') required')
         return False
 
-    if options.e1_PSF_col == options.e2_PSF_col:
+    if options.e1_PSF_star_col == options.e2_PSF_star_col:
         print(
             'Column names for e1_PSF and e2_PSF are identical, '
             + 'this is surely a mistake'
@@ -268,8 +285,8 @@ def leakage(dat, sh, output_dir, stats_file, verbose=False):
 def compute_corr_gp_pp_alpha(
     dat_shear,
     dat_PSF,
-    e1_PSF_col,
-    e2_PSF_col,
+    e1_PSF_star_col,
+    e2_PSF_star_col,
     stats_file,
     theta_min_amin,
     theta_max_amin,
@@ -285,10 +302,10 @@ def compute_corr_gp_pp_alpha(
         input shear data
     dat_PSF : FITS.record
         input PSF data
-    e1_PSF_col : str
-        e1 PSF column name
-    e2_PSF_col : str
-        e2 PSF column name
+    e1_PSF_star_col : str
+        e1 PSF column name in star catalogue
+    e2_PSF_star_col : str
+        e2 PSF column name in star catalogue
     stats_file : file handler
         statistics output file
     verbose : bool, optional
@@ -314,8 +331,8 @@ def compute_corr_gp_pp_alpha(
 
     ra_star = dat_PSF['RA']
     dec_star = dat_PSF['Dec']
-    e1_star = dat_PSF[e1_PSF_col]
-    e2_star = dat_PSF[e2_PSF_col]
+    e1_star = dat_PSF[e1_PSF_star_col]
+    e2_star = dat_PSF[e2_PSF_star_col]
 
     # Correlation functions
     r_corr_gp, r_corr_pp = correlation_12_22(
@@ -345,33 +362,6 @@ def compute_corr_gp_pp_alpha(
     )
 
     return r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak
-
-
-def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
-    """Save Alpha
-
-    Save scale-dependent alpha
-
-    Parameters
-    ----------
-    theta : list
-        angular scales
-    alpha_leak : list
-        leakage alpha(theta)
-    sig_alpha_leak : list
-        standard deviation of alpha(theta)
-    sh : str
-        shape measurement method, e.g. 'ngmix'
-    output_dir : str
-        output directory
-
-    """
-    fname = f'{output_dir}/alpha_leakage_{sh}.txt'
-    cols = [theta, alpha_leak, sig_alpha_leak]
-    names = ['# theta', 'alpha', 'sig_alpha']
-    t = Table(cols, names=names)
-    with open(fname, 'w') as fout:
-        ascii.write(t, fout, delimiter='\t')
 
 
 def compute_alpha_mean(alpha_leak, sig_alpha_leak, sh, stats_file, verbose=False):
@@ -626,15 +616,15 @@ def main(argv=None):
         r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak = compute_corr_gp_pp_alpha(
             dat_shear,
             dat_PSF,
-            param.e1_PSF_col,
-            param.e2_PSF_col,
+            param.e1_PSF_star_col,
+            param.e2_PSF_star_col,
             stats_file,
             config.theta_min_amin,
             config.theta_max_amin,
             config.n_theta,
             verbose=param.verbose
         )
-        save_alpha(
+        io.save_alpha(
             r_corr_gp.meanr,
             alpha_leak,
             sig_alpha_leak,

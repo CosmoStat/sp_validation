@@ -16,6 +16,8 @@ auto- and cross-correlations.
 import numpy as np
 import matplotlib.pylab as plt
 from scipy.optimize import curve_fit
+from scipy import stats
+from lmfit import minimize, Parameters, fit_report
 from uncertainties import ufloat
 
 from tqdm import tqdm
@@ -25,6 +27,503 @@ from sp_validation.plot_style import *
 from sp_validation.io import print_stats
 
 import treecorr
+
+
+def func_bias_lin_1d(params, x_data):
+    """Func Bias
+
+    Function for linear 1D bias model.
+
+    Parameters
+    ----------
+    params : lmfit.Parameters
+        fit parameters
+    x_data : numpy.array
+        x-values of the data
+
+    Returns
+    -------
+    numpy.array
+        y-values of the model
+
+    """
+    m = params['m'].value
+    c = params['c'].value
+
+    y_model = m * x_data + c
+
+    return y_model
+
+
+def loss_bias_lin_1d(params, x_data, y_data, err):
+    """Loss Bias Lin 1D
+
+    Loss function for linear 1D model
+
+    Parameters
+    ----------
+    params : lmfit.Parameters
+        fit parameters
+    x_data : numpy.array
+        x-values of the data
+    y_data : numpy.array
+        y-values of the data
+    err : numpy.array
+        error values of the data
+
+    Returns
+    -------
+    numpy.array
+        residuals
+
+    """
+    y_model = func_bias_lin_1d(params, x_data)
+    residuals = (y_model - y_data) / err
+    return residuals
+
+
+def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
+    """Func Bias 2D
+
+    Function of 2D bias model.
+
+    Parameters
+    ----------
+    params : lmfit.Parameters
+        fit parameters
+    x1_data : float
+        first component of x-values of the data
+    x2_data : float
+        second component of x-values of the data
+    order : str, optional
+        order of fit, default is 'lin'
+    mix : bool, optional
+        mixing between components, default is `False`
+
+    Returns
+    -------
+    float
+        first component the 2D model, y1(x1, x2)
+    float
+        second component the 2D model, y2(x1, x2)
+
+    """
+    m11 = params['m11'].value
+    m22 = params['m22'].value
+    c1 = params['c1'].value
+    c2 = params['c2'].value
+
+    y1_model = m11 * x1_data + c1
+    y2_model = m22 * x2_data + c2
+
+    if order == 'quad':
+        q111 = params['q111'].value
+        q222 = params['q222'].value
+        y1_model += q111 * x1_data ** 2
+        y2_model += q222 * x2_data ** 2
+
+    if mix:
+        m12 = params['m12'].value
+        y1_model += m12 * x2_data
+        y2_model += m12 * x1_data
+
+        if order == 'quad':
+            q112 = params['q112'].value
+            q122 = params['q122'].value
+            q212 = params['q212'].value
+            q211 = params['q211'].value
+            y1_model += q112 * x1_data * x2_data + q122 * x2_data ** 2
+            y2_model += q212 * x1_data * x2_data + q211 * x1_data ** 2
+
+    return y1_model, y2_model
+
+
+def func_bias_2d_full(params, x1_data, x2_data, order='lin', mix=False):
+
+    len1 = len(x1_data)
+    len2 = len(x2_data)
+    y1 = np.zeros(shape=(len1, len2))
+    y2 = np.zeros(shape=(len1, len2))
+
+    for idx1 in range(len1):
+        for idx2 in range(len2):
+            y1[idx1, idx2], y2[idx1, idx2] = func_bias_2d(params, x1_data[idx1], x2_data[idx2], order=order, mix=mix)
+
+    return y1, y2
+
+
+def loss_bias_2d(params, x_data, y_data, err, order, mix):
+    """Loss Bias 1D
+
+    Loss function for 1D model
+
+    Parameters
+    ----------
+    params : lmfit.Parameters
+        fit parameters
+    x_data : numpy.array
+        two-component x-values of the data
+    y_data : numpy.array
+        two-component y-values of the data
+    err : numpy.array
+        error values of the data, assumed the same for both components
+    order : str
+        order of fit
+    mix : bool
+        mixing of components if True
+
+    Returns
+    -------
+    numpy.array
+        residuals
+
+    """
+    x1_data = x_data[0]
+    x2_data = x_data[1]
+    y1_data = y_data[0]
+    y2_data = y_data[1]
+
+    if len(x1_data) != len(x2_data):
+        raise IndexError('Length of both data components has to be equal')
+
+    residuals = []
+    for idx in range(len(x1_data)):
+        y1_model, y2_model = func_bias_2d(params, x1_data[idx], x2_data[idx], order=order, mix=mix)
+        residuals.append((y1_model - y1_data[idx]) / err[idx])
+        residuals.append((y2_model - y2_data[idx]) / err[idx])
+
+    return residuals
+
+
+def jackknife_mean(data):
+    """
+    """
+
+    remove_size = 0.2
+    n_realization = 50
+
+    samp_size = len(data)
+    keep_size_pc = 1-remove_size
+
+    if keep_size_pc < 0:
+        raise ValueError('remove size should be in [0, 1]')
+
+    subsamp_size = int(samp_size*keep_size_pc)
+
+    all_ind = np.arange(samp_size)
+
+    all_est = []
+    for i in range(n_realization):
+        sub_data_ind = np.random.choice(all_ind, subsamp_size)
+
+        all_est.append(np.average(data[sub_data_ind]))
+
+    all_est = np.array(all_est)
+
+    return np.mean(all_est)
+
+def jackknife_std(data):
+    """
+    """
+
+    remove_size = 0.2
+    n_realization = 50
+
+
+    samp_size = len(data)
+    keep_size_pc = 1-remove_size
+    
+    if keep_size_pc < 0:
+        raise ValueError('remove size should be in [0, 1]')
+    
+    subsamp_size = int(samp_size*keep_size_pc)
+    
+    all_ind = np.arange(samp_size)
+    
+    all_est = []
+    for i in range(n_realization):
+        sub_data_ind = np.random.choice(all_ind, subsamp_size)
+    
+        all_est.append(np.average(data[sub_data_ind]))
+    
+    all_est = np.array(all_est)
+
+    return  np.std(all_est)
+
+
+def affine_corr_2d(
+    x,
+    y,
+    xlabel_arr,
+    ylabel_arr,
+    order='lin',
+    mix=False,
+    mlabel=None,
+    clabel=None,
+    weights=None,
+    n_bin=30,
+    title='',
+    colors=None,
+    out_path=None,
+    y_ground_truth=None,
+    stats_file=None,
+    verbose=False,
+    new=True,
+):
+    """Affine Corr 2D
+    
+    Computes and plots 2D affine correlation of (y1, y2) as function of (x1, x2).
+ 
+    Parameters
+    -----------
+    x: array(double)
+        input x value
+    y: array(m) of double
+        input y arrays
+    order : str, optional
+        order of fit, default is 'lin'
+    xlabel_arr, ylabel_arr : list of str
+        x-and y-axis labels
+    weights : array of double, optional, default=None
+        weights of x points
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    title : string, optional, default=''
+        plot title
+    colors : array(m) of string, optional, default=None
+        line colors
+    stats_file : filehandler, optional, default=None
+        output file for statistics
+    out_path : str, optional, default=None
+        output file path, if not given, plot is not saved to file
+    verbose : bool, optional, default=False
+        verbose output if True
+    """
+    
+    if weights is None:
+        weights = np.ones_like(y[0])
+
+    if colors is None:
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+
+    size_all = len(y[0])
+    for j in range(1, len(y)):
+        if len(y[j]) != size_all:
+            raise IndexError
+            (
+                f'Size {len(y[j])} of input #{i} different from  size {size_all} of input #0'
+            )
+
+    x_bin = np.zeros(shape=(2, n_bin))
+    x_edges = np.zeros(shape=(2, n_bin + 1))
+    for comp in (0, 1):
+        res = stats.binned_statistic(x[comp], x[comp], 'mean', bins=n_bin)
+        x_bin[comp] = res.statistic
+        x_edges[comp] = res.bin_edges
+
+    if not new:
+        size_bin = int(size_all / n_bin)
+        diff_size = size_all - size_bin
+
+        # Prepare arrays for binned data
+        x_arg_sort = []
+        x_bin = []
+        y_bin = []
+        err_bin = []
+
+        for j in range(len(y)):
+            x_arg_sort.append(np.argsort(x[j]))
+            x_bin.append([])
+            y_bin.append([])
+            err_bin.append([])
+
+        # Bin data for plot
+        for j in range(len(y)):
+            for i in range(n_bin):
+                if i < diff_size:
+                    bin_size_tmp = size_bin + 1
+                    starter = 0
+                else:
+                    bin_size_tmp = size_bin
+                    starter = diff_size
+                ind = x_arg_sort[j][starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
+
+                #ind = np.where(np.logical_and(x[j] >= x_edges[j][i], x[j] < x_edges[j][i+1]))[0]
+
+                r_jk = jackknif_weighted_average(y[j][ind], weights[ind], remove_size=0.2, n_realization=50)
+                #r_jk = np.zeros(shape=(2))
+                #r_jk[0] = jackknife_mean(y[j][ind])
+                #r_jk[1] = jackknife_std(y[j][ind])
+    
+                x_bin[j].append(np.mean(x[j][ind]))
+                y_bin[j].append(r_jk[0])
+                err_bin[j].append(r_jk[1])
+
+        for j in range(len(y)):
+            x_bin[j] = np.array(x_bin[j])
+            y_bin[j] = np.array(y_bin[j])
+            err_bin[j] = np.array(err_bin[j])
+
+    if new:
+        y_bin_new = np.zeros(shape=(2, 2, n_bin))
+        err_bin_new = np.zeros(shape=(2, 2, n_bin))
+        if mix:
+            y_2d_bin = []
+            err_2d_bin = []
+            y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'mean', bins=n_bin).statistic)
+            y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'mean', bins=n_bin).statistic)
+            err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'std', bins=n_bin).statistic)
+            err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'std', bins=n_bin).statistic)
+
+            for comp in (0, 1):
+                y_bin_new[comp][0] = y_2d_bin[comp].mean(axis=1)
+                y_bin_new[comp][1] = y_2d_bin[comp].mean(axis=0)
+                err_bin_new[comp][0] = err_2d_bin[comp].mean(axis=1) / np.sqrt(n_bin)
+                err_bin_new[comp][1] = err_2d_bin[comp].mean(axis=0) / np.sqrt(n_bin)
+        else:
+            for comp in (0, 1):
+                y_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], jackknife_mean, bins=n_bin).statistic
+                err_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], jackknife_std, bins=n_bin).statistic
+                #y_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'mean', bins=n_bin).statistic
+                #n = stats.binned_statistic(x[comp], y[comp], 'count', bins=n_bin).statistic
+                #err_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'std', bins=n_bin).statistic / np.sqrt(n)
+
+
+
+
+    params = Parameters()
+    for p_affine in ['m11', 'm22', 'c1', 'c2']:
+        params.add(p_affine, value=0.0)
+
+    if mix:
+        params.add('m12', value=0.0)
+
+    if order == 'quad':
+        for p_quad in ['q111', 'q222']:
+            params.add(p_quad, value=0.0)
+
+        if mix:
+            for p_quad_mix in ['q112', 'q122', 'q212', 'q211']:
+                params.add(p_quad_mix, value=0.0)
+
+    res = minimize(loss_bias_2d, params, args=(x, y, 1/np.sqrt(weights), order, mix))
+    print(fit_report(res))
+    p_dp = {}
+    for p in res.params:
+        p_dp[p] = ufloat(res.params[p].value, res.params[p].stderr)
+    #if stats_file:
+        #msg = '{} 2d: {}={:.2ugP}'.format(xlabel[j], mlabel[j], m_dm[j])
+        #print_stats(msg, stats_file, verbose=verbose)
+
+    figure_mosaic = """
+    AB
+    CD
+    """
+    fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(15, 15))
+    y1_model, y2_model = func_bias_2d_full(res.params, x_bin[0], x_bin[1], order=order, mix=mix)
+
+    xb = {}
+    idx_marg = {}
+    yd = {}
+    ym = {}
+    xgt = {}
+    ygt = {}
+    dy = {}
+    col = {}
+    xl = {}
+    yl = {}
+    for p in 'A', 'B':
+        xb[p] = x_bin[0]
+        idx_marg[p] = 1
+        if y_ground_truth:
+            xgt[p] = x[0]
+        xl[p] = xlabel_arr[0]
+    for p in 'C', 'D':
+        xb[p] = x_bin[1]
+        idx_marg[p] = 0
+        if y_ground_truth:
+            xgt[p] = x[1]
+        xl[p] = xlabel_arr[1]
+    for p in 'A', 'C':
+        ym[p] = y1_model
+        if y_ground_truth:
+            ygt[p] = y_ground_truth[0]
+        yl[p] = ylabel_arr[0]
+        col[p] = colors[0]
+    for p in 'B', 'D':
+        ym[p] = y2_model
+        if y_ground_truth:
+            ygt[p] = y_ground_truth[1]
+        yl[p] = ylabel_arr[1]
+        col[p] = colors[1]
+
+    if not new:
+        yd['A'] = y_bin[0]
+        yd['B'] = y_bin[1]
+        yd['C'] = y_bin[0]
+        yd['D'] = y_bin[1]
+        dy['A'] = err_bin[0]
+        dy['B'] = err_bin[1]
+        dy['C'] = err_bin[0]
+        dy['D'] = err_bin[1]
+    else:
+        yd['A'] = y_bin_new[0][0]
+        yd['D'] = y_bin_new[1][1]
+        dy['A'] = err_bin_new[0][0]
+        dy['D'] = err_bin_new[1][1]
+        if mix:
+            yd['B'] = y_bin_new[1][0]
+            yd['C'] = y_bin_new[0][1]
+            dy['B'] = err_bin_new[1][0]
+            dy['C'] = err_bin_new[0][1]
+
+    label = {
+        'A' : f'$m_{{11}}={p_dp["m11"]: .2ugL}$' + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$',
+        'D' : f'$m_{{22}}={p_dp["m22"]: .2ugL}$' + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$',
+    }
+    if order == 'quad':
+        label['A'] = f'$q_{{111}}={p_dp["q111"]: .2ugL}$' + '\n' + label['A']
+        label['D'] = f'$q_{{222}}={p_dp["q222"]: .2ugL}$' + '\n' + label['D']
+    if mix:
+        label['B'] = f'$m_{{12}}={p_dp["m12"]: .2ugL}$'
+        label['C'] = f'$m_{{12}}={p_dp["m12"]: .2ugL}$'
+        if order == 'quad':
+            label['B'] = f'$q_{{211}}={p_dp["q211"]: .2ugL}$' + '\n' + label['B']
+            label['C'] = f'$q_{{122}}={p_dp["q122"]: .2ugL}$' + '\n' + label['C']
+
+    for p in axes:
+        if not mix and p in ['B', 'C']:
+            continue
+        if idx_marg[p] == 0:
+            lab = label[p]
+            for idx in range(len(x_bin[0])):
+                axes[p].plot(xb[p], ym[p][idx,:], c=col[p], label=lab)
+                lab = None
+        else:
+            lab = label[p]
+            for idx in range(len(x_bin[1])):
+                axes[p].plot(xb[p], ym[p][:, idx], c=col[p], label=lab)
+                lab = None
+
+        if y_ground_truth:
+            axes[p].plot(xgt[p], ygt[p], '.', c='k', markersize=0.4)
+
+        axes[p].errorbar(xb[p], yd[p], yerr=dy[p], c=col[p], fmt='.')
+        axes[p].set_xlabel(xl[p])
+        axes[p].set_ylabel(yl[p])
+        axes[p].legend()
+
+
+        ## Finalise plots
+        #plt_xmin, plt_xmax = plt.xlim()
+        #plt.xlim(plt_xmin, plt_xmax)
+
+    fig.suptitle(title)
+    plt.tight_layout()
+
+    if out_path:
+        plt.savefig(out_path, bbox_inches='tight')
 
 
 def affine_corr(
@@ -73,9 +572,6 @@ def affine_corr(
         verbose output if True
     """
     
-    def lin(x, a, b):
-        return a * x + b
-
     if mlabel is None:
         mlabel = np.full(len(y), 'm')
     if clabel is None:
@@ -108,7 +604,7 @@ def affine_corr(
         y_bin.append([])
         err_bin.append([])
 
-    # Bin data
+    # Bin data for plot
     for i in tqdm(range(n_bin), total=n_bin, disable=not verbose):
         if i < diff_size:
             bin_size_tmp = size_bin + 1
@@ -130,15 +626,20 @@ def affine_corr(
         y_bin[j] = np.array(y_bin[j])
         err_bin[j] = np.array(err_bin[j])
  
+
     # Fit affine functions, plot function and data
     plt.figure(figsize=(10, 6))
     for j in range(len(y)):
-        res = curve_fit(lin, x, y[j], p0=[0.01, 0.01], sigma=1/np.sqrt(weights))
-        m_dm = ufloat(res[0][0], np.sqrt(res[1][0, 0]))
-        c_dc = ufloat(res[0][1], np.sqrt(res[1][1, 1]))
+        params = Parameters()
+        params.add('m', value=0.01)
+        params.add('c', value=0.01)
+        res = minimize(loss_bias_lin_1d, params, args=(x, y[j], 1/np.sqrt(weights)))
+        #print(j, fit_report(res))
+        m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
+        c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
 
         label = f'${mlabel[j]}={m_dm: .2ugL}, {clabel[j]}={c_dc: .2ugL}$'
-        plt.plot(x_bin, lin(x_bin, *res[0]), c=colors[j], label=label)
+        plt.plot(x_bin, func_bias_lin_1d(res.params, x_bin), c=colors[j], label=label)
         plt.errorbar(x_bin, y_bin[j], yerr=err_bin[j], c=colors[j], fmt='.')
 
         if stats_file:
@@ -193,7 +694,7 @@ def affine_corr_n(
         weights of x points
     n_bin : double, optional, default=30
         number of points onto which data are binned
-    out_path_arr) : array(n) of string, optional, default=None
+    out_path_arr : array(n) of string, optional, default=None
         output file path, if not given, plot is not saved to file
     title : string, optional, default=''
         plot title
