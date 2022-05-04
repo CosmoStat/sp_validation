@@ -259,6 +259,19 @@ def leakage_test(param):
     ]
 
     # Ground-truth parameters
+    #pars_gt = {
+        #'q111' : -0.0,
+        #'q222' : 0.0,
+        #'q112' : 1.4,
+        #'q122' : -2.0,
+        #'q212' : -1.2,
+        #'q211' : 1.5,
+        #'m11' :  0.0,
+        #'m22' : 0.0,
+        #'m12' : 2.5,
+        #'c1' : 0.2,
+        #'c2' : -0.3,
+    #}
     pars_gt = {
         'q111' : -0.9,
         'q222' : 0.3,
@@ -279,41 +292,48 @@ def leakage_test(param):
         p_gt.add(par, value=pars_gt[par])
 
     # Ground-truth data
-    y1 = np.zeros_like(x_arr[0])
-    y2 = np.zeros_like(x_arr[1])
-    for idx in range(size):
-        y1[idx], y2[idx] =  func_bias_2d(
+    #y1 = np.zeros_like(x_arr[0])
+    #y2 = np.zeros_like(x_arr[1])
+    #for idx in range(size):
+        #y1[idx], y2[idx] = func_bias_2d(
+        #p_gt,
+        #x_arr[0][idx],
+        #x_arr[1][idx],
+        #order='quad',
+        #mix=True
+    #)
+
+    y1, y2 = func_bias_2d(
         p_gt,
-        x_arr[0][idx],
-        x_arr[1][idx],
+        x_arr[0],
+        x_arr[1],
         order='quad',
-        mix=False
+        mix=True
     )
 
+    # Perturbation
     dy1 = np.random.normal(scale=sig_x, size=size)
     dy2 = np.random.normal(scale=sig_x, size=size)
 
-    for new in [False, True]:
-        for order in ['lin']: #, 'quad']:
+    for order in ['lin', 'quad']:
 
-            for mix in [False]: #, True]:
+        for mix in [False, True]:
 
-                out_path = f'{plot_dir_leakage}/test_{new}_{order}_{mix}'
-                affine_corr_2d(
-                    x_arr,
-                    [y1 + dy1, y2 + dy2],
-                    xlabel_arr,
-                    ylabel_arr,
-                    order=order,
-                    mix=mix,
-                    title=f'test {new} {order} {mix}',
-                    n_bin=n_bin,
-                    out_path=out_path,
-                    colors=colors,
-                    y_ground_truth=[y1, y2],
-                    verbose=param.verbose,
-                    new=new
-            )
+            out_path = f'{plot_dir_leakage}/test_{order}_{mix}'
+            affine_corr_2d(
+                x_arr,
+                [y1 + dy1, y2 + dy2],
+                xlabel_arr,
+                ylabel_arr,
+                order=order,
+                mix=mix,
+                title=f'test {order} {mix}',
+                n_bin=n_bin,
+                out_path=out_path,
+                colors=colors,
+                y_ground_truth=[y1, y2],
+                verbose=param.verbose,
+        )
 
     print('Ground truth:')
     for par in p_gt:

@@ -145,9 +145,8 @@ def func_bias_2d_full(params, x1_data, x2_data, order='lin', mix=False):
     y1 = np.zeros(shape=(len1, len2))
     y2 = np.zeros(shape=(len1, len2))
 
-    for idx1 in range(len1):
-        for idx2 in range(len2):
-            y1[idx1, idx2], y2[idx1, idx2] = func_bias_2d(params, x1_data[idx1], x2_data[idx2], order=order, mix=mix)
+    v1, v2 = np.meshgrid(x1_data, x2_data, indexing='ij')
+    y1, y2 = func_bias_2d(params, v1, v2, order=order, mix=mix) 
 
     return y1, y2
 
@@ -186,69 +185,12 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
     if len(x1_data) != len(x2_data):
         raise IndexError('Length of both data components has to be equal')
 
-    residuals = []
-    for idx in range(len(x1_data)):
-        y1_model, y2_model = func_bias_2d(params, x1_data[idx], x2_data[idx], order=order, mix=mix)
-        residuals.append((y1_model - y1_data[idx]) / err[idx])
-        residuals.append((y2_model - y2_data[idx]) / err[idx])
+    y1_model, y2_model = func_bias_2d(params, x1_data, x2_data, order=order, mix=mix)
+    res1 = (y1_model - y1_data) / err
+    res2 = (y2_model - y2_data) / err
+    residuals = np.concatenate([res1, res2])
 
     return residuals
-
-
-def jackknife_mean(data):
-    """
-    """
-
-    remove_size = 0.2
-    n_realization = 50
-
-    samp_size = len(data)
-    keep_size_pc = 1-remove_size
-
-    if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
-
-    subsamp_size = int(samp_size*keep_size_pc)
-
-    all_ind = np.arange(samp_size)
-
-    all_est = []
-    for i in range(n_realization):
-        sub_data_ind = np.random.choice(all_ind, subsamp_size)
-
-        all_est.append(np.average(data[sub_data_ind]))
-
-    all_est = np.array(all_est)
-
-    return np.mean(all_est)
-
-def jackknife_std(data):
-    """
-    """
-
-    remove_size = 0.2
-    n_realization = 50
-
-
-    samp_size = len(data)
-    keep_size_pc = 1-remove_size
-    
-    if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
-    
-    subsamp_size = int(samp_size*keep_size_pc)
-    
-    all_ind = np.arange(samp_size)
-    
-    all_est = []
-    for i in range(n_realization):
-        sub_data_ind = np.random.choice(all_ind, subsamp_size)
-    
-        all_est.append(np.average(data[sub_data_ind]))
-    
-    all_est = np.array(all_est)
-
-    return  np.std(all_est)
 
 
 def affine_corr_2d(
@@ -268,7 +210,6 @@ def affine_corr_2d(
     y_ground_truth=None,
     stats_file=None,
     verbose=False,
-    new=True,
 ):
     """Affine Corr 2D
     
@@ -322,72 +263,26 @@ def affine_corr_2d(
         x_bin[comp] = res.statistic
         x_edges[comp] = res.bin_edges
 
-    if not new:
-        size_bin = int(size_all / n_bin)
-        diff_size = size_all - size_bin
+    y_bin_new = np.zeros(shape=(2, 2, n_bin))
+    err_bin_new = np.zeros(shape=(2, 2, n_bin))
+    if mix:
+        y_2d_bin = []
+        err_2d_bin = []
+        y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'mean', bins=n_bin).statistic)
+        y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'mean', bins=n_bin).statistic)
+        err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'std', bins=n_bin).statistic)
+        err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'std', bins=n_bin).statistic)
 
-        # Prepare arrays for binned data
-        x_arg_sort = []
-        x_bin = []
-        y_bin = []
-        err_bin = []
-
-        for j in range(len(y)):
-            x_arg_sort.append(np.argsort(x[j]))
-            x_bin.append([])
-            y_bin.append([])
-            err_bin.append([])
-
-        # Bin data for plot
-        for j in range(len(y)):
-            for i in range(n_bin):
-                if i < diff_size:
-                    bin_size_tmp = size_bin + 1
-                    starter = 0
-                else:
-                    bin_size_tmp = size_bin
-                    starter = diff_size
-                ind = x_arg_sort[j][starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
-
-                #ind = np.where(np.logical_and(x[j] >= x_edges[j][i], x[j] < x_edges[j][i+1]))[0]
-
-                r_jk = jackknif_weighted_average(y[j][ind], weights[ind], remove_size=0.2, n_realization=50)
-                #r_jk = np.zeros(shape=(2))
-                #r_jk[0] = jackknife_mean(y[j][ind])
-                #r_jk[1] = jackknife_std(y[j][ind])
-    
-                x_bin[j].append(np.mean(x[j][ind]))
-                y_bin[j].append(r_jk[0])
-                err_bin[j].append(r_jk[1])
-
-        for j in range(len(y)):
-            x_bin[j] = np.array(x_bin[j])
-            y_bin[j] = np.array(y_bin[j])
-            err_bin[j] = np.array(err_bin[j])
-
-    if new:
-        y_bin_new = np.zeros(shape=(2, 2, n_bin))
-        err_bin_new = np.zeros(shape=(2, 2, n_bin))
-        if mix:
-            y_2d_bin = []
-            err_2d_bin = []
-            y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'mean', bins=n_bin).statistic)
-            y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'mean', bins=n_bin).statistic)
-            err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'std', bins=n_bin).statistic)
-            err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'std', bins=n_bin).statistic)
-
-            for comp in (0, 1):
-                y_bin_new[comp][0] = y_2d_bin[comp].mean(axis=1)
-                y_bin_new[comp][1] = y_2d_bin[comp].mean(axis=0)
-                err_bin_new[comp][0] = err_2d_bin[comp].mean(axis=1) / np.sqrt(n_bin)
-                err_bin_new[comp][1] = err_2d_bin[comp].mean(axis=0) / np.sqrt(n_bin)
-        else:
-            for comp in (0, 1):
-                y_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], jackknife_mean, bins=n_bin).statistic
-                err_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], jackknife_std, bins=n_bin).statistic
-                #y_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'mean', bins=n_bin).statistic
-                #n = stats.binned_statistic(x[comp], y[comp], 'count', bins=n_bin).statistic
-                #err_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'std', bins=n_bin).statistic / np.sqrt(n)
+        for comp in (0, 1):
+            y_bin_new[comp][0] = y_2d_bin[comp].mean(axis=1)
+            y_bin_new[comp][1] = y_2d_bin[comp].mean(axis=0)
+            err_bin_new[comp][0] = err_2d_bin[comp].mean(axis=1) / np.sqrt(n_bin)
+            err_bin_new[comp][1] = err_2d_bin[comp].mean(axis=0) / np.sqrt(n_bin)
+    else:
+        for comp in (0, 1):
+            y_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'mean', bins=n_bin).statistic
+            n = stats.binned_statistic(x[comp], y[comp], 'count', bins=n_bin).statistic
+            err_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'std', bins=n_bin).statistic / np.sqrt(n)
 
 
 
@@ -412,9 +307,9 @@ def affine_corr_2d(
     p_dp = {}
     for p in res.params:
         p_dp[p] = ufloat(res.params[p].value, res.params[p].stderr)
-    #if stats_file:
-        #msg = '{} 2d: {}={:.2ugP}'.format(xlabel[j], mlabel[j], m_dm[j])
-        #print_stats(msg, stats_file, verbose=verbose)
+        #if stats_file:
+            #msg = '{} 2d: {}={:.2ugP}'.format(xlabel[j], mlabel[j], m_dm[j])
+            #print_stats(msg, stats_file, verbose=verbose)
 
     figure_mosaic = """
     AB
@@ -422,6 +317,7 @@ def affine_corr_2d(
     """
     fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(15, 15))
     y1_model, y2_model = func_bias_2d_full(res.params, x_bin[0], x_bin[1], order=order, mix=mix)
+
 
     xb = {}
     idx_marg = {}
@@ -458,25 +354,15 @@ def affine_corr_2d(
         yl[p] = ylabel_arr[1]
         col[p] = colors[1]
 
-    if not new:
-        yd['A'] = y_bin[0]
-        yd['B'] = y_bin[1]
-        yd['C'] = y_bin[0]
-        yd['D'] = y_bin[1]
-        dy['A'] = err_bin[0]
-        dy['B'] = err_bin[1]
-        dy['C'] = err_bin[0]
-        dy['D'] = err_bin[1]
-    else:
-        yd['A'] = y_bin_new[0][0]
-        yd['D'] = y_bin_new[1][1]
-        dy['A'] = err_bin_new[0][0]
-        dy['D'] = err_bin_new[1][1]
-        if mix:
-            yd['B'] = y_bin_new[1][0]
-            yd['C'] = y_bin_new[0][1]
-            dy['B'] = err_bin_new[1][0]
-            dy['C'] = err_bin_new[0][1]
+    yd['A'] = y_bin_new[0][0]
+    yd['D'] = y_bin_new[1][1]
+    dy['A'] = err_bin_new[0][0]
+    dy['D'] = err_bin_new[1][1]
+    if mix:
+        yd['B'] = y_bin_new[1][0]
+        yd['C'] = y_bin_new[0][1]
+        dy['B'] = err_bin_new[1][0]
+        dy['C'] = err_bin_new[0][1]
 
     label = {
         'A' : f'$m_{{11}}={p_dp["m11"]: .2ugL}$' + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$',
@@ -513,11 +399,6 @@ def affine_corr_2d(
         axes[p].set_xlabel(xl[p])
         axes[p].set_ylabel(yl[p])
         axes[p].legend()
-
-
-        ## Finalise plots
-        #plt_xmin, plt_xmax = plt.xlim()
-        #plt.xlim(plt_xmin, plt_xmax)
 
     fig.suptitle(title)
     plt.tight_layout()
