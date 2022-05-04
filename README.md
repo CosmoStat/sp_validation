@@ -106,6 +106,32 @@ In the same directory containing the subpatches as above, type
 ```
 It creates the joint output catalogue `joint.fits`.
 
+### PSF - galaxy ellipticity leakage
+
+The validation notebooks, in particular `psf_leakage.ipynb`, compute the leakage from PSF to galaxy ellipticity, as part of the global validation.
+This can also be done with the stand-alone python script `scripts/leakage.py`.
+
+For example, for a given patch, run
+```bash
+leakage.py -i sp_output/shape_catalog_extended_ngmix.fits -I output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits -o leakage --hdu_psf 2 -v
+```
+to output plots and text files for the object-wise and scale-dependent leakage for that patch.
+
+Leakage for the joint v1.0 catalogue can be computed via
+```bash
+leakage.py -i SP/unions_shapepipe_extended_2022_v1.0.fits -I SP/unions_shapepipe_psf_2022_v1.0.1.fits -o leakage -v
+```
+assuming `SP` is a link to the v1.0 ShapePipe data directory.
+If this call was done in a subdirectory from where in `..` are the patch runs, joint plots of the scale-dependent leakage can be produced by
+```bash
+plot_leakage.py leakage/alpha_leakage_ngmix.txt ../P[1234567]/leakage/alpha_leakage_ngmix.txt`
+```
+This will read in the text files produces by the previous calls of `leakage.py`.
+
+A summary table of the object-wise leakage linear parameters will be created by `combine_results.py`, see above.
+This call will add the leakage from the joint catalogue, assuming the results are stored in `joint/leakage`.
+
+
 
 
 
