@@ -91,9 +91,9 @@ def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
     ----------
     params : lmfit.Parameters
         fit parameters
-    x1_data : float
+    x1_data : float or list of float
         first component of x-values of the data
-    x2_data : float
+    x2_data : float or list of float
         second component of x-values of the data
     order : str, optional
         order of fit, default is 'lin'
@@ -102,9 +102,9 @@ def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
 
     Returns
     -------
-    float
+    float or list of float
         first component the 2D model, y1(x1, x2)
-    float
+    float or list of float
         second component the 2D model, y2(x1, x2)
 
     """
@@ -139,6 +139,31 @@ def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
 
 
 def func_bias_2d_full(params, x1_data, x2_data, order='lin', mix=False):
+    """Func Bias 2D Full
+
+    Function of 2D bias model.
+
+    Parameters
+    ----------
+    params : lmfit.Parameters
+        fit parameters
+    x1_data : list of float
+        first component of x-values of the data
+    x2_data : list of float
+        second component of x-values of the data
+    order : str, optional
+        order of fit, default is 'lin'
+    mix : bool, optional
+        mixing between components, default is `False`
+
+    Returns
+    -------
+    2D np.array of float
+        first component the 2D model y1(x1, x2) on the (x1, x2)-grid
+    2D np.array of float
+        second component the 2D model, y2(x1, x2) on the (x1, x2)-grid
+
+    """
 
     len1 = len(x1_data)
     len2 = len(x2_data)
@@ -171,6 +196,11 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
     mix : bool
         mixing of components if True
 
+    Raises
+    ------
+    IndexError :
+        if input arrays x1_data and x2_data have different lenght
+
     Returns
     -------
     numpy.array
@@ -196,13 +226,13 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
 def affine_corr_2d(
     x,
     y,
-    xlabel_arr,
-    ylabel_arr,
+    weights=None,
     order='lin',
     mix=False,
+    xlabel_arr,
+    ylabel_arr,
     mlabel=None,
     clabel=None,
-    weights=None,
     n_bin=30,
     title='',
     colors=None,
@@ -221,12 +251,14 @@ def affine_corr_2d(
         input x value
     y: array(m) of double
         input y arrays
-    order : str, optional
-        order of fit, default is 'lin'
-    xlabel_arr, ylabel_arr : list of str
-        x-and y-axis labels
     weights : array of double, optional, default=None
         weights of x points
+    order : str, optional
+        order of fit, default is 'lin'
+    mix : bool
+        mixing of components if True
+    xlabel_arr, ylabel_arr : list of str
+        x-and y-axis labels
     n_bin : double, optional, default=30
         number of points onto which data are binned
     title : string, optional, default=''
@@ -284,9 +316,6 @@ def affine_corr_2d(
             n = stats.binned_statistic(x[comp], y[comp], 'count', bins=n_bin).statistic
             err_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'std', bins=n_bin).statistic / np.sqrt(n)
 
-
-
-
     params = Parameters()
     for p_affine in ['m11', 'm22', 'c1', 'c2']:
         params.add(p_affine, value=0.0)
@@ -317,7 +346,6 @@ def affine_corr_2d(
     """
     fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(15, 15))
     y1_model, y2_model = func_bias_2d_full(res.params, x_bin[0], x_bin[1], order=order, mix=mix)
-
 
     xb = {}
     idx_marg = {}
@@ -515,7 +543,6 @@ def affine_corr(
         params.add('m', value=0.01)
         params.add('c', value=0.01)
         res = minimize(loss_bias_lin_1d, params, args=(x, y[j], 1/np.sqrt(weights)))
-        #print(j, fit_report(res))
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
 
