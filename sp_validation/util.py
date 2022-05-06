@@ -59,6 +59,34 @@ def millify(n):
     return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
 
 
+def equi_num_bins(x, n_bin):
+    """ Equi Num Bins
+
+    Returns (n_bin+1) equi-numbered bin edges of x. They define n_bin bins,
+    each of which contains an equal number of points of x
+
+    Parameters
+    ----------
+    x : list
+        input data
+    n_bins : int
+        number of bins
+
+    Returns
+    -------
+    numpy.array :
+        equi-numbered bin array
+
+    """
+    xeqn = np.interp(
+        np.linspace(0, len(x), n_bin + 1),
+        np.arange(len(x)),
+        np.sort(x)
+    )
+
+    return xeqn
+
+
 def transform_nan(value):
     """Transform Nan
 

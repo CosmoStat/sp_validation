@@ -258,20 +258,6 @@ def leakage_test(param):
         np.random.uniform(-xm, xm, size=size)
     ]
 
-    # Ground-truth parameters
-    #pars_gt = {
-        #'q111' : -0.0,
-        #'q222' : 0.0,
-        #'q112' : 1.4,
-        #'q122' : -2.0,
-        #'q212' : -1.2,
-        #'q211' : 1.5,
-        #'m11' :  0.0,
-        #'m22' : 0.0,
-        #'m12' : 2.5,
-        #'c1' : 0.2,
-        #'c2' : -0.3,
-    #}
     pars_gt = {
         'q111' : -0.9,
         'q222' : 0.3,
@@ -286,23 +272,12 @@ def leakage_test(param):
         'c2' : -0.3,
     }
 
-    # Ground truth
+    # Ground truth parameter
     p_gt = Parameters()
     for par in pars_gt:
         p_gt.add(par, value=pars_gt[par])
 
     # Ground-truth data
-    #y1 = np.zeros_like(x_arr[0])
-    #y2 = np.zeros_like(x_arr[1])
-    #for idx in range(size):
-        #y1[idx], y2[idx] = func_bias_2d(
-        #p_gt,
-        #x_arr[0][idx],
-        #x_arr[1][idx],
-        #order='quad',
-        #mix=True
-    #)
-
     y1, y2 = func_bias_2d(
         p_gt,
         x_arr[0],
@@ -323,8 +298,8 @@ def leakage_test(param):
             affine_corr_2d(
                 x_arr,
                 [y1 + dy1, y2 + dy2],
-                xlabel_arr,
-                ylabel_arr,
+                xlabel_arr=xlabel_arr,
+                ylabel_arr=ylabel_arr,
                 order=order,
                 mix=mix,
                 title=f'test {order} {mix}',
@@ -362,6 +337,8 @@ def leakage(dat, param, stats_file):
 
     colors = ['b', 'r']
     ylabel = r'$e_{1,2}^{\rm gal}$'
+    mlabel = ['m_1', 'm_2']
+    clabel = ['c_1', 'c_2']
 
     xlabel_arr = [
         r'$e_{1}^{\rm PSF}$',
@@ -387,22 +364,26 @@ def leakage(dat, param, stats_file):
 
     ylabel_arr = [r'$e_1^{\rm gal}$', r'$e_2^{\rm gal}$']
 
-    for order in ['lin_sep', 'lin_mix']:
-        out_path = f'{plot_dir_leakage}/PSF_e_vs_e_gal_2D_{order}'
-        affine_corr_2d(
-            x_arr[:2],
-            e,
-            xlabel_arr[:2],
-            ylabel_arr,
-            order=order,
-            title=param.sh,
-            weights=weights,
-            n_bin=n_bin,
-            out_path=out_path,
-            colors=colors[:2],
-            stats_file=stats_file,
-            verbose=param.verbose
-        )
+    for order in ['lin', 'quad']:
+        for mix in [False, True]:
+            out_path = (
+                f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
+            )
+            affine_corr_2d(
+                x_arr[:2],
+                e,
+                weights=weights,
+                xlabel_arr=xlabel_arr[:2],
+                ylabel_arr=ylabel_arr,
+                order=order,
+                mix=mix,
+                title=f'{param.sh} {order} {mix}',
+                n_bin=n_bin,
+                out_path=out_path,
+                colors=colors[:2],
+                stats_file=stats_file,
+                verbose=param.verbose
+            )
 
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
     affine_corr_n(
@@ -420,9 +401,6 @@ def leakage(dat, param, stats_file):
         stats_file=stats_file,
         verbose=param.verbose
     )
-
-    
-
 
 
 def main(argv=None):

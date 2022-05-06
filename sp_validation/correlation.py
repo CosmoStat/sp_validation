@@ -20,8 +20,7 @@ from scipy import stats
 from lmfit import minimize, Parameters, fit_report
 from uncertainties import ufloat
 
-from tqdm import tqdm
-
+from sp_validation import util
 from sp_validation.basic import jackknif_weighted_average
 from sp_validation.plot_style import *
 from sp_validation.io import print_stats
@@ -215,7 +214,13 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
     if len(x1_data) != len(x2_data):
         raise IndexError('Length of both data components has to be equal')
 
-    y1_model, y2_model = func_bias_2d(params, x1_data, x2_data, order=order, mix=mix)
+    y1_model, y2_model = func_bias_2d(
+        params,
+        x1_data,
+        x2_data,
+        order=order,
+        mix=mix
+    )
     res1 = (y1_model - y1_data) / err
     res2 = (y2_model - y2_data) / err
     residuals = np.concatenate([res1, res2])
@@ -226,11 +231,11 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
 def affine_corr_2d(
     x,
     y,
+    xlabel_arr,
+    ylabel_arr,
     weights=None,
     order='lin',
     mix=False,
-    xlabel_arr,
-    ylabel_arr,
     mlabel=None,
     clabel=None,
     n_bin=30,
@@ -243,7 +248,8 @@ def affine_corr_2d(
 ):
     """Affine Corr 2D
     
-    Computes and plots 2D affine correlation of (y1, y2) as function of (x1, x2).
+    Compute and plot 2D linear and quadratic correlations of (y1, y2) as
+    function of (x1, x2).
  
     Parameters
     -----------
@@ -269,6 +275,8 @@ def affine_corr_2d(
         output file for statistics
     out_path : str, optional, default=None
         output file path, if not given, plot is not saved to file
+    y_ground_truth : 2D np.array, optional
+        ground truth model values (y1, y2) for plotting, default is `None`
     verbose : bool, optional, default=False
         verbose output if True
     """
@@ -280,42 +288,139 @@ def affine_corr_2d(
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
 
-    size_all = len(y[0])
-    for j in range(1, len(y)):
-        if len(y[j]) != size_all:
-            raise IndexError
-            (
-                f'Size {len(y[j])} of input #{i} different from  size {size_all} of input #0'
-            )
+    if len(y) != 2 or len(x) != 2:
+        raise IndexError(f'Input data needs to have two components')
+    if any(len(y[0]) != c for c in {len(y[1]), len(x[0]), len(x[1])}):
+        raise IndexError('Input data has inconsistent length')
 
+    # Compute binned data. Only used for plotting, the fit is performed on the
+    # entire unbinned data.
+
+    # Compute bins in x
     x_bin = np.zeros(shape=(2, n_bin))
     x_edges = np.zeros(shape=(2, n_bin + 1))
+
+    # Loop over both components
     for comp in (0, 1):
-        res = stats.binned_statistic(x[comp], x[comp], 'mean', bins=n_bin)
+        xeqn = util.equi_num_bins(x[comp], n_bin)
+        res = stats.binned_statistic(x[comp], x[comp], 'mean', bins=xeqn)
         x_bin[comp] = res.statistic
         x_edges[comp] = res.bin_edges
 
+    # Compute bins in y and errors
     y_bin_new = np.zeros(shape=(2, 2, n_bin))
     err_bin_new = np.zeros(shape=(2, 2, n_bin))
-    if mix:
-        y_2d_bin = []
-        err_2d_bin = []
-        y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'mean', bins=n_bin).statistic)
-        y_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'mean', bins=n_bin).statistic)
-        err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[0], 'std', bins=n_bin).statistic)
-        err_2d_bin.append(stats.binned_statistic_2d(x[0], x[1], y[1], 'std', bins=n_bin).statistic)
 
+    # With component mixing: Compute 2D bins first, then project to 1D
+    if 0 and mix:
         for comp in (0, 1):
-            y_bin_new[comp][0] = y_2d_bin[comp].mean(axis=1)
-            y_bin_new[comp][1] = y_2d_bin[comp].mean(axis=0)
-            err_bin_new[comp][0] = err_2d_bin[comp].mean(axis=1) / np.sqrt(n_bin)
-            err_bin_new[comp][1] = err_2d_bin[comp].mean(axis=0) / np.sqrt(n_bin)
+            # First, some temporary 2D quantities
+
+            # Get 2D bins over (x1, x2)
+            y_2d_bin = stats.binned_statistic_2d(
+                x[0],
+                x[1],
+                y[comp],
+                'mean',
+                bins=[x_edges[0], x_edges[1]]
+            ).statistic
+
+            # Number of y-values per bin
+            n_2d_bin = stats.binned_statistic_2d(
+                x[0],
+                x[1],
+                y[comp],
+                'count',
+                bins=[x_edges[0], x_edges[1]]
+            ).statistic
+
+            # 2D error = standard deviation of y per bin
+            err_2d_bin = stats.binned_statistic_2d(
+                x[0],
+                x[1],
+                y[comp],
+                'std',
+                bins=[x_edges[0], x_edges[1]]
+            ).statistic
+
+            # 2D error of the mean: divide by sqrt(number of objects in bin)
+            err_mean = err_2d_bin / np.sqrt(n_2d_bin)
+
+            # Second, the actual binned quantities for the plots
+
+            # 1D bin: average over other dimension
+            y_bin_new[comp][0] = y_2d_bin.mean(axis=1)
+            y_bin_new[comp][1] = y_2d_bin.mean(axis=0)
+
+            # 1D error of the mean: average over other dimension,
+            # then divide by sqrt(number of objects in bin)
+            err_bin_new[comp][0] = err_mean.mean(axis=1) / np.sqrt(n_bin)
+            err_bin_new[comp][1] = err_mean.mean(axis=0) / np.sqrt(n_bin)
+
+    if 1 and mix:
+        for comp_x in (0, 1):
+            for comp_y in (0, 1):
+
+                if mix and (comp_x != comp_y):
+                    continue
+
+                # 1d y bins
+                y_bin_new[comp_y][comp_x] = stats.binned_statistic(
+                    x[comp_x],
+                    y[comp_y],
+                    'mean',
+                    bins=x_edges[comp_x]
+                ).statistic
+
+                # 1d numbers
+                n = stats.binned_statistic(
+                    x[comp_x],
+                    y[comp_y],
+                    'count',
+                    bins=x_edges[comp_x]
+                ).statistic
+
+                # 1d errors of the mean = standard deviation devided by sqrt
+                # of the numbers
+                err_bin_new[comp_y][comp_x] = stats.binned_statistic(
+                    x[comp_x],
+                    y[comp_y],
+                    'std',
+                    bins=x_edges[comp_x]
+                ).statistic / np.sqrt(n)
+
+
+
+    # No mixing: compute 1D bins directly
     else:
         for comp in (0, 1):
-            y_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'mean', bins=n_bin).statistic
-            n = stats.binned_statistic(x[comp], y[comp], 'count', bins=n_bin).statistic
-            err_bin_new[comp][comp] = stats.binned_statistic(x[comp], y[comp], 'std', bins=n_bin).statistic / np.sqrt(n)
 
+            # 1d y bins
+            y_bin_new[comp][comp] = stats.binned_statistic(
+                x[comp],
+                y[comp],
+                'mean',
+                bins=x_edges[comp]
+            ).statistic
+
+            # 1d numbers
+            n = stats.binned_statistic(
+                x[comp],
+                y[comp],
+                'count',
+                bins=x_edges[comp]
+            ).statistic
+
+            # 1d errors of the mean = standard deviation devided by sqrt
+            # of the numbers
+            err_bin_new[comp][comp] = stats.binned_statistic(
+                x[comp],
+                y[comp],
+                'std',
+                bins=x_edges[comp]
+            ).statistic / np.sqrt(n)
+
+    # Initialise parameters of model to fit
     params = Parameters()
     for p_affine in ['m11', 'm22', 'c1', 'c2']:
         params.add(p_affine, value=0.0)
@@ -331,8 +436,14 @@ def affine_corr_2d(
             for p_quad_mix in ['q112', 'q122', 'q212', 'q211']:
                 params.add(p_quad_mix, value=0.0)
 
-    res = minimize(loss_bias_2d, params, args=(x, y, 1/np.sqrt(weights), order, mix))
-    print(fit_report(res))
+    res = minimize(
+        loss_bias_2d,
+        params,
+        args=(x, y, 1/np.sqrt(weights), order, mix)
+    )
+    print(fit_report(res), file=stats_file)
+    if verbose:
+        print(fit_report(res))
     p_dp = {}
     for p in res.params:
         p_dp[p] = ufloat(res.params[p].value, res.params[p].stderr)
@@ -345,7 +456,13 @@ def affine_corr_2d(
     CD
     """
     fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(15, 15))
-    y1_model, y2_model = func_bias_2d_full(res.params, x_bin[0], x_bin[1], order=order, mix=mix)
+    y1_model, y2_model = func_bias_2d_full(
+        res.params,
+        x_bin[0],
+        x_bin[1],
+        order=order,
+        mix=mix
+    )
 
     xb = {}
     idx_marg = {}
@@ -393,8 +510,14 @@ def affine_corr_2d(
         dy['C'] = err_bin_new[0][1]
 
     label = {
-        'A' : f'$m_{{11}}={p_dp["m11"]: .2ugL}$' + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$',
-        'D' : f'$m_{{22}}={p_dp["m22"]: .2ugL}$' + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$',
+        'A' : (
+            f'$m_{{11}}={p_dp["m11"]: .2ugL}$'
+            + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$'
+        ),
+        'D' : (
+            f'$m_{{22}}={p_dp["m22"]: .2ugL}$'
+            + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$'
+        )
     }
     if order == 'quad':
         label['A'] = f'$q_{{111}}={p_dp["q111"]: .2ugL}$' + '\n' + label['A']
@@ -403,8 +526,20 @@ def affine_corr_2d(
         label['B'] = f'$m_{{12}}={p_dp["m12"]: .2ugL}$'
         label['C'] = f'$m_{{12}}={p_dp["m12"]: .2ugL}$'
         if order == 'quad':
-            label['B'] = f'$q_{{211}}={p_dp["q211"]: .2ugL}$' + '\n' + label['B']
-            label['C'] = f'$q_{{122}}={p_dp["q122"]: .2ugL}$' + '\n' + label['C']
+            label['B'] = (
+                f'$q_{{211}}={p_dp["q211"]: .2ugL}$'
+                + '\n'
+                + f'$q_{{212}}={p_dp["q212"]: .2ugL}$'
+                + '\n'
+                + label['B']
+            )
+            label['C'] = (
+                f'$q_{{122}}={p_dp["q122"]: .2ugL}$'
+                + '\n'
+                + f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
+                + '\n'
+                + label['C']
+            )
 
     for p in axes:
         if not mix and p in ['B', 'C']:
@@ -481,10 +616,12 @@ def affine_corr(
         verbose output if True
     """
     
+    n_y = len(y)
+
     if mlabel is None:
-        mlabel = np.full(len(y), 'm')
+        mlabel = np.full(n_y, 'm')
     if clabel is None:
-        clabel = np.full(len(y), 'c')
+        clabel = np.full(n_y, 'c')
         
     if weights is None:
         weights = np.ones_like(y[0])
@@ -494,11 +631,12 @@ def affine_corr(
         colors = prop_cycle.by_key()['color']
 
     size_all = len(y[0])
-    for j in range(1, len(y)):
+    for j in range(1, n_y):
         if len(y[j]) != size_all:
             raise IndexError
             (
-                f'Size {len(y[j])} of input #{i} different from  size {size_all} of input #0'
+                f'Size {len(y[j])} of input #{i} different from  size '
+                + f'{size_all} of input #0'
             )
     size_bin = int(size_all / n_bin)
     diff_size = size_all - size_bin
@@ -514,19 +652,23 @@ def affine_corr(
         err_bin.append([])
 
     # Bin data for plot
-    for i in tqdm(range(n_bin), total=n_bin, disable=not verbose):
+    for i in range(n_bin):
         if i < diff_size:
             bin_size_tmp = size_bin + 1
             starter = 0
         else:
             bin_size_tmp = size_bin
             starter = diff_size
-        ind = x_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
+        ind = x_arg_sort[
+            starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp
+        ]
 
         x_bin.append(np.mean(x[ind]))
 
         for j in range(len(y)):
-            r_jk = jackknif_weighted_average(y[j][ind], weights[ind], remove_size=0.2, n_realization=50)
+            r_jk = jackknif_weighted_average(
+                y[j][ind], weights[ind], remove_size=0.2, n_realization=50
+            )
             y_bin[j].append(r_jk[0])
             err_bin[j].append(r_jk[1])
 
@@ -542,12 +684,19 @@ def affine_corr(
         params = Parameters()
         params.add('m', value=0.01)
         params.add('c', value=0.01)
-        res = minimize(loss_bias_lin_1d, params, args=(x, y[j], 1/np.sqrt(weights)))
+        res = minimize(
+            loss_bias_lin_1d, params, args=(x, y[j], 1/np.sqrt(weights))
+        )
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
 
         label = f'${mlabel[j]}={m_dm: .2ugL}, {clabel[j]}={c_dc: .2ugL}$'
-        plt.plot(x_bin, func_bias_lin_1d(res.params, x_bin), c=colors[j], label=label)
+        plt.plot(
+            x_bin,
+            func_bias_lin_1d(res.params, x_bin),
+            c=colors[j],
+            label=label
+        )
         plt.errorbar(x_bin, y_bin[j], yerr=err_bin[j], c=colors[j], fmt='.')
 
         if stats_file:
@@ -634,17 +783,46 @@ def affine_corr_n(
         ) 
 
 
-def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star=None,
-    theta_min_amin=2, theta_max_amin=200, n_theta=20):
+def xi_star_gal_tc(
+    ra_gal,
+    dec_gal,
+    e1_gal,
+    e2_gal,
+    w_gal,
+    ra_star,
+    dec_star,
+    e1_star,
+    e2_star,
+    w_star=None,
+    theta_min_amin=2,
+    theta_max_amin=200,
+    n_theta=20
+):
     """xi star gal tc
 
     Cross-correlation between galaxy and star ellipticities.
     """
 
-    cat_gal = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=e1_gal, g2=e2_gal,
-                               w=w_gal, ra_units='degrees', dec_units='degrees')
-    cat_star = treecorr.Catalog(ra=ra_star, dec=dec_star, g1=e1_star, g2=e2_star,
-                                w=w_star, ra_units='degrees', dec_units='degrees')
+    unit = 'degeres'
+
+    cat_gal = treecorr.Catalog(
+        ra=ra_gal,
+        dec=dec_gal,
+        g1=e1_gal,
+        g2=e2_gal,
+        w=w_gal,
+        ra_units=unit,
+        dec_units=unit
+    )
+    cat_star = treecorr.Catalog(
+        ra=ra_star,
+        dec=dec_star,
+        g1=e1_star,
+        g2=e2_star,
+        w=w_star,
+        ra_units=unit,
+        dec_units=unit
+    )
 
     TreeCorrConfig = {
         'ra_units': 'degrees',
