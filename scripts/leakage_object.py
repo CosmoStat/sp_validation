@@ -227,7 +227,7 @@ def update_param(p_def, options):
     return param
 
 
-def leakage_test(param):
+def leakage_test(param, stats_file):
     """Leakage Test
 
     Test object-by-object leakage relations.
@@ -307,6 +307,8 @@ def leakage_test(param):
                 out_path=out_path,
                 colors=colors,
                 y_ground_truth=[y1, y2],
+                par_ground_truth=p_gt,
+                stats_file=stats_file,
                 verbose=param.verbose,
         )
 
@@ -337,8 +339,6 @@ def leakage(dat, param, stats_file):
 
     colors = ['b', 'r']
     ylabel = r'$e_{1,2}^{\rm gal}$'
-    mlabel = ['m_1', 'm_2']
-    clabel = ['c_1', 'c_2']
 
     xlabel_arr = [
         r'$e_{1}^{\rm PSF}$',
@@ -385,6 +385,8 @@ def leakage(dat, param, stats_file):
                 verbose=param.verbose
             )
 
+    mlabel = ['m_1', 'm_2']
+    clabel = ['c_1', 'c_2']
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
     affine_corr_n(
         x_arr,
@@ -424,15 +426,16 @@ def main(argv=None):
     # Save calling command
     cfis.log_command(argv)
 
+    file_system.mkdir(param.output_dir)
+    stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
+
     if param.test:
-        leakage_test(param)
+        leakage_test(param, stats_file)
         sys.exit(0)
 
     sys.path.append('.')
     import params as config
 
-    file_system.mkdir(param.output_dir)
-    stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data

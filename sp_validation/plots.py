@@ -469,3 +469,90 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
     savefig(output_path)
     
     return vlim
+
+
+def plot_bar_spin(par, output_path, s_ground_truth):
+    """Plot Bar Spin
+
+    Create bar plot of spin coefficients.
+
+    Parameters
+    ----------
+    par : dict of ufloat
+        parameter values and standard deviations
+
+    output_path : str
+        plot output file
+    s_ground_truth : dict, optional                                           
+        ground truth parameter, for plotting, default is `None`    
+    """
+
+    # Shift of real and imaginary components
+    dx = 0.4
+
+    # Colors of rea and imaginary components
+    colors = {'real' : 'b', 'imaginary' : 'g'}
+
+    # Set data for bar plot
+    x = []
+    y = []
+    dy = []
+    col = []
+    s = set()
+    for key in par:
+
+        z = key[0]
+        spin = int(key[1:])
+        s.add(spin)
+        if z == 'x':
+            x.append(spin - dx)
+            col.append(colors['real'])
+        else:
+            x.append(spin + dx)
+            col.append(colors['imaginary'])
+
+        y.append(par[key].nominal_value)
+        dy.append(par[key].std_dev)
+
+    fig, ax = plt.subplots()
+
+    bars = ax.bar(
+        x,
+        y,
+        yerr=dy,
+        align='center',
+        alpha=0.5,
+        ecolor='black',
+        capsize=8,
+        width=0.8,
+        color=col,
+    )
+    xlim = ax.get_xlim()
+    ax.plot(xlim, [0, 0], 'k-')
+    ax.set_ylabel(r"$z_s = x_s + \mathrm{i} y_s$")
+    xl = list(s)
+    ax.set_xticks(xl)
+    ax.set_xlabel('$s$')
+
+    for comp in colors:
+        if colors[comp] in col:
+            ax.bar(x, y, width=0, color=colors[comp], label=comp)
+    ax.legend()
+
+    x = []
+    y = []
+    if s_ground_truth:
+        for key in s_ground_truth:
+            z = key[0]
+            spin = int(key[1:])
+            if z == 'x':
+                x.append(spin - dx)
+            else:
+                x.append(spin + dx)
+            y.append(s_ground_truth[key])
+        ax.plot(x, y, 'ro', markerfacecolor='none')
+
+
+    # Save the figure
+    plt.tight_layout()
+    plt.savefig(output_path)
