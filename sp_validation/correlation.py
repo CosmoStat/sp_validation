@@ -325,7 +325,7 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
                     'sum',
                     bins=x_edges[comp_x]
                 ).statistic
-                y_bin[comp_x][comp_y] = yw / w
+                y_bin[comp_y][comp_x] = yw / w
 
             # 1d numbers
             n = stats.binned_statistic(

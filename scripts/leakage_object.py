@@ -348,7 +348,7 @@ def leakage(dat, param, stats_file):
     
     e1 = dat[param.e1_col]
     e2 = dat[param.e2_col]
-    e = [e1, e2]
+    e = np.array([e1, e2])
     weights = dat['w']
 
     x_arr = [
