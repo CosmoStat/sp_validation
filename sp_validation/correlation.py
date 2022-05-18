@@ -405,6 +405,32 @@ def set_labels(p_dp, order, mix):
     return label
 
 
+def print_fit_report(res, file=None):
+    """Print Fit Report
+
+    Print report of minimizing result.
+
+    Parameters
+    ----------
+    res : class lmfit.MinimizerResult
+        results of the minization
+    file : filehandler, optional
+        output to file; if `None` (default) output to `stdout`
+
+    """
+    # chi^2
+    print(f'chi^2 = {res.chisqr}', file=file)
+
+    # Reduced chi^2
+    print(f'reduced chi^2 = {res.redchi}', file=file)
+
+    # Akaike Information Criterium
+    print(f'aic = {res.aic}', file=file)
+
+    # Bayesian Information Criterium
+    print(f'bic = {res.bic}', file=file)
+
+
 def affine_corr_2d(
     x,
     y,
@@ -431,6 +457,7 @@ def affine_corr_2d(
     -----------
     x : array(double)
         input x value
+
     y : array(m) of double
         input y arrays
     weights  : array of double, optional, default=None
@@ -515,9 +542,9 @@ def affine_corr_2d(
             stats_file,
             verbose=verbose
         )
-        print(fit_report(res), file=stats_file)
+        print_fit_report(res, file=stats_file)
     if verbose:
-        print(fit_report(res))
+        print_fit_report(res, file=stats_file)
 
     # Get best-fit parameter values and standard deviations
     p_dp = {}

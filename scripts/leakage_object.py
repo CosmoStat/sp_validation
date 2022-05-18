@@ -338,7 +338,6 @@ def leakage(dat, param, stats_file):
     n_bin = 30
 
     colors = ['b', 'r']
-    ylabel = r'$e_{1,2}^{\rm gal}$'
 
     xlabel_arr = [
         r'$e_{1}^{\rm PSF}$',
@@ -364,27 +363,30 @@ def leakage(dat, param, stats_file):
 
     ylabel_arr = [r'$e_1^{\rm gal}$', r'$e_2^{\rm gal}$']
 
+    # Fit consistent spin-2 2D model
+    mix = True
     for order in ['lin', 'quad']:
-        for mix in [False, True]:
-            out_path = (
-                f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
-            )
-            affine_corr_2d(
-                x_arr[:2],
-                e,
-                weights=weights,
-                xlabel_arr=xlabel_arr[:2],
-                ylabel_arr=ylabel_arr,
-                order=order,
-                mix=mix,
-                title=f'{param.sh} {order} {mix}',
-                n_bin=n_bin,
-                out_path=out_path,
-                colors=colors[:2],
-                stats_file=stats_file,
-                verbose=param.verbose
-            )
+        out_path = (
+            f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
+        )
+        affine_corr_2d(
+            x_arr[:2],
+            e,
+            weights=weights,
+            xlabel_arr=xlabel_arr[:2],
+            ylabel_arr=ylabel_arr,
+            order=order,
+            mix=mix,
+            title=f'{param.sh} {order} {mix}',
+            n_bin=n_bin,
+            out_path=out_path,
+            colors=colors,
+            stats_file=stats_file,
+            verbose=param.verbose
+        )
 
+    # Fit separate 1D models, including size
+    ylabel = r'$e_{1,2}^{\rm gal}$'
     mlabel = ['m_1', 'm_2']
     clabel = ['c_1', 'c_2']
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
