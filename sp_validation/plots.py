@@ -493,11 +493,11 @@ def set_labels(p_dp, order, mix):
     # Affine parameters                                                         
     label = {                                                                   
         'A' : (                                                                 
-            f'$m_{{11}}={p_dp["a11"]: .2ugL}$'                                  
+            f'$a_{{11}}={p_dp["a11"]: .2ugL}$'                                  
             + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$'                               
         ),                                                                      
         'D' : (                                                                 
-            f'$m_{{22}}={p_dp["a22"]: .2ugL}$'                                  
+            f'$a_{{22}}={p_dp["a22"]: .2ugL}$'                                  
             + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$'                               
         )                                                                       
     }                                                                           
@@ -507,8 +507,8 @@ def set_labels(p_dp, order, mix):
         label['D'] = f'$q_{{222}}={p_dp["q222"]: .2ugL}$' + '\n' + label['D']   
     if mix:                                                                     
         # Add mixture parameters                                                
-        label['B'] = f'$m_{{12}}={p_dp["a12"]: .2ugL}$'                         
-        label['C'] = f'$m_{{12}}={p_dp["a12"]: .2ugL}$'                         
+        label['B'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'                         
+        label['C'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'                         
         if order == 'quad':                                                     
             label['B'] = (                                                      
                 f'$q_{{211}}={p_dp["q211"]: .2ugL}$'                            
