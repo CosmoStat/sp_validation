@@ -57,7 +57,6 @@ def params_default():
         e1_PSF_col='e1_PSF',
         e2_PSF_col='e2_PSF',
         size_PSF_col='fwhm_PSF',
-        sh='ngmix',
     )
 
     return p_def
@@ -141,9 +140,9 @@ def parse_options(p_def):
         '-s',
         '--shapes',
         dest='sh',
-        default=p_def.sh,
+        default=None,
         type='string',
-        help=f'shape measurement method, default=\'{p_def.sh}\''
+        help=f'shape measurement method, default: read from parameter file'
     )
     parser.add_option(
         '-v',
@@ -265,9 +264,9 @@ def leakage_test(param, stats_file):
         'q122' : -1.3,
         'q212' : -2.0,
         'q211' : 0.25,
-        'm11' :  -0.4,
-        'm22' : 0.3,
-        'm12' : 0.3,
+        'a11' :  -0.4,
+        'a22' : 0.3,
+        'a12' : 0.3,
         'c1' : 0.2,
         'c2' : -0.3,
     }
@@ -295,7 +294,7 @@ def leakage_test(param, stats_file):
         for mix in [False, True]:
 
             out_path = f'{plot_dir_leakage}/test_{order}_{mix}'
-            affine_corr_2d(
+            corr_2d(
                 x_arr,
                 [y1 + dy1, y2 + dy2],
                 xlabel_arr=xlabel_arr,
@@ -369,7 +368,7 @@ def leakage(dat, param, stats_file):
         out_path = (
             f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
         )
-        affine_corr_2d(
+        corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -437,6 +436,10 @@ def main(argv=None):
 
     sys.path.append('.')
     import params as config
+    if len(config.shapes) != 1:
+        raise IndexError('number of shape measurement methods has to be one')
+    if param.sh is None:
+        param.sh = config.shapes[0]
 
 
     hdu_list = fits.open(param.input_path_shear)

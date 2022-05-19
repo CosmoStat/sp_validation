@@ -14,7 +14,6 @@ auto- and cross-correlations.
 
 import numpy as np
 import matplotlib.pylab as plt
-from scipy import stats
 from lmfit import minimize, Parameters, fit_report
 from uncertainties import ufloat
 
@@ -80,70 +79,6 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
     return residuals
 
 
-def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
-    """Func Bias 2D
-
-    Function of 2D bias model.
-
-    Parameters
-    ----------
-    params : lmfit.Parameters
-        fit parameters
-    x1_data : float or list of float
-        first component of x-values of the data
-    x2_data : float or list of float
-        second component of x-values of the data
-    order : str, optional
-        order of fit, default is 'lin'
-    mix : bool, optional
-        mixing between components, default is `False`
-
-    Returns
-    -------
-    float or list of float
-        first component the 2D model, y1(x1, x2). Dimension
-        is equal to x1_data and x2_data
-    float or list of float
-        second component the 2D model, y2(x1, x2). Dimension
-        is equal to x1_data and x2_data
-
-    """
-
-    # Get affine parameters
-    m11 = params['m11'].value
-    m22 = params['m22'].value
-    c1 = params['c1'].value
-    c2 = params['c2'].value
-
-    # Compute y-values for affine model
-    y1_model = m11 * x1_data + c1
-    y2_model = m22 * x2_data + c2
-
-    if order == 'quad':
-        # Add quadratic part
-        q111 = params['q111'].value
-        q222 = params['q222'].value
-        y1_model += q111 * x1_data ** 2
-        y2_model += q222 * x2_data ** 2
-
-    if mix:
-        # Add linear mixing part
-        m12 = params['m12'].value
-        y1_model += m12 * x2_data
-        y2_model += m12 * x1_data
-
-        if order == 'quad':
-            # Add quadratic mixing part
-            q112 = params['q112'].value
-            q122 = params['q122'].value
-            q212 = params['q212'].value
-            q211 = params['q211'].value
-            y1_model += q112 * x1_data * x2_data + q122 * x2_data ** 2
-            y2_model += q212 * x1_data * x2_data + q211 * x1_data ** 2
-
-    return y1_model, y2_model
-
-
 def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     """Func Bias 2D Full
 
@@ -182,7 +117,7 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     v1, v2 = np.meshgrid(x1, x2, indexing='ij')
 
     # Compute both components y1, y2 over the meash
-    y1, y2 = func_bias_2d(params, v1, v2, order=order, mix=mix) 
+    y1, y2 = util.func_bias_2d(params, v1, v2, order=order, mix=mix) 
 
     return y1, y2
 
@@ -229,7 +164,7 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
         raise IndexError('Length of both data components has to be equal')
 
     # Get model 1D y1 and y2 components
-    y1_model, y2_model = func_bias_2d(
+    y1_model, y2_model = util.func_bias_2d(
         params,
         x1_data,
         x2_data,
@@ -245,164 +180,6 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
     residuals = np.concatenate([res1, res2])
 
     return residuals
-
-
-def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
-    """Compute Bins Func 2D
-
-    Compute bins in x, y, err, for 2D model
-
-    Parameters
-    ----------
-    x : 2D np.array
-        x_1, x_2-values
-    y : 2D np.array
-        y_1, y_2-values
-    n_bin : int
-        number of bins to create
-    mix : bool
-        mixing of component if True
-    weights  : array of double, optional, default=None
-        weights of x points
-
-    Returns
-    -------
-    np.array(float, 2, n_bin)
-        bin centers in x_1, x_2
-    np.array(float, 2, 2, n_bin)
-        binned values of y_1, y_2 corresponding to x_1, x_2 bins
-    np.array(float, 2, 2, n_bin)
-        binned errors of y_1, y_2 corresponding to x_1, x_2 bins
-
-    """
-
-    # Compute bins in x
-
-    # Initialise bins and edges for x
-    x_bin = np.zeros(shape=(2, n_bin))
-    x_edges = np.zeros(shape=(2, n_bin + 1))
-
-    # Loop over both components, compute equi-numbered bins
-    for comp in (0, 1):
-        xeqn = util.equi_num_bins(x[comp], n_bin)
-        res = stats.binned_statistic(x[comp], x[comp], 'mean', bins=xeqn)
-        x_bin[comp] = res.statistic
-        x_edges[comp] = res.bin_edges
-
-    # Compute bins in y and errors
-
-    # Initialise
-    y_bin = np.zeros(shape=(2, 2, n_bin))
-    err_bin = np.zeros(shape=(2, 2, n_bin))
-
-    # Loop over both components corresponding to x (comp_x),
-    # and y and err (comp_y)
-    for comp_x in (0, 1):
-        for comp_y in (0, 1):
-
-            # No mixing and different y-/x-component: not used
-            if not mix and (comp_x != comp_y):
-                continue
-
-            # 1d y bins
-            if weights is None:
-                y_bin[comp_y][comp_x] = stats.binned_statistic(
-                    x[comp_x],
-                    y[comp_y],
-                    'mean',
-                    bins=x_edges[comp_x]
-                ).statistic
-            else:
-                yw = stats.binned_statistic(
-                    x[comp_x],
-                    y[comp_y] * weights,
-                    'sum',
-                    bins=x_edges[comp_x]
-                ).statistic
-                w = stats.binned_statistic(
-                    x[comp_x],
-                    weights,
-                    'sum',
-                    bins=x_edges[comp_x]
-                ).statistic
-                y_bin[comp_y][comp_x] = yw / w
-
-            # 1d numbers
-            n = stats.binned_statistic(
-                x[comp_x],
-                y[comp_y],
-                'count',
-                bins=x_edges[comp_x]
-            ).statistic
-
-            # 1d errors of the mean = standard deviation devided by sqrt
-            # of the numbers
-            err_bin[comp_y][comp_x] = stats.binned_statistic(
-                x[comp_x],
-                y[comp_y],
-                'std',
-                bins=x_edges[comp_x]
-            ).statistic / np.sqrt(n)
-
-    return x_bin, y_bin, err_bin
-
-
-def set_labels(p_dp, order, mix):
-    """Set Label
-
-    Set labels for plot of 2D fit
-
-    Parameters
-    ----------
-    d_dp : dict
-        values with uncertainties of fit parameters
-    order : str
-        linear ('lin') or quadratic ('quad') model
-    mix : bool
-        mixing of components if True
-
-    Returns
-    -------
-    dict :
-        label strings
-
-    """
-    # Affine parameters
-    label = {
-        'A' : (
-            f'$m_{{11}}={p_dp["m11"]: .2ugL}$'
-            + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$'
-        ),
-        'D' : (
-            f'$m_{{22}}={p_dp["m22"]: .2ugL}$'
-            + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$'
-        )
-    }
-    if order == 'quad':
-        # Add quadratic parameters
-        label['A'] = f'$q_{{111}}={p_dp["q111"]: .2ugL}$' + '\n' + label['A']
-        label['D'] = f'$q_{{222}}={p_dp["q222"]: .2ugL}$' + '\n' + label['D']
-    if mix:
-        # Add mixture parameters
-        label['B'] = f'$m_{{12}}={p_dp["m12"]: .2ugL}$'
-        label['C'] = f'$m_{{12}}={p_dp["m12"]: .2ugL}$'
-        if order == 'quad':
-            label['B'] = (
-                f'$q_{{211}}={p_dp["q211"]: .2ugL}$'
-                + '\n'
-                + f'$q_{{212}}={p_dp["q212"]: .2ugL}$'
-                + '\n'
-                + label['B']
-            )
-            label['C'] = (
-                f'$q_{{122}}={p_dp["q122"]: .2ugL}$'
-                + '\n'
-                + f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
-                + '\n'
-                + label['C']
-            )
-
-    return label
 
 
 def print_fit_report(res, file=None):
@@ -431,7 +208,7 @@ def print_fit_report(res, file=None):
     print(f'bic = {res.bic}', file=file)
 
 
-def affine_corr_2d(
+def corr_2d(
     x,
     y,
     xlabel_arr,
@@ -448,7 +225,7 @@ def affine_corr_2d(
     stats_file=None,
     verbose=False,
 ):
-    """Affine Corr 2D
+    """Corr 2D
     
     Compute and plot 2D linear and quadratic correlations of (y1, y2) as
     function of (x1, x2).
@@ -495,26 +272,16 @@ def affine_corr_2d(
     if any(len(y[0]) != c for c in {len(y[1]), len(x[0]), len(x[1])}):
         raise IndexError('Input data has inconsistent length')
 
-    # Compute binned data. Only used for plotting, the fit is performed on the
-    # entire unbinned data.
-    x_bin, y_bin, err_bin = compute_bins_func_2d(
-        x,
-        y,
-        n_bin,
-        mix,
-        weights=weights
-    )
-
     # Initialise parameters of model to fit
     params = Parameters()
 
     # Affine parameters
-    for p_affine in ['m11', 'm22', 'c1', 'c2']:
+    for p_affine in ['a11', 'a22', 'c1', 'c2']:
         params.add(p_affine, value=0.0)
 
     if mix:
         # Linear mixing pararmeter
-        params.add('m12', value=0.0)
+        params.add('a12', value=0.0)
 
     if order == 'quad':
         # Quadratic parameters
@@ -544,7 +311,7 @@ def affine_corr_2d(
         )
         print_fit_report(res, file=stats_file)
     if verbose:
-        print_fit_report(res, file=stats_file)
+        print_fit_report(res)
 
     # Get best-fit parameter values and standard deviations
     p_dp = {}
@@ -567,134 +334,46 @@ def affine_corr_2d(
 
     # Plots
 
+    ## Spin compoments
     if out_path:
-        if par_ground_truth:
-            s_ground_truth = param_order2spin(par_ground_truth, order, mix)
-        else:
-            s_ground_truth = None
-        plots.plot_bar_spin(
-            s_ds,
-            f'{out_path}_spin',
-            s_ground_truth=s_ground_truth
-        )
+        out_path_spin = f'{out_path}_spin.png'
+    else:
+        out_path_spin = None
 
-    # Initialise mosaic figure
-    figure_mosaic = """
-    AB
-    CD
-    """
-    fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(15, 15))
-
-    # Get best-fit model on 2D binned grid
-    y_model_all = np.zeros(shape=(2, n_bin, n_bin))
-    y_model_all[0], y_model_all[1] = func_bias_2d_full(
-        res.params,
-        x_bin[0],
-        x_bin[1],
-        order=order,
-        mix=mix
+    if par_ground_truth:
+        s_ground_truth = param_order2spin(par_ground_truth, order, mix)
+    else:
+        s_ground_truth = None
+    plots.plot_bar_spin(
+        s_ds,
+        s_ground_truth=s_ground_truth,
+        output_path=out_path_spin,
     )
-    # Compute means and standard deviations
-    y_model_mean = np.zeros(shape=(2, n_bin))
-    y_model_upper = np.zeros(shape=(2, n_bin))
-    y_model_lower = np.zeros(shape=(2, n_bin))
-    for comp, ax in zip((0, 1), (1, 0)):
-        y_model_mean[comp] = y_model_all[comp].mean(axis=ax)
-        std = y_model_all[comp].std(axis=ax)
-        y_model_upper[comp] = y_model_mean[comp] + std
-        y_model_lower[comp] = y_model_mean[comp] - std
 
-    # Set up quantities to plot in each panel
-    xb = {}
-    yd = {}
-    ym = {}
-    ymu = {}
-    yml = {}
-    xgt = {}
-    ygt = {}
-    dy = {}
-    col = {}
-    xl = {}
-    yl = {}
-
-    # Set component for each panel.
-    # x: 0 in A, B; 1 in C, D
-    # y: 0 in A, C; 1 in B, D
-    panel_comp_x = {}
-    panel_comp_y = {}
-    for p in 'A', 'B':
-        panel_comp_x[p] = 0
-    for p in 'C', 'D':
-        panel_comp_x[p] = 1
-    for p in 'A', 'C':
-        panel_comp_y[p] = 0
-    for p in 'B', 'D':
-        panel_comp_y[p] = 1
-
-    # Assign quantities to plot with corresponding components
-    for p in axes:
-        xb[p] = x_bin[panel_comp_x[p]]
-        xl[p] = xlabel_arr[panel_comp_x[p]]
-
-        ym[p] = y_model_mean[panel_comp_y[p]]
-        ymu[p] = y_model_upper[panel_comp_y[p]]
-        yml[p] = y_model_lower[panel_comp_y[p]]
-        yl[p] = ylabel_arr[panel_comp_y[p]]
-        yd[p] = y_bin[panel_comp_y[p]][panel_comp_x[p]]
-        dy[p] = err_bin[panel_comp_y[p]][panel_comp_x[p]]
-        col[p] = colors[panel_comp_y[p]]
-
-        if y_ground_truth:
-            xgt[p] = x[panel_comp_x[p]]
-            ygt[p] = y_ground_truth[panel_comp_y[p]]
-
-    # Set plot labels to parameter best-fit + std
-    label = set_labels(p_dp, order, mix)
-
-    # Loop over panels 
-    for p in axes:
-
-        # No off-diagonal plots if no mixing
-        if not mix and p in ['B', 'C']:
-            continue
-
-        # Plot best-fit mean and mean +/- std
-        axes[p].plot(xb[p], ym[p], c=col[p], label=label[p])
-        axes[p].fill_between(
-            xb[p],
-            ymu[p],
-            yml[p],
-            color=col[p],
-            interpolate=True,
-            alpha=0.3
-        )
-
-        # Plot ground-truth model if provided
-        if y_ground_truth:
-            axes[p].plot(xgt[p], ygt[p], '.', c='k', markersize=0.4)
-
-        # Plot binned data with error bars
-        axes[p].errorbar(xb[p], yd[p], yerr=dy[p], c=col[p], fmt='.')
-
-        # Set labels
-        axes[p].set_xlabel(xl[p])
-        axes[p].set_ylabel(yl[p])
-        axes[p].legend()
-
-    # Finish figure
-    fig.suptitle(title)
-    plt.tight_layout()
-
-    # Save figure
-    if out_path:
-        plt.savefig(out_path, bbox_inches='tight')
+    ## Curves
+    plots.plot_corr_2d(
+        x,
+        y,
+        weights,
+        res,
+        p_dp,
+        n_bin,
+        order,
+        mix,
+        xlabel_arr,
+        ylabel_arr,
+        y_ground_truth=y_ground_truth,
+        title=title,
+        colors=colors,
+        out_path=out_path,
+    )
 
 
 def param_order2spin(p_dp, order, mix):
 
     s_ds = {}
 
-    s_ds['x0'] = 0.5 * ( p_dp['m11'] + p_dp['m22'] )
+    s_ds['x0'] = 0.5 * ( p_dp['a11'] + p_dp['a22'] )
 
     if order == 'quad' and mix:
         s_ds['x2'] = 0.5 * ( p_dp['q111'] + p_dp['q122'] )
@@ -702,10 +381,10 @@ def param_order2spin(p_dp, order, mix):
         s_ds['x-2'] = 0.25 * ( p_dp['q111'] - p_dp['q122'] + p_dp['q212'] )
         s_ds['y-2'] = 0.25 * ( p_dp['q211'] - p_dp['q222'] - p_dp['q112'] )
 
-    s_ds['x4'] = 0.5 * ( p_dp['m11'] - p_dp['m22'] )
+    s_ds['x4'] = 0.5 * ( p_dp['a11'] - p_dp['a22'] )
 
     if mix:
-        s_ds['y4'] = p_dp['m12']
+        s_ds['y4'] = p_dp['a12']
 
     if order == 'quad' and mix:
         s_ds['x6'] = 0.25 * ( p_dp['q111'] - p_dp['q122'] - p_dp['q212'] )
