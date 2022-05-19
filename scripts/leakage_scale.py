@@ -1,0 +1,624 @@
+#!/usr/bin/env python3
+
+import sys
+import copy
+import numpy as np
+from optparse import OptionParser
+from astropy.io import ascii
+
+from shapepipe.utilities import cfis
+from shapepipe.utilities import file_system
+
+from sp_validation.cat import *
+from sp_validation.plots import *
+from sp_validation.util import transform_nan
+from sp_validation.correlation import *
+from sp_validation import io
+
+
+class param:
+    """Param Class.
+
+    General class to store (default) variables.
+
+    """
+
+    def __init__(self, **kwds):
+        self.__dict__.update(kwds)
+
+    def print(self, **kwds):
+        """Print."""
+        print(self.__dict__)
+
+    def var_list(self, **kwds):
+        """Get Variable List."""
+        return vars(self)
+
+
+
+def params_default():
+    """Set default parameter values.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    p_def: class param
+       parameter values
+    """
+
+    p_def = param(
+        output_dir='.',
+        hdu_psf=1,
+        e1_col='e1_uncal',
+        e2_col='e2_uncal',
+        e1_PSF_star_col='E1_PSF_HSM',
+        e2_PSF_star_col='E2_PSF_HSM',
+    )
+
+    return p_def
+
+
+def parse_options(p_def):
+    """Parse command line options.
+
+    Parameters
+    ----------
+    p_def: class param
+        parameter values
+
+    Returns
+    -------
+    options: tuple
+        Command line options
+    args: string
+        Command line string
+    """
+
+    usage  = "%prog [OPTIONS]"
+    parser = OptionParser(usage=usage)
+
+    parser.add_option(
+        '-i',
+        '--input_path_shear',
+        dest='input_path_shear',
+        type='string',
+        help='input path of the extended shear catalogue'
+    )
+    parser.add_option(
+        '-I',
+        '--input_path_PSF',
+        dest='input_path_PSF',
+        type='string',
+        help='input path of the PSF catalogue'
+    )
+    parser.add_option(
+        '-o',
+        '--output_dir',
+        dest='output_dir',
+        default=p_def.output_dir,
+        type='string',
+        help=f'output_dir, default=\'{p_def.output_dir}\''
+    )
+    parser.add_option(
+        '',
+        '--hdu_psf',
+        dest='hdu_psf',
+        default=p_def.hdu_psf,
+        type='int',
+        help=f'HDU of PSF catalogue, default=\'{p_def.hdu_psf}\''
+    )
+    parser.add_option(
+        '',
+        '--e1_col',
+        dest='e1_col',
+        default=p_def.e1_col,
+        type='string',
+        help=f'e1 column name in galaxy catalogue, default=\'{p_def.e1_col}\''
+    )
+    parser.add_option(
+        '',
+        '--e2_col',
+        dest='e2_col',
+        default=p_def.e2_col,
+        type='string',
+        help=f'e2 column name in galaxy catalogue, default=\'{p_def.e2_col}\''
+    )
+    parser.add_option(
+        '',
+        '--e1_PSF_star_col',
+        dest='e1_PSF_star_col',
+        default=p_def.e1_PSF_star_col,
+        type='string',
+        help='e1 PSF column name in star catalogue, '
+            + f'default=\'{p_def.e1_PSF_star_col}\''
+    )
+    parser.add_option(
+        '',
+        '--e2_PSF_star_col',
+        dest='e2_PSF_star_col',
+        default=p_def.e2_PSF_star_col,
+        type='string',
+        help='e2 PSF column name in star catalogue, '
+            + f'default=\'{p_def.e2_PSF_star_col}\''
+    )
+    parser.add_option(                                                          
+        '-s',                                                                   
+        '--shapes',                                                             
+        dest='sh',                                                              
+        default=None,                                                           
+        type='string',                                                          
+        help=f'shape measurement method, default: read from parameter file'     
+    )                                     
+    parser.add_option(
+        '-v',
+        '--verbose',
+        dest='verbose',
+        action='store_true',
+        help=f'verbose output'
+    )
+
+    options, args = parser.parse_args()
+
+    return options, args
+
+
+def check_options(options):
+    """Check command line options.
+
+    Parameters
+    ----------
+    options: tuple
+        Command line options
+
+    Returns
+    -------
+    erg: bool
+        Result of option check. False if invalid option value.
+    """
+
+    if not options.input_path_shear:
+        print('Input path for shear catalogue (option \'-i\') required')
+        return False
+    if not options.input_path_PSF:
+        print('Input path for PSF catalogue (option \'-I\') required')
+        return False
+
+    if options.e1_PSF_star_col == options.e2_PSF_star_col:
+        print(
+            'Column names for e1_PSF and e2_PSF are identical, '
+            + 'this is surely a mistake'
+        )
+        return False
+
+    return True
+
+
+def update_param(p_def, options):
+    """Return default parameter, updated and complemented according to options.
+    
+    Parameters
+    ----------
+    p_def:  class param
+        parameter values
+    optiosn: tuple
+        command line options
+    
+    Returns
+    -------
+    param: class param
+        updated paramter values
+    """
+
+    param = copy.copy(p_def)
+
+    # Update keys in param according to options values
+    for key in vars(param):
+        if key in vars(options):
+            setattr(param, key, getattr(options, key))
+
+    # Add remaining keys from options to param
+    for key in vars(options):
+        if not key in vars(param):
+            setattr(param, key, getattr(options, key))
+
+    return param
+
+
+def compute_corr_gp_pp_alpha(
+    dat_shear,
+    dat_PSF,
+    param,
+    stats_file,
+    theta_min_amin,
+    theta_max_amin,
+    n_theta,
+    verbose=False):
+    """Comptue Corr GP PP Alpha
+
+    Compute and plot scale-dependent PSF leakage functions.
+
+    Parameters
+    ----------
+    dat_shear : FITS.record
+        input shear data
+    dat_PSF : FITS.record
+        input PSF data
+    param : class param                                                         
+        parameters                  
+    stats_file : file handler
+        statistics output file
+    verbose : bool, optional
+        print message to stdout if True; default=False
+
+    Returns
+    -------
+    treecorr output
+        galaxy-PSF correlation data
+    treecorr output
+        PSF-PSF correlation data    
+    list of float
+        values of alpha for a range of scales
+    list of float
+        values of the RMS of alpha for a range of scales
+    """
+
+    ra = dat_shear['RA']
+    dec = dat_shear['Dec']
+    e1_gal = dat_shear[param.e1_col]
+    e2_gal = dat_shear[param.e2_col]
+    weights = dat_shear['w']
+
+    ra_star = dat_PSF['RA']
+    dec_star = dat_PSF['Dec']
+    e1_star = dat_PSF[param.e1_PSF_star_col]
+    e2_star = dat_PSF[param.e2_PSF_star_col]
+
+    # Correlation functions
+    r_corr_gp, r_corr_pp = correlation_12_22(
+        ra,
+        dec,
+        e1_gal,
+        e2_gal, 
+        weights,
+        ra_star,
+        dec_star,
+        e1_star,
+        e2_star,
+        theta_min_amin=theta_min_amin,
+        theta_max_amin=theta_max_amin,
+        n_theta=n_theta
+    )
+
+    # Leakage
+    alpha_leak, sig_alpha_leak = alpha(
+        r_corr_gp,
+        r_corr_pp,
+        e1_gal,
+        e2_gal,
+        weights,
+        e1_star,
+        e2_star
+    )
+
+    return r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak
+
+
+def compute_alpha_mean(
+        alpha_leak,
+        sig_alpha_leak,
+        sh,
+        stats_file,
+        verbose=False
+):
+    """Compute Alpha Mean
+
+    Compute weighted mean of the leakage function alpha 
+
+    Parameters
+    ----------
+    alpha_leak : list of float
+        values of alpha for a range of scales
+    sig_alpha_leak : list of float
+        values of the RMS of alpha for a range of scales
+    sh : str
+        shape measurement method, e.g. 'ngmix'
+    stats_file : file handler
+        statistics output file
+    verbose : bool, optional
+        print message to stdout if True; default=False
+
+    Returns
+    -------
+    float
+        weighted mean of alpha
+    """
+
+    alpha_leak_mean = transform_nan(
+        np.average(alpha_leak, weights=1/sig_alpha_leak**2)
+    )
+    print_stats(
+        f'{sh}: Weighted average alpha = {alpha_leak_mean:.3g}',
+        stats_file,
+        verbose=verbose
+    )
+
+
+def plot_alpha_leakage(
+        meanr,
+        alpha_leak,
+        sig_alpha_leak,
+        sh,
+        output_dir,
+        xmin,
+        xmax,
+        leakage_alpha_ylim
+):
+
+    plot_dir_leakage = output_dir
+
+    theta = [meanr]
+    alpha_theta = [alpha_leak]
+    yerr = [sig_alpha_leak]
+    xlabel = r'$\theta$ [arcmin]'
+    ylabel = r'$\alpha(\theta)$'
+    title = sh
+    out_path = f'{output_dir}/alpha_leakage_{sh}.png'
+    try:
+        ylim  = leakage_alpha_ylim
+    except:
+        ylim = None
+
+    plot_data_1d(
+        theta,
+        alpha_theta,
+        yerr,
+        title,
+        xlabel,
+        ylabel,
+        out_path,
+        xlog=True,
+        xlim=[xmin, xmax],
+        ylim=ylim
+    )
+
+
+def compute_xi_sys(r_corr_gp, r_corr_pp):
+    """Compute Xi Sys
+
+    Compute galaxy - PSF systematics correlation function
+
+    Parameters
+    ----------
+    r_corr_gp : treecorr output
+        galaxy-PSF correlation data
+    r_corr_pp : treecorr output
+        PSF-PSF correlation data    
+
+    Returns
+    -------
+    list of float
+        xi_sys_+
+    list of float
+        xi_sys_-
+    list of float
+        RMS of xi_sys_+
+    list of float
+        RMS of xi_sys_-
+    """
+
+    C_sys_p = r_corr_gp.xip**2 / r_corr_pp.xip
+    C_sys_m = r_corr_gp.xim**2 / r_corr_pp.xim
+
+    C_sys_std_p = (
+        np.abs(C_sys_p)
+        * np.sqrt(
+            (((2*r_corr_gp.xip**2 * np.sqrt(r_corr_gp.varxip)) \
+              / r_corr_gp.xip)/r_corr_gp.xip**2)**2
+            + (np.sqrt(r_corr_pp.varxip)/r_corr_pp.xip)**2
+        )
+    )
+    
+    C_sys_std_m = (
+        np.abs(C_sys_m)
+        * np.sqrt(
+            (((2*r_corr_gp.xim**2 * np.sqrt(r_corr_gp.varxim)) \
+              / r_corr_gp.xim)/r_corr_gp.xim**2)**2
+            + (np.sqrt(r_corr_pp.varxim)/r_corr_pp.xim)**2
+        )
+    )
+
+    return C_sys_p, C_sys_m, C_sys_std_p, C_sys_std_m
+
+
+def plot_xi_sys(
+    meanr,
+    C_sys_p,
+    C_sys_m,
+    C_sys_std_p,
+    C_sys_std_m,
+    sh,
+    output_dir,
+    stats_file,
+    leakage_xi_sys_ylim,
+    leakage_xi_sys_log_ylim,
+    verbose=False
+):
+    """Plot Xi Sys
+
+    Plot galaxy - PSF systematics correlation function
+
+    Parameters
+    ----------
+    C_sys_p : list of float
+        xi_sys_+
+    C_sys_m : list of float
+        xi_sys_-
+    C_sys_std_p : list of float
+        RMS of xi_sys_+
+    C_sys_std_m : list of float
+         RMS of xi_sys_-
+    output_dir : str
+        output directory for plots
+    stats_file : file handler
+        statistics output file
+    verbose : bool, optional
+        print message to stdout if True; default=False
+    """
+
+    labels = ['$\\xi^{\\rm sys}_+$', '$\\xi^{\\rm sys}_-$']
+
+    title = 'Cross-correlation leakage'
+    xlabel = '$\\theta$ [arcmin]'
+    ylabel = 'Correlation function'
+
+    theta = [meanr] * 2
+    xi = [C_sys_p, C_sys_m]
+    yerr = [C_sys_std_p, C_sys_std_m]
+    
+    comp_arr = [0, 1]
+    symb_arr = ['+', '-']
+    for comp, symb in zip(comp_arr, symb_arr):
+        mean = np.mean(np.abs(xi[comp]))
+        msg = f'{sh}: <|xi_sys_{symb}|> = {mean}'
+        print_stats(msg, stats_file, verbose=verbose)
+
+    try:
+        ylim = leakage_xi_sys_ylim
+    except:
+        ylim = None
+    out_path = f'{output_dir}/xi_sys_{sh}.pdf'
+    
+    plot_data_1d(
+        theta,
+        xi,
+        yerr,
+        title,
+        xlabel,
+        ylabel,
+        out_path,
+        xlog=True,
+        ylim=ylim,
+        labels=labels
+    )
+
+    try:
+        ylim = leakage_xi_sys_log_ylim
+    except:
+        ylim = None
+    out_path = f'{output_dir}/xi_sys_log_{sh}.pdf'
+    plot_data_1d(
+        theta,
+        xi,
+        yerr,
+        title,
+        xlabel,
+        ylabel,
+        out_path,
+        xlog=True, 
+        ylog=True,
+        ylim=ylim,
+        labels=labels
+    )
+
+
+def main(argv=None):
+    """Main
+
+    Main program
+    """
+
+    # Set default parameters
+    p_def = params_default()
+
+    # Command line options
+    options, args = parse_options(p_def)
+    # Without option parsing, this would be: args = argv[1:]
+
+    if check_options(options) is False:
+        return 1
+
+    param = update_param(p_def, options)
+
+    # Save calling command
+    cfis.log_command(argv)
+
+    sys.path.append('.')
+    import params as config
+    if len(config.shapes) != 1:                                                 
+        raise IndexError('number of shape measurement methods has to be one')
+    if param.sh is None:                                                        
+        param.sh = config.shapes[0]                 
+
+    file_system.mkdir(param.output_dir)
+    stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
+
+    hdu_list = fits.open(param.input_path_shear)
+    dat_shear = hdu_list[1].data
+
+
+    hdu_list = fits.open(param.input_path_PSF)
+    dat_PSF = hdu_list[param.hdu_psf].data
+
+    # scale-dependent alpha function
+    r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak = compute_corr_gp_pp_alpha(
+        dat_shear,
+        dat_PSF,
+        param,
+        stats_file,
+        config.theta_min_amin,
+        config.theta_max_amin,
+        config.n_theta,
+        verbose=param.verbose
+    )
+    io.save_alpha(
+        r_corr_gp.meanr,
+        alpha_leak,
+        sig_alpha_leak,
+        param.sh,
+        param.output_dir
+    )
+    compute_alpha_mean(
+        alpha_leak,
+        sig_alpha_leak,
+        param.sh,
+        stats_file,
+        verbose=param.verbose
+    )
+    plot_alpha_leakage(
+        r_corr_gp.meanr,
+        alpha_leak,
+        sig_alpha_leak,
+        param.sh,
+        param.output_dir,
+        config.theta_min_amin,
+        config.theta_max_amin,
+        config.leakage_alpha_ylim
+    )
+
+    # xi_sys
+    C_sys_p, C_sys_m, C_sys_std_p, C_sys_std_m = compute_xi_sys(
+        r_corr_gp,
+        r_corr_pp
+    )
+    plot_xi_sys(
+        r_corr_gp.meanr,
+        C_sys_p,
+        C_sys_m,
+        C_sys_std_p,
+        C_sys_std_m,
+        param.sh,
+        param.output_dir,
+        stats_file,
+        config.leakage_xi_sys_ylim,
+        config.leakage_xi_sys_log_ylim,
+        verbose=param.verbose
+    )
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
