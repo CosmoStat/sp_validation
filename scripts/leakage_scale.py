@@ -5,6 +5,9 @@ import copy
 import numpy as np
 from optparse import OptionParser
 from astropy.io import ascii
+import astropy.coordinates as coords
+from astropy import units                                                       
+
 
 from shapepipe.utilities import cfis
 from shapepipe.utilities import file_system
@@ -56,6 +59,8 @@ def params_default():
         e2_col='e2_uncal',
         e1_PSF_star_col='E1_PSF_HSM',
         e2_PSF_star_col='E2_PSF_HSM',
+        ra_star_col='RA',
+        dec_star_col='Dec',
     )
 
     return p_def
@@ -137,6 +142,24 @@ def parse_options(p_def):
     )
     parser.add_option(
         '',
+        '--ra_star_col',
+        dest='ra_star_col',
+        default=p_def.ra_star_col,
+        type='string',
+        help='right ascension column name in star catalogue, '
+            + f'default=\'{p_def.ra_star_col}\''
+    )
+    parser.add_option(
+        '',
+        '--dec_star_col',
+        dest='dec_star_col',
+        default=p_def.dec_star_col,
+        type='string',
+        help='declination column name in star catalogue, '
+            + f'default=\'{p_def.dec_star_col}\''
+    )
+    parser.add_option(
+        '',
         '--e2_PSF_star_col',
         dest='e2_PSF_star_col',
         default=p_def.e2_PSF_star_col,
@@ -151,7 +174,24 @@ def parse_options(p_def):
         default=None,                                                           
         type='string',                                                          
         help=f'shape measurement method, default: read from parameter file'     
-    )                                     
+    )
+    parser.add_option(                                                          
+        '-t',
+        '--close_pair_tolerance',
+        dest='close_pair_tolerance',                                                              
+        default=None,
+        type='string',                                                          
+        help='tolerance angle for close objects in star catalogue'
+    )
+    parser.add_option(                                                          
+        '-m',                                                                   
+        '--close_pair_mode',                                                             
+        dest='close_pair_mode',                                                              
+        default=None,
+        type='string',                                                          
+        help='mode for close objects in star catalogue, one of'
+            + '\'remove\', \'average\''
+    )
     parser.add_option(
         '-v',
         '--verbose',
@@ -193,6 +233,17 @@ def check_options(options):
         )
         return False
 
+    if options.close_pair_tolerance and not options.close_pair_mode:
+        print('No mode for close pairs given (option \'-m\')')
+        return False
+
+    if (
+        options.close_pair_mode
+        and options.close_pair_mode not in ['remove', 'average']
+    ):
+        print('Invalid mode (option \'-m\')')
+        return False
+
     return True
 
 
@@ -225,6 +276,166 @@ def update_param(p_def, options):
             setattr(param, key, getattr(options, key))
 
     return param
+
+
+def handle_close_pairs(dat_PSF, ra_star_col, dec_star_col, tolerance, mode,
+                       stats_file=None, verbose=False):
+
+    n_star = len(dat_PSF)
+
+    tolerance_angle = coords.Angle(tolerance)
+
+    print_stats(
+        f'close object distance = {tolerance_angle}',
+        stats_file,
+        verbose=verbose
+    )
+
+    # Create SkyCoord object from star positions
+    coordinates = coords.SkyCoord(
+        ra=dat_PSF[ra_star_col],
+        dec=dat_PSF[dec_star_col],
+        unit='deg'
+    )
+
+    # Search PSF catalogue in itself around tolerance angle
+    indices1, indices2, d2d, d3d = coordinates.search_around_sky(                              
+        coordinates,
+        tolerance_angle
+    )
+
+    # Count multiplicity of indices = number of matches of search
+    count = np.bincount(indices1)
+    dat_PSF_proc = {}
+
+    # Copy unique objects (multiplicity of unity)
+    for col in dat_PSF.dtype.names:
+        dat_PSF_proc[col] = dat_PSF[col][count == 1]
+    n_non_close = len(dat_PSF_proc[ra_star_col])
+    print_stats(
+        f'found {n_non_close}/{n_star} = {n_non_close / n_star:.1%} '
+        + 'non-close objects',
+        stats_file,
+        verbose=verbose
+    )
+
+
+    # Deal with repeated objects (multiplicity > 1)
+    multiples = (count != 1)
+    if not multiples.any():
+
+        # No multiples found -> no action
+        print_stats('no close objects found', stats_file, verbose=verbose)
+
+    else:
+
+        # Get index list of multiple objects
+        idx_mult = np.where(multiples)[0]
+        if mode == 'average':
+
+            # Initialise additional data vector
+            dat_PSF_mult = {}
+            for col in dat_PSF.dtype.names:
+                dat_PSF_mult[col] = []
+
+            done = np.array([])
+            n_avg_rem = 0
+
+            # Loop over repeated indices
+            for idx in idx_mult:
+
+                # If already used: ignore this index
+                if idx in done:
+                    continue
+
+                # Get indices in data index list corresponding to
+                # this multiple index
+                w = np.where(indices1 == idx)[0]
+
+                # Get indices in data
+                ww = indices2[w]
+
+                # Append mean to additional data vector
+                for col in dat_PSF.dtype.names:
+                    mean = np.mean(dat_PSF[col][ww])
+                    dat_PSF_mult[col].append(mean)
+
+                # Register indixes to avoid repetition
+                done = np.append(done, ww)
+                n_avg_rem += len(ww) - 1
+
+            n_avg = len(dat_PSF_mult[ra_star_col])
+            print_stats(
+                f'adding {n_avg}/{n_star} = {n_avg / n_star:.1%} '
+                + 'averaged objects',
+                stats_file,
+                verbose=verbose
+            )
+
+            for col in dat_PSF.dtype.names:
+                dat_PSF_proc[col] = np.append(
+                    dat_PSF_proc[col],
+                    dat_PSF_mult[col]
+                )
+        elif mode == 'remove':
+            n_rem = len(idx_mult)
+            print_stats(
+                f'removing {n_rem}/{n_star} = {n_rem / n_star:.1%} '
+                + 'close objects',
+                stats_file,
+                verbose=verbose
+            )
+
+    # Test
+    coordinates_proc = coords.SkyCoord(                                              
+        ra=dat_PSF_proc[ra_star_col],
+        dec=dat_PSF_proc[dec_star_col],
+        unit='deg'
+    )      
+    idx, d2d, d3d = coords.match_coordinates_sky(
+        coordinates_proc,
+        coordinates_proc,
+        nthneighbor=2
+    )
+    non_close = (d2d > tolerance_angle).all()
+    print_stats(
+        f'Check: all remaining distances > {tolerance_angle}? {non_close}',
+        stats_file,
+        verbose=verbose
+    )
+    if mode == 'average':
+        print_stats(
+            f'Check: n_non_close + n_avg + n_avg_rem = n_star? '
+            + f'{n_non_close} + {n_avg} + {n_avg_rem} = '
+            + f'{n_non_close + n_avg + n_avg_rem} ({n_star})',
+            stats_file,
+            verbose=verbose
+        )
+    elif mode == 'remove':
+        print_stats(
+            f'Check: n_non_close + n_rem = n_star? {n_non_close} '
+            + f'+ {n_rem} = {n_non_close + n_rem} ({n_star})',
+            stats_file,
+            verbose=verbose
+        )
+
+    n_in = len(dat_PSF[ra_star_col])
+    n_out = len(dat_PSF_proc[dec_star_col])
+    
+    if n_in == n_out:
+        print_stats(
+            f'keeping all {n_out} stars',
+            stats_file,
+            verbose=verbose
+        )
+    else:
+        print_stats(
+            f'keeping {n_out}/{n_in} = {n_out/n_in:.1%} stars',
+            stats_file,
+            verbose=verbose
+        )
+
+    return dat_PSF_proc
 
 
 def compute_corr_gp_pp_alpha(
@@ -271,8 +482,8 @@ def compute_corr_gp_pp_alpha(
     e2_gal = dat_shear[param.e2_col]
     weights = dat_shear['w']
 
-    ra_star = dat_PSF['RA']
-    dec_star = dat_PSF['Dec']
+    ra_star = dat_PSF[param.ra_star_col]
+    dec_star = dat_PSF[param.dec_star_col]
     e1_star = dat_PSF[param.e1_PSF_star_col]
     e2_star = dat_PSF[param.e2_PSF_star_col]
 
@@ -555,12 +766,24 @@ def main(argv=None):
     file_system.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
+    # Read galaxy catalogue
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data
 
-
+    # Read star catalogue
     hdu_list = fits.open(param.input_path_PSF)
     dat_PSF = hdu_list[param.hdu_psf].data
+
+    if param.close_pair_tolerance:
+        dat_PSF = handle_close_pairs(
+            dat_PSF,
+            param.ra_star_col,
+            param.dec_star_col,
+            param.close_pair_tolerance,
+            param.close_pair_mode,
+            stats_file=stats_file,
+            verbose=param.verbose
+        )
 
     # scale-dependent alpha function
     r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak = compute_corr_gp_pp_alpha(
