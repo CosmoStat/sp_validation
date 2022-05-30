@@ -278,9 +278,43 @@ def update_param(p_def, options):
     return param
 
 
-def handle_close_pairs(dat_PSF, ra_star_col, dec_star_col, tolerance, mode,
-                       stats_file=None, verbose=False):
+def handle_close_objects(
+    dat_PSF,
+    ra_star_col,
+    dec_star_col,
+    tolerance,
+    mode,
+    stats_file=None,
+    verbose=False
+):
+    """Handle Close Objects
 
+    Deal with close objects in PSF catalogue.
+
+    Parameters
+    ----------
+    dat_PSF : FITS.record
+        input PSF data
+    ra_star_col : str
+        column name for right ascension
+    dec_star_col : str
+        column name for declination
+    tolerance : str
+        smallest distance to define close object,
+        numerical value and unit as string
+    mode : str
+        mode to handle close objects, 'remove' or 'average'
+    stats_file : file handler
+        statistics output file
+    verbose : bool, optional
+        print message to stdout if True; default=False
+
+    Returns
+    -------
+    FITS.record
+        processed PSF data
+
+    """
     n_star = len(dat_PSF)
 
     tolerance_angle = coords.Angle(tolerance)
@@ -774,8 +808,10 @@ def main(argv=None):
     hdu_list = fits.open(param.input_path_PSF)
     dat_PSF = hdu_list[param.hdu_psf].data
 
+    # Deal with close objects in PSF catalogue (= stars on same position
+    # from different exposures)
     if param.close_pair_tolerance:
-        dat_PSF = handle_close_pairs(
+        dat_PSF = handle_close_objects(
             dat_PSF,
             param.ra_star_col,
             param.dec_star_col,

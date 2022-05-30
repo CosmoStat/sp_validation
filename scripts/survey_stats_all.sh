@@ -72,6 +72,6 @@ for patch in P1 P2 P3 P4 P5 P6 P7; do
 
 done
 
-summe.pl ${fbase_found}_all.txt 1
-summe.pl ${fbase_found_wsh}_all.txt 1
-summe.pl ${fbase_lf}_all.txt 1
+summe.pl ${fbase_found}_all.txt 0
+summe.pl ${fbase_found_wsh}_all.txt 0
+summe.pl ${fbase_lf}_all.txt 0
