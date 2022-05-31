@@ -5,11 +5,10 @@
 :Description: This script contains methods to deal with
 galaxy and star images.
 
-:Author: Martin Kilbinger
+:Author: Martin Kilbinger <martin.kilbinger@cea.fr>
+         Axel Guinot
 
 :Date: 2021
-
-:Package: sp_validation
 
 """
 
@@ -70,23 +69,12 @@ def sigma_to_fwhm(sigma, pixel_size=1):
 
     return sigma * 2.355 * pixel_size
 
-def classification_galaxy_overlap(dd):
-    """Classification Galaxy Overlap
 
-    Return mask corresponding to non-overlapping tile areas.
-    Obsolete, does not work well! Replaced by
-    lassification_galaxy_overlap_ra_dec.
-
-    """
-    # Duplicate objects due to tile overlaps
-    cut_overlap = (
-        dd['FLAG_TILING'] == 1
-    )
-
-    return cut_overlap
-
-
-def classification_galaxy_overlap_ra_dec(dd, ra_key='XWIN_WORLD', dec_key='YWIN_WORLD'):
+def classification_galaxy_overlap_ra_dec(
+        dd,
+        ra_key='XWIN_WORLD',
+        dec_key='YWIN_WORLD'
+):
     """Classification Galaxy Overllap Ra Dec
 
     Return mask corresponding to non-overlapping tile areas using
@@ -236,7 +224,12 @@ def classification_galaxy_base(
     return cut_common
 
 
-def classification_galaxy_ngmix(dd, cut_common, stats_file=None, verbose=False):
+def classification_galaxy_ngmix(
+        dd,
+        cut_common,
+        stats_file=None,
+        verbose=False
+):
     """Classification Galaxy Ngmx
     
     Return mask corresponding to ngmix classification of galaxies 
@@ -339,7 +332,11 @@ def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
     def runner(r, all_tiles_id, all_tiles_ra, all_tiles_dec):
         xxx, yyy = re.findall('\d+', re.split('\s', r.meta['text'])[1])
         idx = np.where(all_tiles_id == float(xxx)+float(yyy)/1000)
-        tile_points = coords.SkyCoord(all_tiles_ra[idx], all_tiles_dec[idx], unit='deg')
+        tile_points = coords.SkyCoord(
+            all_tiles_ra[idx],
+            all_tiles_dec[idx],
+            unit='deg'
+        )
         m_cont = r.contains(tile_points, get_tile_wcs(xxx, yyy))
         m_not_cont = np.invert(m_cont)
 
@@ -351,9 +348,12 @@ def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
 
     all_regions = regions.Regions.read(region_file_path)
 
-    res = (Parallel(n_jobs=n_jobs, backend='loky')
-          (delayed(runner)
-          (r, tile_id, tile_ra, tile_dec) for r in tqdm(all_regions, total=len(all_regions))))
+    res = (
+        Parallel(n_jobs=n_jobs, backend='loky')(
+            delayed(runner)(r, tile_id, tile_ra, tile_dec)
+            for r in tqdm(all_regions, total=len(all_regions))
+        )
+    )
 
     m_over = np.ones(len(tile_id), dtype=bool)
     for m_not_cont, idx in res:
