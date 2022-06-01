@@ -282,10 +282,25 @@ def get_ticks(loc, N, new_min, new_max):
     return loc_new, labels_new
 
 
-def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vlim=None, clusters=None):
+def plot_map(
+        m,
+        ra,
+        dec,
+        min_x,
+        max_x,
+        min_y,
+        max_y,
+        Nx,
+        Ny,
+        title,
+        out_path,
+        vlim=None,
+        grid=True,
+        clusters=None
+):
     """Plot Map
     
-    Plots 2D map.
+    Plot convergence map.
     
     Parameters
     ----------
@@ -299,6 +314,8 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
         output file path
     vlim : array(2) of float, optional, default=None
         limits of map values, if not given compute from map
+    grid : bool, optional
+        if `True` (default) plot grid lines
     clusters :
         dictionary of cluster information, optional, default=None
     """
@@ -334,40 +351,48 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
     plt.yticks(loc_dec, labels=labels_dec)
     
     # plot grid
-    grid_lines_ra = []
-    grid_lines_dec = []
-    n_per_line = 200
+    if grid:
+        grid_lines_ra = []
+        grid_lines_dec = []
+        n_per_line = 200
  
-    # create lines of constant ra and varying dec, and vice versa
+        # create lines of constant ra and varying dec, and vice versa
     
-    # extend beyond projected image limits, to avoid image edges without grid lines 
-    d = 2
-    gl_ra = np.linspace(ra_min-d, ra_max+d, num=n_per_line)
-    gl_dec = np.linspace(dec_min-d, dec_max+d, num=n_per_line)
-    ra_list = np.arange(np.floor(ra_min-d), np.ceil(ra_max+d))
-    dec_list = np.arange(np.floor(dec_min-d), np.ceil(dec_max+d))
-    for ra in ra_list:
-        grid_lines_ra.append([ra] * n_per_line)
-        grid_lines_dec.append(gl_dec)
-    for dec in dec_list:
-        grid_lines_dec.append([dec] * n_per_line)
-        grid_lines_ra.append(gl_ra)
+        # extend beyond projected image limits, to avoid image edges
+        # without grid lines 
+        d = 2
+        gl_ra = np.linspace(ra_min - d, ra_max + d, num=n_per_line)
+        gl_dec = np.linspace(dec_min - d, dec_max + d, num=n_per_line)
+        ra_list = np.arange(np.floor(ra_min - d), np.ceil(ra_max + d))
+        dec_list = np.arange(np.floor(dec_min - d), np.ceil(dec_max + d))
+        for ra in ra_list:
+            grid_lines_ra.append([ra] * n_per_line)
+            grid_lines_dec.append(gl_dec)
+        for dec in dec_list:
+            grid_lines_dec.append([dec] * n_per_line)
+            grid_lines_ra.append(gl_ra)
  
-    mean_x = (min_x + max_x) / 2
-    mean_y = (min_y + max_y) / 2
+        mean_x = (min_x + max_x) / 2
+        mean_y = (min_y + max_y) / 2
 
-    for grid_line_ra, grid_line_dec in zip(grid_lines_ra, grid_lines_dec):
-        x, y = radec2xy(ra_mean, dec_mean, grid_line_ra, grid_line_dec)
-        xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
-        yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
-        plt.plot(xx, yy, 'w:', linewidth=0.5)
+        for grid_line_ra, grid_line_dec in zip(grid_lines_ra, grid_lines_dec):
+            x, y = radec2xy(ra_mean, dec_mean, grid_line_ra, grid_line_dec)
+            xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
+            yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
+            plt.plot(xx, yy, 'w:', linewidth=0.5)
     
     # mark cluster positions 
     if clusters:
         x_cluster = (clusters['x'] + mean_x - min_x) / (max_x - min_x) * Nx
         y_cluster = (clusters['y'] + mean_y - min_y) / (max_y - min_y) * Ny
         dy = 0.02
-        plt.plot(x_cluster, y_cluster, 'ro', mfc='none', markeredgewidth=0.9, markersize=12)
+        plt.plot(
+            x_cluster,
+            y_cluster,
+            'ro',
+            mfc='none',
+            markeredgewidth=0.9,
+            markersize=12)
         
     # go back to image limits
     plt.xlim(xlim)
