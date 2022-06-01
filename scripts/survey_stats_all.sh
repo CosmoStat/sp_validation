@@ -62,6 +62,12 @@ for patch in P1 P2 P3 P4 P5 P6 P7; do
     tail -n 1 $patch/log_merge_final_rand_cat
   fi
 
+  ### Number of tiles for random catalogue validation
+  if [ -e $patch/sp_output_random/${fbase_found}.txt ]; then
+    wc -l $patch/sp_output_random/${fbase_found}.txt
+    wc -l $patch/sp_output_random/${fbase_found}.txt >> ${fbase_found}_all.txt
+  fi
+
   # LensFit tile IDs
   if [ -e ${fbase_lf}_$patch.list ]; then
     wc -l ${fbase_lf}_$patch.list

@@ -43,7 +43,7 @@ def main(argv=None):
     n_gal = {}
     tile_ID = dat[:, 0]
     for idx, t_ID in enumerate(tile_ID):
-        n_gal[f'{t_ID}'] = dat[idx, 2]
+        n_gal[f'{t_ID:07.3f}'] = dat[idx, 2]
 
     n_tile_no_gal = 0
 

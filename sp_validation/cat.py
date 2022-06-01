@@ -130,7 +130,16 @@ def print_some_quantities(dd, stats_file, verbose=False):
     return n_tot
 
 
-def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbose=False):
+def check_matching(
+        d1,
+        d2,
+        keys_1,
+        keys_2,
+        thresh,
+        stats_file,
+        name=None,
+        verbose=False
+):
     """Check matching
 
     Check matching between two catalogues.
@@ -139,7 +148,7 @@ def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbos
     ----------
     d1, d2 : dict
         catalogs
-    key_1, key_2 : array(2) of string
+    keys_1, keys_2 : array(2) of string
         column keys for d1, d2, corresponding to x, y
     thres : float
         threshold for matching, in deg
@@ -154,31 +163,40 @@ def check_matching(d1, d2, keys_1, keys_2, thresh, stats_file, name=None, verbos
         index list of d2 of objects that were matched to d1
     mask_area_tiles : array of int
         index list of tiles in footprint
+
     """
-    
     if name is not None:
         # Filter stars outside footprint for efficiency
         mask_area_tiles = get_footprint(name, d1[keys_1[0]], d1[keys_1[1]])
         if len(np.where(mask_area_tiles)[0]) == 0:
-            raise ValueError('Error: no object found in field \'{}\''.format(name))
+            raise ValueError('Error: no object found in field \'{name}\'')
     else:
         mask_area_tiles = np.arange(len(d1))
 
 
     # Match stars from exposure (PSF) catalogue to total catalogue
-    ind = basic.match_stars2(d2['XWIN_WORLD'], d2['YWIN_WORLD'], d1['RA'][mask_area_tiles],
-                             d1['DEC'][mask_area_tiles], thresh=thresh)
+    ind = basic.match_stars2(
+        d2[keys_2[0]],
+        d2[keys_2[1]],
+        d1[keys_1[0]][mask_area_tiles],
+        d1[keys_1[1]][mask_area_tiles],
+        thresh=thresh
+    )
 
     n_tot = len(d1[keys_1[0]][mask_area_tiles])
-    msg = 'Number of matched stars from exposures to total catalogue = {}/{} = {:.1f}%' \
-        ''.format(len(ind), n_tot, len(ind) / n_tot * 100)
+    msg = (
+        'Number of matched stars from exposures to total catalogue = '
+        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
+    )
     io.print_stats(msg, stats_file, verbose=verbose)
 
     # Remove stars matched to more than one target object
     ind = np.array(list(set(ind)))
 
-    msg = 'Number of matched stars after removing multiple matches = {}/{} = {:.1f}%' \
-        ''.format(len(ind), n_tot, len(ind) / n_tot * 100)
+    msg = (
+        'Number of matched stars after removing multiple matches = '
+        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
+    )
     io.print_stats(msg, stats_file, verbose=verbose)
 
     return ind, mask_area_tiles, n_tot
