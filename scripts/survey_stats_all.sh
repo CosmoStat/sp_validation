@@ -5,6 +5,7 @@ fbase_found_wsh='found_ID_wshapes'
 fbase_lf='CFIS3500_THELI'
 rm -f ${fbase_found}_all.txt
 rm -f ${fbase_found_wsh}_all.txt
+rm -f ${fbase_found_random}_all.txt
 rm -f ${fbase_lf}_all.txt
 
 for patch in P1 P2 P3 P4 P5 P6 P7; do
@@ -65,7 +66,7 @@ for patch in P1 P2 P3 P4 P5 P6 P7; do
   ### Number of tiles for random catalogue validation
   if [ -e $patch/sp_output_random/${fbase_found}.txt ]; then
     wc -l $patch/sp_output_random/${fbase_found}.txt
-    wc -l $patch/sp_output_random/${fbase_found}.txt >> ${fbase_found}_all.txt
+    wc -l $patch/sp_output_random/${fbase_found}.txt >> ${fbase_found_random}_all.txt
   fi
 
   # LensFit tile IDs
@@ -78,6 +79,16 @@ for patch in P1 P2 P3 P4 P5 P6 P7; do
 
 done
 
+echo -n "number of tiles in ${fbase_found}_all.txt = "
 summe.pl ${fbase_found}_all.txt 0
+
+echo -n "number of tiles in ${fbase_found_wsh}_all.txt = "
 summe.pl ${fbase_found_wsh}_all.txt 0
-summe.pl ${fbase_lf}_all.txt 0
+
+echo -n "number of tiles in ${fbase_found_random}_all.txt = "
+summe.pl ${fbase_found_random}_all.txt 0
+
+if [ -e ${fbase_lf} ]; then
+  echo -n "number of tiles in ${fbase_lf}_all.txt = "
+  summe.pl ${fbase_lf}_all.txt 0
+fi

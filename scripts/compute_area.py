@@ -39,13 +39,21 @@ def main(argv=None):
 
     # Open stats tile ID gal count file
     sh = 'ngmix'
-    dat = np.loadtxt(f'sp_output/tile_id_gal_counts_{sh}.txt')
+    tile_ID_from = 'random'
     n_gal = {}
-    tile_ID = dat[:, 0]
-    for idx, t_ID in enumerate(tile_ID):
-        n_gal[f'{t_ID:07.3f}'] = dat[idx, 2]
+    if tile_ID_from == 'final':
+        dat = np.loadtxt(f'sp_output/tile_id_gal_counts_{sh}.txt')
+        tile_ID = dat[:, 0]
+        for idx, t_ID in enumerate(tile_ID):
+            n_gal[f'{t_ID:07.3f}'] = dat[idx, 2]
+    elif tile_ID_from == 'random':
+        dat = np.loadtxt(f'sp_output_random/found_ID.txt')
+        tile_ID = dat
+        for idx, t_ID in enumerate(tile_ID):
+            n_gal[f'{t_ID:07.3f}'] = 1
 
     n_tile_no_gal = 0
+    n_tile_wgal = 0
 
     # Loop over log files
     for idx, log_file in enumerate(log_files):
@@ -55,12 +63,19 @@ def main(argv=None):
         m = re.match(pattern, log_file)
         if m:
             this_id = f'{m[1]}.{m[2]}'
-            if this_id in n_gal:
-                if n_gal[this_id] == 0:
-                    n_tile_no_gal += 1
+            if tile_ID_from == 'final':
+                if this_id in n_gal:
+                    if n_gal[this_id] == 0:
+                        n_tile_no_gal += 1
+                        no_gal = True
+            else:
+                if this_id not in n_gal:
                     no_gal = True
         else:
             raise ValueError('Invalid log file format')
+
+        if not no_gal:
+            n_tile_wgal += 1
 
         with open(log_file) as fin:
             log_content = fin.readlines()
@@ -88,6 +103,7 @@ def main(argv=None):
                 ratio_unmasked_tot[idx] = float(m[1])
 
     print(f'Tiles with zero galaxies = {n_tile_no_gal}')
+    print(f'Tiles with galaxies = {n_tile_wgal}')
 
     area_deg2_non_overl_total = np.sum(area_deg2_non_overl)
     area_deg2_non_overl_total_wgal = np.sum(area_deg2_non_overl_wgal)
