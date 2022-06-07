@@ -296,7 +296,8 @@ def plot_map(
         out_path,
         vlim=None,
         grid=True,
-        clusters=None
+        clusters=None,
+        map_cut_coords=None
 ):
     """Plot Map
     
@@ -325,6 +326,12 @@ def plot_map(
     # plot image
     plt.imshow(m)
 
+    # Transform axis labels to ra, dec
+    ra_min, ra_max = ra.min(), ra.max()
+    ra_mean = np.mean(ra)
+    dec_min, dec_max = dec.min(), dec.max()
+    dec_mean = np.mean(dec)
+
     # save image limits
     xlim = plt.xlim()
     ylim = plt.ylim()
@@ -336,12 +343,6 @@ def plot_map(
         plt.gci().set_clim(vlim)
     plt.colorbar()
 
-    # Transform axis labels to ra, dec
-    ra_min, ra_max = ra.min(), ra.max()
-    ra_mean = np.mean(ra)
-    dec_min, dec_max = dec.min(), dec.max()
-    dec_mean = np.mean(dec)
-
     loc, labels = plt.xticks()
     loc_ra, labels_ra = get_ticks(loc, Nx, ra_min, ra_max)
     plt.xticks(loc_ra, labels=labels_ra)
@@ -350,6 +351,9 @@ def plot_map(
     loc_dec, labels_dec = get_ticks(loc, Ny, dec_min, dec_max)
     plt.yticks(loc_dec, labels=labels_dec)
     
+    mean_x = (min_x + max_x) / 2
+    mean_y = (min_y + max_y) / 2
+
     # plot grid
     if grid:
         grid_lines_ra = []
@@ -372,15 +376,27 @@ def plot_map(
             grid_lines_dec.append([dec] * n_per_line)
             grid_lines_ra.append(gl_ra)
  
-        mean_x = (min_x + max_x) / 2
-        mean_y = (min_y + max_y) / 2
 
         for grid_line_ra, grid_line_dec in zip(grid_lines_ra, grid_lines_dec):
             x, y = radec2xy(ra_mean, dec_mean, grid_line_ra, grid_line_dec)
             xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
             yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
             plt.plot(xx, yy, 'w:', linewidth=0.5)
-    
+
+    # cut out if required
+    if map_cut_coords:
+        x_cut, y_cut = radec2xy(
+            ra_mean,
+            dec_mean,
+            [map_cut_coords[0], map_cut_coords[1]],
+            [map_cut_coords[2], map_cut_coords[3]]
+        )
+        xx = (x_cut + mean_x - min_x) / (max_x - min_x) * Nx
+        yy = (y_cut + mean_y - min_y) / (max_y - min_y) * Ny
+        print('MKDEBUG 1', xx)
+        xlim = plt.xlim(xx)
+        ylim = plt.ylim(yy)
+   
     # mark cluster positions 
     if clusters:
         x_cluster = (clusters['x'] + mean_x - min_x) / (max_x - min_x) * Nx
@@ -397,7 +413,7 @@ def plot_map(
     # go back to image limits
     plt.xlim(xlim)
     plt.ylim(ylim)
- 
+
     plt.gca().invert_yaxis()
     plt.gca().invert_xaxis()
     plt.xlabel('R.A. [deg]')
