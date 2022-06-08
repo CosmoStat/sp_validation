@@ -209,12 +209,23 @@ def merge_catalogues(
             col_names = dat.dtype.names
             for name in col_names:
                 dat_all[name] = []
+            dat_all['patch'] = []
         for name in col_names:
             dat_all[name] = np.append(dat_all[name], dat[name])
 
-        column_all = []
+        # Add patch number
+        dat_all['patch'] = np.append(dat_all['patch'], [idx + 1] * len(dat))
+
+    col_names = col_names + ('patch',)
+
+    column_all = []
     for name in col_names:
-        column = fits.Column(name=name, array=dat_all[name], format='D')
+        if name != 'patch':
+            my_format = 'D'
+        else:
+            my_format = 'I'
+        print('adding', name)
+        column = fits.Column(name=name, array=dat_all[name], format=my_format)
         column_all.append(column)
 
     # Compute bias parameters if required
@@ -232,6 +243,7 @@ def merge_catalogues(
             for jdx in (0, 1):
                 R_shear[idx][jdx] = np.mean(dat_all[f'R_g{idx+1}{jdx+1}'])
 
+    print(column_all)
     if R_select is not None:
         R = R_shear + R_select
         write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
@@ -269,8 +281,9 @@ def main(argv=None):
 
     sh = 'ngmix'
 
-    survey = 'cfis_3500'
-    pipeline = 'SP'
+    survey = 'unions'
+    pipeline = 'shapepipe'
+    year = 2022
     version = '1.0'
 
     additive_bias = 'from_extended'
@@ -292,7 +305,7 @@ def main(argv=None):
     if param.verbose:
         print('Merging extended catalogue')
     input_sub_path = f'sp_output/shape_catalog_extended_{sh}.fits'
-    output_path = f'{survey}_{pipeline}_extended_v{version}.fits'
+    output_path = f'{survey}_{pipeline}_extended_{year}_v{version}.fits'
     c_ext, R_shear_ext = merge_catalogues(
         patches,
         input_sub_path,
@@ -345,9 +358,10 @@ def main(argv=None):
     w_all = np.array([])
     mag_all = np.array([])
     snr_all = np.array([])
+    patch_all = np.array([])
     if param.verbose:
         print('Merging base catalogue')
-    for patch in patches:
+    for idx, patch in enumerate(patches):
 
         if param.verbose:
             print(' ', patch)
@@ -359,6 +373,7 @@ def main(argv=None):
         dec_all = np.append(dec_all, dec)
         w_all = np.append(w_all, w)
         mag_all = np.append(mag_all, mag)
+        patch_all = np.append(patch_all, [idx + 1] * len(ra))
         
         g = np.array([g1, g2])
 
@@ -371,15 +386,31 @@ def main(argv=None):
         g1_corr_mc_all = np.append(g1_corr_mc_all, g_corr_mc[0])
         g2_corr_mc_all = np.append(g2_corr_mc_all, g_corr_mc[1])
 
-    output_path = f'{survey}_{pipeline}_v{version}.fits'
+    output_path = f'{survey}_{pipeline}_{year}_v{version}.fits'
     g_corr_mc_all = np.array([g1_corr_mc_all, g2_corr_mc_all])
-    write_shape_catalog(output_path, ra_all, dec_all, g_corr_mc_all, w_all, mag_all, R, R_shear, R_select, c, c_err)
+
+    add_col_data = { 'patch' : patch_all }
+    add_col_format = { 'patch' : 'I' }
+    write_shape_catalog(
+        output_path, 
+        ra_all,
+        dec_all,
+        g_corr_mc_all,
+        w_all,
+        mag_all,
+        R,
+        R_shear, 
+        R_select,
+        c,
+        c_err,
+        add_cols=add_col_data,
+        add_cols_format=add_col_format)
 
     # PSF catalogue
     if param.verbose:
         print('Merging PSF catalogue')
     input_sub_path = f'sp_output/psf_catalog_{sh}.fits'
-    output_path = f'{survey}_{pipeline}_psf_v{version}.fits'
+    output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
     merge_catalogues(patches, input_sub_path, output_path, verbose=param.verbose)
 
 
