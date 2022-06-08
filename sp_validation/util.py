@@ -1,16 +1,8 @@
-# -*- coding: utf-8 -*-
+"""UTILITES
 
-"""
-  
-:Name: util.py
+This module contains general utility methods.
 
-:Description: This script contains utility methods.
-
-:Author: Martin Kilbinger
-
-:Date: 2021
-
-:Package: sp_validation
+:Author: Martin Kilbinge <martin.kilblinger@cea.fr>
 
 """
 
@@ -28,7 +20,6 @@ else:
     import_fail = False
 
 
-
 def millify(n):
     """Millify
 
@@ -41,10 +32,10 @@ def millify(n):
 
     Returns
     -------
-    s : string
+    string
         output name
-    """
 
+    """
     millnames = ['',' Thousand',' Million',' Billion',' Trillion']
 
     n = float(n)
@@ -56,13 +47,13 @@ def millify(n):
         )
     )
 
-    return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
+    return '{n / 10**(3 * millidx):.0f}{millnames[millidx])}' 
 
 
 def transform_nan(value):
     """Transform Nan
 
-    Transform a nan to a very large number.
+    Transform a `nan` to a very large number.
 
     Parameters
     ----------
@@ -71,7 +62,7 @@ def transform_nan(value):
 
     Returns
     -------
-    res : float
+    float
         output value
     """
 
@@ -171,10 +162,10 @@ def download(source, target, verbose=False):
 
     Returns
     -------
-    status : bool
+    bool
         status, True/False or success/failure
-    """
 
+    """
     cmd = 'vcp'
 
     if not os.path.exists(target):
@@ -189,4 +180,3 @@ def download(source, target, verbose=False):
     else:
         if verbose:
             print('Target file {} exists, skipping download.'.format(target))
-
