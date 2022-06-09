@@ -37,7 +37,7 @@ def millify(n):
 
     Returns
     -------
-    string
+    str
         output name
 
     """
@@ -59,7 +59,7 @@ def millify(n):
 def transform_nan(value):
     """Transform Nan
 
-    Transform a nan to a very large number.
+    Transform a ``nan`` to a very large number.
 
     Parameters
     ----------
@@ -158,9 +158,9 @@ def download(source, target, verbose=False):
 
     Parameters
     ----------
-    source : string
+    source : str
         source path on vos
-    target : string
+    target : str
         target path
     verbose : bool, optional, default=False
         verbose output if True
