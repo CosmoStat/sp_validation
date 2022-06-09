@@ -1,16 +1,13 @@
-# -*- coding: utf-8 -*-
-
+#!/usr/bin/env python
 """
-  
+
 :Name: util.py
 
 :Description: This script contains utility methods.
 
-:Author: Martin Kilbinger
+:Author: Martin Kilbinger <martin.kilbinger@cea.fr>
 
 :Date: 2021
-
-:Package: sp_validation
 
 """
 
@@ -28,7 +25,6 @@ else:
     import_fail = False
 
 
-
 def millify(n):
     """Millify
 
@@ -41,10 +37,10 @@ def millify(n):
 
     Returns
     -------
-    s : string
+    string
         output name
-    """
 
+    """
     millnames = ['',' Thousand',' Million',' Billion',' Trillion']
 
     n = float(n)
@@ -56,7 +52,8 @@ def millify(n):
         )
     )
 
-    return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
+    #return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
+    return '{n / 10**(3 * millidx):.0f}{millnames[millidx]}'
 
 
 def transform_nan(value):
@@ -71,10 +68,10 @@ def transform_nan(value):
 
     Returns
     -------
-    res : float
+    float
         output value
-    """
 
+    """
     large = 1e30
 
     if np.isnan(value) or np.isinf(value):
@@ -105,7 +102,6 @@ class vosHandler:
         VOS command name
 
     """
-
     def __init__(self, command):
 
         self._check_vos_install()
