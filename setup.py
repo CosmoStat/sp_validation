@@ -17,7 +17,10 @@ email = 'martin.kilbinger@cea.fr'
 gh_user = 'martin.kilbinger'
 url = 'https://github.com/{0}/{1}'.format(gh_user, name)
 year = '2021'
-description = 'Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by ShapePipe'
+description = (
+    'Validation of weak-lensing catalogues (galaxy and star shapes and other '
+    + 'parameters) produced by ShapePipe'
+)
 license = 'MIT'
 
 # Set the package classifiers
