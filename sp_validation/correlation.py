@@ -1,5 +1,5 @@
-"""
-  
+"""CORRELATION.
+
 :Name: correlation.py
 
 :Description: This script contains methods to deal with
@@ -39,13 +39,14 @@ def affine_corr(
     title='',
     colors=None,
     stats_file=None,
-    verbose=False):
-    """Affine Corr
-    
+    verbose=False
+):
+    """Affine Corr.
+
     Computes and plots affine correlation of y(n) as function of x.
- 
+
     Parameters
-    -----------
+    ----------
     x: array(double)
         input x value
     y: array(m) of double
@@ -69,13 +70,12 @@ def affine_corr(
     verbose : bool, optional, default=False
         verbose output if True
     """
-    
     def lin(x, a, b):
         return a * x + b
 
     if mlabel is None:
         mlabel = np.ones('m')
-        
+
     if weights is None:
         weights = np.ones_like(y[0])
 
@@ -88,7 +88,8 @@ def affine_corr(
         if len(y[j]) != size_all:
             raise IndexError
             (
-                f'Size {len(y[j])} of input #{i} different from  size {size_all} of input #0'
+                f'Size {len(y[j])} of input #{i} different from  size '
+                + f'{size_all} of input #0'
             )
     size_bin = int(size_all / n_bin)
     diff_size = size_all - size_bin
@@ -98,7 +99,7 @@ def affine_corr(
     x_bin = []
     y_bin = []
     err_bin = []
-    
+
     for j in range(len(y)):
         y_bin.append([])
         err_bin.append([])
@@ -111,12 +112,19 @@ def affine_corr(
         else:
             bin_size_tmp = size_bin
             starter = diff_size
-        ind = x_arg_sort[starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp]
+        ind = x_arg_sort[
+            starter + i * bin_size_tmp: starter + (i + 1) * bin_size_tmp
+        ]
 
         x_bin.append(np.mean(x[ind]))
 
         for j in range(len(y)):
-            r_jk = jackknif_weighted_average(y[j][ind], weights[ind], remove_size=0.2, n_realization=50)
+            r_jk = jackknif_weighted_average(
+                y[j][ind],
+                weights[ind],
+                remove_size=0.2,
+                n_realization=50,
+            )
             y_bin[j].append(r_jk[0])
             err_bin[j].append(r_jk[1])
 
@@ -124,12 +132,18 @@ def affine_corr(
     for j in range(len(y)):
         y_bin[j] = np.array(y_bin[j])
         err_bin[j] = np.array(err_bin[j])
- 
+
     # Fit affine functions, plot function and data
     plt.figure(figsize=(10, 6))
     for j in range(len(y)):
-        res = curve_fit(lin, x, y[j], p0=[0.01, 0.01], sigma=1/np.sqrt(weights))
-        m_dm = ufloat(res[0][0], np.sqrt(res[1][0,0]))
+        res = curve_fit(
+            lin,
+            x,
+            y[j],
+            p0=[0.01, 0.01],
+            sigma=1 / np.sqrt(weights),
+        )
+        m_dm = ufloat(res[0][0], np.sqrt(res[1][0, 0]))
 
         label = '${}={:.2ugL}$'.format(mlabel[j], m_dm)
         plt.plot(x_bin, lin(x_bin, *res[0]), c=colors[j], label=label)
@@ -152,7 +166,7 @@ def affine_corr(
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
 
-    
+
 def affine_corr_n(
     x_arr,
     y,
@@ -165,13 +179,14 @@ def affine_corr_n(
     title='',
     colors=None,
     stats_file=None,
-    verbose=False):
-    """Affine Corr N
-    
+    verbose=False
+):
+    """Affine Corr N.
+
     Compute n affine correlations of y(m) versus x_arr[n].
 
     Parameters
-    -----------
+    ----------
     x_arr: array(n, double)
         input x value
     y: array(m) of double
@@ -195,9 +210,8 @@ def affine_corr_n(
     verbose : bool, optional, default=False
         verbose output if True
     """
-    
     if out_path_arr is None:
-        out_path_arr = [None]*len(y_arr)
+        out_path_arr = [None] * len(y_arr)
     for x, xlabel, out_path in zip(x_arr, xlabel_arr, out_path_arr):
         affine_corr(
             x,
@@ -212,20 +226,46 @@ def affine_corr_n(
             colors=colors,
             stats_file=stats_file,
             verbose=verbose
-        ) 
+        )
 
 
-def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1_star, e2_star, w_star=None,
-    theta_min_amin=2, theta_max_amin=200, n_theta=20):
-    """xi star gal tc
+def xi_star_gal_tc(
+    ra_gal,
+    dec_gal,
+    e1_gal,
+    e2_gal,
+    w_gal,
+    ra_star,
+    dec_star,
+    e1_star,
+    e2_star,
+    w_star=None,
+    theta_min_amin=2,
+    theta_max_amin=200,
+    n_theta=20,
+):
+    """Xi star gal tc.
 
     Cross-correlation between galaxy and star ellipticities.
     """
-
-    cat_gal = treecorr.Catalog(ra=ra_gal, dec=dec_gal, g1=e1_gal, g2=e2_gal,
-                               w=w_gal, ra_units='degrees', dec_units='degrees')
-    cat_star = treecorr.Catalog(ra=ra_star, dec=dec_star, g1=e1_star, g2=e2_star,
-                                w=w_star, ra_units='degrees', dec_units='degrees')
+    cat_gal = treecorr.Catalog(
+        ra=ra_gal,
+        dec=dec_gal,
+        g1=e1_gal,
+        g2=e2_gal,
+        w=w_gal,
+        ra_units='degrees',
+        dec_units='degrees',
+    )
+    cat_star = treecorr.Catalog(
+        ra=ra_star,
+        dec=dec_star,
+        g1=e1_star,
+        g2=e2_star,
+        w=w_star,
+        ra_units='degrees',
+        dec_units='degrees',
+    )
 
     TreeCorrConfig = {
         'ra_units': 'degrees',
@@ -235,7 +275,6 @@ def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1
         'max_sep': theta_max_amin,
         'nbins': n_theta
     }
-
     ng = treecorr.GGCorrelation(TreeCorrConfig)
 
     ng.process(cat_gal, cat_star)
@@ -243,9 +282,21 @@ def xi_star_gal_tc(ra_gal, dec_gal, e1_gal, e2_gal, w_gal, ra_star, dec_star, e1
     return ng
 
 
-def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_2,
-    theta_min_amin=2, theta_max_amin=200, n_theta=20):
-    """Correlation 12 22
+def correlation_12_22(
+    ra_1,
+    dec_1,
+    e1_1,
+    e2_1,
+    weights_1,
+    ra_2,
+    dec_2,
+    e1_2,
+    e2_2,
+    theta_min_amin=2,
+    theta_max_amin=200,
+    n_theta=20,
+):
+    """Correlation 12 22.
 
     Correlation functions between two samples 1 and 2. Compute xi_12 and xi_22.
 
@@ -273,7 +324,6 @@ def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_
     xi_12, xi_22 : correlations
         correlations 12, and 22
     """
-
     r_corr_12 = xi_star_gal_tc(
         ra_1,
         dec_1,
@@ -307,7 +357,7 @@ def correlation_12_22(ra_1, dec_1, e1_1, e2_1, weights_1, ra_2, dec_2, e1_2, e2_
 
 
 def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
-    """alpha
+    """Alpha.
 
     Compute scale-dependent PSF leakage alpha.
 
@@ -327,21 +377,22 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
     alpha, sig_alpha : float
         mean and std of alpha
     """
-
     complex_gal = (
         np.average(e1_gal, weights=weights_gal)
-        + np.average(e2_gal, weights=weights_gal)*1j
+        + np.average(e2_gal, weights=weights_gal) * 1j
     )
-    complex_psf = np.mean(e1_star) + np.mean(e2_star)*1j
+    complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
 
     alpha_leak = (
-        (r_corr_gp.xip - np.real(np.conj(complex_gal)*complex_psf))
-        / (r_corr_pp.xip - np.abs(complex_psf)**2)
+        (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf))
+        / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
     )
     sig_alpha_leak = (
-        np.abs(alpha_leak) * np.sqrt((np.sqrt(r_corr_gp.varxip) 
-        / r_corr_gp.xip)**2
-        + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip)**2)
+        np.abs(alpha_leak)
+        * np.sqrt(
+            (np.sqrt(r_corr_gp.varxip) / r_corr_gp.xip) ** 2
+            + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip) ** 2
+        )
     )
 
     return alpha_leak, sig_alpha_leak
