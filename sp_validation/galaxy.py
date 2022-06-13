@@ -3,7 +3,7 @@
 :Name: galaxy.py
 
 :Description: This script contains methods to deal with
-galaxy and star images.
+    galaxy and star images.
 
 :Author: Martin Kilbinger
 

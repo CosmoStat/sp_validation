@@ -1263,9 +1263,9 @@ def get_clusters(
     verbose : bool, optional, default=False
         verbose output if True
 
-    Parameters
-    ----------
-    clusters_cut :
+    Returns
+    -------
+    tuple
         cluster information (ra, dec, z, SZ-mass)
     """
     out_path = f'{output_dir}/{cluster_cat_name}'

@@ -3,7 +3,7 @@
 :Name: correlation.py
 
 :Description: This script contains methods to deal with
-auto- and cross-correlations.
+    auto- and cross-correlations.
 
 :Author: Martin Kilbinger
 
