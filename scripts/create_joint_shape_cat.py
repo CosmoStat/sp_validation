@@ -57,17 +57,17 @@ def parse_options(p_def):
 
     Parameters
     ----------
-    p_def: class param
+    p_def : class param
         parameter values
 
     Returns
     -------
-    options: tuple
+    tuple
         Command line options
-    args: string
+    string
         Command line string
-    """
 
+    """
     usage  = "%prog [OPTIONS]"
     parser = OptionParser(usage=usage)
 
@@ -101,11 +101,12 @@ def check_options(options):
 
     Returns
     -------
-    erg: bool
+    bool
         Result of option check. False if invalid option value.
-    """
 
+    """
     return True
+
 
 def update_param(p_def, options):
     """Return default parameter, updated and complemented according to options.
@@ -165,6 +166,7 @@ def merge_catalogues(
     R_select=None,
     return_mean_e=False,
     return_mean_R_shear=False,
+    hdu_in=1,
     verbose=False
 ):
     """Merge Catalogues
@@ -185,6 +187,8 @@ def merge_catalogues(
         return mean ellipticity if `True`; default is `False`
     return_mean_R_shear : bool, optional
         return mean response matrix if `True`; default is `False`
+    hdu_in : int, optional
+        input data HD, default is `1`
     verbose : bool, optional
         verbose output if `True`; default is `False`
 
@@ -203,7 +207,7 @@ def merge_catalogues(
             print(' ', patch)
 
         input_path = f'{patch}/{input_sub_path}'
-        dat = fits.getdata(input_path, 1)
+        dat = fits.getdata(input_path, hdu_in)
 
         if idx == 0:
             col_names = dat.dtype.names
@@ -284,7 +288,7 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.0'
+    version = '1.0.1'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -404,14 +408,16 @@ def main(argv=None):
         c,
         c_err,
         add_cols=add_col_data,
-        add_cols_format=add_col_format)
+        add_cols_format=add_col_format, 
+    )
 
     # PSF catalogue
     if param.verbose:
-        print('Merging PSF catalogue')
-    input_sub_path = f'sp_output/psf_catalog_{sh}.fits'
+        print('Merging PSF catalogues')
+    input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
-    merge_catalogues(patches, input_sub_path, output_path, verbose=param.verbose)
+    merge_catalogues(patches, input_sub_path, output_path, hdu_in=2, verbose=param.verbose)
 
 
 if __name__ == "__main__":

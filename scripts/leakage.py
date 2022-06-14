@@ -6,6 +6,9 @@ import numpy as np
 from optparse import OptionParser
 from astropy.io import ascii
 
+from shapepipe.utilities import cfis
+from shapepipe.utilities import file_system
+
 from sp_validation.cat import *
 from sp_validation.plots import *
 from sp_validation.util import transform_nan
@@ -48,6 +51,11 @@ def params_default():
 
     p_def = param(
         output_dir='.',
+        hdu_psf=1,
+        e1_col='e1_uncal',
+        e2_col='e2_uncal',
+        e1_PSF_star_col='E1_PSF_HSM',
+        e2_PSF_star_col='E2_PSF_HSM',
     )
 
     return p_def
@@ -95,13 +103,52 @@ def parse_options(p_def):
         help=f'output_dir, default=\'{p_def.output_dir}\''
     )
     parser.add_option(
+        '',
+        '--hdu_psf',
+        dest='hdu_psf',
+        default=p_def.hdu_psf,
+        type='int',
+        help=f'HDU of PSF catalogue, default=\'{p_def.hdu_psf}\''
+    )
+    parser.add_option(
+        '',
+        '--e1_uncal',
+        dest='e1_uncal',
+        default=p_def.e1_PSF_star_col,
+        type='string',
+        help=f'e1 column name in galaxy catalogue, default=\'{p_def.e1_uncal}\''
+    )
+    parser.add_option(
+        '',
+        '--e2_uncal',
+        dest='e2_uncal',
+        default=p_def.e2_PSF_star_col,
+        type='string',
+        help=f'e2 column name in galaxy catalogue, default=\'{p_def.e2_uncal}\''
+    )
+    parser.add_option(
+        '',
+        '--e1_PSF_star_col',
+        dest='e1_PSF_star_col',
+        default=p_def.e1_PSF_star_col,
+        type='string',
+        help=f'e1 PSF column name in star catalogue, default=\'{p_def.e1_PSF_star_col}\''
+    )
+    parser.add_option(
+        '',
+        '--e2_PSF_star_col',
+        dest='e2_PSF_star_col',
+        default=p_def.e2_PSF_star_col,
+        type='string',
+        help=f'e2 PSF column name in star catalogue, default=\'{p_def.e2_PSF_star_col}\''
+    )
+    parser.add_option(
         '-v',
         '--verbose',
         dest='verbose',
         action='store_true',
         help=f'verbose output'
     )
-
 
     options, args = parser.parse_args()
 
@@ -124,6 +171,13 @@ def check_options(options):
 
     if not options.input_path_shear:
         print('Input path for shear catalogue (option \'-i\') required')
+        return False
+
+    if options.e1_PSF_star_col == options.e2_PSF_star_col:
+        print(
+            'Column names for e1_PSF and e2_PSF are identical, '
+            + 'this is surely a mistake'
+        )
         return False
 
     return True
@@ -160,7 +214,7 @@ def update_param(p_def, options):
     return param
 
 
-def leakage(dat, output_dir, stats_file, verbose=False):
+def leakage(dat, shape_method, output_dir, stats_file, verbose=False):
     """Leakage
 
     Compute and plot object-by-object PSF leakage relations.
@@ -169,6 +223,8 @@ def leakage(dat, output_dir, stats_file, verbose=False):
     ----------
     dat : FITS.record
         input data
+    shape_method : str
+        shape measurement method, e.g. 'ngmix'
     output_dir : str
         output directory for plots
     stats_file : file handler
@@ -177,16 +233,15 @@ def leakage(dat, output_dir, stats_file, verbose=False):
         print message to stdout if True; default=False
     """
 
-    sh = 'ngmix'
-
     plot_dir_leakage = output_dir
-    io.print_stats(f'{sh}:', stats_file, verbose=verbose)
+    io.print_stats(f'{shape_method}:', stats_file, verbose=verbose)
 
     n_bin = 30
 
     colors = ['b', 'r']
     ylabel = r'$e_{1,2}^{\rm gal}$'
     mlabel = ['m_1', 'm_2']
+    clabel = ['c_1', 'c_2']
 
     xlabel_arr = [
         r'$e_{1}^{\rm PSF}$',
@@ -216,7 +271,8 @@ def leakage(dat, output_dir, stats_file, verbose=False):
         xlabel_arr,
         ylabel,
         mlabel=mlabel,
-        title=sh,
+        clabel=clabel,
+        title=shape_method,
         weights=weights,
         n_bin=n_bin,
         out_path_arr=out_path_arr,
@@ -229,13 +285,15 @@ def leakage(dat, output_dir, stats_file, verbose=False):
 def compute_corr_gp_pp_alpha(
     dat_shear,
     dat_PSF,
-    output_dir,
+    e1_PSF_star_col,
+    e2_PSF_star_col,
     stats_file,
     theta_min_amin,
     theta_max_amin,
     n_theta,
-    verbose=False):
-    """Leakage Scales
+    verbose=False
+):
+    """Compute Corr GP PP Alpha
 
     Compute and plot scale-dependent PSF leakage functions.
 
@@ -245,8 +303,10 @@ def compute_corr_gp_pp_alpha(
         input shear data
     dat_PSF : FITS.record
         input PSF data
-    output_dir : str
-        output directory for plots
+    e1_PSF_star_col : str
+        e1 PSF column name in star catalogue
+    e2_PSF_star_col : str
+        e2 PSF column name in star catalogue
     stats_file : file handler
         statistics output file
     verbose : bool, optional
@@ -272,8 +332,8 @@ def compute_corr_gp_pp_alpha(
 
     ra_star = dat_PSF['RA']
     dec_star = dat_PSF['Dec']
-    e1_star = dat_PSF['e1']
-    e2_star = dat_PSF['e2']
+    e1_star = dat_PSF[e1_PSF_star_col]
+    e2_star = dat_PSF[e2_PSF_star_col]
 
     # Correlation functions
     r_corr_gp, r_corr_pp = correlation_12_22(
@@ -305,7 +365,13 @@ def compute_corr_gp_pp_alpha(
     return r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak
 
 
-def compute_alpha_mean(alpha_leak, sig_alpha_leak, stats_file, verbose=False):
+def compute_alpha_mean(
+        alpha_leak,
+        sig_alpha_leak,
+        shape_method,
+        stats_file,
+        verbose=False
+):
     """Compute Alpha Mean
 
     Compute weighted mean of the leakage function alpha 
@@ -316,6 +382,8 @@ def compute_alpha_mean(alpha_leak, sig_alpha_leak, stats_file, verbose=False):
         values of alpha for a range of scales
     sig_alpha_leak : list of float
         values of the RMS of alpha for a range of scales
+    shape_method : str
+        shape measurement method, e.g. 'ngmix'
     stats_file : file handler
         statistics output file
     verbose : bool, optional
@@ -327,30 +395,27 @@ def compute_alpha_mean(alpha_leak, sig_alpha_leak, stats_file, verbose=False):
         weighted mean of alpha
     """
 
-    sh = 'ngmix'
-
     alpha_leak_mean = transform_nan(
         np.average(alpha_leak, weights=1/sig_alpha_leak**2)
     )
     print_stats(
-        f'{sh}: Weighted average alpha = {alpha_leak_mean:.3g}',
+        f'{shape_method}: Weighted average alpha = {alpha_leak_mean:.3g}',
         stats_file,
         verbose=verbose
     )
 
-def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, output_dir, leakage_alpha_ylim):
+
+def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, shape_method, output_dir, xmin, xmax, leakage_alpha_ylim):
 
     plot_dir_leakage = output_dir
-
-    sh = 'ngmix'
 
     theta = [meanr]
     alpha_theta = [alpha_leak]
     yerr = [sig_alpha_leak]
     xlabel = r'$\theta$ [arcmin]'
     ylabel = r'$\alpha(\theta)$'
-    title = sh
-    out_path = f'{output_dir}/alpha_leakage{sh}.png'
+    title = shape_method
+    out_path = f'{output_dir}/alpha_leakage_{shape_method}.png'
     try:
         ylim  = leakage_alpha_ylim
     except:
@@ -365,6 +430,7 @@ def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, output_dir, leakage_al
         ylabel,
         out_path,
         xlog=True,
+        xlim=[xmin, xmax],
         ylim=ylim
     )
 
@@ -423,6 +489,7 @@ def plot_xi_sys(
     C_sys_m,
     C_sys_std_p,
     C_sys_std_m,
+    shape_method,
     output_dir,
     stats_file,
     leakage_xi_sys_ylim,
@@ -451,8 +518,6 @@ def plot_xi_sys(
         print message to stdout if True; default=False
     """
 
-    sh = 'ngmix'
-
     labels = ['$\\xi^{\\rm sys}_+$', '$\\xi^{\\rm sys}_-$']
 
     title = 'Cross-correlation leakage'
@@ -467,14 +532,14 @@ def plot_xi_sys(
     symb_arr = ['+', '-']
     for comp, symb in zip(comp_arr, symb_arr):
         mean = np.mean(np.abs(xi[comp]))
-        msg = f'{sh}: <|xi_sys_{symb}|> = {mean}'
+        msg = f'{shape_method}: <|xi_sys_{symb}|> = {mean}'
         print_stats(msg, stats_file, verbose=verbose)
 
     try:
         ylim = leakage_xi_sys_ylim
     except:
         ylim = None
-    out_path = f'{output_dir}/xi_sys_{sh}.pdf'
+    out_path = f'{output_dir}/xi_sys_{shape_method}.pdf'
     
     plot_data_1d(
         theta,
@@ -493,7 +558,7 @@ def plot_xi_sys(
         ylim = leakage_xi_sys_log_ylim
     except:
         ylim = None
-    out_path = f'{output_dir}/xi_sys_log_{sh}.pdf'
+    out_path = f'{output_dir}/xi_sys_log_{shape_method}.pdf'
     plot_data_1d(
         theta,
         xi,
@@ -527,35 +592,56 @@ def main(argv=None):
 
     param = update_param(p_def, options)
 
+    # Save calling command
+    cfis.log_command(argv)
+
     sys.path.append('.')
     import params as config
 
+    shape_method = 'ngmix'
+
+    file_system.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data
 
     # object-by-object alpha parameter
-    leakage(dat_shear, param.output_dir, stats_file, verbose=param.verbose)
+    leakage(
+        dat_shear,
+        shape_method,
+        param.output_dir,
+        stats_file,
+        verbose=param.verbose
+    )
 
     if param.input_path_PSF:
         hdu_list = fits.open(param.input_path_PSF)
-        dat_PSF = hdu_list[1].data
+        dat_PSF = hdu_list[param.hdu_psf].data
 
         # scale-dependent alpha function
         r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak = compute_corr_gp_pp_alpha(
             dat_shear,
             dat_PSF,
-            param.output_dir,
+            param.e1_PSF_star_col,
+            param.e2_PSF_star_col,
             stats_file,
             config.theta_min_amin,
             config.theta_max_amin,
             config.n_theta,
             verbose=param.verbose
         )
+        io.save_alpha(
+            r_corr_gp.meanr,
+            alpha_leak,
+            sig_alpha_leak,
+            shape_method,
+            param.output_dir
+        )
         compute_alpha_mean(
             alpha_leak,
             sig_alpha_leak,
+            shape_method,
             stats_file,
             verbose=param.verbose
         )
@@ -563,7 +649,10 @@ def main(argv=None):
             r_corr_gp.meanr,
             alpha_leak,
             sig_alpha_leak,
+            shape_method,
             param.output_dir,
+            config.theta_min_amin,
+            config.theta_max_amin,
             config.leakage_alpha_ylim
         )
 
@@ -578,6 +667,7 @@ def main(argv=None):
             C_sys_m,
             C_sys_std_p,
             C_sys_std_m,
+            shape_method,
             param.output_dir,
             stats_file,
             config.leakage_xi_sys_ylim,

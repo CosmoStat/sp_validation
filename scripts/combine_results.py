@@ -53,7 +53,7 @@ def read_stats_files(patches, path, verbose=False):
             with open(fname) as f:
                 stats_files[p] = f.readlines()
         else:
-            print(f'Warning: stas file {fname} not found')
+            print(f'Warning: stats file {fname} not found')
 
     if len(stats_files) == 0:
         raise ValueError('No stats file found')
@@ -523,7 +523,11 @@ def latex_table(file_base, cols=None, col_names=None):
                 val_err = unc.ufloat(dat[col[0]][nl], dat[col[1]][nl])
                 str_line = f'{str_line} ${val_err:+.2eL}$\t&'
             else:
-                str_line = f'{str_line} ${dat[col][nl]:.3g}$\t&'
+                if dat[col][nl] < 0:
+                    pref = ''
+                else:
+                    pref = '\phantom{-}'
+                str_line = f'{str_line} ${pref}{dat[col][nl]:#.4f}$\t&'
         print(rf'{str_line[:len(str_line)-2]} \\', file=fout)
 
     print(r'\hline', file=fout)
@@ -570,7 +574,8 @@ def main(argv=None):
     print('combine_results.py:', patches)
 
     directory = 'sp_output/plots'
-    fname = 'stats_file.txt'
+    fbase = 'stats_file'
+    fname = f'{fbase}.txt'
     path = f'{directory}/{fname}'
 
     shape = 'ngmix'
@@ -602,6 +607,23 @@ def main(argv=None):
         'R_select_' : 1,
         'm_' : 1,
         'alpha' : 1,
+        'xi_sys' : 0,
+    }
+    use_keys_m = {
+        'N_gal' : 0,
+        'w_tot' : 0,
+        'c_' : 0,
+        'cw_' : 0,
+        'dc_' : 0,
+        'dmc_' : 0,
+        'dmcw_' : 0,
+        'cjk_' : 0,
+        'sigma2_epsilon' : 0,
+        'R_tot_' : 0,
+        'R_shear_' : 0,
+        'R_select_' : 0,
+        'm_' : 1,
+        'alpha' : 0,
         'xi_sys' : 0,
     }
 
@@ -638,6 +660,17 @@ def main(argv=None):
         print('\nFractional difference [%]:')
         print_all(results_comb, stats_file_comb, header=False)
 
+    # Get value of entire-sample run
+    if argv[1] == 'v1':
+        stats_file_comb = read_stats_files(['joint'], f'leakage/{fbase}_leakage.txt', verbose=verbose)
+        n_patch_comb = len(stats_files)
+        results_comb = {
+            'value' : {},
+            'type' : {},
+            'extra' : {},
+        }
+        get_values(results_comb, stats_file_comb, shape, use_keys_m, area_deg2=1)
+ 
 
     # Print some key (combinations) to text and LaTeX file
     if argv[1] not in ['comb']:
@@ -694,7 +727,7 @@ def main(argv=None):
         col_names = get_matrix_elements('R^{\\textrm{select}}', me)
         latex_table(file_base, cols=use_keys, col_names=col_names)
 
-    if 1 or argv[1] not in ['comb', 'v1']:
+    if argv[1] not in ['comb']:
 
         file_base = 'summary_Rc'
         file_base_arr.append(file_base)
@@ -715,10 +748,23 @@ def main(argv=None):
         col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}', '\\alpha']
         latex_table(file_base, cols=use_keys, col_names=col_names)
 
+        file_base = 'summary_leakage_m'
+        file_base_arr.append(file_base)
+        f = open(f'{file_base}.txt', 'w')
+        use_keys=['m_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2']
+        print_all(results, stats_files, use_keys=use_keys, fout=f, all=False)
+
+        # Add joint sample results
+        print_all(results_comb, stats_file_comb, use_keys=use_keys, fout=f, all=False)
+        f.close()
+        col_names = ['m_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}']
+        latex_table(file_base, cols=use_keys, col_names=col_names)
+
 
     for file_base in file_base_arr:
 
         os.system(f'~/txt2tex.pl {file_base}.tex > {file_base}_out.tex')
+        print(f'Creating LaTeX file {file_base}.tex')
         os.system(f'pdflatex {file_base}_out 2&>/dev/null')
 
 
