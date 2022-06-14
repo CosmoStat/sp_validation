@@ -227,15 +227,15 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
                                                                                 
     Parameters                                                                  
     ----------                                                                  
-    x : 2D np.array                                                             
-        x_1, x_2-values                                                         
-    y : 2D np.array                                                             
-        y_1, y_2-values                                                         
-    n_bin : int                                                                 
+    x : 2D numpy.ndarray
+        x_1, x_2-values
+    y : 2D numpy.ndarray
+        y_1, y_2-values
+    n_bin : int
         number of bins to create                                                
     mix : bool                                                                  
         mixing of component if True                                             
-    weights  : array of double, optional, default=None                          
+    weights  : numpy.ndarrayarray of double, optional, default=None                          
         weights of x points                                                     
                                                                                 
     Returns                                                                     
