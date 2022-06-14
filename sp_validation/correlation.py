@@ -515,7 +515,7 @@ def affine_corr(
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
 
-        label = f'${mlabel[j]}={m_dm: .2ugL}, {clabel[j]}={c_dc: .2ugL}$'
+        label = f'${mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$'
         plt.plot(
             x_bin,
             func_bias_lin_1d(res.params, x_bin),
@@ -526,7 +526,7 @@ def affine_corr(
             x_bin,
             y_bin[jdx],
             yerr=err_bin[jdx],
-            c=colors[j],
+            c=colors[jdx],
             fmt='.'
         )
 
