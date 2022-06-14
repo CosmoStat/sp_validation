@@ -9,10 +9,10 @@ from astropy.io import ascii
 from shapepipe.utilities import cfis
 from shapepipe.utilities import file_system
 
-from sp_validation.cat import *
-from sp_validation.plots import *
-from sp_validation.util import transform_nan
-from sp_validation.correlation import *
+from sp_validation import cat
+from sp_validation import plots
+from sp_validation import util
+from sp_validation import correlation as corr
 from sp_validation import io
 
 
@@ -265,7 +265,7 @@ def leakage(dat, shape_method, output_dir, stats_file, verbose=False):
         'PSF_size_vs_e_gal'
     ]
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
-    affine_corr_n(
+    corr.affine_corr_n(
         x_arr,
         e,
         xlabel_arr,
@@ -336,7 +336,7 @@ def compute_corr_gp_pp_alpha(
     e2_star = dat_PSF[e2_PSF_star_col]
 
     # Correlation functions
-    r_corr_gp, r_corr_pp = correlation_12_22(
+    r_corr_gp, r_corr_pp = corr.correlation_12_22(
         ra,
         dec,
         e1_gal,
@@ -352,7 +352,7 @@ def compute_corr_gp_pp_alpha(
     )
 
     # Leakage
-    alpha_leak, sig_alpha_leak = alpha(
+    alpha_leak, sig_alpha_leak = corr.alpha(
         r_corr_gp,
         r_corr_pp,
         e1_gal,
@@ -395,7 +395,7 @@ def compute_alpha_mean(
         weighted mean of alpha
     """
 
-    alpha_leak_mean = transform_nan(
+    alpha_leak_mean = util.transform_nan(
         np.average(alpha_leak, weights=1/sig_alpha_leak**2)
     )
     print_stats(
@@ -421,7 +421,7 @@ def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, shape_method, output_d
     except:
         ylim = None
 
-    plot_data_1d(
+    plots.plot_data_1d(
         theta,
         alpha_theta,
         yerr,
@@ -541,7 +541,7 @@ def plot_xi_sys(
         ylim = None
     out_path = f'{output_dir}/xi_sys_{shape_method}.pdf'
     
-    plot_data_1d(
+    plots.plot_data_1d(
         theta,
         xi,
         yerr,
@@ -559,7 +559,7 @@ def plot_xi_sys(
     except:
         ylim = None
     out_path = f'{output_dir}/xi_sys_log_{shape_method}.pdf'
-    plot_data_1d(
+    plots.plot_data_1d(
         theta,
         xi,
         yerr,
