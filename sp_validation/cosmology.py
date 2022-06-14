@@ -1276,7 +1276,7 @@ def get_clusters(
     )
 
     cluster_cat = fits.getdata(out_path)
-    m_good_cluster = (cluster_cat['MSZ'] != 0) & (cluster_cat['COSMO'] is True)
+    m_good_cluster = (cluster_cat['MSZ'] != 0) & (cluster_cat['COSMO'] == True)
 
     m_cluster_foot = get_footprint(
         field_name,

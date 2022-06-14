@@ -407,7 +407,7 @@ class metacal:
             )
 
             # Take care of rotated version
-            ind_masked = np.where(mask_tmp is True)[0]
+            ind_masked = np.where(mask_tmp ==True)[0]
 
             self.mask_dict[name] = ind_masked
 
@@ -440,7 +440,7 @@ class metacal:
             )
 
             # Take care of rotated version
-            ind_masked = np.where(mask_tmp is True)[0]
+            ind_masked = np.where(mask_tmp == True)[0]
 
             self.mask_dict[name] = ind_masked
 
@@ -462,7 +462,7 @@ class metacal:
             mask_tmp = (data['flag'] == 0) & (snr_flux > 10) & (snr_flux < 500)
 
             # Take care of rotated version
-            ind_masked = np.where(mask_tmp is True)[0]
+            ind_masked = np.where(mask_tmp == True)[0]
 
             self.mask_dict[name] = ind_masked
 
