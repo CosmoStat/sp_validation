@@ -37,7 +37,7 @@ def figure(figsize=(30, 30)):
     plt.figure(figsize=figsize, facecolor='none')
 
 
-def savefig(fname):
+def savefig(fname, dpi=100):
     """Save Figure
 
     Save figure to file.
@@ -48,7 +48,7 @@ def savefig(fname):
         output file name
 
     """
-    plt.savefig(fname, facecolor='w', bbox_inches='tight')
+    plt.savefig(fname, facecolor='w', bbox_inches='tight', dpi=dpi)
 
 
 def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path, n_grid=1000, verbose=False):
@@ -297,7 +297,9 @@ def plot_map(
         vlim=None,
         grid=True,
         clusters=None,
-        map_cut_coords=None
+        map_cut_coords=None,
+        dpi=100,
+        colorbar=True
 ):
     """Plot Map
     
@@ -341,7 +343,8 @@ def plot_map(
        vlim = plt.gci().get_clim()
     else:
         plt.gci().set_clim(vlim)
-    plt.colorbar()
+    if colorbar:
+        plt.colorbar()
 
     loc, labels = plt.xticks()
     loc_ra, labels_ra = get_ticks(loc, Nx, ra_min, ra_max)
@@ -421,7 +424,8 @@ def plot_map(
 
     plt.title(title)
 
-    savefig(out_path)
+    print('MKDEBUG', out_path, dpi)
+    savefig(out_path, dpi=dpi)
     
     return vlim
 
