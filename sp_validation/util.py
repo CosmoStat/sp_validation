@@ -60,15 +60,15 @@ def millify(n):
     return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
 
 
-def equi_num_bins(x, n_bin):
+def equi_num_bins(values, n_bin):
     """ Equi Num Bins
 
-    Returns (n_bin+1) equi-numbered bin edges of x. They define n_bin bins,
-    each of which contains an equal number of points of x
+    Returns (n_bin+1) equi-numbered bin edges of values. They define n_bin
+    bins, each of which contains an equal number of points of values.
 
     Parameters
     ----------
-    x : list
+    values : list
         input data
     n_bins : int
         number of bins
@@ -80,9 +80,9 @@ def equi_num_bins(x, n_bin):
 
     """
     xeqn = np.interp(
-        np.linspace(0, len(x), n_bin + 1),
-        np.arange(len(x)),
-        np.sort(x)
+        np.linspace(0, len(values), n_bin + 1),
+        np.arange(len(values)),
+        np.sort(values)
     )
 
     return xeqn
@@ -240,11 +240,11 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
                                                                                 
     Returns                                                                     
     -------                                                                     
-    np.array(float, 2, n_bin)                                                   
+    numpy.ndarray(float, 2, n_bin)                                                   
         bin centers in x_1, x_2                                                 
-    np.array(float, 2, 2, n_bin)                                                
+    numpy.ndarray(float, 2, 2, n_bin)                                                
         binned values of y_1, y_2 corresponding to x_1, x_2 bins                
-    np.array(float, 2, 2, n_bin)                                                
+    numpy.ndarray(float, 2, 2, n_bin)                                                
         binned errors of y_1, y_2 corresponding to x_1, x_2 bins                
                                                                                 
     """                                                                         

@@ -214,7 +214,7 @@ def update_param(p_def, options):
     return param
 
 
-def leakage(dat, sh, output_dir, stats_file, verbose=False):
+def leakage(dat, shape_method, output_dir, stats_file, verbose=False):
     """Leakage
 
     Compute and plot object-by-object PSF leakage relations.
@@ -223,7 +223,7 @@ def leakage(dat, sh, output_dir, stats_file, verbose=False):
     ----------
     dat : FITS.record
         input data
-    sh : str
+    shape_method : str
         shape measurement method, e.g. 'ngmix'
     output_dir : str
         output directory for plots
@@ -234,7 +234,7 @@ def leakage(dat, sh, output_dir, stats_file, verbose=False):
     """
 
     plot_dir_leakage = output_dir
-    io.print_stats(f'{sh}:', stats_file, verbose=verbose)
+    io.print_stats(f'{shape_method}:', stats_file, verbose=verbose)
 
     n_bin = 30
 
@@ -272,7 +272,7 @@ def leakage(dat, sh, output_dir, stats_file, verbose=False):
         ylabel,
         mlabel=mlabel,
         clabel=clabel,
-        title=sh,
+        title=shape_method,
         weights=weights,
         n_bin=n_bin,
         out_path_arr=out_path_arr,
@@ -291,8 +291,9 @@ def compute_corr_gp_pp_alpha(
     theta_min_amin,
     theta_max_amin,
     n_theta,
-    verbose=False):
-    """Comptue Corr GP PP Alpha
+    verbose=False
+):
+    """Compute Corr GP PP Alpha
 
     Compute and plot scale-dependent PSF leakage functions.
 
@@ -364,7 +365,13 @@ def compute_corr_gp_pp_alpha(
     return r_corr_gp, r_corr_pp, alpha_leak, sig_alpha_leak
 
 
-def compute_alpha_mean(alpha_leak, sig_alpha_leak, sh, stats_file, verbose=False):
+def compute_alpha_mean(
+        alpha_leak,
+        sig_alpha_leak,
+        shape_method,
+        stats_file,
+        verbose=False
+):
     """Compute Alpha Mean
 
     Compute weighted mean of the leakage function alpha 
@@ -375,7 +382,7 @@ def compute_alpha_mean(alpha_leak, sig_alpha_leak, sh, stats_file, verbose=False
         values of alpha for a range of scales
     sig_alpha_leak : list of float
         values of the RMS of alpha for a range of scales
-    sh : str
+    shape_method : str
         shape measurement method, e.g. 'ngmix'
     stats_file : file handler
         statistics output file
@@ -392,13 +399,13 @@ def compute_alpha_mean(alpha_leak, sig_alpha_leak, sh, stats_file, verbose=False
         np.average(alpha_leak, weights=1/sig_alpha_leak**2)
     )
     print_stats(
-        f'{sh}: Weighted average alpha = {alpha_leak_mean:.3g}',
+        f'{shape_method}: Weighted average alpha = {alpha_leak_mean:.3g}',
         stats_file,
         verbose=verbose
     )
 
 
-def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, sh, output_dir, xmin, xmax, leakage_alpha_ylim):
+def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, shape_method, output_dir, xmin, xmax, leakage_alpha_ylim):
 
     plot_dir_leakage = output_dir
 
@@ -407,8 +414,8 @@ def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, sh, output_dir, xmin, 
     yerr = [sig_alpha_leak]
     xlabel = r'$\theta$ [arcmin]'
     ylabel = r'$\alpha(\theta)$'
-    title = sh
-    out_path = f'{output_dir}/alpha_leakage_{sh}.png'
+    title = shape_method
+    out_path = f'{output_dir}/alpha_leakage_{shape_method}.png'
     try:
         ylim  = leakage_alpha_ylim
     except:
@@ -482,7 +489,7 @@ def plot_xi_sys(
     C_sys_m,
     C_sys_std_p,
     C_sys_std_m,
-    sh,
+    shape_method,
     output_dir,
     stats_file,
     leakage_xi_sys_ylim,
@@ -525,14 +532,14 @@ def plot_xi_sys(
     symb_arr = ['+', '-']
     for comp, symb in zip(comp_arr, symb_arr):
         mean = np.mean(np.abs(xi[comp]))
-        msg = f'{sh}: <|xi_sys_{symb}|> = {mean}'
+        msg = f'{shape_method}: <|xi_sys_{symb}|> = {mean}'
         print_stats(msg, stats_file, verbose=verbose)
 
     try:
         ylim = leakage_xi_sys_ylim
     except:
         ylim = None
-    out_path = f'{output_dir}/xi_sys_{sh}.pdf'
+    out_path = f'{output_dir}/xi_sys_{shape_method}.pdf'
     
     plot_data_1d(
         theta,
@@ -551,7 +558,7 @@ def plot_xi_sys(
         ylim = leakage_xi_sys_log_ylim
     except:
         ylim = None
-    out_path = f'{output_dir}/xi_sys_log_{sh}.pdf'
+    out_path = f'{output_dir}/xi_sys_log_{shape_method}.pdf'
     plot_data_1d(
         theta,
         xi,
@@ -591,7 +598,7 @@ def main(argv=None):
     sys.path.append('.')
     import params as config
 
-    sh = 'ngmix'
+    shape_method = 'ngmix'
 
     file_system.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
@@ -602,7 +609,7 @@ def main(argv=None):
     # object-by-object alpha parameter
     leakage(
         dat_shear,
-        sh,
+        shape_method,
         param.output_dir,
         stats_file,
         verbose=param.verbose
@@ -628,13 +635,13 @@ def main(argv=None):
             r_corr_gp.meanr,
             alpha_leak,
             sig_alpha_leak,
-            sh,
+            shape_method,
             param.output_dir
         )
         compute_alpha_mean(
             alpha_leak,
             sig_alpha_leak,
-            sh,
+            shape_method,
             stats_file,
             verbose=param.verbose
         )
@@ -642,7 +649,7 @@ def main(argv=None):
             r_corr_gp.meanr,
             alpha_leak,
             sig_alpha_leak,
-            sh,
+            shape_method,
             param.output_dir,
             config.theta_min_amin,
             config.theta_max_amin,
@@ -660,7 +667,7 @@ def main(argv=None):
             C_sys_m,
             C_sys_std_p,
             C_sys_std_m,
-            sh,
+            shape_method,
             param.output_dir,
             stats_file,
             config.leakage_xi_sys_ylim,
