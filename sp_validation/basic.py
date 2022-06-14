@@ -284,8 +284,8 @@ class metacal:
                 data[f'{self._prefix}_Tpsf_{name_shear.upper()}'][mask]
             )
 
-        ns['C11'] = data['{self._prefix}_ELL_ERR_NOSHEAR'][:, 0][mask]
-        ns['C22'] = data['{self._prefix}_ELL_ERR_NOSHEAR'][:, 1][mask]
+        ns['C11'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 0][mask]
+        ns['C22'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 1][mask]
         ns['w'] = (
             1. / (2 * self._sigma_eps ** 2 + dict_tmp['C11'] + dict_tmp['C22'])
         )
@@ -325,8 +325,8 @@ class metacal:
             )
 
         self.snr_sextractor = data['SNR_WIN'][mask]
-        ns['C11'] = data['{prefix_mom}_ELL_ERR_NOSHEAR'][:, 0][mask]
-        ns['C22'] = data['{prefix_mom}_ELL_ERR_NOSHEAR'][:, 1][mask]
+        ns['C11'] = data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 0][mask]
+        ns['C22'] = data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 1][mask]
         ns['w'] = (
             1. / (2 * self._sigma_eps ** 2 + dict_tmp['C11'] + dict_tmp['C22'])
         )
