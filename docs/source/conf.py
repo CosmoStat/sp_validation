@@ -21,7 +21,7 @@ mdata = metadata(project)
 author = mdata['Author']
 version = mdata['Version']
 copyright = '2021, {}'.format(author)
-gh_user = 'martin.kilbinger'
+gh_user = mdata['Home-page']
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '3.3'
