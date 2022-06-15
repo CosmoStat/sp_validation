@@ -32,7 +32,7 @@ def millify(n):
 
     Returns
     -------
-    string
+    str
         output name
 
     """
@@ -153,9 +153,9 @@ def download(source, target, verbose=False):
 
     Parameters
     ----------
-    source : string
+    source : str
         source path on vos
-    target : string
+    target : str
         target path
     verbose : bool, optional, default=False
         verbose output if True
