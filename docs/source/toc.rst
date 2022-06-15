@@ -15,15 +15,7 @@
    :caption: API Documentation
 
    sp_validation
-   scripts
    z_ref
-
-.. toctree::
-  :hidden:
-  :titlesonly:
-  :caption: Examples
-
-  notebooks
 
 .. toctree::
   :hidden:
