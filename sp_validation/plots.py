@@ -220,13 +220,13 @@ def plot_data_1d(
         output file path
     xlog, ylog : bool, optional, default=False
         logscale on x, y if True
-    labels : array of string, optional, default=None
+    labels : list, optional, default=None
         plot labels, no labels if None
-    color : array of string, optional, default=None
+    color : list, optional, default=None
         line colors, matplotlib default colors if None
-    linestyle : array of string, optional, default=None
+    linestyle : list, optional, default=None
         linestyle indicators, '-' if None
-    linewidths : array of float, optional
+    linewidths : list
         line widths, default is `2`
     eb_linestyle : array of string, optional, default=None
         errorbar linestyle indicators, '-' if None
