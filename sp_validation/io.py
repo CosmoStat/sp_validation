@@ -113,7 +113,7 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
 
 
 def write_ascii_table_file(cols, names, fname):
-    """Write Ascii Table File
+    """Write Ascii Table File.
 
     Write ASCII file with table data
 
@@ -133,7 +133,7 @@ def write_ascii_table_file(cols, names, fname):
 
 
 def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
-    """Save Alpha
+    """Save Alpha.
 
     Save scale-dependent alpha
 

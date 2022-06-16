@@ -195,7 +195,7 @@ def plot_data_1d(
     xlabel,
     ylabel,
     out_path,
-    xlog=False, 
+    xlog=False,
     ylog=False,
     log=False,
     labels=None,
@@ -206,7 +206,7 @@ def plot_data_1d(
     xlim=None,
     ylim=None
 ):
-    """Plot Data 1D
+    """Plot Data 1D.
 
     Plot one-dimensional data points with errorbars.
 
@@ -309,7 +309,12 @@ def plot_data_1d(
     if ylim:
         plt.ylim(ylim)
 
-    plt.hlines(y=0, xmin=plt.xlim()[0], xmax=plt.xlim()[1], linestyles='dashed')
+    plt.hlines(
+        y=0,
+        xmin=plt.xlim()[0],
+        xmax=plt.xlim()[1],
+        linestyles='dashed'
+    )
 
     plt.title(title)
     plt.xlabel(xlabel)
@@ -497,8 +502,9 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
 
     Returns
     -------
-    vlim : array(2) of float
+    array(2) of float
         map limits
+
     """
     figure(figsize=(10, 10))
 
@@ -540,61 +546,62 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
 
     return vlim
 
-def set_labels(p_dp, order, mix):                                               
-    """Set Label                                                                
-                                                                                
-    Set labels for plot of 2D fit                                               
-                                                                                
-    Parameters                                                                  
-    ----------                                                                  
-    d_dp : dict                                                                 
-        values with uncertainties of fit parameters                             
-    order : str                                                                 
-        linear ('lin') or quadratic ('quad') model                              
-    mix : bool                                                                  
-        mixing of components if True                                            
-                                                                                
-    Returns                                                                     
-    -------                                                                     
-    dict :                                                                      
-        label strings                                                           
-                                                                                
-    """                                                                         
-    # Affine parameters                                                         
-    label = {                                                                   
-        'A' : (                                                                 
-            f'$a_{{11}}={p_dp["a11"]: .2ugL}$'                                  
-            + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$'                               
-        ),                                                                      
-        'D' : (                                                                 
-            f'$a_{{22}}={p_dp["a22"]: .2ugL}$'                                  
-            + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$'                               
-        )                                                                       
-    }                                                                           
-    if order == 'quad':                                                         
-        # Add quadratic parameters                                              
-        label['A'] = f'$q_{{111}}={p_dp["q111"]: .2ugL}$' + '\n' + label['A']   
-        label['D'] = f'$q_{{222}}={p_dp["q222"]: .2ugL}$' + '\n' + label['D']   
-    if mix:                                                                     
-        # Add mixture parameters                                                
-        label['B'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'                         
-        label['C'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'                         
-        if order == 'quad':                                                     
-            label['B'] = (                                                      
-                f'$q_{{211}}={p_dp["q211"]: .2ugL}$'                            
-                + '\n'                                                          
-                + f'$q_{{212}}={p_dp["q212"]: .2ugL}$'                          
-                + '\n'                                                          
-                + label['B']                                                    
-            )                                                                   
-            label['C'] = (                                                      
-                f'$q_{{122}}={p_dp["q122"]: .2ugL}$'                            
-                + '\n'                                                          
-                + f'$q_{{112}}={p_dp["q112"]: .2ugL}$'                          
-                + '\n'                                                          
-                + label['C']                                                    
-            )                                                                   
-                                                                                
+
+def set_labels(p_dp, order, mix):
+    """Set Label.
+
+    Set labels for plot of 2D fit
+
+    Parameters
+    ----------
+    d_dp : dict
+        values with uncertainties of fit parameters
+    order : str
+        linear ('lin') or quadratic ('quad') model
+    mix : bool
+        mixing of components if True
+
+    Returns
+    -------
+    dict :
+        label strings
+
+    """
+    # Affine parameters
+    label = {
+        'A': (
+            f'$a_{{11}}={p_dp["a11"]: .2ugL}$'
+            + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$'
+        ),
+        'D': (
+            f'$a_{{22}}={p_dp["a22"]: .2ugL}$'
+            + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$'
+        )
+    }
+    if order == 'quad':
+        # Add quadratic parameters
+        label['A'] = f'$q_{{111}}={p_dp["q111"]: .2ugL}$' + '\n' + label['A']
+        label['D'] = f'$q_{{222}}={p_dp["q222"]: .2ugL}$' + '\n' + label['D']
+    if mix:
+        # Add mixture parameters
+        label['B'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'
+        label['C'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'
+        if order == 'quad':
+            label['B'] = (
+                f'$q_{{211}}={p_dp["q211"]: .2ugL}$'
+                + '\n'
+                + f'$q_{{212}}={p_dp["q212"]: .2ugL}$'
+                + '\n'
+                + label['B']
+            )
+            label['C'] = (
+                f'$q_{{122}}={p_dp["q122"]: .2ugL}$'
+                + '\n'
+                + f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
+                + '\n'
+                + label['C']
+            )
+
     return label
 
 
@@ -614,165 +621,165 @@ def plot_corr_2d(
     colors=None,
     out_path=None,
 ):
-    """Plot Corr 2D
+    """Plot Corr 2D.
 
     Plot 2D correlation data and fits.
 
     Parameters
     ----------
-    x : array(double)                                                           
-        input x value                                                           
-    y : array(m) of double                                                      
-        input y arrays                                                          
-    weights  : array of double, optional, default=None                          
-        weights of x points                                         
-    res : class lmfit.MinimizerResult                                           
-        results of the minization                        
-    n_bin : double, optional, default=30                                        
-        number of points onto which data are binned                    
+    x : array(double)
+        input x value
+    y : array(m) of double
+        input y arrays
+    weights  : array of double, optional, default=None
+        weights of x points
+    res : class lmfit.MinimizerResult
+        results of the minization
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
     order : str
         order of fit
     mix : bool
         mixing of components if True
-    xlabel_arr, ylabel_arr : list of str                                        
+    xlabel_arr, ylabel_arr : list of str
         x-and y-axis labels
-    y_ground_truth : 2D np.array, optional                                      
+    y_ground_truth : 2D np.array, optional
         ground truth model values (y1, y2) for plotting, default is `None`
-    title : string, optional, default=''                                        
-        plot title                                                              
-    colors : array(m) of string, optional, default=None                         
+    title : string, optional, default=''
+        plot title
+    colors : array(m) of string, optional, default=None
         line colors
-    out_path : str, optional, default=None                                      
+    out_path : str, optional, default=None
         output file path, if not given, plot is not saved to file
 
     """
-    if colors is None: 
-        prop_cycle = plt.rcParams['axes.prop_cycle'] 
-        colors = prop_cycle.by_key()['color'] 
+    if colors is None:
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
 
     # Compute binned data for pretty plotting.
     x_bin, y_bin, err_bin = util.compute_bins_func_2d(
-        x, 
+        x,
         y,
-        n_bin,                                                                  
-        mix,                                                                    
-        weights=weights                                                         
-    )                    
+        n_bin,
+        mix,
+        weights=weights
+    )
 
-    # Initialise mosaic figure                                                  
+    # Initialise mosaic figure
     figure_mosaic = """
     AB
     CD
     """
     fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(15, 15))
-                                                                                
-    # Get best-fit model on 2D binned grid                                      
-    y_model_all = np.zeros(shape=(2, n_bin, n_bin))                             
-    y_model_all[0], y_model_all[1] = util.func_bias_2d_full(                         
-        res.params,                                                             
-        x_bin[0],                                                               
-        x_bin[1],                                                               
-        order=order,                                                            
-        mix=mix                                                                 
-    )                                                                           
-    # Compute means and standard deviations                                     
-    y_model_mean = np.zeros(shape=(2, n_bin))                                   
-    y_model_upper = np.zeros(shape=(2, n_bin))                                  
-    y_model_lower = np.zeros(shape=(2, n_bin))                                  
-    for comp, ax in zip((0, 1), (1, 0)):                                        
-        y_model_mean[comp] = y_model_all[comp].mean(axis=ax)                    
-        std = y_model_all[comp].std(axis=ax)                                    
-        y_model_upper[comp] = y_model_mean[comp] + std                          
-        y_model_lower[comp] = y_model_mean[comp] - std                          
-                                                                                
-    # Set up quantities to plot in each panel                                   
-    xb = {}                                                                     
-    yd = {}                                                                     
-    ym = {}                                                                     
-    ymu = {}                                                                    
-    yml = {}                                                                    
-    xgt = {}                                                                    
-    ygt = {}                                                                    
-    dy = {}                                                                     
-    col = {}                                                                    
-    xl = {}                                                                     
-    yl = {}                                                                     
-                                                                                
-    # Set component for each panel.                                             
-    # x: 0 in A, B; 1 in C, D                                                   
-    # y: 0 in A, C; 1 in B, D                                                   
-    panel_comp_x = {}                                                           
-    panel_comp_y = {}                                                           
-    for p in 'A', 'B':                                                          
-        panel_comp_x[p] = 0                                                     
-    for p in 'C', 'D':                                                          
-        panel_comp_x[p] = 1                                                     
-    for p in 'A', 'C':                                                          
-        panel_comp_y[p] = 0                                                     
-    for p in 'B', 'D':                                                          
-        panel_comp_y[p] = 1                                                     
-                                                                                
-    # Assign quantities to plot with corresponding components                   
-    for p in axes:                                                              
-        xb[p] = x_bin[panel_comp_x[p]]                                          
-        xl[p] = xlabel_arr[panel_comp_x[p]]                                     
-                                                                                
-        ym[p] = y_model_mean[panel_comp_y[p]]                                   
-        ymu[p] = y_model_upper[panel_comp_y[p]]                                 
-        yml[p] = y_model_lower[panel_comp_y[p]]                                 
-        yl[p] = ylabel_arr[panel_comp_y[p]]                                     
-        yd[p] = y_bin[panel_comp_y[p]][panel_comp_x[p]]                         
-        dy[p] = err_bin[panel_comp_y[p]][panel_comp_x[p]]                       
-        col[p] = colors[panel_comp_y[p]]                                        
-                                                                                
-        if y_ground_truth:                                                      
-            xgt[p] = x[panel_comp_x[p]]                                         
-            ygt[p] = y_ground_truth[panel_comp_y[p]]                            
-                                                                                
-    # Set plot labels to parameter best-fit + std                               
-    label = set_labels(p_dp, order, mix)                                  
 
-    # Loop over panels                                                          
-    for p in axes:                                                              
-                                                                                
-        # No off-diagonal plots if no mixing                                    
-        if not mix and p in ['B', 'C']:                                         
-            continue                                                            
-                                                                                
-        # Plot best-fit mean and mean +/- std                                   
-        axes[p].plot(xb[p], ym[p], c=col[p], label=label[p])                    
-        axes[p].fill_between(                                                   
-            xb[p],                                                              
-            ymu[p],                                                             
-            yml[p],                                                             
-            color=col[p],                                                       
-            interpolate=True,                                                   
-            alpha=0.3                                                           
-        )                                                                       
-                                                                                
-        # Plot ground-truth model if provided                                   
-        if y_ground_truth:                                                      
-            axes[p].plot(xgt[p], ygt[p], '.', c='k', markersize=0.4)            
-                                                                                
-        # Plot binned data with error bars                                      
-        axes[p].errorbar(xb[p], yd[p], yerr=dy[p], c=col[p], fmt='.')           
-                                                                                
-        # Set labels                                                            
-        axes[p].set_xlabel(xl[p])                                               
-        axes[p].set_ylabel(yl[p])                                               
-        axes[p].legend()                                                        
-                                                                                
-    # Finish figure                                                             
-    fig.suptitle(title)                                                         
-    plt.tight_layout()                                                          
-                                                                                
-    # Save figure                                                               
-    if out_path:                                                                
+    # Get best-fit model on 2D binned grid
+    y_model_all = np.zeros(shape=(2, n_bin, n_bin))
+    y_model_all[0], y_model_all[1] = util.func_bias_2d_full(
+        res.params,
+        x_bin[0],
+        x_bin[1],
+        order=order,
+        mix=mix
+    )
+    # Compute means and standard deviations
+    y_model_mean = np.zeros(shape=(2, n_bin))
+    y_model_upper = np.zeros(shape=(2, n_bin))
+    y_model_lower = np.zeros(shape=(2, n_bin))
+    for comp, ax in zip((0, 1), (1, 0)):
+        y_model_mean[comp] = y_model_all[comp].mean(axis=ax)
+        std = y_model_all[comp].std(axis=ax)
+        y_model_upper[comp] = y_model_mean[comp] + std
+        y_model_lower[comp] = y_model_mean[comp] - std
+
+    # Set up quantities to plot in each panel
+    xb = {}
+    yd = {}
+    ym = {}
+    ymu = {}
+    yml = {}
+    xgt = {}
+    ygt = {}
+    dy = {}
+    col = {}
+    xl = {}
+    yl = {}
+
+    # Set component for each panel.
+    # x: 0 in A, B; 1 in C, D
+    # y: 0 in A, C; 1 in B, D
+    panel_comp_x = {}
+    panel_comp_y = {}
+    for p in 'A', 'B':
+        panel_comp_x[p] = 0
+    for p in 'C', 'D':
+        panel_comp_x[p] = 1
+    for p in 'A', 'C':
+        panel_comp_y[p] = 0
+    for p in 'B', 'D':
+        panel_comp_y[p] = 1
+
+    # Assign quantities to plot with corresponding components
+    for p in axes:
+        xb[p] = x_bin[panel_comp_x[p]]
+        xl[p] = xlabel_arr[panel_comp_x[p]]
+
+        ym[p] = y_model_mean[panel_comp_y[p]]
+        ymu[p] = y_model_upper[panel_comp_y[p]]
+        yml[p] = y_model_lower[panel_comp_y[p]]
+        yl[p] = ylabel_arr[panel_comp_y[p]]
+        yd[p] = y_bin[panel_comp_y[p]][panel_comp_x[p]]
+        dy[p] = err_bin[panel_comp_y[p]][panel_comp_x[p]]
+        col[p] = colors[panel_comp_y[p]]
+
+        if y_ground_truth:
+            xgt[p] = x[panel_comp_x[p]]
+            ygt[p] = y_ground_truth[panel_comp_y[p]]
+
+    # Set plot labels to parameter best-fit + std
+    label = set_labels(p_dp, order, mix)
+
+    # Loop over panels
+    for p in axes:
+
+        # No off-diagonal plots if no mixing
+        if not mix and p in ['B', 'C']:
+            continue
+
+        # Plot best-fit mean and mean +/- std
+        axes[p].plot(xb[p], ym[p], c=col[p], label=label[p])
+        axes[p].fill_between(
+            xb[p],
+            ymu[p],
+            yml[p],
+            color=col[p],
+            interpolate=True,
+            alpha=0.3
+        )
+
+        # Plot ground-truth model if provided
+        if y_ground_truth:
+            axes[p].plot(xgt[p], ygt[p], '.', c='k', markersize=0.4)
+
+        # Plot binned data with error bars
+        axes[p].errorbar(xb[p], yd[p], yerr=dy[p], c=col[p], fmt='.')
+
+        # Set labels
+        axes[p].set_xlabel(xl[p])
+        axes[p].set_ylabel(yl[p])
+        axes[p].legend()
+
+    # Finish figure
+    fig.suptitle(title)
+    plt.tight_layout()
+
+    # Save figure
+    if out_path:
         plt.savefig(f'{out_path}.png', bbox_inches='tight')
 
 
 def plot_bar_spin(par, s_ground_truth, output_path=None):
-    """Plot Bar Spin
+    """Plot Bar Spin.
 
     Create bar plot of spin coefficients.
 
@@ -780,17 +787,17 @@ def plot_bar_spin(par, s_ground_truth, output_path=None):
     ----------
     par : dict of ufloat
         parameter values and standard deviations
-    s_ground_truth : dict, optional                                           
-        ground truth parameter, for plotting, default is `None`    
+    s_ground_truth : dict, optional
+        ground truth parameter, for plotting, default is `None`
     output_path : str, optional
         plot output file if not `None` (default)
-    """
 
+    """
     # Shift of real and imaginary components
     dx = 0.4
 
     # Colors of rea and imaginary components
-    colors = {'real' : 'b', 'imaginary' : 'g'}
+    colors = {'real': 'b', 'imaginary': 'g'}
 
     # Set data for bar plot
     x = []
