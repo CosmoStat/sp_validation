@@ -64,8 +64,8 @@ def parse_options(p_def):
     -------
     tuple
         Command line options
-    string
-        Command line string
+    str
+        Command line str
 
     """
     usage  = "%prog [OPTIONS]"
