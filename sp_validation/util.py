@@ -53,7 +53,7 @@ def millify(n):
 def transform_nan(value):
     """Transform Nan
 
-    Transform a `nan` to a very large number.
+    Transform a ``nan`` to a very large number.
 
     Parameters
     ----------
