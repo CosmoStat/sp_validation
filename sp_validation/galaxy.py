@@ -85,8 +85,12 @@ def classification_galaxy_overlap(dd):
     return cut_overlap
 
 
-def classification_galaxy_overlap_ra_dec(dd):
-    """Classification Galaxy Overllap Ra Dec.
+def classification_galaxy_overlap_ra_dec(
+        dd,
+        ra_key='XWIN_WORLD',
+        dec_key='YWIN_WORLD'
+):
+    """Classification Galaxy Overlap Ra Dec
 
     Return mask corresponding to non-overlapping tile areas using
     simple cuts in RA and Dec.
@@ -95,6 +99,10 @@ def classification_galaxy_overlap_ra_dec(dd):
     ----------
     dd : FITS.record
         input data
+    ra_key : str, optional
+        key name for right ascension column, default is 'XWIN_WORLD'
+    dec_key : str, optional
+        key name for declination column, default is 'YWIN_WORLD'
 
     Returns
     -------
@@ -139,9 +147,9 @@ def classification_galaxy_overlap_ra_dec(dd):
         idx_ID = (dd['TILE_ID'] == tile_ID)
 
         # Set mask for this tile ID
-        mask_dec_ID = (
-            (dd[idx_ID]['YWIN_WORLD'] < dec_upper[idx].value)
-            & (dd[idx_ID]['YWIN_WORLD'] >= dec_lower[idx].value)
+        mask_dec_ID = (  
+            (dd[idx_ID][dec_key] < dec_upper[idx].value)
+            & (dd[idx_ID][dec_key] >= dec_lower[idx].value)
         )
 
         # Apply to global mask
@@ -182,8 +190,8 @@ def classification_galaxy_overlap_ra_dec(dd):
     for idx, tile_ID in enumerate(tile_ID_list):
         idx_ID = (dd['TILE_ID'] == tile_ID)
         mask_ra_ID = (
-            (dd[idx_ID]['XWIN_WORLD'] < ra_upper_list[idx].value)
-            & (dd[idx_ID]['XWIN_WORLD'] >= ra_lower_list[idx].value)
+        (dd[idx_ID][ra_key] < ra_upper_list[idx].value)
+            & (dd[idx_ID][ra_key] >= ra_lower_list[idx].value)
         )
         mask_ra[idx_ID] = mask_ra_ID
 

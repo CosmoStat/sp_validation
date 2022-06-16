@@ -261,7 +261,7 @@ def match_subsample(
 ):
     """Match subsample.
 
-    Match subsample of catalogue.
+    Match subsamples of catalogues.
 
     Parameters
     ----------
@@ -491,7 +491,7 @@ def write_shape_catalog(
     ):
         if x is not None:
             cols.append(fits.Column(name=name, array=x, format='D'))
-            nytpe += 1
+            ntype += 1
 
     if add_cols:
         for i, name in enumerate(add_cols):
