@@ -1,5 +1,5 @@
-"""
-  
+"""IO.
+
 :Name: io.py
 
 :Description: This script contains methods for input and output.
@@ -19,7 +19,7 @@ from astropy.table import Table
 
 
 def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
-    """Make output directories
+    """Make output directories.
 
     Create output directories and subdirs
 
@@ -32,7 +32,6 @@ def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
     verbose: bool, optional, default=False
         verbose output if True
     """
-
     for d in (output_dir, plot_dir):
         if not os.path.isdir(d):
             if verbose:
@@ -47,7 +46,7 @@ def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
 
 
 def open_stats_file(directory, file_name):
-    """Open statistics file
+    """Open statistics file.
 
     Open output file for statistics
 
@@ -58,19 +57,18 @@ def open_stats_file(directory, file_name):
     file_name : string
         file name
     """
-
     stats_file = open('{}/{}'.format(directory, file_name), 'w')
 
     return stats_file
 
 
 def print_stats(msg, stats_file, verbose=False):
-    """Print stats
+    """Print stats.
 
     Print message to stats file.
 
     Parameters
-    ---------- 
+    ----------
     msg : string
         message
     stats_file : file handler
@@ -78,7 +76,6 @@ def print_stats(msg, stats_file, verbose=False):
     verbose : bool, optional, default=False
         print message to stdout if True
     """
-
     stats_file.write(msg)
     stats_file.write('\n')
     stats_file.flush()
@@ -88,7 +85,7 @@ def print_stats(msg, stats_file, verbose=False):
 
 
 def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
-    """Print Ratio
+    """Print Ratio.
 
     pretty-print ratio of two numbers
 
@@ -103,9 +100,8 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
     verbose : bool, optional, default=False
         verbose output if True
     """
-
     if denominator != 0:
-        ratio = numerator/denominator*100
+        ratio = numerator / denominator * 100
     else:
         ratio = 0
 
@@ -117,7 +113,7 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
 
 
 def write_ascii_table_file(cols, names, fname):
-    """Write Ascii Table File
+    """Write Ascii Table File.
 
     Write ASCII file with table data
 
@@ -137,7 +133,7 @@ def write_ascii_table_file(cols, names, fname):
 
 
 def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
-    """Save Alpha
+    """Save Alpha.
 
     Save scale-dependent alpha
 
