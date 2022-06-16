@@ -4,7 +4,7 @@ import sys
 import copy
 import numpy as np
 from optparse import OptionParser
-from astropy.io import ascii
+from astropy.io import ascii, fits
 
 from shapepipe.utilities import cfis
 from shapepipe.utilities import file_system
