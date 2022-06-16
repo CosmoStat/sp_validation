@@ -1,14 +1,10 @@
-# -*- coding: utf-8 -*-
-
 """UTIL.
 
 :Description: This script contains utility methods.
 
 :Author: Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
+:Author: Martin Kilbinge <martin.kilblinger@cea.fr>
 
 """
 
@@ -38,8 +34,9 @@ def millify(n):
 
     Returns
     -------
-    s : string
+    str
         output name
+
     """
     millnames = ['', ' Thousand', ' Million', ' Billion', ' Trillion']
 
@@ -52,13 +49,13 @@ def millify(n):
         )
     )
 
-    return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
+    return '{n / 10**(3 * millidx):.0f}{millnames[millidx])}' 
 
 
 def transform_nan(value):
     """Transform Nan.
 
-    Transform a nan to a very large number.
+    Transform a ``nan`` to a very large number.
 
     Parameters
     ----------
@@ -67,7 +64,7 @@ def transform_nan(value):
 
     Returns
     -------
-    res : float
+    float
         output value
     """
     large = 1e30
@@ -158,17 +155,18 @@ def download(source, target, verbose=False):
 
     Parameters
     ----------
-    source : string
+    source : str
         source path on vos
-    target : string
+    target : str
         target path
     verbose : bool, optional, default=False
         verbose output if True
 
     Returns
     -------
-    status : bool
+    bool
         status, True/False or success/failure
+
     """
     cmd = 'vcp'
 
