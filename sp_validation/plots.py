@@ -1,5 +1,5 @@
-"""
-  
+"""PLOTS.
+
 :Name: plots.py
 
 :Description: This script contains methods for plots.
@@ -24,7 +24,7 @@ from sp_validation.plot_style import *
 
 
 def figure(figsize=(30, 30)):
-    """Figure
+    """Figure.
 
     Create figure
 
@@ -38,7 +38,7 @@ def figure(figsize=(30, 30)):
 
 
 def savefig(fname):
-    """Save Figure
+    """Save Figure.
 
     Save figure to file.
 
@@ -51,8 +51,18 @@ def savefig(fname):
     plt.savefig(fname, facecolor='w', bbox_inches='tight')
 
 
-def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path, n_grid=1000, verbose=False):
-    """Plot Spatial Density
+def plot_spatial_density(
+    ra,
+    dec,
+    title,
+    x_label,
+    y_label,
+    cbar_label,
+    out_path,
+    n_grid=1000,
+    verbose=False
+):
+    """Plot Spatial Density.
 
     Plot spatial density distribution of objects.
 
@@ -73,7 +83,6 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
     verbose : bool, optional, default=False
         verbose output if True
     """
-
     figure(figsize=(30, 30))
 
     if max(ra) > 360:
@@ -108,7 +117,7 @@ def plot_histograms(
     vline_lab=None,
     density=True,
 ):
-    """Plot Histograms
+    """Plot Histograms.
 
     Plot one or more 1D distributions.
 
@@ -139,7 +148,6 @@ def plot_histograms(
     density : bool, optional, default=True
         (normalised) density histogram if True
     """
-
     if weights is None:
         weights = [np.ones_like(x) for x in xs]
     if colors is None:
@@ -148,20 +156,28 @@ def plot_histograms(
     if linestyles is None:
         linestyles = ['-'] * len(labels)
 
-    figure(figsize=(15,10))
+    figure(figsize=(15, 10))
 
     # Histogramsh
-    for x, w, label, color, linestyle in zip(xs, weights, labels, colors, linestyles):
+    for x, w, label, color, linestyle in zip(
+            xs, weights, labels, colors, linestyles
+    ):
         plt.hist(x, n_bin, weights=w, range=x_range, histtype='step',
                  color=color, linestyle=linestyle,
                  linewidth=1, density=density, label=label)
- 
+
     # Horizontal lines
     if vline_x:
         ylim = plt.ylim()
         for x, lab in zip(vline_x, vline_lab):
-            plt.vlines(x=x, ymax=ylim[1], ymin=ylim[0], linestyles='--', colors='k')
-            plt.text(x*1.5, ylim[1]*0.95, lab)
+            plt.vlines(
+                x=x,
+                ymax=ylim[1],
+                ymin=ylim[0],
+                linestyles='--',
+                colors='k'
+            )
+            plt.text(x * 1.5, ylim[1] * 0.95, lab)
         plt.ylim(ylim)
 
     plt.title(title)
@@ -219,7 +235,6 @@ def plot_data_1d(
     ylim : array(float, 2), optional, default=None
         y-axis limits, automatic if None
     """
-
     if labels is None:
         labels = [''] * len(x)
         do_legend = False
@@ -235,24 +250,58 @@ def plot_data_1d(
     if linewidths is None:
         linewidths = [2] * len(x)
 
-    figure(figsize=(15,10))
+    figure(figsize=(15, 10))
 
     for i in range(len(x)):
         if np.isnan(yerr[i]).all():
-            eb = plt.plot(x[i], y[i], label=labels[i], color=colors[i], linestyle=linestyles[i], linewidth=linewidths[i])
+            eb = plt.plot(
+                x[i],
+                y[i],
+                label=labels[i],
+                color=colors[i],
+                linestyle=linestyles[i],
+            )
         else:
-            eb = plt.errorbar(x[i], y[i], yerr=yerr[i], label=labels[i], color=colors[i], linestyle=linestyles[i], linewidth=linewidths[i],
-                            marker='o', markerfacecolor='none', capsize=4)
+            eb = plt.errorbar(
+                x[i],
+                y[i],
+                yerr=yerr[i],
+                label=labels[i],
+                color=colors[i],
+                linestyle=linestyles[i],
+                marker='o',
+                markerfacecolor='none',
+                capsize=4,
+            )
             eb[-1][0].set_linestyle(eb_linestyles[i])
 
+    plt.hlines(
+        y=0,
+        xmin=plt.xlim()[0],
+        xmax=plt.xlim()[1],
+        linestyles='dashed',
+    )
 
-    if xlog == True:
+    if xlog:
         plt.xscale('log')
         plt.xticks(
             [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500],
-            labels=['0.1', '0.2', '0.5', '1', '2', '5', '10', '20', '50', '100', '200', '500']
+            labels=[
+                '0.1',
+                '0.2',
+                '0.5',
+                '1',
+                '2',
+                '5',
+                '10',
+                '20',
+                '50',
+                '100',
+                '200',
+                '500',
+            ]
         )
-    if ylog == True:
+    if ylog:
         plt.yscale('log')
 
     if xlim:
@@ -272,10 +321,10 @@ def plot_data_1d(
 
 
 def get_ticks(loc, N, new_min, new_max):
-    """Get ticks
-    
+    """Get ticks.
+
     Return formatted axis ticks for plots.
-    
+
     Parameters
     ----------
     loc : array of floats
@@ -285,7 +334,7 @@ def get_ticks(loc, N, new_min, new_max):
         new coordinate minimum
     new_max : float
         new coordinate maximum
-        
+
     Returns
     -------
     loc_new : array of floats
@@ -293,26 +342,37 @@ def get_ticks(loc, N, new_min, new_max):
     labels_new : array of strings
         new tick labels
     """
-    
     loc_new = []
     labels_new = []
 
-
-
-    for i in range(1, len(loc)-1):
+    for i in range(1, len(loc) - 1):
         lab = loc[i] / N * (new_max - new_min) + new_min
-        #print(loc[i], lab)
+        # print(loc[i], lab)
         loc_new.append(loc[i])
         labels_new.append(f'{lab:.1f}')
 
     return loc_new, labels_new
 
 
-def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vlim=None, clusters=None):
-    """Plot Map
-    
+def plot_map(
+    m,
+    ra,
+    dec,
+    min_x,
+    max_x,
+    min_y,
+    max_y,
+    Nx,
+    Ny,
+    title,
+    out_path,
+    vlim=None,
+    clusters=None,
+):
+    """Plot Map.
+
     Plots 2D map.
-    
+
     Parameters
     ----------
     m : 2D array of float
@@ -328,7 +388,6 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
     clusters :
         dictionary of cluster information, optional, default=None
     """
-    
     figure(figsize=(10, 10))
 
     # plot image
@@ -340,7 +399,7 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
 
     # Set colorbar
     if not vlim:
-       vlim = plt.gci().get_clim()
+        vlim = plt.gci().get_clim()
     else:
         plt.gci().set_clim(vlim)
     plt.colorbar()
@@ -354,31 +413,32 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
     loc, labels = plt.xticks()
     loc_ra, labels_ra = get_ticks(loc, Nx, ra_min, ra_max)
     plt.xticks(loc_ra, labels=labels_ra)
- 
+
     loc, labels = plt.yticks()
     loc_dec, labels_dec = get_ticks(loc, Ny, dec_min, dec_max)
     plt.yticks(loc_dec, labels=labels_dec)
-    
+
     # plot grid
     grid_lines_ra = []
     grid_lines_dec = []
     n_per_line = 200
- 
+
     # create lines of constant ra and varying dec, and vice versa
-    
-    # extend beyond projected image limits, to avoid image edges without grid lines 
+
+    # extend beyond projected image limits, to avoid image edges without grid
+    # lines
     d = 2
-    gl_ra = np.linspace(ra_min-d, ra_max+d, num=n_per_line)
-    gl_dec = np.linspace(dec_min-d, dec_max+d, num=n_per_line)
-    ra_list = np.arange(np.floor(ra_min-d), np.ceil(ra_max+d))
-    dec_list = np.arange(np.floor(dec_min-d), np.ceil(dec_max+d))
+    gl_ra = np.linspace(ra_min - d, ra_max + d, num=n_per_line)
+    gl_dec = np.linspace(dec_min - d, dec_max + d, num=n_per_line)
+    ra_list = np.arange(np.floor(ra_min - d), np.ceil(ra_max + d))
+    dec_list = np.arange(np.floor(dec_min - d), np.ceil(dec_max + d))
     for ra in ra_list:
         grid_lines_ra.append([ra] * n_per_line)
         grid_lines_dec.append(gl_dec)
     for dec in dec_list:
         grid_lines_dec.append([dec] * n_per_line)
         grid_lines_ra.append(gl_ra)
- 
+
     mean_x = (min_x + max_x) / 2
     mean_y = (min_y + max_y) / 2
 
@@ -387,18 +447,25 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
         xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
         yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
         plt.plot(xx, yy, 'w:', linewidth=0.5)
-    
-    # mark cluster positions 
+
+    # mark cluster positions
     if clusters:
         x_cluster = (clusters['x'] + mean_x - min_x) / (max_x - min_x) * Nx
         y_cluster = (clusters['y'] + mean_y - min_y) / (max_y - min_y) * Ny
         dy = 0.02
-        plt.plot(x_cluster, y_cluster, 'ro', mfc='none', markeredgewidth=0.9, markersize=12)
-        
+        plt.plot(
+            x_cluster,
+            y_cluster,
+            'ro',
+            mfc='none',
+            markeredgewidth=0.9,
+            markersize=12,
+        )
+
     # go back to image limits
     plt.xlim(xlim)
     plt.ylim(ylim)
- 
+
     plt.gca().invert_yaxis()
     plt.gca().invert_xaxis()
     plt.xlabel('R.A. [deg]')
@@ -407,15 +474,15 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
     plt.title(title)
 
     savefig(out_path)
-    
+
     return vlim
 
 
 def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
-    """Plot Map Stacked
-    
+    """Plot Map Stacked.
+
     Plot stacked convergence map.
-    
+
     Parameters
     ----------
     kappa : image
@@ -424,7 +491,7 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
         plot title
     output_path : string
         figure output file path
-   
+
     vlim : array(2) of float, optional, default=None
         map limits; min and max of kappa if not given
 
@@ -433,29 +500,32 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
     vlim : array(2) of float
         map limits
     """
-    
     figure(figsize=(10, 10))
 
     # plot image
     plt.imshow(kappa)
-    
+
     # set colorbar
     if not vlim:
-       vlim = plt.gci().get_clim()
+        vlim = plt.gci().get_clim()
     else:
         plt.gci().set_clim(vlim)
     plt.colorbar()
 
     npix = kappa.shape[0]
-    
+
     # mark center
-    plt.plot(npix/2 - 1, npix/2 - 1, '+')
+    plt.plot(npix / 2 - 1, npix / 2 - 1, '+')
 
     # axes ticks
     n_ticks = 4
     loc = np.arange(0, npix + npix / n_ticks, step=npix / n_ticks)
     lab = np.round(
-        np.arange(-radius, radius + radius * 2 / n_ticks, step=radius*2/n_ticks),
+        np.arange(
+            -radius,
+            radius + radius * 2 / n_ticks,
+            step=radius * 2 / n_ticks,
+        ),
         1
     )
     plt.xticks(loc, labels=lab)
@@ -463,11 +533,11 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
 
     plt.xlabel(r'separation $R$ [Mpc]')
     plt.ylabel(r'separation $R$ [Mpc]')
-    
+
     plt.title(title)
 
     savefig(output_path)
-    
+
     return vlim
 
 def set_labels(p_dp, order, mix):                                               

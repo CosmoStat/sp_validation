@@ -1,9 +1,9 @@
-"""
-  
+"""CORRELATION.
+
 :Name: correlation.py
 
 :Description: This script contains methods to deal with
-auto- and cross-correlations.
+    auto- and cross-correlations.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
          Axel Guinot
@@ -409,12 +409,12 @@ def affine_corr(
     stats_file=None,
     verbose=False
 ):
-    """Affine Corr
-    
+    """Affine Corr.
+
     Computes and plots affine correlation of y(n) as function of x.
- 
+
     Parameters
-    -----------
+    ----------
     x: array(double)
         input x value
     y: array(m) of double
@@ -492,7 +492,10 @@ def affine_corr(
 
         for jdx in range(len(y)):
             r_jk = jackknif_weighted_average(
-                y[jdx][ind], weights[ind], remove_size=0.2, n_realization=50
+                y[jdx][ind],
+                weights[ind],
+                remove_size=0.2,
+                n_realization=50
             )
             y_bin[jdx].append(r_jk[0])
             err_bin[jdx].append(r_jk[1])
@@ -547,7 +550,7 @@ def affine_corr(
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
 
-    
+
 def affine_corr_n(
     x_arr,
     y,
@@ -561,13 +564,14 @@ def affine_corr_n(
     title='',
     colors=None,
     stats_file=None,
-    verbose=False):
-    """Affine Corr N
-    
+    verbose=False
+):
+    """Affine Corr N.
+
     Compute n affine correlations of y(m) versus x_arr[n].
 
     Parameters
-    -----------
+    ----------
     x_arr: array(n, double)
         input x value
     y: array(m) of double
@@ -593,9 +597,8 @@ def affine_corr_n(
     verbose : bool, optional, default=False
         verbose output if True
     """
-    
     if out_path_arr is None:
-        out_path_arr = [None]*len(y_arr)
+        out_path_arr = [None] * len(y_arr)
     for x, xlabel, out_path in zip(x_arr, xlabel_arr, out_path_arr):
         affine_corr(
             x,
@@ -611,7 +614,7 @@ def affine_corr_n(
             colors=colors,
             stats_file=stats_file,
             verbose=verbose
-        ) 
+        )
 
 
 def xi_star_gal_tc(
@@ -627,15 +630,12 @@ def xi_star_gal_tc(
     w_star=None,
     theta_min_amin=2,
     theta_max_amin=200,
-    n_theta=20
+    n_theta=20,
 ):
-    """xi star gal tc
+    """Xi star gal tc.
 
     Cross-correlation between galaxy and star ellipticities.
     """
-
-    unit = 'degrees'
-
     cat_gal = treecorr.Catalog(
         ra=ra_gal,
         dec=dec_gal,
@@ -663,7 +663,6 @@ def xi_star_gal_tc(
         'max_sep': theta_max_amin,
         'nbins': n_theta
     }
-
     ng = treecorr.GGCorrelation(TreeCorrConfig)
 
     ng.process(cat_gal, cat_star)
@@ -683,9 +682,9 @@ def correlation_12_22(
     e2_2,
     theta_min_amin=2,
     theta_max_amin=200,
-    n_theta=20
+    n_theta=20,
 ):
-    """Correlation 12 22
+    """Correlation 12 22.
 
     Shear correlation functions between two samples 1 and 2.
     Compute xi_12 and xi_22.
@@ -748,7 +747,7 @@ def correlation_12_22(
 
 
 def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
-    """alpha
+    """Alpha.
 
     Compute scale-dependent PSF leakage alpha.
 
@@ -768,21 +767,22 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
     alpha, sig_alpha : float
         mean and std of alpha
     """
-
     complex_gal = (
         np.average(e1_gal, weights=weights_gal)
-        + np.average(e2_gal, weights=weights_gal)*1j
+        + np.average(e2_gal, weights=weights_gal) * 1j
     )
-    complex_psf = np.mean(e1_star) + np.mean(e2_star)*1j
+    complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
 
     alpha_leak = (
-        (r_corr_gp.xip - np.real(np.conj(complex_gal)*complex_psf))
-        / (r_corr_pp.xip - np.abs(complex_psf)**2)
+        (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf))
+        / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
     )
     sig_alpha_leak = (
-        np.abs(alpha_leak) * np.sqrt((np.sqrt(r_corr_gp.varxip) 
-        / r_corr_gp.xip)**2
-        + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip)**2)
+        np.abs(alpha_leak)
+        * np.sqrt(
+            (np.sqrt(r_corr_gp.varxip) / r_corr_gp.xip) ** 2
+            + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip) ** 2
+        )
     )
 
     return alpha_leak, sig_alpha_leak

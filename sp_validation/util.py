@@ -1,16 +1,10 @@
-# -*- coding: utf-8 -*-
-
-"""
-  
-:Name: util.py
+"""UTIL.
 
 :Description: This script contains utility methods.
 
 :Author: Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
+:Author: Martin Kilbinge <martin.kilblinger@cea.fr>
 
 """
 
@@ -29,9 +23,8 @@ else:
     import_fail = False
 
 
-
 def millify(n):
-    """Millify
+    """Millify.
 
     Return human-readible names of large numbers
 
@@ -42,11 +35,11 @@ def millify(n):
 
     Returns
     -------
-    s : string
+    str
         output name
-    """
 
-    millnames = ['',' Thousand',' Million',' Billion',' Trillion']
+    """
+    millnames = ['', ' Thousand', ' Million', ' Billion', ' Trillion']
 
     n = float(n)
     millidx = max(
@@ -57,7 +50,7 @@ def millify(n):
         )
     )
 
-    return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
+    return '{n / 10**(3 * millidx):.0f}{millnames[millidx])}' 
 
 
 def equi_num_bins(values, n_bin):
@@ -89,9 +82,9 @@ def equi_num_bins(values, n_bin):
 
 
 def transform_nan(value):
-    """Transform Nan
+    """Transform Nan.
 
-    Transform a nan to a very large number.
+    Transform a ``nan`` to a very large number.
 
     Parameters
     ----------
@@ -100,10 +93,9 @@ def transform_nan(value):
 
     Returns
     -------
-    res : float
+    float
         output value
     """
-
     large = 1e30
 
     if np.isnan(value) or np.isinf(value):
@@ -115,16 +107,17 @@ def transform_nan(value):
 
 
 class vosError(Exception):
-    """VOS Error
+    """VOS Error.
 
     Generic error that is raised by the vosHandler.
 
     """
+
     pass
 
 
 class vosHandler:
-    """VOS Handler
+    """VOS Handler.
 
     This class manages the use of VOS commands.
 
@@ -143,7 +136,7 @@ class vosHandler:
 
     @staticmethod
     def _check_vos_install():
-        """Check VOS Install
+        """Check VOS Install.
 
         Check if VOS is correctly installed.
 
@@ -155,7 +148,7 @@ class vosHandler:
 
     @property
     def command(self):
-        """Command
+        """Command.
 
         This method sets the VOS command property.
 
@@ -172,7 +165,7 @@ class vosHandler:
         self._command = getattr(vosc, value)
 
     def __call__(self, *args, **kwargs):
-        """Call Method
+        """Call Method.
 
         This method allows class instances to be called as functions.
 
@@ -185,25 +178,25 @@ class vosHandler:
 
 
 def download(source, target, verbose=False):
-    """Download
+    """Download.
 
     Download file from vos.
 
     Parameters
     ----------
-    source : string
+    source : str
         source path on vos
-    target : string
+    target : str
         target path
     verbose : bool, optional, default=False
         verbose output if True
 
     Returns
     -------
-    status : bool
+    bool
         status, True/False or success/failure
-    """
 
+    """
     cmd = 'vcp'
 
     if not os.path.exists(target):
@@ -248,7 +241,6 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
         binned errors of y_1, y_2 corresponding to x_1, x_2 bins                
                                                                                 
     """                                                                         
-                                                                                
     # Compute bins in x                                                         
                                                                                 
     # Initialise bins and edges for x                                           
