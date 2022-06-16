@@ -62,6 +62,9 @@ print(f'Galaxy catalogue = {galaxy_cat_path}')
 ### Star and PSF catalog name
 star_cat_path = f'{data_dir}/output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
 
+### External mask (optional)
+mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
+
 ## Output paths
 
 ### Output base directory

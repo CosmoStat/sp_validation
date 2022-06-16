@@ -1,6 +1,8 @@
-"""UTILITES
+"""UTIL.
 
-This module contains general utility methods.
+:Description: This script contains utility methods.
+
+:Author: Martin Kilbinger
 
 :Author: Martin Kilbinge <martin.kilblinger@cea.fr>
 
@@ -21,7 +23,7 @@ else:
 
 
 def millify(n):
-    """Millify
+    """Millify.
 
     Return human-readible names of large numbers
 
@@ -36,7 +38,7 @@ def millify(n):
         output name
 
     """
-    millnames = ['',' Thousand',' Million',' Billion',' Trillion']
+    millnames = ['', ' Thousand', ' Million', ' Billion', ' Trillion']
 
     n = float(n)
     millidx = max(
@@ -51,7 +53,7 @@ def millify(n):
 
 
 def transform_nan(value):
-    """Transform Nan
+    """Transform Nan.
 
     Transform a ``nan`` to a very large number.
 
@@ -65,7 +67,6 @@ def transform_nan(value):
     float
         output value
     """
-
     large = 1e30
 
     if np.isnan(value) or np.isinf(value):
@@ -77,16 +78,17 @@ def transform_nan(value):
 
 
 class vosError(Exception):
-    """VOS Error
+    """VOS Error.
 
     Generic error that is raised by the vosHandler.
 
     """
+
     pass
 
 
 class vosHandler:
-    """VOS Handler
+    """VOS Handler.
 
     This class manages the use of VOS commands.
 
@@ -105,7 +107,7 @@ class vosHandler:
 
     @staticmethod
     def _check_vos_install():
-        """Check VOS Install
+        """Check VOS Install.
 
         Check if VOS is correctly installed.
 
@@ -117,7 +119,7 @@ class vosHandler:
 
     @property
     def command(self):
-        """Command
+        """Command.
 
         This method sets the VOS command property.
 
@@ -134,7 +136,7 @@ class vosHandler:
         self._command = getattr(vosc, value)
 
     def __call__(self, *args, **kwargs):
-        """Call Method
+        """Call Method.
 
         This method allows class instances to be called as functions.
 
@@ -147,7 +149,7 @@ class vosHandler:
 
 
 def download(source, target, verbose=False):
-    """Download
+    """Download.
 
     Download file from vos.
 

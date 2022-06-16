@@ -596,12 +596,12 @@ def main(argv=None):
         'dmc_' : 0,
         'dmcw_' : 1,
         'cjk_' : 0,
-        'sigma2_epsilon' : 0,
+        'sigma2_epsilon' : 1,
         'R_tot_' : 1,
         'R_shear_' : 1,
         'R_select_' : 1,
         'm_' : 1,
-        'alpha' : 0,
+        'alpha' : 1,
         'xi_sys' : 0,
     }
 
@@ -653,7 +653,8 @@ def main(argv=None):
 
         key = 'sigma2_epsilon'
         if use_keys[key]:
-            file_base_arr.append(key)
+            file_base = key
+            file_base_arr.append(file_base)
             f = open(f'{file_base}.txt', 'w')
             print_all(results, stats_files, use_keys=[key], fout=f, all=all)
             f.close()
@@ -693,7 +694,7 @@ def main(argv=None):
         col_names = get_matrix_elements('R^{\\textrm{select}}', me)
         latex_table(file_base, cols=use_keys, col_names=col_names)
 
-    if argv[1] not in ['comb', 'v1']:
+    if 1 or argv[1] not in ['comb', 'v1']:
 
         file_base = 'summary_Rc'
         file_base_arr.append(file_base)
@@ -708,10 +709,10 @@ def main(argv=None):
         file_base = 'summary_leakage'
         file_base_arr.append(file_base)
         f = open(f'{file_base}.txt', 'w')
-        use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2']
+        use_keys=['n_gal_am2', 'm_11', 'm_22', 'm_12', 'm_21', 'm_s1', 'm_s2', 'alpha']
         print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
         f.close()
-        col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}']
+        col_names = ['n_{\\rm gal} [{\\rm am}^{-2}]', 'm_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}', '\\alpha']
         latex_table(file_base, cols=use_keys, col_names=col_names)
 
 
