@@ -4,13 +4,10 @@ import sys
 import copy
 import numpy as np
 from optparse import OptionParser
-from astropy.io import ascii
+from astropy.io import ascii, fits
 import astropy.coordinates as coords
 from astropy import units                                                       
 
-
-from shapepipe.utilities import cfis
-from shapepipe.utilities import file_system
 
 from sp_validation import cat
 from sp_validation import plots
@@ -90,22 +87,7 @@ def parse_options(p_def):
         '--input_path_shear',
         dest='input_path_shear',
         type='string',
-        help='input path of the extended shear catalogue'
-    )
-    parser.add_option(
-        '-I',
-        '--input_path_PSF',
-        dest='input_path_PSF',
-        type='string',
-        help='input path of the PSF catalogue'
-    )
-    parser.add_option(
-        '-o',
-        '--output_dir',
-        dest='output_dir',
-        default=p_def.output_dir,
-        type='string',
-        help=f'output_dir, default=\'{p_def.output_dir}\''
+        help='input path of the shear catalogue'
     )
     parser.add_option(
         '',
@@ -130,6 +112,13 @@ def parse_options(p_def):
         default=p_def.e2_col,
         type='string',
         help=f'e2 column name in galaxy catalogue, default=\'{p_def.e2_col}\''
+    )
+    parser.add_option(
+        '-I',
+        '--input_path_PSF',
+        dest='input_path_PSF',
+        type='string',
+        help='input path of the PSF catalogue'
     )
     parser.add_option(
         '',
@@ -167,6 +156,14 @@ def parse_options(p_def):
         help='e2 PSF column name in star catalogue, '
             + f'default=\'{p_def.e2_PSF_star_col}\''
     )
+    parser.add_option(
+        '-o',
+        '--output_dir',
+        dest='output_dir',
+        default=p_def.output_dir,
+        type='string',
+        help=f'output_dir, default=\'{p_def.output_dir}\''
+    )
     parser.add_option(                                                          
         '-s',                                                                   
         '--shapes',                                                             
@@ -191,6 +188,14 @@ def parse_options(p_def):
         type='string',                                                          
         help='mode for close objects in star catalogue, one of'
             + '\'remove\', \'average\''
+    )
+    parser.add_option(                                                          
+        '-p',
+        '--patch',
+        dest='patch',                                                              
+        default=None,
+        type='int',                                                          
+        help='patch number'
     )
     parser.add_option(
         '-v',
@@ -319,7 +324,7 @@ def handle_close_objects(
 
     tolerance_angle = coords.Angle(tolerance)
 
-    print_stats(
+    io.print_stats(
         f'close object distance = {tolerance_angle}',
         stats_file,
         verbose=verbose
@@ -346,7 +351,7 @@ def handle_close_objects(
     for col in dat_PSF.dtype.names:
         dat_PSF_proc[col] = dat_PSF[col][count == 1]
     n_non_close = len(dat_PSF_proc[ra_star_col])
-    print_stats(
+    io.print_stats(
         f'found {n_non_close}/{n_star} = {n_non_close / n_star:.1%} '
         + 'non-close objects',
         stats_file,
@@ -359,7 +364,7 @@ def handle_close_objects(
     if not multiples.any():
 
         # No multiples found -> no action
-        print_stats('no close objects found', stats_file, verbose=verbose)
+        io.print_stats('no close objects found', stats_file, verbose=verbose)
 
     else:
 
@@ -399,7 +404,7 @@ def handle_close_objects(
                 n_avg_rem += len(ww) - 1
 
             n_avg = len(dat_PSF_mult[ra_star_col])
-            print_stats(
+            io.print_stats(
                 f'adding {n_avg}/{n_star} = {n_avg / n_star:.1%} '
                 + 'averaged objects',
                 stats_file,
@@ -413,7 +418,7 @@ def handle_close_objects(
                 )
         elif mode == 'remove':
             n_rem = len(idx_mult)
-            print_stats(
+            io.print_stats(
                 f'removing {n_rem}/{n_star} = {n_rem / n_star:.1%} '
                 + 'close objects',
                 stats_file,
@@ -432,13 +437,13 @@ def handle_close_objects(
         nthneighbor=2
     )
     non_close = (d2d > tolerance_angle).all()
-    print_stats(
+    io.print_stats(
         f'Check: all remaining distances > {tolerance_angle}? {non_close}',
         stats_file,
         verbose=verbose
     )
     if mode == 'average':
-        print_stats(
+        io.print_stats(
             f'Check: n_non_close + n_avg + n_avg_rem = n_star? '
             + f'{n_non_close} + {n_avg} + {n_avg_rem} = '
             + f'{n_non_close + n_avg + n_avg_rem} ({n_star})',
@@ -446,7 +451,7 @@ def handle_close_objects(
             verbose=verbose
         )
     elif mode == 'remove':
-        print_stats(
+        io.print_stats(
             f'Check: n_non_close + n_rem = n_star? {n_non_close} '
             + f'+ {n_rem} = {n_non_close + n_rem} ({n_star})',
             stats_file,
@@ -457,13 +462,13 @@ def handle_close_objects(
     n_out = len(dat_PSF_proc[dec_star_col])
     
     if n_in == n_out:
-        print_stats(
+        io.print_stats(
             f'keeping all {n_out} stars',
             stats_file,
             verbose=verbose
         )
     else:
-        print_stats(
+        io.print_stats(
             f'keeping {n_out}/{n_in} = {n_out/n_in:.1%} stars',
             stats_file,
             verbose=verbose
@@ -555,11 +560,7 @@ def compute_corr_gp_pp_alpha(
 def compute_alpha_mean(
         alpha_leak,
         sig_alpha_leak,
-<<<<<<< HEAD:scripts/leakage_scale.py
-        sh,
-=======
         shape_method,
->>>>>>> origin/master:scripts/leakage.py
         stats_file,
         verbose=False
 ):
@@ -589,27 +590,23 @@ def compute_alpha_mean(
     alpha_leak_mean = util.transform_nan(
         np.average(alpha_leak, weights=1/sig_alpha_leak**2)
     )
-    print_stats(
+    io.print_stats(
         f'{shape_method}: Weighted average alpha = {alpha_leak_mean:.3g}',
         stats_file,
         verbose=verbose
     )
 
 
-<<<<<<< HEAD:scripts/leakage_scale.py
 def plot_alpha_leakage(
         meanr,
         alpha_leak,
         sig_alpha_leak,
-        sh,
+        shape_method,
         output_dir,
         xmin,
         xmax,
         leakage_alpha_ylim
 ):
-=======
-def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, shape_method, output_dir, xmin, xmax, leakage_alpha_ylim):
->>>>>>> origin/master:scripts/leakage.py
 
     plot_dir_leakage = output_dir
 
@@ -737,7 +734,7 @@ def plot_xi_sys(
     for comp, symb in zip(comp_arr, symb_arr):
         mean = np.mean(np.abs(xi[comp]))
         msg = f'{shape_method}: <|xi_sys_{symb}|> = {mean}'
-        print_stats(msg, stats_file, verbose=verbose)
+        io.print_stats(msg, stats_file, verbose=verbose)
 
     try:
         ylim = leakage_xi_sys_ylim
@@ -797,7 +794,7 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
-    cfis.log_command(argv)
+    util.log_command(argv)
 
     sys.path.append('.')
     import params as config
@@ -806,16 +803,32 @@ def main(argv=None):
     if param.sh is None:                                                        
         param.sh = config.shapes[0]                 
 
-    file_system.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     # Read galaxy catalogue
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data
+    n_shear = len(dat_shear)
+    io.print_stats(
+        f'{n_shear} galaxies found in shear catalogue',
+        stats_file,
+        verbose=param.verbose
+    )
+
+    if param.patch:
+        mask_patch = (dat_shear['patch'] == param.patch)
+        dat_shear = dat_shear[mask_patch]
+        n_patch = len(dat_shear)
+        io.print_stats(
+            f'Using {n_patch} galaxies in patch {param.patch}',
+            stats_file,
+            verbose=param.verbose
+        )
 
     # Read star catalogue
-    hdu_list = fits.open(param.input_path_PSF)
-    dat_PSF = hdu_list[param.hdu_psf].data
+    #hdu_list = fits.open(param.input_path_PSF)
+    #dat_PSF = hdu_list[param.hdu_psf].data
+    dat_PSF = io.open_fits_or_npy(param.input_path_PSF, hdu_no=param.hdu_psf)
 
     # Deal with close objects in PSF catalogue (= stars on same position
     # from different exposures)

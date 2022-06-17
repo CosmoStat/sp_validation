@@ -6,10 +6,7 @@ import numpy as np
 from optparse import OptionParser
 from astropy.io import ascii, fits
 
-from shapepipe.utilities import cfis
-from shapepipe.utilities import file_system
-
-from sp_validation.util import transform_nan
+from sp_validation.util import transform_nan, log_command
 from sp_validation import correlation
 from sp_validation import io
 
@@ -423,9 +420,8 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
-    cfis.log_command(argv)
+    utils.log_command(argv)
 
-    file_system.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     if param.test:
