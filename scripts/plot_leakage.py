@@ -7,13 +7,30 @@ from glob import glob
 from optparse import OptionParser
 from astropy.io import ascii
 
-from shapepipe.utilities.cfis import param, log_command
-
 from sp_validation.cat import *
 from sp_validation.plots import *
-from sp_validation.util import transform_nan
+from sp_validation.util import transform_nan, log_command
 from sp_validation.correlation import *
 from sp_validation import io
+
+
+class param:                                                                    
+    """Param Class.                                                             
+                                                                                
+    General class to store (default) variables.                                 
+                                                                                
+    """                                                                         
+                                                                                
+    def __init__(self, **kwds):                                                 
+        self.__dict__.update(kwds)                                              
+                                                                                
+    def print(self, **kwds):                                                    
+        """Print."""                                                            
+        print(self.__dict__)                                                    
+                                                                                
+    def var_list(self, **kwds):                                                 
+        """Get Variable List."""                                                
+        return vars(self)                        
 
 
 def params_default():
@@ -27,8 +44,8 @@ def params_default():
     -------
     p_def: class param
        parameter values
-    """
 
+    """
     p_def = param(
         output_dir='.',
     )
@@ -50,8 +67,8 @@ def parse_options(p_def):
         Command line options
     args: string
         Command line string
-    """
 
+    """
     usage  = "%prog [OPTIONS]"
     parser = OptionParser(usage=usage)
 
@@ -63,6 +80,14 @@ def parse_options(p_def):
         type='string',
         help=f'output_dir, default=\'{p_def.output_dir}\''
     )
+    parser.add_option(                                                          
+        '-s',                                                                   
+        '--shapes',                                                             
+        dest='sh',                                                              
+        default=None,                                                           
+        type='string',                                                          
+        help=f'shape measurement method, default: read from parameter file'     
+    )                                                                      
     parser.add_option(
         '-v',
         '--verbose',
@@ -70,7 +95,6 @@ def parse_options(p_def):
         action='store_true',
         help=f'verbose output'
     )
-
 
     options, args = parser.parse_args()
 
@@ -89,8 +113,8 @@ def check_options(options):
     -------
     erg: bool
         Result of option check. False if invalid option value.
-    """
 
+    """
     return True
 
 
@@ -108,8 +132,8 @@ def update_param(p_def, options):
     -------
     param: class param
         updated paramter values
-    """
 
+    """
     param = copy.copy(p_def)
 
     # Update keys in param according to options values
@@ -125,8 +149,38 @@ def update_param(p_def, options):
     return param
 
 
-def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, sh, output_dir, xmin, xmax, leakage_alpha_ylim):
+def plot_alpha_leakage(
+        meanr,
+        alpha_leak,
+        sig_alpha_leak,
+        shape_method,
+        output_dir,
+        xmin,
+        xmax,
+        ylim=None,
+):
+    """Plot Alpha Leakage.
 
+    Plot scale-dependent leakage function alpha(theta).
+
+    Parameters
+    ----------
+    meanr : list
+        angular scales
+    alpha_leak : list
+        values of alpha
+    sig_alpha_leak : list
+        RMS of alpha
+    output_dir : str
+        output directory to save plot
+    xmin : float
+        smallest angular scale, interpreted in arcmin
+    xmax : float
+        largest angular scale, interpreted in arcmin
+    ylim : list, optional
+        y-axis plot limits, default is `Ǹone`
+
+    """
     plot_dir_leakage = output_dir
 
     theta = meanr
@@ -134,12 +188,8 @@ def plot_alpha_leakage(meanr, alpha_leak, sig_alpha_leak, sh, output_dir, xmin, 
     yerr = sig_alpha_leak
     xlabel = r'$\theta$ [arcmin]'
     ylabel = r'$\alpha(\theta)$'
-    title = sh
-    out_path = f'{output_dir}/alpha_leakage_{sh}_all.png'
-    try:
-        ylim  = leakage_alpha_ylim
-    except:
-        ylim = None
+    title = shape_method
+    out_path = f'{output_dir}/alpha_leakage_{shape_method}_all.png'
 
     linewidths = [1] * len(meanr)
     linewidths[0] = 3
@@ -187,19 +237,14 @@ def main(argv=None):
 
     sys.path.append('.')
     import params as config
+    if param.sh is None:
+        param.sh = config.shapes[0]
 
-    sh = 'ngmix'
+    # files are command line arguments
+    fnames = args
 
-    fnames = []
-
-    # read all files from all command line arguments
-    for arg in args:
-        fnames.append(glob(arg))
-
-    # flatten file name list
-    fnames = [item for sublist in fnames for item in sublist]
-
-    print('Input files: ', fnames)
+    if param.verbose:
+        print('Input files: ', fnames)
 
     # read input files, append data
     theta = []
@@ -222,7 +267,7 @@ def main(argv=None):
         theta,
         alpha_leak,
         sig_alpha_leak,
-        sh,
+        param.sh,
         param.output_dir,
         config.theta_min_amin,
         config.theta_max_amin,
