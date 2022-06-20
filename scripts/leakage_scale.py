@@ -198,6 +198,14 @@ def parse_options(p_def):
         help='patch number'
     )
     parser.add_option(
+        '',
+        '--cut',
+        dest='cut',
+        type='string',
+        help='list of criteria (white-space separated, do not use \'_\')'
+            + ' to cut data, e.g. \'w>0_mask!=0\''
+    )
+    parser.add_option(
         '-v',
         '--verbose',
         dest='verbose',
@@ -815,20 +823,12 @@ def main(argv=None):
         verbose=param.verbose
     )
 
-    if param.patch:
-        mask_patch = (dat_shear['patch'] == param.patch)
-        dat_shear = dat_shear[mask_patch]
-        n_patch = len(dat_shear)
-        io.print_stats(
-            f'Using {n_patch} galaxies in patch {param.patch}',
-            stats_file,
-            verbose=param.verbose
-        )
+    # Apply cuts to galaxy catalogue if required
+    dat_shear = cat.cut_data(dat_shear, param.cut, verbose=param.verbose)
 
     # Read star catalogue
-    #hdu_list = fits.open(param.input_path_PSF)
-    #dat_PSF = hdu_list[param.hdu_psf].data
     dat_PSF = io.open_fits_or_npy(param.input_path_PSF, hdu_no=param.hdu_psf)
+
 
     # Deal with close objects in PSF catalogue (= stars on same position
     # from different exposures)

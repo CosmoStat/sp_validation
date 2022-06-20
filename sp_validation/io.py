@@ -15,7 +15,7 @@
 import os
 
 import numpy as np
-from astropy.io import ascii
+from astropy.io import ascii, fits
 from astropy.table import Table
 
 
@@ -177,9 +177,9 @@ def open_fits_or_npy(path, hdu_no=1):
 
     """
     filename, file_extension = os.path.splitext(path)
-    if file_extension == '.fits':
+    if file_extension in ['.fits', '.cat']:
         hdu_list = fits.open(path)
-        data = hdu_list[hdu_no]
+        data = hdu_list[hdu_no].data
     elif file_extension == '.npy':
         data = np.load(path)
     else:
