@@ -719,7 +719,7 @@ def write_PSF_cat(output_path, ra, dec, e1, e2):
 
 def cut_data(data, cut, verbose=False):
     """Cut Data.
-    
+
     Cut data according to selection criteria list.
 
     Parameters
@@ -740,8 +740,8 @@ def cut_data(data, cut, verbose=False):
     -------
     numpy.ndarray
         data after cuts
-    """
 
+    """
     if cut is None:
         if verbose:
             print('No cuts applied to input galaxy catalogue')
@@ -751,7 +751,7 @@ def cut_data(data, cut, verbose=False):
     cut_list = cut.split(' ')
 
     for cut in cut_list:
-        res = re.match('(\w+)([<>=!]+)(\w+)', cut)
+        res = re.match(r'(\w+)([<>=!]+)(\w+)', cut)
         if res is None:
             raise ValueError(f'cut \'{cut}\' has incorrect syntax')
         if len(res.groups()) != 3:
