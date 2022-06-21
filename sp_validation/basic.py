@@ -820,6 +820,8 @@ def bootstrap_weighted_average(
         Input data.
     weights: numpy.ndarray
         Input weights.
+    parallel: bool
+        If True, use parallel computing. [Default: False]
     input_seed: int
         Seed to initialize the randoms. [Default: None]
     remove_size: float
