@@ -782,91 +782,30 @@ def stack_cluster2(cluster_cat, ra, dec, g1, g2, w, z_bin_size=0.1, final_size=1
 ############
 ############
 
-def jackknif_stat(data, stat_est=np.mean, remove_size=0.1, n_realization=100):
+def bootdstrap_stat(data, stat_est=np.mean, n_realization=100, seed=None):
     """
     """
 
-    samp_size = len(data)
-    keep_size_pc = 1-remove_size
-
-    if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
-
-    subsamp_size = int(samp_size*keep_size_pc)
-
-    all_est = []
-    for i in tqdm(range(n_realization), total=n_realization):
-        sub_data = np.random.choice(data, subsamp_size)
-
-        all_est.append(stat_est(sub_data))
-
-    all_est = np.array(all_est)
-
-    return np.mean(all_est), np.std(all_est)
-
-def jackknif_weighted_average(
-    data,
-    weights,
-    seed=None, 
-    remove_size=0.1,
-    n_realization=100
-):
-    """ Jackknife weighted average
-
-    Compute the weighted average of data using jackknife.
-
-    Parameters
-    ----------
-    data: numpy.ndarray
-        Input data.
-    weights: numpy.ndarray
-        Input weights.
-    seed: int
-        Seed to initialize the randoms. [Default: None]
-    remove_size: float
-        Ratio of data to remove at each realization in ]0; 1[. [Default: 0.1]
-    n_realization: int
-        Number of realizations. [Default: 100]
-    
-    Returns
-    -------
-    average: float
-        Weighted average.
-    std: float
-        Standard deviation of the average.
-    """
-
-    # Init the random
     rng = np.random.RandomState(seed)
 
     samp_size = len(data)
-    keep_size_pc = 1-remove_size
-
-    if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
-
-    subsamp_size = int(samp_size*keep_size_pc)
-
-    all_ind = np.arange(samp_size)
 
     all_est = []
-    for i in range(n_realization):
-        sub_data_ind = rng.choice(all_ind, subsamp_size, replace=False)
+    for i in tqdm(range(n_realization), total=n_realization):
+        ind = rng.choice(samp_size, size=samp_size, replace=True)
 
-        all_est.append(
-            np.average(data[sub_data_ind], weights=weights[sub_data_ind])
-        )
+        all_est.append(stat_est(data[ind]))
 
     all_est = np.array(all_est)
 
     return np.mean(all_est), np.std(all_est)
 
 
-def jackknif_weighted_average_parallel(
+def bootstrap_weighted_average(
     data,
     weights,
-    input_seed=None, 
-    remove_size=0.1,
+    parallel=True,
+    input_seed=None,
     n_realization=100,
     n_jobs=-1,
     verbose=True,
@@ -890,44 +829,43 @@ def jackknif_weighted_average_parallel(
     
     Returns
     -------
-    average: float
-        Weighted average.
-    std: float
-        Standard deviation of the average.
+    tuple
+        Weighted average and standard deviation of the average.
     """
 
-    def runner(data, weights, n_samp, n_subsamp, seed_tmp):
+    def runner(data, weights, n_samp, seed_tmp):
         rng_tmp = np.random.RandomState(seed_tmp)
-        sub_data_ind = rng_tmp.choice(n_samp, n_subsamp, replace=False)
+        sub_data_ind = rng_tmp.choice(n_samp, n_samp, replace=True)
         res = np.average(data[sub_data_ind], weights=weights[sub_data_ind])
         return res
 
     # Init the random
     rng_master = np.random.RandomState(input_seed)
-    seeds = rng_master.randint(low=0, high=2**30, size=n_realization)
 
     samp_size = len(data)
-    keep_size_pc = 1-remove_size
 
-    if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
-
-    subsamp_size = int(samp_size*keep_size_pc)
-
-    all_ind = np.arange(samp_size)
-
-    all_est = (
-        Parallel(n_jobs=n_jobs, backend='loky')
-        (
-            delayed(runner)
-            (data, weights, samp_size, subsamp_size, seeds[i])
-            for i in tqdm(
-                range(n_realization),
-                total=n_realization, 
-                disable=np.invert(verbose)
+    if parallel:
+        seeds = rng_master.randint(low=0, high=2**30, size=n_realization)
+        all_est = (
+            Parallel(n_jobs=n_jobs, backend='loky')
+            (
+                delayed(runner)
+                (data, weights, samp_size, seeds[i])
+                for i in tqdm(
+                    range(n_realization),
+                    total=n_realization, 
+                    disable=np.invert(verbose)
+                )
             )
         )
-    )
+    else:
+        all_est = []
+        for i in range(n_realization):
+            sub_data_ind = rng_master.choice(samp_size, size=samp_size, replace=True)
+
+            all_est.append(
+                np.average(data[sub_data_ind], weights=weights[sub_data_ind])
+            )
 
     all_est = np.array(all_est)
 
