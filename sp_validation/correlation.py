@@ -20,7 +20,8 @@ from uncertainties import ufloat
 
 from tqdm import tqdm
 
-from sp_validation.basic import jackknif_weighted_average, jackknif_weighted_average_parallel
+from sp_validation.basic import bootstrap_weighted_average
+
 from sp_validation.plot_style import *
 from sp_validation.io import print_stats
 
@@ -46,9 +47,9 @@ def affine_corr(
     rng=None,
 ):
     """Affine Corr
-    
+
     Computes and plots affine correlation of y(n) as function of x.
- 
+
     Parameters
     -----------
     x: array(double)
@@ -94,17 +95,6 @@ def affine_corr(
         master_rng = rng
     else:
         master_rng = np.random.RandomState(seed)
-    # elif isinstance(seed, int):
-    #     master_rng = np.random.RandomState(seed)
-    # else:
-        # raise ValueError(
-        #     "Either a seed or random generator has to be prrovided"
-        # )
-
-    if parallel:
-        jackknif_method = jackknif_weighted_average_parallel
-    else:
-        jackknif_method = jackknif_weighted_average
 
     if mlabel is None:
         mlabel = np.ones('m')
@@ -149,13 +139,14 @@ def affine_corr(
         x_bin.append(np.mean(x[ind]))
 
         for j in range(len(y)):
-            r_jk = jackknif_method(
+            r_jk = bootstrap_weighted_average(
                 y[j][ind],
                 weights[ind],
                 seed=get_seed(master_rng),
                 remove_size=0.2,
                 n_realization=50,
-
+                parallel=parallel,
+                n_job=-1,
             )
             y_bin[j].append(r_jk[0])
             err_bin[j].append(r_jk[1])
