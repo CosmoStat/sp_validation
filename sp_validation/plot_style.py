@@ -1,4 +1,5 @@
-"""
+"""PLOT STYLE.
+
 :Name: plot_style.py
 
 :Description: Commands to set plot styles for matplotlib.
@@ -14,6 +15,7 @@
 import matplotlib as mpl
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
+import matplotlib.pylab as plt
 
 mpl.rcParams['lines.linewidth'] = 2
 mpl.rcParams['lines.markersize'] = 10
