@@ -170,6 +170,9 @@ pixel_size_emap_amin = 0.4
 ## of size pixel_size_emap_amin
 smoothing_scale_pix = 20
 
+# cutout map around specific coordinates, optional                              
+map_cut_coords = [112, 154, 41, 31]
+
 ## Sign of shear components, to correct for lef-handed
 ## coordinate system
 g1_sign = +1
