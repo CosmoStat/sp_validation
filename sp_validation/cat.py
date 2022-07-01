@@ -161,7 +161,7 @@ def check_matching(
     ----------
     d1, d2 : dict
         catalogs
-    keys_1, keys_2 : array(2) of string
+    keys_1, keys_2 : list
         column keys for d1, d2, corresponding to x, y
     thres : float
         threshold for matching, in deg
@@ -223,7 +223,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
     ----------
     dd : dict
         catalog
-    key : array of string
+    key : list
         key names of columns to check
     comp : array of int
         components for above columns
@@ -231,7 +231,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
         values for above columns indicating invalid entries
     stats_file : file handler
         summary statistics output file handler
-    name : array of string, optional, default=None
+    name : list, optional, default=None
         for output message. If None, key strings are used
     verbose : bool, optional, default=False
         verbose output if True
@@ -272,9 +272,9 @@ def match_subsample(
         index list of d2 of objects that were matched to d1
     mask : array of bool
         boolean mask
-    pos_key : array(2) of string
+    pos_key : list
         key names for position columns
-    ell_key : string
+    ell_key : str
         key name for ellipticity column
     n_ref : int
         reference number of objects
@@ -434,7 +434,7 @@ def write_shape_catalog(
 
     Parameters
     ----------
-    output_path : string
+    output_path : str
         output file path
     ra, dec : arrays(ngal) of float
         coordinates in deg
