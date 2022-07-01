@@ -1,9 +1,9 @@
-"""
-  
+"""CORRELATION.
+
 :Name: correlation.py
 
 :Description: This script contains methods to deal with
-auto- and cross-correlations.
+    auto- and cross-correlations.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
          Axel Guinot
@@ -247,9 +247,9 @@ def corr_2d(
         x-and y-axis labels
     n_bin : double, optional, default=30
         number of points onto which data are binned
-    title : string, optional, default=''
+    title : str, optional, default=''
         plot title
-    colors : array(m) of string, optional, default=None
+    colors : array(m) of str, optional, default=None
         line colors
     stats_file : filehandler, optional, default=None
         output file for statistics
@@ -409,31 +409,31 @@ def affine_corr(
     stats_file=None,
     verbose=False
 ):
-    """Affine Corr
-    
+    """Affine Corr.
+
     Computes and plots affine correlation of y(n) as function of x.
- 
+
     Parameters
-    -----------
+    ----------
     x: array(double)
         input x value
     y: array(m) of double
         input y arrays
-    xlabel, ylabel : string
+    xlabel, ylabel : str
         x-and y-axis labels
-    mlabel : string, optional, default=None
+    mlabel : str, optional, default=None
         label for slope in the plot legend
-    clabel : string, optional, default=None
+    clabel : str, optional, default=None
         label for offset in the plot legend
     weights : array of double, optional, default=None
         weights of x points
     n_bin : double, optional, default=30
         number of points onto which data are binned
-    out_path : string, optional, default=None
+    out_path : str, optional, default=None
         output file path, if not given, plot is not saved to file
-    title : string, optional, default=''
+    title : str, optional, default=''
         plot title
-    colors : array(m) of string, optional, default=None
+    colors : array(m) of str, optional, default=None
         line colors
     stats_file : filehandler, optional, default=None
         output file for statistics
@@ -456,11 +456,11 @@ def affine_corr(
         colors = prop_cycle.by_key()['color']
 
     size_all = len(y[0])
-    for j in range(1, n_y):
-        if len(y[j]) != size_all:
+    for idx in range(1, n_y):
+        if len(y[idx]) != size_all:
             raise IndexError
             (
-                f'Size {len(y[j])} of input #{i} different from  size '
+                f'Size {len(y[idx])} of input #{idx} is different from size '
                 + f'{size_all} of input #0'
             )
     size_bin = int(size_all / n_bin)
@@ -472,60 +472,69 @@ def affine_corr(
     y_bin = []
     err_bin = []
     
-    for j in range(len(y)):
+    for idx in range(len(y)):
         y_bin.append([])
         err_bin.append([])
 
     # Bin data for plot
-    for i in range(n_bin):
-        if i < diff_size:
+    for idx in range(n_bin):
+        if idx < diff_size:
             bin_size_tmp = size_bin + 1
             starter = 0
         else:
             bin_size_tmp = size_bin
             starter = diff_size
         ind = x_arg_sort[
-            starter + i * bin_size_tmp : starter + (i + 1) * bin_size_tmp
+            starter + idx * bin_size_tmp : starter + (idx + 1) * bin_size_tmp
         ]
 
         x_bin.append(np.mean(x[ind]))
 
-        for j in range(len(y)):
+        for jdx in range(len(y)):
             r_jk = jackknif_weighted_average(
-                y[j][ind], weights[ind], remove_size=0.2, n_realization=50
+                y[jdx][ind],
+                weights[ind],
+                remove_size=0.2,
+                n_realization=50
             )
-            y_bin[j].append(r_jk[0])
-            err_bin[j].append(r_jk[1])
+            y_bin[jdx].append(r_jk[0])
+            err_bin[jdx].append(r_jk[1])
 
     x_bin = np.array(x_bin)
-    for j in range(len(y)):
-        y_bin[j] = np.array(y_bin[j])
-        err_bin[j] = np.array(err_bin[j])
+    for jdx in range(len(y)):
+        y_bin[jdx] = np.array(y_bin[jdx])
+        err_bin[jdx] = np.array(err_bin[jdx])
  
 
     # Fit affine functions, plot function and data
     plt.figure(figsize=(10, 6))
-    for j in range(len(y)):
+    for jdx in range(len(y)):
         params = Parameters()
         params.add('m', value=0.01)
         params.add('c', value=0.01)
         res = minimize(
-            loss_bias_lin_1d, params, args=(x, y[j], 1/np.sqrt(weights))
+            loss_bias_lin_1d, params, args=(x, y[jdx], 1/np.sqrt(weights))
         )
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
 
-        label = f'${mlabel[j]}={m_dm: .2ugL}, {clabel[j]}={c_dc: .2ugL}$'
+        label = f'${mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$'
         plt.plot(
             x_bin,
             func_bias_lin_1d(res.params, x_bin),
-            c=colors[j],
+            c=colors[jdx],
             label=label
         )
-        plt.errorbar(x_bin, y_bin[j], yerr=err_bin[j], c=colors[j], fmt='.')
+        plt.errorbar(
+            x_bin,
+            y_bin[jdx],
+            yerr=err_bin[jdx],
+            c=colors[jdx],
+            fmt='.'
+        )
 
         if stats_file:
-            msg = '{}: {}={:.2ugP}'.format(xlabel, mlabel[j], m_dm)
+            msg = '{}: {}={:.2ugP}'.format(xlabel, mlabel[jdx], m_dm)
             print_stats(msg, stats_file, verbose=verbose)
 
     # Finalise plots
@@ -541,7 +550,7 @@ def affine_corr(
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
 
-    
+
 def affine_corr_n(
     x_arr,
     y,
@@ -555,41 +564,41 @@ def affine_corr_n(
     title='',
     colors=None,
     stats_file=None,
-    verbose=False):
-    """Affine Corr N
-    
+    verbose=False
+):
+    """Affine Corr N.
+
     Compute n affine correlations of y(m) versus x_arr[n].
 
     Parameters
-    -----------
+    ----------
     x_arr: array(n, double)
         input x value
     y: array(m) of double
         input y arrays
-    xlabel, ylabel : string
+    xlabel, ylabel : str
         x-and y-axis labels
-    mlabel : string, optional, default=None
+    mlabel : str, optional, default=None
         label for slope in the plot legend
-    clabel : string, optional, default=None
+    clabel : str, optional, default=None
         label for offset in the plot legend
     weights : array of double, optional, default=None
         weights of x points
     n_bin : double, optional, default=30
         number of points onto which data are binned
-    out_path_arr : array(n) of string, optional, default=None
+    out_path_arr : array(n) of str, optional, default=None
         output file path, if not given, plot is not saved to file
-    title : string, optional, default=''
+    title : str, optional, default=''
         plot title
-    colors(m) : array of string, optional, default=None
+    colors(m) : array of str, optional, default=None
         line colors
     stats_file : filehandler, optional, default=None
         output file for statistics
     verbose : bool, optional, default=False
         verbose output if True
     """
-    
     if out_path_arr is None:
-        out_path_arr = [None]*len(y_arr)
+        out_path_arr = [None] * len(y_arr)
     for x, xlabel, out_path in zip(x_arr, xlabel_arr, out_path_arr):
         affine_corr(
             x,
@@ -605,7 +614,7 @@ def affine_corr_n(
             colors=colors,
             stats_file=stats_file,
             verbose=verbose
-        ) 
+        )
 
 
 def xi_star_gal_tc(
@@ -621,15 +630,12 @@ def xi_star_gal_tc(
     w_star=None,
     theta_min_amin=2,
     theta_max_amin=200,
-    n_theta=20
+    n_theta=20,
 ):
-    """xi star gal tc
+    """Xi star gal tc.
 
     Cross-correlation between galaxy and star ellipticities.
     """
-
-    unit = 'degrees'
-
     cat_gal = treecorr.Catalog(
         ra=ra_gal,
         dec=dec_gal,
@@ -657,7 +663,6 @@ def xi_star_gal_tc(
         'max_sep': theta_max_amin,
         'nbins': n_theta
     }
-
     ng = treecorr.GGCorrelation(TreeCorrConfig)
 
     ng.process(cat_gal, cat_star)
@@ -677,9 +682,9 @@ def correlation_12_22(
     e2_2,
     theta_min_amin=2,
     theta_max_amin=200,
-    n_theta=20
+    n_theta=20,
 ):
-    """Correlation 12 22
+    """Correlation 12 22.
 
     Shear correlation functions between two samples 1 and 2.
     Compute xi_12 and xi_22.
@@ -742,7 +747,7 @@ def correlation_12_22(
 
 
 def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
-    """alpha
+    """Alpha.
 
     Compute scale-dependent PSF leakage alpha.
 
@@ -762,21 +767,22 @@ def alpha(r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights_gal, e1_star, e2_star):
     alpha, sig_alpha : float
         mean and std of alpha
     """
-
     complex_gal = (
         np.average(e1_gal, weights=weights_gal)
-        + np.average(e2_gal, weights=weights_gal)*1j
+        + np.average(e2_gal, weights=weights_gal) * 1j
     )
-    complex_psf = np.mean(e1_star) + np.mean(e2_star)*1j
+    complex_psf = np.mean(e1_star) + np.mean(e2_star) * 1j
 
     alpha_leak = (
-        (r_corr_gp.xip - np.real(np.conj(complex_gal)*complex_psf))
-        / (r_corr_pp.xip - np.abs(complex_psf)**2)
+        (r_corr_gp.xip - np.real(np.conj(complex_gal) * complex_psf))
+        / (r_corr_pp.xip - np.abs(complex_psf) ** 2)
     )
     sig_alpha_leak = (
-        np.abs(alpha_leak) * np.sqrt((np.sqrt(r_corr_gp.varxip) 
-        / r_corr_gp.xip)**2
-        + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip)**2)
+        np.abs(alpha_leak)
+        * np.sqrt(
+            (np.sqrt(r_corr_gp.varxip) / r_corr_gp.xip) ** 2
+            + (np.sqrt(r_corr_pp.varxip) / r_corr_pp.xip) ** 2
+        )
     )
 
     return alpha_leak, sig_alpha_leak

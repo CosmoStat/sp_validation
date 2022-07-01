@@ -2,7 +2,8 @@
 
 """sp_validation PACKAGE.
 
-Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by ShapePipe
+Validation of weak-lensing catalogues (galaxy and star shapes and other
+parameters) produced by ShapePipe
 
 References
 ----------

@@ -4,15 +4,13 @@ import sys
 import copy
 import numpy as np
 from optparse import OptionParser
-from astropy.io import ascii
+from astropy.io import ascii, fits
 
 from shapepipe.utilities import cfis
 from shapepipe.utilities import file_system
 
-from sp_validation.cat import *
-from sp_validation.plots import *
 from sp_validation.util import transform_nan
-from sp_validation.correlation import *
+from sp_validation import correlation
 from sp_validation import io
 
 
@@ -277,7 +275,7 @@ def leakage_test(param, stats_file):
         p_gt.add(par, value=pars_gt[par])
 
     # Ground-truth data
-    y1, y2 = func_bias_2d(
+    y1, y2 = correlation.func_bias_2d(
         p_gt,
         x_arr[0],
         x_arr[1],
@@ -294,7 +292,7 @@ def leakage_test(param, stats_file):
         for mix in [False, True]:
 
             out_path = f'{plot_dir_leakage}/test_{order}_{mix}'
-            corr_2d(
+            correlation.corr_2d(
                 x_arr,
                 [y1 + dy1, y2 + dy2],
                 xlabel_arr=xlabel_arr,
@@ -368,7 +366,7 @@ def leakage(dat, param, stats_file):
         out_path = (
             f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
         )
-        corr_2d(
+        correlation.corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -389,7 +387,7 @@ def leakage(dat, param, stats_file):
     mlabel = ['m_1', 'm_2']
     clabel = ['c_1', 'c_2']
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
-    affine_corr_n(
+    correlation.affine_corr_n(
         x_arr,
         e,
         xlabel_arr,

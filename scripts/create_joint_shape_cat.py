@@ -64,8 +64,8 @@ def parse_options(p_def):
     -------
     tuple
         Command line options
-    string
-        Command line string
+    str
+        Command line str
 
     """
     usage  = "%prog [OPTIONS]"
@@ -408,7 +408,8 @@ def main(argv=None):
         c,
         c_err,
         add_cols=add_col_data,
-        add_cols_format=add_col_format)
+        add_cols_format=add_col_format, 
+    )
 
     # PSF catalogue
     if param.verbose:
