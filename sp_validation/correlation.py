@@ -261,8 +261,13 @@ def corr_2d(
         ground truth parameter, for plotting, default is `None`
     verbose : bool, optional, default=False
         verbose output if True
+
+    Returns
+    -------
+    lmfit.Parameters
+        best-fit parameters
     """
-    
+
     if colors is None:
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
@@ -367,6 +372,8 @@ def corr_2d(
         colors=colors,
         out_path=out_path,
     )
+
+    return res.params
 
 
 def param_order2spin(p_dp, order, mix):

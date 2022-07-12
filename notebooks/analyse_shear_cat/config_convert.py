@@ -1,11 +1,11 @@
 import os
 
-input_base = ['tutorial_UNIONS_SP_v1.0']
+input_base = ['xip_xim']
 
 inp_str = '.ipynb '.join(input_base)
 
 
-cmd = f'jupyter nbconvert --to script {inp_str} --stdout > tutorial_UNIONS_SP_v1.0.py'
+cmd = f'jupyter nbconvert --to script {inp_str} --stdout > xip_xim.py'
 
 os.system(cmd)
 
