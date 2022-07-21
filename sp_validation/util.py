@@ -427,7 +427,7 @@ def log_command(argv, name=None, close_no_return=True):
                                                                                 
     Parameters                                                                  
     ----------                                                                  
-    argv : numpy.ndarray of str                                                 
+    argv : list
         Command line arguments                                                  
     name : str                                                                  
         Output file name (default: 'log_<command>')                             

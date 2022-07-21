@@ -142,6 +142,8 @@ def main(argv=None):
     for key in vars(options):
         params[key] = getattr(options, key)
 
+    util.log_command(argv)
+
     # Load best-fit parameters for alpha leakage
     fname = (
         f'./leakage/PSF_e_vs_e_gal_order-'

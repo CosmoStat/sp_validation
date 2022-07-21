@@ -197,7 +197,6 @@ def plot_data_1d(
     out_path,
     xlog=False,
     ylog=False,
-    log=False,
     labels=None,
     colors=None,
     linestyles=None,
