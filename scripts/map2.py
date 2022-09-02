@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-"""xip_xim.py
+"""map2.py
 
-Compute shear correlation functions using `treecorr`.
+Compute aperture-mass dispersion using `treecorr`.
+Requires input file with xi+ and xi- previously
+computed with `treecorr`.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
 
@@ -26,17 +28,12 @@ from sp_validation import util
 def params_default():
 
     params = {
-        'input_path': 'shape_catalog_ngmix.fits',
-        'key_ra': 'RA',
-        'key_dec': 'DEC',
-        'key_e1': 'e1',
-        'key_e2': 'e2',
-        'sign_e1': +1,
-        'sign_e2': +1,
+        'input_path': 'xip_xim.txt',
         'theta_min': 0.5,
         'theta_max': 200,
         'n_theta': 20,
-        'output_path' : './xip_xim.txt',
+        'n_Theta' : 10,
+        'output_path' : './map2.txt',
     }
 
     short_options = {
@@ -45,21 +42,18 @@ def params_default():
     }
 
     types = {
-        'sign_e1': 'int',
-        'sign_e2': 'int',
+        'theta_min': 'float',
+        'theta_max': 'float',
+        'n_theta': 'int',
+        'n_Theta': 'int',
     }
 
     help_strings = {
-        'input_path': 'shear catalogue input path, default={}',
-        'key_ra': 'column name for right ascension, default={}',
-        'key_dec': 'column name for declination, default={}',
-        'key_e1': 'column name for ellipticity component 1, default={}',
-        'key_e2': 'column name for ellipticity component 2, default={}',
-        'sign_e1': 'sign for ellipticity component 1, default={}',
-        'sign_e2': 'sign for ellipticity component 2, default={}',
+        'input_path': 'input file containing xi+ and xi-, default={}',
         'theta_min': 'mininum angular scale [arcmin], default={}',
         'theta_max': 'maximum angular scale [arcmin], default={}',
-        'n_theta': 'number of angular scales, default={}',
+        'n_theta': 'number of angular scales on input, default={}',
+        'n_Theta': 'number of angular scales on output, default={}',
         'output_path': 'output path, default={}',
     }
 
@@ -134,50 +128,40 @@ def main(argv=None):
     # Save calling command
     util.log_command(argv)
 
-    # Open input catalogue
-    if params['verbose']:
-        print(f'Reading catalogue {params["input_path"]}...')
-    data = fits.getdata(params['input_path'])
-
-    coord_units = 'degrees'
-    if params['verbose']:
-        print(                                                                  
-            'Signs for ellipticity components ='
-            + f' ({params["sign_e1"]:+d}, {params["sign_e2"]:+d})'
-        )
-    g1 = data[params['key_e1']] * params['sign_e1']
-    g2 = data[params['key_e2']] * params['sign_e2']
-    cat = treecorr.Catalog(
-        ra=data[params['key_ra']],
-        dec=data[params['key_dec']],
-        g1=g1,
-        g2=g2,
-        w=data['w'],
-        ra_units=coord_units,
-        dec_units=coord_units,
+    # Initizlies correlation object
+    gg = treecorr.GGCorrelation(
+        min_sep=params['theta_min'],
+        max_sep=params['theta_max'],
+        bin_size=params['n_theta'],
     )
 
-    # Set treecorr config info for correlation
-    sep_units = 'arcmin'
-    TreeCorrConfig = {
-        'ra_units': coord_units,
-        'dec_units': coord_units,
-        'min_sep': params['theta_min'],
-        'max_sep': params['theta_max'],
-        'sep_units': sep_units,
-        'nbins': params['n_theta'],
-    }
-    gg = treecorr.GGCorrelation(TreeCorrConfig)
+    # Open input catalogue
+    if params['verbose']:
+        print(f'Reading xi+ and xi- input file {params["input_path"]}...')
+    gg.read(params['input_path'])
+
+    # Set up angular smoothing scales on output
+    R = np.geomspace(
+        params['theta_min'] * 5,
+        params['theta_max'] / 2,
+        params['n_Theta'],
+    )
 
     # Compute correlation
     if params['verbose']:
-        print('Correlating...')
-    gg.process(cat, cat)
+        print('Computing aperture mass dispersion...')
+    #map2, mapmx, mx2, mx2im, var = gg.calculateMapSq(R, m2_uform='Schneider')
+    #gg.calculateMapSq(R, m2_uform='Schneider')
 
     # Write to file
     if params['verbose']:
         print(f'Writing output file {params["output_path"]}')
-    gg.write(params['output_path'])
+    #np.savetxt(
+        #params['output_path'],
+        #[R, map2, mapmx, mx2, mx2im, var],
+        #header='R[arcmin] <Map2> <Im[Map2]> <Mx2> <Im[Mx2]> var'
+    #)
+    gg.writeMapSq(params['output_path'], R=R, m2_uform='Schneider')
 
     return 0
 

@@ -123,8 +123,8 @@ def plot_histograms(
 
     Parameters
     ----------
-    xs : array of float
-        array of values, each of which to plot the distribution
+    xs : list
+        array of list of values, each for which to plot the distribution
     labels : array of string
         plot labels
     title : string
@@ -252,7 +252,7 @@ def plot_data_1d(
     figure(figsize=(15, 10))
 
     for i in range(len(x)):
-        if np.isnan(yerr[i]).all():
+        if len(yerr) == 0 or np.isnan(yerr[i]).all():
             eb = plt.plot(
                 x[i],
                 y[i],
