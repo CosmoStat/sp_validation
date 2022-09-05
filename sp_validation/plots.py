@@ -158,7 +158,7 @@ def plot_histograms(
 
     figure(figsize=(15, 10))
 
-    # Histogramsh
+    # Histograms
     for x, w, label, color, linestyle in zip(
             xs, weights, labels, colors, linestyles
     ):
