@@ -158,7 +158,7 @@ def plot_histograms(
 
     figure(figsize=(15, 10))
 
-    # Histogramsh
+    # Histograms
     for x, w, label, color, linestyle in zip(
             xs, weights, labels, colors, linestyles
     ):
@@ -253,7 +253,7 @@ def plot_data_1d(
     figure(figsize=(15, 10))
 
     for i in range(len(x)):
-        if np.isnan(yerr[i]).all():
+        if len(yerr) == 0 or np.isnan(yerr[i]).all():
             eb = plt.plot(
                 x[i],
                 y[i],

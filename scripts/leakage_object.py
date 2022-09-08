@@ -420,7 +420,7 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
-    utils.log_command(argv)
+    log_command(argv)
 
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
