@@ -73,6 +73,7 @@ def parse_options(p_def):
         '-i',                                                                   
         '--input_path_shear',                                                   
         dest='input_path_shear',                                                
+        default=p_def['input_path_shear'],
         type='string',                                                          
         help='input path of the extended shear catalogue'                       
     )
@@ -175,8 +176,10 @@ def main(argv=None):
         mix=params['mix'],
     )
 
-    e1_cor = dat_shear['e1'] + de1
-    e2_cor = dat_shear['e2'] + de2
+    # If the PSF leakage term has contaminated the data, correct
+    # for it by subtracting this term
+    e1_cor = dat_shear['e1'] - de1
+    e2_cor = dat_shear['e2'] - de2
 
     t = Table(dat_shear)
     t.add_column(Column(name='e1_cor', data=e1_cor))
