@@ -119,6 +119,7 @@ def parse_options(p_def):
         '-o',
         '--output_path',
         dest='output_path',
+        default=p_def['output_path'],
         type='string',
         help=(
             'input path of the extended shear catalogue,'
@@ -184,7 +185,12 @@ def main(argv=None):
     t = Table(dat_shear)
     t.add_column(Column(name='e1_cor', data=e1_cor))
     t.add_column(Column(name='e2_cor', data=e2_cor))
-    t.write(params['output_path'], overwrite=True)
+    print(
+        'Saving alpha-corrected ellipticities to' +
+        f' {params["output_path"]}'
+    )
+    t.write(params['output_path'], overwrite=True, format='fits')
+
 
     return 0
                                                                                 
