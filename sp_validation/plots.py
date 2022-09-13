@@ -147,6 +147,12 @@ def plot_histograms(
         labels of vertical lines if not None
     density : bool, optional, default=True
         (normalised) density histogram if True
+
+    Returns
+    -------
+    list :
+        values, bins for each histogram call
+
     """
     if weights is None:
         weights = [np.ones_like(x) for x in xs]
@@ -158,13 +164,28 @@ def plot_histograms(
 
     figure(figsize=(15, 10))
 
-    # Histogramsh
+    # Return lists
+    n_arr = []
+    bins_arr = []
+
+    # Histograms
     for x, w, label, color, linestyle in zip(
             xs, weights, labels, colors, linestyles
     ):
-        plt.hist(x, n_bin, weights=w, range=x_range, histtype='step',
-                 color=color, linestyle=linestyle,
-                 linewidth=1, density=density, label=label)
+        n, bins, _ = plt.hist(
+            x,
+            n_bin,
+            weights=w,
+            range=x_range,
+            histtype='step',
+            color=color,
+            linestyle=linestyle,
+            linewidth=1,
+            density=density,
+            label=label
+        )
+        n_arr.append(n)
+        bins_arr.append(bins)
 
     # Horizontal lines
     if vline_x:
@@ -185,6 +206,8 @@ def plot_histograms(
     plt.ylabel(y_label)
     plt.legend()
     savefig(out_path)
+
+    return n_arr, bins_arr
 
 
 def plot_data_1d(
@@ -224,7 +247,8 @@ def plot_data_1d(
     color : list, optional, default=None
         line colors, matplotlib default colors if None
     linestyle : list, optional, default=None
-        linestyle indicators, '-' if None
+        linestyle indicators, '-' if None;
+        use `''` for no lines
     linewidths : list
         line widths, default is `2`
     eb_linestyle : array of string, optional, default=None
@@ -265,12 +289,12 @@ def plot_data_1d(
                 x[i],
                 y[i],
                 yerr=yerr[i],
-                label=labels[i],
+                label=labels[i] + 'xxx',
                 color=colors[i],
-                linestyle=linestyles[i],
                 marker='o',
                 markerfacecolor='none',
                 capsize=4,
+                linestyle=linestyles[i],
             )
             eb[-1][0].set_linestyle(eb_linestyles[i])
 
