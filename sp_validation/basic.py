@@ -971,14 +971,10 @@ def stack_cluster(
         final_g1 = np.concatenate((final_g1, g1_gal))
         final_g2 = np.concatenate((final_g2, g2_gal))
         final_w = np.concatenate((final_w, w_gal))
-        # ra_gal_tmp = (ra_gal_corr-ra_tmp) * d_max / d_max_tmp
         ra_gal_tmp = (ra_gal - cluster_cat['ra'][i]) * d_max / d_max_tmp
         dec_gal_tmp = (dec_gal - cluster_cat['dec'][i]) * d_max / d_max_tmp
         final_ra = np.concatenate((final_ra, ra_gal_tmp))
         final_dec = np.concatenate((final_dec, dec_gal_tmp))
-
-    # ke, kb, params = make_mass_map(final_ra, final_dec, final_g1,
-    # final_g2, final_w)
 
     return final_ra, final_dec, final_g1, final_g2, final_w
 
@@ -1058,13 +1054,9 @@ def stack_cluster2(
         final_g2 = np.concatenate((final_g2, g2_gal))
         final_w = np.concatenate((final_w, w_gal))
         ra_gal_tmp = (ra_gal - ra_tmp) * d_max / d_max_tmp
-        # ra_gal_tmp = (ra_gal - cluster_cat['ra'][i]) * d_max / d_max_tmp
         dec_gal_tmp = (dec_gal - cluster_cat['dec'][i]) * d_max / d_max_tmp
         final_ra = np.concatenate((final_ra, ra_gal_tmp))
         final_dec = np.concatenate((final_dec, dec_gal_tmp))
-
-    # ke, kb, params = make_mass_map(final_ra, final_dec, final_g1,
-    # final_g2, final_w)
 
     return final_ra, final_dec, final_g1, final_g2, final_w
 
