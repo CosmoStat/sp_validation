@@ -454,7 +454,7 @@ def log_command(argv, name=None, close_no_return=True):
     for a in argv:                                                              
                                                                                 
         # Quote argument if special characters                                  
-        if ']' in a or ']' in a:                                                
+        if '[' in a or ']' in a:                                                
             a = f'\"{a}\"'                                                      
                                                                                 
         print(a, end='', file=f)                                                

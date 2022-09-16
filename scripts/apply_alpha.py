@@ -7,7 +7,6 @@ Write FITS file with added columns.
 
 :Authors: Martin Kilbinger
 
-:Date: 07/2022                                                               
 """
 
 import sys

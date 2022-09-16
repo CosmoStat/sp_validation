@@ -2,13 +2,11 @@
 
 """map2.py
 
-Compute aperture-mass dispersion using `treecorr`.
+Compute aperture-mass dispersion using ``treecorr``.
 Requires input file with xi+ and xi- previously
-computed with `treecorr`.
+computed with ``treecorr``.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
-
-:Date: 2022
 
 """
 
@@ -150,17 +148,11 @@ def main(argv=None):
     # Compute correlation
     if params['verbose']:
         print('Computing aperture mass dispersion...')
-    #map2, mapmx, mx2, mx2im, var = gg.calculateMapSq(R, m2_uform='Schneider')
-    #gg.calculateMapSq(R, m2_uform='Schneider')
+    gg.calculateMapSq(R, m2_uform='Schneider')
 
     # Write to file
     if params['verbose']:
         print(f'Writing output file {params["output_path"]}')
-    #np.savetxt(
-        #params['output_path'],
-        #[R, map2, mapmx, mx2, mx2im, var],
-        #header='R[arcmin] <Map2> <Im[Map2]> <Mx2> <Im[Mx2]> var'
-    #)
     gg.writeMapSq(params['output_path'], R=R, m2_uform='Schneider')
 
     return 0
