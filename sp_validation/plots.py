@@ -251,7 +251,7 @@ def plot_data_1d(
         use `''` for no lines
     linewidths : list
         line widths, default is `2`
-    eb_linestyle : array of string, optional, default=None
+    eb_linestyles : array of string, optional, default=None
         errorbar linestyle indicators, '-' if None
     xlim : array(float, 2), optional, default=None
         x-axis limits, automatic if None
@@ -289,7 +289,7 @@ def plot_data_1d(
                 x[i],
                 y[i],
                 yerr=yerr[i],
-                label=labels[i] + 'xxx',
+                label=labels[i],
                 color=colors[i],
                 marker='o',
                 markerfacecolor='none',
