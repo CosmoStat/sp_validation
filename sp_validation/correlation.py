@@ -8,8 +8,6 @@
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
          Axel Guinot
 
-:Date: 2021
-
 """
 
 import numpy as np

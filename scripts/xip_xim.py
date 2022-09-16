@@ -6,8 +6,6 @@ Compute shear correlation functions using `treecorr`.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
 
-:Date: 2022
-
 """
 
 import sys
