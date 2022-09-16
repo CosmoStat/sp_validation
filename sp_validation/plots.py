@@ -150,7 +150,7 @@ def plot_histograms(
 
     Returns
     -------
-    list :
+    list
         values, bins for each histogram call
 
     """
