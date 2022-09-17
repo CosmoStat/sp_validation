@@ -2,7 +2,7 @@
 
 """xip_xim.py
 
-Compute shear correlation functions using `treecorr`.
+Compute shear correlation functions using ``treecorr``.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
 
