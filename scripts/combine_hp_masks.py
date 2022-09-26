@@ -10,6 +10,7 @@ Combine healpy tile masks into a joint footprint mask.
 
 import sys
 import re
+from glob import glob
 from optparse import OptionParser
 
 import numpy as np
@@ -54,7 +55,8 @@ def params_default():
             'output/run_sp_combined_image/get_images_runner/output'
         ),
         'nside': 1024,
-        'out_base': 'mask',
+        'out_path': 'mask.fits',
+        'out_path_plot': 'mask.png',
         'plot': '0',
         'verbose': False,
     }
@@ -76,7 +78,11 @@ def params_default():
             'input directory for images (headers with WCS, default={}'
         ),
         'nside': 'Output resolution parameter, default={}',
-        'out_base': 'output base name, default={}',
+        'out_path': (
+            'hp mask path; output if \'-p 0 or 1\';'
+            + 'input if \'-p 2\'), can be list, default={}'
+        ),
+        'out_path_plot': 'output path for plot',
         'plot': '0: no plot; 1: create plot; 2: plot only, read mask file',
         'verbose': 'verbose output if True',
     }
@@ -85,7 +91,8 @@ def params_default():
     short_options = {
         'input_tile_IDs': '-i',
         'nside': '-n',
-        'out_base': '-o',
+        'out_path': '-o',
+        'out_path_plot': '-O',
         'plot': '-p',
         'verbose': '-v',
     }
@@ -327,7 +334,13 @@ def main(argv=None):
     # Save calling command
     #util.log_command(argv)
 
+    print(params["out_path"])
+    out_path_arr = glob(f'{params["out_path"]}')
+    print(out_path_arr)
+
     if params['plot'] != 2:
+
+        assert(len(out_path_arr) == 1)
 
         # Get ID list
         ID_arr = read_list(params['input_tile_IDs'])
@@ -341,15 +354,23 @@ def main(argv=None):
         write_combined_hp_mask(
             t,
             params['nside'],
-            f'{params["out_base"]}.fits'
+            out_path_arr[0],
         )
     # Plot mask
     if params['plot'] > 0:
+
         if params['verbose']:
-            print('Creating plot of combined mask...')
-        mask_all = hp.read_map(f'{params["out_base"]}.fits')
-        hp.mollview(mask_all)
-        plt.savefig(f'{params["out_base"]}.png')
+            print('Creating plot of combined mask(s)...')
+
+        mask_all = np.zeros(shape=(hp.nside2npix(params['nside'])))
+        for out_path in out_path_arr:
+
+            if params['verbose']:
+                print(f'Reading file {out_path}...')
+
+            mask_all += hp.read_map(out_path)
+        hp.mollview(mask_all, coord='GC', rot=(150, 0, 0))
+        plt.savefig(params['out_path_plot'])
 
     return 0
 
