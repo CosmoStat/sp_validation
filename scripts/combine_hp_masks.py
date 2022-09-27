@@ -278,7 +278,7 @@ def combine_hp_masks(mask_1d, verbose=False):
     idx = 0
     if verbose:
         print('Combining mask tile information...')
-    for ID in tqdm(ID_arr, disable=not verbose):
+    for ID in tqdm(mask_1d, disable=not verbose):
 
         if idx == 0:
             t['flux'] = mask_1d[ID]
@@ -294,13 +294,15 @@ def combine_hp_masks(mask_1d, verbose=False):
     return t
 
 
-def write_combined_hp_mask(nside, output_path):
+def write_combined_hp_mask(t, nside, output_path):
     """Write Combined HealPix Mask.
 
     "Write healpix mask to FITS file.
 
     Parameters
     ----------
+    t : class Table
+        mask information
     nside : int
         healpix resolution parameter
     output_path : str
@@ -314,7 +316,7 @@ def write_combined_hp_mask(nside, output_path):
     t.meta['INDXSCHM'] = 'IMPLICIT'
 
     # Write to file
-    t.write(output_path, overwrite=True)
+    t.write(output_path, overwrite=True, format='fits')
 
 
 def main(argv=None):
@@ -334,9 +336,7 @@ def main(argv=None):
     # Save calling command
     #util.log_command(argv)
 
-    print(params["out_path"])
     out_path_arr = glob(f'{params["out_path"]}')
-    print(out_path_arr)
 
     if params['plot'] != 2:
 
