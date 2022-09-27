@@ -340,7 +340,9 @@ def main(argv=None):
 
     if params['plot'] != 2:
 
-        assert(len(out_path_arr) == 1)
+        # For mask FITS file on output, make sure there are not
+        # multiple output names
+        assert(len(out_path_arr) <= 1)
 
         # Get ID list
         ID_arr = read_list(params['input_tile_IDs'])
@@ -369,7 +371,7 @@ def main(argv=None):
                 print(f'Reading file {out_path}...')
 
             mask_all += hp.read_map(out_path)
-        hp.mollview(mask_all, coord='GC', rot=(150, 0, 0))
+        hp.mollview(mask_all, coord='GC', rot=(151, 0, 0))
         plt.savefig(params['out_path_plot'])
 
     return 0
