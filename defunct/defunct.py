@@ -1282,3 +1282,567 @@ def get_ang_smoothing(params):
     smooth = max(1, int(round(params['smooth'] / params['pix'], 0)))            
     print("smoothing pixel: ", smooth)                                          
     return smooth
+
+
+def stack_cluster(                                                              
+    cluster_cat,                                                                
+    ra,                                                                         
+    dec,                                                                        
+    g1,                                                                         
+    g2,                                                                         
+    w,                                                                          
+    z_bin_size=0.1,                                                             
+    final_size=100,                                                             
+    d_max=2,                                                                    
+    tree=None,                                                                  
+):                                                                              
+    """Add docstring.                                                           
+                                                                                
+    ...                                                                         
+                                                                                
+    """                                                                         
+    n_cluster = len(cluster_cat['ra'])                                          
+    mean_dec = np.mean(dec)                                                     
+                                                                                
+    # Make cKDTree                                                              
+    print("make tree..")                                                        
+    ra_corr = correct_ra2(ra, dec)                                              
+    if tree is None:                                                            
+        tree = cKDTree(np.array([ra_corr, dec]).T)                              
+    print('Done.')                                                              
+                                                                                
+    h = 0.7                                                                     
+    cosmo = cosmology.FlatLambdaCDM(H0=h * 100., Om0=0.3)                       
+    deg_to_rad = np.pi / 180.  # /60.                                           
+                                                                                
+    R_mpc = cluster_cat['R'] / h                                                
+                                                                                
+    final_ra = np.array([])                                                     
+    final_dec = np.array([])                                                    
+    final_g1 = np.array([])                                                     
+    final_g2 = np.array([])                                                     
+    final_w = np.array([])                                                      
+    for i in range(n_cluster):                                                  
+        print('#######')                                                        
+        print('{}'.format(i))  # , end='\r')                                    
+                                                                                
+        d_ang = cosmo.angular_diameter_distance(cluster_cat['z'][i]).value      
+                                                                                
+        R_ang = R_mpc[i] / d_ang / deg_to_rad                                   
+                                                                                
+        ra_tmp = correct_ra2(                                                   
+            cluster_cat['ra'][i],                                               
+            cluster_cat['dec'][i],                                              
+            mean_dec,                                                           
+        )                                                                       
+                                                                                
+        print(3. * R_ang)                                                       
+                                                                                
+        pos = coords.SkyCoord(                                                  
+            ra=cluster_cat['ra'][i] * u.degree,                                 
+            dec=cluster_cat['dec'][i] * u.degree,
+            frame='icrs',                                                       
+        )                                                                       
+        xid = SDSS.query_region(                                                
+            pos,                                                                
+            radius=3. * R_ang * u.degree,                                       
+            spectro=True,                                                       
+        )                                                                       
+        if xid is None:                                                         
+            continue                                                            
+        print(len(xid['ra']))                                                   
+        res = tree.query(                                                       
+            np.array([                                                          
+                correct_ra2(xid['ra'], xid['dec'], mean_dec),                   
+                xid['dec']                                                      
+            ]).T,                                                               
+            k=1,                                                                
+            n_jobs=-1,                                                          
+        )                                                                       
+        ind_z = np.where(res[0] < 0.0005)                                       
+        ind_tmp = res[1][ind_z]                                                 
+                                                                                
+        # res = tree.query(np.array([ra_tmp, cluster_cat['dec'][i]]).T,         
+        # k = 100000, n_jobs=-1)                                                
+                                                                                
+        # mask_size = np.where(res[0] <= 10. * R_ang)                           
+        # mask_size = np.where(res[0] <= 0.5)                                   
+                                                                                
+        if len(ind_tmp) == 0:                                                   
+            continue                                                            
+                                                                                
+        ra_gal = ra[ind_tmp]                                                    
+        dec_gal = dec[ind_tmp]                                                  
+        z_gal = xid['z'][ind_z]                                                 
+                                                                                
+        mask_z = (                                                              
+            (z_gal > cluster_cat['z'][i] - z_bin_size)                          
+            & (z_gal < cluster_cat['z'][i] + z_bin_size)                        
+        )                                                                       
+                                                                                
+        if len(z_gal[mask_z]) == 0:                                             
+            continue                                                            
+                                                                                
+        ra_gal = ra_gal[mask_z]                                                 
+        dec_gal = dec_gal[mask_z]                                               
+        g1_gal = g1[ind_tmp][mask_z]                                            
+        g2_gal = g2[ind_tmp][mask_z]                                            
+        w_gal = w[ind_tmp][mask_z]                                              
+                                                                                
+        print(len(ra_gal))                                                      
+                                                                                
+        ra_gal_corr = correct_ra2(ra_gal, dec_gal, mean_dec)                    
+                                                                                
+        # d_gal = np.sqrt((ra_gal_corr - ra_tmp)**2. +                          
+        # (dec_gal - cluster_cat['dec'][i])**2.)                                
+        d_gal = np.sqrt(                                                        
+            (ra_gal - cluster_cat['ra'][i]) ** 2.
+            + (dec_gal - cluster_cat['dec'][i]) ** 2.                           
+        )                                                                       
+                                                                                
+        # ind_tmp = res[1][mask_size]                                           
+        # d_max_tmp = np.max(res[0][mask_size])                                 
+                                                                                
+        d_max_tmp = np.max(d_gal)                                               
+                                                                                
+        final_g1 = np.concatenate((final_g1, g1_gal))                           
+        final_g2 = np.concatenate((final_g2, g2_gal))                           
+        final_w = np.concatenate((final_w, w_gal))                              
+        ra_gal_tmp = (ra_gal - cluster_cat['ra'][i]) * d_max / d_max_tmp        
+        dec_gal_tmp = (dec_gal - cluster_cat['dec'][i]) * d_max / d_max_tmp     
+        final_ra = np.concatenate((final_ra, ra_gal_tmp))                       
+        final_dec = np.concatenate((final_dec, dec_gal_tmp))                    
+                                                                                
+    return final_ra, final_dec, final_g1, final_g2, final_w                     
+                                                                                
+                                                                                
+def stack_cluster2(                                                             
+    cluster_cat,                                                                
+    ra,                                                                         
+    dec,                                                                        
+    g1,                                                                         
+    g2,                                                                         
+    w,                                                                          
+    z_bin_size=0.1,                                                             
+    final_size=100,                                                             
+    d_max=2,                                                                    
+    tree=None,                                                                  
+):                                                                              
+    """Add docstring.                                                           
+                                                                                
+    ...                                                                         
+                                                                                
+    """                                                                         
+    n_cluster = len(cluster_cat['ra'])                                          
+    mean_dec = np.mean(dec)                                                     
+                                                                                
+    # Make cKDTree                                                              
+    print("make tree..")                                                        
+    ra_corr = correct_ra2(ra, dec)                                              
+    if tree is None:                                                            
+        tree = cKDTree(np.array([ra_corr, dec]).T)                              
+    print('Done.')                                                              
+                                                                                
+    h = 0.7                                                                     
+    cosmo = cosmology.FlatLambdaCDM(H0=h * 100., Om0=0.3)                       
+    deg_to_rad = np.pi / 180.  # /60.                                           
+                                                                                
+    R_mpc = cluster_cat['R'] / h                                                
+                                                                                
+    final_ra = np.array([])                                                     
+    final_dec = np.array([])                                                    
+    final_g1 = np.array([])                                                     
+    final_g2 = np.array([])                                                     
+    final_w = np.array([]) 
+    for i in range(n_cluster):                                                  
+        print('{}'.format(i), end='\r')                                         
+                                                                                
+        d_ang = cosmo.angular_diameter_distance(cluster_cat['z'][i]).value      
+                                                                                
+        R_ang = R_mpc[i] / d_ang / deg_to_rad                                   
+                                                                                
+        ra_tmp = correct_ra2(                                                   
+            cluster_cat['ra'][i],                                               
+            cluster_cat['dec'][i],                                              
+            mean_dec,                                                           
+        )                                                                       
+                                                                                
+        res = tree.query(                                                       
+            np.array([ra_tmp, cluster_cat['dec'][i]]).T,                        
+            k=500000,                                                           
+            n_jobs=-1,                                                          
+        )                                                                       
+                                                                                
+        # mask_size = np.where(res[0] <= 10. * R_ang)                           
+        mask_size = np.where(res[0] <= 3. * R_ang)                              
+                                                                                
+        ind_tmp = res[1][mask_size]                                             
+        if len(ind_tmp) == 0:                                                   
+            continue                                                            
+        d_max_tmp = np.max(res[0][mask_size])                                   
+                                                                                
+        ra_gal = ra_corr[ind_tmp]                                               
+        dec_gal = dec[ind_tmp]                                                  
+        g1_gal = g1[ind_tmp]                                                    
+        g2_gal = g2[ind_tmp]                                                    
+        w_gal = w[ind_tmp]                                                      
+                                                                                
+        final_g1 = np.concatenate((final_g1, g1_gal))                           
+        final_g2 = np.concatenate((final_g2, g2_gal))                           
+        final_w = np.concatenate((final_w, w_gal))                              
+        ra_gal_tmp = (ra_gal - ra_tmp) * d_max / d_max_tmp                      
+        dec_gal_tmp = (dec_gal - cluster_cat['dec'][i]) * d_max / d_max_tmp     
+        final_ra = np.concatenate((final_ra, ra_gal_tmp))                       
+        final_dec = np.concatenate((final_dec, dec_gal_tmp))                    
+                                                                                
+    return final_ra, final_dec, final_g1, final_g2, final_w
+
+
+def jackknif_stat(data, stat_est=np.mean, remove_size=0.1, n_realization=100):  
+    """Add docstring.                                                           
+                                                                                
+    ...                                                                         
+                                                                                
+    """                                                                         
+    samp_size = len(data)                                                       
+    keep_size_pc = 1 - remove_size                                              
+                                                                                
+    if keep_size_pc < 0:                                                        
+        raise ValueError('remove size should be in [0, 1]')                     
+                                                                                
+    subsamp_size = int(samp_size * keep_size_pc)                                
+                                                                                
+    all_est = []                                                                
+    for i in tqdm(range(n_realization), total=n_realization):                   
+        sub_data = np.random.choice(data, subsamp_size)                         
+                                                                                
+        all_est.append(stat_est(sub_data))                                      
+                                                                                
+    all_est = np.array(all_est)                                                 
+                                                                                
+    return np.mean(all_est), np.std(all_est)
+
+
+def cluster_mass_plot(                                                          
+    ra_gal,                                                                     
+    dec_gal,                                                                    
+    e1,                                                                         
+    e2,                                                                         
+    weights,                                                                    
+    ra_cluster,                                                                 
+    dec_cluster,                                                                
+    m_cluster,                                                                  
+    n_bin=4,                                                                    
+):                                                                              
+    """Add docstring.                                                           
+                                                                                
+    ...                                                                         
+                                                                                
+    """                                                                         
+    if weights is None:                                                         
+        weights = np.ones_like(e1)                                              
+                                                                                
+    size_all = len(m_cluster)                                                   
+    size_bin = int(size_all / n_bin)                                            
+    diff_size = size_all - size_bin                                             
+                                                                                
+    m_cluster_arg_sort = np.argsort(m_cluster)                                  
+                                                                                
+    logR_p_a = []                                                               
+    gamT_p_a = []                                                               
+    gamX_p_a = []                                                               
+    gam_sig_p_a = []                                                            
+    mean_m = []                                                                 
+                                                                                
+    for i in tqdm(range(n_bin), total=n_bin):                                   
+        if i < diff_size:                                                       
+            bin_size_tmp = size_bin + 1                                         
+            starter = 0                                                         
+        else:                                                                   
+            bin_size_tmp = size_bin                                             
+            starter = diff_size                                                 
+        ind_1 = m_cluster_arg_sort[                                             
+            starter + i * bin_size_tmp: starter + (i + 1) * bin_size_tmp        
+        ]                                                                       
+                                                                                
+        ####                                                                    
+        mean_m.append(np.mean(m_cluster[ind_1]))                                
+                                                                                
+        R_p, logR_p, gamT_p, gamX_p, gam_sig_p = gamma_T_tc(                    
+            ra_cluster[ind_1],                                                  
+            dec_cluster[ind_1],                                                 
+            ra_gal,                                                             
+            dec_gal,                                                            
+            e1,                                                                 
+            e2,                                                                 
+            weights,                                                            
+        )                                                                       
+                                                                                
+        logR_p_a.append(logR_p)
+        gamT_p_a.append(gamT_p)                                                 
+        gamX_p_a.append(gamX_p)                                                 
+        gam_sig_p_a.append(gam_sig_p)                                           
+                                                                                
+    logR_p_a = np.array(logR_p_a)                                               
+    gamT_p_a = np.array(gamT_p_a)                                               
+    gamX_p_a = np.array(gamX_p_a)                                               
+    gam_sig_p_a = np.array(gam_sig_p_a)                                         
+    mean_m = np.array(mean_m)                                                   
+                                                                                
+    plt.figure(figsize=(30, 20))                                                
+    for i in range(n_bin):                                                      
+        errplot = plt.errorbar(                                                 
+            logR_p_a[i],                                                        
+            gamT_p_a[i],                                                        
+            yerr=gam_sig_p_a[i],                                                
+            capsize=3,                                                          
+            label=rf'$\gamma_t$ M = {mean_m[i]}',                               
+        )                                                                       
+    plt.hlines(                                                                 
+        y=0,                                                                    
+        xmin=np.min(logR_p),                                                    
+        xmax=np.max(logR_p),                                                    
+        linestyles='dashed',                                                    
+    )                                                                           
+    plt.title(r'Lensing by clusters')                                           
+    plt.ylabel(r'$\gamma$')                                                     
+    plt.xlabel(r'$log(\theta$) (arcmin)')                                       
+                                                                                
+    plt.legend()
+
+
+def get_cluster_mass(                                                           
+    R_200,                                                                      
+    z,                                                                          
+    H_0=72 * 1e3,                                                               
+    Omega_m=0.3,                                                                
+    Omega_lambda=0.7,                                                           
+    G=6.674e-11,                                                                
+):                                                                              
+    """Get Cluster Mass.                                                        
+                                                                                
+    Retrun M_200                                                                
+    """                                                                         
+    def H2(z):                                                                  
+        return H_0**2. * (Omega_m * (1 + z)**3. + Omega_lambda)                 
+                                                                                
+    return 100. * R_200 ** 3. * H2(z) / G * 3.086e22 
+
+
+def c_DuttonMaccio(z, m, h):                                                    
+    """Dutton Maccio Concentration.                                             
+                                                                                
+    Concentration from c(M) relation in Dutton & Maccio (2014).                 
+                                                                                
+    Parameters                                                                  
+    ----------                                                                  
+    z : float or array_like                                                     
+        Redshift(s) of halos.                                                   
+    m : float or array_like                                                     
+        Mass(es) of halos (m200 definition), in units of solar masses.          
+    h : float, optional                                                         
+        Hubble parameter. Default is from Planck13.                             
+                                                                                
+    Returns                                                                     
+    -------                                                                     
+    ndarray                                                                     
+        Concentration values (c200) for halos.                                  
+                                                                                
+    References                                                                  
+    ----------                                                                  
+    Calculation from Planck-based results of simulations presented in:          
+    A.A. Dutton & A.V. Maccio, "Cold dark matter haloes in the Planck era:      
+    evolution of structural parameters for Einasto and NFW profiles,"           
+    Monthly Notices of the Royal Astronomical Society, Volume 441, Issue 4,     
+    p.3359-3374, 2014.                                                          
+    """                                                                         
+    # z, m = _check_inputs(z, m)                                                
+                                                                                
+    a = 0.52 + 0.385 * np.exp(-0.617 * (z**1.21))  # EQ 10                      
+    b = -0.101 + 0.026 * z                         # EQ 11                      
+                                                                                
+    logc200 = a + b * np.log10(m * h / (10.**12))  # EQ 7                       
+                                                                                
+    concentration = 10.**logc200                                                
+                                                                                
+    return concentration
+
+
+def c_XRAY(z, m, h):                                                            
+    """Add docstring.                                                           
+                                                                                
+    Paper: https://arxiv.org/pdf/1510.01961.pdf                                 
+    Table2, X-ray values                                                        
+    """                                                                         
+    M_star = 1.3 * 1e13 / h                                                     
+                                                                                
+    alpha = -0.105                                                              
+    b = 2.494                                                                   
+                                                                                
+    A = 10**(b + alpha * np.log10(M_star))                                      
+                                                                                
+    return A / (1 + z) * (m / M_star) ** alpha 
+
+
+def NegDash(                                                                    
+    x_in,                                                                       
+    y_in,                                                                       
+    yerr_in,                                                                    
+    plot_name='',                                                               
+    vertical_lines=True,                                                        
+    xlabel='',                                                                  
+    ylabel='',                                                                  
+    ylim=None,                                                                  
+    semilogx=False,                                                             
+    semilogy=False,                                                             
+    **kwargs,                                                                   
+):                                                                              
+    """Neg Dash.                                                                
+                                                                                
+    This function is for making plots with vertical errorbars, where            
+    negative values are shown in absolute value as dashed lines. The resulting  
+    plot can either be saved by specifying a file name as ``plot_name``, or be  
+    kept as a pyplot instance (for instance to combine several NegDashes).      
+    """                                                                         
+    x = np.copy(x_in)                                                           
+    y = np.copy(y_in)                                                           
+    yerr = np.copy(yerr_in)                                                     
+    # catch and separate errorbar-specific keywords from Lines2D ones           
+    safekwargs = dict(kwargs)                                                   
+    errbkwargs = dict()                                                         
+    if 'linestyle' in kwargs.keys():                                            
+        print(                                                                  
+            'Warning: linestyle was provided but that would kind of defeat '    
+            + 'the purpose, so I\'ll just ignore it. Sorry.'                    
+        )                                                                       
+        del safekwargs['linestyle']                                             
+    for errorbar_kword in [                                                     
+        'fmt',                                                                  
+        'ecolor',                                                               
+        'elinewidth',                                                           
+        'capsize',                                                              
+        'barsabove',                                                            
+        'errorevery'                                                            
+    ]:                                                                          
+        if errorbar_kword in kwargs.keys():                                     
+            # posfmt = '-'+kwargs['fmt']                                        
+            # negfmt = '--'+kwargs['fmt']                                       
+            errbkwargs[errorbar_kword] = kwargs[errorbar_kword]                 
+            del safekwargs[errorbar_kword]                                      
+    errbkwargs = dict(errbkwargs, **safekwargs)                                 
+    """else:                                                                    
+        posfmt = '-'                                                            
+        negfmt = '--'                                                           
+        safekwargs = kwargs"""                                                  
+    # plot up to next change of sign                                            
+    current_sign = np.sign(y[0])                                                
+    first_change = np.argmax(current_sign * y < 0)                              
+    while first_change:                                                         
+        if current_sign > 0:                                                    
+            plt.errorbar(                                                       
+                x[:first_change], 
+            )                                                                   
+            if vertical_lines:                                                  
+                plt.vlines(                                                     
+                    x[first_change - 1],                                        
+                    0,                                                          
+                    y[first_change - 1],                                        
+                    linestyle='-',                                              
+                    **safekwargs,                                               
+                )                                                               
+                plt.vlines(                                                     
+                    x[first_change],                                            
+                    0,                                                          
+                    np.abs(y[first_change]),                                    
+                    linestyle='--',                                             
+                    **safekwargs,                                               
+                )                                                               
+        else:                                                                   
+            plt.errorbar(                                                       
+                x[:first_change],                                               
+                np.abs(y[:first_change]),                                       
+                yerr=yerr[:first_change],                                       
+                linestyle='--',                                                 
+                **errbkwargs,                                                   
+            )                                                                   
+            if vertical_lines:                                                  
+                plt.vlines(                                                     
+                    x[first_change - 1],                                        
+                    0,                                                          
+                    np.abs(y[first_change - 1]),                                
+                    linestyle='--',                                             
+                    **safekwargs,                                               
+                )                                                               
+                plt.vlines(                                                     
+                    x[first_change],                                            
+                    0,                                                          
+                    y[first_change],                                            
+                    linestyle='-',                                              
+                    **safekwargs,                                               
+                )                                                               
+        x = x[first_change:]                                                    
+        y = y[first_change:]                                                    
+        yerr = yerr[first_change:]                                              
+        current_sign *= -1                                                      
+        first_change = np.argmax(current_sign * y < 0)                          
+    # one last time when `first_change'==0 ie no more changes:                  
+    if current_sign > 0:                                                        
+        plt.errorbar(x, y, yerr=yerr, linestyle='-', **errbkwargs)              
+    else:                                                                       
+        plt.errorbar(x, np.abs(y), yerr=yerr, linestyle='--', **errbkwargs)     
+    if semilogx:                                                                
+        plt.xscale('log')                                                       
+    if semilogy: 
+        plt.yscale('log')                                                       
+    if ylim is not None:                                                        
+        plt.ylim(ylim)                                                          
+    plt.xlabel(xlabel)                                                          
+    plt.ylabel(ylabel)                                                          
+    if plot_name:                                                               
+        plt.savefig(plot_name, bbox_inches='tight')                             
+        plt.close() 
+
+
+def guess_surface(ra, dec, min_nbins=100, max_nbins=1e6, n_nbins=100):          
+    """Add docstring.                                                           
+                                                                                
+    ...                                                                         
+                                                                                
+    """                                                                         
+    n_obj = len(ra)                                                             
+    ra_size = np.max(ra) - np.min(ra)                                           
+    dec_size = np.max(dec) - np.min(dec)                                        
+                                                                                
+    ra_dec_ratio = ra_size / dec_size                                           
+    area_eff = []                                                               
+    bins = np.linspace(min_nbins, max_nbins, n_nbins)                           
+    for tmp_nbins in tqdm(bins, total=n_nbins):                                 
+                                                                                
+        if ra_dec_ratio >= 1:                                                   
+            if ra_dec_ratio > 2.:                                               
+                ra_dec_ratio = 2.                                               
+            dec_nbins = tmp_nbins                                               
+            ra_nbins = int(ra_dec_ratio * tmp_nbins)                            
+        else:                                                                   
+            ra_dec_ratio = 1. / ra_dec_ratio                                    
+            if ra_dec_ratio > 2.:                                               
+                ra_dec_ratio = 2.                                               
+            ra_nbins = tmp_nbins                                                
+            dec_nbins = int(ra_dec_ratio * tmp_nbins)                           
+                                                                                
+        ra_pix_size = ra_size / ra_nbins                                        
+        dec_pix_size = dec_size / dec_nbins                                     
+                                                                                
+        pixel_area = ra_pix_size * dec_pix_size                                 
+                                                                                
+        map_2d, edges = np.histogramdd(                                         
+            np.array([dec, ra]).T,                                              
+            bins=(dec_nbins, ra_nbins),                                         
+        )                                                                       
+                                                                                
+        n_pix_used = len(np.where(map_2d != 0)[0])                              
+        print(n_pix_used)                                                       
+                                                                                
+        area_eff.append(n_pix_used * pixel_area)                                
+                                                                                
+    return area_eff, bins
