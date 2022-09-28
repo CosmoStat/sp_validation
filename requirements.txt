@@ -10,4 +10,3 @@ seaborn
 setuptools
 tqdm
 uncertainties
-treecorr
