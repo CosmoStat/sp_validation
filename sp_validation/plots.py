@@ -15,7 +15,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 
-from lenspack.geometry.projections.gnom import radec2xy
+#from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation import util
 from sp_validation import io
@@ -250,7 +250,7 @@ def plot_data_1d(
     if linewidths is None:
         linewidths = [2] * len(x)
 
-    figure(figsize=(15, 10))
+    #figure(figsize=(15, 10))
 
     for i in range(len(x)):
         if np.isnan(yerr[i]).all():

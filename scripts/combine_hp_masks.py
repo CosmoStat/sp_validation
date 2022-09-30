@@ -336,13 +336,11 @@ def main(argv=None):
     # Save calling command
     #util.log_command(argv)
 
-    out_path_arr = glob(f'{params["out_path"]}')
-
+    # Create mask
     if params['plot'] != 2:
 
         # For mask FITS file on output, make sure there are not
         # multiple output names
-        assert(len(out_path_arr) <= 1)
 
         # Get ID list
         ID_arr = read_list(params['input_tile_IDs'])
@@ -356,8 +354,9 @@ def main(argv=None):
         write_combined_hp_mask(
             t,
             params['nside'],
-            out_path_arr[0],
+            params["out_path"],
         )
+
     # Plot mask
     if params['plot'] > 0:
 
@@ -365,6 +364,8 @@ def main(argv=None):
             print('Creating plot of combined mask(s)...')
 
         mask_all = np.zeros(shape=(hp.nside2npix(params['nside'])))
+
+        out_path_arr = glob(f'{params["out_path"]}')
         for out_path in out_path_arr:
 
             if params['verbose']:

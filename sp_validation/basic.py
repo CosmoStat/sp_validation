@@ -32,7 +32,7 @@ from astropy import coordinates as coords
 from astropy.wcs import WCS
 from astropy.table import Table
 
-from lenspack.geometry.projections.gnom import radec2xy
+#from lenspack.geometry.projections.gnom import radec2xy
 
 
 def mad(data, axis=None):

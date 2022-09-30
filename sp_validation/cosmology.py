@@ -22,7 +22,7 @@ from tqdm import tqdm
 from astropy import cosmology
 from astropy.io import fits
 
-from lenspack.geometry.projections.gnom import radec2xy
+#from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation import basic
 from sp_validation import util

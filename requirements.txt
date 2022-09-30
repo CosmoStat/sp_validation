@@ -1,10 +1,12 @@
 importlib_metadata
 astropy>=5.0
+healpy
 jupyterlab
 numpy
-lenspack
+#lenspack
 joblib
 regions
+reproject
 scipy
 seaborn
 setuptools
