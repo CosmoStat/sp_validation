@@ -158,13 +158,18 @@ def plot_histograms(
 
     figure(figsize=(15, 10))
 
-    # Histogramsh
+    n_arr = []
+    bins_arr = []
+
+    # Histograms
     for x, w, label, color, linestyle in zip(
             xs, weights, labels, colors, linestyles
     ):
-        plt.hist(x, n_bin, weights=w, range=x_range, histtype='step',
+        n, bins, _ = plt.hist(x, n_bin, weights=w, range=x_range, histtype='step',
                  color=color, linestyle=linestyle,
                  linewidth=1, density=density, label=label)
+        n_arr.append(n)
+        bins_arr.append(bins)
 
     # Horizontal lines
     if vline_x:
@@ -186,6 +191,8 @@ def plot_histograms(
     plt.legend()
     savefig(out_path)
 
+    return n_arr, bins_arr
+
 
 def plot_data_1d(
     x,
@@ -194,7 +201,7 @@ def plot_data_1d(
     title,
     xlabel,
     ylabel,
-    out_path,
+    out_path=None,
     xlog=False,
     ylog=False,
     log=False,
@@ -216,8 +223,8 @@ def plot_data_1d(
         data
     title, xlabel, ylabel : string
         title and labels
-    out_path : string
-        output file path
+    out_path : string, optional
+        output file path, default=None
     xlog, ylog : bool, optional, default=False
         logscale on x, y if True
     labels : list, optional, default=None
@@ -250,7 +257,7 @@ def plot_data_1d(
     if linewidths is None:
         linewidths = [2] * len(x)
 
-    #figure(figsize=(15, 10))
+    figure(figsize=(15, 10))
 
     for i in range(len(x)):
         if np.isnan(yerr[i]).all():
@@ -322,7 +329,8 @@ def plot_data_1d(
     if do_legend:
         plt.legend()
 
-    savefig(out_path)
+    if out_path:
+        savefig(out_path)
 
 
 def get_ticks(loc, N, new_min, new_max):

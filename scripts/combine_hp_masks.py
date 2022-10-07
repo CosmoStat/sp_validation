@@ -288,7 +288,7 @@ def combine_hp_masks(mask_1d, verbose=False):
         idx += 1
 
     # Set all multiply added pixels back to 1
-    w = (t['flux'] > 1)
+    w = t['flux'] > 1
     t['flux'][w] = 1
 
     return t
@@ -372,6 +372,8 @@ def main(argv=None):
                 print(f'Reading file {out_path}...')
 
             mask_all += hp.read_map(out_path)
+            w = mask_all > 1
+            mask_all[w] = 1
         hp.mollview(mask_all, coord='GC', rot=(151, 0, 0))
         plt.savefig(params['out_path_plot'])
 
