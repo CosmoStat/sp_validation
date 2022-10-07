@@ -44,18 +44,6 @@ def mad(data, axis=None):
     return np.median(np.abs(data - np.median(data, axis)), axis) * 1.4826
 
 
-def weighted_std(x, w):
-    """Add docstring.
-
-    ...
-
-    """
-    return np.sqrt(
-        len(x) / (len(x) - 1)
-        * np.average((x - np.average(x, weights=w)) ** 2, weights=w)
-    )
-
-
 def weighted_median(values, weights):
     """Weighted Median.
 
