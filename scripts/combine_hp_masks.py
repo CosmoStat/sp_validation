@@ -32,6 +32,7 @@ from tqdm import tqdm
 
 from sp_validation import util
 
+
 def params_default():
     """Params Default.
 
@@ -57,6 +58,7 @@ def params_default():
         'nside': 1024,
         'out_path': 'mask.fits',
         'out_path_plot': 'mask.png',
+        'out_path2': None,
         'plot': '0',
         'verbose': False,
     }
@@ -82,6 +84,7 @@ def params_default():
             'hp mask path; output if \'-p 0 or 1\';'
             + 'input if \'-p 2\'), can be list, default={}'
         ),
+        'out_path2': 'hp mask path on output if \'-p 2',
         'out_path_plot': 'output path for plot',
         'plot': '0: no plot; 1: create plot; 2: plot only, read mask file',
         'verbose': 'verbose output if True',
@@ -242,7 +245,8 @@ def read_pixel_mask_files(ID_arr, params):
         header = fits.Header.fromtextfile(img)
         img.close()
 
-        # Project to healpix
+        # Project to healpix.
+        # Default ordering is RING (nested=False)
         mask_1d[ID], footprint = reproject_to_healpix(
             (mask, header),
             'galactic',
@@ -365,6 +369,7 @@ def main(argv=None):
 
         mask_all = np.zeros(shape=(hp.nside2npix(params['nside'])))
 
+        # Combine input masks
         out_path_arr = glob(f'{params["out_path"]}')
         for out_path in out_path_arr:
 
@@ -374,8 +379,15 @@ def main(argv=None):
             mask_all += hp.read_map(out_path)
             w = mask_all > 1
             mask_all[w] = 1
+
+        # Create and save plot
         hp.mollview(mask_all, coord='GC', rot=(151, 0, 0))
         plt.savefig(params['out_path_plot'])
+        plt.close()
+
+        # Write combined map as FITS File
+        if params['out_path2']:
+            hp.write_map(params['out_path2'], mask_all)
 
     return 0
 
