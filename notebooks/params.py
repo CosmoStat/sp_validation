@@ -62,13 +62,18 @@ print(f'Galaxy catalogue = {galaxy_cat_path}')
 ### Star and PSF catalog name
 star_cat_path = f'{data_dir}/output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
 
+### External mask (optional)
+mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
+
 ## Output paths
 
 ### Output base directory
 output_dir = f'{data_dir}/sp_output'
 
 ### Galaxy shape catalogue base name.
-### Will be appended by '_{sh}.fits'
+### Will be appended by
+### - '_{sh}.fits' for the basic catalogue
+### - 'extended_{sh}.fits' for the extended catalogue
 output_shape_cat_base= f'{output_dir}/shape_catalog'
 
 ### File for found tile IDs
