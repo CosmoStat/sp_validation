@@ -9,6 +9,7 @@
 """
 
 import os
+import re
 import numpy as np
 
 from datetime import datetime
@@ -710,3 +711,60 @@ def write_PSF_cat(output_path, ra, dec, e1, e2):
     cols = [c_ra, c_dec, c_e1, c_e2]
 
     write_fits_BinTable_file(cols, output_path)
+
+
+def cut_data(data, cut, verbose=False):
+    """Cut Data.
+
+    Cut data according to selection criteria list.
+
+    Parameters
+    ----------
+    data : numpy,ndarray
+        input data
+    cut : str
+        selection criteria expressions, white-space separated
+    verbose : bool, optional
+        verbose output if `True`, default is `False`
+
+    Raises
+    ------
+    ValueError :
+        if cut expression is not valid
+
+    Returns
+    -------
+    numpy.ndarray
+        data after cuts
+
+    """
+    if cut is None:
+        if verbose:
+            print('No cuts applied to input galaxy catalogue')
+
+        return data
+
+    cut_list = cut.split(' ')
+
+    for cut in cut_list:
+        res = re.match(r'(\w+)([<>=!]+)(\w+)', cut)
+        if res is None:
+            raise ValueError(f'cut \'{cut}\' has incorrect syntax')
+        if len(res.groups()) != 3:
+            raise ValueError(
+                f'cut criterium \'{cut}\' does not match syntax '
+                '\'field rel val\''
+            )
+        field, rel, val = res.groups()
+
+        cond = 'data[\'{}\']{}{}'.format(field, rel, val)
+
+        if verbose:
+            print(f'Applying cut \'{cond}\' to input galaxy catalogue')
+
+        data = data[np.where(eval(cond))]
+
+    if verbose:
+        print(f'Using {len(data)} galaxies after cuts.')
+
+    return data

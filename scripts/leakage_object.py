@@ -423,6 +423,7 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
+
     util.log_command(argv)
 
     os.mkdir(param.output_dir)

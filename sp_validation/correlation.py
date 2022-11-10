@@ -640,7 +640,10 @@ def xi_star_gal_tc(
     """Xi star gal tc.
 
     Cross-correlation between galaxy and star ellipticities.
+
     """
+    unit = 'deg'
+
     cat_gal = treecorr.Catalog(
         ra=ra_gal,
         dec=dec_gal,

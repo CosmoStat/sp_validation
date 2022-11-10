@@ -11,7 +11,8 @@
 
 import os
 
-from astropy.io import ascii
+import numpy as np
+from astropy.io import ascii, fits
 from astropy.table import Table
 
 
@@ -152,3 +153,33 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     names = ['# theta', 'alpha', 'sig_alpha']
     fname = f'{output_dir}/alpha_leakage_{sh}.txt'
     write_ascii_table_file(cols, names, fname)
+
+
+def open_fits_or_npy(path, hdu_no=1):
+    """Open FITS OR NPY.
+
+    Open FITS or numpy binary file.
+
+    Parameters
+    ----------
+    path : str
+        path to input binary file
+    hdu_no : int, optional
+        HDU number, default is 1
+
+    Returns
+    -------
+    FITS.rec or numpy.ndarray
+        data
+
+    """
+    filename, file_extension = os.path.splitext(path)
+    if file_extension in ['.fits', '.cat']:
+        hdu_list = fits.open(path)
+        data = hdu_list[hdu_no].data
+    elif file_extension == '.npy':
+        data = np.load(path)
+    else:
+        raise ValueError(f'Invalid file extension \'{file_extension}\'')
+
+    return data
