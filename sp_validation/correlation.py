@@ -642,8 +642,10 @@ def xi_star_gal_tc(
     Cross-correlation between galaxy and star ellipticities.
 
     """
-    unit = 'deg'
 
+
+    unit = 'degrees'
+    
     cat_gal = treecorr.Catalog(
         ra=ra_gal,
         dec=dec_gal,
@@ -664,8 +666,8 @@ def xi_star_gal_tc(
     )
 
     TreeCorrConfig = {
-        'ra_units': 'degrees',
-        'dec_units': 'degrees',
+        'ra_units': unit,
+        'dec_units': unit,
         'sep_units': 'arcminutes',
         'min_sep': theta_min_amin,
         'max_sep': theta_max_amin,
