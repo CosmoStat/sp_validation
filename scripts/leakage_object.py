@@ -2,14 +2,12 @@
 
 import sys
 import copy
+import os
 import numpy as np
 from optparse import OptionParser
 from astropy.io import ascii, fits
 
-from shapepipe.utilities import cfis
-from shapepipe.utilities import file_system
-
-from sp_validation.util import transform_nan
+from sp_validation import util
 from sp_validation import correlation
 from sp_validation import io
 
@@ -366,7 +364,7 @@ def leakage(dat, param, stats_file):
         out_path = (
             f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
         )
-        correlation.corr_2d(
+        par_best_fit = correlation.corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -381,6 +379,8 @@ def leakage(dat, param, stats_file):
             stats_file=stats_file,
             verbose=param.verbose
         )
+        fp_best_fit = open(f'{out_path}.json', 'w')
+        par_best_fit.dump(fp_best_fit)
 
     # Fit separate 1D models, including size
     ylabel = r'$e_{1,2}^{\rm gal}$'
@@ -423,9 +423,9 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
-    cfis.log_command(argv)
+    util.log_command(argv)
 
-    file_system.mkdir(param.output_dir)
+    os.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     if param.test:
