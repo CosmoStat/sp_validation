@@ -28,7 +28,6 @@ from astropy.wcs import WCS
 from sp_validation import io
 
 
-# MKDEBUG: copied from cfis
 size = {}                                                                       
 size['tile'] = 0.5
 
