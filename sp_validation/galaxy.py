@@ -7,9 +7,6 @@
 
 :Author: Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
 
 """
 
