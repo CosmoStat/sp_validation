@@ -6,9 +6,6 @@
 
 :Author: Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
 
 """
 
@@ -123,8 +120,8 @@ def plot_histograms(
 
     Parameters
     ----------
-    xs : array of float
-        array of values, each of which to plot the distribution
+    xs : list
+        array of list of values, each for which to plot the distribution
     labels : array of string
         plot labels
     title : string
@@ -147,6 +144,12 @@ def plot_histograms(
         labels of vertical lines if not None
     density : bool, optional, default=True
         (normalised) density histogram if True
+
+    Returns
+    -------
+    list
+        values, bins for each histogram call
+
     """
     if weights is None:
         weights = [np.ones_like(x) for x in xs]
@@ -158,6 +161,7 @@ def plot_histograms(
 
     figure(figsize=(15, 10))
 
+    # Return lists
     n_arr = []
     bins_arr = []
 
@@ -165,9 +169,18 @@ def plot_histograms(
     for x, w, label, color, linestyle in zip(
             xs, weights, labels, colors, linestyles
     ):
-        n, bins, _ = plt.hist(x, n_bin, weights=w, range=x_range, histtype='step',
-                 color=color, linestyle=linestyle,
-                 linewidth=1, density=density, label=label)
+        n, bins, _ = plt.hist(
+            x,
+            n_bin,
+            weights=w,
+            range=x_range,
+            histtype='step',
+            color=color,
+            linestyle=linestyle,
+            linewidth=1,
+            density=density,
+            label=label
+        )
         n_arr.append(n)
         bins_arr.append(bins)
 
@@ -204,7 +217,6 @@ def plot_data_1d(
     out_path=None,
     xlog=False,
     ylog=False,
-    log=False,
     labels=None,
     colors=None,
     linestyles=None,
@@ -232,10 +244,11 @@ def plot_data_1d(
     color : list, optional, default=None
         line colors, matplotlib default colors if None
     linestyle : list, optional, default=None
-        linestyle indicators, '-' if None
+        linestyle indicators, '-' if None;
+        use `''` for no lines
     linewidths : list
         line widths, default is `2`
-    eb_linestyle : array of string, optional, default=None
+    eb_linestyles : array of string, optional, default=None
         errorbar linestyle indicators, '-' if None
     xlim : array(float, 2), optional, default=None
         x-axis limits, automatic if None
@@ -260,7 +273,7 @@ def plot_data_1d(
     figure(figsize=(15, 10))
 
     for i in range(len(x)):
-        if np.isnan(yerr[i]).all():
+        if len(yerr) == 0 or np.isnan(yerr[i]).all():
             eb = plt.plot(
                 x[i],
                 y[i],
@@ -275,10 +288,10 @@ def plot_data_1d(
                 yerr=yerr[i],
                 label=labels[i],
                 color=colors[i],
-                linestyle=linestyles[i],
                 marker='o',
                 markerfacecolor='none',
                 capsize=4,
+                linestyle=linestyles[i],
             )
             eb[-1][0].set_linestyle(eb_linestyles[i])
 

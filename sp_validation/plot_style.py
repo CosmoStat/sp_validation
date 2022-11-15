@@ -6,9 +6,6 @@
 
 :Author: Axel Guinot
 
-:Date: 01/2021
-
-:Package: sp_validation
 
 """
 

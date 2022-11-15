@@ -2,6 +2,7 @@ importlib_metadata
 astropy>=5.0
 healpy
 jupyterlab
+lmfit
 numpy
 #lenspack
 joblib
