@@ -230,14 +230,12 @@ def read_pixel_mask_files(ID_arr, params):
         mask = hdu_mask[0].data
         hdu_mask.close()
 
-        # Get observed and masked region indices
-        w_observed = (mask == 0)
+        # Get masked region indices (>= 1) and set to 0
         w_masked = (mask != 0)
-
-        # Change mask value convention.
-        # From original (image pixels): 0: observed, >=1: masked
-        # To new (hp): 0: unobserved, 1: observed
         mask[w_masked] = 0
+
+        # Get observed regions (0) and set to 1
+        w_observed = (mask == 0)
         mask[w_observed] = 1
 
         # Read image header file
@@ -249,9 +247,11 @@ def read_pixel_mask_files(ID_arr, params):
         # Default ordering is RING (nested=False)
         mask_1d[ID], footprint = reproject_to_healpix(
             (mask, header),
-            'galactic',
+            'c',
             nside=params['nside'],
         )
+
+        # Get region outside footprint and set to 0
         w_outside = (footprint == 0)
         mask_1d[ID][w_outside] = 0
 
@@ -377,11 +377,15 @@ def main(argv=None):
                 print(f'Reading file {out_path}...')
 
             mask_all += hp.read_map(out_path)
+
+            # Set all multiply added pixels back to 1
             w = mask_all > 1
             mask_all[w] = 1
 
         # Create and save plot
-        hp.mollview(mask_all, coord='GC', rot=(151, 0, 0))
+
+        # Correct plot for LF masks
+        hp.mollview(mask_all, rot=(151, 0, 0))
         plt.savefig(params['out_path_plot'])
         plt.close()
 
