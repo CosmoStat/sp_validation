@@ -6,9 +6,6 @@
 
 :Author: Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
 
 """
 
@@ -100,7 +97,6 @@ def get_ticks(loc, N, new_min, new_max):
 
     for i in range(1, len(loc) - 1):
         lab = loc[i] / N * (new_max - new_min) + new_min
-        # print(loc[i], lab)
         loc_new.append(loc[i])
         labels_new.append(f'{lab:.1f}')
 
