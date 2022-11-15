@@ -6,10 +6,6 @@
 
 :Author: Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
-
 """
 
 import numpy as np

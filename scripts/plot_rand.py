@@ -8,7 +8,7 @@ from sp_validation import galaxy
 rand = np.load('random_cat.npy')
 print(rand.dtype.names)
 
-markersize = 0.1
+markersize = 0.01
 
 plt.figure(figsize=(10, 10))
 

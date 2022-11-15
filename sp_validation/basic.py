@@ -8,10 +8,6 @@
 
 :Author: Axel Guinot, Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
-
 """
 
 import numpy as np
@@ -25,6 +21,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import operator as op
 import itertools as itools
+from joblib import Parallel, delayed
 
 from astropy.io import fits
 from astropy import units as u
@@ -521,107 +518,3 @@ def jackknif_weighted_average2(
     all_est = np.array(all_est)
 
     return np.mean(all_est), np.std(all_est)
-
-
-def jackknif_weighted_average(
-    data,
-    weights,
-    remove_size=0.1,
-    n_realization=100,
-):
-    """Add docstring.
-
-    ...
-
-    """
-    samp_size = len(data)
-    keep_size_pc = 1 - remove_size
-
-    if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
-
-    subsamp_size = int(samp_size * keep_size_pc)
-
-    all_ind = np.arange(samp_size)
-
-    all_est = []
-    for i in range(n_realization):
-        sub_data_ind = np.random.choice(all_ind, subsamp_size)
-
-        all_est.append(
-            np.average(data[sub_data_ind], weights=weights[sub_data_ind])
-        )
-
-    all_est = np.array(all_est)
-
-    return np.mean(all_est), np.std(all_est)
-
-
-def frexp10(x):
-    """Frexp10.
-
-    Return the mantissa and exponent of x, as pair (m, e).
-    m is a float and e is an int, such that x = m * 10.0**e.
-    See math.frexp()
-
-    Example
-    -------
-    > frexp10(1240)
-    (1.24, 3)
-
-    """
-    if x == 0:
-        return (0, 0)
-    if x < 0:
-        sign = -1
-    else:
-        sign = +1
-    try:
-        l_val = np.log10(np.abs(x))
-    except Exception:
-        print('Error with math.log10(|' + (str(x)) + '|)')
-        return None, None
-    if l_val < 1:
-        l_val = l_val - 1 + 1e-10
-    exp = int(l_val)
-    return sign * x / 10 ** exp, exp
-
-
-def lin_product(x, precision=2):
-    """Add docstring.
-
-    ...
-
-    """
-    thres = 1
-    if abs(x) < thres:
-        m, e = frexp10(x)
-        if (m, e) == (0, 0):
-            res = r'$0\,$'
-        else:
-            if m == 1:
-                res = f'10^{{{e:g}}}'
-            else:
-                res = f'{m:.{precision}g} \\cdot 10^{{{e:g}}}'
-    else:
-        res = '{0:g}'.format(x)
-    return res
-
-
-def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
-    """Add docstring.
-
-    ...
-
-    """
-    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)
-    star_coord = coords.SkyCoord(
-        ra=ra_star * u.degree,
-        dec=dec_star * u.degree,
-    )
-
-    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)
-
-    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]
-
-    return ind_stars
