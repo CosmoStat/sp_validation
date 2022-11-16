@@ -5,8 +5,8 @@
 :Description: This script contains methods to deal with
     galaxy and star images.
 
-:Author: Martin Kilbinger
-
+:Author: Martin Kilbinger <martin.kilbinger@cea.fr>
+         Axel Guinot
 
 """
 
@@ -138,28 +138,12 @@ def sigma_to_fwhm(sigma, pixel_size=1):
     return sigma * 2.355 * pixel_size
 
 
-def classification_galaxy_overlap(dd):
-    """Classification Galaxy Overlap.
-
-    Return mask corresponding to non-overlapping tile areas.
-    Obsolete, does not work well! Replaced by
-    lassification_galaxy_overlap_ra_dec.
-
-    """
-    # Duplicate objects due to tile overlaps
-    cut_overlap = (
-        dd['FLAG_TILING'] == 1
-    )
-
-    return cut_overlap
-
-
 def classification_galaxy_overlap_ra_dec(
-        dd,
-        ra_key='XWIN_WORLD',
-        dec_key='YWIN_WORLD'
+    dd,
+    ra_key='XWIN_WORLD',
+    dec_key='YWIN_WORLD'
 ):
-    """Classification Galaxy Overlap Ra Dec
+    """Classification Galaxy Overlap Ra Dec.
 
     Return mask corresponding to non-overlapping tile areas using
     simple cuts in RA and Dec.
@@ -216,7 +200,7 @@ def classification_galaxy_overlap_ra_dec(
         idx_ID = (dd['TILE_ID'] == tile_ID)
 
         # Set mask for this tile ID
-        mask_dec_ID = (  
+        mask_dec_ID = (
             (dd[idx_ID][dec_key] < dec_upper[idx].value)
             & (dd[idx_ID][dec_key] >= dec_lower[idx].value)
         )
@@ -259,7 +243,7 @@ def classification_galaxy_overlap_ra_dec(
     for idx, tile_ID in enumerate(tile_ID_list):
         idx_ID = (dd['TILE_ID'] == tile_ID)
         mask_ra_ID = (
-        (dd[idx_ID][ra_key] < ra_upper_list[idx].value)
+            (dd[idx_ID][ra_key] < ra_upper_list[idx].value)
             & (dd[idx_ID][ra_key] >= ra_lower_list[idx].value)
         )
         mask_ra[idx_ID] = mask_ra_ID

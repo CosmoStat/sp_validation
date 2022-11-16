@@ -615,7 +615,11 @@ def plot_alpha_leakage(
         xmax,
         leakage_alpha_ylim
 ):
+    """Plot Alpha Leakage.
 
+    Plot scale-dependent leakage function alpha(theta)
+
+    """
     plot_dir_leakage = output_dir
 
     theta = [meanr]
@@ -811,6 +815,7 @@ def main(argv=None):
     if param.sh is None:                                                        
         param.sh = config.shapes[0]                 
 
+    file_system.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     # Read galaxy catalogue
@@ -828,7 +833,6 @@ def main(argv=None):
 
     # Read star catalogue
     dat_PSF = io.open_fits_or_npy(param.input_path_PSF, hdu_no=param.hdu_psf)
-
 
     # Deal with close objects in PSF catalogue (= stars on same position
     # from different exposures)

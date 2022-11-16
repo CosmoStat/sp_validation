@@ -158,7 +158,7 @@ def check_matching(
     ----------
     d1, d2 : dict
         catalogs
-    key_1, key_2 : array(2) of string
+    keys_1, keys_2 : list
         column keys for d1, d2, corresponding to x, y
     thres : float
         threshold for matching, in deg
@@ -173,6 +173,7 @@ def check_matching(
         index list of d2 of objects that were matched to d1
     mask_area_tiles : array of int
         index list of tiles in footprint
+
     """
     if name is not None:
         # Filter stars outside footprint for efficiency
@@ -184,17 +185,17 @@ def check_matching(
 
     # Match stars from exposure (PSF) catalogue to total catalogue
     ind = basic.match_stars2(
-        d2['XWIN_WORLD'],
-        d2['YWIN_WORLD'],
-        d1['RA'][mask_area_tiles],
-        d1['DEC'][mask_area_tiles],
-        thresh=thresh,
+        d2[keys_2[0]],
+        d2[keys_2[1]],
+        d1[keys_1[0]][mask_area_tiles],
+        d1[keys_1[1]][mask_area_tiles],
+        thresh=thresh
     )
 
     n_tot = len(d1[keys_1[0]][mask_area_tiles])
     msg = (
-        'Number of matched stars from exposures to total catalogue '
-        + f'= {len(ind)}/{n_tot} = {len(ind) / n_tot * 100:.1f}%'
+        'Number of matched stars from exposures to total catalogue = '
+        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -202,8 +203,8 @@ def check_matching(
     ind = np.array(list(set(ind)))
 
     msg = (
-        'Number of matched stars after removing multiple matches '
-        + f'= {len(ind)}/{n_tot} = {len(ind) / n_tot * 100:.1f}%'
+        'Number of matched stars after removing multiple matches = '
+        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -219,7 +220,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
     ----------
     dd : dict
         catalog
-    key : array of string
+    key : list
         key names of columns to check
     comp : array of int
         components for above columns
@@ -227,7 +228,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
         values for above columns indicating invalid entries
     stats_file : file handler
         summary statistics output file handler
-    name : array of string, optional, default=None
+    name : list, optional, default=None
         for output message. If None, key strings are used
     verbose : bool, optional, default=False
         verbose output if True
@@ -268,9 +269,9 @@ def match_subsample(
         index list of d2 of objects that were matched to d1
     mask : array of bool
         boolean mask
-    pos_key : array(2) of string
+    pos_key : list
         key names for position columns
-    ell_key : string
+    ell_key : str
         key name for ellipticity column
     n_ref : int
         reference number of objects
@@ -430,7 +431,7 @@ def write_shape_catalog(
 
     Parameters
     ----------
-    output_path : string
+    output_path : str
         output file path
     ra, dec : arrays(ngal) of float
         coordinates in deg
