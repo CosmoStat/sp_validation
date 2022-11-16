@@ -15,8 +15,10 @@ import matplotlib.pylab as plt
 from lmfit import minimize, Parameters, fit_report
 from uncertainties import ufloat
 
-from sp_validation import util
-from sp_validation.basic import jackknif_weighted_average
+
+from tqdm import tqdm
+
+from sp_validation.basic import bootstrap_weighted_average
 from sp_validation.plot_style import *
 from sp_validation import plots
 from sp_validation.io import print_stats
@@ -426,9 +428,13 @@ def affine_corr(
     title='',
     colors=None,
     stats_file=None,
-    verbose=False
+    verbose=False,
+    parallel=False,
+    n_jobs=-1,
+    seed=None,
+    rng=None,
 ):
-    """Affine Corr.
+    """Affine Corr
 
     Computes and plots affine correlation of y(n) as function of x.
 
@@ -458,8 +464,28 @@ def affine_corr(
         output file for statistics
     verbose : bool, optional, default=False
         verbose output if True
-
+    parallel: bool
+        If True, use parallel computing. [Default: False]
+    n_jobs: int
+        Number of jobs to run in parallel. [Default: -1]
+    seed: int
+        Seed to initialize the randoms. [Default: None]
+    rng: numpy.random.RandomState
+        Random generator. [Default: None]
     """
+
+    def get_seed(rng):
+        return rng.randint(low=0, high=2**30, size=1)
+
+    def lin(x, a, b):
+        return a * x + b
+
+    # Init randoms
+    if isinstance(rng, np.random.RandomState):
+        master_rng = rng
+    else:
+        master_rng = np.random.RandomState(seed)
+
     n_y = len(y)
 
     if mlabel is None:
@@ -509,15 +535,18 @@ def affine_corr(
 
         x_bin.append(np.mean(x[ind]))
 
-        for jdx in range(len(y)):
-            r_jk = jackknif_weighted_average(
-                y[jdx][ind],
+        for j in range(len(y)):
+            r_jk = bootstrap_weighted_average(
+                y[j][ind],
                 weights[ind],
+                seed=get_seed(master_rng),
                 remove_size=0.2,
-                n_realization=50
+                n_realization=50,
+                parallel=parallel,
+                n_job=-1,
             )
-            y_bin[jdx].append(r_jk[0])
-            err_bin[jdx].append(r_jk[1])
+            y_bin[j].append(r_jk[0])
+            err_bin[j].append(r_jk[1])
 
     x_bin = np.array(x_bin)
     for jdx in range(len(y)):
@@ -582,9 +611,12 @@ def affine_corr_n(
     title='',
     colors=None,
     stats_file=None,
-    verbose=False
+    verbose=False,
+    seed=None,
+    parallel=False,
+    n_jobs=-1
 ):
-    """Affine Corr N.
+    """Affine Corr N
 
     Compute n affine correlations of y(m) versus x_arr[n].
 
@@ -614,10 +646,22 @@ def affine_corr_n(
         output file for statistics
     verbose : bool, optional, default=False
         verbose output if True
+    seed: int
+        Seed to initialize the randoms. [Default: None]
+    parallel: bool
+        If True, use parallel computing. [Default: False]
+    n_jobs: int
+        Number of jobs to run in parallel. [Default: -1]
     """
+
+    master_rng = np.random.RandomState(seed)
+    seeds = master_rng.randint(low=0, high=2**30, size=len(x_arr))
+
     if out_path_arr is None:
-        out_path_arr = [None] * len(y_arr)
-    for x, xlabel, out_path in zip(x_arr, xlabel_arr, out_path_arr):
+        out_path_arr = [None]*len(x_arr)
+    for x, xlabel, out_path, seed_tmp in zip(
+        x_arr, xlabel_arr, out_path_arr, seeds
+    ):
         affine_corr(
             x,
             y,
@@ -631,7 +675,10 @@ def affine_corr_n(
             title=title,
             colors=colors,
             stats_file=stats_file,
-            verbose=verbose
+            verbose=verbose,
+            seed=seed_tmp,
+            parallel=parallel,
+            n_jobs=n_jobs,
         )
 
 
