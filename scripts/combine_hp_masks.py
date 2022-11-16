@@ -391,7 +391,7 @@ def main(argv=None):
 
         # Write combined map as FITS File
         if params['out_path2']:
-            hp.write_map(params['out_path2'], mask_all)
+            hp.write_map(params['out_path2'], mask_all, overwrite=True)
 
     return 0
 
