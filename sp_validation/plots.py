@@ -12,7 +12,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 
-#from lenspack.geometry.projections.gnom import radec2xy
+from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation import util
 from sp_validation import io
@@ -34,7 +34,7 @@ def figure(figsize=(30, 30)):
     plt.figure(figsize=figsize, facecolor='none')
 
 
-def savefig(fname):
+def savefig(fname, dpi=100):
     """Save Figure.
 
     Save figure to file.
@@ -45,7 +45,7 @@ def savefig(fname):
         output file name
 
     """
-    plt.savefig(fname, facecolor='w', bbox_inches='tight')
+    plt.savefig(fname, facecolor='w', bbox_inches='tight', dpi=dpi)
 
 
 def plot_spatial_density(
@@ -236,7 +236,7 @@ def plot_data_1d(
     title, xlabel, ylabel : string
         title and labels
     out_path : string, optional
-        output file path, default=None
+        output file path, default is ``None``
     xlog, ylog : bool, optional, default=False
         logscale on x, y if True
     labels : list, optional, default=None
@@ -393,7 +393,11 @@ def plot_map(
     title,
     out_path,
     vlim=None,
+    grid=True,
     clusters=None,
+    map_cut_coords=None,
+    dpi=100,
+    colorbar=True
 ):
     """Plot Map.
 
@@ -411,6 +415,8 @@ def plot_map(
         output file path
     vlim : array(2) of float, optional, default=None
         limits of map values, if not given compute from map
+    grid : bool, optional
+        if `True` (default) plot grid lines
     clusters :
         dictionary of cluster information, optional, default=None
     """
@@ -418,6 +424,12 @@ def plot_map(
 
     # plot image
     plt.imshow(m)
+
+    # Transform axis labels to ra, dec
+    ra_min, ra_max = ra.min(), ra.max()
+    ra_mean = np.mean(ra)
+    dec_min, dec_max = dec.min(), dec.max()
+    dec_mean = np.mean(dec)
 
     # save image limits
     xlim = plt.xlim()
@@ -428,13 +440,8 @@ def plot_map(
         vlim = plt.gci().get_clim()
     else:
         plt.gci().set_clim(vlim)
-    plt.colorbar()
-
-    # Transform axis labels to ra, dec
-    ra_min, ra_max = ra.min(), ra.max()
-    ra_mean = np.mean(ra)
-    dec_min, dec_max = dec.min(), dec.max()
-    dec_mean = np.mean(dec)
+    if colorbar:
+        plt.colorbar()
 
     loc, labels = plt.xticks()
     loc_ra, labels_ra = get_ticks(loc, Nx, ra_min, ra_max)
@@ -443,38 +450,54 @@ def plot_map(
     loc, labels = plt.yticks()
     loc_dec, labels_dec = get_ticks(loc, Ny, dec_min, dec_max)
     plt.yticks(loc_dec, labels=labels_dec)
-
-    # plot grid
-    grid_lines_ra = []
-    grid_lines_dec = []
-    n_per_line = 200
-
-    # create lines of constant ra and varying dec, and vice versa
-
-    # extend beyond projected image limits, to avoid image edges without grid
-    # lines
-    d = 2
-    gl_ra = np.linspace(ra_min - d, ra_max + d, num=n_per_line)
-    gl_dec = np.linspace(dec_min - d, dec_max + d, num=n_per_line)
-    ra_list = np.arange(np.floor(ra_min - d), np.ceil(ra_max + d))
-    dec_list = np.arange(np.floor(dec_min - d), np.ceil(dec_max + d))
-    for ra in ra_list:
-        grid_lines_ra.append([ra] * n_per_line)
-        grid_lines_dec.append(gl_dec)
-    for dec in dec_list:
-        grid_lines_dec.append([dec] * n_per_line)
-        grid_lines_ra.append(gl_ra)
-
+    
     mean_x = (min_x + max_x) / 2
     mean_y = (min_y + max_y) / 2
 
-    for grid_line_ra, grid_line_dec in zip(grid_lines_ra, grid_lines_dec):
-        x, y = radec2xy(ra_mean, dec_mean, grid_line_ra, grid_line_dec)
-        xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
-        yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
-        plt.plot(xx, yy, 'w:', linewidth=0.5)
+    # plot grid
+    if grid:
+        grid_lines_ra = []
+        grid_lines_dec = []
+        n_per_line = 200
+ 
+        # create lines of constant ra and varying dec, and vice versa
+    
+        # extend beyond projected image limits, to avoid image edges
+        # without grid lines 
+        d = 2
+        gl_ra = np.linspace(ra_min - d, ra_max + d, num=n_per_line)
+        gl_dec = np.linspace(dec_min - d, dec_max + d, num=n_per_line)
+        ra_list = np.arange(np.floor(ra_min - d), np.ceil(ra_max + d))
+        dec_list = np.arange(np.floor(dec_min - d), np.ceil(dec_max + d))
+        for ra in ra_list:
+            grid_lines_ra.append([ra] * n_per_line)
+            grid_lines_dec.append(gl_dec)
+        for dec in dec_list:
+            grid_lines_dec.append([dec] * n_per_line)
+            grid_lines_ra.append(gl_ra)
+ 
 
-    # mark cluster positions
+        for grid_line_ra, grid_line_dec in zip(grid_lines_ra, grid_lines_dec):
+            x, y = radec2xy(ra_mean, dec_mean, grid_line_ra, grid_line_dec)
+            xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
+            yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
+            plt.plot(xx, yy, 'w:', linewidth=0.5)
+
+    # cut out if required
+    if map_cut_coords:
+        x_cut, y_cut = radec2xy(
+            ra_mean,
+            dec_mean,
+            [map_cut_coords[0], map_cut_coords[1]],
+            [map_cut_coords[2], map_cut_coords[3]]
+        )
+        xx = (x_cut + mean_x - min_x) / (max_x - min_x) * Nx
+        yy = (y_cut + mean_y - min_y) / (max_y - min_y) * Ny
+        print('MKDEBUG 1', xx)
+        xlim = plt.xlim(xx)
+        ylim = plt.ylim(yy)
+   
+    # mark cluster positions 
     if clusters:
         x_cluster = (clusters['x'] + mean_x - min_x) / (max_x - min_x) * Nx
         y_cluster = (clusters['y'] + mean_y - min_y) / (max_y - min_y) * Ny
@@ -499,8 +522,8 @@ def plot_map(
 
     plt.title(title)
 
-    savefig(out_path)
-
+    savefig(out_path, dpi=dpi)
+    
     return vlim
 
 
