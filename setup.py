@@ -7,17 +7,20 @@ import os
 # Set the package release version
 major = 0
 minor = 3
-patch = 1
+patch = 4
 
 # Set the package details
 name = 'sp_validation'
 version = '.'.join(str(value) for value in (major, minor, patch))
 author = 'Martin Kilbinger'
 email = 'martin.kilbinger@cea.fr'
-gh_user = 'martin.kilbinger'
+gh_user = 'CosmoStat'
 url = 'https://github.com/{0}/{1}'.format(gh_user, name)
 year = '2021'
-description = 'Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by ShapePipe'
+description = (
+    'Validation of weak-lensing catalogues (galaxy and star shapes and other '
+    + 'parameters) produced by ShapePipe'
+)
 license = 'MIT'
 
 # Set the package classifiers
@@ -30,9 +33,10 @@ py_str = 'Programming Language :: Python :: {0}'
 os_str = 'Operating System :: {0}'
 
 classifiers = (
-    [lc_str.format(license)] + [ln_str] +
-    [py_str.format(ver) for ver in python_versions_supported] +
-    [os_str.format(ops) for ops in os_platforms_supported]
+    [lc_str.format(license)]
+    + [ln_str]
+    + [py_str.format(ver) for ver in python_versions_supported]
+    + [os_str.format(ops) for ops in os_platforms_supported]
 )
 
 # Source package description from README.md

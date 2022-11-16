@@ -59,8 +59,11 @@ path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 galaxy_cat_path = f'{data_dir}/final_cat.npy'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
 
-### Star and PSF catalog name
+### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f'{data_dir}/output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+
+### External mask; optional, set to `None` if not required
+mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
 
 ## Output paths
 
@@ -68,8 +71,14 @@ star_cat_path = f'{data_dir}/output/run_sp_MsPl/mccd_merge_starcat_runner/output
 output_dir = f'{data_dir}/sp_output'
 
 ### Galaxy shape catalogue base name.
-### Will be appended by '_{sh}.fits'
+### Will be appended by
+### - '_{sh}.fits' for the basic catalogue
+### - 'extended_{sh}.fits' for the extended catalogue
 output_shape_cat_base= f'{output_dir}/shape_catalog'
+
+### PSF output catalogue base name.
+### Will be appended by '_{sh}.fits'
+output_PSF_cat_base = f'{output_dir}/psf_catalog'
 
 ### File for found tile IDs
 path_found_ID = f'{output_dir}/found_ID.txt'
@@ -89,10 +98,18 @@ stats_file_name = 'stats_file.txt'
 
 # Other IO options
 
-## Memory mode, set to None unless very large file
+## Input
+
+### Coordinate column names
+col_name_ra = 'XWIN_WORLD'
+col_name_dec = 'YWIN_WORLD'
+
+### Memory mode, set to None unless very large file
 mmap_mode = None
 
-## Additional output columns
+## Output
+
+### Additional output columns
 add_cols = None
 
 
@@ -151,7 +168,7 @@ n_theta = 20
 wrap_ra = 0
 
 ## PSF leakage y-axis limits
-leakage_alpha_ylim = [-0.1, 0.065]
+leakage_alpha_ylim = [-0.1, 0.1]
 leakage_xi_sys_ylim = [-4e-5, 5e-5]
 leakage_xi_sys_log_ylim = [2e-13, 5e-5]
 

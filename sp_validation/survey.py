@@ -1,6 +1,4 @@
-"""
-  
-:Name: survey.py
+"""SURVEY.
 
 :Description: This script contains methods to deal with the survey:
     geometry, missing tiles, area, ...
@@ -19,7 +17,8 @@ from collections import Counter
 
 
 def get_area(dd, area_tile, verbose=False):
-    """Get area
+    """Get area.
+
     Return survey area.
 
     Parameters
@@ -40,14 +39,13 @@ def get_area(dd, area_tile, verbose=False):
     tile_IDs : array of float
         tile IDs
     """
-
     if 'TILE_ID' in dd.dtype.names:
         # Set nnumer of tiles to number of unique IDs found in cat
-        tile_IDs  = set(dd['TILE_ID'])
+        tile_IDs = set(dd['TILE_ID'])
         n_tile = len(tile_IDs)
         if verbose:
-            print('Number of tiles found in galaxy catalogue = {}'.format(n_tile))
-    else:    
+            print(f'Number of tiles found in galaxy catalogue = {n_tile}')
+    else:
         # Set number of tiles by hand if information is not in catalogue
         tile_IDs = None
         n_tiles = 1
@@ -61,8 +59,15 @@ def get_area(dd, area_tile, verbose=False):
     return area_deg2, area_amin2, tile_IDs
 
 
-def missing_tiles(tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbose=False):
-    """Missing tiles
+def missing_tiles(
+    tile_IDs,
+    path_tile_ID,
+    path_found_ID,
+    path_missing_ID,
+    verbose=False,
+):
+    """Missing tiles.
+
     Compute completeness and identify missing tiles
 
     Parameters
@@ -85,9 +90,8 @@ def missing_tiles(tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbos
     n_missing : int
         number of tiles missing
     """
-
     if os.path.exists(path_tile_ID):
-        
+
         missing_IDs = []
         found_IDs = []
         with open(path_tile_ID) as f_in:
@@ -97,14 +101,16 @@ def missing_tiles(tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbos
                     missing_IDs.append(ID)
                 else:
                     found_IDs.append(ID)
-                    
+
         n_missing = len(missing_IDs)
         n_found = len(found_IDs)
 
         if verbose:
             n_tile = len(tile_IDs)
-            print('{}/{} = {:.2g}% tiles missing'
-                ''.format(n_missing, n_tile, n_missing / n_tile * 100))
+            print(
+                f'{n_missing}/{n_tile} = {n_missing / n_tile * 100:.2g}% '
+                + 'tiles missing'
+            )
 
         # Create output files with found and missing IDs
         if n_found > 0:
@@ -122,20 +128,19 @@ def missing_tiles(tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbos
                     print(ID, file=f_out)
 
         return n_found, n_missing
-            
+
     else:
         if verbose:
-            print('Tile ID file \'{}\' not found'
-                ''.format(path_tile_ID))
+            print(f'Tile ID file \'{path_tile_ID}\' not found')
 
         return None, None
 
 
 def write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname):
-    """Write Tile ID Galaxy Counts
-    
+    """Write Tile ID Galaxy Counts.
+
     Write number of galaxies per tile ID to file.
-    
+
     Parameters
     ----------
     detection_IDs : list
@@ -151,7 +156,7 @@ def write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname):
     detection_counts = Counter(detection_IDs)
     galaxy_counts = Counter(galaxy_IDs)
     shape_counts = Counter(shape_IDs)
-    
+
     with open(fname, 'w') as f:
         for tile_id in detection_counts:
             print(f'{tile_id:007.3f}', end=' ', file=f)
@@ -165,7 +170,7 @@ def write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname):
 
 
 def get_footprint(patch, ra, dec):
-    """Get Footprint
+    """Get Footprint.
 
     Return coordinates within footprint of patch
 
@@ -183,7 +188,6 @@ def get_footprint(patch, ra, dec):
     ra, dec : arrays of float
         list of coordinates withint footprint
     """
-
     ra_14 = 157.5
     ra_45 = 207
     ra2_45 = 220

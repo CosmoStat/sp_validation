@@ -1,14 +1,11 @@
-"""
-  
+"""PLOTS.
+
 :Name: plots.py
 
 :Description: This script contains methods for plots.
 
 :Author: Martin Kilbinger
 
-:Date: 2021
-
-:Package: sp_validation
 
 """
 
@@ -24,7 +21,7 @@ from sp_validation.plot_style import *
 
 
 def figure(figsize=(30, 30)):
-    """Figure
+    """Figure.
 
     Create figure
 
@@ -38,7 +35,7 @@ def figure(figsize=(30, 30)):
 
 
 def savefig(fname):
-    """Save Figure
+    """Save Figure.
 
     Save figure to file.
 
@@ -51,8 +48,18 @@ def savefig(fname):
     plt.savefig(fname, facecolor='w', bbox_inches='tight')
 
 
-def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path, n_grid=1000, verbose=False):
-    """Plot Spatial Density
+def plot_spatial_density(
+    ra,
+    dec,
+    title,
+    x_label,
+    y_label,
+    cbar_label,
+    out_path,
+    n_grid=1000,
+    verbose=False
+):
+    """Plot Spatial Density.
 
     Plot spatial density distribution of objects.
 
@@ -73,7 +80,6 @@ def plot_spatial_density(ra, dec, title, x_label, y_label, cbar_label, out_path,
     verbose : bool, optional, default=False
         verbose output if True
     """
-
     figure(figsize=(30, 30))
 
     if max(ra) > 360:
@@ -108,14 +114,14 @@ def plot_histograms(
     vline_lab=None,
     density=True,
 ):
-    """Plot Histograms
+    """Plot Histograms.
 
     Plot one or more 1D distributions.
 
     Parameters
     ----------
-    xs : array of float
-        array of values, each of which to plot the distribution
+    xs : list
+        array of list of values, each for which to plot the distribution
     labels : array of string
         plot labels
     title : string
@@ -138,8 +144,13 @@ def plot_histograms(
         labels of vertical lines if not None
     density : bool, optional, default=True
         (normalised) density histogram if True
-    """
 
+    Returns
+    -------
+    list
+        values, bins for each histogram call
+
+    """
     if weights is None:
         weights = [np.ones_like(x) for x in xs]
     if colors is None:
@@ -148,20 +159,43 @@ def plot_histograms(
     if linestyles is None:
         linestyles = ['-'] * len(labels)
 
-    figure(figsize=(15,10))
+    figure(figsize=(15, 10))
 
-    # Histogramsh
-    for x, w, label, color, linestyle in zip(xs, weights, labels, colors, linestyles):
-        plt.hist(x, n_bin, weights=w, range=x_range, histtype='step',
-                 color=color, linestyle=linestyle,
-                 linewidth=1, density=density, label=label)
- 
+    # Return lists
+    n_arr = []
+    bins_arr = []
+
+    # Histograms
+    for x, w, label, color, linestyle in zip(
+            xs, weights, labels, colors, linestyles
+    ):
+        n, bins, _ = plt.hist(
+            x,
+            n_bin,
+            weights=w,
+            range=x_range,
+            histtype='step',
+            color=color,
+            linestyle=linestyle,
+            linewidth=1,
+            density=density,
+            label=label
+        )
+        n_arr.append(n)
+        bins_arr.append(bins)
+
     # Horizontal lines
     if vline_x:
         ylim = plt.ylim()
         for x, lab in zip(vline_x, vline_lab):
-            plt.vlines(x=x, ymax=ylim[1], ymin=ylim[0], linestyles='--', colors='k')
-            plt.text(x*1.5, ylim[1]*0.95, lab)
+            plt.vlines(
+                x=x,
+                ymax=ylim[1],
+                ymin=ylim[0],
+                linestyles='--',
+                colors='k'
+            )
+            plt.text(x * 1.5, ylim[1] * 0.95, lab)
         plt.ylim(ylim)
 
     plt.title(title)
@@ -170,10 +204,28 @@ def plot_histograms(
     plt.legend()
     savefig(out_path)
 
+    return n_arr, bins_arr
 
-def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=False, labels=None,
-                 colors=None, linestyles=None, eb_linestyles=None, ylim=None):
-    """plot points errors
+
+def plot_data_1d(
+    x,
+    y,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    xlog=False,
+    ylog=False,
+    labels=None,
+    colors=None,
+    linestyles=None,
+    eb_linestyles=None,
+    linewidths=None,
+    xlim=None,
+    ylim=None
+):
+    """Plot Data 1D.
 
     Plot one-dimensional data points with errorbars.
 
@@ -187,18 +239,22 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         output file path
     xlog, ylog : bool, optional, default=False
         logscale on x, y if True
-    labels : array of string, optional, default=None
+    labels : list, optional, default=None
         plot labels, no labels if None
-    color : array of string, optional, default=None
+    color : list, optional, default=None
         line colors, matplotlib default colors if None
-    linestyle : array of string, optional, default=None
-        linestyle indicators, '-' if None
-    eb_linestyle : array of string, optional, default=None
+    linestyle : list, optional, default=None
+        linestyle indicators, '-' if None;
+        use `''` for no lines
+    linewidths : list
+        line widths, default is `2`
+    eb_linestyles : array of string, optional, default=None
         errorbar linestyle indicators, '-' if None
+    xlim : array(float, 2), optional, default=None
+        x-axis limits, automatic if None
     ylim : array(float, 2), optional, default=None
         y-axis limits, automatic if None
     """
-
     if labels is None:
         labels = [''] * len(x)
         do_legend = False
@@ -211,30 +267,74 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
         linestyles = ['-'] * len(x)
     if eb_linestyles is None:
         eb_linestyles = ['-'] * len(x)
+    if linewidths is None:
+        linewidths = [2] * len(x)
 
-    figure(figsize=(15,10))
+    figure(figsize=(15, 10))
 
     for i in range(len(x)):
-        if np.isnan(yerr[i]).all():
-            eb = plt.plot(x[i], y[i], label=labels[i], color=colors[i], linestyle=linestyles[i])
+        if len(yerr) == 0 or np.isnan(yerr[i]).all():
+            eb = plt.plot(
+                x[i],
+                y[i],
+                label=labels[i],
+                color=colors[i],
+                linestyle=linestyles[i],
+            )
         else:
-            eb = plt.errorbar(x[i], y[i], yerr=yerr[i], label=labels[i], color=colors[i], linestyle=linestyles[i],
-                            marker='o', markerfacecolor='none', capsize=4)
+            eb = plt.errorbar(
+                x[i],
+                y[i],
+                yerr=yerr[i],
+                label=labels[i],
+                color=colors[i],
+                marker='o',
+                markerfacecolor='none',
+                capsize=4,
+                linestyle=linestyles[i],
+            )
             eb[-1][0].set_linestyle(eb_linestyles[i])
 
-    plt.hlines(y=0, xmin=plt.xlim()[0], xmax=plt.xlim()[1], linestyles='dashed')
+    plt.hlines(
+        y=0,
+        xmin=plt.xlim()[0],
+        xmax=plt.xlim()[1],
+        linestyles='dashed',
+    )
 
-    if xlog == True:
+    if xlog:
         plt.xscale('log')
         plt.xticks(
             [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500],
-            labels=['0.1', '0.2', '0.5', '1', '2', '5', '10', '20', '50', '100', '200', '500']
+            labels=[
+                '0.1',
+                '0.2',
+                '0.5',
+                '1',
+                '2',
+                '5',
+                '10',
+                '20',
+                '50',
+                '100',
+                '200',
+                '500',
+            ]
         )
-    if ylog == True:
+    if ylog:
         plt.yscale('log')
 
+    if xlim:
+        plt.xlim(xlim)
     if ylim:
         plt.ylim(ylim)
+
+    plt.hlines(
+        y=0,
+        xmin=plt.xlim()[0],
+        xmax=plt.xlim()[1],
+        linestyles='dashed'
+    )
 
     plt.title(title)
     plt.xlabel(xlabel)
@@ -246,10 +346,10 @@ def plot_data_1d(x, y, yerr, title, xlabel, ylabel, out_path, xlog=False, ylog=F
 
 
 def get_ticks(loc, N, new_min, new_max):
-    """Get ticks
-    
+    """Get ticks.
+
     Return formatted axis ticks for plots.
-    
+
     Parameters
     ----------
     loc : array of floats
@@ -259,7 +359,7 @@ def get_ticks(loc, N, new_min, new_max):
         new coordinate minimum
     new_max : float
         new coordinate maximum
-        
+
     Returns
     -------
     loc_new : array of floats
@@ -267,26 +367,37 @@ def get_ticks(loc, N, new_min, new_max):
     labels_new : array of strings
         new tick labels
     """
-    
     loc_new = []
     labels_new = []
 
-
-
-    for i in range(1, len(loc)-1):
+    for i in range(1, len(loc) - 1):
         lab = loc[i] / N * (new_max - new_min) + new_min
-        #print(loc[i], lab)
+        # print(loc[i], lab)
         loc_new.append(loc[i])
         labels_new.append(f'{lab:.1f}')
 
     return loc_new, labels_new
 
 
-def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vlim=None, clusters=None):
-    """Plot Map
-    
+def plot_map(
+    m,
+    ra,
+    dec,
+    min_x,
+    max_x,
+    min_y,
+    max_y,
+    Nx,
+    Ny,
+    title,
+    out_path,
+    vlim=None,
+    clusters=None,
+):
+    """Plot Map.
+
     Plots 2D map.
-    
+
     Parameters
     ----------
     m : 2D array of float
@@ -302,7 +413,6 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
     clusters :
         dictionary of cluster information, optional, default=None
     """
-    
     figure(figsize=(10, 10))
 
     # plot image
@@ -314,7 +424,7 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
 
     # Set colorbar
     if not vlim:
-       vlim = plt.gci().get_clim()
+        vlim = plt.gci().get_clim()
     else:
         plt.gci().set_clim(vlim)
     plt.colorbar()
@@ -328,31 +438,32 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
     loc, labels = plt.xticks()
     loc_ra, labels_ra = get_ticks(loc, Nx, ra_min, ra_max)
     plt.xticks(loc_ra, labels=labels_ra)
- 
+
     loc, labels = plt.yticks()
     loc_dec, labels_dec = get_ticks(loc, Ny, dec_min, dec_max)
     plt.yticks(loc_dec, labels=labels_dec)
-    
+
     # plot grid
     grid_lines_ra = []
     grid_lines_dec = []
     n_per_line = 200
- 
+
     # create lines of constant ra and varying dec, and vice versa
-    
-    # extend beyond projected image limits, to avoid image edges without grid lines 
+
+    # extend beyond projected image limits, to avoid image edges without grid
+    # lines
     d = 2
-    gl_ra = np.linspace(ra_min-d, ra_max+d, num=n_per_line)
-    gl_dec = np.linspace(dec_min-d, dec_max+d, num=n_per_line)
-    ra_list = np.arange(np.floor(ra_min-d), np.ceil(ra_max+d))
-    dec_list = np.arange(np.floor(dec_min-d), np.ceil(dec_max+d))
+    gl_ra = np.linspace(ra_min - d, ra_max + d, num=n_per_line)
+    gl_dec = np.linspace(dec_min - d, dec_max + d, num=n_per_line)
+    ra_list = np.arange(np.floor(ra_min - d), np.ceil(ra_max + d))
+    dec_list = np.arange(np.floor(dec_min - d), np.ceil(dec_max + d))
     for ra in ra_list:
         grid_lines_ra.append([ra] * n_per_line)
         grid_lines_dec.append(gl_dec)
     for dec in dec_list:
         grid_lines_dec.append([dec] * n_per_line)
         grid_lines_ra.append(gl_ra)
- 
+
     mean_x = (min_x + max_x) / 2
     mean_y = (min_y + max_y) / 2
 
@@ -361,18 +472,25 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
         xx = (x + mean_x - min_x) / (max_x - min_x) * Nx
         yy = (y + mean_y - min_y) / (max_y - min_y) * Ny
         plt.plot(xx, yy, 'w:', linewidth=0.5)
-    
-    # mark cluster positions 
+
+    # mark cluster positions
     if clusters:
         x_cluster = (clusters['x'] + mean_x - min_x) / (max_x - min_x) * Nx
         y_cluster = (clusters['y'] + mean_y - min_y) / (max_y - min_y) * Ny
         dy = 0.02
-        plt.plot(x_cluster, y_cluster, 'ro', mfc='none', markeredgewidth=0.9, markersize=12)
-        
+        plt.plot(
+            x_cluster,
+            y_cluster,
+            'ro',
+            mfc='none',
+            markeredgewidth=0.9,
+            markersize=12,
+        )
+
     # go back to image limits
     plt.xlim(xlim)
     plt.ylim(ylim)
- 
+
     plt.gca().invert_yaxis()
     plt.gca().invert_xaxis()
     plt.xlabel('R.A. [deg]')
@@ -381,15 +499,15 @@ def plot_map(m, ra, dec, min_x, max_x, min_y, max_y, Nx, Ny, title, out_path, vl
     plt.title(title)
 
     savefig(out_path)
-    
+
     return vlim
 
 
 def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
-    """Plot Map Stacked
-    
+    """Plot Map Stacked.
+
     Plot stacked convergence map.
-    
+
     Parameters
     ----------
     kappa : image
@@ -398,38 +516,42 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
         plot title
     output_path : string
         figure output file path
-   
+
     vlim : array(2) of float, optional, default=None
         map limits; min and max of kappa if not given
 
     Returns
     -------
-    vlim : array(2) of float
+    array(2) of float
         map limits
+
     """
-    
     figure(figsize=(10, 10))
 
     # plot image
     plt.imshow(kappa)
-    
+
     # set colorbar
     if not vlim:
-       vlim = plt.gci().get_clim()
+        vlim = plt.gci().get_clim()
     else:
         plt.gci().set_clim(vlim)
     plt.colorbar()
 
     npix = kappa.shape[0]
-    
+
     # mark center
-    plt.plot(npix/2 - 1, npix/2 - 1, '+')
+    plt.plot(npix / 2 - 1, npix / 2 - 1, '+')
 
     # axes ticks
     n_ticks = 4
     loc = np.arange(0, npix + npix / n_ticks, step=npix / n_ticks)
     lab = np.round(
-        np.arange(-radius, radius + radius * 2 / n_ticks, step=radius*2/n_ticks),
+        np.arange(
+            -radius,
+            radius + radius * 2 / n_ticks,
+            step=radius * 2 / n_ticks,
+        ),
         1
     )
     plt.xticks(loc, labels=lab)
@@ -437,9 +559,327 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
 
     plt.xlabel(r'separation $R$ [Mpc]')
     plt.ylabel(r'separation $R$ [Mpc]')
-    
+
     plt.title(title)
 
     savefig(output_path)
-    
+
     return vlim
+
+
+def set_labels(p_dp, order, mix):
+    """Set Label.
+
+    Set labels for plot of 2D fit
+
+    Parameters
+    ----------
+    d_dp : dict
+        values with uncertainties of fit parameters
+    order : str
+        linear ('lin') or quadratic ('quad') model
+    mix : bool
+        mixing of components if True
+
+    Returns
+    -------
+    dict :
+        label strings
+
+    """
+    # Affine parameters
+    label = {
+        'A': (
+            f'$a_{{11}}={p_dp["a11"]: .2ugL}$'
+            + '\n' + f'$c_1={p_dp["c1"]: .2ugL}$'
+        ),
+        'D': (
+            f'$a_{{22}}={p_dp["a22"]: .2ugL}$'
+            + '\n' + f'$c_2={p_dp["c2"]: .2ugL}$'
+        )
+    }
+    if order == 'quad':
+        # Add quadratic parameters
+        label['A'] = f'$q_{{111}}={p_dp["q111"]: .2ugL}$' + '\n' + label['A']
+        label['D'] = f'$q_{{222}}={p_dp["q222"]: .2ugL}$' + '\n' + label['D']
+    if mix:
+        # Add mixture parameters
+        label['B'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'
+        label['C'] = f'$a_{{12}}={p_dp["a12"]: .2ugL}$'
+        if order == 'quad':
+            label['B'] = (
+                f'$q_{{211}}={p_dp["q211"]: .2ugL}$'
+                + '\n'
+                + f'$q_{{212}}={p_dp["q212"]: .2ugL}$'
+                + '\n'
+                + label['B']
+            )
+            label['C'] = (
+                f'$q_{{122}}={p_dp["q122"]: .2ugL}$'
+                + '\n'
+                + f'$q_{{112}}={p_dp["q112"]: .2ugL}$'
+                + '\n'
+                + label['C']
+            )
+
+    return label
+
+
+def plot_corr_2d(
+    x,
+    y,
+    weights,
+    res,
+    p_dp,
+    n_bin,
+    order,
+    mix,
+    xlabel_arr,
+    ylabel_arr,
+    y_ground_truth=None,
+    title=None,
+    colors=None,
+    out_path=None,
+):
+    """Plot Corr 2D.
+
+    Plot 2D correlation data and fits.
+
+    Parameters
+    ----------
+    x : array(double)
+        input x value
+    y : array(m) of double
+        input y arrays
+    weights  : array of double, optional, default=None
+        weights of x points
+    res : class lmfit.MinimizerResult
+        results of the minization
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    order : str
+        order of fit
+    mix : bool
+        mixing of components if True
+    xlabel_arr, ylabel_arr : list of str
+        x-and y-axis labels
+    y_ground_truth : 2D np.array, optional
+        ground truth model values (y1, y2) for plotting, default is `None`
+    title : string, optional, default=''
+        plot title
+    colors : array(m) of string, optional, default=None
+        line colors
+    out_path : str, optional, default=None
+        output file path, if not given, plot is not saved to file
+
+    """
+    if colors is None:
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+
+    # Compute binned data for pretty plotting.
+    x_bin, y_bin, err_bin = util.compute_bins_func_2d(
+        x,
+        y,
+        n_bin,
+        mix,
+        weights=weights
+    )
+
+    # Initialise mosaic figure
+    figure_mosaic = """
+    AB
+    CD
+    """
+    fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(15, 15))
+
+    # Get best-fit model on 2D binned grid
+    y_model_all = np.zeros(shape=(2, n_bin, n_bin))
+    y_model_all[0], y_model_all[1] = util.func_bias_2d_full(
+        res.params,
+        x_bin[0],
+        x_bin[1],
+        order=order,
+        mix=mix
+    )
+    # Compute means and standard deviations
+    y_model_mean = np.zeros(shape=(2, n_bin))
+    y_model_upper = np.zeros(shape=(2, n_bin))
+    y_model_lower = np.zeros(shape=(2, n_bin))
+    for comp, ax in zip((0, 1), (1, 0)):
+        y_model_mean[comp] = y_model_all[comp].mean(axis=ax)
+        std = y_model_all[comp].std(axis=ax)
+        y_model_upper[comp] = y_model_mean[comp] + std
+        y_model_lower[comp] = y_model_mean[comp] - std
+
+    # Set up quantities to plot in each panel
+    xb = {}
+    yd = {}
+    ym = {}
+    ymu = {}
+    yml = {}
+    xgt = {}
+    ygt = {}
+    dy = {}
+    col = {}
+    xl = {}
+    yl = {}
+
+    # Set component for each panel.
+    # x: 0 in A, B; 1 in C, D
+    # y: 0 in A, C; 1 in B, D
+    panel_comp_x = {}
+    panel_comp_y = {}
+    for p in 'A', 'B':
+        panel_comp_x[p] = 0
+    for p in 'C', 'D':
+        panel_comp_x[p] = 1
+    for p in 'A', 'C':
+        panel_comp_y[p] = 0
+    for p in 'B', 'D':
+        panel_comp_y[p] = 1
+
+    # Assign quantities to plot with corresponding components
+    for p in axes:
+        xb[p] = x_bin[panel_comp_x[p]]
+        xl[p] = xlabel_arr[panel_comp_x[p]]
+
+        ym[p] = y_model_mean[panel_comp_y[p]]
+        ymu[p] = y_model_upper[panel_comp_y[p]]
+        yml[p] = y_model_lower[panel_comp_y[p]]
+        yl[p] = ylabel_arr[panel_comp_y[p]]
+        yd[p] = y_bin[panel_comp_y[p]][panel_comp_x[p]]
+        dy[p] = err_bin[panel_comp_y[p]][panel_comp_x[p]]
+        col[p] = colors[panel_comp_y[p]]
+
+        if y_ground_truth:
+            xgt[p] = x[panel_comp_x[p]]
+            ygt[p] = y_ground_truth[panel_comp_y[p]]
+
+    # Set plot labels to parameter best-fit + std
+    label = set_labels(p_dp, order, mix)
+
+    # Loop over panels
+    for p in axes:
+
+        # No off-diagonal plots if no mixing
+        if not mix and p in ['B', 'C']:
+            continue
+
+        # Plot best-fit mean and mean +/- std
+        axes[p].plot(xb[p], ym[p], c=col[p], label=label[p])
+        axes[p].fill_between(
+            xb[p],
+            ymu[p],
+            yml[p],
+            color=col[p],
+            interpolate=True,
+            alpha=0.3
+        )
+
+        # Plot ground-truth model if provided
+        if y_ground_truth:
+            axes[p].plot(xgt[p], ygt[p], '.', c='k', markersize=0.4)
+
+        # Plot binned data with error bars
+        axes[p].errorbar(xb[p], yd[p], yerr=dy[p], c=col[p], fmt='.')
+
+        # Set labels
+        axes[p].set_xlabel(xl[p])
+        axes[p].set_ylabel(yl[p])
+        axes[p].legend()
+
+    # Finish figure
+    fig.suptitle(title)
+    plt.tight_layout()
+
+    # Save figure
+    if out_path:
+        plt.savefig(f'{out_path}.png', bbox_inches='tight')
+
+
+def plot_bar_spin(par, s_ground_truth, output_path=None):
+    """Plot Bar Spin.
+
+    Create bar plot of spin coefficients.
+
+    Parameters
+    ----------
+    par : dict of ufloat
+        parameter values and standard deviations
+    s_ground_truth : dict, optional
+        ground truth parameter, for plotting, default is `None`
+    output_path : str, optional
+        plot output file if not `None` (default)
+
+    """
+    # Shift of real and imaginary components
+    dx = 0.4
+
+    # Colors of rea and imaginary components
+    colors = {'real': 'b', 'imaginary': 'g'}
+
+    # Set data for bar plot
+    x = []
+    y = []
+    dy = []
+    col = []
+    s = set()
+    for key in par:
+
+        z = key[0]
+        spin = int(key[1:])
+        s.add(spin)
+        if z == 'x':
+            x.append(spin - dx)
+            col.append(colors['real'])
+        else:
+            x.append(spin + dx)
+            col.append(colors['imaginary'])
+
+        y.append(par[key].nominal_value)
+        dy.append(par[key].std_dev)
+
+    fig, ax = plt.subplots()
+
+    bars = ax.bar(
+        x,
+        y,
+        yerr=dy,
+        align='center',
+        alpha=0.5,
+        ecolor='black',
+        capsize=8,
+        width=0.8,
+        color=col,
+    )
+    xlim = ax.get_xlim()
+    ax.plot(xlim, [0, 0], 'k-')
+    ax.set_ylabel(r"$z_s = x_s + \mathrm{i} y_s$")
+    xl = list(s)
+    ax.set_xticks(xl)
+    ax.set_xlabel('$s$')
+
+    for comp in colors:
+        if colors[comp] in col:
+            ax.bar(x, y, width=0, color=colors[comp], label=comp)
+    ax.legend()
+
+    x = []
+    y = []
+    if s_ground_truth:
+        for key in s_ground_truth:
+            z = key[0]
+            spin = int(key[1:])
+            if z == 'x':
+                x.append(spin - dx)
+            else:
+                x.append(spin + dx)
+            y.append(s_ground_truth[key])
+        ax.plot(x, y, 'ro', markerfacecolor='none')
+
+    plt.tight_layout()
+
+    # Save the figure
+    if output_path:
+        plt.savefig(output_path)

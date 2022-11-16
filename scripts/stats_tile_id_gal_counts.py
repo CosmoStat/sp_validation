@@ -203,23 +203,23 @@ def main(argv=None):
             mask_n_shape = dat[patch][:, 3] > 0
             tile_ID_masked = dat[patch][mask_n_shape, 0]
             for ID in tile_ID_masked:
-                print(ID, file=f_out)
+                print(f'{ID:07.3f}', file=f_out)
 
     # Plot histograms
     print('Plotting histograms')
     print(f'Using {len(n_det_arr)} tiles')
-    bins = np.arange(0, 40000, 1000)
+    bins = np.arange(0, 40000, 200)
     density = False
     alpha = 0.5
 
     plt.ylabel('frequency')
     plt.xlabel('#obj/tile')
 
-    plt.hist(n_det, bins=bins, label='detections', density=False, alpha=alpha)
+    plt.hist(n_det_arr, bins=bins, label='detections', density=density, alpha=alpha)
 
-    plt.hist(n_gal, bins=bins, label='selected galaxies', density=False, alpha=alpha)
+    plt.hist(n_gal_arr, bins=bins, label='selected galaxies', density=density, alpha=alpha)
 
-    plt.hist(n_shape, bins=bins, label='measured shapes', density=False, alpha=alpha)
+    plt.hist(n_shape_arr, bins=bins, label='measured shapes', density=density, alpha=alpha)
 
     plt.legend()
     plt.savefig('hist_obj_per_tile.png')
@@ -230,9 +230,9 @@ def main(argv=None):
     C
     """
     fig, axes = plt.subplot_mosaic(mosaic=figure_mosaic, figsize=(10, 6))
-    axes['A'].hist(n_det, bins=bins, label='detections', density=False, alpha=alpha, color='b')
-    axes['B'].hist(n_gal, bins=bins, label='selected galaxies', density=False, alpha=alpha, color='orange')
-    axes['C'].hist(n_shape, bins=bins, label='measured shapes', density=False, alpha=alpha, color='green')
+    axes['A'].hist(n_det_arr, bins=bins, label='detections', density=density, alpha=alpha, color='b')
+    axes['B'].hist(n_gal_arr, bins=bins, label='selected galaxies', density=density, alpha=alpha, color='orange')
+    axes['C'].hist(n_shape_arr, bins=bins, label='measured shapes', density=density, alpha=alpha, color='green')
 
     axes['C'].set_xlabel('#obj/tile')
 

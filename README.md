@@ -106,6 +106,58 @@ In the same directory containing the subpatches as above, type
 ```
 It creates the joint output catalogue `joint.fits`.
 
+### PSF - galaxy object-wise ellipticity leakage
 
+The validation notebooks, in particular `psf_leakage.ipynb`, compute the leakage from PSF to galaxy ellipticity, as part of the global validation.
+This can also be done with the stand-alone python script `scripts/leakage_object.py`.
 
+For example, for a given patch, run
+```bash
+leakage_object.py -i sp_output/shape_catalog_extended_ngmix.fits -o leakage --hdu_psf 2 -v
+```
+to output plots and text files for the object-wise and scale-dependent leakage for that patch.
+
+Leakage for the joint v1.0 catalogue can be computed via
+```bash
+leakage_object.py -i SP/unions_shapepipe_extended_2022_v1.0.fits -I SP/unions_shapepipe_psf_2022_v1.0.1.fits -o leakage -v
+```
+assuming `SP` is a link to the v1.0 ShapePipe data directory.
+If this call was done in a subdirectory from where in `..` are the patch runs, joint plots of the scale-dependent leakage can be produced by
+```bash
+plot_leakage.py leakage/alpha_leakage_ngmix.txt ../P[1234567]/leakage/alpha_leakage_ngmix.txt`
+```
+This will read in the text files produces by the previous calls of `leakage_object.py`.
+
+This script fits a consistent linear or quadratic model of the galaxy
+ellipticity as function of PSF ellipticity. The best-fit parameters are written
+in an output `json` file.
+
+A summary table of the object-wise leakage linear parameters will be created by
+`combine_results.py`, see above. This call will add the leakage from the joint
+catalogue, assuming the results are stored in `joint/leakage`.
+
+### PSF - galaxy scale-dependent ellipticity leakage
+
+Use the script `scripts/leakage_scale.py`.
+
+### Correct for PSF - galaxy ellipticity leakage
+
+Experimentally we can apply the correction alpha * eps_PSF to the galaxy
+elliptity.
+
+First, `leakage_object.py` (see above) needs to be run.
+
+Second, the best-fit result from that previous call of `leakage_object.py` is
+read, applied to the extended shear catalogue, and the corrected ellipticity is
+written in an output file.
+
+```bash
+apply_alpha.py`
+```
+
+Third, compute the shear correlation function and E-/B-mode statistics
+using `treecorr`, with the notebook (or ipython script)
+`notebooks/analt/xip_xim_v1_alpha_cor[.ipynb|.py]`.
+
+Fourth, use the notebook `TBD` to plot the results. 
 

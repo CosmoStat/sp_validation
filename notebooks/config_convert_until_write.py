@@ -1,16 +1,16 @@
 import os
 
-input_base = ['main_set_up']
+input_base = ['main_set_up', 'metacal_global', 'psf_leakage', 'write_cat']
 
 inp_str = '.ipynb '.join(input_base)
 
 
-cmd = f'jupyter nbconvert --to script {inp_str} --stdout > main_set_up.py'
+cmd = f'jupyter nbconvert --to script {inp_str} --stdout > validation_until_write.py'
 
 os.system(cmd)
 
-# Run from command line via
-# ipython main_set_up.py
+# Run validation from command line via
+# ipython validation.py
 
 """
 sp_base = f"{os.environ['HOME']}/sp_validation"

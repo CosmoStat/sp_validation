@@ -1,7 +1,8 @@
-name: sp_validation2
+name: sp_validation
 channels:
   - conda-forge
 dependencies:
+  - lmfit
   - python==3.8
   - pip>=21
   - pyccl

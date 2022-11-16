@@ -1,19 +1,18 @@
-"""
+"""PLOT STYLE.
+
 :Name: plot_style.py
 
 :Description: Commands to set plot styles for matplotlib.
 
 :Author: Axel Guinot
 
-:Date: 01/2021
-
-:Package: sp_validation
 
 """
 
 import matplotlib as mpl
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
+import matplotlib.pylab as plt
 
 mpl.rcParams['lines.linewidth'] = 2
 mpl.rcParams['lines.markersize'] = 10
@@ -38,5 +37,4 @@ mpl.rcParams['boxplot.capprops.linewidth'] = 2.
 
 mpl.rcParams['axes.xmargin'] = mpl.rcParamsDefault['axes.xmargin']
 
-import matplotlib.pylab as plt
 plt.rcParams['font.size'] = 20
