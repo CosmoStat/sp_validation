@@ -1,4 +1,5 @@
 importlib_metadata
+cs_util
 astropy>=5.0
 healpy
 jupyterlab

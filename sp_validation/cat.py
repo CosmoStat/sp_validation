@@ -16,6 +16,8 @@ from datetime import datetime
 
 from astropy.io import fits
 
+from cs_util import cat
+
 from sp_validation import util
 from sp_validation import io
 from sp_validation import basic
@@ -158,7 +160,7 @@ def check_matching(
     ----------
     d1, d2 : dict
         catalogs
-    key_1, key_2 : array(2) of string
+    keys_1, keys_2 : list
         column keys for d1, d2, corresponding to x, y
     thres : float
         threshold for matching, in deg
@@ -173,6 +175,7 @@ def check_matching(
         index list of d2 of objects that were matched to d1
     mask_area_tiles : array of int
         index list of tiles in footprint
+
     """
     if name is not None:
         # Filter stars outside footprint for efficiency
@@ -184,17 +187,17 @@ def check_matching(
 
     # Match stars from exposure (PSF) catalogue to total catalogue
     ind = basic.match_stars2(
-        d2['XWIN_WORLD'],
-        d2['YWIN_WORLD'],
-        d1['RA'][mask_area_tiles],
-        d1['DEC'][mask_area_tiles],
-        thresh=thresh,
+        d2[keys_2[0]],
+        d2[keys_2[1]],
+        d1[keys_1[0]][mask_area_tiles],
+        d1[keys_1[1]][mask_area_tiles],
+        thresh=thresh
     )
 
     n_tot = len(d1[keys_1[0]][mask_area_tiles])
     msg = (
-        'Number of matched stars from exposures to total catalogue '
-        + f'= {len(ind)}/{n_tot} = {len(ind) / n_tot * 100:.1f}%'
+        'Number of matched stars from exposures to total catalogue = '
+        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -202,8 +205,8 @@ def check_matching(
     ind = np.array(list(set(ind)))
 
     msg = (
-        'Number of matched stars after removing multiple matches '
-        + f'= {len(ind)}/{n_tot} = {len(ind) / n_tot * 100:.1f}%'
+        'Number of matched stars after removing multiple matches = '
+        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -219,7 +222,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
     ----------
     dd : dict
         catalog
-    key : array of string
+    key : list
         key names of columns to check
     comp : array of int
         components for above columns
@@ -227,7 +230,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
         values for above columns indicating invalid entries
     stats_file : file handler
         summary statistics output file handler
-    name : array of string, optional, default=None
+    name : list, optional, default=None
         for output message. If None, key strings are used
     verbose : bool, optional, default=False
         verbose output if True
@@ -268,9 +271,9 @@ def match_subsample(
         index list of d2 of objects that were matched to d1
     mask : array of bool
         boolean mask
-    pos_key : array(2) of string
+    pos_key : list
         key names for position columns
-    ell_key : string
+    ell_key : str
         key name for ellipticity column
     n_ref : int
         reference number of objects
@@ -380,26 +383,6 @@ def read_shape_catalog(
     return ra, dec, g1, g2, w, mag, snr
 
 
-def write_header_info_sp(primary_header):
-    """Write Header Info sp_validation.
-
-    Write information about software and run to FITS header
-    """
-    if 'USER' in os.environ:
-        author = os.environ['USER']
-    else:
-        author = 'unknown'
-    primary_header['AUTHOR'] = (author, 'Who ran the software')
-    primary_header['SOFTNAME'] = (__name__, 'Name of the software')
-    primary_header['SOFTVERS'] = (__version__, 'Version of the software')
-    primary_header['DATE'] = (
-        datetime.now().strftime('%Y-%m-%d_%H-%M-%S'),
-        'When it was started',
-    )
-
-    return primary_header
-
-
 def write_shape_catalog(
     output_path,
     ra,
@@ -430,7 +413,7 @@ def write_shape_catalog(
 
     Parameters
     ----------
-    output_path : string
+    output_path : str
         output file path
     ra, dec : arrays(ngal) of float
         coordinates in deg
@@ -540,8 +523,8 @@ def write_shape_catalog(
 
     # Primary HDU with information in header
     primary_header = fits.Header()
-    primary_header = write_header_info_sp(primary_header)
-    add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
+    primary_header = cat.write_header_info_sp(primary_header)
+    cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
     primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
@@ -566,105 +549,6 @@ def write_shape_catalog(
     hdu_list.writeto(output_path, overwrite=True)
 
 
-def add_shear_bias_to_header(primary_header, R, R_shear, R_select, c):
-    """Add doctstring.
-
-    ...
-
-    """
-    primary_header['R'] = (
-        r'<R>',
-        r'Mean full response <R_shear> + <R_select>'
-    )
-    primary_header['R_11'] = (R[0, 0], 'Full response matrix comp 1 1')
-    primary_header['R_12'] = (R[0, 1], 'Full response matrix comp 1 2')
-    primary_header['R_21'] = (R[1, 0], 'Full response matrix comp 2 1')
-    primary_header['R_22'] = (R[1, 1], 'Full response matrix comp 2 2')
-
-    primary_header['R_g'] = (r'<R_g>', r'Mean shear response matrix <R_shear>')
-    primary_header['R_g11'] = (
-        R_shear[0, 0],
-        'Mean shear resp matrix comp 1 1'
-    )
-    primary_header['R_g12'] = (
-        R_shear[0, 1],
-        'Mean shear resp matrix comp 1 2'
-    )
-    primary_header['R_g21'] = (
-        R_shear[1, 0],
-        'Mean shear resp matrix comp 2 1'
-    )
-    primary_header['R_g22'] = (
-        R_shear[1, 1],
-        'Mean shear resp matrix comp 2 2'
-    )
-
-    primary_header['R_S'] = (
-        r'<R_S>',
-        r'Global selection response matrix <R_select>'
-    )
-    primary_header['R_S11'] = (
-        R_select[0, 0],
-        'Global selection resp matrix comp 1 1'
-    )
-    primary_header['R_S12'] = (
-        R_select[0, 1],
-        'Global selection resp matrix comp 1 2'
-    )
-    primary_header['R_S21'] = (
-        R_select[1, 0],
-        'Global selection resp matrix comp 2 1'
-    )
-    primary_header['R_S22'] = (
-        R_select[1, 1],
-        'Global selection resp matrix comp 2 2'
-    )
-
-    primary_header['c_1'] = (c[0], 'Additive bias 1st comp')
-    primary_header['c_2'] = (c[1], 'Additive bias 2nd comp')
-
-
-def write_fits_BinTable_file(
-    cols,
-    output_path,
-    R=None,
-    R_shear=None,
-    R_select=None,
-    c=None,
-):
-    """Write Fits Bin Table File.
-
-    Write columns to FITS file as BinaryTable
-
-    Parameters
-    ----------
-    cols : list of fits.Column
-        column data
-    output_path : str
-        output file path
-    R : np.matrix(2, 2), optional
-        total response matrix
-    R_shear : np.matrix(2, 2), optional
-        shear response matrix
-    R_select : np.matrix(2, 2), optional
-        selection response matrix
-    c : np.array(2), optional
-        additive bias components
-
-    """
-    table_hdu = fits.BinTableHDU.from_columns(cols)
-
-    # Primary HDU with information in header
-    primary_header = fits.Header()
-    primary_header = write_header_info_sp(primary_header)
-    if R is not None:
-        add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
-    primary_hdu = fits.PrimaryHDU(header=primary_header)
-
-    hdu_list = fits.HDUList([primary_hdu, table_hdu])
-    hdu_list.writeto(output_path, overwrite=True)
-
-
 def write_galaxy_cat(output_path, ra, dec, tile_id):
     """Write Galaxy Cat.
 
@@ -685,7 +569,7 @@ def write_galaxy_cat(output_path, ra, dec, tile_id):
     c_id = fits.Column(name='tile_id', array=tile_id, format='E')
     cols = [c_ra, c_dec, c_id]
 
-    write_fits_BinTable_file(cols, output_path)
+    cat.write_fits_BinTable_file(cols, output_path)
 
 
 def write_PSF_cat(output_path, ra, dec, e1, e2):
@@ -710,7 +594,7 @@ def write_PSF_cat(output_path, ra, dec, e1, e2):
     c_e2 = fits.Column(name='e2', array=e2, format='D')
     cols = [c_ra, c_dec, c_e1, c_e2]
 
-    write_fits_BinTable_file(cols, output_path)
+    cat.write_fits_BinTable_file(cols, output_path)
 
 
 def cut_data(data, cut, verbose=False):
@@ -768,3 +652,4 @@ def cut_data(data, cut, verbose=False):
         print(f'Using {len(data)} galaxies after cuts.')
 
     return data
+>>>>>>> origin/master

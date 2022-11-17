@@ -27,7 +27,7 @@ import treecorr
 
 
 def func_bias_lin_1d(params, x_data):
-    """Func Bias Lin 1D
+    """Func Bias Lin 1D.
 
     Function for linear 1D bias model.
 
@@ -53,7 +53,7 @@ def func_bias_lin_1d(params, x_data):
 
 
 def loss_bias_lin_1d(params, x_data, y_data, err):
-    """Loss Bias Lin 1D
+    """Loss Bias Lin 1D.
 
     Loss function for linear 1D model
 
@@ -80,7 +80,7 @@ def loss_bias_lin_1d(params, x_data, y_data, err):
 
 
 def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
-    """Func Bias 2D Full
+    """Func Bias 2D Full.
 
     Function of 2D bias model evaluated on full 2D grid.
 
@@ -105,7 +105,6 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
         second component the 2D model, y2(x1, x2) on the (x1, x2)-grid
 
     """
-
     len1 = len(x1)
     len2 = len(x2)
 
@@ -117,13 +116,13 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     v1, v2 = np.meshgrid(x1, x2, indexing='ij')
 
     # Compute both components y1, y2 over the meash
-    y1, y2 = util.func_bias_2d(params, v1, v2, order=order, mix=mix) 
+    y1, y2 = util.func_bias_2d(params, v1, v2, order=order, mix=mix)
 
     return y1, y2
 
 
 def loss_bias_2d(params, x_data, y_data, err, order, mix):
-    """Loss Bias 2D
+    """Loss Bias 2D.
 
     Loss function for 2D model
 
@@ -153,7 +152,6 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
         residuals
 
     """
-
     # Get x and y values of the input data
     x1_data = x_data[0]
     x2_data = x_data[1]
@@ -183,7 +181,7 @@ def loss_bias_2d(params, x_data, y_data, err, order, mix):
 
 
 def print_fit_report(res, file=None):
-    """Print Fit Report
+    """Print Fit Report.
 
     Print report of minimizing result.
 
@@ -225,16 +223,15 @@ def corr_2d(
     stats_file=None,
     verbose=False,
 ):
-    """Corr 2D
-    
+    """Corr 2D.
+
     Compute and plot 2D linear and quadratic correlations of (y1, y2) as
     function of (x1, x2).
- 
+
     Parameters
-    -----------
+    ----------
     x : array(double)
         input x value
-
     y : array(m) of double
         input y arrays
     weights  : array of double, optional, default=None
@@ -294,7 +291,7 @@ def corr_2d(
             params.add(p_quad, value=0.0)
 
         if mix:
-            # Quadratic mixing parameters 
+            # Quadratic mixing parameters
             for p_quad_mix in ['q112', 'q122', 'q212', 'q211']:
                 params.add(p_quad_mix, value=0.0)
 
@@ -339,7 +336,7 @@ def corr_2d(
 
     # Plots
 
-    ## Spin compoments
+    # Spin compoments
     if out_path:
         out_path_spin = f'{out_path}_spin.png'
     else:
@@ -355,7 +352,7 @@ def corr_2d(
         output_path=out_path_spin,
     )
 
-    ## Curves
+    # Curves
     plots.plot_corr_2d(
         x,
         y,
@@ -377,26 +374,43 @@ def corr_2d(
 
 
 def param_order2spin(p_dp, order, mix):
+    """Param Order 2 Spin.
 
+    Transform parameter from natural to spin coefficients.
+
+    Parameters
+    ----------
+    p_dp : dict
+        Parameter natural coefficients
+    order : str
+        expansion order, one of 'linear', 'quad'
+    mix : bool
+        ellipticity components are mixed if ``True``
+
+    Returns
+    -------
+    dict :
+        Parameter spin coefficients
+
+    """
     s_ds = {}
 
-    s_ds['x0'] = 0.5 * ( p_dp['a11'] + p_dp['a22'] )
+    s_ds['x0'] = 0.5 * (p_dp['a11'] + p_dp['a22'])
 
     if order == 'quad' and mix:
-        s_ds['x2'] = 0.5 * ( p_dp['q111'] + p_dp['q122'] )
-        s_ds['y2'] = 0.5 * ( p_dp['q211'] - p_dp['q222'] )
-        s_ds['x-2'] = 0.25 * ( p_dp['q111'] - p_dp['q122'] + p_dp['q212'] )
-        s_ds['y-2'] = 0.25 * ( p_dp['q211'] - p_dp['q222'] - p_dp['q112'] )
+        s_ds['x2'] = 0.5 * (p_dp['q111'] + p_dp['q122'])
+        s_ds['y2'] = 0.5 * (p_dp['q211'] - p_dp['q222'])
+        s_ds['x-2'] = 0.25 * (p_dp['q111'] - p_dp['q122'] + p_dp['q212'])
+        s_ds['y-2'] = 0.25 * (p_dp['q211'] - p_dp['q222'] - p_dp['q112'])
 
-    s_ds['x4'] = 0.5 * ( p_dp['a11'] - p_dp['a22'] )
+    s_ds['x4'] = 0.5 * (p_dp['a11'] - p_dp['a22'])
 
     if mix:
         s_ds['y4'] = p_dp['a12']
 
     if order == 'quad' and mix:
-        s_ds['x6'] = 0.25 * ( p_dp['q111'] - p_dp['q122'] - p_dp['q212'] )
-        s_ds['y6'] = 0.25 * ( p_dp['q211'] - p_dp['q222'] + p_dp['q112'] )
-
+        s_ds['x6'] = 0.25 * (p_dp['q111'] - p_dp['q122'] - p_dp['q212'])
+        s_ds['y6'] = 0.25 * (p_dp['q211'] - p_dp['q222'] + p_dp['q112'])
 
     return s_ds
 
@@ -472,11 +486,13 @@ def affine_corr(
     else:
         master_rng = np.random.RandomState(seed)
 
+    n_y = len(y)
+
     if mlabel is None:
         mlabel = np.full(n_y, 'm')
     if clabel is None:
         clabel = np.full(n_y, 'c')
-    
+
     if weights is None:
         weights = np.ones_like(y[0])
 
@@ -500,7 +516,7 @@ def affine_corr(
     x_bin = []
     y_bin = []
     err_bin = []
-    
+
     for idx in range(len(y)):
         y_bin.append([])
         err_bin.append([])
@@ -514,7 +530,7 @@ def affine_corr(
             bin_size_tmp = size_bin
             starter = diff_size
         ind = x_arg_sort[
-            starter + idx * bin_size_tmp : starter + (idx + 1) * bin_size_tmp
+            starter + idx * bin_size_tmp: starter + (idx + 1) * bin_size_tmp
         ]
 
         x_bin.append(np.mean(x[ind]))
@@ -533,9 +549,9 @@ def affine_corr(
             err_bin[j].append(r_jk[1])
 
     x_bin = np.array(x_bin)
-    for j in range(len(y)):
-        y_bin[j] = np.array(y_bin[j])
-        err_bin[j] = np.array(err_bin[j])
+    for jdx in range(len(y)):
+        y_bin[jdx] = np.array(y_bin[jdx])
+        err_bin[jdx] = np.array(err_bin[jdx])
 
     # Fit affine functions, plot function and data
     plt.figure(figsize=(10, 6))
@@ -544,7 +560,7 @@ def affine_corr(
         params.add('m', value=0.01)
         params.add('c', value=0.01)
         res = minimize(
-            loss_bias_lin_1d, params, args=(x, y[jdx], 1/np.sqrt(weights))
+            loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
         )
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
