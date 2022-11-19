@@ -19,6 +19,8 @@ from sp_validation import io
 from sp_validation import basic
 from sp_validation.plot_style import *
 
+from cs_util import plots
+
 
 def plot_spatial_density(
     ra,
@@ -52,7 +54,7 @@ def plot_spatial_density(
     verbose : bool, optional, default=False
         verbose output if True
     """
-    figure(figsize=(30, 30))
+    plots.figure(figsize=(30, 30))
 
     if max(ra) > 360:
         ra_plot = ra - 360
@@ -67,7 +69,7 @@ def plot_spatial_density(
     plt.xlabel(x_label)
     plt.ylabel(y_label)
 
-    savefig(out_path)
+    plots.savefig(out_path)
 
 
 def get_ticks(loc, N, new_min, new_max):
@@ -137,7 +139,7 @@ def plot_map(
     clusters :
         dictionary of cluster information, optional, default=None
     """
-    figure(figsize=(10, 10))
+    plots.figure(figsize=(10, 10))
 
     # plot image
     plt.imshow(m)
@@ -222,7 +224,7 @@ def plot_map(
 
     plt.title(title)
 
-    savefig(out_path)
+    plots.savefig(out_path)
 
     return vlim
 
@@ -250,7 +252,7 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
         map limits
 
     """
-    figure(figsize=(10, 10))
+    plots.figure(figsize=(10, 10))
 
     # plot image
     plt.imshow(kappa)
@@ -286,7 +288,7 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
 
     plt.title(title)
 
-    savefig(output_path)
+    plots.savefig(output_path)
 
     return vlim
 
