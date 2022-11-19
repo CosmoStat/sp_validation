@@ -1,6 +1,6 @@
 import os
 
-input_base = ['main_set_up', 'write_cat']
+input_base = ['main_set_up', 'metacal_global', 'write_cat']
 
 inp_str = '.ipynb '.join(input_base)
 

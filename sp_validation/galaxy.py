@@ -5,11 +5,8 @@
 :Description: This script contains methods to deal with
     galaxy and star images.
 
-:Author: Martin Kilbinger
-
-:Date: 2021
-
-:Package: sp_validation
+:Author: Martin Kilbinger <martin.kilbinger@cea.fr>
+         Axel Guinot
 
 """
 
@@ -25,10 +22,82 @@ from astropy import units
 from astropy import coordinates as coords
 from astropy.wcs import WCS
 
-from shapepipe.utilities import cfis
-
 from sp_validation import io
 
+
+size = {}                                                                       
+size['tile'] = 0.5
+
+def get_tile_number(tile_name):                                                 
+    """Get Tile Number.                                                         
+                                                                                
+    Return tile number of given image tile name.                                
+
+    MKDEBUG: copied from cfis
+                                                                                
+    Parameters                                                                  
+    ----------                                                                  
+    tile_name : str                                                             
+        tile name                                                               
+                                                                                
+    Raises                                                                      
+    ------                                                                      
+    CfisError                                                                   
+        if tile name does not match expected pipeline numbering scheme          
+                                                                                
+    Returns                                                                     
+    -------                                                                     
+    tuple                                                                       
+        tile number for x and tile number for y                                 
+                                                                                
+    """                                                                         
+    m = re.search(r'(\d{3})[\.-](\d{3})', tile_name)                            
+    if m is None or len(m.groups()) != 2:                                       
+        raise CfisError(                                                        
+            f'Image name \'{tile_name}\' does not match tile name syntax'       
+        )                                                                       
+                                                                                
+    nix = m.groups()[0]                                                         
+    niy = m.groups()[1]                                                         
+                                                                                
+    return nix, niy
+
+
+def get_tile_coord_from_nixy(nix, niy):                                         
+    """Get Tile Coord From Nixy.                                                
+                                                                                
+    Return coordinates corresponding to tile with number (nix,niy).             
+    This is the inverse to get_tile_number_from_coord.                          
+
+    MKDEBUG: copied from cfis
+                                                                                
+    Parameters                                                                  
+    ----------                                                                  
+    nix : str or int                                                            
+        tile number for x, can be list                                          
+    niy : str or int                                                            
+        tile number for y, can be list                                          
+                                                                                
+    Returns                                                                     
+    -------                                                                     
+    tuple                                                                       
+        right ascension and declination                                         
+                                                                                
+    """                                                                         
+    if not np.isscalar(nix):                                                    
+        # Transform to int, necessary if input is string                        
+        xi = np.array(nix).astype(int)                                          
+        yi = np.array(niy).astype(int)                                          
+    else:                                                                       
+        xi = int(nix)                                                           
+        yi = int(niy)                                                           
+                                                                                
+    d = yi / 2 - 90                                                             
+    dec = coords.Angle(d, unit='deg')                                           
+    r = xi / 2 / np.cos(dec.radian)                                             
+    ra = coords.Angle(r, unit='deg')                                            
+                                                                                
+    return ra, dec 
 
 def T_to_fwhm(T):
     """T to fwhm.
@@ -69,28 +138,12 @@ def sigma_to_fwhm(sigma, pixel_size=1):
     return sigma * 2.355 * pixel_size
 
 
-def classification_galaxy_overlap(dd):
-    """Classification Galaxy Overlap.
-
-    Return mask corresponding to non-overlapping tile areas.
-    Obsolete, does not work well! Replaced by
-    lassification_galaxy_overlap_ra_dec.
-
-    """
-    # Duplicate objects due to tile overlaps
-    cut_overlap = (
-        dd['FLAG_TILING'] == 1
-    )
-
-    return cut_overlap
-
-
 def classification_galaxy_overlap_ra_dec(
-        dd,
-        ra_key='XWIN_WORLD',
-        dec_key='YWIN_WORLD'
+    dd,
+    ra_key='XWIN_WORLD',
+    dec_key='YWIN_WORLD'
 ):
-    """Classification Galaxy Overlap Ra Dec
+    """Classification Galaxy Overlap Ra Dec.
 
     Return mask corresponding to non-overlapping tile areas using
     simple cuts in RA and Dec.
@@ -123,15 +176,15 @@ def classification_galaxy_overlap_ra_dec(
     nix = []
     niy = []
     for ID in tile_ID_str_list:
-        x, y = cfis.get_tile_number(ID)
+        x, y = get_tile_number(ID)
         nix.append(x)
         niy.append(y)
 
     # Get RA and Dec coordinates of tile centers
-    ra_cen, dec_cen = cfis.get_tile_coord_from_nixy(nix, niy)
+    ra_cen, dec_cen = get_tile_coord_from_nixy(nix, niy)
 
     # Create limits on Dec by adding/subtracting half of the tile size
-    delta_dec = cfis.size['tile'] / 2 * units.deg
+    delta_dec = size['tile'] / 2 * units.deg
     dec_upper = dec_cen + delta_dec
     dec_lower = dec_cen - delta_dec
 
@@ -147,7 +200,7 @@ def classification_galaxy_overlap_ra_dec(
         idx_ID = (dd['TILE_ID'] == tile_ID)
 
         # Set mask for this tile ID
-        mask_dec_ID = (  
+        mask_dec_ID = (
             (dd[idx_ID][dec_key] < dec_upper[idx].value)
             & (dd[idx_ID][dec_key] >= dec_lower[idx].value)
         )
@@ -190,7 +243,7 @@ def classification_galaxy_overlap_ra_dec(
     for idx, tile_ID in enumerate(tile_ID_list):
         idx_ID = (dd['TILE_ID'] == tile_ID)
         mask_ra_ID = (
-        (dd[idx_ID][ra_key] < ra_upper_list[idx].value)
+            (dd[idx_ID][ra_key] < ra_upper_list[idx].value)
             & (dd[idx_ID][ra_key] >= ra_lower_list[idx].value)
         )
         mask_ra[idx_ID] = mask_ra_ID
