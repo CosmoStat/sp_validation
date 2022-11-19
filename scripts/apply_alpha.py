@@ -17,6 +17,8 @@ from lmfit import Parameters
 from astropy.io import fits
 from astropy.table import Table, Column
 
+from cs_util import logging
+
 from sp_validation import correlation as corr
 from sp_validation import cat
 from sp_validation import util
@@ -143,7 +145,7 @@ def main(argv=None):
     for key in vars(options):
         params[key] = getattr(options, key)
 
-    util.log_command(argv)
+    logging.log_command(argv)
 
     # Load best-fit parameters for alpha leakage
     fname = (

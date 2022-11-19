@@ -7,7 +7,8 @@ import numpy as np
 from optparse import OptionParser
 from astropy.io import ascii, fits
 
-from sp_validation import util
+from cs_util import logging
+
 from sp_validation import correlation
 from sp_validation import io
 
@@ -423,8 +424,7 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
-
-    util.log_command(argv)
+    logging.log_command(argv)
 
     os.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
