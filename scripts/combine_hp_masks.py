@@ -295,6 +295,13 @@ def combine_hp_masks(mask_1d, verbose=False):
     w = t['flux'] > 1
     t['flux'][w] = 1
 
+    # Exchange 0 <-> 1
+    w_ok = (t['flux'] == 1)
+    w_nok = (t['flux'] == 0)
+
+    t['flux'][w_ok] = 0
+    t['flux'][w_nok] = 1
+
     return t
 
 

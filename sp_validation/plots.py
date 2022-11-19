@@ -12,7 +12,7 @@
 import numpy as np
 import matplotlib.pylab as plt
 
-from lenspack.geometry.projections.gnom import radec2xy
+#from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation import util
 from sp_validation import io

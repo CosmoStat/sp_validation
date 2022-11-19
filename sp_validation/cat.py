@@ -652,4 +652,3 @@ def cut_data(data, cut, verbose=False):
         print(f'Using {len(data)} galaxies after cuts.')
 
     return data
->>>>>>> origin/master
