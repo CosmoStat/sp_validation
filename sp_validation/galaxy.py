@@ -22,82 +22,11 @@ from astropy import units
 from astropy import coordinates as coords
 from astropy.wcs import WCS
 
+from cs_util import cfis
+
 from sp_validation import io
 
 
-size = {}                                                                       
-size['tile'] = 0.5
-
-def get_tile_number(tile_name):                                                 
-    """Get Tile Number.                                                         
-                                                                                
-    Return tile number of given image tile name.                                
-
-    MKDEBUG: copied from cfis
-                                                                                
-    Parameters                                                                  
-    ----------                                                                  
-    tile_name : str                                                             
-        tile name                                                               
-                                                                                
-    Raises                                                                      
-    ------                                                                      
-    CfisError                                                                   
-        if tile name does not match expected pipeline numbering scheme          
-                                                                                
-    Returns                                                                     
-    -------                                                                     
-    tuple                                                                       
-        tile number for x and tile number for y                                 
-                                                                                
-    """                                                                         
-    m = re.search(r'(\d{3})[\.-](\d{3})', tile_name)                            
-    if m is None or len(m.groups()) != 2:                                       
-        raise CfisError(                                                        
-            f'Image name \'{tile_name}\' does not match tile name syntax'       
-        )                                                                       
-                                                                                
-    nix = m.groups()[0]                                                         
-    niy = m.groups()[1]                                                         
-                                                                                
-    return nix, niy
-
-
-def get_tile_coord_from_nixy(nix, niy):                                         
-    """Get Tile Coord From Nixy.                                                
-                                                                                
-    Return coordinates corresponding to tile with number (nix,niy).             
-    This is the inverse to get_tile_number_from_coord.                          
-
-    MKDEBUG: copied from cfis
-                                                                                
-    Parameters                                                                  
-    ----------                                                                  
-    nix : str or int                                                            
-        tile number for x, can be list                                          
-    niy : str or int                                                            
-        tile number for y, can be list                                          
-                                                                                
-    Returns                                                                     
-    -------                                                                     
-    tuple                                                                       
-        right ascension and declination                                         
-                                                                                
-    """                                                                         
-    if not np.isscalar(nix):                                                    
-        # Transform to int, necessary if input is string                        
-        xi = np.array(nix).astype(int)                                          
-        yi = np.array(niy).astype(int)                                          
-    else:                                                                       
-        xi = int(nix)                                                           
-        yi = int(niy)                                                           
-                                                                                
-    d = yi / 2 - 90                                                             
-    dec = coords.Angle(d, unit='deg')                                           
-    r = xi / 2 / np.cos(dec.radian)                                             
-    ra = coords.Angle(r, unit='deg')                                            
-                                                                                
-    return ra, dec 
 
 def T_to_fwhm(T):
     """T to fwhm.
@@ -184,7 +113,7 @@ def classification_galaxy_overlap_ra_dec(
     ra_cen, dec_cen = get_tile_coord_from_nixy(nix, niy)
 
     # Create limits on Dec by adding/subtracting half of the tile size
-    delta_dec = size['tile'] / 2 * units.deg
+    delta_dec = cfis.Cfis().size['tile'] / 2
     dec_upper = dec_cen + delta_dec
     dec_lower = dec_cen - delta_dec
 
