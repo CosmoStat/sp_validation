@@ -105,12 +105,12 @@ def classification_galaxy_overlap_ra_dec(
     nix = []
     niy = []
     for ID in tile_ID_str_list:
-        x, y = get_tile_number(ID)
+        x, y = cfis.get_tile_number(ID)
         nix.append(x)
         niy.append(y)
 
     # Get RA and Dec coordinates of tile centers
-    ra_cen, dec_cen = get_tile_coord_from_nixy(nix, niy)
+    ra_cen, dec_cen = cfis.get_tile_coord_from_nixy(nix, niy)
 
     # Create limits on Dec by adding/subtracting half of the tile size
     delta_dec = cfis.Cfis().size['tile'] / 2
@@ -300,7 +300,7 @@ def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
             WCS for the tile.
 
         """
-        ra, dec = get_tile_coord_from_nixy(xxx, yyy)
+        ra, dec = cfis.get_tile_coord_from_nixy(xxx, yyy)
 
         w = WCS(naxis=2)
         w.wcs.crval = np.array([ra.deg, dec.deg])
