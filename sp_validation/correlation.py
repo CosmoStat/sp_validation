@@ -18,10 +18,10 @@ from uncertainties import ufloat
 
 from tqdm import tqdm
 
-from sp_validation.basic import bootstrap_weighted_average
 from sp_validation.plot_style import *
 from sp_validation import plots
 from sp_validation.io import print_stats
+from sp_validation import basic
 
 import treecorr
 
@@ -536,14 +536,14 @@ def affine_corr(
         x_bin.append(np.mean(x[ind]))
 
         for j in range(len(y)):
-            r_jk = bootstrap_weighted_average(
+            r_jk = basic.jackknif_weighted_average2(
                 y[j][ind],
                 weights[ind],
-                seed=get_seed(master_rng),
+                #seed=get_seed(master_rng),
                 remove_size=0.2,
                 n_realization=50,
-                parallel=parallel,
-                n_job=-1,
+                #parallel=parallel,
+                #n_job=-1,
             )
             y_bin[j].append(r_jk[0])
             err_bin[j].append(r_jk[1])
