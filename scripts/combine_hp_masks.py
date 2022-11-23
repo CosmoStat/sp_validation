@@ -30,7 +30,7 @@ from reproject import reproject_from_healpix, reproject_to_healpix
 
 from tqdm import tqdm                                                           
 
-from sp_validation import util
+from cs_util import logging
 
 
 def params_default():
@@ -345,7 +345,7 @@ def main(argv=None):
         params[key] = getattr(options, key)
 
     # Save calling command
-    #util.log_command(argv)
+    logging.log_command(argv)
 
     # Create mask
     if params['plot'] != 2:
@@ -374,7 +374,8 @@ def main(argv=None):
         if params['verbose']:
             print('Creating plot of combined mask(s)...')
 
-        mask_all = np.zeros(shape=(hp.nside2npix(params['nside'])))
+        # Initialise empty mask, set all pixels to 1=unobserved
+        mask_all = np.ones(shape=(hp.nside2npix(params['nside'])))
 
         # Combine input masks
         out_path_arr = glob(f'{params["out_path"]}')
@@ -383,11 +384,9 @@ def main(argv=None):
             if params['verbose']:
                 print(f'Reading file {out_path}...')
 
-            mask_all += hp.read_map(out_path)
-
-            # Set all multiply added pixels back to 1
-            w = mask_all > 1
-            mask_all[w] = 1
+            # Read mask and multiply to cumulative mask.
+            # Observed pixels (value=0) will be set to 0.
+            mask_all *= hp.read_map(out_path)
 
         # Create and save plot
 
