@@ -27,7 +27,6 @@ from cs_util import cfis
 from sp_validation import io
 
 
-
 def T_to_fwhm(T):
     """T to fwhm.
 

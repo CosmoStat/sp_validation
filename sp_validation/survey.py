@@ -20,7 +20,7 @@ def get_area(dd, area_tile, verbose=False):
 
     Parameters
     ----------
-    dd : dict
+    dd : numpy.ndarray
         galaxy catalog
     area_tile : float
         area per tile in square degree
