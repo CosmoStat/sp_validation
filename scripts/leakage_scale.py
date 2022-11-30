@@ -8,6 +8,7 @@ from astropy.io import ascii, fits
 import astropy.coordinates as coords
 from astropy import units                                                       
 
+from cs_util import logging
 
 from sp_validation import cat
 from sp_validation import plots
@@ -806,7 +807,7 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
-    util.log_command(argv)
+    logging.log_command(argv)
 
     sys.path.append('.')
     import params as config

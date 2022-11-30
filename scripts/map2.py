@@ -20,6 +20,8 @@ import matplotlib.pylab as plt
 
 import treecorr
 
+from cs_util import logging
+
 from sp_validation import util
 
 
@@ -124,7 +126,7 @@ def main(argv=None):
         params[key] = getattr(options, key)
 
     # Save calling command
-    util.log_command(argv)
+    logging.log_command(argv)
 
     # Initizlies correlation object
     gg = treecorr.GGCorrelation(
