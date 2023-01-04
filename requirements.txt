@@ -1,5 +1,5 @@
 importlib_metadata
-cs_util
+cs_util==0.0.4
 astropy>=5.0
 jupyterlab
 lmfit
