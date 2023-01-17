@@ -2,7 +2,7 @@
 
 :Description: This script contains utility methods.
 
-:Author: Martin Kilbinge <martin.kilblinger@cea.fr>
+:Author: Martin Kilbinger <martin.kilblinger@cea.fr>
 
 """
 
