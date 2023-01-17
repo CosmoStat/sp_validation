@@ -15,6 +15,8 @@ import numpy as np
 from datetime import datetime
 
 from astropy.io import fits
+from astropy import coordinates as coords
+from astropy import units as u
 
 from cs_util import cat
 
@@ -186,7 +188,7 @@ def check_matching(
         mask_area_tiles = np.arange(len(d1))
 
     # Match stars from exposure (PSF) catalogue to total catalogue
-    ind = basic.match_stars2(
+    ind = match_stars2(
         d2[keys_2[0]],
         d2[keys_2[1]],
         d1[keys_1[0]][mask_area_tiles],
@@ -332,6 +334,25 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
         + f'{tot_as_other}/{tot_star} = {tot_as_other / tot_star * 100:.1f}%'
     )
     io.print_stats(msg, stats_file, verbose=verbose)
+
+
+def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):            
+    """Add docstring.                                                           
+                                                                                
+    ...                                                                         
+                                                                                
+    """                                                                         
+    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)   
+    star_coord = coords.SkyCoord(                                               
+        ra=ra_star * u.degree,                                                  
+        dec=dec_star * u.degree,                                                
+    )                                                                           
+                                                                                
+    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)             
+                                                                                
+    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]             
+                                                                                
+    return ind_stars
 
 
 def read_shape_catalog(
