@@ -20,8 +20,9 @@ from astropy.io import fits
 
 from lenspack.geometry.projections.gnom import radec2xy
 
+from cs_util import canfar
+
 from sp_validation import basic
-from sp_validation import util
 from sp_validation.survey import get_footprint
 
 
@@ -322,7 +323,7 @@ def get_clusters(
         cluster information (ra, dec, z, SZ-mass)
     """
     out_path = f'{output_dir}/{cluster_cat_name}'
-    util.download(
+    canfar.download(
         f'{vos_dir}/{cluster_cat_name}',
         out_path,
         verbose=verbose

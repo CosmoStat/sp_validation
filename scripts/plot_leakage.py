@@ -7,9 +7,11 @@ from glob import glob
 from optparse import OptionParser
 from astropy.io import ascii
 
+from cs_util import logging
+
 from sp_validation.cat import *
 from sp_validation.plots import *
-from sp_validation.util import transform_nan, log_command
+from sp_validation.util import transform_nan
 from sp_validation.correlation import *
 from sp_validation import io
 
@@ -233,7 +235,7 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # save calling command
-    log_command(argv)
+    logging.log_command(argv)
 
     sys.path.append('.')
     import params as config

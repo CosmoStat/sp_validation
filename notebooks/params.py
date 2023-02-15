@@ -181,7 +181,7 @@ pixel_size_emap_amin = 0.4
 ## of size pixel_size_emap_amin
 smoothing_scale_pix = 20
 
-## Sign of shear components, to correct for lef-handed
+## Sign of shear components, to correct for left-handed
 ## coordinate system
 g1_sign = +1
 g2_sign = -1

@@ -8,8 +8,10 @@ from astropy.io import ascii
 from astropy.io import fits
 from optparse import OptionParser
 
-from sp_validation.cat import *
+from cs_util import logging
+from cs_util import cat
 
+from sp_validation.cat import *
 
 
 class param:
@@ -250,9 +252,9 @@ def merge_catalogues(
     print(column_all)
     if R_select is not None:
         R = R_shear + R_select
-        write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
+        cat.write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
     else:
-        write_fits_BinTable_file(column_all, output_path)
+        cat.write_fits_BinTable_file(column_all, output_path)
 
     return c, R_shear
 
@@ -274,6 +276,8 @@ def main(argv=None):
         return 1
 
     param = update_param(p_def, options)
+
+    logging.log_command(argv)
 
     if param.survey == 'v1':
         n_patch = 7
