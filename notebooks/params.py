@@ -133,7 +133,7 @@ gal_mag_faint = 30
 do_spread_model = False
 
 ## Minimum number of epochs
-n_epoch_min = 2
+n_epoch_min = 1
 
 ### Signal-to-noise (selection within metacal)
 #### minimum to cut noisy objects
