@@ -21,6 +21,7 @@ import regions
 from astropy import units
 from astropy import coordinates as coords
 from astropy.wcs import WCS
+from astropy.nddata import bitmask
 
 from sp_validation import io
 
@@ -278,15 +279,34 @@ def classification_galaxy_base(
         # Do not use spread model
         cut_sm_all = True
 
+    # SExtractor flags
+    # Keep some flags if specified
+    if flags_keep:
+        cut_flag = bitmask.bitfield_to_boolean_mask(
+            dd['FLAGS'],
+            good_mask_value=True,
+            ignore_flags=flags_keep,
+        )
+    else:
+        cut_flag = bitmask.bitfield_to_boolean_mask(
+            dd['FLAGS'],
+            good_mask_value=True,
+        )
+
+    #cut_flag = (
+        #cut_overlap
+        #& (dd['FLAGS'] == 0
+    #)
+
     cut_common = (
-        cut_overlap
+        cut_flags
         & cut_sm_all
         & (dd['MAG_AUTO'] <= gal_mag_faint)
         & (dd['MAG_AUTO'] >= gal_mag_bright)
-        & (dd['FLAGS'] == 0)
         & (dd['IMAFLAGS_ISO'] == 0)
         & (dd['N_EPOCH'] >= n_epoch_min)
     )
+
 
     return cut_common
 
