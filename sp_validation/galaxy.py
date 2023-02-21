@@ -257,6 +257,7 @@ def classification_galaxy_base(
     cut_overlap,
     gal_mag_bright=20,
     gal_mag_faint=26,
+    flags_keep=None,
     n_epoch_min=1,
     do_spread_model=True
 ):
@@ -282,6 +283,11 @@ def classification_galaxy_base(
     # SExtractor flags
     # Keep some flags if specified
     if flags_keep:
+
+        # Check whether flags are powers of 2
+        if not all([bin(flag).count('1') == 1 for flag in flags_keep]):
+            raise ValueError('Flag values in "flags_keep" not powers of 2')
+
         cut_flag = bitmask.bitfield_to_boolean_mask(
             dd['FLAGS'],
             good_mask_value=True,

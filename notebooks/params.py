@@ -132,6 +132,10 @@ gal_mag_faint = 30
 ### Spread-model
 do_spread_model = False
 
+### SExtractor flags to keep in addition to FLAGS=0
+### (bit-coded; list of powers of 2)
+keep_flags = [1, 2]
+
 ## Minimum number of epochs
 n_epoch_min = 1
 
