@@ -2,11 +2,10 @@
 
 :Description: This script contains utility methods.
 
-:Author: Martin Kilbinger
-
-:Author: Martin Kilbinge <martin.kilblinger@cea.fr>
+:Author: Martin Kilbinger <martin.kilblinger@cea.fr>
 
 """
+
 
 import sys
 import os
@@ -15,18 +14,11 @@ import math
 import numpy as np
 from scipy import stats
 
-try:
-    import vos.commands as vosc
-except ImportError:  # pragma: no cover
-    import_fail = True
-else:
-    import_fail = False
-
 
 def millify(n):
     """Millify.
 
-    Return human-readible names of large numbers
+    Return human-readible names of large numbers.
 
     Parameters
     ----------
@@ -56,7 +48,7 @@ def millify(n):
 def equi_num_bins(values, n_bin):
     """Equi Num Bins.
 
-    Returns (n_bin+1) equi-numbered bin edges of values. They define n_bin
+    Return (n_bin+1) equi-numbered bin edges. These define n_bin
     bins, each of which contains an equal number of points of values.
 
     Parameters
@@ -68,7 +60,7 @@ def equi_num_bins(values, n_bin):
 
     Returns
     -------
-    numpy.array :
+    numpy.array
         equi-numbered bin array
 
     """
@@ -95,6 +87,7 @@ def transform_nan(value):
     -------
     float
         output value
+
     """
     large = 1e30
 
@@ -106,117 +99,10 @@ def transform_nan(value):
     return res
 
 
-class vosError(Exception):
-    """VOS Error.
-
-    Generic error that is raised by the vosHandler.
-
-    """
-
-    pass
-
-
-class vosHandler:
-    """VOS Handler.
-
-    This class manages the use of VOS commands.
-
-    Parameters
-    ----------
-    command : str
-        VOS command name
-
-    """
-
-    def __init__(self, command):
-
-        self._check_vos_install()
-        self._avail_commands = tuple(vosc.__all__)
-        self.command = command
-
-    @staticmethod
-    def _check_vos_install():
-        """Check VOS Install.
-
-        Check if VOS is correctly installed.
-
-        """
-        if import_fail:
-            raise ImportError(
-                'vos package not found, install with \'pip install vos\''
-            )
-
-    @property
-    def command(self):
-        """Command.
-
-        This method sets the VOS command property.
-
-        """
-        return self._command
-
-    @command.setter
-    def command(self, value):
-
-        if value not in self._avail_commands:
-            raise ValueError('vos command must be one of {}'
-                             ''.format(self._avail_commands))
-
-        self._command = getattr(vosc, value)
-
-    def __call__(self, *args, **kwargs):
-        """Call Method.
-
-        This method allows class instances to be called as functions.
-
-        """
-        try:
-            self._command()
-
-        except Exception:
-            raise vosError(f'Error in VOs command: {self._command.__name__}')
-
-
-def download(source, target, verbose=False):
-    """Download.
-
-    Download file from vos.
-
-    Parameters
-    ----------
-    source : str
-        source path on vos
-    target : str
-        target path
-    verbose : bool, optional, default=False
-        verbose output if True
-
-    Returns
-    -------
-    bool
-        status, True/False or success/failure
-
-    """
-    cmd = 'vcp'
-
-    if not os.path.exists(target):
-        sys.argv = [cmd, source, target]
-        if verbose:
-            print('Downloading file {} to {}...'.format(source, target))
-        vcp = vosHandler(cmd)
-
-        vcp()
-        if verbose:
-            print('Download finished.')
-    else:
-        if verbose:
-            print('Target file {} exists, skipping download.'.format(target))
-
-
 def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
     """Compute Bins Func 2D.
 
-    Compute bins in x, y, err, for 2D model
+    Compute bins in x, y, err, for 2D model.
 
     Parameters
     ----------
@@ -233,11 +119,11 @@ def compute_bins_func_2d(x, y, n_bin, mix, weights=None):
 
     Returns
     -------
-    numpy.ndarray(float, 2, n_bin)
+    numpy.ndarray
         bin centers in x_1, x_2
-    numpy.ndarray(float, 2, 2, n_bin)
+    numpy.ndarray
         binned values of y_1, y_2 corresponding to x_1, x_2 bins
-    numpy.ndarray(float, 2, 2, n_bin)
+    numpy.ndarray
         binned errors of y_1, y_2 corresponding to x_1, x_2 bins
 
     """
@@ -321,9 +207,9 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
     ----------
     params : lmfit.Parameters
         fit parameters
-    x1 : list of float
+    x1 : list
         first component of x-values
-    x2 : list of float
+    x2 : list
         second component of x-values
     order : str, optional
         order of fit, default is 'lin'
@@ -332,9 +218,9 @@ def func_bias_2d_full(params, x1, x2, order='lin', mix=False):
 
     Returns
     -------
-    2D np.array of float
+    np.array
         first component the 2D model y1(x1, x2) on the (x1, x2)-grid
-    2D np.array of float
+    np.array
         second component the 2D model, y2(x1, x2) on the (x1, x2)-grid
 
     """
@@ -374,10 +260,10 @@ def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
 
     Returns
     -------
-    float or list of float
+    list
         first component the 2D model, y1(x1, x2). Dimension
         is equal to x1_data and x2_data
-    float or list of float
+    list
         second component the 2D model, y2(x1, x2). Dimension
         is equal to x1_data and x2_data
 
@@ -415,55 +301,3 @@ def func_bias_2d(params, x1_data, x2_data, order='lin', mix=False):
             y2_model += q212 * x1_data * x2_data + q211 * x1_data ** 2
 
     return y1_model, y2_model
-
-
-def log_command(argv, name=None, close_no_return=True):
-    """Log Command.
-
-    Write command with arguments to a file or stdout.
-    Choose name = 'sys.stdout' or 'sys.stderr' for output on sceen.
-
-    MKDEBUG copied from shapepipe:cfis
-
-    Parameters
-    ----------
-    argv : list
-        Command line arguments
-    name : str
-        Output file name (default: 'log_<command>')
-    close_no_return : bool
-        If True (default), close log file. If False, keep log file open
-        and return file handler
-
-    Returns
-    -------
-    filehandler
-        log file handler (if close_no_return is False)
-
-    """
-    if name is None:
-        name = 'log_' + os.path.basename(argv[0])
-
-    if name == 'sys.stdout':
-        f = sys.stdout
-    elif name == 'sys.stderr':
-        f = sys.stderr
-    else:
-        f = open(name, 'w')
-
-    for a in argv:
-
-        # Quote argument if special characters
-        if '[' in a or ']' in a:
-            a = f'\"{a}\"'
-
-        print(a, end='', file=f)
-        print(' ', end='', file=f)
-
-    print('', file=f)
-
-    if not close_no_return:
-        return f
-
-    if name != 'sys.stdout' and name != 'sys.stderr':
-        f.close()

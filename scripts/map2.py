@@ -22,8 +22,6 @@ import treecorr
 
 from cs_util import logging
 
-from sp_validation import util
-
 
 def params_default():
 
