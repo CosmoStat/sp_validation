@@ -288,24 +288,22 @@ def classification_galaxy_base(
         if not all([bin(flag).count('1') == 1 for flag in flags_keep]):
             raise ValueError('Flag values in "flags_keep" not powers of 2')
 
-        cut_flag = bitmask.bitfield_to_boolean_mask(
+        cut_flags = bitmask.bitfield_to_boolean_mask(
             dd['FLAGS'],
             good_mask_value=True,
             ignore_flags=flags_keep,
+            dtype=bool,
         )
     else:
-        cut_flag = bitmask.bitfield_to_boolean_mask(
+        cut_flags = bitmask.bitfield_to_boolean_mask(
             dd['FLAGS'],
             good_mask_value=True,
+            dtype=bool,
         )
 
-    #cut_flag = (
-        #cut_overlap
-        #& (dd['FLAGS'] == 0
-    #)
-
     cut_common = (
-        cut_flags
+        cut_overlap
+        & cut_flags
         & cut_sm_all
         & (dd['MAG_AUTO'] <= gal_mag_faint)
         & (dd['MAG_AUTO'] >= gal_mag_bright)
