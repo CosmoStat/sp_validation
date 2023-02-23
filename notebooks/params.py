@@ -132,8 +132,12 @@ gal_mag_faint = 30
 ### Spread-model
 do_spread_model = False
 
+### SExtractor flags to keep in addition to FLAGS=0
+### (bit-coded; list of powers of 2)
+flags_keep = [1, 2]
+
 ## Minimum number of epochs
-n_epoch_min = 2
+n_epoch_min = 1
 
 ### Signal-to-noise (selection within metacal)
 #### minimum to cut noisy objects

@@ -7,7 +7,7 @@ import os
 # Set the package release version
 major = 0
 minor = 3
-patch = 4
+patch = 5
 
 # Set the package details
 name = 'sp_validation'
@@ -62,8 +62,12 @@ def find_scripts():
 
     sdir = 'scripts'
 
-    return [os.path.join(sdir, val) for val in os.listdir(sdir) if
-            val.endswith('.py') and '__init__' not in val]
+    res = [
+        os.path.join(sdir, val) for val in os.listdir(sdir) if
+            val.endswith('.py') and '__init__' not in val
+    ]
+
+    return res
 
 
 setup(

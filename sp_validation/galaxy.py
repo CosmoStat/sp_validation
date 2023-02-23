@@ -21,6 +21,7 @@ import regions
 from astropy import units
 from astropy import coordinates as coords
 from astropy.wcs import WCS
+from astropy.nddata import bitmask
 
 from cs_util import cfis
 
@@ -184,6 +185,7 @@ def classification_galaxy_base(
     cut_overlap,
     gal_mag_bright=20,
     gal_mag_faint=26,
+    flags_keep=None,
     n_epoch_min=1,
     do_spread_model=True
 ):
@@ -206,15 +208,37 @@ def classification_galaxy_base(
         # Do not use spread model
         cut_sm_all = True
 
+    # SExtractor flags
+    # Keep some flags if specified
+    if flags_keep:
+
+        # Check whether flags are powers of 2
+        if not all([bin(flag).count('1') == 1 for flag in flags_keep]):
+            raise ValueError('Flag values in "flags_keep" not powers of 2')
+
+        cut_flags = bitmask.bitfield_to_boolean_mask(
+            dd['FLAGS'],
+            good_mask_value=True,
+            ignore_flags=flags_keep,
+            dtype=bool,
+        )
+    else:
+        cut_flags = bitmask.bitfield_to_boolean_mask(
+            dd['FLAGS'],
+            good_mask_value=True,
+            dtype=bool,
+        )
+
     cut_common = (
         cut_overlap
+        & cut_flags
         & cut_sm_all
         & (dd['MAG_AUTO'] <= gal_mag_faint)
         & (dd['MAG_AUTO'] >= gal_mag_bright)
-        & (dd['FLAGS'] == 0)
         & (dd['IMAFLAGS_ISO'] == 0)
         & (dd['N_EPOCH'] >= n_epoch_min)
     )
+
 
     return cut_common
 
