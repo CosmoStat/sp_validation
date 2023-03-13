@@ -1,0 +1,1 @@
+/home/mkilbing/.conda/envs/sp_validation/bin/leakage_scale.py -i /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits -I /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits -o . --e1_PSF_star_col e1_PSF --e2_PSF_star_col e2_PSF -v

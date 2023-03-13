@@ -62,6 +62,13 @@ def params_default():
         e2_PSF_star_col='E2_PSF_HSM',
         ra_star_col='RA',
         dec_star_col='Dec',
+        sh='sh',
+        theta_min_amin=1,
+        theta_max_amin=300,
+        n_theta=20,
+        leakage_alpha_ylim=[0.03, 0.15],
+        leakage_xi_sys_ylim=[-4e5, 5e5],
+        leakage_xi_sys_log_ylim=[2e-13, 5e-5],
     )
 
     return p_def
@@ -907,11 +914,6 @@ def main(argv=None):
     logging.log_command(argv)
 
     sys.path.append('.')
-    import params as config
-    if len(config.shapes) != 1:                                                 
-        raise IndexError('number of shape measurement methods has to be one')
-    if param.sh is None:                                                        
-        param.sh = config.shapes[0]                 
 
     # MKDEBUG TODO: replace
     os.mkdir(param.output_dir)
@@ -952,9 +954,9 @@ def main(argv=None):
         dat_PSF,
         param,
         stats_file,
-        config.theta_min_amin,
-        config.theta_max_amin,
-        config.n_theta,
+        param.theta_min_amin,
+        param.theta_max_amin,
+        param.n_theta,
         verbose=param.verbose
     )
     print(
@@ -981,9 +983,9 @@ def main(argv=None):
         sig_alpha_leak,
         param.sh,
         param.output_dir,
-        config.theta_min_amin,
-        config.theta_max_amin,
-        config.leakage_alpha_ylim
+        param.theta_min_amin,
+        param.theta_max_amin,
+        param.leakage_alpha_ylim
     )
 
     # xi_sys
@@ -1000,8 +1002,8 @@ def main(argv=None):
         param.sh,
         param.output_dir,
         stats_file,
-        config.leakage_xi_sys_ylim,
-        config.leakage_xi_sys_log_ylim,
+        param.leakage_xi_sys_ylim,
+        param.leakage_xi_sys_log_ylim,
         verbose=param.verbose
     )
 
