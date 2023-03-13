@@ -10,8 +10,10 @@ from optparse import OptionParser
 
 from cs_util import logging
 from cs_util import cat
+from cs_util import plots
 
 from sp_validation.cat import *
+
 
 
 class param:
@@ -161,6 +163,7 @@ def get_R(fname_base, key_base=None):
 
     return R
 
+
 def merge_catalogues(
     patches,
     input_sub_path,
@@ -169,7 +172,8 @@ def merge_catalogues(
     return_mean_e=False,
     return_mean_R_shear=False,
     hdu_in=1,
-    verbose=False
+    hist_base=None,
+    verbose=False,
 ):
     """Merge Catalogues
 
@@ -244,12 +248,40 @@ def merge_catalogues(
         )
 
     R_shear = np.empty(shape=(2, 2))
+    R_shear_all = []
+    labels = []
     if return_mean_R_shear:
         for idx in (0, 1):
             for jdx in (0, 1):
                 R_shear[idx][jdx] = np.mean(dat_all[f'R_g{idx+1}{jdx+1}'])
 
-    print(column_all)
+                R_shear_all.append(dat_all[f'R_g{idx+1}{jdx+1}'])
+                labels.append(f'$R_{{{idx+1}{jdx+1}}}$')
+
+    if hist_base is not None:
+        # Plot histogram of R_shear elements
+        title = 'Shear response'
+        x_label = 'response matrix element'
+        y_label = 'frequency'
+        x_range = (-3, 3)
+        n_bins = 500
+        out_path = f'R_{hist_base}.pdf'
+        colors = ['blue', 'red','blue', 'red']                                          
+        linestyles = ['-', '-', ':', ':']
+
+        plots.plot_histograms(
+            R_shear_all,
+            labels,
+            title,
+            x_label,
+            y_label,
+            x_range,
+            n_bins,
+            out_path,
+            colors=colors,
+            linestyles=linestyles,
+        )
+
     if R_select is not None:
         R = R_shear + R_select
         cat.write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
@@ -292,7 +324,7 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.0.1'
+    version = '1.0.1a'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -321,7 +353,8 @@ def main(argv=None):
         R_select=R_select,
         verbose=param.verbose,
         return_mean_e=return_mean_e,
-        return_mean_R_shear=return_mean_R_shear
+        return_mean_R_shear=return_mean_R_shear,
+        hist_base=sh,
     )
 
     fname = 'c.txt'
@@ -375,6 +408,7 @@ def main(argv=None):
             print(' ', patch)
 
         input_path = f'{patch}/sp_output/shape_catalog_{sh}.fits'
+        print(f'Reading {input_path}...')
         ra, dec, g1, g2, w, mag, _ = read_shape_catalog(input_path)
 
         ra_all = np.append(ra_all, ra)
@@ -421,7 +455,13 @@ def main(argv=None):
     input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
 
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
-    merge_catalogues(patches, input_sub_path, output_path, hdu_in=2, verbose=param.verbose)
+    merge_catalogues(
+        patches,
+        input_sub_path,
+        output_path,
+        hdu_in=2,
+        verbose=param.verbose,
+    )
 
 
 if __name__ == "__main__":

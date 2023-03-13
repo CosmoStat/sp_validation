@@ -396,7 +396,8 @@ def read_shape_catalog(
     g2 = dat[hdu_no].data['e2_uncal']
     w = dat[hdu_no].data['w']
     mag = dat[hdu_no].data['mag']
-    if 'snr' in dat[hdu_no].data:
+
+    if 'snr' in dat[hdu_no].data.dtype.names:
         snr = dat[hdu_no].data['snr']
     else:
         snr = None
