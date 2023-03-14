@@ -18,6 +18,9 @@
 
 import os
 import numpy as np
+import matplotlib.pylab as plt
+
+from cs_util import plots
 
 # ## Input data
 

@@ -234,7 +234,6 @@ def merge_catalogues(
             my_format = 'D'
         else:
             my_format = 'I'
-        print('adding', name)
         column = fits.Column(name=name, array=dat_all[name], format=my_format)
         column_all.append(column)
 
@@ -324,7 +323,7 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.0.1a'
+    version = '1.0.3'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -408,7 +407,6 @@ def main(argv=None):
             print(' ', patch)
 
         input_path = f'{patch}/sp_output/shape_catalog_{sh}.fits'
-        print(f'Reading {input_path}...')
         ra, dec, g1, g2, w, mag, _ = read_shape_catalog(input_path)
 
         ra_all = np.append(ra_all, ra)
@@ -449,9 +447,9 @@ def main(argv=None):
         add_cols_format=add_col_format, 
     )
 
-    # PSF catalogue
+    # PSF catalogue with single-epoch shapes (HSM moments)
     if param.verbose:
-        print('Merging PSF catalogues')
+        print('Merging PSF catalogues (with single-epoch moments shapes)')
     input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
 
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
@@ -462,6 +460,20 @@ def main(argv=None):
         hdu_in=2,
         verbose=param.verbose,
     )
+
+    # Star catalogue with multi-epoch shapes (ngmix); from matching with
+    # galaxy sample
+    if param.verbose:
+        print('Merging star catalogues (matched with galaxy catalogue for shapes')
+    input_sub_path = f'sp_output/psf_catalog_{sh}.fits'
+    output_path = f'{survey}_{pipeline}_star_{year}_v{version}.fits'
+    merge_catalogues(
+        patches,
+        input_sub_path,
+        output_path,
+        verbose=param.verbose,
+    )
+
 
 
 if __name__ == "__main__":
