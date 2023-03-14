@@ -56,9 +56,12 @@ shapes = {
 # +
 # Catalogues
 
+# ShapePipe
+
 # Basic shear catalogue
 cat_shear = {}
 cat_shear['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_2022_v1.0.2.fits'
+cat_shear['LF_v1.0'] = f'{v1_base_dir}/Lensfit/lensfit_goldshape_2022v1.fits'
 
 # Extended shear catalogue
 cat_shear_ext = {}
@@ -70,10 +73,13 @@ cat_psf = {}
 # Updated to 1.0.2
 cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits'
 
-# Star catalogue (with ngmix shapes)
+# Star catalogue
 cat_star = {}
-# Updated to 1.0.3
+# Updated to 1.0.3 (ngmix shapes)
 cat_star['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_star_2022_v1.0.3.fits'
+
+# pixel-based shapes, need to get updated ones
+cat_star['LF_v1.0'] = f'{v1_base_dir}/Lensfit/full_starcat_tmp_1_10_seed_1234.fits'
 # -
 
 # ## Variables
@@ -110,26 +116,44 @@ ver = 'SP_v1.0'
 
 output_dir = f'leakage_{ver}'
 
-cmd = f'leakage_scale.py -i {cat_shear_ext[ver]} -I {cat_star[ver]} -o {output_dir} --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+cmd = f'leakage_scale.py -i {cat_shear_ext[ver]} -I {cat_star[ver]} -o {output_dir} --sh {shapes[ver]} --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+print(f'Running shell command {cmd}...')
+os.system(cmd)
+
+# +
+ver = 'LF_v1.0'
+
+output_dir = f'leakage_{ver}'
+
+cmd = f'leakage_scale.py -i {cat_shear[ver]} -I {cat_star[ver]} -o {output_dir} --sh {shapes[ver]} --e1_col e1 --e2_col e2 --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 
 # +
 # Plot scale-dependent leakage
 
-shape_method = shapes[ver]
+theta = []
+y = []
+yerr = []
 
-alpha_name = f'{output_dir}/alpha_leakage_{shape_method}.txt'
-alpha = ascii.read(f'{alpha_name}')
-                                                           
-theta = [alpha['theta[arcmin]']]   
-y = [alpha['alpha']]
-yerr = [alpha['sig_alpha']]                                                     
 xlabel = r'$\theta$ [arcmin]'                                               
 ylabel = r'$\alpha(\theta)$'
-linestyles = ['-']
-title = alpha_name                                                        
-out_path = None # f'{output_dir}/alpha_leakage_{shape_method}_nb.png'                                                                     
+labels = []
+linestyles = ['-', ':']
+title = ''
+out_path = None
+
+for ver in versions:
+    shape_method = shapes[ver]
+    output_dir = f'leakage_{ver}'
+
+    alpha_name = f'{output_dir}/alpha_leakage_{shape_method}.txt'
+    alpha = ascii.read(f'{alpha_name}')
+                                                           
+    theta.append(alpha['theta[arcmin]'])
+    y.append(alpha['alpha'])
+    yerr.append(alpha['sig_alpha'])
+    labels.append(ver)
                                                                                 
 plots.plot_data_1d(                                                     
     theta,                                                                  
@@ -143,6 +167,7 @@ plots.plot_data_1d(
     xlim=[theta_min_plot, theta_max_plot],                                                      
     ylim=ylim_alpha, 
     linestyles=linestyles,
+    labels=labels,
 )
 
 # +
