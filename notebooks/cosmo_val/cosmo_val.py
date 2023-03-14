@@ -16,11 +16,20 @@
 # # Cosmological validation of UNIONS shape catalogues
 # 03/2023
 
+# %matplotlib inline
+
+# +
 import os
 import numpy as np
 import matplotlib.pylab as plt
 
+from astropy.io import ascii
+
+# +
+from sp_validation.plot_style import *                                          
+
 from cs_util import plots
+# -
 
 # ## Input data
 
@@ -38,6 +47,12 @@ versions = {
     'LF_v1.0',
 }
 
+# Shape measurement methods (for file names, plot titles, etc.)
+shapes = {
+    'SP_v1.0' : 'ngmix',
+    'LF_v1.0' : 'lensfit'
+}
+
 # +
 # Catalogues
 
@@ -53,15 +68,27 @@ cat_shear_ext['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_extended_2
 # PSF catalogue
 cat_psf = {}
 # Updated to 1.0.2
-cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_psf_2022_v1.0.2.fits'
+cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits'
 
 # Star catalogue (with ngmix shapes)
 cat_star = {}
 # Updated to 1.0.3
-cat_star['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_star_2022_v1.0.3.fits'
+cat_star['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_star_2022_v1.0.3.fits'
+# -
 
+# ## Variables
 
-yyyy = 1
+components = ['+', '-']
+
+# ### Plotting
+
+# +
+theta_min_plot = 1
+theta_max_plot = 300
+
+ylim_alpha = [-0.03, 0.1]
+
+ylim_xi_sys_ratio = [-0.05, 0.5]
 # -
 
 # ## Loading data
@@ -80,9 +107,81 @@ yyyy = 1
 # xi_sys
 
 ver = 'SP_v1.0'
-cmd = f'leakage_scale.py -i {cat_shear_ext[ver]} -I {cat_star[ver]} -o . --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+
+output_dir = f'leakage_{ver}'
+
+cmd = f'leakage_scale.py -i {cat_shear_ext[ver]} -I {cat_star[ver]} -o {output_dir} --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
 print(f'Running shell command {cmd}...')
 os.system(cmd)
+
+# +
+# Plot scale-dependent leakage
+
+shape_method = shapes[ver]
+
+alpha_name = f'{output_dir}/alpha_leakage_{shape_method}.txt'
+alpha = ascii.read(f'{alpha_name}')
+                                                           
+theta = [alpha['theta[arcmin]']]   
+y = [alpha['alpha']]
+yerr = [alpha['sig_alpha']]                                                     
+xlabel = r'$\theta$ [arcmin]'                                               
+ylabel = r'$\alpha(\theta)$'
+linestyles = ['-']
+title = alpha_name                                                        
+out_path = None # f'{output_dir}/alpha_leakage_{shape_method}_nb.png'                                                                     
+                                                                                
+plots.plot_data_1d(                                                     
+    theta,                                                                  
+    y,                                                            
+    yerr,                                                                   
+    title,                                                                  
+    xlabel,                                                                 
+    ylabel,                                                                 
+    out_path,                                                               
+    xlog=True,                                                              
+    xlim=[theta_min_plot, theta_max_plot],                                                      
+    ylim=ylim_alpha, 
+    linestyles=linestyles,
+)
+
+# +
+# Plot xi_sys relative to xi (theory)
+
+shape_method = shapes[ver]
+
+xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
+xi_sys = ascii.read(f'{xi_sys_name}')
+                                                           
+theta = [xi_sys['theta[arcmin]']]   
+y = [
+    xi_sys['xi_+_sys'] / xi_sys['xi_+_theo'],
+    xi_sys['xi_-_sys'] / xi_sys['xi_-_theo'],
+]
+yerr = [
+    xi_sys['sigma(xi_+_sys)'] / xi_sys['xi_+_theo'],
+    xi_sys['sigma(xi_-_sys)'] / xi_sys['xi_-_theo'],           
+]
+labels = [rf'$\xi^{{sys}}_{comp}' for comp in components]
+xlabel = r'$\theta$ [arcmin]'                                               
+ylabel = r'correlation function ratio'
+linestyles = ['-', '-']
+title = xi_sys_name
+out_path = None #f'{output_dir}/xi_sys_{shape_method}_ratio_nb.png'                                                                     
+                                                                                
+plots.plot_data_1d(                                                         
+    theta,                                                                  
+    y,                                                            
+    yerr,                                                                   
+    title,                                                                  
+    xlabel,                                                                 
+    ylabel,                                                                 
+    out_path,                                                               
+    xlog=True,                                                              
+    xlim=[theta_min_plot, theta_max_plot],                                                      
+    ylim=ylim_xi_sys_ratio, 
+    linestyles=linestyles,
+)
 # -
 
 # ### Cosmological analysis
@@ -92,3 +191,18 @@ os.system(cmd)
 # B-modes
 # covariance
 # MCMC
+# -
+
+keys = [f'xi_{comp}_sys' for comp in components]
+xi_sys[keys]
+
+# +
+xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
+xi_sys = ascii.read(f'{xi_sys_name}')
+                                                           
+theta = [xi_sys['theta[arcmin]']]   
+y = [xi_sys['xi_+_sys']]
+y
+# -
+
+
