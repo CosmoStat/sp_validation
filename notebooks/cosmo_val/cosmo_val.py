@@ -59,6 +59,9 @@ cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_psf_2022_v1.0.2.fits'
 cat_star = {}
 # Updated to 1.0.3
 cat_star['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_star_2022_v1.0.3.fits'
+
+
+yyyy = 1
 # -
 
 # ## Loading data
