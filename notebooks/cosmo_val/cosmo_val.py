@@ -58,6 +58,17 @@ cat_shear_ext['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_extended_2
 cat_psf = {}
 # Updated to 1.0.2
 cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_psf_2022_v1.0.2.fits'
+<<<<<<< HEAD
+=======
+
+# Star catalogue (with ngmix shapes)
+cat_star = {}
+# Updated to 1.0.3
+cat_star['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_star_2022_v1.0.3.fits'
+
+
+yyyy = 1
+>>>>>>> 6b0c7c9e26bf863732168d518285daed030a54bb
 # -
 
 # ## Loading data
