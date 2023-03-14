@@ -26,7 +26,7 @@ from cs_util import plots
 
 # +
 # Base directory for data, on candide
-data_base_dir = '/n17data/mkilbing/astro/data/CFIS'
+data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
 
 # Base directory for v1.0 data
 v1_base_dir = f'{data_base_dir}/v1.0'
@@ -54,6 +54,11 @@ cat_shear_ext['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_extended_2
 cat_psf = {}
 # Updated to 1.0.2
 cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_psf_2022_v1.0.2.fits'
+
+# Star catalogue (with ngmix shapes)
+cat_star = {}
+# Updated to 1.0.3
+cat_star['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_star_2022_v1.0.3.fits'
 # -
 
 # ## Loading data
@@ -72,7 +77,7 @@ cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_psf_2022_v1.0.2.fits'
 # xi_sys
 
 ver = 'SP_v1.0'
-cmd = f'leakage_scale.py -i {cat_shear_ext[ver]} -I {cat_shear_ext[ver]} -o . --e1_PSF_star_col e1_PSF --e2_PSF_star_col e2_PSF -v'
+cmd = f'leakage_scale.py -i {cat_shear_ext[ver]} -I {cat_star[ver]} -o . --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 # -
