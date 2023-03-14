@@ -54,6 +54,8 @@ cat_shear_ext['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_extended_2
 cat_psf = {}
 # Updated to 1.0.2
 cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_psf_2022_v1.0.2.fits'
+
+xxxxx = 1
 # -
 
 # ## Loading data
