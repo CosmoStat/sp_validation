@@ -5,11 +5,14 @@ See https://nextjournal.com/schmudde/how-to-version-control-jupyter
 
 To use this feature on your machine, the following two steps are required:
 
-1. Install jupytext
+1. Install jupytext, if not already done via the conda environment
 pip install jupytext --upgrade
 
 2. Update configuration
 jupyter serverextension enable jupytext
+
+3. Create the jupyter notebook from the python script:
+jupytext --to ipynb cosmo_val.py
 
 
 The .py file is on git version control, and can be edited, pulled, committed,
