@@ -2,19 +2,22 @@
 
 import sys
 import copy
+import os
 import numpy as np
 from optparse import OptionParser
 from astropy.io import ascii, fits
 import astropy.coordinates as coords
-from astropy import units                                                       
+from astropy import units
 
 from cs_util import logging
+from cs_util import canfar
 
 from sp_validation import cat
-from sp_validation import plots
+from cs_util import plots
 from sp_validation import util
 from sp_validation import correlation as corr
 from sp_validation import io
+from sp_validation import cosmology as cosmology
 
 
 class param:
@@ -59,6 +62,13 @@ def params_default():
         e2_PSF_star_col='E2_PSF_HSM',
         ra_star_col='RA',
         dec_star_col='Dec',
+        sh='ngmix',
+        theta_min_amin=1,
+        theta_max_amin=300,
+        n_theta=20,
+        leakage_alpha_ylim=[-0.03, 0.1],
+        leakage_xi_sys_ylim=[-4e5, 5e5],
+        leakage_xi_sys_log_ylim=[2e-13, 5e-5],
     )
 
     return p_def
@@ -165,37 +175,37 @@ def parse_options(p_def):
         type='string',
         help=f'output_dir, default=\'{p_def.output_dir}\''
     )
-    parser.add_option(                                                          
-        '-s',                                                                   
-        '--shapes',                                                             
-        dest='sh',                                                              
-        default=None,                                                           
-        type='string',                                                          
-        help=f'shape measurement method, default: read from parameter file'     
+    parser.add_option(
+        '-s',
+        '--shapes',
+        dest='sh',
+        default=p_def.sh,
+        type='string',
+        help=f'shape measurement method, default: read from parameter file'
     )
-    parser.add_option(                                                          
+    parser.add_option(
         '-t',
         '--close_pair_tolerance',
-        dest='close_pair_tolerance',                                                              
+        dest='close_pair_tolerance',
         default=None,
-        type='string',                                                          
+        type='string',
         help='tolerance angle for close objects in star catalogue'
     )
-    parser.add_option(                                                          
-        '-m',                                                                   
-        '--close_pair_mode',                                                             
-        dest='close_pair_mode',                                                              
+    parser.add_option(
+        '-m',
+        '--close_pair_mode',
+        dest='close_pair_mode',
         default=None,
-        type='string',                                                          
+        type='string',
         help='mode for close objects in star catalogue, one of'
             + '\'remove\', \'average\''
     )
-    parser.add_option(                                                          
+    parser.add_option(
         '-p',
         '--patch',
-        dest='patch',                                                              
+        dest='patch',
         default=None,
-        type='int',                                                          
+        type='int',
         help='patch number'
     )
     parser.add_option(
@@ -263,14 +273,14 @@ def check_options(options):
 
 def update_param(p_def, options):
     """Return default parameter, updated and complemented according to options.
-    
+
     Parameters
     ----------
     p_def:  class param
         parameter values
     optiosn: tuple
         command line options
-    
+
     Returns
     -------
     param: class param
@@ -347,7 +357,7 @@ def handle_close_objects(
     )
 
     # Search PSF catalogue in itself around tolerance angle
-    indices1, indices2, d2d, d3d = coordinates.search_around_sky(                              
+    indices1, indices2, d2d, d3d = coordinates.search_around_sky(
         coordinates,
         tolerance_angle
     )
@@ -435,11 +445,11 @@ def handle_close_objects(
             )
 
     # Test
-    coordinates_proc = coords.SkyCoord(                                              
+    coordinates_proc = coords.SkyCoord(
         ra=dat_PSF_proc[ra_star_col],
         dec=dat_PSF_proc[dec_star_col],
         unit='deg'
-    )      
+    )
     idx, d2d, d3d = coords.match_coordinates_sky(
         coordinates_proc,
         coordinates_proc,
@@ -469,7 +479,7 @@ def handle_close_objects(
 
     n_in = len(dat_PSF[ra_star_col])
     n_out = len(dat_PSF_proc[dec_star_col])
-    
+
     if n_in == n_out:
         io.print_stats(
             f'keeping all {n_out} stars',
@@ -506,8 +516,8 @@ def compute_corr_gp_pp_alpha(
         input shear data
     dat_PSF : FITS.record
         input PSF data
-    param : class param                                                         
-        parameters                  
+    param : class param
+        parameters
     stats_file : file handler
         statistics output file
     verbose : bool, optional
@@ -518,7 +528,7 @@ def compute_corr_gp_pp_alpha(
     treecorr output
         galaxy-PSF correlation data
     treecorr output
-        PSF-PSF correlation data    
+        PSF-PSF correlation data
     list of float
         values of alpha for a range of scales
     list of float
@@ -541,7 +551,7 @@ def compute_corr_gp_pp_alpha(
         ra,
         dec,
         e1_gal,
-        e2_gal, 
+        e2_gal,
         weights,
         ra_star,
         dec_star,
@@ -575,7 +585,7 @@ def compute_alpha_mean(
 ):
     """Compute Alpha Mean
 
-    Compute weighted mean of the leakage function alpha 
+    Compute weighted mean of the leakage function alpha
 
     Parameters
     ----------
@@ -659,7 +669,7 @@ def compute_xi_sys(r_corr_gp, r_corr_pp):
     r_corr_gp : treecorr output
         galaxy-PSF correlation data
     r_corr_pp : treecorr output
-        PSF-PSF correlation data    
+        PSF-PSF correlation data
 
     Returns
     -------
@@ -684,7 +694,7 @@ def compute_xi_sys(r_corr_gp, r_corr_pp):
             + (np.sqrt(r_corr_pp.varxip)/r_corr_pp.xip)**2
         )
     )
-    
+
     C_sys_std_m = (
         np.abs(C_sys_m)
         * np.sqrt(
@@ -741,7 +751,7 @@ def plot_xi_sys(
     theta = [meanr] * 2
     xi = [C_sys_p, C_sys_m]
     yerr = [C_sys_std_p, C_sys_std_m]
-    
+
     comp_arr = [0, 1]
     symb_arr = ['+', '-']
     for comp, symb in zip(comp_arr, symb_arr):
@@ -754,7 +764,7 @@ def plot_xi_sys(
     except:
         ylim = None
     out_path = f'{output_dir}/xi_sys_{shape_method}.pdf'
-    
+
     plots.plot_data_1d(
         theta,
         xi,
@@ -781,8 +791,102 @@ def plot_xi_sys(
         xlabel,
         ylabel,
         out_path,
-        xlog=True, 
+        xlog=True,
         ylog=True,
+        ylim=ylim,
+        labels=labels
+    )
+
+
+def get_nz():
+
+    nz_base = 'nz.CFHTLenSmatched.W3'
+    nz_ext = 'txt'
+    nz_date = '202012'
+    nz_version = 'v1'
+    data_dir = '.'
+
+    nz_name = '{}_{}_{}.{}'.format(nz_base, nz_date, nz_version, nz_ext)
+    source = f'vos:cfis/cosmostat/cosmology/redshifts/{nz_name}'
+    target = f'{data_dir}/{nz_name}'
+
+    canfar.download(source, target, verbose=True)
+    z, nz = np.loadtxt(target, unpack=True)
+
+    return z, nz
+
+
+def get_theo_xi_planck(theta):
+
+    Om = 0.3153
+    sig8 = 0.8111
+    ns = 0.9649
+    Ob = 0.0493
+    h = 0.6736
+
+    z, nz = get_nz()
+
+    xi_p, xi_m = cosmology.get_theo_xi(
+        theta,
+        z,
+        nz,
+        Omega_m=Om,
+        h=h,
+        Omega_b=Ob,
+        sig8=sig8,
+        ns=ns
+    )
+
+    return xi_p, xi_m
+
+
+def plot_xi_sys_ratio(
+        meanr,
+        C_sys_p,
+        C_sys_m,
+        C_sys_std_p,
+        C_sys_std_m,
+        xi_p_planck,
+        xi_m_planck,
+        shape_method,
+        output_dir,
+        stats_file,
+        verbose=False,
+):
+
+    labels = [
+        '$\\xi^{\\rm sys}_+ / \\xi_+$',
+        '$\\xi^{\\rm sys}_- / \\xi_-$',
+    ]
+
+    title = 'Cross-correlation leakage ratio'
+    xlabel = '$\\theta$ [arcmin]'
+    ylabel = 'Correlation function ratio'
+
+    theta = [meanr] * 2
+    xi = [C_sys_p / xi_p_planck, C_sys_m / xi_m_planck]
+    yerr = [C_sys_std_p / xi_p_planck, C_sys_std_m / xi_m_planck]
+
+    comp_arr = [0, 1]
+    symb_arr = ['+', '-']
+    for comp, symb in zip(comp_arr, symb_arr):
+        mean = np.mean(np.abs(xi[comp]))
+        msg = f'{shape_method}: <|xi_sys_{symb}| / xi_{symb}> = {mean}'
+        io.print_stats(msg, stats_file, verbose=verbose)
+
+    out_path = f'{output_dir}/xi_sys_{shape_method}_ratio.pdf'
+
+    ylim = [0, 0.5]
+
+    plots.plot_data_1d(
+        theta,
+        xi,
+        yerr,
+        title,
+        xlabel,
+        ylabel,
+        out_path,
+        xlog=True,
         ylim=ylim,
         labels=labels
     )
@@ -810,13 +914,10 @@ def main(argv=None):
     logging.log_command(argv)
 
     sys.path.append('.')
-    import params as config
-    if len(config.shapes) != 1:                                                 
-        raise IndexError('number of shape measurement methods has to be one')
-    if param.sh is None:                                                        
-        param.sh = config.shapes[0]                 
 
-    file_system.mkdir(param.output_dir)
+    # MKDEBUG TODO: replace
+    if not os.path.exists(param.output_dir):
+        os.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     # Read galaxy catalogue
@@ -854,11 +955,15 @@ def main(argv=None):
         dat_PSF,
         param,
         stats_file,
-        config.theta_min_amin,
-        config.theta_max_amin,
-        config.n_theta,
+        param.theta_min_amin,
+        param.theta_max_amin,
+        param.n_theta,
         verbose=param.verbose
     )
+    print(
+        any((r_corr_gp.meanr - r_corr_pp.meanr) / r_corr_gp.meanr > 0.1)
+    )
+
     io.save_alpha(
         r_corr_gp.meanr,
         alpha_leak,
@@ -879,9 +984,9 @@ def main(argv=None):
         sig_alpha_leak,
         param.sh,
         param.output_dir,
-        config.theta_min_amin,
-        config.theta_max_amin,
-        config.leakage_alpha_ylim
+        param.theta_min_amin,
+        param.theta_max_amin,
+        param.leakage_alpha_ylim
     )
 
     # xi_sys
@@ -898,9 +1003,35 @@ def main(argv=None):
         param.sh,
         param.output_dir,
         stats_file,
-        config.leakage_xi_sys_ylim,
-        config.leakage_xi_sys_log_ylim,
+        param.leakage_xi_sys_ylim,
+        param.leakage_xi_sys_log_ylim,
         verbose=param.verbose
+    )
+
+    xi_p_planck, xi_m_planck = get_theo_xi_planck(r_corr_gp.meanr)
+    plot_xi_sys_ratio(
+        r_corr_gp.meanr,
+        C_sys_p,
+        C_sys_m,
+        C_sys_std_p,
+        C_sys_std_m,
+        xi_p_planck,
+        xi_m_planck,
+        param.sh,
+        param.output_dir,
+        stats_file,
+        verbose=param.verbose,
+    )
+    io.save_xi_sys(
+        r_corr_gp.meanr,
+        C_sys_p,
+        C_sys_m,
+        C_sys_std_p,
+        C_sys_std_m,
+        xi_p_planck,
+        xi_m_planck,
+        param.sh,
+        param.output_dir
     )
 
     return 0

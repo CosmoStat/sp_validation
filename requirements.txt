@@ -1,11 +1,13 @@
 importlib_metadata
-cs_util
+cs_util==0.0.3
 astropy>=5.0
 jupyterlab
 lmfit
 numpy
 lenspack
 joblib
+jupyter
+jupytext
 regions
 scipy
 seaborn
