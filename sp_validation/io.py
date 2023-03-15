@@ -150,8 +150,67 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
 
     """
     cols = [theta, alpha_leak, sig_alpha_leak]
-    names = ['# theta', 'alpha', 'sig_alpha']
+    names = ['# theta[arcmin]', 'alpha', 'sig_alpha']
     fname = f'{output_dir}/alpha_leakage_{sh}.txt'
+    write_ascii_table_file(cols, names, fname)
+
+
+def save_xi_sys(
+    theta,
+    xi_sys_p,
+    xi_sys_m,
+    xi_sys_std_p,
+    xi_sys_std_m,
+    xi_p_theo,
+    xi_m_theo,
+    sh,
+    output_dir
+):
+    """Save Xi Sys.
+
+    Save 'xi_sys' cross-correlation function.
+
+    Parameters
+    ----------
+    theta : list
+        angular scales
+    xi_sys_p : list
+        xi+ component of cross-correlation function
+    xi_sys_m : list
+        xi- component of cross-correlation function
+    xi_sys_std_p : list
+        xi+ component of cross-correlation standard deviation
+    xi_sys_std_m : list
+        xi- component of cross-correlation standard deviation
+    xi_p_theo : list
+        xi+ component of theoretical shear-shear correlation
+    xi_m_theo : list
+        xi- component of theoretical shear-shear correlation
+    sh : str
+        shape measurement method, e.g. 'ngmix'
+    output_dir : str
+        output directory
+
+    """
+    cols = [
+        theta,
+        xi_sys_p,
+        xi_sys_m,
+        xi_sys_std_p,
+        xi_sys_std_m,
+        xi_p_theo,
+        xi_m_theo,
+    ]
+    names = [
+        '# theta[arcmin]',
+        'xi_+_sys', 
+        'xi_-_sys',
+        'sigma(xi_+_sys)',
+        'sigma(xi_-_sys)',
+        'xi_+_theo', 
+        'xi_-_theo',
+    ]
+    fname = f'{output_dir}/xi_sys_{sh}.txt'
     write_ascii_table_file(cols, names, fname)
 
 

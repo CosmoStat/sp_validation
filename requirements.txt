@@ -6,6 +6,8 @@ lmfit
 numpy
 lenspack
 joblib
+jupyter
+jupytext
 regions
 scipy
 seaborn
