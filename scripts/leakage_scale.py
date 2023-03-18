@@ -935,6 +935,12 @@ def main(argv=None):
 
     # Read star catalogue
     dat_PSF = io.open_fits_or_npy(param.input_path_PSF, hdu_no=param.hdu_psf)
+    n_PSF = len(dat_PSF)
+    io.print_stats(
+        f'{n_PSF} stars found in star catalogue',
+        stats_file,
+        verbose=param.verbose
+    )
 
     # Deal with close objects in PSF catalogue (= stars on same position
     # from different exposures)
