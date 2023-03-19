@@ -18,79 +18,45 @@
 
 # %matplotlib inline
 
-# +
 import os
 import numpy as np
 import matplotlib.pylab as plt
-
+import sys
+import numpy as np
+from astropy.io import fits
+import treecorr
+import pandas as pd
 from astropy.io import ascii
+import yaml
 
 # +
-from sp_validation.plot_style import *                                          
+# from sp_validation.plot_style import *                                          
 
 from cs_util import plots
 # -
 
 # ## Input data
 
-# +
+# Catalogue versions
+versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0']
+
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
-
-# Base directory for v1.0 data
-v1_base_dir = f'{data_base_dir}/v1.0'
-
-# v2.0 data
-v2_base_dir = f'{data_base_dir}/v2.0'
-# -
-
-# catalogue versions
-versions = {
-    'SP_v1.0',
-    'LF_v1.0',
-    'LF_v2.0',
-}
-
-# Shape measurement methods (for file names, plot titles, etc.)
-shapes = {
-    'SP_v1.0' : 'ngmix',
-    'LF_v1.0' : 'lensfit',
-    'LF_v2.0' : 'lensfit',
-}
+data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS
 
 # +
-# Catalogues
+# Read in dictionary about catalogue info from yaml file
+with open('cat_config.yaml', 'r') as file:
+    cat = yaml.load(file.read(), Loader=yaml.FullLoader)
+    
+# Set full paths
+for ver in versions:
+    for key in cat[ver]:
+        if "path" in cat[ver][key]:
+            cat[ver][key]["path"] = f"{data_base_dir}/{cat[ver]['subdir']}/{cat[ver][key]['path']}"
 
-# ShapePipe
-
-# Basic shear catalogue
-cat_shear = {}
-cat_shear['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_2022_v1.0.fits'
-cat_shear['LF_v1.0'] = f'{v1_base_dir}/Lensfit/lensfit_goldshape_2022v1.fits'
-cat_shear['LF_v2.0'] = f'{v2_base_dir}/Lensfit/lensfit_goldshape_2022v2_psf1.fits'
-
-# Extended shear catalogue
-cat_shear_ext = {}
-cat_shear_ext['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_extended_2022_v1.0.fits'
-
-
-# PSF catalogue
-cat_psf = {}
-# Updated to 1.0.2
-cat_psf['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits'
-
-# Star catalogue
-cat_star = {}
-# Updated to 1.0.3 (ngmix shapes)
-cat_star['SP_v1.0'] = f'{v1_base_dir}/ShapePipe/unions_shapepipe_star_2022_v1.0.3.fits'
-
-# pixel-based shapes
-cat_star['LF_v1.0'] = f'{v1_base_dir}/Lensfit/full_starcat_tmp_1_10_seed_1234.fits'
-
-# WSC based shapes
-cat_star['LF_v2.0'] = f'{v2_base_dir}/Lensfit/Pall_hdu1_THELI_psfs1_mosaic.fits'
-# -
-
+if not os.path.exists(cat["paths"]["output"]):
+    os.mkdir(cat["paths"]["output"])
+            
 # ## Variables
 
 components = ['+', '-']
@@ -123,25 +89,42 @@ ylim_xi_sys_ratio = [-0.05, 0.5]
 # +
 ver = 'SP_v1.0'
 
-output_dir = f'leakage_{ver}'
+output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
+ext_path = cat[ver]["ext"]["path"]
+star_path = cat[ver]["star"]["path"]
+shape_ver = cat[ver]['shape']
 
-cmd = f'leakage_scale.py -i {cat_shear_ext[ver]} -I {cat_star[ver]} -o {output_dir} --sh {shapes[ver]} --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+cmd = f'leakage_scale.py \
+    -i {ext_path}\
+    -I {star_path}\
+    -o {output_dir} \
+    --sh {shape_ver} \
+    --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 
 # +
 ver = 'LF_v1.0'
 
-output_dir = f'leakage_{ver}'
+output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
 
-cmd = f'leakage_scale.py -i {cat_shear[ver]} -I {cat_star[ver]} -o {output_dir} --sh {shapes[ver]} --e1_col e1 --e2_col e2 --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+ext_path = cat[ver]["shear"]["path"]
+star_path = cat[ver]["star"]["path"]
+shape_ver = cat[ver]['shape']
+
+cmd = f'leakage_scale.py \
+    -i {ext_path}\
+    -I {star_path}\
+    -o {output_dir} \
+    --sh {shape_ver} \
+    --e1_col e1 --e2_col e2 --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 
 # +
 ver = 'LF_v2.0'
 
-output_dir = f'leakage_{ver}'
+output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
 
 cmd = f'leakage_scale.py -i {cat_shear[ver]} -I {cat_star[ver]} -o {output_dir} --sh {shapes[ver]} --ra_star_col=ra --dec_star_col=dec --e1_col=e1 --e2_col=e2 --e1_PSF_star_col=e1_psf --e2_PSF_star_col=e2_psf -v'
 print(f'Running shell command {cmd}...')
@@ -160,9 +143,10 @@ labels = []
 linestyles = ['-', ':', '-.']
 title = ''
 out_path = None
+#versions = ['SP_v1.0', 'LF_v1.0']
 
 for ver in versions:
-    shape_method = shapes[ver]
+    shape_method = cat[ver]['shape']
     output_dir = f'leakage_{ver}'
 
     alpha_name = f'{output_dir}/alpha_leakage_{shape_method}.txt'
@@ -191,6 +175,7 @@ plots.plot_data_1d(
 # +
 # Plot xi_sys relative to xi (theory)
 
+<<<<<<< HEAD
 for comp in components:
 
     theta = []
@@ -219,6 +204,28 @@ for comp in components:
     #linestyles = ['-', '-']
     title = None
     out_path = None #f'{output_dir}/xi_sys_{shape_method}_ratio_nb.png'                                                                     
+=======
+shape_method = cat[ver]['shape']
+
+xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
+xi_sys = ascii.read(f'{xi_sys_name}')
+                                                           
+theta = [xi_sys['theta[arcmin]']]   
+y = [
+    xi_sys['xi_+_sys'] / xi_sys['xi_+_theo'],
+    xi_sys['xi_-_sys'] / xi_sys['xi_-_theo'],
+]
+yerr = [
+    xi_sys['sigma(xi_+_sys)'] / xi_sys['xi_+_theo'],
+    xi_sys['sigma(xi_-_sys)'] / xi_sys['xi_-_theo'],           
+]
+labels = [rf'$\xi^{{sys}}_{comp}' for comp in components]
+xlabel = r'$\theta$ [arcmin]'                                               
+ylabel = r'correlation function ratio'
+linestyles = ['-', '-']
+title = xi_sys_name
+out_path = None #f'{output_dir}/xi_sys_{shape_method}_ratio_nb.png'                                                                     
+>>>>>>> upstream/master
                                                                                 
     plots.plot_data_1d(                                                         
         theta,                                                                  
@@ -235,16 +242,6 @@ for comp in components:
     )
     plt.show()
 # -
-
-# ### Cosmological analysis
-
-# +
-# xipm correlation functions
-# B-modes
-# covariance
-# MCMC
-# -
-
 keys = [f'xi_{comp}_sys' for comp in components]
 xi_sys[keys]
 
@@ -254,7 +251,233 @@ xi_sys = ascii.read(f'{xi_sys_name}')
                                                            
 theta = [xi_sys['theta[arcmin]']]   
 y = [xi_sys['xi_+_sys']]
-y
+
+
+# +
+# ### Cosmological analysis
+# xipm correlation functions
+# B-modes
+# covariance
+# MCMC
 # -
+
+# ### Load in Catalogues
+
+# +
+# User input catalogue option 
+cat_options=[['SP_v1.0','shear'],
+             ['LF_v1.0','shear']]
+
+
+# Read in catalogue data and store as arrays
+ra = {}
+dec = {}
+e1 = {}
+e2 = {}
+w = {}
+for cat_option in cat_options:
+    cat_key = cat_option[0]+'_'+cat_option[1]
+    if 'MP' in cat_option[1]:
+        df = pd.read_parquet(data_base_dir+'/'+cat[cat_option[0]][cat_option[1]]['path'], engine='pyarrow')
+        array = df['Separation'].to_numpy()
+        idx = np.argwhere(np.isfinite(array))
+        ra.update({cat_key: df['ra'].to_numpy()[idx].flatten()})
+        dec.update({cat_key:df['dec'].to_numpy()[idx].flatten()})
+        e1.update({cat_key:df['e1'].to_numpy()[idx].flatten()})
+        e2.update({cat_key:df['e2'].to_numpy()[idx].flatten()})
+        w.update({cat_key:df['w'].to_numpy()[idx].flatten()})
+    else:
+        hdu = fits.open(data_base_dir+'/'+cat[cat_option[0]][cat_option[1]]['path'])
+        data = hdu[1].data
+        ra.update({cat_key:data['ra']})
+        dec.update({cat_key:data['dec']})
+        e1.update({cat_key:data['e1']})
+        e2.update({cat_key:data['e2']})
+        w.update({cat_key:data['w']})
+# -
+
+# ### Catalogue histograms
+
+# +
+plt.rcParams.update({'font.size': 20,'figure.figsize':[22,7]})
+
+fig, axs = plt.subplots(1, 2)
+nbins = 200
+
+for cat_option in cat_options:
+    cat_key = cat_option[0]+'_'+cat_option[1]
+    (n,bins,_)= axs[0].hist(e1[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
+                            label='e1 %s' %cat[cat_option[0]][cat_option[1]]['label'])
+axs[0].set_xlabel('e1')
+axs[0].legend()
+axs[0].set_xlim([-1.5,1.5])
+# axs[0].set_ylim([0,2e4])
+
+for cat_option in cat_options:
+    cat_key = cat_option[0]+'_'+cat_option[1]
+    (n,bins,_)= axs[1].hist(e2[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
+                            label='e2 %s' %cat[cat_option[0]][cat_option[1]]['label'])
+axs[1].set_xlabel('e2')
+axs[1].legend()
+axs[1].set_xlim([-1.5,1.5])
+# axs[1].set_ylim([0,2e4])
+# -
+
+# ### Compute xi_pm's
+
+# +
+treecorr.set_omp_threads(8)
+
+sep_units = 'arcmin'
+theta_min = 1
+theta_max = 200
+
+TreeCorrConfig = {
+        'ra_units': 'degrees',
+        'dec_units': 'degrees',
+        'max_sep': str(theta_max),
+        'min_sep': str(theta_min),
+        'sep_units': sep_units,
+        'nbins': 20,
+        'var_method':'jackknife',
+    }
+
+cat_ggs = {}
+for cat_option in cat_options:
+    cat_key = cat_option[0]+'_'+cat_option[1]
+    
+    cat_gal = treecorr.Catalog(
+        ra=ra[cat_key],
+        dec=dec[cat_key],
+        g1=e1[cat_key]-cat[cat_option[0]][cat_option[1]]['e1_bias'],
+        g2=e2[cat_key]-cat[cat_option[0]][cat_option[1]]['e2_bias'],
+        w=w[cat_key],
+        ra_units='degrees',
+        dec_units='degrees',
+        npatch=50
+    )
+    gg = treecorr.GGCorrelation(TreeCorrConfig)
+    gg.process(cat_gal)
+    cat_ggs.update({cat_key:gg})
+    print("done for cat %s" %(cat_key))
+# -
+
+# ### Plot the xi_pm's
+
+# +
+plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
+
+#Plot of n_pairs
+for cat_option in cat_options:
+    cat_key = cat_option[0]+'_'+cat_option[1]
+    plt.plot(cat_ggs[cat_key].meanr, cat_ggs[cat_key].npairs, \
+             label=r'$n_{pairs}$ %s' %(cat[cat_option[0]][cat_option[1]]['label']), \
+             ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.ylabel(r'$n_{pairs}$')
+plt.legend()
+plt.show()
+
+#Plot of xi_+
+for cat_option in cat_options:
+    cat_key = cat_option[0]+'_'+cat_option[1]
+    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xip, yerr=np.sqrt(cat_ggs[cat_key].varxip), \
+                 label=r'$\xi_+$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+plt.plot()
+plt.xscale('log')
+plt.legend(fontsize=20)
+plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([0,200])
+_ = plt.ylabel(r'$\xi_+(\theta)$')
+plt.show()
+
+#Plot of xi_-
+for cat_option in cat_options:
+    cat_key = cat_option[0]+'_'+cat_option[1]
+    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xim, yerr=np.sqrt(cat_ggs[cat_key].varxim), \
+                 label=r'$\xi_-$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+plt.plot()
+plt.xscale('log')
+plt.legend(fontsize=20)
+plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([0,200])
+_ = plt.ylabel(r'$\xi_-(\theta)$')
+plt.show()
+# -
+
+# ### Plot Fractional Difference
+
+# +
+plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
+
+#Define the two catalogues you wish to compare
+cat1 = cat_options[0]
+cat2 = cat_options[1]
+
+cat_key = cat1[0]+'_'+cat1[1]
+cat_key2 = cat2[0]+'_'+cat2[1]
+
+ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
+err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
+plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+             label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
+
+ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
+err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
+plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+             label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
+plt.hlines(0.0,0,200,colors='k')
+plt.grid()
+plt.xscale('log')
+plt.ylim([-2.5,2.5])
+plt.legend(fontsize=15)
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([1,200])
+# -
+
+# ### Plot CovMats
+
+#Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
+for cat_option in cat_options:
+    try:
+        cc=np.loadtxt(cat[cat_option[0]][cat_option[1]]['covmat_file'])
+    except KeyError:
+        print('No Covmat available, skipping analysis for this catalogue')
+        continue
+    else:
+        cat_key = cat_option[0]+'_'+cat_option[1]
+        cc_var = np.diag(cc)
+        cc_varxip = cc_var[:20]
+        cc_varxim = cc_var[20:]
+
+        cc_g = np.loadtxt(cat[cat_option[0]][cat_option[1]]['covmat_file'][:-4]+'_g.txt')
+        cc_var = np.diag(cc_g)
+        cc_varxip_g = cc_var[:20]
+        cc_varxim_g = cc_var[20:]
+
+        plt.loglog(cat_ggs[cat_key].meanr,cat_ggs[cat_key].varxip,'-k', label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[cat_key].meanr,cc_varxip, ls='--', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[cat_key].meanr,cc_varxip_g, '.', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.grid()
+        plt.xlim([cat_ggs[cat_key].meanr[0],cat_ggs[cat_key].meanr[-1]])
+        plt.legend(fontsize=15)
+        plt.xlabel(rf'$\theta$ [{sep_units}]')
+        plt.ylabel(r'$\sigma(\xi_+)$')
+        plt.show()
+
+        plt.loglog(cat_ggs[cat_key].meanr,cat_ggs[cat_key].varxim,'-k', label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[cat_key].meanr,cc_varxim, ls='--', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[cat_key].meanr,cc_varxim_g, '.', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.grid()
+        plt.xlim([cat_ggs[cat_key].meanr[0],cat_ggs[cat_key].meanr[-1]])
+        plt.legend(fontsize=15)
+        plt.xlabel(rf'$\theta$ [{sep_units}]')
+        plt.ylabel(r'$\sigma(\xi_-)$')
+        plt.show()
+
+
+
 
 
