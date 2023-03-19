@@ -41,7 +41,7 @@ from cs_util import plots
 versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0']
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS
+data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
 
 # +
 # Read in dictionary about catalogue info from yaml file
@@ -175,84 +175,49 @@ plots.plot_data_1d(
 # +
 # Plot xi_sys relative to xi (theory)
 
-<<<<<<< HEAD
-for comp in components:
+theta = []
+y = []
+yerr = []
 
-    theta = []
-    y = []
-    yerr = []
+for ver in versions:
 
-    for ver in versions:
-        shape_method = shapes[ver]
-        output_dir = f'leakage_{ver}'
+    shape_method = cat[ver]['shape']
+    output_dir = f'{cat["paths"]["output"]/leakage_{ver}'
 
-        xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
-        xi_sys = ascii.read(f'{xi_sys_name}')
-
-        theta.append(xi_sys['theta[arcmin]'])
-
-        y.append(
-            xi_sys[f'xi_{comp}_sys'] / xi_sys[f'xi_{comp}_theo'],
-        )
-        yerr.append(
-            xi_sys[f'sigma(xi_{comp}_sys)'] / xi_sys[f'xi_{comp}_theo'],
-        )
-        labels.append(rf'$\xi^{{sys}}_{comp} ver')
-    
-    xlabel = r'$\theta$ [arcmin]'                                               
-    ylabel = rf'correlation function ratio ({comp})'
-    #linestyles = ['-', '-']
-    title = None
-    out_path = None #f'{output_dir}/xi_sys_{shape_method}_ratio_nb.png'                                                                     
-=======
-shape_method = cat[ver]['shape']
-
-xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
-xi_sys = ascii.read(f'{xi_sys_name}')
+    xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
+    xi_sys = ascii.read(f'{xi_sys_name}')
                                                            
-theta = [xi_sys['theta[arcmin]']]   
-y = [
-    xi_sys['xi_+_sys'] / xi_sys['xi_+_theo'],
-    xi_sys['xi_-_sys'] / xi_sys['xi_-_theo'],
-]
-yerr = [
-    xi_sys['sigma(xi_+_sys)'] / xi_sys['xi_+_theo'],
-    xi_sys['sigma(xi_-_sys)'] / xi_sys['xi_-_theo'],           
-]
+    theta.append(xi_sys['theta[arcmin]'])
+
+    y.append(
+        xi_sys[f'xi_{comp}_sys'] / xi_sys[f'xi_{comp}_theo'],
+    )
+    yerr.append(
+        xi_sys[f'sigma(xi_{comp}_sys)'] / xi_sys[f'xi_{comp}_theo'],
+    )
+    labels.append(rf'$\xi^{{sys}}_{comp} ver')
+
 labels = [rf'$\xi^{{sys}}_{comp}' for comp in components]
 xlabel = r'$\theta$ [arcmin]'                                               
 ylabel = r'correlation function ratio'
 linestyles = ['-', '-']
 title = xi_sys_name
 out_path = None #f'{output_dir}/xi_sys_{shape_method}_ratio_nb.png'                                                                     
->>>>>>> upstream/master
                                                                                 
-    plots.plot_data_1d(                                                         
-        theta,                                                                  
-        y,                                                            
-        yerr,                                                                   
-        title,                                                                  
-        xlabel,                                                                 
-        ylabel,                                                                 
-        out_path,
-        labels=labels,
-        xlog=True,                                                              
-        xlim=[theta_min_plot, theta_max_plot],                                                      
-        ylim=ylim_xi_sys_ratio, 
-    )
-    plt.show()
-# -
-keys = [f'xi_{comp}_sys' for comp in components]
-xi_sys[keys]
-
-# +
-xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
-xi_sys = ascii.read(f'{xi_sys_name}')
-                                                           
-theta = [xi_sys['theta[arcmin]']]   
-y = [xi_sys['xi_+_sys']]
-
-
+plots.plot_data_1d(                                                         
+    theta,                                                                  
+    y,                                                            
+    yerr,                                                                   
+    title,                                                                  
+    xlabel,                                                                 
+    ylabel,                                                                 
+    out_path,
+    labels=labels,
+    xlog=True,                                                              
+    xlim=[theta_min_plot, theta_max_plot],                                                      
+    ylim=ylim_xi_sys_ratio, 
+)
+plt.show()
 # +
 # ### Cosmological analysis
 # xipm correlation functions
@@ -262,6 +227,23 @@ y = [xi_sys['xi_+_sys']]
 # -
 
 # ### Load in Catalogues
+
+# +
+ra = {}
+dec = {}
+e1 = {}
+e2 = {}
+w = {}
+
+for ver in versions:
+    
+    hdu_list = fits.open(cat[ver]["shear"]["path"])
+    data = hdu_list[1]
+    ra[ver] = data['ra']
+    dec[ver] = data['dec']
+    e1[ver] = data['e1']
+    e2[ver] = data['e2']
+    w[ver] = data['w']
 
 # +
 # User input catalogue option 
@@ -296,7 +278,7 @@ for cat_option in cat_options:
         w.update({cat_key:data['w']})
 # -
 
-# ### Catalogue histograms
+# ### Catalogue ellipticity histograms
 
 # +
 plt.rcParams.update({'font.size': 20,'figure.figsize':[22,7]})
@@ -308,7 +290,8 @@ for cat_option in cat_options:
     cat_key = cat_option[0]+'_'+cat_option[1]
     (n,bins,_)= axs[0].hist(e1[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
                             label='e1 %s' %cat[cat_option[0]][cat_option[1]]['label'])
-axs[0].set_xlabel('e1')
+axs[0].set_xlabel('$e_1$')
+axs[0].set_ylabel('frequency')
 axs[0].legend()
 axs[0].set_xlim([-1.5,1.5])
 # axs[0].set_ylim([0,2e4])
@@ -317,13 +300,14 @@ for cat_option in cat_options:
     cat_key = cat_option[0]+'_'+cat_option[1]
     (n,bins,_)= axs[1].hist(e2[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
                             label='e2 %s' %cat[cat_option[0]][cat_option[1]]['label'])
-axs[1].set_xlabel('e2')
+axs[1].set_xlabel('$e_2$')
+axs[0].set_ylabel('frequency')
 axs[1].legend()
 axs[1].set_xlim([-1.5,1.5])
 # axs[1].set_ylim([0,2e4])
 # -
 
-# ### Compute xi_pm's
+# ### Compute xi_pm
 
 # +
 treecorr.set_omp_threads(8)
@@ -362,7 +346,7 @@ for cat_option in cat_options:
     print("done for cat %s" %(cat_key))
 # -
 
-# ### Plot the xi_pm's
+# ### Plot the xi_pm
 
 # +
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
