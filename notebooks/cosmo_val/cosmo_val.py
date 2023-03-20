@@ -20,6 +20,7 @@ import os
 import numpy as np
 import matplotlib.pylab as plt
 
+from sp_validation import plot_style 
 from cs_util import plots
 
 # ## Input data
