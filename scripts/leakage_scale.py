@@ -916,7 +916,8 @@ def main(argv=None):
     sys.path.append('.')
 
     # MKDEBUG TODO: replace
-    os.mkdir(param.output_dir)
+    if not os.path.exists(param.output_dir):
+        os.mkdir(param.output_dir)
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     # Read galaxy catalogue

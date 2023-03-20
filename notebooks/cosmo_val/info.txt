@@ -3,13 +3,18 @@ The python .py script and .ipynb notebook are paired.
 See https://nextjournal.com/schmudde/how-to-version-control-jupyter
 
 
+## Set-up jupytext
+
 To use this feature on your machine, the following two steps are required:
 
-1. Install jupytext
+1. Install jupytext, if not already done via the conda environment
 pip install jupytext --upgrade
 
 2. Update configuration
 jupyter serverextension enable jupytext
+
+3. Create the jupyter notebook from the python script:
+jupytext --to ipynb cosmo_val.py
 
 
 The .py file is on git version control, and can be edited, pulled, committed,
@@ -23,6 +28,22 @@ When you edit one of the two paired files, the other is automatically
 updated with the changes.
 
 
+## Test pairing
+
 You can test whether both files are consistent with
 
 jupytext --test -x cosmo_val.ipynb --to py
+
+
+## Create new paired jupyter notebook
+
+### From existing python script
+
+
+### From scratch
+
+1. Start notebook
+
+2. Create python script
+
+2. Edit metadata
