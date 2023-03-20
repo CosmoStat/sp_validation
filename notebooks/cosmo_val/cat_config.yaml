@@ -5,7 +5,7 @@ SP_v1.0:
    shape: ngmix
    subdir: v1.0/ShapePipe
    shear:
-      path: unions_shapepipe_2022_v1.0.1.fits
+      path: unions_shapepipe_2022_v1.0.fits
       label: SP_Full
       e1_bias: 0
       e2_bias: 0
@@ -63,9 +63,10 @@ LF_v1.0:
 
 LF_v2.0:
    shape: lensfit
-   subdir: v2/0/Lensfit
+   subdir: v2.0/Lensfit
    shear:
       path: lensfit_goldshape_2022v2_psf1.fits
+      label: LF_Full
 
 SP_matched_LF_v1.0:
    shear:

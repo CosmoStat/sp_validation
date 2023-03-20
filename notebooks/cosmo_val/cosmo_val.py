@@ -29,12 +29,8 @@ import pandas as pd
 from astropy.io import ascii
 import yaml
 
-# +
-# from sp_validation.plot_style import *                                          
-
-from sp_validation import plot_style 
+from sp_validation.plot_style import *
 from cs_util import plots
-# -
 
 # ## Input data
 
@@ -96,8 +92,8 @@ star_path = cat[ver]["star"]["path"]
 shape_ver = cat[ver]['shape']
 
 cmd = f'leakage_scale.py \
-    -i {ext_path}\
-    -I {star_path}\
+    -i {ext_path} \
+    -I {star_path} \
     -o {output_dir} \
     --sh {shape_ver} \
     --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
@@ -114,8 +110,8 @@ star_path = cat[ver]["star"]["path"]
 shape_ver = cat[ver]['shape']
 
 cmd = f'leakage_scale.py \
-    -i {ext_path}\
-    -I {star_path}\
+    -i {ext_path} \
+    -I {star_path} \
     -o {output_dir} \
     --sh {shape_ver} \
     --e1_col e1 --e2_col e2 --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
@@ -144,7 +140,6 @@ labels = []
 linestyles = ['-', ':', '-.']
 title = ''
 out_path = None
-#versions = ['SP_v1.0', 'LF_v1.0']
 
 for ver in versions:
     shape_method = cat[ver]['shape']
@@ -227,7 +222,7 @@ plt.show()
 # MCMC
 # -
 
-# ### Load in Catalogues
+# ### Load catalogues
 
 # +
 ra = {}
@@ -238,74 +233,56 @@ w = {}
 
 for ver in versions:
     
-    hdu_list = fits.open(cat[ver]["shear"]["path"])
-    data = hdu_list[1]
-    ra[ver] = data['ra']
-    dec[ver] = data['dec']
-    e1[ver] = data['e1']
-    e2[ver] = data['e2']
-    w[ver] = data['w']
-
-# +
-# User input catalogue option 
-cat_options=[['SP_v1.0','shear'],
-             ['LF_v1.0','shear']]
-
-
-# Read in catalogue data and store as arrays
-ra = {}
-dec = {}
-e1 = {}
-e2 = {}
-w = {}
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    if 'MP' in cat_option[1]:
-        df = pd.read_parquet(data_base_dir+'/'+cat[cat_option[0]][cat_option[1]]['path'], engine='pyarrow')
+    in_path = cat[ver]["shear"]["path"]
+    # TODO: add to io.py: open_fits_or_npy
+    print(f'Loading {in_path}')
+    _, file_extension = os.path.splitext(in_path)
+    if file_extension == '.fits':
+        hdu_list = fits.open(in_path)
+        data = hdu_list[1].data
+        ra[ver] = data['ra']
+        dec[ver] = data['dec']
+        e1[ver] = data['e1']
+        e2[ver] = data['e2']
+        w[ver] = data['w']
+        hdu_list.close()
+    elif file_extension == '.parquet':
+        df = pd.read_parquet(in_path, engine='pyarrow')
         array = df['Separation'].to_numpy()
         idx = np.argwhere(np.isfinite(array))
-        ra.update({cat_key: df['ra'].to_numpy()[idx].flatten()})
-        dec.update({cat_key:df['dec'].to_numpy()[idx].flatten()})
-        e1.update({cat_key:df['e1'].to_numpy()[idx].flatten()})
-        e2.update({cat_key:df['e2'].to_numpy()[idx].flatten()})
-        w.update({cat_key:df['w'].to_numpy()[idx].flatten()})
-    else:
-        hdu = fits.open(data_base_dir+'/'+cat[cat_option[0]][cat_option[1]]['path'])
-        data = hdu[1].data
-        ra.update({cat_key:data['ra']})
-        dec.update({cat_key:data['dec']})
-        e1.update({cat_key:data['e1']})
-        e2.update({cat_key:data['e2']})
-        w.update({cat_key:data['w']})
+        # TODO: Check separation distribution
+
+        ra[ver] = df['ra'].to_numpy()[idx].flatten()
+        dec[ver] = df['dec'].to_numpy()[idx].flatten()
+        e1[ver] = df['e1'].to_numpy()[idx].flatten()
+        e2[ver] = df['e2'].to_numpy()[idx].flatten()
+        w[ver] = df['w'].to_numpy()[idx].flatten()
 # -
 
 # ### Catalogue ellipticity histograms
 
 # +
-plt.rcParams.update({'font.size': 20,'figure.figsize':[22,7]})
+plt.rcParams.update({'figure.figsize': [22,7]})
 
 fig, axs = plt.subplots(1, 2)
 nbins = 200
 
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    (n,bins,_)= axs[0].hist(e1[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
-                            label='e1 %s' %cat[cat_option[0]][cat_option[1]]['label'])
+for ver in versions:
+    n, bins, _ = axs[0].hist(e1[ver], bins=nbins, density=False, histtype='step', weights=w[ver],\
+                            label=f'$e_1$ {ver}')
 axs[0].set_xlabel('$e_1$')
 axs[0].set_ylabel('frequency')
 axs[0].legend()
 axs[0].set_xlim([-1.5,1.5])
 # axs[0].set_ylim([0,2e4])
 
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    (n,bins,_)= axs[1].hist(e2[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
-                            label='e2 %s' %cat[cat_option[0]][cat_option[1]]['label'])
+for ver in versions:
+    n, bins, _ = axs[1].hist(e2[ver], bins=nbins, density=False, histtype='step', weights=w[ver],\
+                            label=f'$e_2$ {ver}')
 axs[1].set_xlabel('$e_2$')
 axs[0].set_ylabel('frequency')
 axs[1].legend()
-axs[1].set_xlim([-1.5,1.5])
-# axs[1].set_ylim([0,2e4])
+_ = axs[1].set_xlim([-1.5,1.5])
 # -
 
 # ### Compute xi_pm
