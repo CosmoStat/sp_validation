@@ -201,14 +201,6 @@ def parse_options(p_def):
             + '\'remove\', \'average\''
     )
     parser.add_option(
-        '-p',
-        '--patch',
-        dest='patch',
-        default=None,
-        type='int',
-        help='patch number'
-    )
-    parser.add_option(
         '',
         '--cut',
         dest='cut',
