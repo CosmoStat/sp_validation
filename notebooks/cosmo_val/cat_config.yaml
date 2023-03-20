@@ -1,5 +1,9 @@
+paths:
+    output: ./output
+
 SP_v1.0:
    shape: ngmix
+   subdir: v1.0/ShapePipe
    shear:
       path: unions_shapepipe_2022_v1.0.1.fits
       label: SP_Full
@@ -29,30 +33,10 @@ SP_v1.0:
       e2_bias: 0
       ls: solid
       colour: b
-   LF_matched:
-      path: masked_matched_unions_shapepipe_extended_2022_v1.0.fits
-      label: SP_Match_LF
-      e1_bias: -5.6726e-5
-      e2_bias: 8.218e-4
-      ls: dotted
-      colour: b
-      covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
-   MP_matched:
-      path: cfis-shapepipe.parquet
-      label: SP_Match_MegaPipe
-      e1_bias: 0
-      e2_bias: 0
-      ls: dashdot
-      colour: b
-   footprint_matched:
-      path: matched_footprint_shapepipe.fits
-      label: SP_Match LF_Footprint
-      e1_bias: 0
-      e2_bias: 0
-      ls: dashed
-      colour: b
+
 LF_v1.0:
    shape: lensfit
+   subdir: v1.0/Lensfit
    shear:
       path: lensfit_goldshape_2022v1.fits
       label: LF_Full
@@ -76,3 +60,47 @@ LF_v1.0:
       ls: dotted
       colour: g
       covmat_file: ./covs/lensfit_matched/cov_lensfit_matched.txt
+
+LF_v2.0:
+   shape: lensfit
+   subdir: v2/0/Lensfit
+   shear:
+      path: lensfit_goldshape_2022v2_psf1.fits
+
+SP_matched_LF_v1.0:
+   shear:
+      path: masked_matched_unions_shapepipe_extended_2022_v1.0.fits
+      label: SP_Match_LF
+      e1_bias: -5.6726e-5
+      e2_bias: 8.218e-4
+      ls: dotted
+      colour: b
+      covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
+
+LF_matched_SP_v1.0:
+   shear:
+      path: masked_matched_unions_shapepipe_extended_2022_v1.0.fits
+      label: SP_Match_LF
+      e1_bias: -5.6726e-5
+      e2_bias: 8.218e-4
+      ls: dotted
+      colour: b
+      covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
+
+SP_matched_MP_v1.0:
+   shear:
+      path: cfis-shapepipe.parquet
+      label: SP_Match_MegaPipe
+      e1_bias: 0
+      e2_bias: 0
+      ls: dashdot
+      colour: b
+
+SP_matched_LF_fp_v1.0:
+      path: matched_footprint_shapepipe.fits
+      label: SP_Match LF_Footprint
+      e1_bias: 0
+      e2_bias: 0
+      ls: dashed
+      colour: b
+

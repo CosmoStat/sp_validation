@@ -38,15 +38,26 @@ from cs_util import plots
 
 # ## Input data
 
-# Base directory for data, USER INPUT
-data_base_dir = None
-# data_base_dir = f'{os.environ["WORK"]}/UNIONS/Catalogues'
+# Catalogue versions
+versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0']
+
+# Base directory for data, on candide
+data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
 
 # +
 # Read in dictionary about catalogue info from yaml file
 with open('cat_config.yaml', 'r') as file:
     cat = yaml.load(file.read(), Loader=yaml.FullLoader)
+    
+# Set full paths
+for ver in versions:
+    for key in cat[ver]:
+        if "path" in cat[ver][key]:
+            cat[ver][key]["path"] = f"{data_base_dir}/{cat[ver]['subdir']}/{cat[ver][key]['path']}"
 
+if not os.path.exists(cat["paths"]["output"]):
+    os.mkdir(cat["paths"]["output"])
+            
 # ## Variables
 
 components = ['+', '-']
@@ -69,24 +80,24 @@ ylim_xi_sys_ratio = [-0.05, 0.5]
 # ### Systematic tests
 
 # + active=""
-# # xi_sys
 # # rho stats
 # # scale-dependent leakage
 # # object-wise leakage
+# -
+
+# #### xi_sys and scale-dependent leakage
 
 # +
-# xi_sys
-
 ver = 'SP_v1.0'
 
-output_dir = f'leakage_{ver}'
-ext_path = cat[ver]['ext']['path']
-star_path = cat[ver]['star']['path']
+output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
+ext_path = cat[ver]["ext"]["path"]
+star_path = cat[ver]["star"]["path"]
 shape_ver = cat[ver]['shape']
 
 cmd = f'leakage_scale.py \
-    -i {data_base_dir}/{ext_path}\
-    -I {data_base_dir}/{star_path}\
+    -i {ext_path}\
+    -I {star_path}\
     -o {output_dir} \
     --sh {shape_ver} \
     --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
@@ -96,18 +107,27 @@ os.system(cmd)
 # +
 ver = 'LF_v1.0'
 
-output_dir = f'leakage_{ver}'
+output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
 
-ext_path = cat[ver]['ext']['path']
-star_path = cat[ver]['star']['path']
+ext_path = cat[ver]["shear"]["path"]
+star_path = cat[ver]["star"]["path"]
 shape_ver = cat[ver]['shape']
 
 cmd = f'leakage_scale.py \
-    -i {data_base_dir}/{ext_path}\
-    -I {data_base_dir}/{star_path}\
+    -i {ext_path}\
+    -I {star_path}\
     -o {output_dir} \
     --sh {shape_ver} \
     --e1_col e1 --e2_col e2 --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+print(f'Running shell command {cmd}...')
+os.system(cmd)
+
+# +
+ver = 'LF_v2.0'
+
+output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
+
+cmd = f'leakage_scale.py -i {cat_shear[ver]} -I {cat_star[ver]} -o {output_dir} --sh {shapes[ver]} --ra_star_col=ra --dec_star_col=dec --e1_col=e1 --e2_col=e2 --e1_PSF_star_col=e1_psf --e2_PSF_star_col=e2_psf -v'
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 
@@ -121,10 +141,10 @@ yerr = []
 xlabel = r'$\theta$ [arcmin]'                                               
 ylabel = r'$\alpha(\theta)$'
 labels = []
-linestyles = ['-', ':']
+linestyles = ['-', ':', '-.']
 title = ''
 out_path = None
-versions = ['SP_v1.0', 'LF_v1.0']
+#versions = ['SP_v1.0', 'LF_v1.0']
 
 for ver in versions:
     shape_method = cat[ver]['shape']
@@ -156,20 +176,28 @@ plots.plot_data_1d(
 # +
 # Plot xi_sys relative to xi (theory)
 
-shape_method = cat[ver]['shape']
+theta = []
+y = []
+yerr = []
 
-xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
-xi_sys = ascii.read(f'{xi_sys_name}')
+for ver in versions:
+
+    shape_method = cat[ver]['shape']
+    output_dir = f'{cat["paths"]["output"]/leakage_{ver}'
+
+    xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
+    xi_sys = ascii.read(f'{xi_sys_name}')
                                                            
-theta = [xi_sys['theta[arcmin]']]   
-y = [
-    xi_sys['xi_+_sys'] / xi_sys['xi_+_theo'],
-    xi_sys['xi_-_sys'] / xi_sys['xi_-_theo'],
-]
-yerr = [
-    xi_sys['sigma(xi_+_sys)'] / xi_sys['xi_+_theo'],
-    xi_sys['sigma(xi_-_sys)'] / xi_sys['xi_-_theo'],           
-]
+    theta.append(xi_sys['theta[arcmin]'])
+
+    y.append(
+        xi_sys[f'xi_{comp}_sys'] / xi_sys[f'xi_{comp}_theo'],
+    )
+    yerr.append(
+        xi_sys[f'sigma(xi_{comp}_sys)'] / xi_sys[f'xi_{comp}_theo'],
+    )
+    labels.append(rf'$\xi^{{sys}}_{comp} ver')
+
 labels = [rf'$\xi^{{sys}}_{comp}' for comp in components]
 xlabel = r'$\theta$ [arcmin]'                                               
 ylabel = r'correlation function ratio'
@@ -184,24 +212,13 @@ plots.plot_data_1d(
     title,                                                                  
     xlabel,                                                                 
     ylabel,                                                                 
-    out_path,                                                               
+    out_path,
+    labels=labels,
     xlog=True,                                                              
     xlim=[theta_min_plot, theta_max_plot],                                                      
     ylim=ylim_xi_sys_ratio, 
-    linestyles=linestyles,
 )
-# -
-keys = [f'xi_{comp}_sys' for comp in components]
-xi_sys[keys]
-
-# +
-xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
-xi_sys = ascii.read(f'{xi_sys_name}')
-                                                           
-theta = [xi_sys['theta[arcmin]']]   
-y = [xi_sys['xi_+_sys']]
-
-
+plt.show()
 # +
 # ### Cosmological analysis
 # xipm correlation functions
@@ -211,6 +228,23 @@ y = [xi_sys['xi_+_sys']]
 # -
 
 # ### Load in Catalogues
+
+# +
+ra = {}
+dec = {}
+e1 = {}
+e2 = {}
+w = {}
+
+for ver in versions:
+    
+    hdu_list = fits.open(cat[ver]["shear"]["path"])
+    data = hdu_list[1]
+    ra[ver] = data['ra']
+    dec[ver] = data['dec']
+    e1[ver] = data['e1']
+    e2[ver] = data['e2']
+    w[ver] = data['w']
 
 # +
 # User input catalogue option 
@@ -245,7 +279,7 @@ for cat_option in cat_options:
         w.update({cat_key:data['w']})
 # -
 
-# ### Catalogue histograms
+# ### Catalogue ellipticity histograms
 
 # +
 plt.rcParams.update({'font.size': 20,'figure.figsize':[22,7]})
@@ -257,7 +291,8 @@ for cat_option in cat_options:
     cat_key = cat_option[0]+'_'+cat_option[1]
     (n,bins,_)= axs[0].hist(e1[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
                             label='e1 %s' %cat[cat_option[0]][cat_option[1]]['label'])
-axs[0].set_xlabel('e1')
+axs[0].set_xlabel('$e_1$')
+axs[0].set_ylabel('frequency')
 axs[0].legend()
 axs[0].set_xlim([-1.5,1.5])
 # axs[0].set_ylim([0,2e4])
@@ -266,13 +301,14 @@ for cat_option in cat_options:
     cat_key = cat_option[0]+'_'+cat_option[1]
     (n,bins,_)= axs[1].hist(e2[cat_key], bins=nbins, density=False, histtype='step', weights=w[cat_key],\
                             label='e2 %s' %cat[cat_option[0]][cat_option[1]]['label'])
-axs[1].set_xlabel('e2')
+axs[1].set_xlabel('$e_2$')
+axs[0].set_ylabel('frequency')
 axs[1].legend()
 axs[1].set_xlim([-1.5,1.5])
 # axs[1].set_ylim([0,2e4])
 # -
 
-# ### Compute xi_pm's
+# ### Compute xi_pm
 
 # +
 treecorr.set_omp_threads(8)
@@ -311,7 +347,7 @@ for cat_option in cat_options:
     print("done for cat %s" %(cat_key))
 # -
 
-# ### Plot the xi_pm's
+# ### Plot the xi_pm
 
 # +
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
