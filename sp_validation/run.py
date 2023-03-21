@@ -1,0 +1,541 @@
+import os
+from optparse import OptionParser
+
+import numpy as np
+from astropy.io import fits
+
+from cs_util import logging
+from cs_util import plots
+
+from sp_validation import cat
+from sp_validation import correlation as corr
+from sp_validation import io
+from sp_validation import util
+
+
+# To cs_util
+def parse_options(p_def, short_options, types, help_strings):
+    """Parse command line options.
+
+    Parameters
+    ----------
+    p_def : dict
+        default parameter values
+    help_strings : dict
+        help strings for options
+
+    Returns
+    -------
+    dict
+        Command line options
+    """
+
+    usage = "%prog [OPTIONS]"
+    parser = OptionParser(usage=usage)
+
+    for key in p_def:
+        if key in help_strings:
+            if key in short_options:
+                short = short_options[key]
+            else:
+                short = ""
+
+            if key in types:
+                typ = types[key]
+            else:
+                typ = "string"
+
+            parser.add_option(
+                short,
+                f"--{key}",
+                dest=key,
+                type=typ,
+                default=p_def[key],
+                help=help_strings[key].format(p_def[key]),
+            )
+
+    parser.add_option(
+        "-v", "--verbose", dest="verbose", action="store_true", help=f"verbose output"
+    )
+
+    options, _ = parser.parse_args()
+
+    return options
+
+
+class LeakageScale:
+    """Leakage Scale.
+
+    Class to compute scale-dependent PSF leakage.
+
+    """
+
+    def __init__(self):
+        # Set default parameters
+        self.params_default()
+
+    def set_params_from_command_line(self, args):
+        """Set Params From Command line.
+
+        Only use when calling using python from command line.
+        Does not work from ipython or jupyter.
+
+        """
+        # Read command line options
+        options = parse_options(
+            self._params,
+            self._short_options,
+            self._types,
+            self._help_strings,
+        )
+
+        # Update parameter values from options
+        for key in vars(options):
+            self._params[key] = getattr(options, key)
+
+        # del options ?
+
+        # Save calling command
+        logging.log_command(args[1:])
+
+    def params_default(self):
+        """Params Default.
+
+        Set default parameter values.
+
+        """
+        self._params = {
+            "input_path_shear": None,
+            "e1_col": "e1_uncal",
+            "e2_col": "e2_uncal",
+            "input_path_PSF": None,
+            "hdu_psf": 1,
+            "ra_star_col": "RA",
+            "dec_star_col": "Dec",
+            "e1_PSF_star_col": "E1_PSF_HSM",
+            "e2_PSF_star_col": "E2_PSF_HSM",
+            "output_dir": ".",
+            "sh": "ngmix",
+            "close_pair_tolerance": None,
+            "close_pair_mode": None,
+            "cut": None,
+            "theta_min_amin": 1,
+            "theta_max_amin": 300,
+            "n_theta": 20,
+            "leakage_alpha_ylim": [-0.03, 0.1],
+            "leakage_xi_sys_ylim": [-4e5, 5e5],
+            "leakage_xi_sys_log_ylim": [2e-13, 5e-5],
+        }
+
+        self._short_options = {
+            "input_path_shear": "-i",
+            "input_path_PSF": "-I",
+            "output_dir": "-o",
+            "shapes": "-s",
+            "close_pair_tolerance": "-t",
+            "close_pair_mode": "-m",
+        }
+
+        self._types = {
+            "hdu_psf": "int",
+            "theta_min_amin": "float",
+            "theta_max_amin": "float",
+            "n_theta": "int",
+        }
+
+        self._help_strings = {
+            "input_path_shear": "input path of the shear catalogue",
+            "e1_col": "e1 column name in galaxy catalogue",
+            "e2_col": "e2 column name in galaxy catalogue",
+            "input_path_PSF": "input path of the PSF catalogue",
+            "hdu_PSF": "HDU number of PSF catalogue",
+            "ra_star_col": "right ascension column name in star catalogue",
+            "dec_star_col": "declination column name in star catalogue",
+            "e1_PSF_star_col": "e1 PSF column name in star catalogue",
+            "e2_PSF_star_col": "e2 PSF column name in star catalogue",
+            "output_dir": "output_directory",
+            "sh": "shape measurement method",
+            "close_pair_tolerance": (
+                "tolerance angle for close objects in star catalogue"
+            ),
+            "close_pair_mode": (
+                "mode for close objects in star catalogue, allowed are"
+                + f" 'remove', 'average'"
+            ),
+            "cut": (
+                "list of criteria (white-space separated, do not use '_')"
+                + f" to cut data, e.g. 'w>0_mask!=0'"
+            ),
+            "theta_min_amin": "mininum angular scale [arcmin], default={}",
+            "theta_max_amin": "maximum angular scale [arcmin], default={}",
+            "n_theta": "number of angular scales on input, default={}",
+        }
+
+    def check_params(self):
+        """Check Params.
+
+        Check whether parameter values are valid.
+
+        Raises
+        ------
+        ValueError
+            if a parameter value is not valid
+
+        """
+        if not self._params["input_path_shear"]:
+            raise ValueError("No input shear catalogue given")
+        if not self._params["input_path_PSF"]:
+            raise ValueError("No input star/PSF catalogue given")
+
+        if 'verbose' not in self._params:
+            self._params['verbose'] = False
+
+    def run(self):
+        """Run.
+
+        Main processing of scale-dependent leakage.
+        """
+
+        # Check parameter validity
+        self.check_params()
+
+        params = self._params
+
+        if params["verbose"]:
+            print("Process leakage-scale")
+
+        # Prepare output
+        if not os.path.exists(params["output_dir"]):
+            os.mkdir(params["output_dir"])
+        self._stats_file = io.open_stats_file(
+            params["output_dir"], "stats_file_leakage.txt"
+        )
+
+        # Read input shear
+        dat_shear = self.read_shear_cat()
+
+        # Apply cuts to galaxy catalogue if required
+        dat_shear = cat.cut_data(dat_shear, params["cut"], params["verbose"])
+        self.dat_shear = dat_shear
+
+        # Read star catalogue
+        dat_PSF = io.open_fits_or_npy(
+            params["input_path_PSF"],
+            hdu_no=params["hdu_psf"],
+        )
+
+        # Deal with close objects in PSF catalogue (= stars on same position
+        # from different exposures)
+        self.dat_PSF = self.handle_close_objects(dat_PSF)
+
+        # scale-dependent alpha function
+        self.compute_corr_gp_pp_alpha()
+
+        if any(
+            np.abs(
+                self.r_corr_gp.meanr - self.r_corr_pp.meanr
+            ) / self.r_corr_gp.meanr > 0.1
+        ):
+            print("Warning: angular scales not consistent")
+
+        io.save_alpha(
+            self.r_corr_gp.meanr,
+            self.alpha_leak,
+            self.sig_alpha_leak,
+            params["sh"],
+            params["output_dir"],
+        )
+        self.compute_alpha_mean()
+
+        self.plot_alpha_leakage()
+
+    def read_shear_cat(self):
+        # Read galaxy catalogue
+        hdu_list = fits.open(self._params["input_path_shear"])
+        dat_shear = hdu_list[1].data
+        n_shear = len(dat_shear)
+        io.print_stats(
+            f"{n_shear} galaxies found in shear catalogue",
+            self._stats_file,
+            verbose=self._params["verbose"],
+        )
+
+        return dat_shear
+
+    def handle_close_objects(self, dat_PSF):
+        """Handle Close Objects.
+
+        Deal with close objects in PSF catalogue.
+
+        Parameters
+        ----------
+        dat_PSF : FITS.record
+            input PSF data
+
+        Returns
+        -------
+        FITS.record
+            processed PSF data
+
+        """
+        if not self._params["close_pair_tolerance"]:
+            return dat_PSF
+
+        n_star = len(dat_PSF)
+
+        tolerance_angle = coords.Angle(self._params["close_pair_tolerance"])
+
+        io.print_stats(
+            f"close object distance = {tolerance_angle}",
+            self._stats_file,
+            verbose=self._params["verbose"],
+        )
+
+        # Create SkyCoord object from star positions
+        coordinates = coords.SkyCoord(
+            ra=dat_PSF[self._params["ra_star_col"]],
+            dec=dat_PSF[self._params["dec_star_col"]],
+            unit="deg",
+        )
+
+        # Search PSF catalogue in itself around tolerance angle
+        indices1, indices2, d2d, d3d = coordinates.search_around_sky(
+            coordinates, tolerance_angle
+        )
+
+        # Count multiplicity of indices = number of matches of search
+        count = np.bincount(indices1)
+        dat_PSF_proc = {}
+
+        # Copy unique objects (multiplicity of unity)
+        for col in dat_PSF.dtype.names:
+            dat_PSF_proc[col] = dat_PSF[col][count == 1]
+        n_non_close = len(dat_PSF_proc[self._params["ra_star_col"]])
+        io.print_stats(
+            f"found {n_non_close}/{n_star} = {n_non_close / n_star:.1%} "
+            + "non-close objects",
+            self._stats_file,
+            verbose=self._params["verbose"],
+        )
+
+        # Deal with repeated objects (multiplicity > 1)
+        multiples = count != 1
+        if not multiples.any():
+            # No multiples found -> no action
+            io.print_stats(
+                "no close objects found",
+                self._stats_file,
+                verbose=self._params["verbose"],
+            )
+
+        else:
+            # Get index list of multiple objects
+            idx_mult = np.where(multiples)[0]
+            if self._params["mode"] == "average":
+                # Initialise additional data vector
+                dat_PSF_mult = {}
+                for col in dat_PSF.dtype.names:
+                    dat_PSF_mult[col] = []
+
+                done = np.array([])
+                n_avg_rem = 0
+
+                # Loop over repeated indices
+                for idx in idx_mult:
+                    # If already used: ignore this index
+                    if idx in done:
+                        continue
+
+                    # Get indices in data index list corresponding to
+                    # this multiple index
+                    w = np.where(indices1 == idx)[0]
+
+                    # Get indices in data
+                    ww = indices2[w]
+
+                    # Append mean to additional data vector
+                    for col in dat_PSF.dtype.names:
+                        mean = np.mean(dat_PSF[col][ww])
+                        dat_PSF_mult[col].append(mean)
+
+                    # Register indixes to avoid repetition
+                    done = np.append(done, ww)
+                    n_avg_rem += len(ww) - 1
+
+                n_avg = len(dat_PSF_mult[ra_star_col])
+                io.print_stats(
+                    f"adding {n_avg}/{n_star} = {n_avg / n_star:.1%} "
+                    + "averaged objects",
+                    self._stats_file,
+                    verbose=self._params["verbose"],
+                )
+
+                for col in dat_PSF.dtype.names:
+                    dat_PSF_proc[col] = np.append(
+                        dat_PSF_proc[col],
+                        dat_PSF_mult[col]
+                    )
+            elif mode == "remove":
+                n_rem = len(idx_mult)
+                io.print_stats(
+                    f"removing {n_rem}/{n_star} = {n_rem / n_star:.1%} "
+                    + "close objects",
+                    self._stats_file,
+                    verbose=self._params["verbose"],
+                )
+
+        # Test
+        coordinates_proc = coords.SkyCoord(
+            ra=dat_PSF_proc[self._params["ra_star_col"]],
+            dec=dat_PSF_proc[self._params["dec_star_col"]],
+            unit="deg",
+        )
+        idx, d2d, d3d = coords.match_coordinates_sky(
+            coordinates_proc, coordinates_proc, nthneighbor=2
+        )
+        non_close = (d2d > tolerance_angle).all()
+        io.print_stats(
+            f"Check: all remaining distances > {tolerance_angle}? {non_close}",
+            self._stats_file,
+            verbose=self._params["verbose"],
+        )
+        if mode == "average":
+            io.print_stats(
+                f"Check: n_non_close + n_avg + n_avg_rem = n_star? "
+                + f"{n_non_close} + {n_avg} + {n_avg_rem} = "
+                + f"{n_non_close + n_avg + n_avg_rem} ({n_star})",
+                self._stats_file,
+                verbose=self._params["verbose"],
+            )
+        elif mode == "remove":
+            io.print_stats(
+                f"Check: n_non_close + n_rem = n_star? {n_non_close} "
+                + f"+ {n_rem} = {n_non_close + n_rem} ({n_star})",
+                self._stats_file,
+                verbose=self._params["verbose"],
+            )
+
+        n_in = len(dat_PSF[self._params["ra_star_col"]])
+        n_out = len(dat_PSF_proc[self._params["dec_star_col"]])
+
+        if n_in == n_out:
+            io.print_stats(
+                f"keeping all {n_out} stars",
+                self._stats_file,
+                verbose=self._params["verbose"],
+            )
+        else:
+            io.print_stats(
+                f"keeping {n_out}/{n_in} = {n_out/n_in:.1%} stars",
+                self._stats_file,
+                verbose=self._params["verbose"],
+            )
+
+        return dat_PSF_proc
+
+    def compute_corr_gp_pp_alpha(self):
+        """Compute Corr GP PP Alpha
+
+        Compute and plot scale-dependent PSF leakage functions.
+
+        """
+        ra = self.dat_shear["RA"]
+        dec = self.dat_shear["Dec"]
+        e1_gal = self.dat_shear[self._params["e1_col"]]
+        e2_gal = self.dat_shear[self._params["e2_col"]]
+        weights = self.dat_shear["w"]
+
+        ra_star = self.dat_PSF[self._params["ra_star_col"]]
+        dec_star = self.dat_PSF[self._params["dec_star_col"]]
+        e1_star = self.dat_PSF[self._params["e1_PSF_star_col"]]
+        e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
+
+        # Correlation functions
+        r_corr_gp, r_corr_pp = corr.correlation_12_22(
+            ra,
+            dec,
+            e1_gal,
+            e2_gal,
+            weights,
+            ra_star,
+            dec_star,
+            e1_star,
+            e2_star,
+            theta_min_amin=self._params["theta_min_amin"],
+            theta_max_amin=self._params["theta_max_amin"],
+            n_theta=self._params["n_theta"],
+        )
+        self.r_corr_gp = r_corr_gp
+        self.r_corr_pp = r_corr_pp
+
+        # Leakage
+        self.alpha_leak, self.sig_alpha_leak = corr.alpha(
+            r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights, e1_star, e2_star
+        )
+
+    def compute_alpha_mean(self):
+        """Compute Alpha Mean
+
+        Compute weighted mean of the leakage function alpha
+
+        """
+        self.alpha_leak_mean = util.transform_nan(
+            np.average(self.alpha_leak, weights=1 / self.sig_alpha_leak**2)
+        )
+        io.print_stats(
+            f"{self._params['sh']}: Weighted average alpha"
+            + f" = {self.alpha_leak_mean:.3g}",
+            self._stats_file,
+            verbose=self._params["verbose"],
+        )
+
+    def plot_alpha_leakage(self):
+        """Plot Alpha Leakage.
+
+        Plot scale-dependent leakage function alpha(theta)
+
+        """
+        plot_dir_leakage = self._params["output_dir"]
+
+        theta = [self.r_corr_gp.meanr]
+        alpha_theta = [self.alpha_leak]
+        yerr = [self.sig_alpha_leak]
+        xlabel = r"$\theta$ [arcmin]"
+        ylabel = r"$\alpha(\theta)$"
+        title = self._params["sh"]
+        out_path = (
+            f"{self._params['output_dir']}"
+            + f"/alpha_leakage_{self._params['sh']}.png"
+        )
+        xlim=[self._params["theta_min_amin"], self._params["theta_max_amin"]]
+        try:
+            ylim = self._params["leakage_alpha_ylim"]
+        except:
+            ylim = None
+
+        plots.plot_data_1d(
+            theta,
+            alpha_theta,
+            yerr,
+            title,
+            xlabel,
+            ylabel,
+            out_path,
+            xlog=True,
+            xlim=xlim,
+            ylim=ylim,
+        )
+
+
+def run_leakage_scale(*args):
+    """Run Leakage Scale.
+
+    Run scale-dependent PSF leakage as python script from commane line.
+
+    """
+    # Create object for scale-dependent leakage calculations
+    obj = LeakageScale()
+
+    obj.set_params_from_command_line(args)
+
+    obj.run()
