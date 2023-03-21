@@ -187,8 +187,8 @@ class LeakageScale:
         if not self._params["input_path_PSF"]:
             raise ValueError("No input star/PSF catalogue given")
 
-        if 'verbose' not in self._params:
-            self._params['verbose'] = False
+        if "verbose" not in self._params:
+            self._params["verbose"] = False
 
     def run(self):
         """Run.
@@ -232,12 +232,12 @@ class LeakageScale:
         self.compute_corr_gp_pp_alpha()
 
         if any(
-            np.abs(
-                self.r_corr_gp.meanr - self.r_corr_pp.meanr
-            ) / self.r_corr_gp.meanr > 0.1
+            np.abs(self.r_corr_gp.meanr - self.r_corr_pp.meanr) / self.r_corr_gp.meanr
+            > 0.1
         ):
             print("Warning: angular scales not consistent")
 
+        # alpha leakage function
         io.save_alpha(
             self.r_corr_gp.meanr,
             self.alpha_leak,
@@ -246,8 +246,25 @@ class LeakageScale:
             params["output_dir"],
         )
         self.compute_alpha_mean()
-
         self.plot_alpha_leakage()
+
+        # xi_sys function
+        self.compute_xi_sys()
+        self.plot_xi_sys()
+
+        xi_p_planck, xi_m_planck = get_theo_xi_planck(self.r_corr_gp.meanr)
+        plot_xi_sys_ratio(xi_p_planck, xi_m_planck)
+        io.save_xi_sys(
+            r_corr_gp.meanr,
+            C_sys_p,
+            C_sys_m,
+            C_sys_std_p,
+            C_sys_std_m,
+            xi_p_planck,
+            xi_m_planck,
+            param.sh,
+            param.output_dir,
+        )
 
     def read_shear_cat(self):
         # Read galaxy catalogue
@@ -371,10 +388,7 @@ class LeakageScale:
                 )
 
                 for col in dat_PSF.dtype.names:
-                    dat_PSF_proc[col] = np.append(
-                        dat_PSF_proc[col],
-                        dat_PSF_mult[col]
-                    )
+                    dat_PSF_proc[col] = np.append(dat_PSF_proc[col], dat_PSF_mult[col])
             elif mode == "remove":
                 n_rem = len(idx_mult)
                 io.print_stats(
@@ -489,6 +503,45 @@ class LeakageScale:
             verbose=self._params["verbose"],
         )
 
+    def compute_xi_sys(self):
+        """Compute Xi Sys
+
+        Compute galaxy - PSF systematics correlation function
+
+        """
+
+        C_sys_p = self.r_corr_gp.xip**2 / self.r_corr_pp.xip
+        C_sys_m = self.r_corr_gp.xim**2 / self.r_corr_pp.xim
+
+        C_sys_std_p = np.abs(C_sys_p) * np.sqrt(
+            (
+                (
+                    (2 * self.r_corr_gp.xip**2 * np.sqrt(self.r_corr_gp.varxip))
+                    / self.r_corr_gp.xip
+                )
+                / self.r_corr_gp.xip**2
+            )
+            ** 2
+            + (np.sqrt(self.r_corr_pp.varxip) / self.r_corr_pp.xip) ** 2
+        )
+
+        C_sys_std_m = np.abs(C_sys_m) * np.sqrt(
+            (
+                (
+                    (2 * self.r_corr_gp.xim**2 * np.sqrt(self.r_corr_gp.varxim))
+                    / self.r_corr_gp.xim
+                )
+                / self.r_corr_gp.xim**2
+            )
+            ** 2
+            + (np.sqrt(self.r_corr_pp.varxim) / self.r_corr_pp.xim) ** 2
+        )
+
+        self._C_sys_p = C_sys_p
+        self._C_sys_m = C_sys_m
+        self.C_sys_std_p = C_sys_std_p
+        self.C_sys_std_m = C_sys_std_m
+
     def plot_alpha_leakage(self):
         """Plot Alpha Leakage.
 
@@ -507,12 +560,8 @@ class LeakageScale:
             f"{self._params['output_dir']}"
             + f"/alpha_leakage_{self._params['sh']}.png"
         )
-        xlim=[self._params["theta_min_amin"], self._params["theta_max_amin"]]
-        try:
-            ylim = self._params["leakage_alpha_ylim"]
-        except:
-            ylim = None
-
+        xlim = [self._params["theta_min_amin"], self._params["theta_max_amin"]]
+        ylim = self._params["leakage_alpha_ylim"]
         plots.plot_data_1d(
             theta,
             alpha_theta,
@@ -524,6 +573,68 @@ class LeakageScale:
             xlog=True,
             xlim=xlim,
             ylim=ylim,
+        )
+
+    def plot_xi_sys(self):
+        """Plot Xi Sys.
+
+        Plot galaxy - PSF systematics correlation function.
+
+        """
+        labels = ["$\\xi^{\\rm sys}_+$", "$\\xi^{\\rm sys}_-$"]
+
+        title = "Cross-correlation leakage"
+        xlabel = "$\\theta$ [arcmin]"
+        ylabel = "Correlation function"
+
+        theta = [self.r_corr_gp.meanr] * 2
+        xi = [self.C_sys_p, self.C_sys_m]
+        yerr = [self.C_sys_std_p, self.C_sys_std_m]
+
+        comp_arr = [0, 1]
+        symb_arr = ["+", "-"]
+        for comp, symb in zip(comp_arr, symb_arr):
+            mean = np.mean(np.abs(xi[comp]))
+            msg = f"{sh}: <|xi_sys_{symb}|> = {mean}"
+            io.print_stats(
+                msg,
+                self._stats_file,
+                verbose=self._params["verbose"]
+            )
+
+        ylim = self._params["leakage_xi_sys_ylim"]
+        out_path = (
+            f"{self._params['output_dir']}/xi_sys_{self._params['sh}.pdf"
+        )
+        plots.plot_data_1d(
+            theta,
+            xi,
+            yerr,
+            title,
+            xlabel,
+            ylabel,
+            out_path,
+            xlog=True,
+            ylim=ylim,
+            labels=labels,
+        )
+
+        ylim = self._params["leakage_xi_sys_log_ylim"]
+        out_path = (
+            f"{self._params['output_dir']}/xi_sys_log_{self._params['sh}.pdf"
+        )
+        plots.plot_data_1d(
+            theta,
+            xi,
+            yerr,
+            title,
+            xlabel,
+            ylabel,
+            out_path,
+            xlog=True,
+            ylog=True,
+            ylim=ylim,
+            labels=labels,
         )
 
 
