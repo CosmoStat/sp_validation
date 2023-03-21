@@ -13,14 +13,19 @@
 #     name: python3
 # ---
 
-# # SP validation
+# # PSF leakage
+# SP validation
 
-# ## PSF leakage
-
+# +
 import os
-from sp_validation import run
+import matplotlib.pylab as plt
 
-# ### Set input catalogue paths
+from sp_validation import cat
+from sp_validation import io
+from sp_validation import run
+# -
+
+# ## Set input catalogue paths
 
 # +
 # Data directory
@@ -33,7 +38,7 @@ input_path_shear = f"{data_dir}/unions_shapepipe_extended_2022_v1.0.fits"
 input_path_PSF = f"{data_dir}/unions_shapepipe_star_2022_v1.0.3.fits"
 # -
 
-# ### Compute leakage
+# ## Compute leakage
 
 # Create leakage instance
 obj = run.LeakageScale()
@@ -48,6 +53,48 @@ obj._params['e2_PSF_star_col'] =  'e2'
 obj._params['verbose'] = True
 # -
 
-obj.run()
+# ### Run all at once
+
+# +
+#obj.run()
+# -
+
+# ### Or individual steps
+
+# +
+# Check parameter validity                                              
+obj.check_params() 
+    
+params = obj._params
+# -
+
+# Prepare output
+os.mkdir(params["output_dir"])
+obj._stats_file = io.open_stats_file(params["output_dir"], "stats_file_leakage.txt") 
+
+# Read input shear                                                      
+dat_shear = obj.read_shear_cat()
+
+# Apply cuts to galaxy catalogue if required                            
+dat_shear = cat.cut_data(dat_shear, params["cut"], params["verbose"])
+
+# Read star catalogue                                                   
+dat_PSF = io.open_fits_or_npy(                                          
+    params["input_path_PSF"],                                           
+    hdu_no=params["hdu_psf"],                                           
+) 
+
+# Deal with close objects in PSF catalogue (= stars on same position    
+        # from different exposures)                                             
+dat_PSF = obj.handle_close_objects(dat_PSF)
+
+# scale-dependent alpha function                                        
+obj.compute_corr_gp_pp_alpha()
+
+# Average over scales
+obj.compute_alpha_mean()
+
+# Plot
+obj.plot_alpha_leakage()
 
 
