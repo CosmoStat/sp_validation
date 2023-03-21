@@ -4,10 +4,11 @@ from optparse import OptionParser
 import numpy as np
 from astropy.io import fits
 
+from cs_util import cat as cat_csu
 from cs_util import logging
 from cs_util import plots
 
-from sp_validation import cat
+from sp_validation import cat as cat_sp
 from sp_validation import correlation as corr
 from sp_validation import io
 from sp_validation import util
@@ -63,6 +64,31 @@ def parse_options(p_def, short_options, types, help_strings):
     return options
 
 
+# Maybe put the following function somewhere else, unions_wl/default.py?
+def get_theo_xi_planck(theta, dndz_path):                                                  
+                                                                                
+    Om = 0.3153                                                                 
+    sig8 = 0.8111                                                               
+    ns = 0.9649                                                                 
+    Ob = 0.0493                                                                 
+    h = 0.6736                                                                  
+                                                                                
+    z, nz = cat_csu.read_dndz(dndz_path)                                                       
+                                                                                
+    xi_p, xi_m = cosmology.get_theo_xi(                                         
+        theta,                                                                  
+        z,                                                                      
+        nz,                                                                     
+        Omega_m=Om,                                                             
+        h=h,                                                                    
+        Omega_b=Ob,                                                             
+        sig8=sig8,                                                              
+        ns=ns                                                                   
+    )                                                                           
+                                                                                
+    return xi_p, xi_m 
+
+
 class LeakageScale:
     """Leakage Scale.
 
@@ -114,6 +140,7 @@ class LeakageScale:
             "dec_star_col": "Dec",
             "e1_PSF_star_col": "E1_PSF_HSM",
             "e2_PSF_star_col": "E2_PSF_HSM",
+            'dndz_path' : None,
             "output_dir": ".",
             "sh": "ngmix",
             "close_pair_tolerance": None,
@@ -153,6 +180,9 @@ class LeakageScale:
             "dec_star_col": "declination column name in star catalogue",
             "e1_PSF_star_col": "e1 PSF column name in star catalogue",
             "e2_PSF_star_col": "e2 PSF column name in star catalogue",
+            "dndz_source_path" : (
+                "path to source redshift histogram, for xi_sys ratio"
+            ),
             "output_dir": "output_directory",
             "sh": "shape measurement method",
             "close_pair_tolerance": (
@@ -215,7 +245,11 @@ class LeakageScale:
         dat_shear = self.read_shear_cat()
 
         # Apply cuts to galaxy catalogue if required
-        dat_shear = cat.cut_data(dat_shear, params["cut"], params["verbose"])
+        dat_shear = cat_sp.cut_data(
+            dat_shear,
+            params["cut"],
+            params["verbose"]
+        )
         self.dat_shear = dat_shear
 
         # Read star catalogue
@@ -252,7 +286,10 @@ class LeakageScale:
         self.compute_xi_sys()
         self.plot_xi_sys()
 
-        xi_p_planck, xi_m_planck = get_theo_xi_planck(self.r_corr_gp.meanr)
+        xi_p_planck, xi_m_planck = get_theo_xi_planck(
+            self.r_corr_gp.meanr,
+            self._params["dndz_path"]
+        )
         plot_xi_sys_ratio(xi_p_planck, xi_m_planck)
         io.save_xi_sys(
             r_corr_gp.meanr,
@@ -537,8 +574,8 @@ class LeakageScale:
             + (np.sqrt(self.r_corr_pp.varxim) / self.r_corr_pp.xim) ** 2
         )
 
-        self._C_sys_p = C_sys_p
-        self._C_sys_m = C_sys_m
+        self.C_sys_p = C_sys_p
+        self.C_sys_m = C_sys_m
         self.C_sys_std_p = C_sys_std_p
         self.C_sys_std_m = C_sys_std_m
 
@@ -595,7 +632,7 @@ class LeakageScale:
         symb_arr = ["+", "-"]
         for comp, symb in zip(comp_arr, symb_arr):
             mean = np.mean(np.abs(xi[comp]))
-            msg = f"{sh}: <|xi_sys_{symb}|> = {mean}"
+            msg = f"{self._params['sh']}: <|xi_sys_{symb}|> = {mean}"
             io.print_stats(
                 msg,
                 self._stats_file,
@@ -604,7 +641,7 @@ class LeakageScale:
 
         ylim = self._params["leakage_xi_sys_ylim"]
         out_path = (
-            f"{self._params['output_dir']}/xi_sys_{self._params['sh}.pdf"
+            f"{self._params['output_dir']}/xi_sys_{self._params['sh']}.pdf"
         )
         plots.plot_data_1d(
             theta,
@@ -621,7 +658,7 @@ class LeakageScale:
 
         ylim = self._params["leakage_xi_sys_log_ylim"]
         out_path = (
-            f"{self._params['output_dir']}/xi_sys_log_{self._params['sh}.pdf"
+            f"{self._params['output_dir']}/xi_sys_log_{self._params['sh']}.pdf"
         )
         plots.plot_data_1d(
             theta,
