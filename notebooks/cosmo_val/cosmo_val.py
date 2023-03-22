@@ -29,8 +29,12 @@ import pandas as pd
 from astropy.io import ascii
 import yaml
 
+# +
 from sp_validation.plot_style import *
 from cs_util import plots
+
+from sp_validation import run
+# -
 
 # ## Input data
 
@@ -89,73 +93,93 @@ ylim_xi_sys_ratio = [-0.05, 0.5]
 
 # #### $\xi_\textrm{sys}$ and scale-dependent leakage
 
+leak_scale = {}
+
 # +
 ver = 'SP_v1.0'
 
-output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
-ext_path = cat[ver]["ext"]["path"]
-star_path = cat[ver]["star"]["path"]
-shape_ver = cat[ver]['shape']
+params_in = {}
 
-nz = f"{cat['nz']['dndz']['path']}_SP_{cat['nz']['dndz']['blind']}.txt"
+# Set parameters
+params_in['input_path_shear'] = cat[ver]["ext"]["path"]
+params_in['input_path_PSF'] = cat[ver]["star"]["path"]
+params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
+params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
+params_in['sh'] = cat[ver]['shape']
+params_in['e1_PSF_star_col'] = "e1"
+params_in["e2_PSF_star_col"] = "e2"
+params_in["verbose"] = True
 
-cmd = (
-    f'leakage_scale.py -i {ext_path} -I {star_path} -o {output_dir}'
-    + f' --sh {shape_ver} --e1_PSF_star_col e1 --e2_PSF_star_col e2'
-    + f' --dndz_path {nz} -v'
-)
-print(f'Running shell command {cmd}...')
-os.system(cmd)
+# Create leakage instance
+obj = run.LeakageScale()
+
+# Set instance parameters, copy from above
+for key in params_in:
+    obj._params[key] = params_in[key]
+# -
+
+obj.run()
+
+leak_scale[ver] = obj
 
 # +
 ver = 'LF_v1.0'
 
-output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
+params_in = {}
 
-ext_path = cat[ver]["shear"]["path"]
-star_path = cat[ver]["star"]["path"]
-shape_ver = cat[ver]['shape']
+# Set parameters
+params_in['input_path_shear'] = cat[ver]["shear"]["path"]
+params_in['input_path_PSF'] = cat[ver]["star"]["path"]
+params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
+params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
+params_in['sh'] = cat[ver]['shape']
+params_in['e1_col'] = 'e1'
+params_in['e2_col'] = 'e2'
+params_in['e1_PSF_star_col'] = "e1"
+params_in["e2_PSF_star_col"] = "e2"
+params_in["verbose"] = True
 
-nz = f"{cat['nz']['dndz']['path']}_LF_{cat['nz']['dndz']['blind']}.txt"
+# Create leakage instance
+obj = run.LeakageScale()
 
-cmd = (
-    f'leakage_scale.py -i {ext_path} -I {star_path} -o {output_dir}'
-    + f' --sh {shape_ver} --e1_col e1 --e2_col e2'
-    + f' --e1_PSF_star_col e1 --e2_PSF_star_col e2'
-    + f' --dndz_path {nz} -v'
-)
-print(f'Running shell command {cmd}...')
-os.system(cmd)
+# Set instance parameters, copy from above
+for key in params_in:
+    obj._params[key] = params_in[key]
+# -
+
+obj.run()
+
+leak_scale[ver] = obj
 
 # +
 ver = 'LF_v2.0'
 
-output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
+params_in = {}
 
-cmd = (
-    f'leakage_scale.py -i {cat_shear[ver]} -I {cat_star[ver]} -o {output_dir}'
-    + f' --sh {shapes[ver]} --ra_star_col=ra --dec_star_col=dec'
-    + f' --e1_col=e1 --e2_col=e2'
-    + f' --e1_PSF_star_col=e1_psf --e2_PSF_star_col=e2_psf'
-    + f' --dndz_path {nz} -v'
-)
-print(f'Running shell command {cmd}...')
-os.system(cmd)
+# Set parameters
+params_in['input_path_shear'] = cat[ver]["shear"]["path"]
+params_in['input_path_PSF'] = cat[ver]["star"]["path"]
+params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
+params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
+params_in['sh'] = cat[ver]['shape']
+params_in['e1_col'] = 'e1'
+params_in['e2_col'] = 'e2'
+params_in['e1_PSF_star_col'] = "e1_psf"
+params_in["e2_PSF_star_col"] = "e2_psf"
+params_in["verbose"] = True
+
+# Create leakage instance
+obj = run.LeakageScale()
+
+# Set instance parameters, copy from above
+for key in params_in:
+    obj._params[key] = params_in[key]
+# -
+
+obj.run()
 
 # +
 # Plot scale-dependent leakage
-
-theta = []
-y = []
-yerr = []
-
-xlabel = r'$\theta$ [arcmin]'                                               
-ylabel = r'$\alpha(\theta)$'
-labels = []
-linestyles = ['-', ':', '-.']
-title = ''
-out_path = None
-
 for ver in versions:
     shape_method = cat[ver]['shape']
     output_dir = f'leakage_{ver}'
