@@ -33,7 +33,8 @@ params_in = {}
 
 # +
 # Data directory
-params_in['data_dir'] = f"{os.environ['HOME']}/astro/data/CFIS/v1.0/ShapePipe"
+data_dir = f"{os.environ['HOME']}/astro/data/CFIS/v1.0/ShapePipe"
+params_in['data_dir'] = data_dir
 
 # Input galaxy shear catalogue
 params_in['input_path_shear'] = f"{data_dir}/unions_shapepipe_extended_2022_v1.0.fits"
@@ -114,6 +115,8 @@ obj.dat_shear = dat_shear
 obj.dat_PSF = dat_PSF
 
 # #### Compute correlation functions
+# The following command calls `treecorr` to compute auto- and cross-correlation functions.
+# This can take a few minutes.
 
 obj.compute_corr_gp_pp_alpha()
 
