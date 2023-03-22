@@ -42,8 +42,11 @@ jupytext --test -x cosmo_val.ipynb --to py
 
 ### From scratch
 
-1. Start notebook
+1. Start jupyter notebook
 
-2. Create python script
+2. Create new jupyter ipynb notebook
 
-2. Edit metadata
+3. Edit metadata, add
+
+"jupytext": {"formats": "ipynb,py"}
+in the line before "kernelspec"
