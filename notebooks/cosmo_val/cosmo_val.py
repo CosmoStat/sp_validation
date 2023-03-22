@@ -34,8 +34,14 @@ from cs_util import plots
 
 # ## Input data
 
+# +
 # Catalogue versions
 versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0']
+
+all_keys = ['nz']
+for ver in versions:
+    all_keys.append(ver)
+# -
 
 # Base directory for data, on candide
 data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
@@ -46,14 +52,14 @@ with open('cat_config.yaml', 'r') as file:
     cat = yaml.load(file.read(), Loader=yaml.FullLoader)
     
 # Set full paths
-for ver in versions:
+for ver in all_keys:
     for key in cat[ver]:
         if "path" in cat[ver][key]:
             cat[ver][key]["path"] = f"{data_base_dir}/{cat[ver]['subdir']}/{cat[ver][key]['path']}"
 
 if not os.path.exists(cat["paths"]["output"]):
     os.mkdir(cat["paths"]["output"])
-            
+                
 # ## Variables
 
 components = ['+', '-']
@@ -81,7 +87,7 @@ ylim_xi_sys_ratio = [-0.05, 0.5]
 # # object-wise leakage
 # -
 
-# #### xi_sys and scale-dependent leakage
+# #### $\xi_\textrm{sys}$ and scale-dependent leakage
 
 # +
 ver = 'SP_v1.0'
@@ -91,12 +97,13 @@ ext_path = cat[ver]["ext"]["path"]
 star_path = cat[ver]["star"]["path"]
 shape_ver = cat[ver]['shape']
 
-cmd = f'leakage_scale.py \
-    -i {ext_path} \
-    -I {star_path} \
-    -o {output_dir} \
-    --sh {shape_ver} \
-    --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+nz = f"{cat['nz']['dndz']['path']}_SP_{cat['nz']['dndz']['blind']}.txt"
+
+cmd = (
+    f'leakage_scale.py -i {ext_path} -I {star_path} -o {output_dir}'
+    + f' --sh {shape_ver} --e1_PSF_star_col e1 --e2_PSF_star_col e2'
+    + f' --dndz_path {nz} -v'
+)
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 
@@ -109,12 +116,14 @@ ext_path = cat[ver]["shear"]["path"]
 star_path = cat[ver]["star"]["path"]
 shape_ver = cat[ver]['shape']
 
-cmd = f'leakage_scale.py \
-    -i {ext_path} \
-    -I {star_path} \
-    -o {output_dir} \
-    --sh {shape_ver} \
-    --e1_col e1 --e2_col e2 --e1_PSF_star_col e1 --e2_PSF_star_col e2 -v'
+nz = f"{cat['nz']['dndz']['path']}_LF_{cat['nz']['dndz']['blind']}.txt"
+
+cmd = (
+    f'leakage_scale.py -i {ext_path} -I {star_path} -o {output_dir}'
+    + f' --sh {shape_ver} --e1_col e1 --e2_col e2'
+    + f' --e1_PSF_star_col e1 --e2_PSF_star_col e2'
+    + f' --dndz_path {nz} -v'
+)
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 
@@ -123,7 +132,13 @@ ver = 'LF_v2.0'
 
 output_dir = f'{cat["paths"]["output"]}/leakage_{ver}'
 
-cmd = f'leakage_scale.py -i {cat_shear[ver]} -I {cat_star[ver]} -o {output_dir} --sh {shapes[ver]} --ra_star_col=ra --dec_star_col=dec --e1_col=e1 --e2_col=e2 --e1_PSF_star_col=e1_psf --e2_PSF_star_col=e2_psf -v'
+cmd = (
+    f'leakage_scale.py -i {cat_shear[ver]} -I {cat_star[ver]} -o {output_dir}'
+    + f' --sh {shapes[ver]} --ra_star_col=ra --dec_star_col=dec'
+    + f' --e1_col=e1 --e2_col=e2'
+    + f' --e1_PSF_star_col=e1_psf --e2_PSF_star_col=e2_psf'
+    + f' --dndz_path {nz} -v'
+)
 print(f'Running shell command {cmd}...')
 os.system(cmd)
 

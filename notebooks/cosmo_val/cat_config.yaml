@@ -1,5 +1,11 @@
 paths:
-    output: ./output
+   output: ./output
+
+nz:
+   subdir: v1.0/nz
+   dndz:
+      path: dndz
+      blind: A
 
 SP_v1.0:
    shape: ngmix

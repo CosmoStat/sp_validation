@@ -11,9 +11,10 @@ from astropy import units
 
 from cs_util import logging
 from cs_util import canfar
-
-from sp_validation import cat
 from cs_util import plots
+from cs_util import cat as cat_csu
+
+from sp_validation import cat as cat_spv
 from sp_validation import util
 from sp_validation import correlation as corr
 from sp_validation import io
@@ -69,6 +70,7 @@ def params_default():
         leakage_alpha_ylim=[-0.03, 0.1],
         leakage_xi_sys_ylim=[-4e5, 5e5],
         leakage_xi_sys_log_ylim=[2e-13, 5e-5],
+        dndz_path=None,
     )
 
     return p_def
@@ -215,6 +217,13 @@ def parse_options(p_def):
         type='string',
         help='list of criteria (white-space separated, do not use \'_\')'
             + ' to cut data, e.g. \'w>0_mask!=0\''
+    )
+    parser.add_option(
+        '--dndz_path',
+        dest='dndz_path',
+        default=p_def.dndz_path,
+        type='string',
+        help=f'path to source redshift histogram'
     )
     parser.add_option(
         '-v',
@@ -816,7 +825,7 @@ def get_nz():
     return z, nz
 
 
-def get_theo_xi_planck(theta):
+def get_theo_xi_planck(theta, dndz_path):
 
     Om = 0.3153
     sig8 = 0.8111
@@ -824,7 +833,9 @@ def get_theo_xi_planck(theta):
     Ob = 0.0493
     h = 0.6736
 
-    z, nz = get_nz()
+    #z, nz = get_nz()
+    print('MKDEBUG dndz:', dndz_path)
+    z, nz = cat_csu.read_dndz(dndz_path)
 
     xi_p, xi_m = cosmology.get_theo_xi(
         theta,
@@ -931,7 +942,7 @@ def main(argv=None):
     )
 
     # Apply cuts to galaxy catalogue if required
-    dat_shear = cat.cut_data(dat_shear, param.cut, verbose=param.verbose)
+    dat_shear = cat_spv.cut_data(dat_shear, param.cut, verbose=param.verbose)
 
     # Read star catalogue
     dat_PSF = io.open_fits_or_npy(param.input_path_PSF, hdu_no=param.hdu_psf)
@@ -1014,7 +1025,7 @@ def main(argv=None):
         verbose=param.verbose
     )
 
-    xi_p_planck, xi_m_planck = get_theo_xi_planck(r_corr_gp.meanr)
+    xi_p_planck, xi_m_planck = get_theo_xi_planck(r_corr_gp.meanr, param.dndz_path)
     plot_xi_sys_ratio(
         r_corr_gp.meanr,
         C_sys_p,
