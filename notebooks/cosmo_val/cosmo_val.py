@@ -40,7 +40,7 @@ from sp_validation import run
 
 # +
 # Catalogue versions
-versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0']
+versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','SP_matched_MP_v1.0']
 
 all_keys = ['nz']
 for ver in versions:
@@ -48,7 +48,9 @@ for ver in versions:
 # -
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
+data_base_dir = f'{os.environ["WORK"]}'
+
+# ## Loading data
 
 # +
 # Read in dictionary about catalogue info from yaml file
@@ -78,8 +80,6 @@ ylim_alpha = [-0.03, 0.1]
 
 ylim_xi_sys_ratio = [-0.05, 0.5]
 # -
-
-# ## Loading data
 
 # ## Processing
 
@@ -271,7 +271,7 @@ e2 = {}
 w = {}
 
 for ver in versions:
-    
+    print(ver)
     in_path = cat[ver]["shear"]["path"]
     # TODO: add to io.py: open_fits_or_npy
     print(f'Loading {in_path}')
@@ -287,10 +287,8 @@ for ver in versions:
         hdu_list.close()
     elif file_extension == '.parquet':
         df = pd.read_parquet(in_path, engine='pyarrow')
-        array = df['Separation'].to_numpy()
-        idx = np.argwhere(np.isfinite(array))
-        # TODO: Check separation distribution
-
+        sep_array = df['Separation'].to_numpy()
+        idx = np.argwhere(np.isfinite(sep_array))
         ra[ver] = df['ra'].to_numpy()[idx].flatten()
         dec[ver] = df['dec'].to_numpy()[idx].flatten()
         e1[ver] = df['e1'].to_numpy()[idx].flatten()
@@ -298,11 +296,22 @@ for ver in versions:
         w[ver] = df['w'].to_numpy()[idx].flatten()
 # -
 
-# ### Catalogue ellipticity histograms
+# ### Catalogue histograms
 
 # +
-plt.rcParams.update({'figure.figsize': [22,7]})
+# Plot separation for SP/MP match
+plt.rcParams.update({'figure.figsize': [10,7]})
+fig, axs = plt.subplots(1, 1)
+nbins = 200
 
+print('Max separation: %s arcsec' %max(sep_array))
+n, bins, _ = axs.hist(sep_array, bins=nbins, density=False, histtype='step',label='ShapePipe MegaPipe Match')
+axs.set_xlabel(r'Separation $\theta$ [arcsec]')
+axs.legend()
+
+# +
+# Plot ellipticities
+plt.rcParams.update({'figure.figsize': [22,7]})
 fig, axs = plt.subplots(1, 2)
 nbins = 200
 
@@ -344,23 +353,21 @@ TreeCorrConfig = {
     }
 
 cat_ggs = {}
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    
+for ver in versions:
     cat_gal = treecorr.Catalog(
-        ra=ra[cat_key],
-        dec=dec[cat_key],
-        g1=e1[cat_key]-cat[cat_option[0]][cat_option[1]]['e1_bias'],
-        g2=e2[cat_key]-cat[cat_option[0]][cat_option[1]]['e2_bias'],
-        w=w[cat_key],
+        ra=ra[ver],
+        dec=dec[ver],
+        g1=e1[ver]-cat[ver]['shear']['e1_bias'],
+        g2=e2[ver]-cat[ver]['shear']['e2_bias'],
+        w=w[ver],
         ra_units='degrees',
         dec_units='degrees',
         npatch=50
     )
     gg = treecorr.GGCorrelation(TreeCorrConfig)
     gg.process(cat_gal)
-    cat_ggs.update({cat_key:gg})
-    print("done for cat %s" %(cat_key))
+    cat_ggs.update({ver:gg})
+    print("done for cat %s" %(ver))
 # -
 
 # ### Plot the xi_pm
@@ -369,21 +376,19 @@ for cat_option in cat_options:
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
 
 #Plot of n_pairs
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.plot(cat_ggs[cat_key].meanr, cat_ggs[cat_key].npairs, \
-             label=r'$n_{pairs}$ %s' %(cat[cat_option[0]][cat_option[1]]['label']), \
-             ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.plot(cat_ggs[ver].meanr, cat_ggs[ver].npairs, \
+             label=r'$n_{pairs}$ %s' %(cat[ver]['shear']['label']), \
+             ls=cat[ver]['shear']['ls'],color=cat[ver]['shear']['colour'])
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.ylabel(r'$n_{pairs}$')
 plt.legend()
 plt.show()
 
 #Plot of xi_+
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xip, yerr=np.sqrt(cat_ggs[cat_key].varxip), \
-                 label=r'$\xi_+$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.errorbar(cat_ggs[ver].meanr, cat_ggs[ver].xip, yerr=np.sqrt(cat_ggs[ver].varxip), \
+                 label=r'$\xi_+$ %s' %(cat[ver]['shear']['label']),ls=cat[ver]['shear']['ls'],color=cat[ver]['shear']['colour'])
 plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
@@ -394,10 +399,9 @@ _ = plt.ylabel(r'$\xi_+(\theta)$')
 plt.show()
 
 #Plot of xi_-
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xim, yerr=np.sqrt(cat_ggs[cat_key].varxim), \
-                 label=r'$\xi_-$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.errorbar(cat_ggs[ver].meanr, cat_ggs[ver].xim, yerr=np.sqrt(cat_ggs[ver].varxim), \
+                 label=r'$\xi_-$ %s' %(cat[ver]['shear']['label']),ls=cat[ver]['shear']['ls'],color=cat[ver]['shear']['colour'])
 plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
@@ -414,25 +418,24 @@ plt.show()
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
 
 #Define the two catalogues you wish to compare
-cat1 = cat_options[0]
-cat2 = cat_options[1]
+ver = versions[0]
+ver2 = versions[1]
 
-cat_key = cat1[0]+'_'+cat1[1]
-cat_key2 = cat2[0]+'_'+cat2[1]
+ratio = np.abs(cat_ggs[ver2].xip-cat_ggs[ver].xip)/cat_ggs[ver2].xip
+err = ratio * np.sqrt(((np.sqrt(cat_ggs[ver].varxip)+np.sqrt(cat_ggs[ver2].varxip))/(cat_ggs[ver2].xip-cat_ggs[ver].xip))**2+(cat_ggs[ver2].varxip/cat_ggs[ver2].xip)**2)
+plt.errorbar(cat_ggs[ver].meanr, ratio, yerr=err, 
+             label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[ver2]['shear']['label'],cat[ver]['shear']['label'],cat[ver2]['shear']['label']), \
+                ls='solid',color='salmon')
 
-ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
-err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
-plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
-             label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
-
-ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
-err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
-plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
-             label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
+ratio = np.abs(cat_ggs[ver2].xim-cat_ggs[ver].xim)/cat_ggs[ver2].xim
+err = ratio * np.sqrt(((np.sqrt(cat_ggs[ver].varxim)+np.sqrt(cat_ggs[ver2].varxim))/(cat_ggs[ver2].xim-cat_ggs[ver].xim))**2+(cat_ggs[ver2].varxim/cat_ggs[ver2].xim)**2)
+plt.errorbar(cat_ggs[ver].meanr, ratio, yerr=err, 
+             label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[ver2]['shear']['label'],cat[ver]['shear']['label'],cat[ver2]['shear']['label']), \
+                ls='solid',color='indigo')
 plt.hlines(0.0,0,200,colors='k')
 plt.grid()
 plt.xscale('log')
-plt.ylim([-2.5,2.5])
+# plt.ylim([-2.5,2.5])
 plt.legend(fontsize=15)
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([1,200])
@@ -441,44 +444,104 @@ plt.xlim([1,200])
 # ### Plot CovMats
 
 #Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
-for cat_option in cat_options:
+for ver in versions:
     try:
-        cc=np.loadtxt(cat[cat_option[0]][cat_option[1]]['covmat_file'])
+        cc = np.loadtxt(cat[ver]['shear']['covmat_file'])
     except KeyError:
-        print('No Covmat available, skipping analysis for this catalogue')
+        print('No Covmat available, skipping analysis for this catalogue: %s' %ver)
         continue
     else:
-        cat_key = cat_option[0]+'_'+cat_option[1]
         cc_var = np.diag(cc)
         cc_varxip = cc_var[:20]
         cc_varxim = cc_var[20:]
 
-        cc_g = np.loadtxt(cat[cat_option[0]][cat_option[1]]['covmat_file'][:-4]+'_g.txt')
+        cc_g = np.loadtxt(cat[ver]['shear']['covmat_file'][:-4]+'_g.txt')
         cc_var = np.diag(cc_g)
         cc_varxip_g = cc_var[:20]
         cc_varxim_g = cc_var[20:]
 
-        plt.loglog(cat_ggs[cat_key].meanr,cat_ggs[cat_key].varxip,'-k', label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxip, ls='--', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxip_g, '.', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxip,'-k', label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxip, ls='--', c='%s' %cat[ver]['shear']['colour'], \
+                   label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxip_g, '.', c='%s' %cat[ver]['shear']['colour'], \
+                   label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
         plt.grid()
-        plt.xlim([cat_ggs[cat_key].meanr[0],cat_ggs[cat_key].meanr[-1]])
+        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
         plt.legend(fontsize=15)
         plt.xlabel(rf'$\theta$ [{sep_units}]')
         plt.ylabel(r'$\sigma(\xi_+)$')
         plt.show()
 
-        plt.loglog(cat_ggs[cat_key].meanr,cat_ggs[cat_key].varxim,'-k', label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxim, ls='--', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxim_g, '.', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxim,'-k', label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxim, ls='--', c='%s' %cat[ver]['shear']['colour'],\
+                    label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxim_g, '.', c='%s' %cat[ver]['shear']['colour'], \
+                    label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
         plt.grid()
-        plt.xlim([cat_ggs[cat_key].meanr[0],cat_ggs[cat_key].meanr[-1]])
+        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
         plt.legend(fontsize=15)
         plt.xlabel(rf'$\theta$ [{sep_units}]')
         plt.ylabel(r'$\sigma(\xi_-)$')
         plt.show()
 
+# ## MCMC Plotting
 
+# +
+from getdist import plots, loadMCSamples
+import uncertainties
 
+g = plots.get_subplot_plotter(width_inch=30)
+g.settings.axes_fontsize = 30
+g.settings.axes_labelsize = 30
+g.settings.alpha_filled_add = 0.6
+g.settings.legend_fontsize = 30
 
+#SPECIFY DATA DIRECTORY AND DESIRED CHAINS TO ANALYSE
+scratch_dir = f'{os.environ["WORK"]}'
+# -
 
+#CREATE PARAMNAME FILE
+for ver in versions:
+    chain_dir = '%s/chain' %ver
+    with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
+        params = file.readline()[1:].split('\t')[:-2]
+        file.close()
+
+    with open(scratch_dir + '%s/getdist_%s_.paramnames'%(chain_dir,ver), "w") as file:
+        for i in range(len(params)):
+            file.write(params[i].split('--')[1] + '\n')
+        file.close()
+    print(params)
+
+# +
+#READ CHAIN
+chains = []
+colours = []
+line_args = []
+
+for ver in versions:
+    chain_dir = '%s/chain' %ver
+    chain = np.loadtxt(scratch_dir + '%s/samples_1.txt'%(chain_dir))
+
+    np.savetxt(scratch_dir + '%s/getdist_%s__1.txt'%(chain_dir,ver),  
+               np.column_stack((np.ones_like(chain[:, -1]) ,-(chain[:, -1]-chain[:, -2]), chain[:, 0:-2])))
+
+    chain = g.samples_for_root(scratch_dir + '%s/getdist_%s_' %(chain_dir,ver),
+                                   settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
+    p=chain.getParams()
+    chain.addDerived(p.h0*100,name='H_0',label=r'H_0')
+    chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
+    chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
+    
+    chains.append(chain)
+    colours.append(cat[ver]['shear']['getdist_colour'])
+    line_args.append({'color': cat[ver]['shear']['getdist_col']})
+
+# +
+# %matplotlib inline
+g.triangle_plot(chains,['omega_m','omega_b','ln10^10A_s','n_s','tau','h0','SIGMA_8','S_8'],
+                legend_labels=versions,
+                colors=colours,
+                line_args=line_args)
+
+# g.export('plots/corner_plot_comparison_lf.pdf')
