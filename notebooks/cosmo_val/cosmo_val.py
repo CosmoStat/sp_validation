@@ -22,12 +22,13 @@ import os
 import numpy as np
 import matplotlib.pylab as plt
 import sys
+import gc
+import yaml
 import numpy as np
 from astropy.io import fits
 import treecorr
 import pandas as pd
 from astropy.io import ascii
-import yaml
 
 # +
 from sp_validation.plot_style import *
@@ -85,13 +86,13 @@ ylim_xi_sys_ratio = [-0.02, 0.5]
 
 # + active=""
 # # rho stats
-# # scale-dependent leakage
 # # object-wise leakage
 # -
 
 # #### $\xi_\textrm{sys}$ and scale-dependent leakage
 
 results = {}
+print('Computing scale-dependent leakage')
 
 # +
 ver = 'SP_v1.0'
@@ -121,6 +122,7 @@ for key in params_in:
 # -
 
 obj.run()
+print(f"done: {ver}")
 
 results[ver] = obj
 
@@ -150,6 +152,7 @@ for key in params_in:
 # -
 
 obj.run()
+print(f"done: {ver}")
 
 results[ver] = obj
 
@@ -179,6 +182,7 @@ for key in params_in:
 # -
 
 obj.run()
+print(f"done: {ver}")
 
 results[ver] = obj
 
@@ -322,6 +326,7 @@ _ = axs[1].set_xlim([-1.5,1.5])
 
 # #### Compute $\xi_\pm$
 
+print("Compute 2PCF")
 treecorr.set_omp_threads(8)
 sep_units = 'arcmin'
 coord_units = 'degrees'
@@ -375,8 +380,8 @@ for ver in versions:
         cat_ggs[ver].meanr,
         cat_ggs[ver].npairs,
         label=ver,
-        ls=cat[ver]["shear"]['ls'],
-        color=cat[ver]["shear"]['colour']
+        ls=cat[ver]['ls'],
+        color=cat[ver]['colour']
     )
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.ylabel(r'$n_{\rm pair}$')
@@ -391,8 +396,8 @@ for ver in versions:
         cat_ggs[ver].xip,
         yerr=np.sqrt(cat_ggs[ver].varxip),
         label=ver,
-        ls=cat[ver]["shear"]["ls"],
-        color=cat[ver]["shear"]["colour"]
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
     )
 plt.plot()
 plt.xscale('log')
@@ -403,10 +408,15 @@ plt.xlim([0,200])
 _ = plt.ylabel(r'$\xi_+(\theta)$')
 
 #Plot of xi_-
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xim, yerr=np.sqrt(cat_ggs[cat_key].varxim), \
-                 label=r'$\xi_-$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.errorbar(
+        cat_ggs[ver].meanr, 
+        cat_ggs[ver].xim,
+        yerr=np.sqrt(cat_ggs[ver].varxim),
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
 plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
@@ -419,31 +429,31 @@ plt.show()
 # #### Plot fractional difference
 
 # +
-plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
+#plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
 
 #Define the two catalogues you wish to compare
-cat1 = cat_options[0]
-cat2 = cat_options[1]
+#cat1 = cat_options[0]
+#cat2 = cat_options[1]
 
-cat_key = cat1[0]+'_'+cat1[1]
-cat_key2 = cat2[0]+'_'+cat2[1]
+#cat_key = cat1[0]+'_'+cat1[1]
+#cat_key2 = cat2[0]+'_'+cat2[1]
 
-ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
-err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
-plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
-             label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
+#ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
+#err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
+#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+             #label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
 
-ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
-err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
-plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
-             label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
-plt.hlines(0.0,0,200,colors='k')
-plt.grid()
-plt.xscale('log')
-plt.ylim([-2.5,2.5])
-plt.legend(fontsize=15)
-plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.xlim([1,200])
+#ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
+#err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
+#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+             #label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
+#plt.hlines(0.0,0,200,colors='k')
+#plt.grid()
+#plt.xscale('log')
+#plt.ylim([-2.5,2.5])
+#plt.legend(fontsize=15)
+#plt.xlabel(rf'$\theta$ [{sep_units}]')
+#plt.xlim([1,200])
 
 # +
 #### Aperture-mass dispersion
@@ -471,14 +481,14 @@ TreeCorrConfig = {
 cat_ggs_map2 = {}
 for ver in versions:
     # TODO: Compute bias here
-    g1 = results.dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
-    g2 = results.dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
+    g1 = results[ver].dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
+    g2 = results[ver].dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
     cat_gal = treecorr.Catalog(
-        ra=results.dat_shear['RA'],
-        dec=results.dat_shear['Dec'],
+        ra=results[ver].dat_shear['RA'],
+        dec=results[ver].dat_shear['Dec'],
         g1=g1,
         g2=g2,
-        w=results.dat_shear['w'],
+        w=results[ver].dat_shear['w'],
         ra_units=coord_units,
         dec_units=coord_units,
         npatch=npatch,
@@ -494,6 +504,12 @@ for ver in versions:
 
 # +
 
+
+# Clean up memory
+for ver in version:
+    del(results[ver].dat_shear)
+    del(results[ver].dat_PSF)
+gc.collect()
 
 
 # -
