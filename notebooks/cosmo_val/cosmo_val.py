@@ -470,7 +470,7 @@ for ver in versions:
 # +
 
 
-gg.calculateMapSq(R, m2_uform='Schneider')
+
 # -
 
 # ### Plot CovMats
