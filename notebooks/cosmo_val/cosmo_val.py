@@ -36,7 +36,7 @@ from cs_util import plots
 from sp_validation import run
 # -
 
-# ## Input data
+# ## Input parameters
 
 # +
 # Catalogue versions
@@ -74,12 +74,10 @@ components = ['+', '-']
 theta_min_plot = 1
 theta_max_plot = 300
 
-ylim_alpha = [-0.03, 0.1]
+ylim_alpha = [-0.005, 0.05]
 
-ylim_xi_sys_ratio = [-0.05, 0.5]
+ylim_xi_sys_ratio = [-0.02, 0.5]
 # -
-
-# ## Loading data
 
 # ## Processing
 
@@ -106,6 +104,10 @@ params_in['input_path_PSF'] = cat[ver]["star"]["path"]
 params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
 params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
 params_in['sh'] = cat[ver]['shape']
+# Uncomment the following two lines to use calibrated shear estimates
+# (the default is e1_uncal, uncalibrated shear estimates)
+#params_in['e1_col'] = 'e1'
+#params_in['e2_col'] = 'e2'
 params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
 params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
 params_in["verbose"] = True
@@ -187,12 +189,16 @@ theta = []
 y = []
 yerr = []
 labels = []
+colors = []
+linestyles = []
 
 for ver in versions:                                                           
     theta.append(results[ver].r_corr_gp.meanr)
     y.append(results[ver].alpha_leak)
     yerr.append(results[ver].sig_alpha_leak)
     labels.append(ver)
+    colors.append(cat[ver]["colour"])
+    linestyles.append(cat[ver]["ls"])
                       
 out_path = None
 title = r'$\alpha$ leakage'
@@ -210,6 +216,8 @@ plots.plot_data_1d(
     xlim=[theta_min_plot, theta_max_plot],                                                      
     ylim=ylim_alpha, 
     labels=labels,
+    colors=colors,
+    linestyles=linestyles,
 )
 
 # +
@@ -217,11 +225,15 @@ plots.plot_data_1d(
 
 y = []
 yerr = []
+colors = []
+linestyles = []
 
 for ver in versions:                                                       
     y.append(results[ver].C_sys_p)
     yerr.append(results[ver].C_sys_std_p)
     labels.append(ver)
+    colors.append(cat[ver]["colour"])
+    linestyles.append(cat[ver]["ls"])
 
 xlabel = r'$\theta$ [arcmin]'                                               
 ylabel = r'$\xi^{\rm sys}_+(\theta)$'
@@ -238,7 +250,9 @@ plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,                                                              
-    xlim=[theta_min_plot, theta_max_plot],                                                      
+    xlim=[theta_min_plot, theta_max_plot],
+    colors=colors,
+    linestyles=linestyles,
 )
 
 y = []
@@ -264,6 +278,8 @@ plots.plot_data_1d(
     xlog=True,                                                              
     xlim=[theta_min_plot, theta_max_plot],
     ylim=[-1e-7, 1e-6],
+    colors=colors,
+    linestyles=linestyles,
 )
 # +
 # ### Cosmological analysis
@@ -285,25 +301,26 @@ for ver in versions:
     e1 = results[ver].dat_shear['e1']
     w = results[ver].dat_shear['w']
     n, bins, _ = axs[0].hist(e1, bins=nbins, density=False, histtype='step', weights=w,\
-                            label=ver)
+                            label=ver, color=cat[ver]["colour"])
 axs[0].set_xlabel('$e_1$')
 axs[0].set_ylabel('frequency')
 axs[0].legend()
 axs[0].set_xlim([-1.5,1.5])
-# axs[0].set_ylim([0,2e4])
 
 for ver in versions:
     e2 = results[ver].dat_shear['e2']
     w = results[ver].dat_shear['w']
     n, bins, _ = axs[1].hist(e2, bins=nbins, density=False, histtype='step', weights=w,\
-                            label=ver)
+                            label=ver, color=cat[ver]["colour"])
 axs[1].set_xlabel('$e_2$')
 axs[0].set_ylabel('frequency')
 axs[1].legend()
 _ = axs[1].set_xlim([-1.5,1.5])
 # -
 
-# ### Compute xi_pm
+# ### Cosmology calculations
+
+# #### Compute $\xi_\pm$
 
 treecorr.set_omp_threads(8)
 sep_units = 'arcmin'
@@ -328,45 +345,55 @@ TreeCorrConfig = {
 cat_ggs = {}
 for ver in versions:
     # TODO: Compute bias here
-    g1 = results.dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
-    g2 = results.dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
+    g1 = results[ver].dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
+    g2 = results[ver].dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
     cat_gal = treecorr.Catalog(
-        ra=results.dat_shear['RA'],
-        dec=results.dat_shear['Dec'],
+        ra=results[ver].dat_shear['RA'],
+        dec=results[ver].dat_shear['Dec'],
         g1=g1,
         g2=g2,
-        w=results.dat_shear['w'],
+        w=results[ver].dat_shear['w'],
         ra_units=coord_units,
         dec_units=coord_units,
         npatch=npatch,
     )
+    print(f"{ver}...", end="")
     gg = treecorr.GGCorrelation(TreeCorrConfig)
     gg.process(cat_gal)
     cat_ggs[ver] = gg
-    print(f"done: {ver}")
+    print("done")
 # -
 
-# ### Plot the xi_pm
+# #### Plot $\xi_\pm$
 
 # +
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
 
 #Plot of n_pairs
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.plot(cat_ggs[cat_key].meanr, cat_ggs[cat_key].npairs, \
-             label=r'$n_{pairs}$ %s' %(cat[cat_option[0]][cat_option[1]]['label']), \
-             ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.plot(
+        cat_ggs[ver].meanr,
+        cat_ggs[ver].npairs,
+        label=ver,
+        ls=cat[ver]["shear"]['ls'],
+        color=cat[ver]["shear"]['colour']
+    )
 plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.ylabel(r'$n_{pairs}$')
+plt.ylabel(r'$n_{\rm pair}$')
 plt.legend()
 plt.show()
+# -
 
 #Plot of xi_+
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xip, yerr=np.sqrt(cat_ggs[cat_key].varxip), \
-                 label=r'$\xi_+$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.errorbar(
+        cat_ggs[ver].meanr, 
+        cat_ggs[ver].xip,
+        yerr=np.sqrt(cat_ggs[ver].varxip),
+        label=ver,
+        ls=cat[ver]["shear"]["ls"],
+        color=cat[ver]["shear"]["colour"]
+    )
 plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
@@ -374,7 +401,6 @@ plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([0,200])
 _ = plt.ylabel(r'$\xi_+(\theta)$')
-plt.show()
 
 #Plot of xi_-
 for cat_option in cat_options:
@@ -389,9 +415,8 @@ plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([0,200])
 _ = plt.ylabel(r'$\xi_-(\theta)$')
 plt.show()
-# -
 
-# ### Plot Fractional Difference
+# #### Plot fractional difference
 
 # +
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
@@ -473,7 +498,7 @@ for ver in versions:
 
 # -
 
-# ### Plot CovMats
+# #### Plot covariance matrices
 
 #Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
 for cat_option in cat_options:
