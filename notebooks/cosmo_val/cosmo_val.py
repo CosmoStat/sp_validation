@@ -305,11 +305,11 @@ _ = axs[1].set_xlim([-1.5,1.5])
 
 # ### Compute xi_pm
 
-# +
 treecorr.set_omp_threads(8)
-
 sep_units = 'arcmin'
 coord_units = 'degrees'
+
+# +
 theta_min = 1
 theta_max = 200
 nbins = 20
@@ -419,6 +419,58 @@ plt.ylim([-2.5,2.5])
 plt.legend(fontsize=15)
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([1,200])
+
+# +
+#### Aperture-mass dispersion
+
+# +
+theta_min = 1
+theta_max = 200
+nbins = 500
+npatch = 50
+
+# Set up angular smoothing scales for aperture-mass dispersion                                 
+n_bins_map = 20
+R = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
+
+TreeCorrConfig = {
+    'ra_units': coord_units,
+    'dec_units': coord_units,
+    'max_sep': str(theta_max),
+    'min_sep': str(theta_min),
+    'sep_units': sep_units,
+    'nbins': nbins,
+    'var_method':'jackknife',
+}
+
+cat_ggs_map2 = {}
+for ver in versions:
+    # TODO: Compute bias here
+    g1 = results.dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
+    g2 = results.dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
+    cat_gal = treecorr.Catalog(
+        ra=results.dat_shear['RA'],
+        dec=results.dat_shear['Dec'],
+        g1=g1,
+        g2=g2,
+        w=results.dat_shear['w'],
+        ra_units=coord_units,
+        dec_units=coord_units,
+        npatch=npatch,
+    )
+    gg = treecorr.GGCorrelation(TreeCorrConfig)
+    gg.process(cat_gal)
+    gg.calculateMapSq(R, m2_uform='Schneider')
+    
+    output_path = f"{cat['paths']['output']}/map2_f{cat['paths']['output']}"
+    gg.writeMapSq(output_path, R=R, m2_uform='Schneider')
+    cat_ggs_map2[ver] = gg
+    print(f"done: {ver}")
+
+# +
+
+
+gg.calculateMapSq(R, m2_uform='Schneider')
 # -
 
 # ### Plot CovMats
