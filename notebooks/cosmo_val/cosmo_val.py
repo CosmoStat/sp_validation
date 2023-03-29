@@ -37,6 +37,13 @@ from cs_util import plots
 from sp_validation import run
 # -
 
+import treecorr
+n_thread = 8
+treecorr.set_omp_threads(n_thread)
+
+import pyccl
+pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
+
 # ## Input parameters
 
 # +
@@ -204,7 +211,8 @@ for ver in versions:
     colors.append(cat[ver]["colour"])
     linestyles.append(cat[ver]["ls"])
                       
-out_path = None
+out_path = f"{cat['paths']['output']}/alpha_leak.pdf"
+
 title = r'$\alpha$ leakage'
 xlabel = r'$\theta\, [arcmin]$'
 ylabel = r'$\alpha(\theta$'
@@ -242,7 +250,7 @@ for ver in versions:
 xlabel = r'$\theta$ [arcmin]'                                               
 ylabel = r'$\xi^{\rm sys}_+(\theta)$'
 title = 'Cross-correlation leakage'
-out_path = None                                                                                
+out_path = f"{cat['paths']['output']}/xi_sys_p"                                                                              
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 plots.plot_data_1d(                                                         
     theta,                                                                  
@@ -268,7 +276,7 @@ for ver in versions:
 xlabel = r'$\theta$ [arcmin]'
 ylabel = r'$\xi^{\rm sys}_-(\theta)$'
 title = 'Cross-correlation leakage'
-out_path = None
+out_path = f"{cat['paths']['output']}/xi_sys_m"
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 plots.plot_data_1d(                                                         
     theta,                                                                  
@@ -327,7 +335,7 @@ _ = axs[1].set_xlim([-1.5,1.5])
 # #### Compute $\xi_\pm$
 
 print("Compute 2PCF")
-treecorr.set_omp_threads(8)
+treecorr.set_omp_threads(n_thread)
 sep_units = 'arcmin'
 coord_units = 'degrees'
 
@@ -404,7 +412,7 @@ plt.xscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.xlim([0,200])
+plt.xlim([theta_min_plot, theta_max_plot])
 _ = plt.ylabel(r'$\xi_+(\theta)$')
 
 #Plot of xi_-
@@ -422,9 +430,8 @@ plt.xscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.xlim([0,200])
+plt.xlim([theta_min_plot, theta_max_plot])
 _ = plt.ylabel(r'$\xi_-(\theta)$')
-plt.show()
 
 # #### Plot fractional difference
 
@@ -497,22 +504,48 @@ for ver in versions:
     gg.process(cat_gal)
     gg.calculateMapSq(R, m2_uform='Schneider')
     
-    output_path = f"{cat['paths']['output']}/map2_f{cat['paths']['output']}"
+    output_path = f"{cat['paths']['output']}/map2_{ver}.txt"
     gg.writeMapSq(output_path, R=R, m2_uform='Schneider')
     cat_ggs_map2[ver] = gg
     print(f"done: {ver}")
 
 # +
+# Plot aperture-mass dispersion
 
+x = []
+y = []
+yerr = []
+for ver in versions:                                                       
+    x.append(cat_ggs_map2[ver].R)
+    y.append(cat_ggs_map2[ver].Mapsq)
+    yerr.append(cat_ggs_map2[ver].sigMap)
+
+xlabel = r'$\theta$ [arcmin]'
+ylabel = r'$\langle M^2_{\rm ap} \rangle(\theta)$'
+title = 'Aperture-mass dispersion E-mode'
+out_path = f"{cat['paths']['output']}/map2.pdf"
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+plots.plot_data_1d(                                                         
+    theta,                                                                  
+    y,                                                            
+    yerr,                                                                   
+    title,                                                                  
+    xlabel,                                                                 
+    ylabel,                                                                 
+    out_path,
+    labels=labels,
+    xlog=True,                                                              
+    xlim=[theta_min_plot, theta_max_plot],
+    colors=colors,
+    linestyles=linestyles,
+)
+# -
 
 # Clean up memory
-for ver in version:
+for ver in versions:
     del(results[ver].dat_shear)
     del(results[ver].dat_PSF)
 gc.collect()
-
-
-# -
 
 # #### Plot covariance matrices
 
