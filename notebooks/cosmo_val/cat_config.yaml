@@ -20,7 +20,6 @@ SP_v1.0:
       e1_bias: 0
       e2_bias: 0
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      
    psf:
       path: unions_shapepipe_psf_2022_v1.0.2.fits
       label: SP_psf
@@ -104,7 +103,6 @@ SP_matched_MP_v1.0:
       label: SP_Match_MegaPipe
       e1_bias: 0
       e2_bias: 0
-      
 
 SP_matched_LF_fp_v1.0:
    pipeline: SP
