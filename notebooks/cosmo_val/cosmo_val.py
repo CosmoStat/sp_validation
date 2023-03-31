@@ -22,12 +22,13 @@ import os
 import numpy as np
 import matplotlib.pylab as plt
 import sys
+import gc
+import yaml
 import numpy as np
 from astropy.io import fits
 import treecorr
 import pandas as pd
 from astropy.io import ascii
-import yaml
 
 # +
 from sp_validation.plot_style import *
@@ -36,7 +37,14 @@ from cs_util import plots
 from sp_validation import run
 # -
 
-# ## Input data
+import treecorr
+n_thread = 8
+treecorr.set_omp_threads(n_thread)
+
+import pyccl
+pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
+
+# ## Input parameters
 
 # +
 # Catalogue versions
@@ -74,12 +82,10 @@ components = ['+', '-']
 theta_min_plot = 1
 theta_max_plot = 300
 
-ylim_alpha = [-0.03, 0.1]
+ylim_alpha = [-0.005, 0.05]
 
-ylim_xi_sys_ratio = [-0.05, 0.5]
+ylim_xi_sys_ratio = [-0.02, 0.5]
 # -
-
-# ## Loading data
 
 # ## Processing
 
@@ -87,13 +93,13 @@ ylim_xi_sys_ratio = [-0.05, 0.5]
 
 # + active=""
 # # rho stats
-# # scale-dependent leakage
 # # object-wise leakage
 # -
 
 # #### $\xi_\textrm{sys}$ and scale-dependent leakage
 
-leak_scale = {}
+results = {}
+print('Computing scale-dependent leakage')
 
 # +
 ver = 'SP_v1.0'
@@ -101,13 +107,17 @@ ver = 'SP_v1.0'
 params_in = {}
 
 # Set parameters
-params_in['input_path_shear'] = cat[ver]["ext"]["path"]
+params_in['input_path_shear'] = cat[ver]["shear"]["path"]
 params_in['input_path_PSF'] = cat[ver]["star"]["path"]
 params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
 params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
 params_in['sh'] = cat[ver]['shape']
-params_in['e1_PSF_star_col'] = "e1"
-params_in["e2_PSF_star_col"] = "e2"
+# Uncomment the following two lines to use calibrated shear estimates
+# (the default is e1_uncal, uncalibrated shear estimates)
+#params_in['e1_col'] = 'e1'
+#params_in['e2_col'] = 'e2'
+params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
+params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
 params_in["verbose"] = True
 
 # Create leakage instance
@@ -119,8 +129,9 @@ for key in params_in:
 # -
 
 obj.run()
+print(f"done: {ver}")
 
-leak_scale[ver] = obj
+results[ver] = obj
 
 # +
 ver = 'LF_v1.0'
@@ -135,8 +146,8 @@ params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
 params_in['sh'] = cat[ver]['shape']
 params_in['e1_col'] = 'e1'
 params_in['e2_col'] = 'e2'
-params_in['e1_PSF_star_col'] = "e1"
-params_in["e2_PSF_star_col"] = "e2"
+params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
+params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
 params_in["verbose"] = True
 
 # Create leakage instance
@@ -148,8 +159,9 @@ for key in params_in:
 # -
 
 obj.run()
+print(f"done: {ver}")
 
-leak_scale[ver] = obj
+results[ver] = obj
 
 # +
 ver = 'LF_v2.0'
@@ -164,8 +176,8 @@ params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
 params_in['sh'] = cat[ver]['shape']
 params_in['e1_col'] = 'e1'
 params_in['e2_col'] = 'e2'
-params_in['e1_PSF_star_col'] = "e1_psf"
-params_in["e2_PSF_star_col"] = "e2_psf"
+params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
+params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
 params_in["verbose"] = True
 
 # Create leakage instance
@@ -177,21 +189,33 @@ for key in params_in:
 # -
 
 obj.run()
+print(f"done: {ver}")
+
+results[ver] = obj
 
 # +
 # Plot scale-dependent leakage
-for ver in versions:
-    shape_method = cat[ver]['shape']
-    output_dir = f'leakage_{ver}'
 
-    alpha_name = f'{output_dir}/alpha_leakage_{shape_method}.txt'
-    alpha = ascii.read(f'{alpha_name}')
-                                                           
-    theta.append(alpha['theta[arcmin]'])
-    y.append(alpha['alpha'])
-    yerr.append(alpha['sig_alpha'])
+theta = []
+y = []
+yerr = []
+labels = []
+colors = []
+linestyles = []
+
+for ver in versions:                                                           
+    theta.append(results[ver].r_corr_gp.meanr)
+    y.append(results[ver].alpha_leak)
+    yerr.append(results[ver].sig_alpha_leak)
     labels.append(ver)
-                                                                                
+    colors.append(cat[ver]["colour"])
+    linestyles.append(cat[ver]["ls"])
+                      
+out_path = f"{cat['paths']['output']}/alpha_leak.pdf"
+
+title = r'$\alpha$ leakage'
+xlabel = r'$\theta\, [arcmin]$'
+ylabel = r'$\alpha(\theta$'
 plots.plot_data_1d(                                                     
     theta,                                                                  
     y,                                                            
@@ -203,42 +227,31 @@ plots.plot_data_1d(
     xlog=True,                                                              
     xlim=[theta_min_plot, theta_max_plot],                                                      
     ylim=ylim_alpha, 
-    linestyles=linestyles,
     labels=labels,
+    colors=colors,
+    linestyles=linestyles,
 )
 
 # +
-# Plot xi_sys relative to xi (theory)
+# Plot xi_sys
 
-theta = []
 y = []
 yerr = []
+colors = []
+linestyles = []
 
-for ver in versions:
+for ver in versions:                                                       
+    y.append(results[ver].C_sys_p)
+    yerr.append(results[ver].C_sys_std_p)
+    labels.append(ver)
+    colors.append(cat[ver]["colour"])
+    linestyles.append(cat[ver]["ls"])
 
-    shape_method = cat[ver]['shape']
-    output_dir = f'{cat["paths"]["output"]/leakage_{ver}'
-
-    xi_sys_name = f'{output_dir}/xi_sys_{shape_method}.txt'
-    xi_sys = ascii.read(f'{xi_sys_name}')
-                                                           
-    theta.append(xi_sys['theta[arcmin]'])
-
-    y.append(
-        xi_sys[f'xi_{comp}_sys'] / xi_sys[f'xi_{comp}_theo'],
-    )
-    yerr.append(
-        xi_sys[f'sigma(xi_{comp}_sys)'] / xi_sys[f'xi_{comp}_theo'],
-    )
-    labels.append(rf'$\xi^{{sys}}_{comp} ver')
-
-labels = [rf'$\xi^{{sys}}_{comp}' for comp in components]
 xlabel = r'$\theta$ [arcmin]'                                               
-ylabel = r'correlation function ratio'
-linestyles = ['-', '-']
-title = xi_sys_name
-out_path = None #f'{output_dir}/xi_sys_{shape_method}_ratio_nb.png'                                                                     
-                                                                                
+ylabel = r'$\xi^{\rm sys}_+(\theta)$'
+title = 'Cross-correlation leakage'
+out_path = f"{cat['paths']['output']}/xi_sys_p"                                                                              
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 plots.plot_data_1d(                                                         
     theta,                                                                  
     y,                                                            
@@ -249,53 +262,43 @@ plots.plot_data_1d(
     out_path,
     labels=labels,
     xlog=True,                                                              
-    xlim=[theta_min_plot, theta_max_plot],                                                      
-    ylim=ylim_xi_sys_ratio, 
+    xlim=[theta_min_plot, theta_max_plot],
+    colors=colors,
+    linestyles=linestyles,
 )
-plt.show()
+
+y = []
+yerr = []
+for ver in versions:                                                       
+    y.append(results[ver].C_sys_m)
+    yerr.append(results[ver].C_sys_std_m)
+
+xlabel = r'$\theta$ [arcmin]'
+ylabel = r'$\xi^{\rm sys}_-(\theta)$'
+title = 'Cross-correlation leakage'
+out_path = f"{cat['paths']['output']}/xi_sys_m"
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+plots.plot_data_1d(                                                         
+    theta,                                                                  
+    y,                                                            
+    yerr,                                                                   
+    title,                                                                  
+    xlabel,                                                                 
+    ylabel,                                                                 
+    out_path,
+    labels=labels,
+    xlog=True,                                                              
+    xlim=[theta_min_plot, theta_max_plot],
+    ylim=[-1e-7, 1e-6],
+    colors=colors,
+    linestyles=linestyles,
+)
 # +
 # ### Cosmological analysis
 # xipm correlation functions
 # B-modes
 # covariance
 # MCMC
-# -
-
-# ### Load catalogues
-
-# +
-ra = {}
-dec = {}
-e1 = {}
-e2 = {}
-w = {}
-
-for ver in versions:
-    
-    in_path = cat[ver]["shear"]["path"]
-    # TODO: add to io.py: open_fits_or_npy
-    print(f'Loading {in_path}')
-    _, file_extension = os.path.splitext(in_path)
-    if file_extension == '.fits':
-        hdu_list = fits.open(in_path)
-        data = hdu_list[1].data
-        ra[ver] = data['ra']
-        dec[ver] = data['dec']
-        e1[ver] = data['e1']
-        e2[ver] = data['e2']
-        w[ver] = data['w']
-        hdu_list.close()
-    elif file_extension == '.parquet':
-        df = pd.read_parquet(in_path, engine='pyarrow')
-        array = df['Separation'].to_numpy()
-        idx = np.argwhere(np.isfinite(array))
-        # TODO: Check separation distribution
-
-        ra[ver] = df['ra'].to_numpy()[idx].flatten()
-        dec[ver] = df['dec'].to_numpy()[idx].flatten()
-        e1[ver] = df['e1'].to_numpy()[idx].flatten()
-        e2[ver] = df['e2'].to_numpy()[idx].flatten()
-        w[ver] = df['w'].to_numpy()[idx].flatten()
 # -
 
 # ### Catalogue ellipticity histograms
@@ -307,138 +310,244 @@ fig, axs = plt.subplots(1, 2)
 nbins = 200
 
 for ver in versions:
-    n, bins, _ = axs[0].hist(e1[ver], bins=nbins, density=False, histtype='step', weights=w[ver],\
-                            label=f'$e_1$ {ver}')
+    e1 = results[ver].dat_shear['e1']
+    w = results[ver].dat_shear['w']
+    n, bins, _ = axs[0].hist(e1, bins=nbins, density=False, histtype='step', weights=w,\
+                            label=ver, color=cat[ver]["colour"])
 axs[0].set_xlabel('$e_1$')
 axs[0].set_ylabel('frequency')
 axs[0].legend()
 axs[0].set_xlim([-1.5,1.5])
-# axs[0].set_ylim([0,2e4])
 
 for ver in versions:
-    n, bins, _ = axs[1].hist(e2[ver], bins=nbins, density=False, histtype='step', weights=w[ver],\
-                            label=f'$e_2$ {ver}')
+    e2 = results[ver].dat_shear['e2']
+    w = results[ver].dat_shear['w']
+    n, bins, _ = axs[1].hist(e2, bins=nbins, density=False, histtype='step', weights=w,\
+                            label=ver, color=cat[ver]["colour"])
 axs[1].set_xlabel('$e_2$')
 axs[0].set_ylabel('frequency')
 axs[1].legend()
 _ = axs[1].set_xlim([-1.5,1.5])
 # -
 
-# ### Compute xi_pm
+# ### Cosmology calculations
+
+# #### Compute $\xi_\pm$
+
+print("Compute 2PCF")
+treecorr.set_omp_threads(n_thread)
+sep_units = 'arcmin'
+coord_units = 'degrees'
 
 # +
-treecorr.set_omp_threads(8)
-
-sep_units = 'arcmin'
 theta_min = 1
 theta_max = 200
+nbins = 20
+npatch = 50
 
 TreeCorrConfig = {
-        'ra_units': 'degrees',
-        'dec_units': 'degrees',
+        'ra_units': coord_units,
+        'dec_units': coord_units,
         'max_sep': str(theta_max),
         'min_sep': str(theta_min),
         'sep_units': sep_units,
-        'nbins': 20,
+        'nbins': nbins,
         'var_method':'jackknife',
     }
 
 cat_ggs = {}
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    
+for ver in versions:
+    # TODO: Compute bias here
+    g1 = results[ver].dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
+    g2 = results[ver].dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
     cat_gal = treecorr.Catalog(
-        ra=ra[cat_key],
-        dec=dec[cat_key],
-        g1=e1[cat_key]-cat[cat_option[0]][cat_option[1]]['e1_bias'],
-        g2=e2[cat_key]-cat[cat_option[0]][cat_option[1]]['e2_bias'],
-        w=w[cat_key],
-        ra_units='degrees',
-        dec_units='degrees',
-        npatch=50
+        ra=results[ver].dat_shear['RA'],
+        dec=results[ver].dat_shear['Dec'],
+        g1=g1,
+        g2=g2,
+        w=results[ver].dat_shear['w'],
+        ra_units=coord_units,
+        dec_units=coord_units,
+        npatch=npatch,
     )
+    print(f"{ver}...", end="")
     gg = treecorr.GGCorrelation(TreeCorrConfig)
     gg.process(cat_gal)
-    cat_ggs.update({cat_key:gg})
-    print("done for cat %s" %(cat_key))
+    cat_ggs[ver] = gg
+    print("done")
 # -
 
-# ### Plot the xi_pm
+# #### Plot $\xi_\pm$
 
 # +
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
 
 #Plot of n_pairs
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.plot(cat_ggs[cat_key].meanr, cat_ggs[cat_key].npairs, \
-             label=r'$n_{pairs}$ %s' %(cat[cat_option[0]][cat_option[1]]['label']), \
-             ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.plot(
+        cat_ggs[ver].meanr,
+        cat_ggs[ver].npairs,
+        label=ver,
+        ls=cat[ver]['ls'],
+        color=cat[ver]['colour']
+    )
 plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.ylabel(r'$n_{pairs}$')
+plt.ylabel(r'$n_{\rm pair}$')
 plt.legend()
 plt.show()
+# -
 
 #Plot of xi_+
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xip, yerr=np.sqrt(cat_ggs[cat_key].varxip), \
-                 label=r'$\xi_+$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.errorbar(
+        cat_ggs[ver].meanr, 
+        cat_ggs[ver].xip,
+        yerr=np.sqrt(cat_ggs[ver].varxip),
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
 plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.xlim([0,200])
+plt.xlim([theta_min_plot, theta_max_plot])
 _ = plt.ylabel(r'$\xi_+(\theta)$')
-plt.show()
 
 #Plot of xi_-
-for cat_option in cat_options:
-    cat_key = cat_option[0]+'_'+cat_option[1]
-    plt.errorbar(cat_ggs[cat_key].meanr, cat_ggs[cat_key].xim, yerr=np.sqrt(cat_ggs[cat_key].varxim), \
-                 label=r'$\xi_-$ %s' %(cat[cat_option[0]][cat_option[1]]['label']),ls=cat[cat_option[0]][cat_option[1]]['ls'],color=cat[cat_option[0]][cat_option[1]]['colour'])
+for ver in versions:
+    plt.errorbar(
+        cat_ggs[ver].meanr, 
+        cat_ggs[ver].xim,
+        yerr=np.sqrt(cat_ggs[ver].varxim),
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
 plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.xlim([0,200])
+plt.xlim([theta_min_plot, theta_max_plot])
 _ = plt.ylabel(r'$\xi_-(\theta)$')
-plt.show()
-# -
 
-# ### Plot Fractional Difference
+# #### Plot fractional difference
 
 # +
-plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
+#plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
 
 #Define the two catalogues you wish to compare
-cat1 = cat_options[0]
-cat2 = cat_options[1]
+#cat1 = cat_options[0]
+#cat2 = cat_options[1]
 
-cat_key = cat1[0]+'_'+cat1[1]
-cat_key2 = cat2[0]+'_'+cat2[1]
+#cat_key = cat1[0]+'_'+cat1[1]
+#cat_key2 = cat2[0]+'_'+cat2[1]
 
-ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
-err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
-plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
-             label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
+#ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
+#err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
+#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+             #label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
 
-ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
-err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
-plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
-             label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
-plt.hlines(0.0,0,200,colors='k')
-plt.grid()
-plt.xscale('log')
-plt.ylim([-2.5,2.5])
-plt.legend(fontsize=15)
-plt.xlabel(rf'$\theta$ [{sep_units}]')
-plt.xlim([1,200])
+#ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
+#err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
+#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+             #label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
+#plt.hlines(0.0,0,200,colors='k')
+#plt.grid()
+#plt.xscale('log')
+#plt.ylim([-2.5,2.5])
+#plt.legend(fontsize=15)
+#plt.xlabel(rf'$\theta$ [{sep_units}]')
+#plt.xlim([1,200])
+
+# +
+#### Aperture-mass dispersion
+
+# +
+theta_min = 1
+theta_max = 200
+nbins = 500
+npatch = 50
+
+# Set up angular smoothing scales for aperture-mass dispersion                                 
+n_bins_map = 20
+R = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
+
+TreeCorrConfig = {
+    'ra_units': coord_units,
+    'dec_units': coord_units,
+    'max_sep': str(theta_max),
+    'min_sep': str(theta_min),
+    'sep_units': sep_units,
+    'nbins': nbins,
+    'var_method':'jackknife',
+}
+
+cat_ggs_map2 = {}
+for ver in versions:
+    # TODO: Compute bias here
+    g1 = results[ver].dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
+    g2 = results[ver].dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
+    cat_gal = treecorr.Catalog(
+        ra=results[ver].dat_shear['RA'],
+        dec=results[ver].dat_shear['Dec'],
+        g1=g1,
+        g2=g2,
+        w=results[ver].dat_shear['w'],
+        ra_units=coord_units,
+        dec_units=coord_units,
+        npatch=npatch,
+    )
+    gg = treecorr.GGCorrelation(TreeCorrConfig)
+    gg.process(cat_gal)
+    gg.calculateMapSq(R, m2_uform='Schneider')
+    
+    output_path = f"{cat['paths']['output']}/map2_{ver}.txt"
+    gg.writeMapSq(output_path, R=R, m2_uform='Schneider')
+    cat_ggs_map2[ver] = gg
+    print(f"done: {ver}")
+
+# +
+# Plot aperture-mass dispersion
+
+x = []
+y = []
+yerr = []
+for ver in versions:                                                       
+    x.append(cat_ggs_map2[ver].R)
+    y.append(cat_ggs_map2[ver].Mapsq)
+    yerr.append(cat_ggs_map2[ver].sigMap)
+
+xlabel = r'$\theta$ [arcmin]'
+ylabel = r'$\langle M^2_{\rm ap} \rangle(\theta)$'
+title = 'Aperture-mass dispersion E-mode'
+out_path = f"{cat['paths']['output']}/map2.pdf"
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+plots.plot_data_1d(                                                         
+    theta,                                                                  
+    y,                                                            
+    yerr,                                                                   
+    title,                                                                  
+    xlabel,                                                                 
+    ylabel,                                                                 
+    out_path,
+    labels=labels,
+    xlog=True,                                                              
+    xlim=[theta_min_plot, theta_max_plot],
+    colors=colors,
+    linestyles=linestyles,
+)
 # -
 
-# ### Plot CovMats
+# Clean up memory
+for ver in versions:
+    del(results[ver].dat_shear)
+    del(results[ver].dat_PSF)
+gc.collect()
+
+# #### Plot covariance matrices
 
 #Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
 for cat_option in cat_options:
