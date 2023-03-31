@@ -2,6 +2,7 @@ import os
 from optparse import OptionParser
 
 import numpy as np
+import pandas as pd
 from astropy.io import fits
 
 from cs_util import cat as cat_csu
@@ -310,8 +311,18 @@ class LeakageScale:
 
     def read_shear_cat(self):
         # Read galaxy catalogue
-        hdu_list = fits.open(self._params["input_path_shear"])
-        dat_shear = hdu_list[1].data
+        in_path = self._params["input_path_shear"]
+        _, file_extension = os.path.splitext(in_path)
+        if file_extension == '.parquet':
+            df = pd.read_parquet(in_path, engine='pyarrow')
+            sep_array = df['Separation'].to_numpy()
+            idx = np.argwhere(np.isfinite(sep_array))
+            dat_shear = {}
+            for col in df:
+                dat_shear[col] = df[col].to_numpy()[idx].flatten()
+        else:
+            hdu_list = fits.open(in_path)
+            dat_shear = hdu_list[1].data
         n_shear = len(dat_shear)
         io.print_stats(
             f"{n_shear} galaxies found in shear catalogue",

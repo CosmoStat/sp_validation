@@ -13,11 +13,13 @@ SP_v1.0:
    subdir: v1.0/ShapePipe
    ls: solid
    colour: b
+   getdist_colour: (0.0, 0.5, 1.0)
    shear:
       path: unions_shapepipe_extended_2022_v1.0.fits
       label: SP_ext
       e1_bias: 0
       e2_bias: 0
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
    psf:
       path: unions_shapepipe_psf_2022_v1.0.2.fits
       label: SP_psf
@@ -33,6 +35,7 @@ LF_v1.0:
    subdir: v1.0/Lensfit
    ls: solid
    colour: g
+   getdist_colour: (1.0, 0.5, 0.0)
    shear:
       path: lensfit_goldshape_2022v1.fits
       label: LF_Full
@@ -67,12 +70,14 @@ SP_matched_LF_v1.0:
    subdir: v1.0/matched_LF_SP
    ls: dotted
    colour: b
+   getdist_colour: (0.90340530805574, 0.06198853997875753, 0.6527408678603205)
    shear:
       path: masked_matched_unions_shapepipe_extended_2022_v1.0.fits
       label: SP_Match_LF
       e1_bias: -5.6726e-5
       e2_bias: 8.218e-4
       covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
+      
 
 LF_matched_SP_v1.0:
    shape: lensfit
@@ -80,6 +85,7 @@ LF_matched_SP_v1.0:
    subdir: v1.0/matched_LF_SP
    ls: dashdot
    colour: g
+   getdist_colour: (0.0, 0.5, 0.0)
    shear:
       path: masked_lensfit_goldshape_2022v1.fits
       label: LF_Match_SP
@@ -91,6 +97,7 @@ SP_matched_MP_v1.0:
    pipeline: SP
    ls: dashdot
    colour: b
+   getdist_colour: (0.04606552309790213, 0.9780505945532256, 0.37684692395248665)
    shear:
       path: cfis-shapepipe.parquet
       label: SP_Match_MegaPipe
@@ -101,10 +108,11 @@ SP_matched_LF_fp_v1.0:
    pipeline: SP
    ls: dashed
    colour: b
+   getdist_colour: (0.08130806428547999, 0.1463709449188496, 0.674947827197815)
    shear:
       path: matched_footprint_shapepipe.fits
       label: SP_Match LF_Footprint
       e1_bias: 0
       e2_bias: 0
-   covmat_file: ./covs/lensfit_matched/cov_lensfit_matched.txt
-
+      covmat_file: ./covs/lensfit_matched/cov_lensfit_matched.txt
+      

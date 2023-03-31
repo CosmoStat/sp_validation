@@ -56,7 +56,9 @@ for ver in versions:
 # -
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
+data_base_dir = f'{os.environ["WORK"]}'
+
+# ## Loading data
 
 # +
 # Read in dictionary about catalogue info from yaml file
@@ -328,6 +330,21 @@ axs[1].set_xlabel('$e_2$')
 axs[0].set_ylabel('frequency')
 axs[1].legend()
 _ = axs[1].set_xlim([-1.5,1.5])
+
+# Plot separation for SP/MP match
+plt.rcParams.update({'figure.figsize': [10,7]})
+fig, axs = plt.subplots(1, 1)
+nbins = 200
+
+if 'SP_matched_MP_v1.0' in versions:
+    sep = results['SP_matched_MP_v1.0'].dat_shear['Separation']
+    n, bins, _ = axs.hist(sep, bins=nbins, density=False, histtype='step',\
+                            label='SP_matched_MP_v1.0', color=cat['SP_matched_MP_v1.0']["colour"])
+    print('Max separation: %s arcsec' %max(sep))
+    axs.set_xlabel(r'Separation $\theta$ [arcsec]')
+    axs.legend()
+# -
+
 # -
 
 # ### Cosmology calculations
@@ -550,44 +567,114 @@ gc.collect()
 # #### Plot covariance matrices
 
 #Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
-for cat_option in cat_options:
+for ver in versions:
     try:
-        cc=np.loadtxt(cat[cat_option[0]][cat_option[1]]['covmat_file'])
+        cc = np.loadtxt(cat[ver]['shear']['covmat_file'])
     except KeyError:
-        print('No Covmat available, skipping analysis for this catalogue')
+        print('No Covmat available, skipping analysis for this catalogue: %s' %ver)
         continue
     else:
-        cat_key = cat_option[0]+'_'+cat_option[1]
         cc_var = np.diag(cc)
         cc_varxip = cc_var[:20]
         cc_varxim = cc_var[20:]
 
-        cc_g = np.loadtxt(cat[cat_option[0]][cat_option[1]]['covmat_file'][:-4]+'_g.txt')
+        cc_g = np.loadtxt(cat[ver]['shear']['covmat_file'][:-4]+'_g.txt')
         cc_var = np.diag(cc_g)
         cc_varxip_g = cc_var[:20]
         cc_varxim_g = cc_var[20:]
 
-        plt.loglog(cat_ggs[cat_key].meanr,cat_ggs[cat_key].varxip,'-k', label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxip, ls='--', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxip_g, '.', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxip,
+                   ls='-',c='k', 
+                   label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxip, 
+                   ls='--', c='%s' %cat[ver]['colour'], 
+                   label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxip_g, 
+                   ls='.', c='%s' %cat[ver]['colour'], 
+                   label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
+        
         plt.grid()
-        plt.xlim([cat_ggs[cat_key].meanr[0],cat_ggs[cat_key].meanr[-1]])
+        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
         plt.legend(fontsize=15)
         plt.xlabel(rf'$\theta$ [{sep_units}]')
         plt.ylabel(r'$\sigma(\xi_+)$')
         plt.show()
 
-        plt.loglog(cat_ggs[cat_key].meanr,cat_ggs[cat_key].varxim,'-k', label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxim, ls='--', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[cat_option[0]][cat_option[1]]['label'])
-        plt.loglog(cat_ggs[cat_key].meanr,cc_varxim_g, '.', c='%s' %cat[cat_option[0]][cat_option[1]]['colour'], label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[cat_option[0]][cat_option[1]]['label'])
+        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxim,
+                   ls='-', c='k',
+                    label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxim, 
+                   ls='--', c='%s' %cat[ver]['colour'],
+                    label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[ver]['shear']['label'])
+        plt.loglog(cat_ggs[ver].meanr,cc_varxim_g,
+                    ls='.', c='%s' %cat[ver]['colour'], 
+                    label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
+        
         plt.grid()
-        plt.xlim([cat_ggs[cat_key].meanr[0],cat_ggs[cat_key].meanr[-1]])
+        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
         plt.legend(fontsize=15)
         plt.xlabel(rf'$\theta$ [{sep_units}]')
         plt.ylabel(r'$\sigma(\xi_-)$')
         plt.show()
 
+# ## MCMC Plotting
 
+# +
+from getdist import plots, loadMCSamples
+import uncertainties
 
+g = plots.get_subplot_plotter(width_inch=30)
+g.settings.axes_fontsize = 30
+g.settings.axes_labelsize = 30
+g.settings.alpha_filled_add = 0.6
+g.settings.legend_fontsize = 30
 
+#SPECIFY DATA DIRECTORY AND DESIRED CHAINS TO ANALYSE
+scratch_dir = f'{os.environ["WORK"]}'
+# -
 
+#CREATE PARAMNAME FILE
+for ver in versions:
+    chain_dir = '%s/chain' %ver
+    with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
+        params = file.readline()[1:].split('\t')[:-2]
+        file.close()
+
+    with open(scratch_dir + '%s/getdist_%s_.paramnames'%(chain_dir,ver), "w") as file:
+        for i in range(len(params)):
+            file.write(params[i].split('--')[1] + '\n')
+        file.close()
+    print(params)
+
+# +
+#READ CHAIN
+chains = []
+colours = []
+line_args = []
+
+for ver in versions:
+    chain_dir = '%s/chain' %ver
+    chain = np.loadtxt(scratch_dir + '%s/samples_1.txt'%(chain_dir))
+
+    np.savetxt(scratch_dir + '%s/getdist_%s__1.txt'%(chain_dir,ver),  
+               np.column_stack((np.ones_like(chain[:, -1]) ,-(chain[:, -1]-chain[:, -2]), chain[:, 0:-2])))
+
+    chain = g.samples_for_root(scratch_dir + '%s/getdist_%s_' %(chain_dir,ver),
+                                   settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
+    p=chain.getParams()
+    chain.addDerived(p.h0*100,name='H_0',label=r'H_0')
+    chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
+    chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
+    
+    chains.append(chain)
+    colours.append(cat[ver]['getdist_colour'])
+    line_args.append({'color': cat[ver]['getdist_colour']})
+
+# +
+# %matplotlib inline
+g.triangle_plot(chains,['omega_m','omega_b','ln10^10A_s','n_s','tau','h0','SIGMA_8','S_8'],
+                legend_labels=versions,
+                colors=colours,
+                line_args=line_args)
+
+# g.export('plots/corner_plot_comparison_lf.pdf')
