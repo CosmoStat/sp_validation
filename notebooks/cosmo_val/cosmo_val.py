@@ -56,7 +56,7 @@ for ver in versions:
 # -
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["WORK"]}'
+data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
 
 # ## Loading data
 
@@ -64,7 +64,7 @@ data_base_dir = f'{os.environ["WORK"]}'
 # Read in dictionary about catalogue info from yaml file
 with open('cat_config.yaml', 'r') as file:
     cat = yaml.load(file.read(), Loader=yaml.FullLoader)
-    
+
 # Set full paths
 for ver in all_keys:
     for key in cat[ver]:
@@ -73,7 +73,7 @@ for ver in all_keys:
 
 if not os.path.exists(cat["paths"]["output"]):
     os.mkdir(cat["paths"]["output"])
-                
+
 # ## Variables
 
 components = ['+', '-']
@@ -205,30 +205,30 @@ labels = []
 colors = []
 linestyles = []
 
-for ver in versions:                                                           
+for ver in versions:
     theta.append(results[ver].r_corr_gp.meanr)
     y.append(results[ver].alpha_leak)
     yerr.append(results[ver].sig_alpha_leak)
     labels.append(ver)
     colors.append(cat[ver]["colour"])
     linestyles.append(cat[ver]["ls"])
-                      
+
 out_path = f"{cat['paths']['output']}/alpha_leak.pdf"
 
 title = r'$\alpha$ leakage'
 xlabel = r'$\theta\, [arcmin]$'
 ylabel = r'$\alpha(\theta$'
-plots.plot_data_1d(                                                     
-    theta,                                                                  
-    y,                                                            
-    yerr,                                                                   
-    title,                                                                  
-    xlabel,                                                                 
-    ylabel,                                                                 
-    out_path,                                                               
-    xlog=True,                                                              
-    xlim=[theta_min_plot, theta_max_plot],                                                      
-    ylim=ylim_alpha, 
+plots.plot_data_1d(
+    theta,
+    y,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
+    out_path,
+    xlog=True,
+    xlim=[theta_min_plot, theta_max_plot],
+    ylim=ylim_alpha,
     labels=labels,
     colors=colors,
     linestyles=linestyles,
@@ -242,28 +242,28 @@ yerr = []
 colors = []
 linestyles = []
 
-for ver in versions:                                                       
+for ver in versions:
     y.append(results[ver].C_sys_p)
     yerr.append(results[ver].C_sys_std_p)
     labels.append(ver)
     colors.append(cat[ver]["colour"])
     linestyles.append(cat[ver]["ls"])
 
-xlabel = r'$\theta$ [arcmin]'                                               
+xlabel = r'$\theta$ [arcmin]'
 ylabel = r'$\xi^{\rm sys}_+(\theta)$'
 title = 'Cross-correlation leakage'
-out_path = f"{cat['paths']['output']}/xi_sys_p"                                                                              
+out_path = f"{cat['paths']['output']}/xi_sys_p"
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-plots.plot_data_1d(                                                         
-    theta,                                                                  
-    y,                                                            
-    yerr,                                                                   
-    title,                                                                  
-    xlabel,                                                                 
-    ylabel,                                                                 
+plots.plot_data_1d(
+    theta,
+    y,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
     out_path,
     labels=labels,
-    xlog=True,                                                              
+    xlog=True,
     xlim=[theta_min_plot, theta_max_plot],
     colors=colors,
     linestyles=linestyles,
@@ -271,7 +271,7 @@ plots.plot_data_1d(
 
 y = []
 yerr = []
-for ver in versions:                                                       
+for ver in versions:
     y.append(results[ver].C_sys_m)
     yerr.append(results[ver].C_sys_std_m)
 
@@ -280,16 +280,16 @@ ylabel = r'$\xi^{\rm sys}_-(\theta)$'
 title = 'Cross-correlation leakage'
 out_path = f"{cat['paths']['output']}/xi_sys_m"
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-plots.plot_data_1d(                                                         
-    theta,                                                                  
-    y,                                                            
-    yerr,                                                                   
-    title,                                                                  
-    xlabel,                                                                 
-    ylabel,                                                                 
+plots.plot_data_1d(
+    theta,
+    y,
+    yerr,
+    title,
+    xlabel,
+    ylabel,
     out_path,
     labels=labels,
-    xlog=True,                                                              
+    xlog=True,
     xlim=[theta_min_plot, theta_max_plot],
     ylim=[-1e-7, 1e-6],
     colors=colors,
@@ -417,7 +417,7 @@ plt.show()
 #Plot of xi_+
 for ver in versions:
     plt.errorbar(
-        cat_ggs[ver].meanr, 
+        cat_ggs[ver].meanr,
         cat_ggs[ver].xip,
         yerr=np.sqrt(cat_ggs[ver].varxip),
         label=ver,
@@ -435,7 +435,7 @@ _ = plt.ylabel(r'$\xi_+(\theta)$')
 #Plot of xi_-
 for ver in versions:
     plt.errorbar(
-        cat_ggs[ver].meanr, 
+        cat_ggs[ver].meanr,
         cat_ggs[ver].xim,
         yerr=np.sqrt(cat_ggs[ver].varxim),
         label=ver,
@@ -464,12 +464,12 @@ _ = plt.ylabel(r'$\xi_-(\theta)$')
 
 #ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
 #err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
-#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err,
              #label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
 
 #ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
 #err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
-#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err, 
+#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err,
              #label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
 #plt.hlines(0.0,0,200,colors='k')
 #plt.grid()
@@ -488,7 +488,7 @@ theta_max = 200
 nbins = 500
 npatch = 50
 
-# Set up angular smoothing scales for aperture-mass dispersion                                 
+# Set up angular smoothing scales for aperture-mass dispersion
 n_bins_map = 20
 R = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
 
@@ -502,7 +502,7 @@ TreeCorrConfig = {
     'var_method':'jackknife',
 }
 
-cat_ggs_map2 = {}
+map2 = {}
 for ver in versions:
     # TODO: Compute bias here
     g1 = results[ver].dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
@@ -519,43 +519,52 @@ for ver in versions:
     )
     gg = treecorr.GGCorrelation(TreeCorrConfig)
     gg.process(cat_gal)
-    gg.calculateMapSq(R, m2_uform='Schneider')
-    
+    mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
+        R,
+        m2_uform='Schneider',
+    )
+    map2[ver] = {}
+    map2[ver]['mapsq'] = mapsq
+    map2[ver]['mapsq_im'] = mapsq_im
+    map2[ver]['mxsq'] = mxsq
+    map2[ver]['mxsq_im'] = mxsq_im
+    map2[ver]['varmapsq'] = varmapsq
+
     output_path = f"{cat['paths']['output']}/map2_{ver}.txt"
     gg.writeMapSq(output_path, R=R, m2_uform='Schneider')
-    cat_ggs_map2[ver] = gg
     print(f"done: {ver}")
 
 # +
 # Plot aperture-mass dispersion
 
-x = []
-y = []
-yerr = []
-for ver in versions:                                                       
-    x.append(cat_ggs_map2[ver].R)
-    y.append(cat_ggs_map2[ver].Mapsq)
-    yerr.append(cat_ggs_map2[ver].sigMap)
+for mode in ['mapsq', 'mapsq_im', 'mapxsq', 'maxsq_im']:
+    x = []
+    y = []
+    yerr = []
+    for ver in versions:
+        x.append(R)
+        y.append(map2[ver][mode])
+        yerr.append(map2[ver]['varmapsq'])
 
-xlabel = r'$\theta$ [arcmin]'
-ylabel = r'$\langle M^2_{\rm ap} \rangle(\theta)$'
-title = 'Aperture-mass dispersion E-mode'
-out_path = f"{cat['paths']['output']}/map2.pdf"
-fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-plots.plot_data_1d(                                                         
-    theta,                                                                  
-    y,                                                            
-    yerr,                                                                   
-    title,                                                                  
-    xlabel,                                                                 
-    ylabel,                                                                 
-    out_path,
-    labels=labels,
-    xlog=True,                                                              
-    xlim=[theta_min_plot, theta_max_plot],
-    colors=colors,
-    linestyles=linestyles,
-)
+    xlabel = r"$\theta$ [arcmin]"
+    ylabel = "dispersion"
+    title = f"Aperture-mass dispersion mode {mode}"
+    out_path = f"{cat['paths']['output']}/{mode}.pdf"
+    fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+    plots.plot_data_1d(
+        theta,
+        y,
+        yerr,
+        title,
+        xlabel,
+        ylabel,
+        out_path,
+        labels=labels,
+        xlog=True,
+        xlim=[theta_min_plot, theta_max_plot],
+        colors=colors,
+        linestyles=linestyles,
+    )
 # -
 
 # Clean up memory
@@ -584,15 +593,15 @@ for ver in versions:
         cc_varxim_g = cc_var[20:]
 
         plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxip,
-                   ls='-',c='k', 
+                   ls='-',c='k',
                    label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip, 
-                   ls='--', c='%s' %cat[ver]['colour'], 
+        plt.loglog(cat_ggs[ver].meanr,cc_varxip,
+                   ls='--', c='%s' %cat[ver]['colour'],
                    label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip_g, 
-                   ls='.', c='%s' %cat[ver]['colour'], 
+        plt.loglog(cat_ggs[ver].meanr,cc_varxip_g,
+                   ls='.', c='%s' %cat[ver]['colour'],
                    label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-        
+
         plt.grid()
         plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
         plt.legend(fontsize=15)
@@ -603,13 +612,13 @@ for ver in versions:
         plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxim,
                    ls='-', c='k',
                     label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxim, 
+        plt.loglog(cat_ggs[ver].meanr,cc_varxim,
                    ls='--', c='%s' %cat[ver]['colour'],
                     label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[ver]['shear']['label'])
         plt.loglog(cat_ggs[ver].meanr,cc_varxim_g,
-                    ls='.', c='%s' %cat[ver]['colour'], 
+                    ls='.', c='%s' %cat[ver]['colour'],
                     label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-        
+
         plt.grid()
         plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
         plt.legend(fontsize=15)
@@ -630,7 +639,7 @@ g.settings.alpha_filled_add = 0.6
 g.settings.legend_fontsize = 30
 
 #SPECIFY DATA DIRECTORY AND DESIRED CHAINS TO ANALYSE
-scratch_dir = f'{os.environ["WORK"]}'
+scratch_dir = f'{os.environ["HOME"]}'
 # -
 
 #CREATE PARAMNAME FILE
@@ -656,7 +665,7 @@ for ver in versions:
     chain_dir = '%s/chain' %ver
     chain = np.loadtxt(scratch_dir + '%s/samples_1.txt'%(chain_dir))
 
-    np.savetxt(scratch_dir + '%s/getdist_%s__1.txt'%(chain_dir,ver),  
+    np.savetxt(scratch_dir + '%s/getdist_%s__1.txt'%(chain_dir,ver),
                np.column_stack((np.ones_like(chain[:, -1]) ,-(chain[:, -1]-chain[:, -2]), chain[:, 0:-2])))
 
     chain = g.samples_for_root(scratch_dir + '%s/getdist_%s_' %(chain_dir,ver),
@@ -665,7 +674,7 @@ for ver in versions:
     chain.addDerived(p.h0*100,name='H_0',label=r'H_0')
     chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
     chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
-    
+
     chains.append(chain)
     colours.append(cat[ver]['getdist_colour'])
     line_args.append({'color': cat[ver]['getdist_colour']})

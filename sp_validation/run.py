@@ -224,90 +224,71 @@ class LeakageScale:
         if "verbose" not in self._params:
             self._params["verbose"] = False
 
-    def run(self):
-        """Run.
+    def read_data(self):
+        """Read Data.
 
-        Main processing of scale-dependent leakage.
+        Read input galaxy and PSF catalogues.
         """
 
-        # Short cut notations
-        obj = self
-        params = obj._params
-
-        # Check parameter validity
-        obj.check_params()
-
-        if params["verbose"]:
-            print("Process leakage-scale")
-
-        # Prepare output
-        if not os.path.exists(params["output_dir"]):
-            os.mkdir(params["output_dir"])
-        obj._stats_file = io.open_stats_file(
-            params["output_dir"], "stats_file_leakage.txt"
-        )
-
         # Read input shear
-        dat_shear = obj.read_shear_cat()
+        dat_shear = self.read_shear_cat()
 
         # Apply cuts to galaxy catalogue if required
         dat_shear = cat_sp.cut_data(
             dat_shear,
-            params["cut"],
-            params["verbose"]
+            self._params["cut"],
+            self._params["verbose"]
         )
-        obj.dat_shear = dat_shear
 
         # Read star catalogue
         dat_PSF = io.open_fits_or_npy(
-            params["input_path_PSF"],
-            hdu_no=params["hdu_psf"],
+            self._params["input_path_PSF"],
+            hdu_no=self._params["hdu_psf"],
         )
 
         # Deal with close objects in PSF catalogue (= stars on same position
         # from different exposures)
-        obj.dat_PSF = obj.handle_close_objects(dat_PSF)
+        dat_PSF = self.handle_close_objects(dat_PSF)
 
-        # scale-dependent alpha function
-        obj.compute_corr_gp_pp_alpha()
+        # Set instance variables
+        self.dat_shear = dat_shear
+        self.dat_PSF = dat_PSF
 
-        if any(
-            np.abs(obj.r_corr_gp.meanr - obj.r_corr_pp.meanr) / obj.r_corr_gp.meanr
-            > 0.1
-        ):
-            print("Warning: angular scales not consistent")
+    def prepare_output(self):
+        """Prepare Output.
 
-        # alpha leakage function
-        io.save_alpha(
-            obj.r_corr_gp.meanr,
-            obj.alpha_leak,
-            obj.sig_alpha_leak,
-            params["sh"],
-            params["output_dir"],
+        Prepare output directory and stats file.
+
+        """
+        if not os.path.exists(self._params["output_dir"]):
+            os.mkdir(self._params["output_dir"])
+        self._stats_file = io.open_stats_file(
+            self._params["output_dir"], "stats_file_leakage.txt"
         )
-        obj.compute_alpha_mean()
-        obj.plot_alpha_leakage()
+
+    def run(self):
+        """Run.
+
+        Main processing of scale-dependent leakage.
+
+        """
+        # Check parameter validity
+        self.check_params()
+
+        # Read input data
+        self.read_data()
+
+        # Prepare output
+        self.prepare_output()
+
+        # compute auto- and cross-correlation functions including alpha
+        self.compute_corr_gp_pp_alpha()
+
+        # alpha leakage
+        self.do_alpha()
 
         # xi_sys function
-        obj.compute_xi_sys()
-        obj.plot_xi_sys()
-
-        xi_p_theo, xi_m_theo = get_theo_xi_planck(
-            obj.r_corr_gp.meanr,
-            obj._params["dndz_path"]
-        )
-        obj.plot_xi_sys_ratio(xi_p_theo, xi_m_theo)
-        io.save_xi_sys(
-            obj.r_corr_gp.meanr,
-            obj.C_sys_p,
-            obj.C_sys_m,
-            obj.C_sys_std_p,
-            obj.C_sys_std_m,
-            xi_p_theo,
-            xi_m_theo,
-            obj._params['sh'],
-            obj._params['output_dir'],
-        )
+        self.do_xi_sys()
 
     def read_shear_cat(self):
         # Read galaxy catalogue
@@ -532,13 +513,17 @@ class LeakageScale:
             theta_max_amin=self._params["theta_max_amin"],
             n_theta=self._params["n_theta"],
         )
+
+        # Check consistency of angular scales
+        if any(
+            np.abs(r_corr_gp.meanr - r_corr_pp.meanr) / r_corr_gp.meanr
+            > 0.1
+        ):
+            print("Warning: angular scales not consistent")
+
+        # Set instance variables
         self.r_corr_gp = r_corr_gp
         self.r_corr_pp = r_corr_pp
-
-        # Leakage
-        self.alpha_leak, self.sig_alpha_leak = corr.alpha(
-            r_corr_gp, r_corr_pp, e1_gal, e2_gal, weights, e1_star, e2_star
-        )
 
     def compute_alpha_mean(self):
         """Compute Alpha Mean
@@ -749,6 +734,80 @@ class LeakageScale:
             ylim=ylim,
             labels=labels
         )
+
+    def do_alpha(self):
+        """Do Alpha.
+
+        Compute, plot, and save alpha leakage function.
+        """
+        # Get input catalogues for averages
+        e1_gal = self.dat_shear[self._params["e1_col"]]
+        e2_gal = self.dat_shear[self._params["e2_col"]]
+        weights = self.dat_shear["w"]
+
+        e1_star = self.dat_PSF[self._params["e1_PSF_star_col"]]
+        e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
+
+        # Compute alpha leakage function
+        alpha_leak, sig_alpha_leak = corr.alpha(
+            self.r_corr_gp,
+            self.r_corr_pp,
+            e1_gal,
+            e2_gal,
+            weights,
+            e1_star,
+            e2_star,
+        )
+        self.compute_alpha_mean()
+
+        # Plot
+        self.plot_alpha_leakage()
+
+        # Write to disk
+        io.save_alpha(
+            self.r_corr_gp.meanr,
+            alpha_leak,
+            sig_alpha_leak,
+            self._params["sh"],
+            self._params["output_dir"],
+        )
+
+        # Set instance variables
+        self.alpha_leak = alpha_leak
+        self.sig_alpha_leak = sig_alpha_leak
+
+    def do_xi_sys(self):
+        """Do Xi Sys.
+
+        Compute, plot, and save xi_sys function.
+        """
+
+        # Compute xi_sys
+        self.compute_xi_sys()
+
+        # Compute theoretical model for the 2PCF
+        xi_p_theo, xi_m_theo = get_theo_xi_planck(
+            self.r_corr_gp.meanr,
+            self._params["dndz_path"]
+        )
+
+        # Plot
+        self.plot_xi_sys()
+        self.plot_xi_sys_ratio(xi_p_theo, xi_m_theo)
+
+        # Write to disk
+        io.save_xi_sys(
+            self.r_corr_gp.meanr,
+            self.C_sys_p,
+            self.C_sys_m,
+            self.C_sys_std_p,
+            self.C_sys_std_m,
+            xi_p_theo,
+            xi_m_theo,
+            self._params['sh'],
+            self._params['output_dir'],
+        )
+
 
 def run_leakage_scale(*args):
     """Run Leakage Scale.
