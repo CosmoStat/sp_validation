@@ -749,7 +749,7 @@ class LeakageScale:
         e2_star = self.dat_PSF[self._params["e2_PSF_star_col"]]
 
         # Compute alpha leakage function
-        alpha_leak, sig_alpha_leak = corr.alpha(
+        self.alpha_leak, self.sig_alpha_leak = corr.alpha(
             self.r_corr_gp,
             self.r_corr_pp,
             e1_gal,
@@ -766,15 +766,12 @@ class LeakageScale:
         # Write to disk
         io.save_alpha(
             self.r_corr_gp.meanr,
-            alpha_leak,
-            sig_alpha_leak,
+            self.alpha_leak,
+            self.sig_alpha_leak,
             self._params["sh"],
             self._params["output_dir"],
         )
 
-        # Set instance variables
-        self.alpha_leak = alpha_leak
-        self.sig_alpha_leak = sig_alpha_leak
 
     def do_xi_sys(self):
         """Do Xi Sys.
