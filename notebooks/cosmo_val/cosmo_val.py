@@ -522,11 +522,12 @@ print("Compute aperture-mass dispersion")
 map2 = {}
 for ver in versions:
 
-    out_path = f"{cat['paths']['output']}/map2_{ver}.txt"
-    if os.path.exists(out_path):
-        print(f'Skipping Map2, {out_path} exists')
-        gg.read(out_path)
-
+    gg = treecorr.GGCorrelation(TreeCorrConfig)
+    
+    out_fname = f"{cat['paths']['output']}/xi_for_map2_{ver}.txt"
+    if os.path.exists(out_fname):
+        print(f'Skipping Map2, {out_fname} exists')
+        gg.read(out_fname)
     else:
         print(f'Computing Map2')
 
@@ -542,9 +543,10 @@ for ver in versions:
             dec_units=coord_units,
             npatch=npatch,
         )
-        gg = treecorr.GGCorrelation(TreeCorrConfig)
+        
         gg.process(cat_gal)
-        gg.writeMapSq(out_path, R=R, m2_uform='Schneider')
+        gg.write(out_fname)
+        #gg.writeMapSq(out_fname, R=R, m2_uform='Schneider')
         print(f"done: {ver}")
 
     mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
