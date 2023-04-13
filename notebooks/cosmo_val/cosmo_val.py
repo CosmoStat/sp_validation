@@ -55,7 +55,7 @@ pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
 
 # +
 # Catalogue versions
-versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0']
+versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0']
 
 all_keys = ['nz']
 for ver in versions:
@@ -110,86 +110,41 @@ ylim_xi_sys_ratio = [-0.02, 0.5]
 results = {}
 print('Computing scale-dependent leakage')
 
-# +
-ver = 'SP_v1.0'
 
-params_in = {}
-
-# Set parameters
-params_in['input_path_shear'] = cat[ver]["shear"]["path"]
-params_in['input_path_PSF'] = cat[ver]["star"]["path"]
-params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
-params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
-params_in['sh'] = cat[ver]['shape']
-# Uncomment the following two lines to use calibrated shear estimates
-# (the default is e1_uncal, uncalibrated shear estimates)
-#params_in['e1_col'] = 'e1'
-#params_in['e2_col'] = 'e2'
-params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
-params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
-params_in["verbose"] = True
-
-# Create leakage instance
-obj = run.LeakageScale()
-
-# Set instance parameters, copy from above
-for key in params_in:
-    obj._params[key] = params_in[key]
+def set_params_leakage(cat, ver):
+    params_in = {}
     
-results[ver] = obj 
-
-# +
-ver = 'LF_v1.0'
-
-params_in = {}
-
-# Set parameters
-params_in['input_path_shear'] = cat[ver]["shear"]["path"]
-params_in['input_path_PSF'] = cat[ver]["star"]["path"]
-params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
-params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
-params_in['sh'] = cat[ver]['shape']
-params_in['e1_col'] = 'e1'
-params_in['e2_col'] = 'e2'
-params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
-params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
-params_in["verbose"] = True
-
-# Create leakage instance
-obj = run.LeakageScale()
-
-# Set instance parameters, copy from above
-for key in params_in:
-    obj._params[key] = params_in[key]
+    # Set parameters
+    params_in['input_path_shear'] = cat[ver]["shear"]["path"]
+    params_in['input_path_PSF'] = cat[ver]["star"]["path"]
+    params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
+    params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
+    params_in['sh'] = cat[ver]['shape']
     
-results[ver] = obj
-
-# +
-ver = 'LF_v2.0'
-
-params_in = {}
-
-# Set parameters
-params_in['input_path_shear'] = cat[ver]["shear"]["path"]
-params_in['input_path_PSF'] = cat[ver]["star"]["path"]
-params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
-params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
-params_in['sh'] = cat[ver]['shape']
-params_in['e1_col'] = 'e1'
-params_in['e2_col'] = 'e2'
-params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
-params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
-params_in["verbose"] = True
-
-# Create leakage instance
-obj = run.LeakageScale()
-
-# Set instance parameters, copy from above
-for key in params_in:
-    obj._params[key] = params_in[key]
+    # Note: for SP these are calibrated shear estimates
+    params_in['e1_col'] = 'e1'
+    params_in['e2_col'] = 'e2'
     
-results[ver] = obj
-# -
+    params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
+    params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
+    
+    params_in["verbose"] = True
+    
+    return params_in
+
+
+for ver in versions:
+
+    params_in = set_params_leakage(cat, ver)
+
+    # Create leakage instance
+    obj = run.LeakageScale()
+
+    # Set instance parameters, copy from above
+    for key in params_in:
+        obj._params[key] = params_in[key]
+    
+    results[ver] = obj
 
 for ver in versions:
     print(ver)
@@ -373,6 +328,28 @@ if 'SP_matched_MP_v1.0' in versions:
 
 # #### Compute $\xi_\pm$
 
+# +
+# Compute additive bias
+
+print("Compute additive bias")
+
+c1 = {}
+c2 = {}
+
+print("# ver c1 (from yml) c2 (from yml)")
+
+for ver in versions:
+    c1[ver] = np.average(
+        results[ver].dat_shear["e1"],
+        weights=results[ver].dat_shear["w"]
+    )
+    c2[ver] = np.average(
+        results[ver].dat_shear["e2"],
+        weights=results[ver].dat_shear["w"]
+    )
+    print(f"{ver} {c1[ver]} ({cat[ver]['shear']['e1_bias']}) {c2[ver]} ({cat[ver]['shear']['e2_bias']})")
+# -
+
 print("Compute 2PCF")
 treecorr.set_omp_threads(n_thread)
 sep_units = 'arcmin'
@@ -408,9 +385,8 @@ for ver in versions:
     else:
         print(f'Computing 2PCF')
 
-        # TODO: Compute bias here
-        g1 = results[ver].dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
-        g2 = results[ver].dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
+        g1 = results[ver].dat_shear["e1"] - c1[ver]
+        g2 = results[ver].dat_shear["e2"] - c2[ver]
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -547,16 +523,15 @@ map2 = {}
 for ver in versions:
 
     out_path = f"{cat['paths']['output']}/map2_{ver}.txt"
-    if os.path.exists(out_fname):
-        print(f'Skipping Map2, {out_fname} exists')
-        gg.read(out_fname)
+    if os.path.exists(out_path):
+        print(f'Skipping Map2, {out_path} exists')
+        gg.read(out_path)
 
     else:
         print(f'Computing Map2')
 
-        # TODO: Compute bias here
-        g1 = results[ver].dat_shear["e1"] - cat[ver]["shear"]["e1_bias"]
-        g2 = results[ver].dat_shear["e2"] - cat[ver]["shear"]["e2_bias"]
+        g1 = results[ver].dat_shear["e1"] - c1[ver]
+        g2 = results[ver].dat_shear["e2"] - c2[ver]
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
