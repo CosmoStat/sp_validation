@@ -18,9 +18,10 @@
 
 # +
 # %matplotlib inline
-
 # %load_ext autoreload
 # %autoreload 2
+
+print('v1')
 # -
 
 import os
@@ -517,12 +518,11 @@ TreeCorrConfig = {
     'nbins': nbins,
     'var_method':'jackknife',
 }
+gg = treecorr.GGCorrelation(TreeCorrConfig)
 
 print("Compute aperture-mass dispersion")
 map2 = {}
 for ver in versions:
-
-    gg = treecorr.GGCorrelation(TreeCorrConfig)
     
     out_fname = f"{cat['paths']['output']}/xi_for_map2_{ver}.txt"
     if os.path.exists(out_fname):
@@ -546,13 +546,20 @@ for ver in versions:
         
         gg.process(cat_gal)
         gg.write(out_fname)
-        #gg.writeMapSq(out_fname, R=R, m2_uform='Schneider')
+        
+
         print(f"done: {ver}")
 
     mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
         R=R,
         m2_uform='Schneider',
     )
+    out_fname_map2 = f"{cat['paths']['output']}/for_map2_{ver}.txt"
+    if os.path.exists(out_fname_map2):
+        print("Map2 output file {out_fname_map2} exists")
+    else:
+        print("Writing Map2 to output file {out_fname_map2} ")
+        gg.writeMapSq(out_fname_map2, R=R, m2_uform='Schneider')
     map2[ver] = {}
     map2[ver]['mapsq'] = mapsq
     map2[ver]['mapsq_im'] = mapsq_im
@@ -578,7 +585,6 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     ylabel = "dispersion"
     title = f"Aperture-mass dispersion mode {mode}"
     out_path = f"{cat['paths']['output']}/{mode}.pdf"
-    fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
     plots.plot_data_1d(
         theta,
         y,
@@ -590,7 +596,40 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         labels=labels,
         xlog=True,
         xlim=[theta_min_plot, theta_max_plot],
-        ylim=[-2e-6, 1e-5],
+        ylim=[-1e-7, 1e-6],
+        colors=colors,
+        linestyles=linestyles,
+    )
+    plt.savefig(out_path)
+    
+    # Plot aperture-mass dispersion
+
+for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
+    x = []
+    y = []
+    yerr = []
+    for ver in versions:
+        x.append(R)
+        y.append(np.abs(map2[ver][mode]))
+        yerr.append(map2[ver]['varmapsq'])
+
+    xlabel = r"$\theta$ [arcmin]"
+    ylabel = "dispersion"
+    title = f"Aperture-mass dispersion mode {mode}"
+    out_path = f"{cat['paths']['output']}/{mode}_log.pdf"
+    plots.plot_data_1d(
+        theta,
+        y,
+        yerr,
+        title,
+        xlabel,
+        ylabel,
+        out_path=None,
+        labels=labels,
+        xlog=True,
+        ylog=True,
+        xlim=[theta_min_plot, theta_max_plot],
+        ylim=[1e-9, 1e-5],
         colors=colors,
         linestyles=linestyles,
     )
