@@ -147,5 +147,6 @@ notebooks/analyse_shear_cat/tutorial_UNIONS_SP_v1.0.py
 
 notebooks/cosmo_val/output
 notebooks/cosmo_val/cosmo_val.ipynb
+notebooks/cosmo_val/match_LF_SP.ipynb
 
 notebooks/examples/*.ipynb
