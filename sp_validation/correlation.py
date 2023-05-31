@@ -16,14 +16,746 @@ from lmfit import minimize, Parameters, fit_report
 from uncertainties import ufloat
 
 
-from tqdm import tqdm
-
 from sp_validation.plot_style import *
 from sp_validation import plots
 from sp_validation.io import print_stats
 from sp_validation import basic
+from sp_validation import util
 
 import treecorr
+
+def affine_corr_quant(
+    x,
+    y,
+    xlabel,
+    ylabel,
+    mlabel=None,
+    clabel=None,
+    weights=None,
+    n_bin=30,
+    out_path=None,
+    title='',
+    colors=None,
+    stats_file=None,
+    verbose=False,
+    parallel=False,
+    n_jobs=-1,
+    seed=None,
+    rng=None,
+):
+    """Affine Corr Quant
+
+    Computes and plots affine correlation of y(n) as function of x for any quantities.
+    Return the slopes for each affine correlation, their errors and the name of the quantity associated to each slope
+
+    Parameters
+    ----------
+    x: array(double)
+        input x value
+    y: array(m) of double
+        input y arrays
+    xlabel, ylabel : str
+        x-and y-axis labels
+    mlabel : str, optional, default=None
+        label for slope in the plot legend
+    clabel : str, optional, default=None
+        label for offset in the plot legend
+    weights : array of double, optional, default=None
+        weights of x points
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    out_path : str, optional, default=None
+        output file path, if not given, plot is not saved to file
+    title : str, optional, default=''
+        plot title
+    colors : array(m) of str, optional, default=None
+        line colors
+    stats_file : filehandler, optional, default=None
+        output file for statistics
+    verbose : bool, optional, default=False
+        verbose output if True
+    parallel: bool
+        If True, use parallel computing. [Default: False]
+    n_jobs: int
+        Number of jobs to run in parallel. [Default: -1]
+    seed: int
+        Seed to initialize the randoms. [Default: None]
+    rng: numpy.random.RandomState
+        Random generator. [Default: None]
+        
+    Returns
+    -------
+    slope : array
+        Array of the slopes of each e_gal vs quantities for recap plot
+    ticks_name : array
+        Names of the quantities associated to each slopes 
+    m_err : array
+        Error associate to each slopes
+    
+    """
+
+    def get_seed(rng):
+        return rng.randint(low=0, high=2**30, size=1)
+
+    def lin(x, a, b):
+        return a * x + b
+
+    # Init randoms
+    if isinstance(rng, np.random.RandomState):
+        master_rng = rng
+    else:
+        master_rng = np.random.RandomState(seed)
+
+    n_y = len(y)
+
+    if mlabel is None:
+        mlabel = np.full(n_y, 'm')
+    if clabel is None:
+        clabel = np.full(n_y, 'c')
+
+    if weights is None:
+        weights = np.ones_like(y[0])
+
+    if colors is None:
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+
+    size_all = len(y[0])
+    for idx in range(1, n_y):
+        if len(y[idx]) != size_all:
+            raise IndexError
+            (
+                f'Size {len(y[idx])} of input #{idx} is different from size '
+                + f'{size_all} of input #0'
+            )
+    size_bin = int(size_all / n_bin)
+    diff_size = size_all - size_bin
+
+    # Prepare arrays for binned data
+    x_arg_sort = np.argsort(x)
+    x_bin = []
+    y_bin = []
+    err_bin = []
+
+    for idx in range(len(y)):
+        y_bin.append([])
+        err_bin.append([])
+
+    # Bin data for plot
+    for idx in range(n_bin):
+        if idx < diff_size:
+            bin_size_tmp = size_bin + 1
+            starter = 0
+        else:
+            bin_size_tmp = size_bin
+            starter = diff_size
+        ind = x_arg_sort[
+            starter + idx * bin_size_tmp: starter + (idx + 1) * bin_size_tmp
+        ]
+
+        x_bin.append(np.mean(x[ind]))
+
+        for j in range(len(y)):
+            r_jk = basic.jackknif_weighted_average2(
+                y[j][ind],
+                weights[ind],
+                #seed=get_seed(master_rng),
+                remove_size=0.2,
+                n_realization=50,
+                #parallel=parallel,
+                #n_job=-1,
+            )
+            y_bin[j].append(r_jk[0])
+            err_bin[j].append(r_jk[1])
+
+    x_bin = np.array(x_bin)
+    for jdx in range(len(y)):
+        y_bin[jdx] = np.array(y_bin[jdx])
+        err_bin[jdx] = np.array(err_bin[jdx])
+
+    # Fit affine functions, plot function and data
+    slope = []
+    ticks_names = []
+    m_err =[]
+    plt.figure(figsize=(10, 6))
+    for jdx in range(len(y)):
+        params = Parameters()
+        params.add('m', value=0.01)
+        params.add('c', value=0.01)
+        res = minimize(
+            loss_bias_lin_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
+        ) #optimize parameters 
+        slope.append(res.params['m'].value)
+        ticks_names.append(xlabel+'_e'+str(jdx+1))
+        m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
+        c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
+        m_err.append(res.params['m'].stderr)
+        label = f'${mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$'
+
+        plt.plot(
+            x_bin,
+            func_bias_lin_1d(res.params, x_bin),
+            c=colors[jdx],
+            label=label
+        )
+        
+        plt.errorbar(
+            x_bin,
+            y_bin[jdx],
+            yerr=err_bin[jdx],
+            c=colors[jdx],
+            fmt='.'
+        )
+
+        if stats_file:
+            msg = '{}: {}={:.2ugP}'.format(xlabel, mlabel[jdx], m_dm)
+            print_stats(msg, stats_file, verbose=verbose)
+
+    # Finalise plots
+    plt_xmin, plt_xmax = plt.xlim()
+    plt.xlim(plt_xmin, plt_xmax)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.legend()
+
+    plt.title(title)
+    plt.tight_layout()
+
+    if out_path:
+        plt.savefig(out_path, bbox_inches='tight')
+        
+    
+    return slope,ticks_names, m_err
+    
+
+           
+def affine_corr_n_quant(
+    x_arr,
+    y,
+    xlabel_arr,
+    ylabel,
+    mlabel=None,
+    clabel=None,
+    weights=None,
+    n_bin=30,
+    out_path_arr=None,
+    title='',
+    colors=None,
+    stats_file=None,
+    verbose=False,
+    seed=None,
+    parallel=False,
+    n_jobs=-1
+):
+    """Affine Corr N
+
+    Compute n affine correlations of y(m) versus x_arr[n] and plot a 
+    Plots also all the slopes of the affine correlation associated to the names of each quantity
+
+    Parameters
+    ----------
+    x_arr: array(n, double)
+        input x value
+    y: array(m) of double
+        input y arrays
+    xlabel, ylabel : str
+        x-and y-axis labels
+    mlabel : str, optional, default=None
+        label for slope in the plot legend
+    clabel : str, optional, default=None
+        label for offset in the plot legend
+    weights : array of double, optional, default=None
+        weights of x points
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    out_path_arr : array(n) of str, optional, default=None
+        output file path, if not given, plot is not saved to file
+    title : str, optional, default=''
+        plot title
+    colors(m) : array of str, optional, default=None
+        line colors
+    stats_file : filehandler, optional, default=None
+        output file for statistics
+    verbose : bool, optional, default=False
+        verbose output if True
+    seed: int
+        Seed to initialize the randoms. [Default: None]
+    parallel: bool
+        If True, use parallel computing. [Default: False]
+    n_jobs: int
+        Number of jobs to run in parallel. [Default: -1]
+        
+    """
+
+    master_rng = np.random.RandomState(seed)
+    seeds = master_rng.randint(low=0, high=2**30, size=len(x_arr))
+    slopes = []
+    ticks_label = []
+    err = []
+
+    if out_path_arr is None:
+        out_path_arr = [None]*len(x_arr)
+    for x, xlabel, out_path, seed_tmp in zip(
+        x_arr, xlabel_arr, out_path_arr, seeds
+    ):
+        slope, ticks_names, m_err = affine_corr_quant(
+            x,
+            y,
+            xlabel,
+            ylabel,
+            mlabel=mlabel,
+            clabel=clabel,
+            weights=weights,
+            n_bin=n_bin,
+            out_path=out_path,
+            title=title,
+            colors=colors,
+            stats_file=stats_file,
+            verbose=verbose,
+            seed=seed_tmp,
+            parallel=parallel,
+            n_jobs=n_jobs,
+        )
+        
+        for i in range(len(slope)):
+            slopes.append(slope[i])
+            ticks_label.append(ticks_names[i])
+            err.append(float(abs(m_err[i])))
+      
+    ticks_position = np.arange(1, len(slopes)+1,1)
+    
+    ##plot the slope by the 
+    plt.figure()
+    plt.errorbar(ticks_position, 
+                 slopes, 
+                 yerr=err, 
+                 color='peru',
+                 fmt='.'
+    )
+    plt.xticks(ticks_position, 
+               ticks_label,rotation=90, 
+               fontsize = 10
+    )
+    plt.yticks(fontsize = 10)
+    plt.axhline(y=0, 
+                color='black', 
+                linestyle='--'
+    )
+    plt.ylabel('m')
+    title = "(e1, e2) systematic tests"
+    plt.title(title, fontsize=10)
+    plt_xmin, plt_xmax = plt.xlim()
+    plt.xlim(plt_xmin, plt_xmax)
+    plt.tight_layout()
+    plt.savefig(out_path_arr[-1])
+    
+    
+def func_bias_quad_1D(params,x_data):
+    """Func Bias Quad 1D.
+
+    Function for quadratic 1D bias model.
+
+    Parameters
+    ----------
+    params : lmfit.Parameters
+        fit parameters
+    x_data : numpy.array
+        x-values of the data
+
+    Returns
+    -------
+    numpy.array
+        y-values of the model
+
+    """
+    q = params['q'].value
+    m = params['m'].value
+    c = params['c'].value
+    
+    y_model = q*x_data**2 + m * x_data + c
+    return y_model
+
+
+def loss_bias_quad_1d(params, x_data, y_data, err):
+    """Loss Bias quad 1D.
+
+    Loss function for Quadratic 1D model
+
+    Parameters
+    ----------
+    params : lmfit.Parameters
+        fit parameters
+    x_data : numpy.array
+        x-values of the data
+    y_data : numpy.array
+        y-values of the data
+    err : numpy.array
+        error values of the data
+
+    Returns
+    -------
+    numpy.array
+        residuals
+
+    """
+    y_model = func_bias_quad_1D(params, x_data)
+    residuals = (y_model - y_data) / err
+    return residuals
+
+def quad_corr_quant(
+    x,
+    y,
+    xlabel,
+    ylabel,
+    qlabel=None,
+    mlabel=None,
+    clabel=None,
+    weights=None,
+    n_bin=30,
+    out_path=None,
+    title='',
+    colors=None,
+    stats_file=None,
+    verbose=False,
+    parallel=False,
+    n_jobs=-1,
+    seed=None,
+    rng=None,
+):
+    """Quadratic Corr
+
+    Computes and plots quadratic correlation of y(n) as function of x.
+
+    Parameters
+    ----------
+    x: array(double)
+        input x value
+    y: array(m) of double
+        input y arrays
+    xlabel, ylabel : str
+        x-and y-axis labels
+    mlabel : str, optional, default=None
+        label for slope in the plot legend
+    clabel : str, optional, default=None
+        label for offset in the plot legend
+    weights : array of double, optional, default=None
+        weights of x points
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    out_path : str, optional, default=None
+        output file path, if not given, plot is not saved to file
+    title : str, optional, default=''
+        plot title
+    colors : array(m) of str, optional, default=None
+        line colors
+    stats_file : filehandler, optional, default=None
+        output file for statistics
+    verbose : bool, optional, default=False
+        verbose output if True
+    parallel: bool
+        If True, use parallel computing. [Default: False]
+    n_jobs: int
+        Number of jobs to run in parallel. [Default: -1]
+    seed: int
+        Seed to initialize the randoms. [Default: None]
+    rng: numpy.random.RandomState
+        Random generator. [Default: None]
+        
+    Returns
+    -------
+    slope : array
+        Array of the 1rst order coeff of each e_gal vs quantities for recap plot
+    qslope : array
+        Array of the 2nd order coeff of each e_gal vs quantities for recap plot
+    ticks_name : array
+        Names of the quantities associated to each slopes 
+    m_err : array
+        Error associate to each 1rst order coeff
+    q_err : array
+        Error associate to each 2nd order coeff
+    """
+
+    def get_seed(rng):
+        return rng.randint(low=0, high=2**30, size=1)
+
+    def lin(x, a, b):
+        return a * x + b
+
+    # Init randoms
+    if isinstance(rng, np.random.RandomState):
+        master_rng = rng
+    else:
+        master_rng = np.random.RandomState(seed)
+
+    n_y = len(y)
+
+    if qlabel is None:
+        qlabel = np.full(n_y, 'q')
+    if mlabel is None:
+        mlabel = np.full(n_y, 'm')
+    if clabel is None:
+        clabel = np.full(n_y, 'c')
+
+    if weights is None:
+        weights = np.ones_like(y[0])
+
+    if colors is None:
+        prop_cycle = plt.rcParams['axes.prop_cycle']
+        colors = prop_cycle.by_key()['color']
+
+    size_all = len(y[0])
+    for idx in range(1, n_y):
+        if len(y[idx]) != size_all:
+            raise IndexError
+            (
+                f'Size {len(y[idx])} of input #{idx} is different from size '
+                + f'{size_all} of input #0'
+            )
+    size_bin = int(size_all / n_bin)
+    diff_size = size_all - size_bin
+
+    # Prepare arrays for binned data
+    x_arg_sort = np.argsort(x)
+    x_bin = []
+    y_bin = []
+    err_bin = []
+
+    for idx in range(len(y)):
+        y_bin.append([])
+        err_bin.append([])
+
+    # Bin data for plot
+    for idx in range(n_bin):
+        if idx < diff_size:
+            bin_size_tmp = size_bin + 1
+            starter = 0
+        else:
+            bin_size_tmp = size_bin
+            starter = diff_size
+        ind = x_arg_sort[
+            starter + idx * bin_size_tmp: starter + (idx + 1) * bin_size_tmp
+        ]
+
+        x_bin.append(np.mean(x[ind]))
+
+        for j in range(len(y)):
+            r_jk = basic.jackknif_weighted_average2(
+                y[j][ind],
+                weights[ind],
+                #seed=get_seed(master_rng),
+                remove_size=0.2,
+                n_realization=50,
+                #parallel=parallel,
+                #n_job=-1,
+            )
+            y_bin[j].append(r_jk[0])
+            err_bin[j].append(r_jk[1])
+
+    x_bin = np.array(x_bin)
+    for jdx in range(len(y)):
+        y_bin[jdx] = np.array(y_bin[jdx])
+        err_bin[jdx] = np.array(err_bin[jdx])
+
+    # Fit affine functions, plot function and data
+    slope = []
+    qslope=[]
+    ticks_names = []
+    m_err =[]
+    q_err=[]
+    plt.figure(figsize=(10, 6))
+    for jdx in range(len(y)):
+        params = Parameters()
+        params.add('q', value=0.01)
+        params.add('m', value=0.01)
+        params.add('c', value=0.01)
+        res = minimize(
+            loss_bias_quad_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
+        ) #optimize parameters 
+        
+        qslope.append(res.params['q'].value)
+        slope.append(res.params['m'].value)
+        
+        ticks_names.append(xlabel+'_e'+str(jdx+1))
+        q_dm = ufloat(res.params['q'].value, res.params['q'].stderr)
+        m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
+        c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
+        
+        q_err.append(res.params['q'].stderr)
+        m_err.append(res.params['m'].stderr)
+        
+        label = f'${qlabel[jdx]}={q_dm: .2ugL}, {mlabel[jdx]}={m_dm: .2ugL}, {clabel[jdx]}={c_dc: .2ugL}$'
+
+        plt.plot(
+            x_bin,
+            func_bias_quad_1D(res.params, x_bin),
+            c=colors[jdx],
+            label=label
+        )
+        
+        plt.errorbar(
+            x_bin,
+            y_bin[jdx],
+            yerr=err_bin[jdx],
+            c=colors[jdx],
+            fmt='.'
+        )
+
+        if stats_file:
+            msg1 = '{}: {}={:.2ugP}'.format(xlabel, qlabel[jdx], q_dm)
+            msg2 = '{}: {}={:.2ugP}'.format(xlabel, mlabel[jdx], m_dm)
+            print_stats(msg1, stats_file, verbose=verbose)
+            print_stats(msg2, stats_file, verbose=verbose)
+
+    # Finalise plots
+    plt_xmin, plt_xmax = plt.xlim()
+    plt.xlim(plt_xmin, plt_xmax)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.legend()
+
+    plt.title(title)
+    plt.tight_layout()
+
+    if out_path:
+        plt.savefig(out_path, bbox_inches='tight')
+        
+    
+    return slope, qslope, ticks_names, m_err, q_err
+
+def quad_corr_n_quant(
+    x_arr,
+    y,
+    xlabel_arr,
+    ylabel,
+    qlabel=None,
+    mlabel=None,
+    clabel=None,
+    weights=None,
+    n_bin=30,
+    out_path_arr=None,
+    title='',
+    colors=None,
+    stats_file=None,
+    verbose=False,
+    seed=None,
+    parallel=False,
+    n_jobs=-1
+):
+    """Quad Corr N
+
+    Compute n quadratic correlations of y(m) versus x_arr[n].
+
+    Parameters
+    ----------
+    x_arr: array(n, double)
+        input x value
+    y: array(m) of double
+        input y arrays
+    xlabel, ylabel : str
+        x-and y-axis labels
+    mlabel : str, optional, default=None
+        label for slope in the plot legend
+    clabel : str, optional, default=None
+        label for offset in the plot legend
+    weights : array of double, optional, default=None
+        weights of x points
+    n_bin : double, optional, default=30
+        number of points onto which data are binned
+    out_path_arr : array(n) of str, optional, default=None
+        output file path, if not given, plot is not saved to file
+    title : str, optional, default=''
+        plot title
+    colors(m) : array of str, optional, default=None
+        line colors
+    stats_file : filehandler, optional, default=None
+        output file for statistics
+    verbose : bool, optional, default=False
+        verbose output if True
+    seed: int
+        Seed to initialize the randoms. [Default: None]
+    parallel: bool
+        If True, use parallel computing. [Default: False]
+    n_jobs: int
+        Number of jobs to run in parallel. [Default: -1]
+    """
+
+    master_rng = np.random.RandomState(seed)
+    seeds = master_rng.randint(low=0, high=2**30, size=len(x_arr))
+    slopes = []
+    qslopes = []
+    ticks_label = []
+    merr = []
+    qerr= []
+
+    if out_path_arr is None:
+        out_path_arr = [None]*len(x_arr)
+    for x, xlabel, out_path, seed_tmp in zip(
+        x_arr, xlabel_arr, out_path_arr, seeds
+    ):
+        slope, qslope, ticks_names, m_err, q_err = quad_corr_quant(
+            x,
+            y,
+            xlabel,
+            ylabel,
+            mlabel=mlabel,
+            clabel=clabel,
+            weights=weights,
+            n_bin=n_bin,
+            out_path=out_path,
+            title=title,
+            colors=colors,
+            stats_file=stats_file,
+            verbose=verbose,
+            seed=seed_tmp,
+            parallel=parallel,
+            n_jobs=n_jobs,
+        )
+        
+        for i in range(len(slope)):
+            slopes.append(slope[i])
+            qslopes.append(qslope[i])
+            ticks_label.append(ticks_names[i])
+            merr.append(m_err[i])
+            qerr.append(q_err[i])
+      
+    ticks_position = np.arange(1, len(slopes)+1,1)
+    
+    ##plot the slope by the 
+    plt.figure()
+    plt.errorbar(ticks_position, 
+                 slopes, 
+                 yerr=merr, 
+                 color='peru',
+                 label='m',
+                 fmt='.'
+    )
+    
+    plt.errorbar(ticks_position, 
+                 qslopes, 
+                 yerr=qerr, 
+                 color='crimson',
+                 label='q',
+                 fmt='.'
+    )
+    
+    plt.xticks(ticks_position, 
+               ticks_label,
+               rotation=90, 
+               fontsize = 10
+    )
+    
+    plt.yticks(fontsize = 10)
+    plt.axhline(y=0, 
+                color='black', 
+                linestyle='--'
+    )
+    plt.ylabel('q and m',fontsize=10)
+    title = "(e1, e2) systematic tests (quadratic)"
+    plt.title(title, fontsize=10)
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(out_path_arr[-1])
+
 
 
 def func_bias_lin_1d(params, x_data):
