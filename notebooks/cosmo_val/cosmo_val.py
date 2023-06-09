@@ -719,7 +719,10 @@ scratch_dir = '/feynman/work/dap/lcs/lg268561/UNIONS/'
 # Right now only these versions!
 versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
 # Choose between blinds A, B or C (matched catalogues don't have blinds)
-blinds = ['']
+blinds = ['A']
+# If we want to include full angular scale or cut angular scales ('cut'/'full'),
+# option only possible for unmatched catalogue
+theta_range = 'cut'
 # -
 
 #CREATE PARAMNAME FILE
@@ -745,7 +748,7 @@ labels = []
 
 for ver in versions:
     for blind in blinds:
-        chain_dir = '%s/blind_%s/chain' %(ver,blind)
+        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver,blind,theta_range)
 
         chain = g.samples_for_root(scratch_dir + '%s/getdist_' %(chain_dir),
                                     settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
@@ -756,7 +759,7 @@ for ver in versions:
         chains.append(chain)
         colours.append(tuple(map(float,cat[ver]['getdist_colour'].split(","))))
         line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
-        labels.append(ver + '_blind_' + blind)
+        labels.append(ver + '_blind_' + blind + '_theta_' + theta_range) 
 
 # +
 # %matplotlib inline
