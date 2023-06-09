@@ -9,7 +9,7 @@ from lmfit import Parameters
 from cs_util import logging
 
 
-from sp_validation import correlation
+from sp_validation import leakage
 from sp_validation import util
 from sp_validation import io
 
@@ -224,7 +224,7 @@ def parse_options(p_def):
     parser.add_option(
         '',
         '--ratio_label',
-        dest='ratio',
+        dest='ratio_label',
         default=None,
         type='string',
         help='change the label of the ratio quantity for the plots (characters not allowed : /)'
@@ -397,7 +397,7 @@ def leakage_test(param, stats_file):
         for mix in [False, True]:
 
             out_path = f'{plot_dir_leakage}/test_{order}_{mix}'
-            correlation.corr_2d(
+            leakage.corr_2d(
                 x_arr,
                 [y1 + dy1, y2 + dy2],
                 xlabel_arr=xlabel_arr,
@@ -419,7 +419,7 @@ def leakage_test(param, stats_file):
         print(par, p_gt[par].value)
 
  
-def leakage(dat, param, stats_file):
+def PSF_leakage(dat, param, stats_file):
     """Leakage
 
     Compute and plot object-by-object PSF leakage relations.
@@ -471,7 +471,7 @@ def leakage(dat, param, stats_file):
         out_path = (
             f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
         )
-        par_best_fit = correlation.corr_2d(
+        par_best_fit = leakage.corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -494,7 +494,7 @@ def leakage(dat, param, stats_file):
     mlabel = ['m_1', 'm_2']
     clabel = ['c_1', 'c_2']
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
-    correlation.affine_corr_n(
+    leakage.affine_corr_n(
         x_arr,
         e,
         xlabel_arr,
@@ -511,103 +511,7 @@ def leakage(dat, param, stats_file):
     )
 
 
-def corr_any_quant(dat, param, stats_file, label_quant=None,ratio=None):
-    """Corr_any_quant
 
-    Compute and plot object-by-object ellipticity and any quantities relations.
-    Plot also a recap plot of all slopes of the best fits of the e_gal vs quantities
-
-    Parameters
-    ----------
-    dat : FITS.record
-        input data
-    param : class param
-        parameters
-    stats_file : file handler
-        statistics output file
-        stats_file : file handler
-            statistics output file
-
-    """
-    plot_dir_leakage = param.output_dir
-    io.print_stats(f'{param.sh}:', stats_file, verbose=param.verbose)
-
-    n_bin = 30
-
-    colors = ['b', 'r']
-
-    
-    e1 = dat[param.e1_col]
-    e2 = dat[param.e2_col]
-    e = np.array([e1, e2])
-    weights = dat['w']
-    
-    x_arr=[]
-    out_name_arr = []
-    xlabel_arr = []
-    
-    if label_quant:
-        xlabel_arr = label_quant
-        for i in range(len(label_quant)):
-            colname = label_quant[i]
-            x_arr.append(dat[colname])
-            out_name_arr.append(colname+'_vs_e_gal')
-    
-    if param.ratio:
-        x_arr.append(dat[ratio[0]]/dat[ratio[1]])
-        if param.ratio_label:
-            xlabel_arr.append(param.ratio_label)
-            out_name_arr.append(param.ratio_label+'_vs_e_gal')
-        else:
-            xlabel_arr.append(str(ratio[0])+"/"+str(ratio[1]))
-            out_name_arr.append(str(ratio[0])+"|"+str(ratio[1])+'_vs_e_gal')
-
-    #ylabel_arr = [r'$e_1^{\rm gal}$', r'$e_2^{\rm gal}$']
-    ylabel = r'$e_{1,2}^{\rm gal}$'
-    
-    mlabel = ['m_1', 'm_2']
-    clabel = ['c_1', 'c_2']
-    out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
-    name = 'systematics_test'
-    out_path_arr.append(f'{plot_dir_leakage}/{name}')
-    
-    if param.quadratic:
-        print("Quadratic Fit")
-        qlabel = ['q_1','q_2']
-        correlation.quad_corr_n_quant(
-            x_arr,
-            e,
-            xlabel_arr,
-            ylabel,
-            qlabel=qlabel,
-            mlabel=mlabel,
-            clabel=clabel,
-            title=param.sh,
-            weights=weights,
-            n_bin=n_bin,
-            out_path_arr=out_path_arr,
-            colors=colors,
-            stats_file=stats_file,
-            verbose=param.verbose
-        )
-
-    else : 
-        print("Linear Fit")
-        correlation.affine_corr_n_quant(
-            x_arr,
-            e,
-            xlabel_arr,
-            ylabel,
-            mlabel=mlabel,
-            clabel=clabel,
-            title=param.sh,
-            weights=weights,
-            n_bin=n_bin,
-            out_path_arr=out_path_arr,
-            colors=colors,
-            stats_file=stats_file,
-            verbose=param.verbose
-        )
     
 def Obs_Leakage(dat_shear, param, stats_file2):
     """Obs_Leakage
@@ -628,7 +532,7 @@ def Obs_Leakage(dat_shear, param, stats_file2):
 
     """
     
-    if param.ratio:
+    if param.ratio or param.ratio_alone:
         print("Data columns names :")
         print(dat_shear.dtype.names)
         print("Enter the two columns to be divided (x/y format) without whitespaces :")
@@ -638,7 +542,7 @@ def Obs_Leakage(dat_shear, param, stats_file2):
         
         if param.ratio_alone:
             label_quant = None
-            corr_any_quant(dat_shear, param, stats_file2, label_quant, ratio)
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant, ratio)
             return 0
         
             
@@ -652,11 +556,11 @@ def Obs_Leakage(dat_shear, param, stats_file2):
         label_quant = [str(col) for col in change_header.split(',')]
         if param.ratio:
             print('columns selected :', ratio[0],'/',ratio[1], label_quant)
-            corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio)
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio)
             
         elif not param.ratio:
             print('columns selected :', label_quant)
-            corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None)
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None)
             
         return 0
             
@@ -667,10 +571,10 @@ def Obs_Leakage(dat_shear, param, stats_file2):
         #Compute and plot the e_gal vs quantities (linear or quadratic fit and plot a global recap of the slopes)
         if param.ratio:
             print('columns selected :', ratio[0],'/',ratio[1], label_quant)
-            corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio) 
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio) 
         else:
             print('columns selected :', label_quant)
-            corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None) 
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None) 
         return 0
     
 
