@@ -621,7 +621,7 @@ def main(argv=None):
             leakage_test(param, stats_file)
             sys.exit(0)
             
-        leakage(dat_shear, param, stats_file)
+        PSF_leakage(dat_shear, param, stats_file)
     
     #object-by-object Observable variables (or any quantity) Leakage
     if param.Obs_Leakage:
