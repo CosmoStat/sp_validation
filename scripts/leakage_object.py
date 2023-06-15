@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
-
 import sys
 import copy
 import os
 import numpy as np
 from optparse import OptionParser
-from astropy.io import ascii, fits
-
+from astropy.io import fits
+from lmfit import Parameters
 from cs_util import logging
 
-from sp_validation import correlation
+
+from sp_validation import leakage
+from sp_validation import util
 from sp_validation import io
 
-
+    
 class param:
     """Param Class.
 
@@ -53,7 +54,10 @@ def params_default():
         e2_col='e2_uncal',
         e1_PSF_col='e1_PSF',
         e2_PSF_col='e2_PSF',
-        size_PSF_col='fwhm_PSF',
+        RA_col = 'RA',
+        Dec_col = 'Dec',
+        mag_col = 'mag',
+        size_PSF_col='fwhm_PSF'
     )
 
     return p_def
@@ -133,29 +137,127 @@ def parse_options(p_def):
         type='string',
         help=f'PSF size column name, default=\'{p_def.size_PSF_col}\''
     )
+    
+    parser.add_option(
+        '',
+        '--RA',
+        dest='RA',
+        default=p_def.RA_col,
+        type='string',
+        help=f'RA column name, default=\'{p_def.RA_col}\''
+    )
+    
+    parser.add_option(
+        '',
+        '--Dec',
+        dest='Dec',
+        default=p_def.Dec_col,
+        type='string',
+        help=f'PSF size column name, default=\'{p_def.Dec_col}\''
+    )
+    
+    parser.add_option(
+        '',
+        '--mag',
+        dest='mag',
+        default=p_def.mag_col,
+        type='string',
+        help=f'magnitude column name, default=\'{p_def.mag_col}\''
+    )
+    
     parser.add_option(
         '-s',
         '--shapes',
         dest='sh',
         default=None,
         type='string',
-        help=f'shape measurement method, default: read from parameter file'
+        help='shape measurement method, default: read from parameter file'
     )
     parser.add_option(
         '-v',
         '--verbose',
         dest='verbose',
         action='store_true',
-        help=f'verbose output'
+        help='verbose output'
     )
     parser.add_option(
         '-t',
         '--test',
         dest='test',
         action='store_true',
-        help=f'test of 2D fit'
+        help='test of 2D fit'
     )
 
+
+    parser.add_option(
+         '',
+         '--header',
+         dest='header',
+         action='store_true',
+         help='print the headers of the catalogue'
+     )
+     
+    parser.add_option(
+         '',
+         '--linear',
+         dest='linear',
+         action='store_true',
+         help='linear fit'
+     )
+    
+    parser.add_option(
+         '',
+         '--quadratic',
+         dest='quadratic',
+         action='store_true',
+         help='quadratic fit'
+     )
+    
+    parser.add_option(
+         '',
+         '--ratio',
+         dest='ratio',
+         action='store_true',
+         help='option for taking two columns and divided them'
+     )
+    
+    parser.add_option(
+        '',
+        '--ratio_label',
+        dest='ratio_label',
+        default=None,
+        type='string',
+        help='change the label of the ratio quantity for the plots (characters not allowed : /)'
+    )
+    
+    parser.add_option(
+         '',
+         '--ratio_alone',
+         dest='ratio_alone',
+         default=None,
+         action='store_true',
+         help='option for running the code just for a ratio of two columns alone'
+     )
+    
+    parser.add_option(
+         '',
+         '--PSF_Leakage',
+         dest='PSF_Leakage',
+         default=None,
+         action='store_true',
+         help='option for running the code for PSF Leakage'
+     )
+    
+    parser.add_option(
+         '',
+         '--Obs_Leakage',
+         dest='Obs_Leakage',
+         default=None,
+         action='store_true',
+         help='option for running the code for Observational variables leakage'
+     )
+    
+    
     options, args = parser.parse_args()
 
     return options, args
@@ -180,6 +282,10 @@ def check_options(options):
             'Input path for shear catalogue (option \'-i\') '
             + 'required unless in test mode (option \'-t\')'
         )
+        return False
+    
+    if not options.PSF_Leakage and not options.Obs_Leakage:
+        print("--PSF option or --Obs_Leakage option required")
         return False
 
     if options.e1_PSF_col == options.e2_PSF_col:
@@ -235,8 +341,8 @@ def leakage_test(param, stats_file):
 
     colors = ['b', 'r']
     ylabel_arr = ['$y_1$', '$y_2$']
-    mlabel = ['m_1', 'm_2']
-    clabel = ['c_1', 'c_2']
+    #mlabel = ['m_1', 'm_2']
+    #clabel = ['c_1', 'c_2']
 
     xlabel_arr = [
         r'$x_1$',
@@ -274,7 +380,7 @@ def leakage_test(param, stats_file):
         p_gt.add(par, value=pars_gt[par])
 
     # Ground-truth data
-    y1, y2 = correlation.func_bias_2d(
+    y1, y2 = util.func_bias_2d(
         p_gt,
         x_arr[0],
         x_arr[1],
@@ -291,7 +397,7 @@ def leakage_test(param, stats_file):
         for mix in [False, True]:
 
             out_path = f'{plot_dir_leakage}/test_{order}_{mix}'
-            correlation.corr_2d(
+            leakage.corr_2d(
                 x_arr,
                 [y1 + dy1, y2 + dy2],
                 xlabel_arr=xlabel_arr,
@@ -313,7 +419,7 @@ def leakage_test(param, stats_file):
         print(par, p_gt[par].value)
 
  
-def leakage(dat, param, stats_file):
+def PSF_leakage(dat, param, stats_file):
     """Leakage
 
     Compute and plot object-by-object PSF leakage relations.
@@ -365,7 +471,7 @@ def leakage(dat, param, stats_file):
         out_path = (
             f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
         )
-        par_best_fit = correlation.corr_2d(
+        par_best_fit = leakage.corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -388,7 +494,7 @@ def leakage(dat, param, stats_file):
     mlabel = ['m_1', 'm_2']
     clabel = ['c_1', 'c_2']
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
-    correlation.affine_corr_n(
+    leakage.affine_corr_n(
         x_arr,
         e,
         xlabel_arr,
@@ -404,6 +510,73 @@ def leakage(dat, param, stats_file):
         verbose=param.verbose
     )
 
+
+
+    
+def Obs_Leakage(dat_shear, param, stats_file2):
+    """Obs_Leakage
+
+    Compute and plot object-by-object ellipticity and observational variables relations.
+    Plot also a recap plot of all slopes of the best fits of the e_gal vs quantities
+
+    Parameters
+    ----------
+    dat : FITS.record
+        input data
+    param : class param
+        parameters
+    stats_file2 : file handler
+        statistics output file
+        stats_file : file handler
+            statistics output file
+
+    """
+    
+    if param.ratio or param.ratio_alone:
+        print("Data columns names :")
+        print(dat_shear.dtype.names)
+        print("Enter the two columns to be divided (x/y format) without whitespaces :")
+        x_input = input('x: ')
+        y_input = input('y: ')
+        ratio = [x_input,y_input]
+        
+        if param.ratio_alone:
+            label_quant = None
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant, ratio)
+            return 0
+        
+            
+    #If the --header flag is in the command : print the header and ask the user to select the quantities in the terminal 
+    if param.header:
+        if param.ratio:
+            print("Other quantities to select :")
+        print("Data columns names :")
+        print(dat_shear.dtype.names)
+        change_header = input("Enter the list of the columns with seperate commas (,) and without whitespaces :  ")
+        label_quant = [str(col) for col in change_header.split(',')]
+        if param.ratio:
+            print('columns selected :', ratio[0],'/',ratio[1], label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio)
+            
+        elif not param.ratio:
+            print('columns selected :', label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None)
+            
+        return 0
+            
+    else : 
+        #Quantities array for the computation of the leakage:
+        label_quant = [param.e1_PSF_col, param.e2_PSF_col, param.RA_col,param.Dec_col, param.mag_col, param.size_PSF_col]
+        
+        #Compute and plot the e_gal vs quantities (linear or quadratic fit and plot a global recap of the slopes)
+        if param.ratio:
+            print('columns selected :', ratio[0],'/',ratio[1], label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio) 
+        else:
+            print('columns selected :', label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None) 
+        return 0
+    
 
 def main(argv=None):
     """Main
@@ -424,15 +597,10 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
-
     logging.log_command(argv)
 
+    #Creation of the output directory
     os.mkdir(param.output_dir)
-    stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
-
-    if param.test:
-        leakage_test(param, stats_file)
-        sys.exit(0)
 
     sys.path.append('.')
     import params as config
@@ -441,15 +609,28 @@ def main(argv=None):
     if param.sh is None:
         param.sh = config.shapes[0]
 
-
+    #Open Fits file of the input shear catalogue
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data
-
-    # object-by-object alpha parameter
-    leakage(dat_shear, param, stats_file)
-
+    
+    # object-by-object alpha parameter (PSF Leakage)
+    if param.PSF_Leakage:
+        #Creation of the statistics files handler 
+        stats_file = io.open_stats_file(param.output_dir, 'stats_file_PSF_leakage.txt')
+        if param.test:
+            leakage_test(param, stats_file)
+            sys.exit(0)
+            
+        PSF_leakage(dat_shear, param, stats_file)
+    
+    #object-by-object Observable variables (or any quantity) Leakage
+    if param.Obs_Leakage:
+        stats_file2 = io.open_stats_file(param.output_dir, 'stats_file_Obs_leakage.txt') 
+        Obs_Leakage(dat_shear, param, stats_file2)
+        
     return 0
 
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
+
