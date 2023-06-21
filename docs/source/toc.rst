@@ -16,6 +16,7 @@
 
    sp_validation
    z_ref
+   Leakage_object_Tutorial
 
 .. toctree::
   :hidden:

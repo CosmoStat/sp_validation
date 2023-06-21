@@ -1,6 +1,7 @@
 importlib_metadata
-cs_util==0.0.5
+cs_util==0.0.4
 astropy>=5.0
+getdist
 jupyterlab
 lmfit
 numpy
