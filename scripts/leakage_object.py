@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import sys
 import copy
 import os
@@ -227,7 +228,7 @@ def parse_options(p_def):
         dest='ratio_label',
         default=None,
         type='string',
-        help='change the label of the ratio quantity for the plots (characters not allowed : /)'
+        help='change the label of the ratio quantity for the plots (characters not allowed: /)'
     )
     
     parser.add_option(
@@ -513,7 +514,7 @@ def PSF_leakage(dat, param, stats_file):
 
 
     
-def Obs_Leakage(dat_shear, param, stats_file2):
+def Obs_Leakage(dat_shear, param, stats_file):
     """Obs_Leakage
 
     Compute and plot object-by-object ellipticity and observational variables relations.
@@ -525,56 +526,53 @@ def Obs_Leakage(dat_shear, param, stats_file2):
         input data
     param : class param
         parameters
-    stats_file2 : file handler
+    stats_file : file handler
         statistics output file
-        stats_file : file handler
-            statistics output file
 
     """
-    
     if param.ratio or param.ratio_alone:
         print("Data columns names :")
         print(dat_shear.dtype.names)
-        print("Enter the two columns to be divided (x/y format) without whitespaces :")
+        print("Enter the two columns to be divided (x/y format) without whitespaces:")
         x_input = input('x: ')
         y_input = input('y: ')
         ratio = [x_input,y_input]
         
         if param.ratio_alone:
             label_quant = None
-            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant, ratio)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio)
             return 0
         
-            
-    #If the --header flag is in the command : print the header and ask the user to select the quantities in the terminal 
     if param.header:
+
+        # Get user input of quantities to fit
         if param.ratio:
-            print("Other quantities to select :")
+            print("Other quantities to select:")
         print("Data columns names :")
         print(dat_shear.dtype.names)
-        change_header = input("Enter the list of the columns with seperate commas (,) and without whitespaces :  ")
+        change_header = input("Enter the list of the columns with seperate commas (,) and without whitespaces:  ")
         label_quant = [str(col) for col in change_header.split(',')]
         if param.ratio:
-            print('columns selected :', ratio[0],'/',ratio[1], label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio)
+            print('columns selected:', ratio[0],'/',ratio[1], label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio)
             
         elif not param.ratio:
-            print('columns selected :', label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None)
+            print('columns selected:', label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio=None)
             
         return 0
             
-    else : 
+    else: 
         #Quantities array for the computation of the leakage:
         label_quant = [param.e1_PSF_col, param.e2_PSF_col, param.RA_col,param.Dec_col, param.mag_col, param.size_PSF_col]
         
         #Compute and plot the e_gal vs quantities (linear or quadratic fit and plot a global recap of the slopes)
         if param.ratio:
-            print('columns selected :', ratio[0],'/',ratio[1], label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio) 
+            print('columns selected:', ratio[0],'/',ratio[1], label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio) 
         else:
-            print('columns selected :', label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file2, label_quant,ratio=None) 
+            print('columns selected:', label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio=None) 
         return 0
     
 
