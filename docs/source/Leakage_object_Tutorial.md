@@ -17,10 +17,9 @@ _Compute the Leakage from PSF ellipticity or any quantity,  to galaxy ellipticit
 	* Statistic file with the slopes  
 
 -> _Example_:  
-_PSF Leakage_ Plots for `unions_shapepipe_extended_2022_v1.0.fits` :  
+_PSF Leakage_ Plots for `unions_shapepipe_extended_2022_v1.0.fits`. Command line: 
 ```bash
-#Command line : 
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o PSF_Leakage --PSF_Leakage -v
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o PSF_Leakage --PSF_Leakage -v
 ```
 
 ![](Leakage_object_Tutorial/PSF_Leakage1.png)
@@ -33,29 +32,27 @@ python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o PSF_Lea
 	* Statistic file with the slopes  
 	
 -> _Examples_:  
-* Leakage linear plots for `unions_shapepipe_extended_2022_v1.0.fits` catalogue of FWHM_PSF, Dec, RA, mag quantities: (with `--linear` option)  
+* Leakage linear plots for `unions_shapepipe_extended_2022_v1.0.fits` catalogue of FWHM_PSF, Dec, RA, mag quantities: (with `--linear` option). Command line:  
 ```bash
-#Command line : 
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear -v
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear -v
 ```
 
 ![](Leakage_object_Tutorial/Obs_Leakage1.png)
 
-* _Leakage linear and quadratic_ Plots for P3 (SP) of T_gal/T_psf and mag  
+* _Leakage linear and quadratic_ Plots for P3 (SP) of T_gal/T_psf and mag. Command line for left plot:  
 ```bash
-#Command line :
-#(Left) 
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear --ratio -v
-#(Right) 
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --quadratic -v
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear --ratio -v
+```
+Right plot:  
+```bash 
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --quadratic -v
 ```
 
 ![](Leakage_object_Tutorial/Obs_Leakage2.png)
 
-* Example of a recap plot with all the slopes for various quantity of P3 (SP) :  
+* Example of a recap plot with all the slopes for various quantity of P3 (SP). Command line :  
 ```bash
-#Command line : 
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear -v
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear -v
 ```
 ![](Leakage_object_Tutorial/Recap_slopes_P3.png)
 
@@ -101,13 +98,13 @@ _* : mandatory options in command line
 ```bash
 
 #PSF Leakage :
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o PSF_Leakage --PSF_Leakage -v
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o PSF_Leakage --PSF_Leakage -v
 
 #Observatinnal quantities Leakage :
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear -v
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Obs_Leakage --Obs_Leakage --header --linear -v
 
 #For both : 
-python leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Leakage --PSF_Leakage --Obs_Leakage --header --linear -v
+leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Leakage --PSF_Leakage --Obs_Leakage --header --linear -v
 
 ```
 
