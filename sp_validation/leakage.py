@@ -980,7 +980,7 @@ def affine_corr(
         m_arr.append(res.params['m'].value)
         # MKDEBUG float required?
         m_err_arr.append(float(res.params['m'].stderr))
-        tick_name_arr.append(f"{xlabel}_e{(jdx+1}")
+        tick_name_arr.append(f"{xlabel}_e{jdx+1}")
 
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
@@ -1016,7 +1016,7 @@ def affine_corr(
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
 
-    return m_arr, m_err, tick_name_arr
+    return m_arr, m_err_arr, tick_name_arr
 
 
 def affine_corr_n(
@@ -1104,12 +1104,13 @@ def affine_corr_n(
 
     # Summary plot
     plt.figure()
-	ticks_positions = np.arange(1, len(m_arr) + 1, 1)
-    plt.errorbar(ticks_position,
-                 m_arr,
-                 yerr=m_err_arr,
-                 color='peru',
-                 fmt='.'
+    ticks_positions = np.arange(1, len(m_arr) + 1, 1)
+    plt.errorbar(
+        ticks_position,
+        m_arr,
+        yerr=m_err_arr,
+        color='peru',
+        fmt='.'
     )
     plt.xticks(
         ticks_positions,
