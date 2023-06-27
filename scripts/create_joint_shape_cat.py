@@ -317,13 +317,15 @@ def main(argv=None):
         patches = ['P7', 'W3', 'S4']
     elif param.survey == 'v1_small':
         patches = ['W3', 'P7']
+    elif param.survey == 'W3':
+        patches = ['W3']
 
     sh = 'ngmix'
 
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.0.3'
+    version = '1.0.3bis'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
