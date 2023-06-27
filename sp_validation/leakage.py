@@ -390,11 +390,11 @@ def quad_corr_n_quant(
             merr.append(m_err[i])
             qerr.append(q_err[i])
 
-    ticks_position = np.arange(1, len(slopes)+1,1)
+    ticks_positions = np.arange(1, len(slopes)+1, 1)
 
     ##plot the slope by the
     plt.figure()
-    plt.errorbar(ticks_position,
+    plt.errorbar(ticks_positions,
                  slopes,
                  yerr=merr,
                  color='peru',
@@ -402,7 +402,7 @@ def quad_corr_n_quant(
                  fmt='.',
     )
 
-    plt.errorbar(ticks_position,
+    plt.errorbar(ticks_positions,
                  qslopes,
                  yerr=qerr,
                  color='crimson',
@@ -410,7 +410,7 @@ def quad_corr_n_quant(
                  fmt='.',
     )
 
-    plt.xticks(ticks_position,
+    plt.xticks(ticks_positions,
                ticks_label,
                rotation=90,
                fontsize=10,
@@ -1106,7 +1106,7 @@ def affine_corr_n(
     plt.figure()
     ticks_positions = np.arange(1, len(m_arr) + 1, 1)
     plt.errorbar(
-        ticks_position,
+        ticks_positions,
         m_arr,
         yerr=m_err_arr,
         color='peru',
@@ -1114,7 +1114,7 @@ def affine_corr_n(
     )
     plt.xticks(
         ticks_positions,
-        ticks_name_arr,
+        tick_name_arr,
         rotation=90,
         fontsize=10,
     )
