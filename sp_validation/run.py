@@ -174,21 +174,21 @@ class LeakageScale:
 
         self._help_strings = {
             "input_path_shear": "input path of the shear catalogue",
-            "e1_col": "e1 column name in galaxy catalogue",
-            "e2_col": "e2 column name in galaxy catalogue",
+            "e1_col": "e1 column name in galaxy catalogue, default={}",
+            "e2_col": "e2 column name in galaxy catalogue, default={}",
             "input_path_PSF": "input path of the PSF catalogue",
-            "hdu_PSF": "HDU number of PSF catalogue",
-            "ra_star_col": "right ascension column name in star catalogue",
-            "dec_star_col": "declination column name in star catalogue",
-            "e1_PSF_star_col": "e1 PSF column name in star catalogue",
-            "e2_PSF_star_col": "e2 PSF column name in star catalogue",
+            "hdu_PSF": "HDU number of PSF catalogue, default={}",
+            "ra_star_col": "right ascension column name in star catalogue, default={}",
+            "dec_star_col": "declination column name in star catalogue, default={}",
+            "e1_PSF_star_col": "e1 PSF column name in star catalogue, default={}",
+            "e2_PSF_star_col": "e2 PSF column name in star catalogue, default={}",
             "dndz_path" : (
                 "path to galaxy redshift distribution file, for xi_sys ratio"
             ),
-            "output_dir": "output_directory",
-            "sh": "shape measurement method",
+            "output_dir": "output_directory, default={}",
+            "sh": "shape measurement method, default={}",
             "close_pair_tolerance": (
-                "tolerance angle for close objects in star catalogue"
+                "tolerance angle for close objects in star catalogue, default={}"
             ),
             "close_pair_mode": (
                 "mode for close objects in star catalogue, allowed are"

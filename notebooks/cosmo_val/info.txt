@@ -48,5 +48,5 @@ jupytext --test -x cosmo_val.ipynb --to py
 
 3. Edit metadata, add
 
-"jupytext": {"formats": "ipynb,py"}
+"jupytext": {"formats": "ipynb,py"},
 in the line before "kernelspec"
