@@ -178,17 +178,26 @@ class LeakageScale:
             "e2_col": "e2 column name in galaxy catalogue, default={}",
             "input_path_PSF": "input path of the PSF catalogue",
             "hdu_PSF": "HDU number of PSF catalogue, default={}",
-            "ra_star_col": "right ascension column name in star catalogue, default={}",
-            "dec_star_col": "declination column name in star catalogue, default={}",
-            "e1_PSF_star_col": "e1 PSF column name in star catalogue, default={}",
-            "e2_PSF_star_col": "e2 PSF column name in star catalogue, default={}",
+            "ra_star_col": (
+                "right ascension column name in star catalogue, default={}"
+            ),
+            "dec_star_col": (
+                "declination column name in star catalogue, default={}"
+            ),
+            "e1_PSF_star_col": (
+                "e1 PSF column name in star catalogue, default={}"
+            ),
+            "e2_PSF_star_col": (
+                "e2 PSF column name in star catalogue, default={}"
+            ),
             "dndz_path" : (
                 "path to galaxy redshift distribution file, for xi_sys ratio"
             ),
             "output_dir": "output_directory, default={}",
             "sh": "shape measurement method, default={}",
             "close_pair_tolerance": (
-                "tolerance angle for close objects in star catalogue, default={}"
+                "tolerance angle for close objects in star catalogue,"
+                + " default={}"
             ),
             "close_pair_mode": (
                 "mode for close objects in star catalogue, allowed are"
@@ -422,7 +431,9 @@ class LeakageScale:
                 )
 
                 for col in dat_PSF.dtype.names:
-                    dat_PSF_proc[col] = np.append(dat_PSF_proc[col], dat_PSF_mult[col])
+                    dat_PSF_proc[col] = np.append(
+                        dat_PSF_proc[col], dat_PSF_mult[col]
+                    )
             elif mode == "remove":
                 n_rem = len(idx_mult)
                 io.print_stats(

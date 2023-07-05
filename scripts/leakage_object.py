@@ -285,8 +285,14 @@ def check_options(options):
         )
         return False
 
-    if not options.PSF_Leakage and not options.Obs_Leakage:
-        print("--PSF option or --Obs_Leakage option required")
+    if (
+        not options.PSF_Leakage
+        and not options.Obs_Leakage
+        and not options.test
+    ):
+        print(
+            "One option out of --PSF_Leakage, --Obs_Leakage or -t is required"
+        )
         return False
 
     if options.e1_PSF_col == options.e2_PSF_col:
@@ -601,24 +607,28 @@ def main(argv=None):
     if not os.path.exists(param.output_dir):
         os.mkdir(param.output_dir)
 
+    # Creation of the statistics file handler
+    stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
+
+    if param.test:
+        # 2D spin-consistent test fit
+        leakage_test(param, stats_file)
+        return 0
+
+
     # Open Fits file of the input shear catalogue
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data
 
-    # Object-by-object alpha parameter (PSF Leakage)
-    if param.PSF_Leakage:
-        # Creation of the statistics file handler
-        stats_file = io.open_stats_file(param.output_dir, 'stats_file_PSF_leakage.txt')
-        if param.test:
-            leakage_test(param, stats_file)
-            sys.exit(0)
 
+    if param.PSF_Leakage:
+
+        # Object-by-object spin-consistent PSF leakage
         PSF_leakage(dat_shear, param, stats_file)
 
-    # Object-by-object dependence of general variables
     if param.Obs_Leakage:
-        stats_file2 = io.open_stats_file(param.output_dir, 'stats_file_Obs_leakage.txt')
-        Obs_Leakage(dat_shear, param, stats_file2)
+        # Object-by-object dependence of general variables
+        Obs_Leakage(dat_shear, param, stats_file)
 
     return 0
 
