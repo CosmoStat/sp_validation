@@ -24,7 +24,7 @@ from sp_validation import util
 from sp_validation import io
 
 
-def func_bias_quad_1D(params,x_data):
+def func_bias_quad_1D(params, x_data):
     """Func Bias Quad 1D.
 
     Function for quadratic 1D bias model.
@@ -93,8 +93,6 @@ def quad_corr_quant(
     colors=None,
     stats_file=None,
     verbose=False,
-    parallel=False,
-    n_jobs=-1,
     seed=None,
     rng=None,
 ):
@@ -128,10 +126,6 @@ def quad_corr_quant(
         output file for statistics
     verbose : bool, optional, default=False
         verbose output if True
-    parallel: bool
-        If True, use parallel computing. [Default: False]
-    n_jobs: int
-        Number of jobs to run in parallel. [Default: -1]
     seed: int
         Seed to initialize the randoms. [Default: None]
     rng: numpy.random.RandomState
@@ -214,8 +208,6 @@ def quad_corr_quant(
                 weights[ind],
                 remove_size=0.2,
                 n_realization=50,
-                #parallel=parallel,
-                #n_job=-1,
             )
             y_bin[j].append(r_jk[0])
             err_bin[j].append(r_jk[1])
@@ -310,8 +302,6 @@ def quad_corr_n_quant(
     stats_file=None,
     verbose=False,
     seed=None,
-    parallel=False,
-    n_jobs=-1
 ):
     """Quad Corr N
 
@@ -345,10 +335,6 @@ def quad_corr_n_quant(
         verbose output if True
     seed: int
         Seed to initialize the randoms. [Default: None]
-    parallel: bool
-        If True, use parallel computing. [Default: False]
-    n_jobs: int
-        Number of jobs to run in parallel. [Default: -1]
     """
 
     master_rng = np.random.RandomState(seed)
@@ -379,8 +365,6 @@ def quad_corr_n_quant(
             stats_file=stats_file,
             verbose=verbose,
             seed=seed_tmp,
-            parallel=parallel,
-            n_jobs=n_jobs,
         )
 
         for i in range(len(slope)):
@@ -836,8 +820,6 @@ def affine_corr(
     colors=None,
     stats_file=None,
     verbose=False,
-    parallel=False,
-    n_jobs=-1,
     seed=None,
     rng=None,
 ):
@@ -871,10 +853,6 @@ def affine_corr(
         output file for statistics
     verbose : bool, optional, default=False
         verbose output if True
-    parallel: bool
-        If True, use parallel computing. [Default: False]
-    n_jobs: int
-        Number of jobs to run in parallel. [Default: -1]
     seed: int
         Seed to initialize the randoms. [Default: None]
     rng: numpy.random.RandomState
@@ -951,8 +929,6 @@ def affine_corr(
                 weights[ind],
                 remove_size=0.2,
                 n_realization=50,
-                #parallel=parallel,
-                #n_job=-1,
             )
             y_bin[j].append(r_jk[0])
             err_bin[j].append(r_jk[1])
@@ -1034,8 +1010,6 @@ def affine_corr_n(
     stats_file=None,
     verbose=False,
     seed=None,
-    parallel=False,
-    n_jobs=-1
 ):
     """Affine Corr N
 
@@ -1069,10 +1043,6 @@ def affine_corr_n(
         verbose output if True
     seed: int
         Seed to initialize the randoms. [Default: None]
-    parallel: bool
-        If True, use parallel computing. [Default: False]
-    n_jobs: int
-        Number of jobs to run in parallel. [Default: -1]
     """
 
     master_rng = np.random.RandomState(seed)
@@ -1098,8 +1068,6 @@ def affine_corr_n(
             stats_file=stats_file,
             verbose=verbose,
             seed=seed_tmp,
-            parallel=parallel,
-            n_jobs=n_jobs,
         )
 
     # Summary plot
