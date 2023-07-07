@@ -219,24 +219,26 @@ def quad_corr_quant(
 
     # Fit affine functions, plot function and data
     slope = []
-    qslope=[]
+    qslope = []
     ticks_names = []
-    m_err =[]
-    q_err=[]
+    m_err = []
+    q_err = []
     plt.figure(figsize=(10, 6))
     for jdx in range(len(y)):
         params = Parameters()
         params.add('q', value=0.01)
         params.add('m', value=0.01)
         params.add('c', value=0.01)
+
+        # Optimize parameters
         res = minimize(
             loss_bias_quad_1d, params, args=(x, y[jdx], 1 / np.sqrt(weights))
-        ) #optimize parameters
+        )
 
         qslope.append(res.params['q'].value)
         slope.append(res.params['m'].value)
 
-        ticks_names.append(xlabel+'_e'+str(jdx+1))
+        ticks_names.append(f"{xlabel}_e_{str(jdx+1)}")
         q_dm = ufloat(res.params['q'].value, res.params['q'].stderr)
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
@@ -343,10 +345,10 @@ def quad_corr_n_quant(
     qslopes = []
     ticks_label = []
     merr = []
-    qerr= []
+    qerr = []
 
     if out_path_arr is None:
-        out_path_arr = [None]*len(x_arr)
+        out_path_arr = [None] * len(x_arr)
     for x, xlabel, out_path, seed_tmp in zip(
         x_arr, xlabel_arr, out_path_arr, seeds
     ):
@@ -374,30 +376,33 @@ def quad_corr_n_quant(
             merr.append(m_err[i])
             qerr.append(q_err[i])
 
-    ticks_positions = np.arange(1, len(slopes)+1, 1)
+    ticks_positions = np.arange(1, len(slopes) + 1, 1)
 
-    ##plot the slope by the
+    # Plot slopes
     plt.figure()
-    plt.errorbar(ticks_positions,
-                 slopes,
-                 yerr=merr,
-                 color='peru',
-                 label='m',
-                 fmt='.',
+    plt.errorbar(
+        ticks_positions,
+        slopes,
+        yerr=merr,
+        color='peru',
+        label='m',
+        fmt='.',
     )
 
-    plt.errorbar(ticks_positions,
-                 qslopes,
-                 yerr=qerr,
-                 color='crimson',
-                 label='q',
-                 fmt='.',
+    plt.errorbar(
+        ticks_positions,
+        qslopes,
+        yerr=qerr,
+        color='crimson',
+        label='q',
+        fmt='.',
     )
 
-    plt.xticks(ticks_positions,
-               ticks_label,
-               rotation=90,
-               fontsize=10,
+    plt.xticks(
+        ticks_positions,
+        ticks_label,
+        rotation=90,
+        fontsize=10,
     )
 
     plt.yticks(fontsize=10)
@@ -406,7 +411,7 @@ def quad_corr_n_quant(
         color='black',
         linestyle='--',
     )
-    plt.ylabel('q and m',fontsize=10)
+    plt.ylabel('q and m', fontsize=10)
     title = "(e1, e2) systematic tests (quadratic)"
     plt.title(title, fontsize=10)
     plt.legend()
@@ -1049,7 +1054,7 @@ def affine_corr_n(
     seeds = master_rng.randint(low=0, high=2**30, size=len(x_arr))
 
     if out_path_arr is None:
-        out_path_arr = [None]*len(x_arr)
+        out_path_arr = [None] * len(x_arr)
     for x, xlabel, out_path, seed_tmp in zip(
         x_arr, xlabel_arr, out_path_arr, seeds
     ):
@@ -1101,11 +1106,12 @@ def affine_corr_n(
     plt.savefig(out_path_arr[-1])
 
 
-def corr_any_quant(dat, param, stats_file, label_quant=None,ratio=None):
+def corr_any_quant(dat, param, stats_file, label_quant=None, ratio=None):
     """Corr_any_quant
 
     Compute and plot object-by-object ellipticity and any quantities relations.
-    Plot also a recap plot of all slopes of the best fits of the e_gal vs quantities
+    Plot also a recap plot of all slopes of the best fits of the e_gal vs
+    other quantities.
 
     Parameters
     ----------
@@ -1115,12 +1121,9 @@ def corr_any_quant(dat, param, stats_file, label_quant=None,ratio=None):
         parameters
     stats_file : file handler
         statistics output file
-        stats_file : file handler
-            statistics output file
 
     """
     plot_dir_leakage = param.output_dir
-    io.print_stats(f'{param.sh}:', stats_file, verbose=param.verbose)
 
     n_bin = 30
 
@@ -1131,7 +1134,7 @@ def corr_any_quant(dat, param, stats_file, label_quant=None,ratio=None):
     e = np.array([e1, e2])
     weights = dat['w']
 
-    x_arr=[]
+    x_arr = []
     out_name_arr = []
     xlabel_arr = []
 
@@ -1155,44 +1158,46 @@ def corr_any_quant(dat, param, stats_file, label_quant=None,ratio=None):
 
     mlabel = ['m_1', 'm_2']
     clabel = ['c_1', 'c_2']
-    out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
-    name = 'systematics_test'
+
+
+    print("Quadratic fit")
+    out_path_arr = [f'{plot_dir_leakage}/{name}_quad' for name in out_name_arr]
+    name = 'systematics_test_quad'
     out_path_arr.append(f'{plot_dir_leakage}/{name}')
+    qlabel = ['q_1','q_2']
+    quad_corr_n_quant(
+        x_arr,
+        e,
+        xlabel_arr,
+        ylabel,
+        qlabel=qlabel,
+        mlabel=mlabel,
+        clabel=clabel,
+        title="quadratic model",
+        weights=weights,
+        n_bin=n_bin,
+        out_path_arr=out_path_arr,
+        colors=colors,
+        stats_file=stats_file,
+        verbose=param.verbose
+    )
 
-    if param.quadratic:
-        print("Quadratic Fit")
-        qlabel = ['q_1','q_2']
-        quad_corr_n_quant(
-            x_arr,
-            e,
-            xlabel_arr,
-            ylabel,
-            qlabel=qlabel,
-            mlabel=mlabel,
-            clabel=clabel,
-            title=param.sh,
-            weights=weights,
-            n_bin=n_bin,
-            out_path_arr=out_path_arr,
-            colors=colors,
-            stats_file=stats_file,
-            verbose=param.verbose
-        )
-
-    else :
-        print("Linear Fit")
-        affine_corr_n(
-            x_arr,
-            e,
-            xlabel_arr,
-            ylabel,
-            mlabel=mlabel,
-            clabel=clabel,
-            title=param.sh,
-            weights=weights,
-            n_bin=n_bin,
-            out_path_arr=out_path_arr,
-            colors=colors,
-            stats_file=stats_file,
-            verbose=param.verbose
-        )
+    print("Linear fit")
+    out_path_arr = [f'{plot_dir_leakage}/{name}_lin' for name in out_name_arr]
+    name = 'systematics_test_lin'
+    out_path_arr.append(f'{plot_dir_leakage}/{name}')
+    affine_corr_n(
+        x_arr,
+        e,
+        xlabel_arr,
+        ylabel,
+        mlabel=mlabel,
+        clabel=clabel,
+        title="linear model",
+        weights=weights,
+        n_bin=n_bin,
+        out_path_arr=out_path_arr,
+        colors=colors,
+        stats_file=stats_file,
+        verbose=param.verbose
+    )

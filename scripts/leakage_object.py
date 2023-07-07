@@ -167,14 +167,6 @@ def parse_options(p_def):
     )
 
     parser.add_option(
-        '-s',
-        '--shapes',
-        dest='sh',
-        default=None,
-        type='string',
-        help='shape measurement method, default: read from parameter file'
-    )
-    parser.add_option(
         '-v',
         '--verbose',
         dest='verbose',
@@ -196,22 +188,6 @@ def parse_options(p_def):
          dest='header',
          action='store_true',
          help='print the headers of the catalogue'
-     )
-
-    parser.add_option(
-         '',
-         '--linear',
-         dest='linear',
-         action='store_true',
-         help='linear fit'
-     )
-
-    parser.add_option(
-         '',
-         '--quadratic',
-         dest='quadratic',
-         action='store_true',
-         help='quadratic fit'
      )
 
     parser.add_option(
@@ -258,7 +234,6 @@ def parse_options(p_def):
          help='option for running the code for Observational variables leakage'
      )
 
-
     options, args = parser.parse_args()
 
     return options, args
@@ -294,6 +269,15 @@ def check_options(options):
             "One option out of --PSF_Leakage, --Obs_Leakage or -t is required"
         )
         return False
+
+    if not options.Obs_Leakage:
+        for arg in ("header", "ratio", "ratio_alone"):
+            if getattr(options, arg):
+                print(f"Option '{arg}' only valid for Obs_Leakage")
+            return False
+
+    if not options.ratio and options.ratio_label:
+        print("Option --ratio_label only valid with --ratio")
 
     if options.e1_PSF_col == options.e2_PSF_col:
         print(
@@ -519,8 +503,6 @@ def PSF_leakage(dat, param, stats_file):
     )
 
 
-
-
 def Obs_Leakage(dat_shear, param, stats_file):
     """Obs_Leakage
 
@@ -538,17 +520,17 @@ def Obs_Leakage(dat_shear, param, stats_file):
 
     """
     if param.ratio or param.ratio_alone:
-        print("Data columns names :")
+        print("Data columns names:")
         print(dat_shear.dtype.names)
         print("Enter the two columns to be divided (x/y format) without whitespaces:")
         x_input = input('x: ')
         y_input = input('y: ')
-        ratio = [x_input,y_input]
+        ratio = [x_input, y_input]
 
         if param.ratio_alone:
             label_quant = None
             leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio)
-            return 0
+            return
 
     if param.header:
 
@@ -557,30 +539,27 @@ def Obs_Leakage(dat_shear, param, stats_file):
             print("Other quantities to select:")
         print("Data columns names :")
         print(dat_shear.dtype.names)
-        change_header = input("Enter the list of the columns with seperate commas (,) and without whitespaces:  ")
+        change_header = input("Enter list of columns (comma-separated, no whitespaces: ")
         label_quant = [str(col) for col in change_header.split(',')]
+        label_quant = list(set(label_quant))
         if param.ratio:
             print('columns selected:', ratio[0],'/',ratio[1], label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio)
-
-        elif not param.ratio:
-            print('columns selected:', label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio=None)
-
-        return 0
-
-    else:
-        #Quantities array for the computation of the leakage:
-        label_quant = [param.e1_PSF_col, param.e2_PSF_col, param.RA_col,param.Dec_col, param.mag_col, param.size_PSF_col]
-
-        #Compute and plot the e_gal vs quantities (linear or quadratic fit and plot a global recap of the slopes)
-        if param.ratio:
-            print('columns selected:', ratio[0],'/',ratio[1], label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio)
         else:
             print('columns selected:', label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant,ratio=None)
-        return 0
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio=None)
+
+    else:
+        # Quantities array for the computation of the leakage:
+        label_quant = [param.e1_PSF_col, param.e2_PSF_col, param.RA_col,param.Dec_col, param.mag_col, param.size_PSF_col]
+
+        # Compute and plot the e_gal vs quantities (linear or quadratic fit and plot a global recap of the slopes)
+        if param.ratio:
+            print('columns selected:', ratio[0], '/', ratio[1], label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio)
+        else:
+            print('columns selected:', label_quant)
+            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio=None)
 
 
 def main(argv=None):
