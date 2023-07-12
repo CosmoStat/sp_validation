@@ -705,6 +705,7 @@ for ver in versions:
 from getdist import plots, loadMCSamples
 import uncertainties
 
+print("MCMC plotting")
 g = plots.get_subplot_plotter(width_inch=30)
 g.settings.axes_fontsize = 30
 g.settings.axes_labelsize = 30
@@ -712,12 +713,15 @@ g.settings.alpha_filled_add = 0.6
 g.settings.legend_fontsize = 30
 
 #SPECIFY DATA DIRECTORY AND DESIRED CHAINS TO ANALYSE
-scratch_dir = f'{os.environ["HOME"]}'
+output_base = './output/'
 # For reference, currently the chains reside in Lisa's scratch space on CANDIDE
 scratch_dir = '/feynman/work/dap/lcs/lg268561/UNIONS/'
+# For some reason copying the chain directories to ./output leads to errors,
+# get_dist does not find the chain(s).
+#scratch_dir = './output/'
 
 # Right now only these versions!
-versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
+versions = ['SP_v1.0', 'LF_v1.0'] #, 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
 # Choose between blinds A, B or C (matched catalogues don't have blinds)
 blinds = ['A']
 # If we want to include full angular scale or cut angular scales ('cut'/'full'),
@@ -728,12 +732,15 @@ theta_range = 'cut'
 #CREATE PARAMNAME FILE
 for ver in versions:
     for blind in blinds:
-        chain_dir = '%s/blind_%s/chain' %(ver,blind)
+        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver, blind, theta_range)
         with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
             params = file.readline()[1:].split('\t')[:-2]
             file.close()
 
-        with open(scratch_dir + '%s/getdist_.paramnames'%(chain_dir), "w") as file:
+        output_dir = f"{output_base}/{chain_dir}"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        with open(output_dir + '/getdist_.paramnames', "w") as file:
             for i in range(len(params)):
                 file.write(params[i].split('--')[1] + '\n')
             file.close()
@@ -746,6 +753,7 @@ colours = []
 line_args = []
 labels = []
 
+print("Reading chains...")
 for ver in versions:
     for blind in blinds:
         chain_dir = '%s/blind_%s/chain_%s_theta' %(ver,blind,theta_range)
@@ -761,6 +769,8 @@ for ver in versions:
         line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
         labels.append(ver + '_blind_' + blind + '_theta_' + theta_range) 
 
+        print(f"Done version {ver} blind {blind}") 
+
 # +
 # %matplotlib inline
 g.triangle_plot(chains,['omega_m','ln10^10A_s','SIGMA_8','S_8'],
@@ -769,5 +779,5 @@ g.triangle_plot(chains,['omega_m','ln10^10A_s','SIGMA_8','S_8'],
                 colors=colours,
                 line_args=line_args)
 
-# out_path = f"{cat['paths']['output']}/corner_plot.pdf"
-# g.export(out_path)
+out_path = f"{cat['paths']['output']}/corner_plot.pdf"
+g.export(out_path)
