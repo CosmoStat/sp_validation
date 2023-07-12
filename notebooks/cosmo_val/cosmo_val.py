@@ -713,51 +713,61 @@ g.settings.legend_fontsize = 30
 
 #SPECIFY DATA DIRECTORY AND DESIRED CHAINS TO ANALYSE
 scratch_dir = f'{os.environ["HOME"]}'
+# For reference, currently the chains reside in Lisa's scratch space on CANDIDE
+scratch_dir = '/feynman/work/dap/lcs/lg268561/UNIONS/'
+
+# Right now only these versions!
+versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
+# Choose between blinds A, B or C (matched catalogues don't have blinds)
+blinds = ['A']
+# If we want to include full angular scale or cut angular scales ('cut'/'full'),
+# option only possible for unmatched catalogue
+theta_range = 'cut'
 # -
 
 #CREATE PARAMNAME FILE
 for ver in versions:
-    chain_dir = '%s/chain' %ver
-    with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
-        params = file.readline()[1:].split('\t')[:-2]
-        file.close()
+    for blind in blinds:
+        chain_dir = '%s/blind_%s/chain' %(ver,blind)
+        with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
+            params = file.readline()[1:].split('\t')[:-2]
+            file.close()
 
-    with open(scratch_dir + '%s/getdist_%s_.paramnames'%(chain_dir,ver), "w") as file:
-        for i in range(len(params)):
-            file.write(params[i].split('--')[1] + '\n')
-        file.close()
-    print(params)
+        with open(scratch_dir + '%s/getdist_.paramnames'%(chain_dir), "w") as file:
+            for i in range(len(params)):
+                file.write(params[i].split('--')[1] + '\n')
+            file.close()
+        print(params)
 
 # +
 #READ CHAIN
 chains = []
 colours = []
 line_args = []
+labels = []
 
 for ver in versions:
-    chain_dir = '%s/chain' %ver
-    chain = np.loadtxt(scratch_dir + '%s/samples_1.txt'%(chain_dir))
+    for blind in blinds:
+        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver,blind,theta_range)
 
-    np.savetxt(scratch_dir + '%s/getdist_%s__1.txt'%(chain_dir,ver),
-               np.column_stack((np.ones_like(chain[:, -1]) ,-(chain[:, -1]-chain[:, -2]), chain[:, 0:-2])))
+        chain = g.samples_for_root(scratch_dir + '%s/getdist_' %(chain_dir),
+                                    settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
+        p=chain.getParams()
+        chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
+        chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
 
-    chain = g.samples_for_root(scratch_dir + '%s/getdist_%s_' %(chain_dir,ver),
-                                   settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
-    p=chain.getParams()
-    chain.addDerived(p.h0*100,name='H_0',label=r'H_0')
-    chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
-    chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
-
-    chains.append(chain)
-    colours.append(cat[ver]['getdist_colour'])
-    line_args.append({'color': cat[ver]['getdist_colour']})
+        chains.append(chain)
+        colours.append(tuple(map(float,cat[ver]['getdist_colour'].split(","))))
+        line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
+        labels.append(ver + '_blind_' + blind + '_theta_' + theta_range) 
 
 # +
 # %matplotlib inline
-g.triangle_plot(chains,['omega_m','omega_b','ln10^10A_s','n_s','tau','h0','SIGMA_8','S_8'],
-                legend_labels=versions,
+g.triangle_plot(chains,['omega_m','ln10^10A_s','SIGMA_8','S_8'],
+                legend_labels=labels,
+                filled=True,
                 colors=colours,
                 line_args=line_args)
 
-out_path = f"{cat['paths']['output']}/corner_plot_comparison_lf.pdf"
-g.export(out_path)
+# out_path = f"{cat['paths']['output']}/corner_plot.pdf"
+# g.export(out_path)
