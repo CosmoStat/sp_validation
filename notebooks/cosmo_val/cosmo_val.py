@@ -215,6 +215,7 @@ y = []
 yerr = []
 colors = []
 linestyles = []
+labels =  []
 
 for ver in versions:
     if hasattr(results[ver], "C_sys_p"):
@@ -576,10 +577,12 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     x = []
     y = []
     yerr = []
+    labels = []
     for ver in versions:
         x.append(R)
         y.append(map2[ver][mode])
         yerr.append(map2[ver]['varmapsq'])
+        labels.append(ver)
 
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
@@ -608,10 +611,12 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     x = []
     y = []
     yerr = []
+    labels = []
     for ver in versions:
         x.append(R)
         y.append(np.abs(map2[ver][mode]))
         yerr.append(map2[ver]['varmapsq'])
+        labels.append(ver)
 
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
