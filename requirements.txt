@@ -12,7 +12,7 @@ jupytext
 regions
 scipy
 seaborn
-setuptools
+setuptools==58.3.0
 tqdm
 uncertainties
 treecorr
