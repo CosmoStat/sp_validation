@@ -335,22 +335,22 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     io.print_stats(msg, stats_file, verbose=verbose)
 
 
-def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):            
-    """Add docstring.                                                           
-                                                                                
-    ...                                                                         
-                                                                                
-    """                                                                         
-    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)   
-    star_coord = coords.SkyCoord(                                               
-        ra=ra_star * u.degree,                                                  
-        dec=dec_star * u.degree,                                                
-    )                                                                           
-                                                                                
-    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)             
-                                                                                
-    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]             
-                                                                                
+def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
+    """Add docstring.
+
+    ...
+
+    """
+    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)
+    star_coord = coords.SkyCoord(
+        ra=ra_star * u.degree,
+        dec=dec_star * u.degree,
+    )
+
+    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)
+
+    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]
+
     return ind_stars
 
 

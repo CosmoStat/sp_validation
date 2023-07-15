@@ -203,11 +203,11 @@ def save_xi_sys(
     ]
     names = [
         '# theta[arcmin]',
-        'xi_+_sys', 
+        'xi_+_sys',
         'xi_-_sys',
         'sigma(xi_+_sys)',
         'sigma(xi_-_sys)',
-        'xi_+_theo', 
+        'xi_+_theo',
         'xi_-_theo',
     ]
     fname = f'{output_dir}/xi_sys_{sh}.txt'

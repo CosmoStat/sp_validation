@@ -96,7 +96,7 @@ def quad_corr_quant(
     seed=None,
     rng=None,
 ):
-    """Quadratic Corr
+    """Quadratic Correlation Quantity.
 
     Computes and plots quadratic correlation of y(n) as function of x.
 
@@ -238,7 +238,7 @@ def quad_corr_quant(
         qslope.append(res.params['q'].value)
         slope.append(res.params['m'].value)
 
-        ticks_names.append(f"{xlabel}_e_{str(jdx+1)}")
+        ticks_names.append(f"{xlabel}_e_{jdx+1}")
         q_dm = ufloat(res.params['q'].value, res.params['q'].stderr)
         m_dm = ufloat(res.params['m'].value, res.params['m'].stderr)
         c_dc = ufloat(res.params['c'].value, res.params['c'].stderr)
@@ -305,7 +305,7 @@ def quad_corr_n_quant(
     verbose=False,
     seed=None,
 ):
-    """Quad Corr N
+    """Quadratic Correlation N Quantity.
 
     Compute n quadratic correlations of y(m) versus x_arr[n].
 
@@ -337,8 +337,8 @@ def quad_corr_n_quant(
         verbose output if True
     seed: int
         Seed to initialize the randoms. [Default: None]
-    """
 
+    """
     master_rng = np.random.RandomState(seed)
     seeds = master_rng.randint(low=0, high=2**30, size=len(x_arr))
     slopes = []
@@ -659,8 +659,8 @@ def corr_2d(
     -------
     lmfit.Parameters
         best-fit parameters
-    """
 
+    """
     if colors is None:
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
@@ -828,7 +828,7 @@ def affine_corr(
     seed=None,
     rng=None,
 ):
-    """Affine Corr
+    """Affine Corr.
 
     Computes and plots affine correlation of y(n) as function of x.
 
@@ -871,8 +871,8 @@ def affine_corr(
         errors of the slopes
     list
         labels of the linear fits
-    """
 
+    """
     # Init randoms
     if isinstance(rng, np.random.RandomState):
         master_rng = rng
@@ -1016,7 +1016,7 @@ def affine_corr_n(
     verbose=False,
     seed=None,
 ):
-    """Affine Corr N
+    """Affine Corr N.
 
     Compute n affine correlations of y(m) versus x_arr[n].
 
@@ -1048,8 +1048,8 @@ def affine_corr_n(
         verbose output if True
     seed: int
         Seed to initialize the randoms. [Default: None]
-    """
 
+    """
     master_rng = np.random.RandomState(seed)
     seeds = master_rng.randint(low=0, high=2**30, size=len(x_arr))
 
@@ -1107,7 +1107,7 @@ def affine_corr_n(
 
 
 def corr_any_quant(dat, param, stats_file, label_quant=None, ratio=None):
-    """Corr_any_quant
+    """Corr_any_quant.
 
     Compute and plot object-by-object ellipticity and any quantities relations.
     Plot also a recap plot of all slopes of the best fits of the e_gal vs
@@ -1143,28 +1143,27 @@ def corr_any_quant(dat, param, stats_file, label_quant=None, ratio=None):
         for i in range(len(label_quant)):
             colname = label_quant[i]
             x_arr.append(dat[colname])
-            out_name_arr.append(colname+'_vs_e_gal')
+            out_name_arr.append(colname + '_vs_e_gal')
 
     if ratio:
-        x_arr.append(dat[ratio[0]]/dat[ratio[1]])
+        x_arr.append(dat[ratio[0]] / dat[ratio[1]])
         if param.ratio_label:
             xlabel_arr.append(param.ratio_label)
-            out_name_arr.append(str(ratio[0])+"|"+str(ratio[1])+'_vs_e_gal')
+            out_name_arr.append(f"{ratio[0]}|{ratio[1]}_vs_e_gal")
         else:
-            xlabel_arr.append(str(ratio[0])+"/"+str(ratio[1]))
-            out_name_arr.append(str(ratio[0])+"|"+str(ratio[1])+'_vs_e_gal')
+            xlabel_arr.append(f"{ratio[0]}/{ratio[1]}")
+            out_name_arr.append(f"{ratio[0]}|{ratio[1]}_vs_e_gal")
 
     ylabel = r'$e_{1,2}^{\rm gal}$'
 
     mlabel = ['m_1', 'm_2']
     clabel = ['c_1', 'c_2']
 
-
     print("Quadratic fit")
     out_path_arr = [f'{plot_dir_leakage}/{name}_quad' for name in out_name_arr]
     name = 'systematics_test_quad'
     out_path_arr.append(f'{plot_dir_leakage}/{name}')
-    qlabel = ['q_1','q_2']
+    qlabel = ['q_1', 'q_2']
     quad_corr_n_quant(
         x_arr,
         e,
