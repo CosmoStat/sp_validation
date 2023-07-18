@@ -5,10 +5,13 @@ import copy
 import os
 import numpy as np
 from optparse import OptionParser
-from astropy.io import ascii, fits
+from astropy.io import fits
+from lmfit import Parameters
+from cs_util import logging
 
+
+from sp_validation import leakage
 from sp_validation import util
-from sp_validation import correlation
 from sp_validation import io
 
 
@@ -52,7 +55,10 @@ def params_default():
         e2_col='e2_uncal',
         e1_PSF_col='e1_PSF',
         e2_PSF_col='e2_PSF',
-        size_PSF_col='fwhm_PSF',
+        RA_col = 'RA',
+        Dec_col = 'Dec',
+        mag_col = 'mag',
+        size_PSF_col='fwhm_PSF'
     )
 
     return p_def
@@ -132,32 +138,157 @@ def parse_options(p_def):
         type='string',
         help=f'PSF size column name, default=\'{p_def.size_PSF_col}\''
     )
+
     parser.add_option(
-        '-s',
-        '--shapes',
-        dest='sh',
-        default=None,
+        '',
+        '--RA',
+        dest='RA',
+        default=p_def.RA_col,
         type='string',
-        help=f'shape measurement method, default: read from parameter file'
+        help=f'RA column name, default=\'{p_def.RA_col}\''
     )
+
+    parser.add_option(
+        '',
+        '--Dec',
+        dest='Dec',
+        default=p_def.Dec_col,
+        type='string',
+        help=f'PSF size column name, default=\'{p_def.Dec_col}\''
+    )
+
+    parser.add_option(
+        '',
+        '--mag',
+        dest='mag',
+        default=p_def.mag_col,
+        type='string',
+        help=f'magnitude column name, default=\'{p_def.mag_col}\''
+    )
+
     parser.add_option(
         '-v',
         '--verbose',
         dest='verbose',
         action='store_true',
-        help=f'verbose output'
+        help='verbose output'
     )
     parser.add_option(
         '-t',
         '--test',
         dest='test',
         action='store_true',
-        help=f'test of 2D fit'
+        help='test of 2D fit'
     )
+    parser.add_option(
+         '',
+         '--cols',
+         dest='cols',
+         type='string',
+         help='list of column names for regression',
+    )
+    parser.add_option(
+         '',
+         '--cols_ratio',
+         dest='cols_ratio',
+         type='string',
+         help='column names x_y for regression of their ratio (x/y)'
+    )
+    parser.add_option(
+         '',
+         '--PSF_Leakage',
+         dest='PSF_Leakage',
+         default=None,
+         action='store_true',
+         help='option for running the code for PSF Leakage'
+    )
+    parser.add_option(
+         '',
+         '--Obs_Leakage',
+         dest='Obs_Leakage',
+         default=None,
+         action='store_true',
+         help='option for running the code for Observational variables leakage'
+     )
 
     options, args = parser.parse_args()
 
     return options, args
+
+
+# MKDEBUG TODO: to cs_util. Also check shapepipe.
+def my_string_split(string, num=-1, verbose=False, stop=False, sep=None):
+    """My String Split.
+
+    Split a *string* into a list of strings. Choose as separator
+    the first in the list [space, underscore] that occurs in the string.
+    (Thus, if both occur, use space.)
+
+    Parameters
+    ----------
+    string : str
+        Input string
+    num : int
+        Required length of output list of strings, -1 if no requirement.
+    verbose : bool
+        Verbose output
+    stop : bool
+        Stop programs with error if True, return None and continues otherwise
+    sep : bool
+        Separator, try ' ', '_', and '.' if None (default)
+
+    Raises
+    ------
+    CfisError
+        If number of elements in string and num are different, for stop=True
+    ValueError
+        If no separator found in string
+
+    Returns
+    -------
+    list
+        List of string on success, and None if failed
+
+    """
+    if string is None:
+        return None
+
+    if sep is None:
+        has_space = string.find(' ')
+        has_underscore = string.find('_')
+        has_dot = string.find('.')
+
+        if has_space != -1:
+            my_sep = ' '
+        elif has_underscore != -1:
+            my_sep = '_'
+        elif has_dot != -1:
+            my_sep = '.'
+        else:
+            # no separator found, does string consist of only one element?
+            if num == -1 or num == 1:
+                my_sep = None
+            else:
+                raise Valueerror(
+                    'No separator (\' \', \'_\', or \'.\') found in string'
+                    + f' \'{string}\', cannot split'
+                )
+    else:
+        if not string.find(sep):
+            raise ValueError(
+                f'No separator \'{sep}\' found in string \'{string}\', '
+                + 'cannot split'
+            )
+        my_sep = sep
+
+    res = string.split(my_sep)
+
+    if num != -1 and num != len(res) and stop:
+        raise CfisError(
+            f'String \'{len(res)}\' has length {num}, required is {num}'
+        )
+
+    return res
 
 
 def check_options(options):
@@ -181,6 +312,19 @@ def check_options(options):
         )
         return False
 
+    if (
+        not options.PSF_Leakage
+        and not options.Obs_Leakage
+        and not options.test
+    ):
+        print(
+            "One option out of --PSF_Leakage, --Obs_Leakage or -t is required"
+        )
+        return False
+
+    if not options.Obs_Leakage and options.cols_ratio:
+        print(f"Option 'cols_ratio' only valid for Obs_Leakage")
+
     if options.e1_PSF_col == options.e2_PSF_col:
         print(
             'Column names for e1_PSF and e2_PSF are identical, '
@@ -193,14 +337,14 @@ def check_options(options):
 
 def update_param(p_def, options):
     """Return default parameter, updated and complemented according to options.
-    
+
     Parameters
     ----------
     p_def:  class param
         parameter values
     optiosn: tuple
         command line options
-    
+
     Returns
     -------
     param: class param
@@ -219,6 +363,18 @@ def update_param(p_def, options):
         if not key in vars(param):
             setattr(param, key, getattr(options, key))
 
+    param.cols = my_string_split(
+        param.cols,
+        verbose=param.verbose,
+        stop=True,
+    )
+    param.cols_ratio = my_string_split(
+        param.cols_ratio,
+        num=2,
+        verbose=param.verbose,
+        stop=True,
+    )
+
     return param
 
 
@@ -234,8 +390,8 @@ def leakage_test(param, stats_file):
 
     colors = ['b', 'r']
     ylabel_arr = ['$y_1$', '$y_2$']
-    mlabel = ['m_1', 'm_2']
-    clabel = ['c_1', 'c_2']
+    #mlabel = ['m_1', 'm_2']
+    #clabel = ['c_1', 'c_2']
 
     xlabel_arr = [
         r'$x_1$',
@@ -244,7 +400,7 @@ def leakage_test(param, stats_file):
 
     # For testing
     np.random.seed(seed=6121975)
-    
+
     xm = 1.0
     size = 2000
     sig_x = 0.5
@@ -273,7 +429,7 @@ def leakage_test(param, stats_file):
         p_gt.add(par, value=pars_gt[par])
 
     # Ground-truth data
-    y1, y2 = correlation.func_bias_2d(
+    y1, y2 = util.func_bias_2d(
         p_gt,
         x_arr[0],
         x_arr[1],
@@ -290,7 +446,7 @@ def leakage_test(param, stats_file):
         for mix in [False, True]:
 
             out_path = f'{plot_dir_leakage}/test_{order}_{mix}'
-            correlation.corr_2d(
+            leakage.corr_2d(
                 x_arr,
                 [y1 + dy1, y2 + dy2],
                 xlabel_arr=xlabel_arr,
@@ -311,11 +467,11 @@ def leakage_test(param, stats_file):
     for par in p_gt:
         print(par, p_gt[par].value)
 
- 
-def leakage(dat, param, stats_file):
+
+def PSF_leakage(dat, param, stats_file):
     """Leakage
 
-    Compute and plot object-by-object PSF leakage relations.
+    Compute and plot object-by-object PSF spin-consistent leakage relations.
 
     Parameters
     ----------
@@ -328,7 +484,6 @@ def leakage(dat, param, stats_file):
 
     """
     plot_dir_leakage = param.output_dir
-    io.print_stats(f'{param.sh}:', stats_file, verbose=param.verbose)
 
     n_bin = 30
 
@@ -339,7 +494,7 @@ def leakage(dat, param, stats_file):
         r'$e_{2}^{\rm PSF}$',
         r'$\mathrm{FWHM}^{\rm PSF}$ [arcsec]'
     ]
-    
+
     e1 = dat[param.e1_col]
     e2 = dat[param.e2_col]
     e = np.array([e1, e2])
@@ -364,7 +519,7 @@ def leakage(dat, param, stats_file):
         out_path = (
             f'{plot_dir_leakage}/PSF_e_vs_e_gal_order-{order}_mix-{mix}'
         )
-        par_best_fit = correlation.corr_2d(
+        par_best_fit = leakage.corr_2d(
             x_arr[:2],
             e,
             weights=weights,
@@ -372,7 +527,7 @@ def leakage(dat, param, stats_file):
             ylabel_arr=ylabel_arr,
             order=order,
             mix=mix,
-            title=f'{param.sh} {order} {mix}',
+            title=f'{order} {mix}',
             n_bin=n_bin,
             out_path=out_path,
             colors=colors,
@@ -387,14 +542,16 @@ def leakage(dat, param, stats_file):
     mlabel = ['m_1', 'm_2']
     clabel = ['c_1', 'c_2']
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
-    correlation.affine_corr_n(
+    name = 'systematics_test'
+    out_path_arr.append(f'{plot_dir_leakage}/{name}')
+    leakage.affine_corr_n(
         x_arr,
         e,
         xlabel_arr,
         ylabel,
         mlabel=mlabel,
         clabel=clabel,
-        title=param.sh,
+        title="",
         weights=weights,
         n_bin=n_bin,
         out_path_arr=out_path_arr,
@@ -402,6 +559,42 @@ def leakage(dat, param, stats_file):
         stats_file=stats_file,
         verbose=param.verbose
     )
+
+
+def Obs_Leakage(dat_shear, param, stats_file):
+    """Obs_Leakage
+
+    Compute and plot object-by-object ellipticity and observational variables relations.
+    Plot also a recap plot of all slopes of the best fits of the e_gal vs quantities
+
+    Parameters
+    ----------
+    dat : FITS.record
+        input data
+    param : class param
+        parameters
+    stats_file : file handler
+        statistics output file
+
+    """
+    # Get quantities to fix
+    if not param.cols:
+        # Get user input
+        print("Data columns names :")
+        print(dat_shear.dtype.names)
+        change_header = input("Enter list of columns (comma-separated, no whitespaces: ")
+        label_quant = [str(col) for col in change_header.split(',')]
+    else:
+        # Use command line argument
+        label_quant = param.cols
+
+    # Remove duplicates
+    label_quant = list(set(label_quant))
+
+    print('columns selected:', label_quant, end='')
+    if param.cols_ratio:
+        print(' ', param.cols_ratio[0],  '/', param.cols_ratio[1])
+    leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio=param.cols_ratio)
 
 
 def main(argv=None):
@@ -415,7 +608,6 @@ def main(argv=None):
 
     # Command line options
     options, args = parse_options(p_def)
-    # Without option parsing, this would be: args = argv[1:]
 
     if check_options(options) is False:
         return 1
@@ -423,29 +615,33 @@ def main(argv=None):
     param = update_param(p_def, options)
 
     # Save calling command
+    logging.log_command(argv)
 
-    util.log_command(argv)
+    # Creation of the output directory
+    if not os.path.exists(param.output_dir):
+        os.mkdir(param.output_dir)
 
-    os.mkdir(param.output_dir)
+    # Creation of the statistics file handler
     stats_file = io.open_stats_file(param.output_dir, 'stats_file_leakage.txt')
 
     if param.test:
+        # 2D spin-consistent test fit
         leakage_test(param, stats_file)
-        sys.exit(0)
-
-    sys.path.append('.')
-    import params as config
-    if len(config.shapes) != 1:
-        raise IndexError('number of shape measurement methods has to be one')
-    if param.sh is None:
-        param.sh = config.shapes[0]
+        return 0
 
 
+    # Open Fits file of the input shear catalogue
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data
 
-    # object-by-object alpha parameter
-    leakage(dat_shear, param, stats_file)
+    if param.PSF_Leakage:
+
+        # Object-by-object spin-consistent PSF leakage
+        PSF_leakage(dat_shear, param, stats_file)
+
+    if param.Obs_Leakage:
+        # Object-by-object dependence of general variables
+        Obs_Leakage(dat_shear, param, stats_file)
 
     return 0
 

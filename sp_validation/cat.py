@@ -82,10 +82,8 @@ def print_mean_ellipticity(
     ind_v = ind_val[0] & ind_val[1]
 
     n_tot_val = len(np.where(ind_v)[0])
-    msg = (
-        'Total number of valid objects '
-        + f'= {n_tot_val} = {util.millify(n_tot_val)}'
-    )
+    n_tot_mil = util.millify(n_tot_val)
+    msg = ('Total number of valid objects = {n_tot_val} = {n_tot_mil}')
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = 'Fraction of invalid objects = {}/{} = {:.3g}%\n' \
@@ -138,7 +136,8 @@ def print_some_quantities(dd, stats_file, verbose=False):
         print('')
 
     n_tot = len(dd)
-    msg = f'Total number of objects = {n_tot} = {util.millify(n_tot)}'
+    n_mil = util.millify(n_tot)
+    msg = f'Total number of objects = {n_tot} = {n_mil}'
     io.print_stats(msg, stats_file, verbose=verbose)
 
     return n_tot
@@ -336,22 +335,22 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     io.print_stats(msg, stats_file, verbose=verbose)
 
 
-def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):            
-    """Add docstring.                                                           
-                                                                                
-    ...                                                                         
-                                                                                
-    """                                                                         
-    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)   
-    star_coord = coords.SkyCoord(                                               
-        ra=ra_star * u.degree,                                                  
-        dec=dec_star * u.degree,                                                
-    )                                                                           
-                                                                                
-    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)             
-                                                                                
-    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]             
-                                                                                
+def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
+    """Add docstring.
+
+    ...
+
+    """
+    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)
+    star_coord = coords.SkyCoord(
+        ra=ra_star * u.degree,
+        dec=dec_star * u.degree,
+    )
+
+    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)
+
+    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]
+
     return ind_stars
 
 
@@ -396,7 +395,8 @@ def read_shape_catalog(
     g2 = dat[hdu_no].data['e2_uncal']
     w = dat[hdu_no].data['w']
     mag = dat[hdu_no].data['mag']
-    if 'snr' in dat[hdu_no].data:
+
+    if 'snr' in dat[hdu_no].data.dtype.names:
         snr = dat[hdu_no].data['snr']
     else:
         snr = None
