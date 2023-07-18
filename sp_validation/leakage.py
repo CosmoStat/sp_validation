@@ -284,6 +284,7 @@ def quad_corr_quant(
 
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
+    plt.close()
 
     return slope, qslope, ticks_names, m_err, q_err
 
@@ -417,6 +418,7 @@ def quad_corr_n_quant(
     plt.legend()
     plt.tight_layout()
     plt.savefig(out_path_arr[-1])
+    plt.close()
 
 
 def func_bias_lin_1d(params, x_data):
@@ -997,6 +999,8 @@ def affine_corr(
     if out_path:
         plt.savefig(out_path, bbox_inches='tight')
 
+    plt.close()
+
     return m_arr, m_err_arr, tick_name_arr
 
 
@@ -1104,6 +1108,7 @@ def affine_corr_n(
     plt.xlim(plt_xmin, plt_xmax)
     plt.tight_layout()
     plt.savefig(out_path_arr[-1])
+    plt.close()
 
 
 def corr_any_quant(dat, param, stats_file, label_quant=None, ratio=None):
@@ -1147,12 +1152,8 @@ def corr_any_quant(dat, param, stats_file, label_quant=None, ratio=None):
 
     if ratio:
         x_arr.append(dat[ratio[0]] / dat[ratio[1]])
-        if param.ratio_label:
-            xlabel_arr.append(param.ratio_label)
-            out_name_arr.append(f"{ratio[0]}|{ratio[1]}_vs_e_gal")
-        else:
-            xlabel_arr.append(f"{ratio[0]}/{ratio[1]}")
-            out_name_arr.append(f"{ratio[0]}|{ratio[1]}_vs_e_gal")
+        xlabel_arr.append(f"{ratio[0]}/{ratio[1]}")
+        out_name_arr.append(f"{ratio[0]}_div_{ratio[1]}_vs_e_gal")
 
     ylabel = r'$e_{1,2}^{\rm gal}$'
 

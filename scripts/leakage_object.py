@@ -180,42 +180,20 @@ def parse_options(p_def):
         action='store_true',
         help='test of 2D fit'
     )
-
-
     parser.add_option(
          '',
-         '--header',
-         dest='header',
-         action='store_true',
-         help='print the headers of the catalogue'
-     )
-
-    parser.add_option(
-         '',
-         '--ratio',
-         dest='ratio',
-         action='store_true',
-         help='option for taking two columns and divided them'
-     )
-
-    parser.add_option(
-        '',
-        '--ratio_label',
-        dest='ratio_label',
-        default=None,
-        type='string',
-        help='change the label of the ratio quantity for the plots (characters not allowed: /)'
+         '--cols',
+         dest='cols',
+         type='string',
+         help='list of column names for regression',
     )
-
     parser.add_option(
          '',
-         '--ratio_alone',
-         dest='ratio_alone',
-         default=None,
-         action='store_true',
-         help='option for running the code just for a ratio of two columns alone'
-     )
-
+         '--cols_ratio',
+         dest='cols_ratio',
+         type='string',
+         help='column names x_y for regression of their ratio (x/y)'
+    )
     parser.add_option(
          '',
          '--PSF_Leakage',
@@ -223,8 +201,7 @@ def parse_options(p_def):
          default=None,
          action='store_true',
          help='option for running the code for PSF Leakage'
-     )
-
+    )
     parser.add_option(
          '',
          '--Obs_Leakage',
@@ -237,6 +214,81 @@ def parse_options(p_def):
     options, args = parser.parse_args()
 
     return options, args
+
+
+# MKDEBUG TODO: to cs_util. Also check shapepipe.
+def my_string_split(string, num=-1, verbose=False, stop=False, sep=None):
+    """My String Split.
+
+    Split a *string* into a list of strings. Choose as separator
+    the first in the list [space, underscore] that occurs in the string.
+    (Thus, if both occur, use space.)
+
+    Parameters
+    ----------
+    string : str
+        Input string
+    num : int
+        Required length of output list of strings, -1 if no requirement.
+    verbose : bool
+        Verbose output
+    stop : bool
+        Stop programs with error if True, return None and continues otherwise
+    sep : bool
+        Separator, try ' ', '_', and '.' if None (default)
+
+    Raises
+    ------
+    CfisError
+        If number of elements in string and num are different, for stop=True
+    ValueError
+        If no separator found in string
+
+    Returns
+    -------
+    list
+        List of string on success, and None if failed
+
+    """
+    if string is None:
+        return None
+
+    if sep is None:
+        has_space = string.find(' ')
+        has_underscore = string.find('_')
+        has_dot = string.find('.')
+
+        if has_space != -1:
+            my_sep = ' '
+        elif has_underscore != -1:
+            my_sep = '_'
+        elif has_dot != -1:
+            my_sep = '.'
+        else:
+            # no separator found, does string consist of only one element?
+            if num == -1 or num == 1:
+                my_sep = None
+            else:
+                raise Valueerror(
+                    'No separator (\' \', \'_\', or \'.\') found in string'
+                    + f' \'{string}\', cannot split'
+                )
+    else:
+        if not string.find(sep):
+            raise ValueError(
+                f'No separator \'{sep}\' found in string \'{string}\', '
+                + 'cannot split'
+            )
+        my_sep = sep
+
+    res = string.split(my_sep)
+
+    if num != -1 and num != len(res) and stop:
+        raise CfisError(
+            f'String \'{len(res)}\' has length {num}, required is {num}'
+        )
+
+    return res
 
 
 def check_options(options):
@@ -270,14 +322,8 @@ def check_options(options):
         )
         return False
 
-    if not options.Obs_Leakage:
-        for arg in ("header", "ratio", "ratio_alone"):
-            if getattr(options, arg):
-                print(f"Option '{arg}' only valid for Obs_Leakage")
-            return False
-
-    if not options.ratio and options.ratio_label:
-        print("Option --ratio_label only valid with --ratio")
+    if not options.Obs_Leakage and options.cols_ratio:
+        print(f"Option 'cols_ratio' only valid for Obs_Leakage")
 
     if options.e1_PSF_col == options.e2_PSF_col:
         print(
@@ -316,6 +362,18 @@ def update_param(p_def, options):
     for key in vars(options):
         if not key in vars(param):
             setattr(param, key, getattr(options, key))
+
+    param.cols = my_string_split(
+        param.cols,
+        verbose=param.verbose,
+        stop=True,
+    )
+    param.cols_ratio = my_string_split(
+        param.cols_ratio,
+        num=2,
+        verbose=param.verbose,
+        stop=True,
+    )
 
     return param
 
@@ -519,47 +577,24 @@ def Obs_Leakage(dat_shear, param, stats_file):
         statistics output file
 
     """
-    if param.ratio or param.ratio_alone:
-        print("Data columns names:")
-        print(dat_shear.dtype.names)
-        print("Enter the two columns to be divided (x/y format) without whitespaces:")
-        x_input = input('x: ')
-        y_input = input('y: ')
-        ratio = [x_input, y_input]
-
-        if param.ratio_alone:
-            label_quant = None
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio)
-            return
-
-    if param.header:
-
-        # Get user input of quantities to fit
-        if param.ratio:
-            print("Other quantities to select:")
+    # Get quantities to fix
+    if not param.cols:
+        # Get user input
         print("Data columns names :")
         print(dat_shear.dtype.names)
         change_header = input("Enter list of columns (comma-separated, no whitespaces: ")
         label_quant = [str(col) for col in change_header.split(',')]
-        label_quant = list(set(label_quant))
-        if param.ratio:
-            print('columns selected:', ratio[0],'/',ratio[1], label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio)
-        else:
-            print('columns selected:', label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio=None)
-
     else:
-        # Quantities array for the computation of the leakage:
-        label_quant = [param.e1_PSF_col, param.e2_PSF_col, param.RA_col,param.Dec_col, param.mag_col, param.size_PSF_col]
+        # Use command line argument
+        label_quant = param.cols
 
-        # Compute and plot the e_gal vs quantities (linear or quadratic fit and plot a global recap of the slopes)
-        if param.ratio:
-            print('columns selected:', ratio[0], '/', ratio[1], label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio)
-        else:
-            print('columns selected:', label_quant)
-            leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio=None)
+    # Remove duplicates
+    label_quant = list(set(label_quant))
+
+    print('columns selected:', label_quant, end='')
+    if param.cols_ratio:
+        print(' ', param.cols_ratio[0],  '/', param.cols_ratio[1])
+    leakage.corr_any_quant(dat_shear, param, stats_file, label_quant, ratio=param.cols_ratio)
 
 
 def main(argv=None):
@@ -598,7 +633,6 @@ def main(argv=None):
     # Open Fits file of the input shear catalogue
     hdu_list = fits.open(param.input_path_shear)
     dat_shear = hdu_list[1].data
-
 
     if param.PSF_Leakage:
 
