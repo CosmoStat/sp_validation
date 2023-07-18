@@ -17,7 +17,6 @@ from sp_validation.plot_style import *
 from sp_validation import util
 
 import treecorr
-    
 
 
 def func_bias_lin_1d(params, x_data):
@@ -200,8 +199,6 @@ def print_fit_report(res, file=None):
     print(f'bic = {res.bic}', file=file)
 
 
-
-
 def param_order2spin(p_dp, order, mix):
     """Param Order 2 Spin.
 
@@ -264,10 +261,8 @@ def xi_star_gal_tc(
     Cross-correlation between galaxy and star ellipticities.
 
     """
-
-
     unit = 'degrees'
-    
+
     cat_gal = treecorr.Catalog(
         ra=ra_gal,
         dec=dec_gal,

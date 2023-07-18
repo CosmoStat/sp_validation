@@ -239,7 +239,6 @@ def classification_galaxy_base(
         & (dd['N_EPOCH'] >= n_epoch_min)
     )
 
-
     return cut_common
 
 

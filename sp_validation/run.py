@@ -1,3 +1,11 @@
+"""RUN.
+
+This module sets up a run of a sp_validation script, for now leakage_scale.
+
+:Author: Martin Kilbinger <martin.kilbinger@cea.fr>
+
+"""
+
 import os
 from optparse import OptionParser
 
@@ -31,8 +39,8 @@ def parse_options(p_def, short_options, types, help_strings):
     -------
     dict
         Command line options
-    """
 
+    """
     usage = "%prog [OPTIONS]"
     parser = OptionParser(usage=usage)
 
@@ -58,7 +66,11 @@ def parse_options(p_def, short_options, types, help_strings):
             )
 
     parser.add_option(
-        "-v", "--verbose", dest="verbose", action="store_true", help=f"verbose output"
+        "-v",
+        "--verbose",
+        dest="verbose",
+        action="store_true",
+        help=f"verbose output",
     )
 
     options, _ = parser.parse_args()
@@ -68,7 +80,12 @@ def parse_options(p_def, short_options, types, help_strings):
 
 # Maybe put the following function somewhere else, unions_wl/default.py?
 def get_theo_xi_planck(theta, dndz_path):
+    """Get Theo Xi Planck.
 
+    Return theoretical prediction of the shear 2PCF using a Planck
+    best-fit cosmology.
+
+    """
     Om = 0.3153
     sig8 = 0.8111
     ns = 0.9649
@@ -142,7 +159,7 @@ class LeakageScale:
             "dec_star_col": "Dec",
             "e1_PSF_star_col": "E1_PSF_HSM",
             "e2_PSF_star_col": "E2_PSF_HSM",
-            "dndz_path" : None,
+            "dndz_path": None,
             "output_dir": ".",
             "sh": "ngmix",
             "close_pair_tolerance": None,
@@ -178,17 +195,26 @@ class LeakageScale:
             "e2_col": "e2 column name in galaxy catalogue, default={}",
             "input_path_PSF": "input path of the PSF catalogue",
             "hdu_PSF": "HDU number of PSF catalogue, default={}",
-            "ra_star_col": "right ascension column name in star catalogue, default={}",
-            "dec_star_col": "declination column name in star catalogue, default={}",
-            "e1_PSF_star_col": "e1 PSF column name in star catalogue, default={}",
-            "e2_PSF_star_col": "e2 PSF column name in star catalogue, default={}",
-            "dndz_path" : (
+            "ra_star_col": (
+                "right ascension column name in star catalogue, default={}"
+            ),
+            "dec_star_col": (
+                "declination column name in star catalogue, default={}"
+            ),
+            "e1_PSF_star_col": (
+                "e1 PSF column name in star catalogue, default={}"
+            ),
+            "e2_PSF_star_col": (
+                "e2 PSF column name in star catalogue, default={}"
+            ),
+            "dndz_path": (
                 "path to galaxy redshift distribution file, for xi_sys ratio"
             ),
             "output_dir": "output_directory, default={}",
             "sh": "shape measurement method, default={}",
             "close_pair_tolerance": (
-                "tolerance angle for close objects in star catalogue, default={}"
+                "tolerance angle for close objects in star catalogue,"
+                + " default={}"
             ),
             "close_pair_mode": (
                 "mode for close objects in star catalogue, allowed are"
@@ -228,8 +254,8 @@ class LeakageScale:
         """Read Data.
 
         Read input galaxy and PSF catalogues.
-        """
 
+        """
         # Read input shear
         dat_shear = self.read_shear_cat()
 
@@ -291,7 +317,11 @@ class LeakageScale:
         self.do_xi_sys()
 
     def read_shear_cat(self):
-        # Read galaxy catalogue
+        """Read Shear Cat.
+
+        Read shear catalogue.
+
+        """
         in_path = self._params["input_path_shear"]
         _, file_extension = os.path.splitext(in_path)
         if file_extension == '.parquet':
@@ -422,7 +452,9 @@ class LeakageScale:
                 )
 
                 for col in dat_PSF.dtype.names:
-                    dat_PSF_proc[col] = np.append(dat_PSF_proc[col], dat_PSF_mult[col])
+                    dat_PSF_proc[col] = np.append(
+                        dat_PSF_proc[col], dat_PSF_mult[col]
+                    )
             elif mode == "remove":
                 n_rem = len(idx_mult)
                 io.print_stats(
@@ -482,7 +514,7 @@ class LeakageScale:
         return dat_PSF_proc
 
     def compute_corr_gp_pp_alpha(self):
-        """Compute Corr GP PP Alpha
+        """Compute Corr GP PP Alpha.
 
         Compute and plot scale-dependent PSF leakage functions.
 
@@ -526,9 +558,9 @@ class LeakageScale:
         self.r_corr_pp = r_corr_pp
 
     def compute_alpha_mean(self):
-        """Compute Alpha Mean
+        """Compute Alpha Mean.
 
-        Compute weighted mean of the leakage function alpha
+        Compute weighted mean of the leakage function alpha.
 
         """
         self.alpha_leak_mean = util.transform_nan(
@@ -542,11 +574,12 @@ class LeakageScale:
         )
 
     def compute_xi_sys(self):
-        """Compute Xi Sys
+        """Compute Xi Sys.
 
-        Compute galaxy - PSF systematics correlation function
+        Compute galaxy - PSF systematics correlation function.
 
         """
+        # MKDEBUG TODO: check equation for error computation
 
         C_sys_p = self.r_corr_gp.xip**2 / self.r_corr_pp.xip
         C_sys_m = self.r_corr_gp.xim**2 / self.r_corr_pp.xim
@@ -554,7 +587,8 @@ class LeakageScale:
         C_sys_std_p = np.abs(C_sys_p) * np.sqrt(
             (
                 (
-                    (2 * self.r_corr_gp.xip**2 * np.sqrt(self.r_corr_gp.varxip))
+                    (2 * self.r_corr_gp.xip**2
+                        * np.sqrt(self.r_corr_gp.varxip))
                     / self.r_corr_gp.xip
                 )
                 / self.r_corr_gp.xip**2
@@ -566,7 +600,8 @@ class LeakageScale:
         C_sys_std_m = np.abs(C_sys_m) * np.sqrt(
             (
                 (
-                    (2 * self.r_corr_gp.xim**2 * np.sqrt(self.r_corr_gp.varxim))
+                    (2 * self.r_corr_gp.xim**2
+                        * np.sqrt(self.r_corr_gp.varxim))
                     / self.r_corr_gp.xim
                 )
                 / self.r_corr_gp.xim**2
@@ -772,13 +807,12 @@ class LeakageScale:
             self._params["output_dir"],
         )
 
-
     def do_xi_sys(self):
         """Do Xi Sys.
 
         Compute, plot, and save xi_sys function.
-        """
 
+        """
         # Compute xi_sys
         self.compute_xi_sys()
 
