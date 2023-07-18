@@ -1,0 +1,394 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<title>sp_validation.util | sp_validation v0.3.5</title>
+<link href="../../_static/pygments.css" rel="stylesheet"/>
+<link href="../../_static/theme.da0e2e7def0e04be12ba.css" rel="stylesheet"/>
+<link href="../../search.html" rel="search" title="Search"/>
+<link href="../../genindex.html" rel="index" title="Index"/>
+</head>
+<body class="antialiased text-sm sm:text-base text-gray">
+<div class="h-screen xl:grid xl:grid-layout" data-action="keydown@window-&gt;search#focus" data-controller="sidebar search" id="page">
+<a class="block text-xl bg-white py-4 z-20 absolute top-0 h-18 inset-x-0 text-center transform -translate-y-full focus:translate-y-0 focus:outline-none transition-transform duration-75" href="#sp-validation-util" title="Skip navigation links">Skip to content</a>
+<header class="grid-area-header z-10 h-14 sm:h-18">
+<div class="bg-gray-dark shadow-md flex items-center h-full xl:px-2 relative"><div class="flex items-center">
+<button class="xl:hidden h-14 w-14 sm:h-18 sm:w-18 leading-14 sm:leading-18 text-gray-100 hover:bg-gray-700 hover:text-brand focus:outline-none focus:bg-gray-700 focus:text-brand" data-action="sidebar#open" data-sidebar-target="hamburger">
+<span class="sr-only">Open navigation menu</span>
+<svg aria-hidden="true" class="fill-current h-8 w-8" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+</button><a aria-label="Back to homepage" class="hover:bg-gray-700 focus:bg-gray-700 focus:outline-none tooltipped tooltipped-sw" href="../../index.html"><span class="hidden lg:inline-block flex-shrink-0 font-medium text-gray-100 mx-5 leading-14 sm:leading-18 tracking-wider">sp_validation v0.3.5</span>
+</a></div><div class="flex justify-end items-center flex-1"><form action="../../search.html" class="flex print:hidden justify-between items-center leading-14 sm:leading-18 md:ml-4 bg-gray-dark text-gray-300 focus-within:bg-gray-50 focus-within:text-gray-800 focus-within:absolute focus-within:inset-x-0 focus-within:top-0 md:focus-within:w-full md:focus-within:static" data-action="click-&gt;search#focusSearchInput" id="searchbox" method="get">
+<button aria-label="Get search results" class="text-inherit h-14 w-14 sm:h-18 sm:w-18" tabindex="-1">
+<svg aria-hidden="true" class="fill-current stroke-current h-8 w-8" stroke-width="0.5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+</button>
+<input aria-label="Search the docs" class="pr-2 bg-transparent text-inherit focus:outline-none w-0 md:w-auto focus:w-full transition-all duration-100" data-search-target="searchInput" id="search-input" name="q" placeholder="Search the docs" type="search"/>
+</form></div>
+</div>
+</header>
+<aside class="grid-area-sidebar h-full fixed xl:relative inset-y-0 left-0 z-20 xl:z-0 print:hidden overflow-y-auto transition-all transform transform-gpu -translate-x-full opacity-0 duration-300 xl:translate-x-0 xl:opacity-100" data-sidebar-target="sidebar">
+<nav class="h-full overflow-y-auto bg-white text-gray-600 pt-8 flex flex-col" role="navigation">
+<div class="nav-toc flex-1 pl-6"><p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../about.html">About</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../installation.html">Installation</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../quickstart.html">Quickstart Tutorial</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><svg class="expand" data-action="click-&gt;sidebar#expand keydown-&gt;sidebar#expandKeyPressed" tabindex="0" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.html">sp_validation</a></div><ul>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.basic.html">sp_validation.basic</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.calibration.html">sp_validation.calibration</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.cat.html">sp_validation.cat</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.correlation.html">sp_validation.correlation</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.cosmology.html">sp_validation.cosmology</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.info.html">sp_validation.info</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.io.html">sp_validation.io</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.leakage.html">sp_validation.leakage</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.plot_style.html">sp_validation.plot_style</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.plots.html">sp_validation.plots</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.run.html">sp_validation.run</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.survey.html">sp_validation.survey</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.util.html">sp_validation.util</a></div></li>
+</ul>
+</li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../z_ref.html">References</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../contributing.html">Contributing</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../citing.html">Citing this Package</a></div></li>
+</ul>
+</div>
+<button class="text-4xl text-gray-800 p-4 bottom-0 hover:text-brand xl:hidden focus:text-brand self-center" data-action="" title="Close navigation menu">
+<span class="sr-only">Close navigation menu</span>
+<svg aria-hidden="true" class="fill-current stroke-current h-6 w-6" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</aside>
+<main class="px-10 xl:ml-fluid grid-area-main overflow-y-auto flex flex-col h-full mx-0 md:mx-auto xl:mr-0" data-action="scroll-&gt;scroll#showButton" data-controller="scroll"><article class="flex-1" role="main">
+<h1>Source code for sp_validation.util</h1><div class="highlight"><pre>
+<code><span class="sd">"""UTIL.</span>
+
+<span class="sd">:Description: This script contains utility methods.</span>
+
+<span class="sd">:Author: Martin Kilbinger &lt;martin.kilblinger@cea.fr&gt;</span>
+
+<span class="sd">"""</span>
+
+
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="kn">import</span> <span class="n">stats</span>
+
+
+<div class="viewcode-block" id="millify"><a class="viewcode-back" href="../../sp_validation.util.html#sp_validation.util.millify">[docs]</a><span class="k">def</span> <span class="nf">millify</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Millify.</span>
+
+<span class="sd">    Return human-readible names of large numbers.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    n : int</span>
+<span class="sd">        input number</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        output name</span>
+
+<span class="sd">    """</span>
+    <span class="n">millnames</span> <span class="o">=</span> <span class="p">[</span><span class="s1">''</span><span class="p">,</span> <span class="s1">' Thousand'</span><span class="p">,</span> <span class="s1">' Million'</span><span class="p">,</span> <span class="s1">' Billion'</span><span class="p">,</span> <span class="s1">' Trillion'</span><span class="p">]</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">millidx</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+        <span class="mi">0</span><span class="p">,</span>
+        <span class="nb">min</span><span class="p">(</span>
+            <span class="nb">len</span><span class="p">(</span><span class="n">millnames</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="n">n</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">math</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">n</span><span class="p">))</span> <span class="o">/</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="s1">'{n / 10**(3 * millidx):.0f}{millnames[millidx])}'</span></div>
+
+
+<div class="viewcode-block" id="equi_num_bins"><a class="viewcode-back" href="../../sp_validation.util.html#sp_validation.util.equi_num_bins">[docs]</a><span class="k">def</span> <span class="nf">equi_num_bins</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">n_bin</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Equi Num Bins.</span>
+
+<span class="sd">    Return (n_bin+1) equi-numbered bin edges. These define n_bin</span>
+<span class="sd">    bins, each of which contains an equal number of points of values.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    values : list</span>
+<span class="sd">        input data</span>
+<span class="sd">    n_bins : int</span>
+<span class="sd">        number of bins</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.array</span>
+<span class="sd">        equi-numbered bin array</span>
+
+<span class="sd">    """</span>
+    <span class="n">xeqn</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">),</span> <span class="n">n_bin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)),</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">xeqn</span></div>
+
+
+<div class="viewcode-block" id="transform_nan"><a class="viewcode-back" href="../../sp_validation.util.html#sp_validation.util.transform_nan">[docs]</a><span class="k">def</span> <span class="nf">transform_nan</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Transform Nan.</span>
+
+<span class="sd">    Transform a ``nan`` to a very large number.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    value : float</span>
+<span class="sd">        input value</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    float</span>
+<span class="sd">        output value</span>
+
+<span class="sd">    """</span>
+    <span class="n">large</span> <span class="o">=</span> <span class="mf">1e30</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="mf">1e30</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">return</span> <span class="n">res</span></div>
+
+
+<div class="viewcode-block" id="compute_bins_func_2d"><a class="viewcode-back" href="../../sp_validation.util.html#sp_validation.util.compute_bins_func_2d">[docs]</a><span class="k">def</span> <span class="nf">compute_bins_func_2d</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">n_bin</span><span class="p">,</span> <span class="n">mix</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Compute Bins Func 2D.</span>
+
+<span class="sd">    Compute bins in x, y, err, for 2D model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : 2D numpy.ndarray</span>
+<span class="sd">        x_1, x_2-values</span>
+<span class="sd">    y : 2D numpy.ndarray</span>
+<span class="sd">        y_1, y_2-values</span>
+<span class="sd">    n_bin : int</span>
+<span class="sd">        number of bins to create</span>
+<span class="sd">    mix : bool</span>
+<span class="sd">        mixing of component if True</span>
+<span class="sd">    weights  : numpy.ndarrayarray of double, optional, default=None</span>
+<span class="sd">        weights of x points</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        bin centers in x_1, x_2</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        binned values of y_1, y_2 corresponding to x_1, x_2 bins</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        binned errors of y_1, y_2 corresponding to x_1, x_2 bins</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># Compute bins in x</span>
+
+    <span class="c1"># Initialise bins and edges for x</span>
+    <span class="n">x_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_bin</span><span class="p">))</span>
+    <span class="n">x_edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_bin</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+
+    <span class="c1"># Loop over both components, compute equi-numbered bins</span>
+    <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">xeqn</span> <span class="o">=</span> <span class="n">equi_num_bins</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">comp</span><span class="p">],</span> <span class="n">n_bin</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">comp</span><span class="p">],</span> <span class="n">x</span><span class="p">[</span><span class="n">comp</span><span class="p">],</span> <span class="s1">'mean'</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="n">xeqn</span><span class="p">)</span>
+        <span class="n">x_bin</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">statistic</span>
+        <span class="n">x_edges</span><span class="p">[</span><span class="n">comp</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">bin_edges</span>
+
+    <span class="c1"># Compute bins in y and errors</span>
+
+    <span class="c1"># Initialise</span>
+    <span class="n">y_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">n_bin</span><span class="p">))</span>
+    <span class="n">err_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">n_bin</span><span class="p">))</span>
+
+    <span class="c1"># Loop over both components corresponding to x (comp_x),</span>
+    <span class="c1"># and y and err (comp_y)</span>
+    <span class="k">for</span> <span class="n">comp_x</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">comp_y</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+
+            <span class="c1"># No mixing and different y-/x-component: not used</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">mix</span> <span class="ow">and</span> <span class="p">(</span><span class="n">comp_x</span> <span class="o">!=</span> <span class="n">comp_y</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># 1d y bins</span>
+            <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">y_bin</span><span class="p">[</span><span class="n">comp_y</span><span class="p">][</span><span class="n">comp_x</span><span class="p">]</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">[</span><span class="n">comp_x</span><span class="p">],</span>
+                    <span class="n">y</span><span class="p">[</span><span class="n">comp_y</span><span class="p">],</span>
+                    <span class="s1">'mean'</span><span class="p">,</span>
+                    <span class="n">bins</span><span class="o">=</span><span class="n">x_edges</span><span class="p">[</span><span class="n">comp_x</span><span class="p">]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">statistic</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">yw</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">[</span><span class="n">comp_x</span><span class="p">],</span>
+                    <span class="n">y</span><span class="p">[</span><span class="n">comp_y</span><span class="p">]</span> <span class="o">*</span> <span class="n">weights</span><span class="p">,</span>
+                    <span class="s1">'sum'</span><span class="p">,</span>
+                    <span class="n">bins</span><span class="o">=</span><span class="n">x_edges</span><span class="p">[</span><span class="n">comp_x</span><span class="p">]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">statistic</span>
+                <span class="n">w</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">[</span><span class="n">comp_x</span><span class="p">],</span>
+                    <span class="n">weights</span><span class="p">,</span>
+                    <span class="s1">'sum'</span><span class="p">,</span>
+                    <span class="n">bins</span><span class="o">=</span><span class="n">x_edges</span><span class="p">[</span><span class="n">comp_x</span><span class="p">]</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">statistic</span>
+                <span class="n">y_bin</span><span class="p">[</span><span class="n">comp_y</span><span class="p">][</span><span class="n">comp_x</span><span class="p">]</span> <span class="o">=</span> <span class="n">yw</span> <span class="o">/</span> <span class="n">w</span>
+
+            <span class="c1"># 1d numbers</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[</span><span class="n">comp_x</span><span class="p">],</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">comp_y</span><span class="p">],</span>
+                <span class="s1">'count'</span><span class="p">,</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">x_edges</span><span class="p">[</span><span class="n">comp_x</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">statistic</span>
+
+            <span class="c1"># 1d errors of the mean = standard deviation devided by sqrt</span>
+            <span class="c1"># of the numbers</span>
+            <span class="n">err_bin</span><span class="p">[</span><span class="n">comp_y</span><span class="p">][</span><span class="n">comp_x</span><span class="p">]</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">binned_statistic</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[</span><span class="n">comp_x</span><span class="p">],</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">comp_y</span><span class="p">],</span>
+                <span class="s1">'std'</span><span class="p">,</span>
+                <span class="n">bins</span><span class="o">=</span><span class="n">x_edges</span><span class="p">[</span><span class="n">comp_x</span><span class="p">]</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">statistic</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">x_bin</span><span class="p">,</span> <span class="n">y_bin</span><span class="p">,</span> <span class="n">err_bin</span></div>
+
+
+<div class="viewcode-block" id="func_bias_2d_full"><a class="viewcode-back" href="../../sp_validation.util.html#sp_validation.util.func_bias_2d_full">[docs]</a><span class="k">def</span> <span class="nf">func_bias_2d_full</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">'lin'</span><span class="p">,</span> <span class="n">mix</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Func Bias 2D Full.</span>
+
+<span class="sd">    Function of 2D bias model evaluated on full 2D grid.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x1 : list</span>
+<span class="sd">        first component of x-values</span>
+<span class="sd">    x2 : list</span>
+<span class="sd">        second component of x-values</span>
+<span class="sd">    order : str, optional</span>
+<span class="sd">        order of fit, default is 'lin'</span>
+<span class="sd">    mix : bool, optional</span>
+<span class="sd">        mixing between components, default is `False`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.array</span>
+<span class="sd">        first component the 2D model y1(x1, x2) on the (x1, x2)-grid</span>
+<span class="sd">    np.array</span>
+<span class="sd">        second component the 2D model, y2(x1, x2) on the (x1, x2)-grid</span>
+
+<span class="sd">    """</span>
+    <span class="n">len1</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+    <span class="n">len2</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
+
+    <span class="c1"># Initialise both components y1, y2 as 2D arrays</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">len1</span><span class="p">,</span> <span class="n">len2</span><span class="p">))</span>
+    <span class="n">y2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">len1</span><span class="p">,</span> <span class="n">len2</span><span class="p">))</span>
+
+    <span class="c1"># Create 2D mesh for input x1, x2 values</span>
+    <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">'ij'</span><span class="p">)</span>
+
+    <span class="c1"># Compute both components y1, y2 over the meash</span>
+    <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">func_bias_2d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">mix</span><span class="o">=</span><span class="n">mix</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span></div>
+
+
+<div class="viewcode-block" id="func_bias_2d"><a class="viewcode-back" href="../../sp_validation.util.html#sp_validation.util.func_bias_2d">[docs]</a><span class="k">def</span> <span class="nf">func_bias_2d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x1_data</span><span class="p">,</span> <span class="n">x2_data</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">'lin'</span><span class="p">,</span> <span class="n">mix</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Func Bias 2D.</span>
+
+<span class="sd">    Function of 2D bias model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x1_data : float or list of float</span>
+<span class="sd">        first component of x-values of the data</span>
+<span class="sd">    x2_data : float or list of float</span>
+<span class="sd">        second component of x-values of the data</span>
+<span class="sd">    order : str, optional</span>
+<span class="sd">        order of fit, default is 'lin'</span>
+<span class="sd">    mix : bool, optional</span>
+<span class="sd">        mixing between components, default is `False`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list</span>
+<span class="sd">        first component the 2D model, y1(x1, x2). Dimension</span>
+<span class="sd">        is equal to x1_data and x2_data</span>
+<span class="sd">    list</span>
+<span class="sd">        second component the 2D model, y2(x1, x2). Dimension</span>
+<span class="sd">        is equal to x1_data and x2_data</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># Get affine parameters</span>
+    <span class="n">a11</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'a11'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">a22</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'a22'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'c1'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'c2'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="c1"># Compute y-values for affine model</span>
+    <span class="n">y1_model</span> <span class="o">=</span> <span class="n">a11</span> <span class="o">*</span> <span class="n">x1_data</span> <span class="o">+</span> <span class="n">c1</span>
+    <span class="n">y2_model</span> <span class="o">=</span> <span class="n">a22</span> <span class="o">*</span> <span class="n">x2_data</span> <span class="o">+</span> <span class="n">c2</span>
+
+    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s1">'quad'</span><span class="p">:</span>
+        <span class="c1"># Add quadratic part</span>
+        <span class="n">q111</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'q111'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">q222</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'q222'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">y1_model</span> <span class="o">+=</span> <span class="n">q111</span> <span class="o">*</span> <span class="n">x1_data</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="n">y2_model</span> <span class="o">+=</span> <span class="n">q222</span> <span class="o">*</span> <span class="n">x2_data</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="k">if</span> <span class="n">mix</span><span class="p">:</span>
+        <span class="c1"># Add linear mixing part</span>
+        <span class="n">a12</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'a12'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+        <span class="n">y1_model</span> <span class="o">+=</span> <span class="n">a12</span> <span class="o">*</span> <span class="n">x2_data</span>
+        <span class="n">y2_model</span> <span class="o">+=</span> <span class="n">a12</span> <span class="o">*</span> <span class="n">x1_data</span>
+
+        <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s1">'quad'</span><span class="p">:</span>
+            <span class="c1"># Add quadratic mixing part</span>
+            <span class="n">q112</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'q112'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">q122</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'q122'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">q212</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'q212'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">q211</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'q211'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">y1_model</span> <span class="o">+=</span> <span class="n">q112</span> <span class="o">*</span> <span class="n">x1_data</span> <span class="o">*</span> <span class="n">x2_data</span> <span class="o">+</span> <span class="n">q122</span> <span class="o">*</span> <span class="n">x2_data</span> <span class="o">**</span> <span class="mi">2</span>
+            <span class="n">y2_model</span> <span class="o">+=</span> <span class="n">q212</span> <span class="o">*</span> <span class="n">x1_data</span> <span class="o">*</span> <span class="n">x2_data</span> <span class="o">+</span> <span class="n">q211</span> <span class="o">*</span> <span class="n">x1_data</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="n">y1_model</span><span class="p">,</span> <span class="n">y2_model</span></div>
+</code></pre></div>
+</article>
+<footer>
+<div class="mt-20 mb-4 text-sm text-gray-700">© 2021, Martin Kilbinger Last updated: 18 Jul, 2023. Made with <a href="https://www.sphinx-doc.org">Sphinx 4.3.1</a></div>
+</footer></main>
+<button class="fixed bottom-0 right-0 z-20 opacity-0 p-4 m-4 tracking-wide bg-gray-900 text-gray-100 transition transform transform-gpu duration-500 translate-y-full" data-action="search#hideSnackbar" data-search-target="snackbar">
+  Clear highlights
+</button><div class="fixed hidden inset-0 bg-black bg-opacity-50" data-action="click-&gt;sidebar#close" data-sidebar-target="screen">
+</div>
+</div>
+<script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+<script src="../../_static/jquery.js"></script>
+<script src="../../_static/underscore.js"></script>
+<script src="../../_static/doctools.js"></script>
+<script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+<script src="../../_static/theme.3666d2347a4c66e5d7a8.js"></script>
+</body>
+</html>

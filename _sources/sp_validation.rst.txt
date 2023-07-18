@@ -1,0 +1,29 @@
+sp\_validation
+==============
+
+
+.. automodule:: sp_validation
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   sp_validation.basic
+   sp_validation.calibration
+   sp_validation.cat
+   sp_validation.correlation
+   sp_validation.cosmology
+   sp_validation.galaxy
+   sp_validation.info
+   sp_validation.io
+   sp_validation.leakage
+   sp_validation.plot_style
+   sp_validation.plots
+   sp_validation.run
+   sp_validation.survey
+   sp_validation.util

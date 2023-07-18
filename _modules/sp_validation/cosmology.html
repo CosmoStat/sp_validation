@@ -1,0 +1,437 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<title>sp_validation.cosmology | sp_validation v0.3.5</title>
+<link href="../../_static/pygments.css" rel="stylesheet"/>
+<link href="../../_static/theme.da0e2e7def0e04be12ba.css" rel="stylesheet"/>
+<link href="../../search.html" rel="search" title="Search"/>
+<link href="../../genindex.html" rel="index" title="Index"/>
+</head>
+<body class="antialiased text-sm sm:text-base text-gray">
+<div class="h-screen xl:grid xl:grid-layout" data-action="keydown@window-&gt;search#focus" data-controller="sidebar search" id="page">
+<a class="block text-xl bg-white py-4 z-20 absolute top-0 h-18 inset-x-0 text-center transform -translate-y-full focus:translate-y-0 focus:outline-none transition-transform duration-75" href="#sp-validation-cosmology" title="Skip navigation links">Skip to content</a>
+<header class="grid-area-header z-10 h-14 sm:h-18">
+<div class="bg-gray-dark shadow-md flex items-center h-full xl:px-2 relative"><div class="flex items-center">
+<button class="xl:hidden h-14 w-14 sm:h-18 sm:w-18 leading-14 sm:leading-18 text-gray-100 hover:bg-gray-700 hover:text-brand focus:outline-none focus:bg-gray-700 focus:text-brand" data-action="sidebar#open" data-sidebar-target="hamburger">
+<span class="sr-only">Open navigation menu</span>
+<svg aria-hidden="true" class="fill-current h-8 w-8" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+</button><a aria-label="Back to homepage" class="hover:bg-gray-700 focus:bg-gray-700 focus:outline-none tooltipped tooltipped-sw" href="../../index.html"><span class="hidden lg:inline-block flex-shrink-0 font-medium text-gray-100 mx-5 leading-14 sm:leading-18 tracking-wider">sp_validation v0.3.5</span>
+</a></div><div class="flex justify-end items-center flex-1"><form action="../../search.html" class="flex print:hidden justify-between items-center leading-14 sm:leading-18 md:ml-4 bg-gray-dark text-gray-300 focus-within:bg-gray-50 focus-within:text-gray-800 focus-within:absolute focus-within:inset-x-0 focus-within:top-0 md:focus-within:w-full md:focus-within:static" data-action="click-&gt;search#focusSearchInput" id="searchbox" method="get">
+<button aria-label="Get search results" class="text-inherit h-14 w-14 sm:h-18 sm:w-18" tabindex="-1">
+<svg aria-hidden="true" class="fill-current stroke-current h-8 w-8" stroke-width="0.5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+</button>
+<input aria-label="Search the docs" class="pr-2 bg-transparent text-inherit focus:outline-none w-0 md:w-auto focus:w-full transition-all duration-100" data-search-target="searchInput" id="search-input" name="q" placeholder="Search the docs" type="search"/>
+</form></div>
+</div>
+</header>
+<aside class="grid-area-sidebar h-full fixed xl:relative inset-y-0 left-0 z-20 xl:z-0 print:hidden overflow-y-auto transition-all transform transform-gpu -translate-x-full opacity-0 duration-300 xl:translate-x-0 xl:opacity-100" data-sidebar-target="sidebar">
+<nav class="h-full overflow-y-auto bg-white text-gray-600 pt-8 flex flex-col" role="navigation">
+<div class="nav-toc flex-1 pl-6"><p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../about.html">About</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../installation.html">Installation</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../quickstart.html">Quickstart Tutorial</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><svg class="expand" data-action="click-&gt;sidebar#expand keydown-&gt;sidebar#expandKeyPressed" tabindex="0" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.html">sp_validation</a></div><ul>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.basic.html">sp_validation.basic</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.calibration.html">sp_validation.calibration</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.cat.html">sp_validation.cat</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.correlation.html">sp_validation.correlation</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.cosmology.html">sp_validation.cosmology</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.info.html">sp_validation.info</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.io.html">sp_validation.io</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.leakage.html">sp_validation.leakage</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.plot_style.html">sp_validation.plot_style</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.plots.html">sp_validation.plots</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.run.html">sp_validation.run</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.survey.html">sp_validation.survey</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.util.html">sp_validation.util</a></div></li>
+</ul>
+</li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../z_ref.html">References</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../contributing.html">Contributing</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../citing.html">Citing this Package</a></div></li>
+</ul>
+</div>
+<button class="text-4xl text-gray-800 p-4 bottom-0 hover:text-brand xl:hidden focus:text-brand self-center" data-action="" title="Close navigation menu">
+<span class="sr-only">Close navigation menu</span>
+<svg aria-hidden="true" class="fill-current stroke-current h-6 w-6" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</aside>
+<main class="px-10 xl:ml-fluid grid-area-main overflow-y-auto flex flex-col h-full mx-0 md:mx-auto xl:mr-0" data-action="scroll-&gt;scroll#showButton" data-controller="scroll"><article class="flex-1" role="main">
+<h1>Source code for sp_validation.cosmology</h1><div class="highlight"><pre>
+<code><span class="sd">"""COSMOLOGY.</span>
+
+<span class="sd">:Name: cosmology.py</span>
+
+<span class="sd">:Description: This file contains methods for science</span>
+<span class="sd">              validation of a weak-lensing shape catalogue.</span>
+<span class="sd">              Depends on a cosmological model.</span>
+
+<span class="sd">:Author: Axel Guinot, Martin Kilbinger</span>
+
+<span class="sd">"""</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.spatial</span> <span class="kn">import</span> <span class="n">cKDTree</span>
+<span class="kn">from</span> <span class="nn">joblib</span> <span class="kn">import</span> <span class="n">Parallel</span><span class="p">,</span> <span class="n">delayed</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+<span class="kn">from</span> <span class="nn">astropy</span> <span class="kn">import</span> <span class="n">cosmology</span>
+<span class="kn">from</span> <span class="nn">astropy.io</span> <span class="kn">import</span> <span class="n">fits</span>
+
+<span class="kn">from</span> <span class="nn">lenspack.geometry.projections.gnom</span> <span class="kn">import</span> <span class="n">radec2xy</span>
+
+<span class="kn">from</span> <span class="nn">cs_util</span> <span class="kn">import</span> <span class="n">canfar</span>
+
+<span class="kn">from</span> <span class="nn">sp_validation</span> <span class="kn">import</span> <span class="n">basic</span>
+<span class="kn">from</span> <span class="nn">sp_validation.survey</span> <span class="kn">import</span> <span class="n">get_footprint</span>
+
+
+<span class="c1"># For theoretical modelling of cluster lensing</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">clmm</span>
+<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'Could not import clmm, continuing...'</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># import clmm.modeling as cm</span>
+    <span class="kn">from</span> <span class="nn">clmm</span> <span class="kn">import</span> <span class="n">Cosmology</span>
+<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'Could not import clmm.Cosmology, continuing...'</span><span class="p">)</span>
+
+
+<span class="c1"># For correlation function calculations</span>
+<span class="kn">import</span> <span class="nn">treecorr</span>
+
+<span class="c1"># For theoretical modelling of the shear-shear correlation function</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pyccl</span> <span class="k">as</span> <span class="nn">ccl</span>
+<span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">'Could not import pyccl'</span><span class="p">)</span>
+
+
+<span class="c1"># Convergence maps</span>
+
+<div class="viewcode-block" id="stack_mm3"><a class="viewcode-back" href="../../sp_validation.cosmology.html#sp_validation.cosmology.stack_mm3">[docs]</a><span class="k">def</span> <span class="nf">stack_mm3</span><span class="p">(</span>
+    <span class="n">ra</span><span class="p">,</span>
+    <span class="n">dec</span><span class="p">,</span>
+    <span class="n">e1</span><span class="p">,</span>
+    <span class="n">e2</span><span class="p">,</span>
+    <span class="n">w</span><span class="p">,</span>
+    <span class="n">cluster_ra</span><span class="p">,</span>
+    <span class="n">cluster_dec</span><span class="p">,</span>
+    <span class="n">cluster_z</span><span class="p">,</span>
+    <span class="n">radius</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+    <span class="n">n_match</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span>
+    <span class="n">tree</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Add docstring.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># Project data</span>
+    <span class="n">mean_dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span>
+    <span class="n">mean_ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ra</span><span class="p">)</span>
+    <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">radec2xy</span><span class="p">(</span><span class="n">mean_ra</span><span class="p">,</span> <span class="n">mean_dec</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
+    <span class="n">xx_clust</span><span class="p">,</span> <span class="n">yy_clust</span> <span class="o">=</span> <span class="n">radec2xy</span><span class="p">(</span><span class="n">mean_ra</span><span class="p">,</span> <span class="n">mean_dec</span><span class="p">,</span> <span class="n">cluster_ra</span><span class="p">,</span> <span class="n">cluster_dec</span><span class="p">)</span>
+
+    <span class="c1"># From Z to comobile</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="mf">0.7</span>
+    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">cosmology</span><span class="o">.</span><span class="n">FlatLambdaCDM</span><span class="p">(</span><span class="n">H0</span><span class="o">=</span><span class="n">h</span> <span class="o">*</span> <span class="mf">100.</span><span class="p">,</span> <span class="n">Om0</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+    <span class="n">deg_to_rad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.</span>
+
+    <span class="k">if</span> <span class="n">tree</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tree</span> <span class="o">=</span> <span class="n">cKDTree</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+
+    <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">ra_c</span><span class="p">,</span> <span class="n">dec_c</span><span class="p">,</span> <span class="n">z_c</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span>
+        <span class="nb">zip</span><span class="p">(</span><span class="n">xx_clust</span><span class="p">,</span> <span class="n">yy_clust</span><span class="p">,</span> <span class="n">cluster_z</span><span class="p">),</span>
+        <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">xx_clust</span><span class="p">),</span>
+    <span class="p">):</span>
+
+        <span class="n">d_ang</span> <span class="o">=</span> <span class="n">cosmo</span><span class="o">.</span><span class="n">angular_diameter_distance</span><span class="p">(</span><span class="n">z_c</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>   <span class="c1"># Rad</span>
+
+        <span class="n">R_max_ang</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">/</span> <span class="n">d_ang</span>  <span class="c1"># Rad         / deg_to_rad  # Deg</span>
+
+        <span class="n">res_match</span> <span class="o">=</span> <span class="n">tree</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra_c</span><span class="p">,</span> <span class="n">dec_c</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">n_match</span><span class="p">)</span>
+
+        <span class="n">ind_gal</span> <span class="o">=</span> <span class="n">res_match</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">res_match</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">R_max_ang</span><span class="p">)]</span>
+
+        <span class="n">ra_centered</span> <span class="o">=</span> <span class="p">(</span><span class="n">xx</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]</span> <span class="o">-</span> <span class="n">ra_c</span><span class="p">)</span> <span class="o">/</span> <span class="n">R_max_ang</span>
+        <span class="n">dec_centered</span> <span class="o">=</span> <span class="p">(</span><span class="n">yy</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]</span> <span class="o">-</span> <span class="n">dec_c</span><span class="p">)</span> <span class="o">/</span> <span class="n">R_max_ang</span>
+        <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">all_ra</span> <span class="o">=</span> <span class="n">ra_centered</span>
+            <span class="n">all_dec</span> <span class="o">=</span> <span class="n">dec_centered</span>
+            <span class="n">all_e1</span> <span class="o">=</span> <span class="n">e1</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]</span>
+            <span class="n">all_e2</span> <span class="o">=</span> <span class="n">e2</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]</span>
+            <span class="n">all_w</span> <span class="o">=</span> <span class="n">w</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">all_ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">all_ra</span><span class="p">,</span> <span class="n">ra_centered</span><span class="p">))</span>
+            <span class="n">all_dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">all_dec</span><span class="p">,</span> <span class="n">dec_centered</span><span class="p">))</span>
+            <span class="n">all_e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">all_e1</span><span class="p">,</span> <span class="n">e1</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]))</span>
+            <span class="n">all_e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">all_e2</span><span class="p">,</span> <span class="n">e2</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]))</span>
+            <span class="n">all_w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">all_w</span><span class="p">,</span> <span class="n">w</span><span class="p">[</span><span class="n">ind_gal</span><span class="p">]))</span>
+
+        <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="n">all_ra</span><span class="p">,</span> <span class="n">all_dec</span><span class="p">,</span> <span class="n">all_e1</span><span class="p">,</span> <span class="n">all_e2</span><span class="p">,</span> <span class="n">all_w</span></div>
+
+
+<div class="viewcode-block" id="gamma_T_tc"><a class="viewcode-back" href="../../sp_validation.cosmology.html#sp_validation.cosmology.gamma_T_tc">[docs]</a><span class="k">def</span> <span class="nf">gamma_T_tc</span><span class="p">(</span><span class="n">ra_pos</span><span class="p">,</span> <span class="n">dec_pos</span><span class="p">,</span> <span class="n">ra_cat</span><span class="p">,</span> <span class="n">dec_cat</span><span class="p">,</span> <span class="n">e1_cat</span><span class="p">,</span> <span class="n">e2_cat</span><span class="p">,</span> <span class="n">w_cat</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Gamma T tc.</span>
+
+<span class="sd">    Compute cross-correlation between positions (forground) and lensing</span>
+<span class="sd">    (background) catalogue. Also called galaxy-galaxy lensing or population</span>
+<span class="sd">    lensing.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ra_pos : array of float</span>
+<span class="sd">        RA coordinates of foreground catalogue</span>
+<span class="sd">    dec_pos : array of float</span>
+<span class="sd">        DEC coordinates of foreground catalogue</span>
+<span class="sd">    ra_cat : array of float</span>
+<span class="sd">        RA coordinates of background catalogue</span>
+<span class="sd">    dec_cat : array of float</span>
+<span class="sd">        DEC coordinates of background catalogue</span>
+<span class="sd">    e1_cat : array of float</span>
+<span class="sd">        ellipticity component 1 of background catalogue</span>
+<span class="sd">    e2_cat : array of float</span>
+<span class="sd">        ellipticity component 2 of background catalogue</span>
+<span class="sd">    w_cat : array of float, optional, default=None</span>
+<span class="sd">        weight of background catalogue</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    meanr : array of float</span>
+<span class="sd">        spatial bin centres</span>
+<span class="sd">    meanlogr : array of float</span>
+<span class="sd">        log of spatial bin centres</span>
+<span class="sd">    xi : array of float</span>
+<span class="sd">        tangential shear (E-mode)</span>
+<span class="sd">    xi_im : array of float</span>
+<span class="sd">        cross-component shear (B- or parity mode)</span>
+<span class="sd">    rms : array of float</span>
+<span class="sd">        R.M.S of both xi and xi_im</span>
+<span class="sd">    """</span>
+    <span class="n">cat_pos</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">Catalog</span><span class="p">(</span>
+        <span class="n">ra</span><span class="o">=</span><span class="n">ra_pos</span><span class="p">,</span>
+        <span class="n">dec</span><span class="o">=</span><span class="n">dec_pos</span><span class="p">,</span>
+        <span class="n">ra_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="n">dec_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cat_gal</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">Catalog</span><span class="p">(</span>
+        <span class="n">ra</span><span class="o">=</span><span class="n">ra_cat</span><span class="p">,</span>
+        <span class="n">dec</span><span class="o">=</span><span class="n">dec_cat</span><span class="p">,</span>
+        <span class="n">g1</span><span class="o">=</span><span class="n">e1_cat</span><span class="p">,</span>
+        <span class="n">g2</span><span class="o">=</span><span class="n">e2_cat</span><span class="p">,</span>
+        <span class="n">w</span><span class="o">=</span><span class="n">w_cat</span><span class="p">,</span>
+        <span class="n">ra_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="n">dec_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">TreeCorrConfig</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">'ra_units'</span><span class="p">:</span> <span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="s1">'dec_units'</span><span class="p">:</span> <span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="s1">'max_sep'</span><span class="p">:</span> <span class="mi">60</span><span class="p">,</span>
+        <span class="s1">'min_sep'</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">,</span>
+        <span class="s1">'sep_units'</span><span class="p">:</span> <span class="s1">'arcminutes'</span><span class="p">,</span>
+        <span class="s1">'nbins'</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">ng</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">NGCorrelation</span><span class="p">(</span><span class="n">TreeCorrConfig</span><span class="p">)</span>
+
+    <span class="n">ng</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">cat_pos</span><span class="p">,</span> <span class="n">cat_gal</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ng</span><span class="o">.</span><span class="n">meanr</span><span class="p">,</span> <span class="n">ng</span><span class="o">.</span><span class="n">meanlogr</span><span class="p">,</span> <span class="n">ng</span><span class="o">.</span><span class="n">xi</span><span class="p">,</span> <span class="n">ng</span><span class="o">.</span><span class="n">xi_im</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">ng</span><span class="o">.</span><span class="n">varxi</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="xi_gal_gal_tc"><a class="viewcode-back" href="../../sp_validation.cosmology.html#sp_validation.cosmology.xi_gal_gal_tc">[docs]</a><span class="k">def</span> <span class="nf">xi_gal_gal_tc</span><span class="p">(</span>
+    <span class="n">ra_gal</span><span class="p">,</span>
+    <span class="n">dec_gal</span><span class="p">,</span>
+    <span class="n">e1_gal</span><span class="p">,</span>
+    <span class="n">e2_gal</span><span class="p">,</span>
+    <span class="n">w_gal</span><span class="p">,</span>
+    <span class="n">ra_star</span><span class="p">,</span>
+    <span class="n">dec_star</span><span class="p">,</span>
+    <span class="n">e1_star</span><span class="p">,</span>
+    <span class="n">e2_star</span><span class="p">,</span>
+    <span class="n">w_star</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">theta_min_amin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">theta_max_amin</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+    <span class="n">n_theta</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Add docstring.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    """</span>
+    <span class="n">cat_gal</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">Catalog</span><span class="p">(</span>
+        <span class="n">ra</span><span class="o">=</span><span class="n">ra_gal</span><span class="p">,</span>
+        <span class="n">dec</span><span class="o">=</span><span class="n">dec_gal</span><span class="p">,</span>
+        <span class="n">g1</span><span class="o">=</span><span class="n">e1_gal</span><span class="p">,</span>
+        <span class="n">g2</span><span class="o">=</span><span class="n">e2_gal</span><span class="p">,</span>
+        <span class="n">w</span><span class="o">=</span><span class="n">w_gal</span><span class="p">,</span>
+        <span class="n">ra_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="n">dec_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">cat_star</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">Catalog</span><span class="p">(</span>
+        <span class="n">ra</span><span class="o">=</span><span class="n">ra_star</span><span class="p">,</span>
+        <span class="n">dec</span><span class="o">=</span><span class="n">dec_star</span><span class="p">,</span>
+        <span class="n">g1</span><span class="o">=</span><span class="n">e1_star</span><span class="p">,</span>
+        <span class="n">g2</span><span class="o">=</span><span class="n">e2_star</span><span class="p">,</span>
+        <span class="n">w</span><span class="o">=</span><span class="n">w_star</span><span class="p">,</span>
+        <span class="n">ra_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="n">dec_units</span><span class="o">=</span><span class="s1">'degrees'</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">TreeCorrConfig</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">'ra_units'</span><span class="p">:</span> <span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="s1">'dec_units'</span><span class="p">:</span> <span class="s1">'degrees'</span><span class="p">,</span>
+        <span class="s1">'sep_units'</span><span class="p">:</span> <span class="s1">'arcminutes'</span><span class="p">,</span>
+        <span class="s1">'min_sep'</span><span class="p">:</span> <span class="n">theta_min_amin</span><span class="p">,</span>
+        <span class="s1">'max_sep'</span><span class="p">:</span> <span class="n">theta_max_amin</span><span class="p">,</span>
+        <span class="s1">'nbins'</span><span class="p">:</span> <span class="n">n_theta</span>
+    <span class="p">}</span>
+
+    <span class="n">ng</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">GGCorrelation</span><span class="p">(</span><span class="n">TreeCorrConfig</span><span class="p">)</span>
+
+    <span class="n">ng</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">cat_gal</span><span class="p">,</span> <span class="n">cat_star</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">ng</span></div>
+
+
+<div class="viewcode-block" id="get_theo_xi"><a class="viewcode-back" href="../../sp_validation.cosmology.html#sp_validation.cosmology.get_theo_xi">[docs]</a><span class="k">def</span> <span class="nf">get_theo_xi</span><span class="p">(</span>
+    <span class="n">theta</span><span class="p">,</span>
+    <span class="n">z</span><span class="p">,</span>
+    <span class="n">nz</span><span class="p">,</span>
+    <span class="n">Omega_m</span><span class="o">=</span><span class="mf">0.295</span><span class="p">,</span>
+    <span class="n">h</span><span class="o">=</span><span class="mf">0.672</span><span class="p">,</span>
+    <span class="n">Omega_b</span><span class="o">=</span><span class="mf">0.0516</span><span class="p">,</span>
+    <span class="n">sig8</span><span class="o">=</span><span class="mf">0.7745</span><span class="p">,</span>
+    <span class="n">ns</span><span class="o">=</span><span class="mf">1.044</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Add docstring.</span>
+
+<span class="sd">    ...</span>
+
+<span class="sd">    """</span>
+    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">Cosmology</span><span class="p">(</span>
+        <span class="n">Omega_c</span><span class="o">=</span><span class="n">Omega_m</span> <span class="o">-</span> <span class="n">Omega_b</span><span class="p">,</span>
+        <span class="n">Omega_b</span><span class="o">=</span><span class="n">Omega_b</span><span class="p">,</span>
+        <span class="n">h</span><span class="o">=</span><span class="n">h</span><span class="p">,</span>
+        <span class="n">sigma8</span><span class="o">=</span><span class="n">sig8</span><span class="p">,</span>
+        <span class="n">n_s</span><span class="o">=</span><span class="n">ns</span><span class="p">,</span>
+        <span class="n">transfer_function</span><span class="o">=</span><span class="s1">'eisenstein_hu'</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Create objects to represent tracers of the weak lensing signal with this</span>
+    <span class="c1"># number density (with has_intrinsic_alignment=False)</span>
+    <span class="n">lens1</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">WeakLensingTracer</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">dndz</span><span class="o">=</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz</span><span class="p">))</span>
+
+    <span class="c1"># Calculate the angular cross-spectrum of the two tracers as a function</span>
+    <span class="c1"># of ell</span>
+    <span class="n">ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">logspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="mi">10000</span><span class="p">),</span> <span class="mi">1000</span><span class="p">)</span>
+    <span class="n">cl</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">angular_cl</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="n">lens1</span><span class="p">,</span> <span class="n">lens1</span><span class="p">,</span> <span class="n">ell</span><span class="p">)</span>
+
+    <span class="n">xip_fit</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">correlation</span><span class="p">(</span>
+        <span class="n">cosmo</span><span class="p">,</span>
+        <span class="n">ell</span><span class="p">,</span>
+        <span class="n">cl</span><span class="p">,</span>
+        <span class="n">theta</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span>
+        <span class="n">corr_type</span><span class="o">=</span><span class="s1">'L+'</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s1">'Bessel'</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">xim_fit</span> <span class="o">=</span> <span class="n">ccl</span><span class="o">.</span><span class="n">correlation</span><span class="p">(</span>
+        <span class="n">cosmo</span><span class="p">,</span>
+        <span class="n">ell</span><span class="p">,</span>
+        <span class="n">cl</span><span class="p">,</span>
+        <span class="n">theta</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span>
+        <span class="n">corr_type</span><span class="o">=</span><span class="s1">'L-'</span><span class="p">,</span>
+        <span class="n">method</span><span class="o">=</span><span class="s1">'Bessel'</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">xip_fit</span><span class="p">,</span> <span class="n">xim_fit</span></div>
+
+
+<div class="viewcode-block" id="get_clusters"><a class="viewcode-back" href="../../sp_validation.cosmology.html#sp_validation.cosmology.get_clusters">[docs]</a><span class="k">def</span> <span class="nf">get_clusters</span><span class="p">(</span>
+    <span class="n">cluster_cat_name</span><span class="p">,</span>
+    <span class="n">vos_dir</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="p">,</span>
+    <span class="n">field_name</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Get Clusters.</span>
+
+<span class="sd">    Return cluster information from file on VOspace</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cluster_cat_name : string</span>
+<span class="sd">        cluster catalogue file name</span>
+<span class="sd">    vos_dir : string</span>
+<span class="sd">        directory on VOspace</span>
+<span class="sd">    field_name : string</span>
+<span class="sd">        survey footprint name</span>
+<span class="sd">    verbose : bool, optional, default=False</span>
+<span class="sd">        verbose output if True</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        cluster information (ra, dec, z, SZ-mass)</span>
+<span class="sd">    """</span>
+    <span class="n">out_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">cluster_cat_name</span><span class="si">}</span><span class="s1">'</span>
+    <span class="n">canfar</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">vos_dir</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">cluster_cat_name</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span>
+        <span class="n">out_path</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
+    <span class="p">)</span>
+
+    <span class="n">cluster_cat</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">out_path</span><span class="p">)</span>
+    <span class="n">m_good_cluster</span> <span class="o">=</span> <span class="p">(</span><span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'MSZ'</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'COSMO'</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">m_cluster_foot</span> <span class="o">=</span> <span class="n">get_footprint</span><span class="p">(</span>
+        <span class="n">field_name</span><span class="p">,</span>
+        <span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'RA'</span><span class="p">][</span><span class="n">m_good_cluster</span><span class="p">],</span>
+        <span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'DEC'</span><span class="p">][</span><span class="n">m_good_cluster</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">cluster_cut</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">'ra'</span><span class="p">:</span> <span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'RA'</span><span class="p">][</span><span class="n">m_good_cluster</span><span class="p">][</span><span class="n">m_cluster_foot</span><span class="p">],</span>
+        <span class="s1">'dec'</span><span class="p">:</span> <span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'DEC'</span><span class="p">][</span><span class="n">m_good_cluster</span><span class="p">][</span><span class="n">m_cluster_foot</span><span class="p">],</span>
+        <span class="s1">'z'</span><span class="p">:</span> <span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'REDSHIFT'</span><span class="p">][</span><span class="n">m_good_cluster</span><span class="p">][</span><span class="n">m_cluster_foot</span><span class="p">],</span>
+        <span class="s1">'M'</span><span class="p">:</span> <span class="n">cluster_cat</span><span class="p">[</span><span class="s1">'MSZ'</span><span class="p">][</span><span class="n">m_good_cluster</span><span class="p">][</span><span class="n">m_cluster_foot</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e14</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">cluster_cut</span></div>
+</code></pre></div>
+</article>
+<footer>
+<div class="mt-20 mb-4 text-sm text-gray-700">© 2021, Martin Kilbinger Last updated: 18 Jul, 2023. Made with <a href="https://www.sphinx-doc.org">Sphinx 4.3.1</a></div>
+</footer></main>
+<button class="fixed bottom-0 right-0 z-20 opacity-0 p-4 m-4 tracking-wide bg-gray-900 text-gray-100 transition transform transform-gpu duration-500 translate-y-full" data-action="search#hideSnackbar" data-search-target="snackbar">
+  Clear highlights
+</button><div class="fixed hidden inset-0 bg-black bg-opacity-50" data-action="click-&gt;sidebar#close" data-sidebar-target="screen">
+</div>
+</div>
+<script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+<script src="../../_static/jquery.js"></script>
+<script src="../../_static/underscore.js"></script>
+<script src="../../_static/doctools.js"></script>
+<script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+<script src="../../_static/theme.3666d2347a4c66e5d7a8.js"></script>
+</body>
+</html>

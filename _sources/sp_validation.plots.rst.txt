@@ -1,0 +1,7 @@
+sp\_validation.plots
+--------------------
+
+.. automodule:: sp_validation.plots
+   :members:
+   :undoc-members:
+   :show-inheritance:

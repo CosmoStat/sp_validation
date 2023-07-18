@@ -1,0 +1,1294 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<title>sp_validation.leakage | sp_validation v0.3.5</title>
+<link href="../../_static/pygments.css" rel="stylesheet"/>
+<link href="../../_static/theme.da0e2e7def0e04be12ba.css" rel="stylesheet"/>
+<link href="../../search.html" rel="search" title="Search"/>
+<link href="../../genindex.html" rel="index" title="Index"/>
+</head>
+<body class="antialiased text-sm sm:text-base text-gray">
+<div class="h-screen xl:grid xl:grid-layout" data-action="keydown@window-&gt;search#focus" data-controller="sidebar search" id="page">
+<a class="block text-xl bg-white py-4 z-20 absolute top-0 h-18 inset-x-0 text-center transform -translate-y-full focus:translate-y-0 focus:outline-none transition-transform duration-75" href="#sp-validation-leakage" title="Skip navigation links">Skip to content</a>
+<header class="grid-area-header z-10 h-14 sm:h-18">
+<div class="bg-gray-dark shadow-md flex items-center h-full xl:px-2 relative"><div class="flex items-center">
+<button class="xl:hidden h-14 w-14 sm:h-18 sm:w-18 leading-14 sm:leading-18 text-gray-100 hover:bg-gray-700 hover:text-brand focus:outline-none focus:bg-gray-700 focus:text-brand" data-action="sidebar#open" data-sidebar-target="hamburger">
+<span class="sr-only">Open navigation menu</span>
+<svg aria-hidden="true" class="fill-current h-8 w-8" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+</button><a aria-label="Back to homepage" class="hover:bg-gray-700 focus:bg-gray-700 focus:outline-none tooltipped tooltipped-sw" href="../../index.html"><span class="hidden lg:inline-block flex-shrink-0 font-medium text-gray-100 mx-5 leading-14 sm:leading-18 tracking-wider">sp_validation v0.3.5</span>
+</a></div><div class="flex justify-end items-center flex-1"><form action="../../search.html" class="flex print:hidden justify-between items-center leading-14 sm:leading-18 md:ml-4 bg-gray-dark text-gray-300 focus-within:bg-gray-50 focus-within:text-gray-800 focus-within:absolute focus-within:inset-x-0 focus-within:top-0 md:focus-within:w-full md:focus-within:static" data-action="click-&gt;search#focusSearchInput" id="searchbox" method="get">
+<button aria-label="Get search results" class="text-inherit h-14 w-14 sm:h-18 sm:w-18" tabindex="-1">
+<svg aria-hidden="true" class="fill-current stroke-current h-8 w-8" stroke-width="0.5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+</button>
+<input aria-label="Search the docs" class="pr-2 bg-transparent text-inherit focus:outline-none w-0 md:w-auto focus:w-full transition-all duration-100" data-search-target="searchInput" id="search-input" name="q" placeholder="Search the docs" type="search"/>
+</form></div>
+</div>
+</header>
+<aside class="grid-area-sidebar h-full fixed xl:relative inset-y-0 left-0 z-20 xl:z-0 print:hidden overflow-y-auto transition-all transform transform-gpu -translate-x-full opacity-0 duration-300 xl:translate-x-0 xl:opacity-100" data-sidebar-target="sidebar">
+<nav class="h-full overflow-y-auto bg-white text-gray-600 pt-8 flex flex-col" role="navigation">
+<div class="nav-toc flex-1 pl-6"><p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../about.html">About</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../installation.html">Installation</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../quickstart.html">Quickstart Tutorial</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><svg class="expand" data-action="click-&gt;sidebar#expand keydown-&gt;sidebar#expandKeyPressed" tabindex="0" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.html">sp_validation</a></div><ul>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.basic.html">sp_validation.basic</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.calibration.html">sp_validation.calibration</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.cat.html">sp_validation.cat</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.correlation.html">sp_validation.correlation</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.cosmology.html">sp_validation.cosmology</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.info.html">sp_validation.info</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.io.html">sp_validation.io</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.leakage.html">sp_validation.leakage</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.plot_style.html">sp_validation.plot_style</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.plots.html">sp_validation.plots</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.run.html">sp_validation.run</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.survey.html">sp_validation.survey</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../sp_validation.util.html">sp_validation.util</a></div></li>
+</ul>
+</li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../z_ref.html">References</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../contributing.html">Contributing</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="../../citing.html">Citing this Package</a></div></li>
+</ul>
+</div>
+<button class="text-4xl text-gray-800 p-4 bottom-0 hover:text-brand xl:hidden focus:text-brand self-center" data-action="" title="Close navigation menu">
+<span class="sr-only">Close navigation menu</span>
+<svg aria-hidden="true" class="fill-current stroke-current h-6 w-6" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</aside>
+<main class="px-10 xl:ml-fluid grid-area-main overflow-y-auto flex flex-col h-full mx-0 md:mx-auto xl:mr-0" data-action="scroll-&gt;scroll#showButton" data-controller="scroll"><article class="flex-1" role="main">
+<h1>Source code for sp_validation.leakage</h1><div class="highlight"><pre>
+<code><span class="sd">"""LEAKAGE.</span>
+
+<span class="sd">:Name: leakage.py</span>
+
+<span class="sd">:Description: This package contains methods to deal with</span>
+<span class="sd">    leakage.</span>
+
+<span class="sd">:Authors: Martin Kilbinger &lt;martin.kilbinger@cea.fr&gt;</span>
+<span class="sd">         Clara Bonini</span>
+<span class="sd">         Axel Guinot</span>
+
+<span class="sd">"""</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pylab</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">lmfit</span> <span class="kn">import</span> <span class="n">minimize</span><span class="p">,</span> <span class="n">Parameters</span>
+<span class="kn">from</span> <span class="nn">uncertainties</span> <span class="kn">import</span> <span class="n">ufloat</span>
+
+<span class="kn">from</span> <span class="nn">sp_validation.plot_style</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">sp_validation</span> <span class="kn">import</span> <span class="n">plots</span>
+<span class="kn">from</span> <span class="nn">sp_validation.io</span> <span class="kn">import</span> <span class="n">print_stats</span>
+<span class="kn">from</span> <span class="nn">sp_validation</span> <span class="kn">import</span> <span class="n">basic</span>
+<span class="kn">from</span> <span class="nn">sp_validation</span> <span class="kn">import</span> <span class="n">util</span>
+<span class="kn">from</span> <span class="nn">sp_validation</span> <span class="kn">import</span> <span class="n">io</span>
+
+
+<div class="viewcode-block" id="func_bias_quad_1D"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.func_bias_quad_1D">[docs]</a><span class="k">def</span> <span class="nf">func_bias_quad_1D</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Func Bias Quad 1D.</span>
+
+<span class="sd">    Function for quadratic 1D bias model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x_data : numpy.ndarray</span>
+<span class="sd">        x-values of the data</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        y-values of the model</span>
+
+<span class="sd">    """</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'q'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'c'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="n">y_model</span> <span class="o">=</span> <span class="n">q</span> <span class="o">*</span> <span class="n">x_data</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">m</span> <span class="o">*</span> <span class="n">x_data</span> <span class="o">+</span> <span class="n">c</span>
+
+    <span class="k">return</span> <span class="n">y_model</span></div>
+
+
+<div class="viewcode-block" id="loss_bias_quad_1d"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.loss_bias_quad_1d">[docs]</a><span class="k">def</span> <span class="nf">loss_bias_quad_1d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x_data</span><span class="p">,</span> <span class="n">y_data</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Loss Bias quad 1D.</span>
+
+<span class="sd">    Loss function for Quadratic 1D model</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x_data : numpy.ndarray</span>
+<span class="sd">        x-values of the data</span>
+<span class="sd">    y_data : numpy.ndarray</span>
+<span class="sd">        y-values of the data</span>
+<span class="sd">    err : numpy.ndarray</span>
+<span class="sd">        error values of the data</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        residuals</span>
+
+<span class="sd">    """</span>
+    <span class="n">y_model</span> <span class="o">=</span> <span class="n">func_bias_quad_1D</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x_data</span><span class="p">)</span>
+    <span class="n">residuals</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_model</span> <span class="o">-</span> <span class="n">y_data</span><span class="p">)</span> <span class="o">/</span> <span class="n">err</span>
+    <span class="k">return</span> <span class="n">residuals</span></div>
+
+
+<div class="viewcode-block" id="quad_corr_quant"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.quad_corr_quant">[docs]</a><span class="k">def</span> <span class="nf">quad_corr_quant</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">,</span>
+    <span class="n">xlabel</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">,</span>
+    <span class="n">qlabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">mlabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">clabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_bin</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">out_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s1">''</span><span class="p">,</span>
+    <span class="n">colors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stats_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">rng</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Quadratic Correlation Quantity.</span>
+
+<span class="sd">    Computes and plots quadratic correlation of y(n) as function of x.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x: array(double)</span>
+<span class="sd">        input x value</span>
+<span class="sd">    y: array(m) of double</span>
+<span class="sd">        input y arrays</span>
+<span class="sd">    xlabel, ylabel : str</span>
+<span class="sd">        x-and y-axis labels</span>
+<span class="sd">    mlabel : str, optional, default=None</span>
+<span class="sd">        label for slope in the plot legend</span>
+<span class="sd">    clabel : str, optional, default=None</span>
+<span class="sd">        label for offset in the plot legend</span>
+<span class="sd">    weights : array of double, optional, default=None</span>
+<span class="sd">        weights of x points</span>
+<span class="sd">    n_bin : double, optional, default=30</span>
+<span class="sd">        number of points onto which data are binned</span>
+<span class="sd">    out_path : str, optional, default=None</span>
+<span class="sd">        output file path, if not given, plot is not saved to file</span>
+<span class="sd">    title : str, optional, default=''</span>
+<span class="sd">        plot title</span>
+<span class="sd">    colors : array(m) of str, optional, default=None</span>
+<span class="sd">        line colors</span>
+<span class="sd">    stats_file : filehandler, optional, default=None</span>
+<span class="sd">        output file for statistics</span>
+<span class="sd">    verbose : bool, optional, default=False</span>
+<span class="sd">        verbose output if True</span>
+<span class="sd">    seed: int</span>
+<span class="sd">        Seed to initialize the randoms. [Default: None]</span>
+<span class="sd">    rng: numpy.random.RandomState</span>
+<span class="sd">        Random generator. [Default: None]</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list</span>
+<span class="sd">        1rst order coeff of each e_gal vs quantities for recap plot</span>
+<span class="sd">    list</span>
+<span class="sd">        2nd order coeff of each e_gal vs quantities for recap plot</span>
+<span class="sd">    list</span>
+<span class="sd">        names of the quantities associated to each slopes</span>
+<span class="sd">    list</span>
+<span class="sd">        errors of 1rst order coeff</span>
+<span class="sd">    list</span>
+<span class="sd">        errors of 2nd order coeff</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># Init randoms</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">):</span>
+        <span class="n">master_rng</span> <span class="o">=</span> <span class="n">rng</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">master_rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="n">n_y</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">qlabel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">qlabel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_y</span><span class="p">,</span> <span class="s1">'q'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">mlabel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mlabel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_y</span><span class="p">,</span> <span class="s1">'m'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">clabel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">clabel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_y</span><span class="p">,</span> <span class="s1">'c'</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">colors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">prop_cycle</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">'axes.prop_cycle'</span><span class="p">]</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">prop_cycle</span><span class="o">.</span><span class="n">by_key</span><span class="p">()[</span><span class="s1">'color'</span><span class="p">]</span>
+
+    <span class="n">size_all</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_y</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="o">!=</span> <span class="n">size_all</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span>
+            <span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'Size </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="si">}</span><span class="s1"> of input #</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1"> is different from size '</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">size_all</span><span class="si">}</span><span class="s1"> of input #0'</span>
+            <span class="p">)</span>
+    <span class="n">size_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">size_all</span> <span class="o">/</span> <span class="n">n_bin</span><span class="p">)</span>
+    <span class="n">diff_size</span> <span class="o">=</span> <span class="n">size_all</span> <span class="o">-</span> <span class="n">size_bin</span>
+
+    <span class="c1"># Prepare arrays for binned data</span>
+    <span class="n">x_arg_sort</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x_bin</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">y_bin</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">err_bin</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+        <span class="n">y_bin</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+        <span class="n">err_bin</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+
+    <span class="c1"># Bin data for plot</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bin</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">diff_size</span><span class="p">:</span>
+            <span class="n">bin_size_tmp</span> <span class="o">=</span> <span class="n">size_bin</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">starter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bin_size_tmp</span> <span class="o">=</span> <span class="n">size_bin</span>
+            <span class="n">starter</span> <span class="o">=</span> <span class="n">diff_size</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">x_arg_sort</span><span class="p">[</span>
+            <span class="n">starter</span> <span class="o">+</span> <span class="n">idx</span> <span class="o">*</span> <span class="n">bin_size_tmp</span><span class="p">:</span> <span class="n">starter</span> <span class="o">+</span> <span class="p">(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">bin_size_tmp</span>
+        <span class="p">]</span>
+
+        <span class="n">x_bin</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">ind</span><span class="p">]))</span>
+
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+            <span class="n">r_jk</span> <span class="o">=</span> <span class="n">basic</span><span class="o">.</span><span class="n">jackknif_weighted_average2</span><span class="p">(</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">ind</span><span class="p">],</span>
+                <span class="n">weights</span><span class="p">[</span><span class="n">ind</span><span class="p">],</span>
+                <span class="n">remove_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                <span class="n">n_realization</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">y_bin</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r_jk</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">err_bin</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r_jk</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">x_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x_bin</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">jdx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+        <span class="n">y_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">])</span>
+        <span class="n">err_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">err_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">])</span>
+
+    <span class="c1"># Fit affine functions, plot function and data</span>
+    <span class="n">slope</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">qslope</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ticks_names</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">m_err</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">q_err</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">jdx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">Parameters</span><span class="p">()</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">'q'</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">'m'</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">'c'</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+
+        <span class="c1"># Optimize parameters</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
+            <span class="n">loss_bias_quad_1d</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">weights</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="n">qslope</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'q'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">slope</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+
+        <span class="n">ticks_names</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">xlabel</span><span class="si">}</span><span class="s2">_e_</span><span class="si">{</span><span class="n">jdx</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">q_dm</span> <span class="o">=</span> <span class="n">ufloat</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'q'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'q'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">m_dm</span> <span class="o">=</span> <span class="n">ufloat</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">c_dc</span> <span class="o">=</span> <span class="n">ufloat</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'c'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'c'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+
+        <span class="n">q_err</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'q'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">m_err</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+
+        <span class="n">label</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"$</span><span class="si">{</span><span class="n">qlabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">q_dm</span><span class="si">:</span><span class="s2"> .2ugL</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">mlabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">m_dm</span><span class="si">:</span><span class="s2"> .2ugL</span><span class="si">}</span><span class="s2">,"</span>
+            <span class="o">+</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="n">clabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">c_dc</span><span class="si">:</span><span class="s2"> .2ugL</span><span class="si">}</span><span class="s2">$"</span>
+        <span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">x_bin</span><span class="p">,</span>
+            <span class="n">func_bias_quad_1D</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">x_bin</span><span class="p">),</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span>
+            <span class="n">x_bin</span><span class="p">,</span>
+            <span class="n">y_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">yerr</span><span class="o">=</span><span class="n">err_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">fmt</span><span class="o">=</span><span class="s1">'.'</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">stats_file</span><span class="p">:</span>
+            <span class="n">msg1</span> <span class="o">=</span> <span class="s1">'</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">={:.2ugP}'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xlabel</span><span class="p">,</span> <span class="n">qlabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span> <span class="n">q_dm</span><span class="p">)</span>
+            <span class="n">msg2</span> <span class="o">=</span> <span class="s1">'</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">={:.2ugP}'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xlabel</span><span class="p">,</span> <span class="n">mlabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span> <span class="n">m_dm</span><span class="p">)</span>
+            <span class="n">print_stats</span><span class="p">(</span><span class="n">msg1</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+            <span class="n">print_stats</span><span class="p">(</span><span class="n">msg2</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+
+    <span class="c1"># Finalise plots</span>
+    <span class="n">plt_xmin</span><span class="p">,</span> <span class="n">plt_xmax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="n">plt_xmin</span><span class="p">,</span> <span class="n">plt_xmax</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">out_path</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">'tight'</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">slope</span><span class="p">,</span> <span class="n">qslope</span><span class="p">,</span> <span class="n">ticks_names</span><span class="p">,</span> <span class="n">m_err</span><span class="p">,</span> <span class="n">q_err</span></div>
+
+
+<div class="viewcode-block" id="quad_corr_n_quant"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.quad_corr_n_quant">[docs]</a><span class="k">def</span> <span class="nf">quad_corr_n_quant</span><span class="p">(</span>
+    <span class="n">x_arr</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">,</span>
+    <span class="n">xlabel_arr</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">,</span>
+    <span class="n">qlabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">mlabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">clabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_bin</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">out_path_arr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s1">''</span><span class="p">,</span>
+    <span class="n">colors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stats_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Quadratic Correlation N Quantity.</span>
+
+<span class="sd">    Compute n quadratic correlations of y(m) versus x_arr[n].</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x_arr: array(n, double)</span>
+<span class="sd">        input x value</span>
+<span class="sd">    y: array(m) of double</span>
+<span class="sd">        input y arrays</span>
+<span class="sd">    xlabel, ylabel : str</span>
+<span class="sd">        x-and y-axis labels</span>
+<span class="sd">    mlabel : str, optional, default=None</span>
+<span class="sd">        label for slope in the plot legend</span>
+<span class="sd">    clabel : str, optional, default=None</span>
+<span class="sd">        label for offset in the plot legend</span>
+<span class="sd">    weights : array of double, optional, default=None</span>
+<span class="sd">        weights of x points</span>
+<span class="sd">    n_bin : double, optional, default=30</span>
+<span class="sd">        number of points onto which data are binned</span>
+<span class="sd">    out_path_arr : array(n) of str, optional, default=None</span>
+<span class="sd">        output file path, if not given, plot is not saved to file</span>
+<span class="sd">    title : str, optional, default=''</span>
+<span class="sd">        plot title</span>
+<span class="sd">    colors(m) : array of str, optional, default=None</span>
+<span class="sd">        line colors</span>
+<span class="sd">    stats_file : filehandler, optional, default=None</span>
+<span class="sd">        output file for statistics</span>
+<span class="sd">    verbose : bool, optional, default=False</span>
+<span class="sd">        verbose output if True</span>
+<span class="sd">    seed: int</span>
+<span class="sd">        Seed to initialize the randoms. [Default: None]</span>
+
+<span class="sd">    """</span>
+    <span class="n">master_rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">seeds</span> <span class="o">=</span> <span class="n">master_rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x_arr</span><span class="p">))</span>
+    <span class="n">slopes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">qslopes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">ticks_label</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">merr</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">qerr</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">out_path_arr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out_path_arr</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_arr</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">xlabel</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="n">seed_tmp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">x_arr</span><span class="p">,</span> <span class="n">xlabel_arr</span><span class="p">,</span> <span class="n">out_path_arr</span><span class="p">,</span> <span class="n">seeds</span>
+    <span class="p">):</span>
+        <span class="n">slope</span><span class="p">,</span> <span class="n">qslope</span><span class="p">,</span> <span class="n">ticks_names</span><span class="p">,</span> <span class="n">m_err</span><span class="p">,</span> <span class="n">q_err</span> <span class="o">=</span> <span class="n">quad_corr_quant</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">,</span>
+            <span class="n">xlabel</span><span class="p">,</span>
+            <span class="n">ylabel</span><span class="p">,</span>
+            <span class="n">mlabel</span><span class="o">=</span><span class="n">mlabel</span><span class="p">,</span>
+            <span class="n">clabel</span><span class="o">=</span><span class="n">clabel</span><span class="p">,</span>
+            <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+            <span class="n">n_bin</span><span class="o">=</span><span class="n">n_bin</span><span class="p">,</span>
+            <span class="n">out_path</span><span class="o">=</span><span class="n">out_path</span><span class="p">,</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+            <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
+            <span class="n">stats_file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">seed_tmp</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">slope</span><span class="p">)):</span>
+            <span class="n">slopes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">slope</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">qslopes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">qslope</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">ticks_label</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ticks_names</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">merr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m_err</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+            <span class="n">qerr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">q_err</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="n">ticks_positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">slopes</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Plot slopes</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span>
+        <span class="n">ticks_positions</span><span class="p">,</span>
+        <span class="n">slopes</span><span class="p">,</span>
+        <span class="n">yerr</span><span class="o">=</span><span class="n">merr</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s1">'peru'</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="s1">'m'</span><span class="p">,</span>
+        <span class="n">fmt</span><span class="o">=</span><span class="s1">'.'</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span>
+        <span class="n">ticks_positions</span><span class="p">,</span>
+        <span class="n">qslopes</span><span class="p">,</span>
+        <span class="n">yerr</span><span class="o">=</span><span class="n">qerr</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s1">'crimson'</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="s1">'q'</span><span class="p">,</span>
+        <span class="n">fmt</span><span class="o">=</span><span class="s1">'.'</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span>
+        <span class="n">ticks_positions</span><span class="p">,</span>
+        <span class="n">ticks_label</span><span class="p">,</span>
+        <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">yticks</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span>
+        <span class="n">y</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s1">'black'</span><span class="p">,</span>
+        <span class="n">linestyle</span><span class="o">=</span><span class="s1">'--'</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">'q and m'</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">"(e1, e2) systematic tests (quadratic)"</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path_arr</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="func_bias_lin_1d"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.func_bias_lin_1d">[docs]</a><span class="k">def</span> <span class="nf">func_bias_lin_1d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Func Bias Lin 1D.</span>
+
+<span class="sd">    Function for linear 1D bias model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x_data : numpy.ndarray</span>
+<span class="sd">        x-values of the data</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        y-values of the model</span>
+
+<span class="sd">    """</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s1">'c'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="n">y_model</span> <span class="o">=</span> <span class="n">m</span> <span class="o">*</span> <span class="n">x_data</span> <span class="o">+</span> <span class="n">c</span>
+
+    <span class="k">return</span> <span class="n">y_model</span></div>
+
+
+<div class="viewcode-block" id="loss_bias_lin_1d"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.loss_bias_lin_1d">[docs]</a><span class="k">def</span> <span class="nf">loss_bias_lin_1d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x_data</span><span class="p">,</span> <span class="n">y_data</span><span class="p">,</span> <span class="n">err</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Loss Bias Lin 1D.</span>
+
+<span class="sd">    Loss function for linear 1D model</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x_data : numpy.ndarray</span>
+<span class="sd">        x-values of the data</span>
+<span class="sd">    y_data : numpy.ndarray</span>
+<span class="sd">        y-values of the data</span>
+<span class="sd">    err : numpy.ndarray</span>
+<span class="sd">        error values of the data</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        residuals</span>
+
+<span class="sd">    """</span>
+    <span class="n">y_model</span> <span class="o">=</span> <span class="n">func_bias_lin_1d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x_data</span><span class="p">)</span>
+    <span class="n">residuals</span> <span class="o">=</span> <span class="p">(</span><span class="n">y_model</span> <span class="o">-</span> <span class="n">y_data</span><span class="p">)</span> <span class="o">/</span> <span class="n">err</span>
+    <span class="k">return</span> <span class="n">residuals</span></div>
+
+
+<div class="viewcode-block" id="func_bias_2d_full"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.func_bias_2d_full">[docs]</a><span class="k">def</span> <span class="nf">func_bias_2d_full</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="s1">'lin'</span><span class="p">,</span> <span class="n">mix</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Func Bias 2D Full.</span>
+
+<span class="sd">    Function of 2D bias model evaluated on full 2D grid.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x1 : list of float</span>
+<span class="sd">        first component of x-values</span>
+<span class="sd">    x2 : list of float</span>
+<span class="sd">        second component of x-values</span>
+<span class="sd">    order : str, optional</span>
+<span class="sd">        order of fit, default is 'lin'</span>
+<span class="sd">    mix : bool, optional</span>
+<span class="sd">        mixing between components, default is `False`</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        first component the 2D model y1(x1, x2) on the (x1, x2)-grid;</span>
+<span class="sd">        2D array of float</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        second component the 2D model, y2(x1, x2) on the (x1, x2)-grid;</span>
+<span class="sd">        2D array of float</span>
+
+<span class="sd">    """</span>
+    <span class="n">len1</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span>
+    <span class="n">len2</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x2</span><span class="p">)</span>
+
+    <span class="c1"># Initialise both components y1, y2 as 2D arrays</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">len1</span><span class="p">,</span> <span class="n">len2</span><span class="p">))</span>
+    <span class="n">y2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">len1</span><span class="p">,</span> <span class="n">len2</span><span class="p">))</span>
+
+    <span class="c1"># Create 2D mesh for input x1, x2 values</span>
+    <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">'ij'</span><span class="p">)</span>
+
+    <span class="c1"># Compute both components y1, y2 over the meash</span>
+    <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">func_bias_2d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span> <span class="n">mix</span><span class="o">=</span><span class="n">mix</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">y1</span><span class="p">,</span> <span class="n">y2</span></div>
+
+
+<div class="viewcode-block" id="loss_bias_2d"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.loss_bias_2d">[docs]</a><span class="k">def</span> <span class="nf">loss_bias_2d</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">x_data</span><span class="p">,</span> <span class="n">y_data</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">mix</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Loss Bias 2D.</span>
+
+<span class="sd">    Loss function for 2D model</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    params : lmfit.Parameters</span>
+<span class="sd">        fit parameters</span>
+<span class="sd">    x_data : numpy.ndarray</span>
+<span class="sd">        two-component x-values of the data</span>
+<span class="sd">    y_data : numpy.ndarray</span>
+<span class="sd">        two-component y-values of the data</span>
+<span class="sd">    err : numpy.ndarray</span>
+<span class="sd">        error values of the data, assumed the same for both components</span>
+<span class="sd">    order : str</span>
+<span class="sd">        order of fit</span>
+<span class="sd">    mix : bool</span>
+<span class="sd">        mixing of components if True</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    IndexError :</span>
+<span class="sd">        if input arrays x1_data and x2_data have different lenght</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        residuals</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># Get x and y values of the input data</span>
+    <span class="n">x1_data</span> <span class="o">=</span> <span class="n">x_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">x2_data</span> <span class="o">=</span> <span class="n">x_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">y1_data</span> <span class="o">=</span> <span class="n">y_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">y2_data</span> <span class="o">=</span> <span class="n">y_data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x1_data</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x2_data</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">'Length of both data components has to be equal'</span><span class="p">)</span>
+
+    <span class="c1"># Get model 1D y1 and y2 components</span>
+    <span class="n">y1_model</span><span class="p">,</span> <span class="n">y2_model</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">func_bias_2d</span><span class="p">(</span>
+        <span class="n">params</span><span class="p">,</span>
+        <span class="n">x1_data</span><span class="p">,</span>
+        <span class="n">x2_data</span><span class="p">,</span>
+        <span class="n">order</span><span class="o">=</span><span class="n">order</span><span class="p">,</span>
+        <span class="n">mix</span><span class="o">=</span><span class="n">mix</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Compute residuals between data and model</span>
+    <span class="n">res1</span> <span class="o">=</span> <span class="p">(</span><span class="n">y1_model</span> <span class="o">-</span> <span class="n">y1_data</span><span class="p">)</span> <span class="o">/</span> <span class="n">err</span>
+    <span class="n">res2</span> <span class="o">=</span> <span class="p">(</span><span class="n">y2_model</span> <span class="o">-</span> <span class="n">y2_data</span><span class="p">)</span> <span class="o">/</span> <span class="n">err</span>
+
+    <span class="c1"># Concatenate both components</span>
+    <span class="n">residuals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">res1</span><span class="p">,</span> <span class="n">res2</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">residuals</span></div>
+
+
+<div class="viewcode-block" id="print_fit_report"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.print_fit_report">[docs]</a><span class="k">def</span> <span class="nf">print_fit_report</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Print Fit Report.</span>
+
+<span class="sd">    Print report of minimizing result.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    res : class lmfit.MinimizerResult</span>
+<span class="sd">        results of the minization</span>
+<span class="sd">    file : filehandler, optional</span>
+<span class="sd">        output to file; if `None` (default) output to `stdout`</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># chi^2</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'chi^2 = </span><span class="si">{</span><span class="n">res</span><span class="o">.</span><span class="n">chisqr</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+
+    <span class="c1"># Reduced chi^2</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'reduced chi^2 = </span><span class="si">{</span><span class="n">res</span><span class="o">.</span><span class="n">redchi</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+
+    <span class="c1"># Akaike Information Criterium</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'aic = </span><span class="si">{</span><span class="n">res</span><span class="o">.</span><span class="n">aic</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span>
+
+    <span class="c1"># Bayesian Information Criterium</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'bic = </span><span class="si">{</span><span class="n">res</span><span class="o">.</span><span class="n">bic</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">file</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="corr_2d"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.corr_2d">[docs]</a><span class="k">def</span> <span class="nf">corr_2d</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">,</span>
+    <span class="n">xlabel_arr</span><span class="p">,</span>
+    <span class="n">ylabel_arr</span><span class="p">,</span>
+    <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">order</span><span class="o">=</span><span class="s1">'lin'</span><span class="p">,</span>
+    <span class="n">mix</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">n_bin</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s1">''</span><span class="p">,</span>
+    <span class="n">colors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">out_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">y_ground_truth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">par_ground_truth</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stats_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Corr 2D.</span>
+
+<span class="sd">    Compute and plot 2D linear and quadratic correlations of (y1, y2) as</span>
+<span class="sd">    function of (x1, x2).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x : array(double)</span>
+<span class="sd">        input x value</span>
+<span class="sd">    y : array(m) of double</span>
+<span class="sd">        input y arrays</span>
+<span class="sd">    weights  : array of double, optional, default=None</span>
+<span class="sd">        weights of x points</span>
+<span class="sd">    order : str, optional</span>
+<span class="sd">        order of fit, default is 'lin'</span>
+<span class="sd">    mix : bool</span>
+<span class="sd">        mixing of components if True</span>
+<span class="sd">    xlabel_arr, ylabel_arr : list of str</span>
+<span class="sd">        x-and y-axis labels</span>
+<span class="sd">    n_bin : double, optional, default=30</span>
+<span class="sd">        number of points onto which data are binned</span>
+<span class="sd">    title : str, optional, default=''</span>
+<span class="sd">        plot title</span>
+<span class="sd">    colors : array(m) of str, optional, default=None</span>
+<span class="sd">        line colors</span>
+<span class="sd">    stats_file : filehandler, optional, default=None</span>
+<span class="sd">        output file for statistics</span>
+<span class="sd">    out_path : str, optional, default=None</span>
+<span class="sd">        output file path, if not given, plot is not saved to file</span>
+<span class="sd">    y_ground_truth : numpy.ndarray, optional</span>
+<span class="sd">        ground truth model values (y1, y2) for plotting (2D array),</span>
+<span class="sd">        default is `None`;</span>
+<span class="sd">    par_ground_truth : dict, optional</span>
+<span class="sd">        ground truth parameter, for plotting, default is `None`</span>
+<span class="sd">    verbose : bool, optional, default=False</span>
+<span class="sd">        verbose output if True</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    lmfit.Parameters</span>
+<span class="sd">        best-fit parameters</span>
+
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">colors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">prop_cycle</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">'axes.prop_cycle'</span><span class="p">]</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">prop_cycle</span><span class="o">.</span><span class="n">by_key</span><span class="p">()[</span><span class="s1">'color'</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">'Input data needs to have two components'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">!=</span> <span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="p">{</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])}):</span>
+        <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s1">'Input data has inconsistent length'</span><span class="p">)</span>
+
+    <span class="c1"># Initialise parameters of model to fit</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="n">Parameters</span><span class="p">()</span>
+
+    <span class="c1"># Affine parameters</span>
+    <span class="k">for</span> <span class="n">p_affine</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'a11'</span><span class="p">,</span> <span class="s1">'a22'</span><span class="p">,</span> <span class="s1">'c1'</span><span class="p">,</span> <span class="s1">'c2'</span><span class="p">]:</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_affine</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mix</span><span class="p">:</span>
+        <span class="c1"># Linear mixing pararmeter</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">'a12'</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s1">'quad'</span><span class="p">:</span>
+        <span class="c1"># Quadratic parameters</span>
+        <span class="k">for</span> <span class="n">p_quad</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'q111'</span><span class="p">,</span> <span class="s1">'q222'</span><span class="p">]:</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_quad</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">mix</span><span class="p">:</span>
+            <span class="c1"># Quadratic mixing parameters</span>
+            <span class="k">for</span> <span class="n">p_quad_mix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'q112'</span><span class="p">,</span> <span class="s1">'q122'</span><span class="p">,</span> <span class="s1">'q212'</span><span class="p">,</span> <span class="s1">'q211'</span><span class="p">]:</span>
+                <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">p_quad_mix</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="c1"># Mininise loss function</span>
+    <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">err</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
+        <span class="n">loss_bias_2d</span><span class="p">,</span>
+        <span class="n">params</span><span class="p">,</span>
+        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">err</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">mix</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">stats_file</span><span class="p">:</span>
+        <span class="n">print_stats</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">'2D fit order=</span><span class="si">{</span><span class="n">order</span><span class="si">}</span><span class="s1"> mix=</span><span class="si">{</span><span class="n">mix</span><span class="si">}</span><span class="s1">:'</span><span class="p">,</span>
+            <span class="n">stats_file</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
+        <span class="p">)</span>
+        <span class="n">print_fit_report</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="n">print_fit_report</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+    <span class="c1"># Get best-fit parameter values and standard deviations</span>
+    <span class="n">p_dp</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+        <span class="n">p_dp</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="o">=</span> <span class="n">ufloat</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+
+    <span class="c1"># Get spin coefficients</span>
+    <span class="n">s_ds</span> <span class="o">=</span> <span class="n">param_order2spin</span><span class="p">(</span><span class="n">p_dp</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">mix</span><span class="p">)</span>
+
+    <span class="c1"># Output to stats file</span>
+    <span class="k">if</span> <span class="n">stats_file</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">:</span>
+            <span class="n">print_stats</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s1">=</span><span class="si">{</span><span class="n">p_dp</span><span class="p">[</span><span class="n">p</span><span class="p">]</span><span class="si">:</span><span class="s1">.3ugP</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">spin</span> <span class="ow">in</span> <span class="n">s_ds</span><span class="p">:</span>
+            <span class="n">print_stats</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">spin</span><span class="si">}</span><span class="s1">=</span><span class="si">{</span><span class="n">s_ds</span><span class="p">[</span><span class="n">spin</span><span class="p">]</span><span class="si">:</span><span class="s1">.3ugP</span><span class="si">}</span><span class="s1">'</span><span class="p">,</span>
+                <span class="n">stats_file</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Plots</span>
+
+    <span class="c1"># Spin compoments</span>
+    <span class="k">if</span> <span class="n">out_path</span><span class="p">:</span>
+        <span class="n">out_path_spin</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">out_path</span><span class="si">}</span><span class="s1">_spin.png'</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">out_path_spin</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">par_ground_truth</span><span class="p">:</span>
+        <span class="n">s_ground_truth</span> <span class="o">=</span> <span class="n">param_order2spin</span><span class="p">(</span><span class="n">par_ground_truth</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">mix</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">s_ground_truth</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plot_bar_spin</span><span class="p">(</span>
+        <span class="n">s_ds</span><span class="p">,</span>
+        <span class="n">s_ground_truth</span><span class="o">=</span><span class="n">s_ground_truth</span><span class="p">,</span>
+        <span class="n">output_path</span><span class="o">=</span><span class="n">out_path_spin</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Curves</span>
+    <span class="n">plots</span><span class="o">.</span><span class="n">plot_corr_2d</span><span class="p">(</span>
+        <span class="n">x</span><span class="p">,</span>
+        <span class="n">y</span><span class="p">,</span>
+        <span class="n">weights</span><span class="p">,</span>
+        <span class="n">res</span><span class="p">,</span>
+        <span class="n">p_dp</span><span class="p">,</span>
+        <span class="n">n_bin</span><span class="p">,</span>
+        <span class="n">order</span><span class="p">,</span>
+        <span class="n">mix</span><span class="p">,</span>
+        <span class="n">xlabel_arr</span><span class="p">,</span>
+        <span class="n">ylabel_arr</span><span class="p">,</span>
+        <span class="n">y_ground_truth</span><span class="o">=</span><span class="n">y_ground_truth</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+        <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
+        <span class="n">out_path</span><span class="o">=</span><span class="n">out_path</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span></div>
+
+
+<div class="viewcode-block" id="param_order2spin"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.param_order2spin">[docs]</a><span class="k">def</span> <span class="nf">param_order2spin</span><span class="p">(</span><span class="n">p_dp</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="n">mix</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Param Order 2 Spin.</span>
+
+<span class="sd">    Transform parameter from natural to spin coefficients.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    p_dp : dict</span>
+<span class="sd">        Parameter natural coefficients</span>
+<span class="sd">    order : str</span>
+<span class="sd">        expansion order, one of 'linear', 'quad'</span>
+<span class="sd">    mix : bool</span>
+<span class="sd">        ellipticity components are mixed if ``True``</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        Parameter spin coefficients</span>
+
+<span class="sd">    """</span>
+    <span class="n">s_ds</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">s_ds</span><span class="p">[</span><span class="s1">'x0'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'a11'</span><span class="p">]</span> <span class="o">+</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'a22'</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s1">'quad'</span> <span class="ow">and</span> <span class="n">mix</span><span class="p">:</span>
+        <span class="n">s_ds</span><span class="p">[</span><span class="s1">'x2'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'q111'</span><span class="p">]</span> <span class="o">+</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q122'</span><span class="p">])</span>
+        <span class="n">s_ds</span><span class="p">[</span><span class="s1">'y2'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'q211'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q222'</span><span class="p">])</span>
+        <span class="n">s_ds</span><span class="p">[</span><span class="s1">'x-2'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'q111'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q122'</span><span class="p">]</span> <span class="o">+</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q212'</span><span class="p">])</span>
+        <span class="n">s_ds</span><span class="p">[</span><span class="s1">'y-2'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'q211'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q222'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q112'</span><span class="p">])</span>
+
+    <span class="n">s_ds</span><span class="p">[</span><span class="s1">'x4'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'a11'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'a22'</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">mix</span><span class="p">:</span>
+        <span class="n">s_ds</span><span class="p">[</span><span class="s1">'y4'</span><span class="p">]</span> <span class="o">=</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'a12'</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">order</span> <span class="o">==</span> <span class="s1">'quad'</span> <span class="ow">and</span> <span class="n">mix</span><span class="p">:</span>
+        <span class="n">s_ds</span><span class="p">[</span><span class="s1">'x6'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'q111'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q122'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q212'</span><span class="p">])</span>
+        <span class="n">s_ds</span><span class="p">[</span><span class="s1">'y6'</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="p">(</span><span class="n">p_dp</span><span class="p">[</span><span class="s1">'q211'</span><span class="p">]</span> <span class="o">-</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q222'</span><span class="p">]</span> <span class="o">+</span> <span class="n">p_dp</span><span class="p">[</span><span class="s1">'q112'</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">s_ds</span></div>
+
+
+<div class="viewcode-block" id="affine_corr"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.affine_corr">[docs]</a><span class="k">def</span> <span class="nf">affine_corr</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">,</span>
+    <span class="n">xlabel</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">,</span>
+    <span class="n">mlabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">clabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_bin</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">out_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s1">''</span><span class="p">,</span>
+    <span class="n">colors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stats_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">rng</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Affine Corr.</span>
+
+<span class="sd">    Computes and plots affine correlation of y(n) as function of x.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x: array(double)</span>
+<span class="sd">        input x value</span>
+<span class="sd">    y: array(m) of double</span>
+<span class="sd">        input y arrays</span>
+<span class="sd">    xlabel, ylabel : str</span>
+<span class="sd">        x-and y-axis labels</span>
+<span class="sd">    mlabel : str, optional, default=None</span>
+<span class="sd">        label for slope in the plot legend</span>
+<span class="sd">    clabel : str, optional, default=None</span>
+<span class="sd">        label for offset in the plot legend</span>
+<span class="sd">    weights : array of double, optional, default=None</span>
+<span class="sd">        weights of x points</span>
+<span class="sd">    n_bin : double, optional, default=30</span>
+<span class="sd">        number of points onto which data are binned</span>
+<span class="sd">    out_path : str, optional, default=None</span>
+<span class="sd">        output file path, if not given, plot is not saved to file</span>
+<span class="sd">    title : str, optional, default=''</span>
+<span class="sd">        plot title</span>
+<span class="sd">    colors : array(m) of str, optional, default=None</span>
+<span class="sd">        line colors</span>
+<span class="sd">    stats_file : filehandler, optional, default=None</span>
+<span class="sd">        output file for statistics</span>
+<span class="sd">    verbose : bool, optional, default=False</span>
+<span class="sd">        verbose output if True</span>
+<span class="sd">    seed: int</span>
+<span class="sd">        Seed to initialize the randoms. [Default: None]</span>
+<span class="sd">    rng: numpy.random.RandomState</span>
+<span class="sd">        Random generator. [Default: None]</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list</span>
+<span class="sd">        slopes of the linear fits</span>
+<span class="sd">    list</span>
+<span class="sd">        errors of the slopes</span>
+<span class="sd">    list</span>
+<span class="sd">        labels of the linear fits</span>
+
+<span class="sd">    """</span>
+    <span class="c1"># Init randoms</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">):</span>
+        <span class="n">master_rng</span> <span class="o">=</span> <span class="n">rng</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">master_rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="n">n_y</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">mlabel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mlabel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_y</span><span class="p">,</span> <span class="s1">'m'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">clabel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">clabel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n_y</span><span class="p">,</span> <span class="s1">'c'</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">weights</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">colors</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">prop_cycle</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">'axes.prop_cycle'</span><span class="p">]</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">prop_cycle</span><span class="o">.</span><span class="n">by_key</span><span class="p">()[</span><span class="s1">'color'</span><span class="p">]</span>
+
+    <span class="n">size_all</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_y</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span> <span class="o">!=</span> <span class="n">size_all</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">IndexError</span>
+            <span class="p">(</span>
+                <span class="sa">f</span><span class="s1">'Size </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="si">}</span><span class="s1"> of input #</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s1"> is different from size '</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">size_all</span><span class="si">}</span><span class="s1"> of input #0'</span>
+            <span class="p">)</span>
+    <span class="n">size_bin</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">size_all</span> <span class="o">/</span> <span class="n">n_bin</span><span class="p">)</span>
+    <span class="n">diff_size</span> <span class="o">=</span> <span class="n">size_all</span> <span class="o">-</span> <span class="n">size_bin</span>
+
+    <span class="c1"># Prepare arrays for binned data</span>
+    <span class="n">x_arg_sort</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argsort</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">x_bin</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">y_bin</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">err_bin</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+        <span class="n">y_bin</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+        <span class="n">err_bin</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+
+    <span class="c1"># Bin data for plot</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bin</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">idx</span> <span class="o">&lt;</span> <span class="n">diff_size</span><span class="p">:</span>
+            <span class="n">bin_size_tmp</span> <span class="o">=</span> <span class="n">size_bin</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">starter</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bin_size_tmp</span> <span class="o">=</span> <span class="n">size_bin</span>
+            <span class="n">starter</span> <span class="o">=</span> <span class="n">diff_size</span>
+        <span class="n">ind</span> <span class="o">=</span> <span class="n">x_arg_sort</span><span class="p">[</span>
+            <span class="n">starter</span> <span class="o">+</span> <span class="n">idx</span> <span class="o">*</span> <span class="n">bin_size_tmp</span><span class="p">:</span> <span class="n">starter</span> <span class="o">+</span> <span class="p">(</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">bin_size_tmp</span>
+        <span class="p">]</span>
+
+        <span class="n">x_bin</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">ind</span><span class="p">]))</span>
+
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+            <span class="n">r_jk</span> <span class="o">=</span> <span class="n">basic</span><span class="o">.</span><span class="n">jackknif_weighted_average2</span><span class="p">(</span>
+                <span class="n">y</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="n">ind</span><span class="p">],</span>
+                <span class="n">weights</span><span class="p">[</span><span class="n">ind</span><span class="p">],</span>
+                <span class="n">remove_size</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+                <span class="n">n_realization</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">y_bin</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r_jk</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">err_bin</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">r_jk</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="n">x_bin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">x_bin</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">jdx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+        <span class="n">y_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">y_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">])</span>
+        <span class="n">err_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">err_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">])</span>
+
+    <span class="c1"># Fit affine functions, plot function and data</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+
+    <span class="n">m_arr</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">m_err_arr</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">tick_name_arr</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">jdx</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="n">Parameters</span><span class="p">()</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">'m'</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="n">params</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">'c'</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.01</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">minimize</span><span class="p">(</span>
+            <span class="n">loss_bias_lin_1d</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">weights</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="n">m_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="c1"># MKDEBUG float required?</span>
+        <span class="n">m_err_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">))</span>
+        <span class="n">tick_name_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">xlabel</span><span class="si">}</span><span class="s2">_e</span><span class="si">{</span><span class="n">jdx</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+        <span class="n">m_dm</span> <span class="o">=</span> <span class="n">ufloat</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'m'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">c_dc</span> <span class="o">=</span> <span class="n">ufloat</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'c'</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s1">'c'</span><span class="p">]</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'$</span><span class="si">{</span><span class="n">mlabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span><span class="si">}</span><span class="s1">=</span><span class="si">{</span><span class="n">m_dm</span><span class="si">:</span><span class="s1"> .2ugL</span><span class="si">}</span><span class="s1">, </span><span class="si">{</span><span class="n">clabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">]</span><span class="si">}</span><span class="s1">=</span><span class="si">{</span><span class="n">c_dc</span><span class="si">:</span><span class="s1"> .2ugL</span><span class="si">}</span><span class="s1">$'</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">x_bin</span><span class="p">,</span>
+            <span class="n">func_bias_lin_1d</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">x_bin</span><span class="p">),</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">label</span><span class="o">=</span><span class="n">label</span>
+        <span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span>
+            <span class="n">x_bin</span><span class="p">,</span>
+            <span class="n">y_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">yerr</span><span class="o">=</span><span class="n">err_bin</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">c</span><span class="o">=</span><span class="n">colors</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span>
+            <span class="n">fmt</span><span class="o">=</span><span class="s1">'.'</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">stats_file</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">'</span><span class="si">{}</span><span class="s1">: </span><span class="si">{}</span><span class="s1">={:.2ugP}'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">xlabel</span><span class="p">,</span> <span class="n">mlabel</span><span class="p">[</span><span class="n">jdx</span><span class="p">],</span> <span class="n">m_dm</span><span class="p">)</span>
+            <span class="n">print_stats</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+
+    <span class="c1"># Finalise plots</span>
+    <span class="n">plt_xmin</span><span class="p">,</span> <span class="n">plt_xmax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="n">plt_xmin</span><span class="p">,</span> <span class="n">plt_xmax</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">out_path</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">'tight'</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">m_arr</span><span class="p">,</span> <span class="n">m_err_arr</span><span class="p">,</span> <span class="n">tick_name_arr</span></div>
+
+
+<div class="viewcode-block" id="affine_corr_n"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.affine_corr_n">[docs]</a><span class="k">def</span> <span class="nf">affine_corr_n</span><span class="p">(</span>
+    <span class="n">x_arr</span><span class="p">,</span>
+    <span class="n">y</span><span class="p">,</span>
+    <span class="n">xlabel_arr</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">,</span>
+    <span class="n">mlabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">clabel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">weights</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_bin</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span>
+    <span class="n">out_path_arr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s1">''</span><span class="p">,</span>
+    <span class="n">colors</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stats_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Affine Corr N.</span>
+
+<span class="sd">    Compute n affine correlations of y(m) versus x_arr[n].</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    x_arr: array(n, double)</span>
+<span class="sd">        input x value</span>
+<span class="sd">    y: array(m) of double</span>
+<span class="sd">        input y arrays</span>
+<span class="sd">    xlabel, ylabel : str</span>
+<span class="sd">        x-and y-axis labels</span>
+<span class="sd">    mlabel : str, optional, default=None</span>
+<span class="sd">        label for slope in the plot legend</span>
+<span class="sd">    clabel : str, optional, default=None</span>
+<span class="sd">        label for offset in the plot legend</span>
+<span class="sd">    weights : array of double, optional, default=None</span>
+<span class="sd">        weights of x points</span>
+<span class="sd">    n_bin : double, optional, default=30</span>
+<span class="sd">        number of points onto which data are binned</span>
+<span class="sd">    out_path_arr : array(n) of str, optional, default=None</span>
+<span class="sd">        output file path, if not given, plot is not saved to file</span>
+<span class="sd">    title : str, optional, default=''</span>
+<span class="sd">        plot title</span>
+<span class="sd">    colors(m) : array of str, optional, default=None</span>
+<span class="sd">        line colors</span>
+<span class="sd">    stats_file : filehandler, optional, default=None</span>
+<span class="sd">        output file for statistics</span>
+<span class="sd">    verbose : bool, optional, default=False</span>
+<span class="sd">        verbose output if True</span>
+<span class="sd">    seed: int</span>
+<span class="sd">        Seed to initialize the randoms. [Default: None]</span>
+
+<span class="sd">    """</span>
+    <span class="n">master_rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">seeds</span> <span class="o">=</span> <span class="n">master_rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">30</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">x_arr</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">out_path_arr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out_path_arr</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_arr</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">xlabel</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="n">seed_tmp</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+        <span class="n">x_arr</span><span class="p">,</span> <span class="n">xlabel_arr</span><span class="p">,</span> <span class="n">out_path_arr</span><span class="p">,</span> <span class="n">seeds</span>
+    <span class="p">):</span>
+        <span class="n">m_arr</span><span class="p">,</span> <span class="n">m_err_arr</span><span class="p">,</span> <span class="n">tick_name_arr</span> <span class="o">=</span> <span class="n">affine_corr</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">y</span><span class="p">,</span>
+            <span class="n">xlabel</span><span class="p">,</span>
+            <span class="n">ylabel</span><span class="p">,</span>
+            <span class="n">mlabel</span><span class="o">=</span><span class="n">mlabel</span><span class="p">,</span>
+            <span class="n">clabel</span><span class="o">=</span><span class="n">clabel</span><span class="p">,</span>
+            <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+            <span class="n">n_bin</span><span class="o">=</span><span class="n">n_bin</span><span class="p">,</span>
+            <span class="n">out_path</span><span class="o">=</span><span class="n">out_path</span><span class="p">,</span>
+            <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
+            <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
+            <span class="n">stats_file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+            <span class="n">seed</span><span class="o">=</span><span class="n">seed_tmp</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Summary plot</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">ticks_positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">m_arr</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span>
+        <span class="n">ticks_positions</span><span class="p">,</span>
+        <span class="n">m_arr</span><span class="p">,</span>
+        <span class="n">yerr</span><span class="o">=</span><span class="n">m_err_arr</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s1">'peru'</span><span class="p">,</span>
+        <span class="n">fmt</span><span class="o">=</span><span class="s1">'.'</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span>
+        <span class="n">ticks_positions</span><span class="p">,</span>
+        <span class="n">tick_name_arr</span><span class="p">,</span>
+        <span class="n">rotation</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">yticks</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">axhline</span><span class="p">(</span>
+        <span class="n">y</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s1">'black'</span><span class="p">,</span>
+        <span class="n">linestyle</span><span class="o">=</span><span class="s1">'--'</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">'m'</span><span class="p">)</span>
+    <span class="n">title</span> <span class="o">=</span> <span class="s2">"(e1, e2) systematic tests"</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">plt_xmin</span><span class="p">,</span> <span class="n">plt_xmax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="n">plt_xmin</span><span class="p">,</span> <span class="n">plt_xmax</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">out_path_arr</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="corr_any_quant"><a class="viewcode-back" href="../../sp_validation.leakage.html#sp_validation.leakage.corr_any_quant">[docs]</a><span class="k">def</span> <span class="nf">corr_any_quant</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="n">param</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">label_quant</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Corr_any_quant.</span>
+
+<span class="sd">    Compute and plot object-by-object ellipticity and any quantities relations.</span>
+<span class="sd">    Plot also a recap plot of all slopes of the best fits of the e_gal vs</span>
+<span class="sd">    other quantities.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dat : FITS.record</span>
+<span class="sd">        input data</span>
+<span class="sd">    param : class param</span>
+<span class="sd">        parameters</span>
+<span class="sd">    stats_file : file handler</span>
+<span class="sd">        statistics output file</span>
+
+<span class="sd">    """</span>
+    <span class="n">plot_dir_leakage</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">output_dir</span>
+
+    <span class="n">n_bin</span> <span class="o">=</span> <span class="mi">30</span>
+
+    <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'b'</span><span class="p">,</span> <span class="s1">'r'</span><span class="p">]</span>
+
+    <span class="n">e1</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="n">param</span><span class="o">.</span><span class="n">e1_col</span><span class="p">]</span>
+    <span class="n">e2</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="n">param</span><span class="o">.</span><span class="n">e2_col</span><span class="p">]</span>
+    <span class="n">e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">])</span>
+    <span class="n">weights</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s1">'w'</span><span class="p">]</span>
+
+    <span class="n">x_arr</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">out_name_arr</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">xlabel_arr</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">label_quant</span><span class="p">:</span>
+        <span class="n">xlabel_arr</span> <span class="o">=</span> <span class="n">label_quant</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">label_quant</span><span class="p">)):</span>
+            <span class="n">colname</span> <span class="o">=</span> <span class="n">label_quant</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">x_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">colname</span><span class="p">])</span>
+            <span class="n">out_name_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">colname</span> <span class="o">+</span> <span class="s1">'_vs_e_gal'</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">ratio</span><span class="p">:</span>
+        <span class="n">x_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">/</span> <span class="n">dat</span><span class="p">[</span><span class="n">ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">xlabel_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">out_name_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">_div_</span><span class="si">{</span><span class="n">ratio</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">_vs_e_gal"</span><span class="p">)</span>
+
+    <span class="n">ylabel</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">'$e_{1,2}^{\rm gal}$'</span>
+
+    <span class="n">mlabel</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'m_1'</span><span class="p">,</span> <span class="s1">'m_2'</span><span class="p">]</span>
+    <span class="n">clabel</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'c_1'</span><span class="p">,</span> <span class="s1">'c_2'</span><span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Quadratic fit"</span><span class="p">)</span>
+    <span class="n">out_path_arr</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">plot_dir_leakage</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">_quad'</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">out_name_arr</span><span class="p">]</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s1">'systematics_test_quad'</span>
+    <span class="n">out_path_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">plot_dir_leakage</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+    <span class="n">qlabel</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'q_1'</span><span class="p">,</span> <span class="s1">'q_2'</span><span class="p">]</span>
+    <span class="n">quad_corr_n_quant</span><span class="p">(</span>
+        <span class="n">x_arr</span><span class="p">,</span>
+        <span class="n">e</span><span class="p">,</span>
+        <span class="n">xlabel_arr</span><span class="p">,</span>
+        <span class="n">ylabel</span><span class="p">,</span>
+        <span class="n">qlabel</span><span class="o">=</span><span class="n">qlabel</span><span class="p">,</span>
+        <span class="n">mlabel</span><span class="o">=</span><span class="n">mlabel</span><span class="p">,</span>
+        <span class="n">clabel</span><span class="o">=</span><span class="n">clabel</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">"quadratic model"</span><span class="p">,</span>
+        <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+        <span class="n">n_bin</span><span class="o">=</span><span class="n">n_bin</span><span class="p">,</span>
+        <span class="n">out_path_arr</span><span class="o">=</span><span class="n">out_path_arr</span><span class="p">,</span>
+        <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
+        <span class="n">stats_file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">param</span><span class="o">.</span><span class="n">verbose</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Linear fit"</span><span class="p">)</span>
+    <span class="n">out_path_arr</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">plot_dir_leakage</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">_lin'</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">out_name_arr</span><span class="p">]</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="s1">'systematics_test_lin'</span>
+    <span class="n">out_path_arr</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="n">plot_dir_leakage</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+    <span class="n">affine_corr_n</span><span class="p">(</span>
+        <span class="n">x_arr</span><span class="p">,</span>
+        <span class="n">e</span><span class="p">,</span>
+        <span class="n">xlabel_arr</span><span class="p">,</span>
+        <span class="n">ylabel</span><span class="p">,</span>
+        <span class="n">mlabel</span><span class="o">=</span><span class="n">mlabel</span><span class="p">,</span>
+        <span class="n">clabel</span><span class="o">=</span><span class="n">clabel</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">"linear model"</span><span class="p">,</span>
+        <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+        <span class="n">n_bin</span><span class="o">=</span><span class="n">n_bin</span><span class="p">,</span>
+        <span class="n">out_path_arr</span><span class="o">=</span><span class="n">out_path_arr</span><span class="p">,</span>
+        <span class="n">colors</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span>
+        <span class="n">stats_file</span><span class="o">=</span><span class="n">stats_file</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="n">param</span><span class="o">.</span><span class="n">verbose</span>
+    <span class="p">)</span></div>
+</code></pre></div>
+</article>
+<footer>
+<div class="mt-20 mb-4 text-sm text-gray-700">© 2021, Martin Kilbinger Last updated: 18 Jul, 2023. Made with <a href="https://www.sphinx-doc.org">Sphinx 4.3.1</a></div>
+</footer></main>
+<button class="fixed bottom-0 right-0 z-20 opacity-0 p-4 m-4 tracking-wide bg-gray-900 text-gray-100 transition transform transform-gpu duration-500 translate-y-full" data-action="search#hideSnackbar" data-search-target="snackbar">
+  Clear highlights
+</button><div class="fixed hidden inset-0 bg-black bg-opacity-50" data-action="click-&gt;sidebar#close" data-sidebar-target="screen">
+</div>
+</div>
+<script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+<script src="../../_static/jquery.js"></script>
+<script src="../../_static/underscore.js"></script>
+<script src="../../_static/doctools.js"></script>
+<script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+<script src="../../_static/theme.3666d2347a4c66e5d7a8.js"></script>
+</body>
+</html>

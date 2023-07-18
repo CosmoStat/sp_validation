@@ -1,0 +1,308 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="Docutils 0.17.1: http://docutils.sourceforge.net/" name="generator"/>
+<title>sp_validation.correlation | sp_validation v0.3.5</title>
+<link href="_static/pygments.css" rel="stylesheet"/>
+<link href="_static/theme.da0e2e7def0e04be12ba.css" rel="stylesheet"/>
+<link href="search.html" rel="search" title="Search"/>
+<link href="genindex.html" rel="index" title="Index"/>
+<link href="sp_validation.cosmology.html" rel="next" title="sp_validation.cosmology"/>
+<link href="sp_validation.cat.html" rel="prev" title="sp_validation.cat"/>
+</head>
+<body class="antialiased text-sm sm:text-base text-gray">
+<div class="h-screen xl:grid xl:grid-layout" data-action="keydown@window-&gt;search#focus" data-controller="sidebar search" id="page">
+<a class="block text-xl bg-white py-4 z-20 absolute top-0 h-18 inset-x-0 text-center transform -translate-y-full focus:translate-y-0 focus:outline-none transition-transform duration-75" href="#sp-validation-correlation" title="Skip navigation links">Skip to content</a>
+<header class="grid-area-header z-10 h-14 sm:h-18">
+<div class="bg-gray-dark shadow-md flex items-center h-full xl:px-2 relative"><div class="flex items-center">
+<button class="xl:hidden h-14 w-14 sm:h-18 sm:w-18 leading-14 sm:leading-18 text-gray-100 hover:bg-gray-700 hover:text-brand focus:outline-none focus:bg-gray-700 focus:text-brand" data-action="sidebar#open" data-sidebar-target="hamburger">
+<span class="sr-only">Open navigation menu</span>
+<svg aria-hidden="true" class="fill-current h-8 w-8" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
+</button><a aria-label="Back to homepage" class="hover:bg-gray-700 focus:bg-gray-700 focus:outline-none tooltipped tooltipped-sw" href="index.html"><span class="hidden lg:inline-block flex-shrink-0 font-medium text-gray-100 mx-5 leading-14 sm:leading-18 tracking-wider">sp_validation v0.3.5</span>
+</a></div><div class="flex justify-end items-center flex-1"><form action="search.html" class="flex print:hidden justify-between items-center leading-14 sm:leading-18 md:ml-4 bg-gray-dark text-gray-300 focus-within:bg-gray-50 focus-within:text-gray-800 focus-within:absolute focus-within:inset-x-0 focus-within:top-0 md:focus-within:w-full md:focus-within:static" data-action="click-&gt;search#focusSearchInput" id="searchbox" method="get">
+<button aria-label="Get search results" class="text-inherit h-14 w-14 sm:h-18 sm:w-18" tabindex="-1">
+<svg aria-hidden="true" class="fill-current stroke-current h-8 w-8" stroke-width="0.5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
+</button>
+<input aria-label="Search the docs" class="pr-2 bg-transparent text-inherit focus:outline-none w-0 md:w-auto focus:w-full transition-all duration-100" data-search-target="searchInput" id="search-input" name="q" placeholder="Search the docs" type="search"/>
+</form></div>
+</div>
+</header>
+<aside class="grid-area-sidebar h-full fixed xl:relative inset-y-0 left-0 z-20 xl:z-0 print:hidden overflow-y-auto transition-all transform transform-gpu -translate-x-full opacity-0 duration-300 xl:translate-x-0 xl:opacity-100" data-sidebar-target="sidebar">
+<nav class="h-full overflow-y-auto bg-white text-gray-600 pt-8 flex flex-col" role="navigation">
+<div class="nav-toc flex-1 pl-6"><p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="about.html">About</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="installation.html">Installation</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="quickstart.html">Quickstart Tutorial</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1 current expanded"><div class="nav-link"><svg class="expand" data-action="click-&gt;sidebar#expand keydown-&gt;sidebar#expandKeyPressed" tabindex="0" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.html">sp_validation</a></div><ul class="current">
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.basic.html">sp_validation.basic</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.calibration.html">sp_validation.calibration</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.cat.html">sp_validation.cat</a></div></li>
+<li class="toctree-l2 current expanded"><div class="nav-link"><a class="current reference internal" data-action="click-&gt;sidebar#close" href="#">sp_validation.correlation</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.cosmology.html">sp_validation.cosmology</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.galaxy.html">sp_validation.galaxy</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.info.html">sp_validation.info</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.io.html">sp_validation.io</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.leakage.html">sp_validation.leakage</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.plot_style.html">sp_validation.plot_style</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.plots.html">sp_validation.plots</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.run.html">sp_validation.run</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.survey.html">sp_validation.survey</a></div></li>
+<li class="toctree-l2"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="sp_validation.util.html">sp_validation.util</a></div></li>
+</ul>
+</li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="z_ref.html">References</a></div></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="contributing.html">Contributing</a></div></li>
+<li class="toctree-l1"><div class="nav-link"><a class="reference internal" data-action="click-&gt;sidebar#close" href="citing.html">Citing this Package</a></div></li>
+</ul>
+</div>
+<button class="text-4xl text-gray-800 p-4 bottom-0 hover:text-brand xl:hidden focus:text-brand self-center" data-action="" title="Close navigation menu">
+<span class="sr-only">Close navigation menu</span>
+<svg aria-hidden="true" class="fill-current stroke-current h-6 w-6" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</aside>
+<main class="px-10 xl:ml-fluid grid-area-main overflow-y-auto flex flex-col h-full mx-0 md:mx-auto xl:mr-0" data-action="scroll-&gt;scroll#showButton" data-controller="scroll"><article class="flex-1" role="main">
+<section id="module-sp_validation.correlation">
+<span id="sp-validation-correlation"></span><h1>sp_validation.correlation<a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#module-sp_validation.correlation">¶</a></h1>
+<p>CORRELATION.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Name</dt>
+<dd class="field-odd"><p>correlation.py</p>
+</dd>
+<dt class="field-even">Description</dt>
+<dd class="field-even"><p>This script contains methods to deal with
+auto- and cross-correlations.</p>
+</dd>
+<dt class="field-odd">Author</dt>
+<dd class="field-odd"><p>Martin Kilbinger &lt;<a class="reference external" href="mailto:martin.kilbinger%40cea.fr" rel="nofollow noopener">martin<span>.</span>kilbinger<span>@</span>cea<span>.</span>fr<svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a>&gt;
+Axel Guinot</p>
+</dd>
+</dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.func_bias_lin_1d">
+<code class="sig-name descname">func_bias_lin_1d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">x_data</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#func_bias_lin_1d"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.func_bias_lin_1d">¶</a></dt>
+<dd class="panel">
+<p>Func Bias Lin 1D.</p>
+<p>Function for linear 1D bias model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>params</strong> (<em>lmfit.Parameters</em>) – fit parameters</p></li>
+<li><p><strong>x_data</strong> (<em>numpy.array</em>) – x-values of the data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>y-values of the model</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.array</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.loss_bias_lin_1d">
+<code class="sig-name descname">loss_bias_lin_1d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">x_data</span></em>, <em class="sig-param"><span class="n">y_data</span></em>, <em class="sig-param"><span class="n">err</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#loss_bias_lin_1d"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.loss_bias_lin_1d">¶</a></dt>
+<dd class="panel">
+<p>Loss Bias Lin 1D.</p>
+<p>Loss function for linear 1D model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>params</strong> (<em>lmfit.Parameters</em>) – fit parameters</p></li>
+<li><p><strong>x_data</strong> (<em>numpy.array</em>) – x-values of the data</p></li>
+<li><p><strong>y_data</strong> (<em>numpy.array</em>) – y-values of the data</p></li>
+<li><p><strong>err</strong> (<em>numpy.array</em>) – error values of the data</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>residuals</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>numpy.array</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.func_bias_2d_full">
+<code class="sig-name descname">func_bias_2d_full</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">x1</span></em>, <em class="sig-param"><span class="n">x2</span></em>, <em class="sig-param"><span class="n">order</span><span class="o">=</span><span class="default_value">'lin'</span></em>, <em class="sig-param"><span class="n">mix</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#func_bias_2d_full"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.func_bias_2d_full">¶</a></dt>
+<dd class="panel">
+<p>Func Bias 2D Full.</p>
+<p>Function of 2D bias model evaluated on full 2D grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>params</strong> (<em>lmfit.Parameters</em>) – fit parameters</p></li>
+<li><p><strong>x1</strong> (<em>list of float</em>) – first component of x-values</p></li>
+<li><p><strong>x2</strong> (<em>list of float</em>) – second component of x-values</p></li>
+<li><p><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.11)"><em>str</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a><em>, </em><em>optional</em>) – order of fit, default is ‘lin’</p></li>
+<li><p><strong>mix</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" rel="nofollow noopener" title="(in Python v3.11)"><em>bool</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a><em>, </em><em>optional</em>) – mixing between components, default is <cite>False</cite></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>2D np.array of float</em> – first component the 2D model y1(x1, x2) on the (x1, x2)-grid</p></li>
+<li><p><em>2D np.array of float</em> – second component the 2D model, y2(x1, x2) on the (x1, x2)-grid</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.loss_bias_2d">
+<code class="sig-name descname">loss_bias_2d</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">params</span></em>, <em class="sig-param"><span class="n">x_data</span></em>, <em class="sig-param"><span class="n">y_data</span></em>, <em class="sig-param"><span class="n">err</span></em>, <em class="sig-param"><span class="n">order</span></em>, <em class="sig-param"><span class="n">mix</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#loss_bias_2d"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.loss_bias_2d">¶</a></dt>
+<dd class="panel">
+<p>Loss Bias 2D.</p>
+<p>Loss function for 2D model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>params</strong> (<em>lmfit.Parameters</em>) – fit parameters</p></li>
+<li><p><strong>x_data</strong> (<em>numpy.array</em>) – two-component x-values of the data</p></li>
+<li><p><strong>y_data</strong> (<em>numpy.array</em>) – two-component y-values of the data</p></li>
+<li><p><strong>err</strong> (<em>numpy.array</em>) – error values of the data, assumed the same for both components</p></li>
+<li><p><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.11)"><em>str</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a>) – order of fit</p></li>
+<li><p><strong>mix</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" rel="nofollow noopener" title="(in Python v3.11)"><em>bool</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a>) – mixing of components if True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>IndexError :</strong> – if input arrays x1_data and x2_data have different lenght</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>residuals</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>numpy.array</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.print_fit_report">
+<code class="sig-name descname">print_fit_report</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">res</span></em>, <em class="sig-param"><span class="n">file</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#print_fit_report"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.print_fit_report">¶</a></dt>
+<dd class="panel">
+<p>Print Fit Report.</p>
+<p>Print report of minimizing result.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>res</strong> (<em>class lmfit.MinimizerResult</em>) – results of the minization</p></li>
+<li><p><strong>file</strong> (<em>filehandler</em><em>, </em><em>optional</em>) – output to file; if <cite>None</cite> (default) output to <cite>stdout</cite></p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.param_order2spin">
+<code class="sig-name descname">param_order2spin</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p_dp</span></em>, <em class="sig-param"><span class="n">order</span></em>, <em class="sig-param"><span class="n">mix</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#param_order2spin"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.param_order2spin">¶</a></dt>
+<dd class="panel">
+<p>Param Order 2 Spin.</p>
+<p>Transform parameter from natural to spin coefficients.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p_dp</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.11)"><em>dict</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a>) – Parameter natural coefficients</p></li>
+<li><p><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.11)"><em>str</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a>) – expansion order, one of ‘linear’, ‘quad’</p></li>
+<li><p><strong>mix</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" rel="nofollow noopener" title="(in Python v3.11)"><em>bool</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a>) – ellipticity components are mixed if <code class="docutils literal notranslate">True</code></p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Parameter spin coefficients</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.11)">dict<svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.xi_star_gal_tc">
+<code class="sig-name descname">xi_star_gal_tc</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ra_gal</span></em>, <em class="sig-param"><span class="n">dec_gal</span></em>, <em class="sig-param"><span class="n">e1_gal</span></em>, <em class="sig-param"><span class="n">e2_gal</span></em>, <em class="sig-param"><span class="n">w_gal</span></em>, <em class="sig-param"><span class="n">ra_star</span></em>, <em class="sig-param"><span class="n">dec_star</span></em>, <em class="sig-param"><span class="n">e1_star</span></em>, <em class="sig-param"><span class="n">e2_star</span></em>, <em class="sig-param"><span class="n">w_star</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">theta_min_amin</span><span class="o">=</span><span class="default_value">2</span></em>, <em class="sig-param"><span class="n">theta_max_amin</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">n_theta</span><span class="o">=</span><span class="default_value">20</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#xi_star_gal_tc"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.xi_star_gal_tc">¶</a></dt>
+<dd class="panel">
+<p>Xi star gal tc.</p>
+<p>Cross-correlation between galaxy and star ellipticities.</p>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.correlation_12_22">
+<code class="sig-name descname">correlation_12_22</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ra_1</span></em>, <em class="sig-param"><span class="n">dec_1</span></em>, <em class="sig-param"><span class="n">e1_1</span></em>, <em class="sig-param"><span class="n">e2_1</span></em>, <em class="sig-param"><span class="n">weights_1</span></em>, <em class="sig-param"><span class="n">ra_2</span></em>, <em class="sig-param"><span class="n">dec_2</span></em>, <em class="sig-param"><span class="n">e1_2</span></em>, <em class="sig-param"><span class="n">e2_2</span></em>, <em class="sig-param"><span class="n">theta_min_amin</span><span class="o">=</span><span class="default_value">2</span></em>, <em class="sig-param"><span class="n">theta_max_amin</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">n_theta</span><span class="o">=</span><span class="default_value">20</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#correlation_12_22"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.correlation_12_22">¶</a></dt>
+<dd class="panel">
+<p>Correlation 12 22.</p>
+<p>Shear correlation functions between two samples 1 and 2.
+Compute xi_12 and xi_22.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra_1</strong> (<em>array of float</em>) – coordinates of sample 1</p></li>
+<li><p><strong>dec_1</strong> (<em>array of float</em>) – coordinates of sample 1</p></li>
+<li><p><strong>e1_1</strong> (<em>array of float</em>) – ellipticities of sample 1</p></li>
+<li><p><strong>e2_1</strong> (<em>array of float</em>) – ellipticities of sample 1</p></li>
+<li><p><strong>weights_1</strong> (<em>array of float</em>) – weights of sample 1</p></li>
+<li><p><strong>ra_2</strong> (<em>array of float</em>) – coordinates of sample 2</p></li>
+<li><p><strong>dec_2</strong> (<em>array of float</em>) – coordinates of sample 2</p></li>
+<li><p><strong>e1_2</strong> (<em>array of float</em>) – ellipticities of sample 2</p></li>
+<li><p><strong>e2_2</strong> (<em>array of float</em>) – ellipticities of sample 2</p></li>
+<li><p><strong>theta_min_amin</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" rel="nofollow noopener" title="(in Python v3.11)"><em>float</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a><em>, </em><em>optional</em>) – minimum angular scale in arcmin, default is 2</p></li>
+<li><p><strong>theta_max_amin</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" rel="nofollow noopener" title="(in Python v3.11)"><em>float</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a><em>, </em><em>optional</em>) – maximum angular scale in arcmin, default is 200</p></li>
+<li><p><strong>n_theta</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" rel="nofollow noopener" title="(in Python v3.11)"><em>int</em><svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a><em>, </em><em>optional</em>) – number of angular scales, default is 20</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>xi_12, xi_22</strong> – correlations 12, and 22</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>correlations</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function code-definition">
+<dt class="sig sig-object py accordion" data-action="click-&gt;collapsible#expandAccordion" data-controller="collapsible" id="sp_validation.correlation.alpha">
+<code class="sig-name descname">alpha</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">r_corr_gp</span></em>, <em class="sig-param"><span class="n">r_corr_pp</span></em>, <em class="sig-param"><span class="n">e1_gal</span></em>, <em class="sig-param"><span class="n">e2_gal</span></em>, <em class="sig-param"><span class="n">weights_gal</span></em>, <em class="sig-param"><span class="n">e1_star</span></em>, <em class="sig-param"><span class="n">e2_star</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/correlation.html#alpha"><span class="viewcode-link">[source]</span></a><button aria-expanded="false" aria-label="Expand this section" class="expand-more tooltipped tooltipped-nw" data-action="collapsible#expandMore"><svg aria-hidden="true" pointer-events="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"></path></svg></button><a aria-label="Click to copy this link" class="headerlink tooltipped tooltipped-ne" data-action="click-&gt;clipboard#copyHeaderLink" data-controller="clipboard" href="#sp_validation.correlation.alpha">¶</a></dt>
+<dd class="panel">
+<p>Alpha.</p>
+<p>Compute scale-dependent PSF leakage alpha.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r_corr_gp</strong> (<em>correlations</em>) – correlations galaxy-star, star-star</p></li>
+<li><p><strong>r_corr_pp</strong> (<em>correlations</em>) – correlations galaxy-star, star-star</p></li>
+<li><p><strong>e1_gal</strong> (<em>array of float</em>) – galaxy ellipticities</p></li>
+<li><p><strong>e2_gal</strong> (<em>array of float</em>) – galaxy ellipticities</p></li>
+<li><p><strong>weights_gal</strong> (<em>array of float</em>) – galaxy weights</p></li>
+<li><p><strong>e1_star</strong> (<em>array of float</em>) – galaxy ellipticities</p></li>
+<li><p><strong>e2_star</strong> (<em>array of float</em>) – galaxy ellipticities</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>alpha, sig_alpha</strong> – mean and std of alpha</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" rel="nofollow noopener" title="(in Python v3.11)">float<svg aria-hidden="true" class="external-link-icon" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"></path></svg></a></p>
+</dd>
+</dl>
+</dd></dl>
+</section>
+</article>
+<footer>
+<div class="mt-20 mb-4 text-sm text-gray-700">© 2021, Martin Kilbinger Last updated: 18 Jul, 2023. Made with <a href="https://www.sphinx-doc.org">Sphinx 4.3.1</a></div>
+</footer></main>
+<button class="fixed bottom-0 right-0 z-20 opacity-0 p-4 m-4 tracking-wide bg-gray-900 text-gray-100 transition transform transform-gpu duration-500 translate-y-full" data-action="search#hideSnackbar" data-search-target="snackbar">
+  Clear highlights
+</button><div class="fixed hidden inset-0 bg-black bg-opacity-50" data-action="click-&gt;sidebar#close" data-sidebar-target="screen">
+</div>
+</div>
+<script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+<script src="_static/jquery.js"></script>
+<script src="_static/underscore.js"></script>
+<script src="_static/doctools.js"></script>
+<script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+<script src="_static/theme.3666d2347a4c66e5d7a8.js"></script>
+</body>
+</html>

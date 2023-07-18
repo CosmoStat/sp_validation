@@ -1,0 +1,7 @@
+sp\_validation.galaxy
+---------------------
+
+.. automodule:: sp_validation.galaxy
+   :members:
+   :undoc-members:
+   :show-inheritance:
