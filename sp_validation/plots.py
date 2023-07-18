@@ -175,7 +175,7 @@ def plot_map(
     loc, labels = plt.yticks()
     loc_dec, labels_dec = get_ticks(loc, Ny, dec_min, dec_max)
     plt.yticks(loc_dec, labels=labels_dec)
-    
+
     mean_x = (min_x + max_x) / 2
     mean_y = (min_y + max_y) / 2
 
@@ -184,11 +184,11 @@ def plot_map(
         grid_lines_ra = []
         grid_lines_dec = []
         n_per_line = 200
- 
+
         # create lines of constant ra and varying dec, and vice versa
-    
+
         # extend beyond projected image limits, to avoid image edges
-        # without grid lines 
+        # without grid lines
         d = 2
         gl_ra = np.linspace(ra_min - d, ra_max + d, num=n_per_line)
         gl_dec = np.linspace(dec_min - d, dec_max + d, num=n_per_line)
@@ -200,7 +200,6 @@ def plot_map(
         for dec in dec_list:
             grid_lines_dec.append([dec] * n_per_line)
             grid_lines_ra.append(gl_ra)
- 
 
         for grid_line_ra, grid_line_dec in zip(grid_lines_ra, grid_lines_dec):
             x, y = radec2xy(ra_mean, dec_mean, grid_line_ra, grid_line_dec)
@@ -221,8 +220,8 @@ def plot_map(
         print('MKDEBUG 1', xx)
         xlim = plt.xlim(xx)
         ylim = plt.ylim(yy)
-   
-    # mark cluster positions 
+
+    # mark cluster positions
     if clusters:
         x_cluster = (clusters['x'] + mean_x - min_x) / (max_x - min_x) * Nx
         y_cluster = (clusters['y'] + mean_y - min_y) / (max_y - min_y) * Ny
