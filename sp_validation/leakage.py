@@ -884,7 +884,7 @@ def affine_corr(
     n_y = len(y)
 
     if mlabel is None:
-        mlabel = np.full(n_y, 'm')
+        mlabel = np.full(n_y, '\alpha')
     if clabel is None:
         clabel = np.full(n_y, 'c')
 
@@ -1157,7 +1157,7 @@ def corr_any_quant(dat, param, stats_file, label_quant=None, ratio=None):
 
     ylabel = r'$e_{1,2}^{\rm gal}$'
 
-    mlabel = ['m_1', 'm_2']
+    mlabel = ['\alpha_1', '\alpha_2']
     clabel = ['c_1', 'c_2']
 
     print("Quadratic fit")

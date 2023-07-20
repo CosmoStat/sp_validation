@@ -390,8 +390,6 @@ def leakage_test(param, stats_file):
 
     colors = ['b', 'r']
     ylabel_arr = ['$y_1$', '$y_2$']
-    #mlabel = ['m_1', 'm_2']
-    #clabel = ['c_1', 'c_2']
 
     xlabel_arr = [
         r'$x_1$',
@@ -539,7 +537,7 @@ def PSF_leakage(dat, param, stats_file):
 
     # Fit separate 1D models, including size
     ylabel = r'$e_{1,2}^{\rm gal}$'
-    mlabel = ['m_1', 'm_2']
+    mlabel = ['\alpha_1', '\alpha_2']
     clabel = ['c_1', 'c_2']
     out_path_arr = [f'{plot_dir_leakage}/{name}' for name in out_name_arr]
     name = 'systematics_test'
