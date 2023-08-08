@@ -15,6 +15,8 @@ import numpy as np
 from datetime import datetime
 
 from astropy.io import fits
+from astropy import coordinates as coords
+from astropy import units as u
 
 from cs_util import cat
 
@@ -80,10 +82,8 @@ def print_mean_ellipticity(
     ind_v = ind_val[0] & ind_val[1]
 
     n_tot_val = len(np.where(ind_v)[0])
-    msg = (
-        'Total number of valid objects '
-        + f'= {n_tot_val} = {util.millify(n_tot_val)}'
-    )
+    n_tot_mil = util.millify(n_tot_val)
+    msg = ('Total number of valid objects = {n_tot_val} = {n_tot_mil}')
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = 'Fraction of invalid objects = {}/{} = {:.3g}%\n' \
@@ -136,7 +136,8 @@ def print_some_quantities(dd, stats_file, verbose=False):
         print('')
 
     n_tot = len(dd)
-    msg = f'Total number of objects = {n_tot} = {util.millify(n_tot)}'
+    n_mil = util.millify(n_tot)
+    msg = f'Total number of objects = {n_tot} = {n_mil}'
     io.print_stats(msg, stats_file, verbose=verbose)
 
     return n_tot
@@ -186,7 +187,7 @@ def check_matching(
         mask_area_tiles = np.arange(len(d1))
 
     # Match stars from exposure (PSF) catalogue to total catalogue
-    ind = basic.match_stars2(
+    ind = match_stars2(
         d2[keys_2[0]],
         d2[keys_2[1]],
         d1[keys_1[0]][mask_area_tiles],
@@ -334,6 +335,25 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     io.print_stats(msg, stats_file, verbose=verbose)
 
 
+def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
+    """Add docstring.
+
+    ...
+
+    """
+    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)
+    star_coord = coords.SkyCoord(
+        ra=ra_star * u.degree,
+        dec=dec_star * u.degree,
+    )
+
+    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)
+
+    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]
+
+    return ind_stars
+
+
 def read_shape_catalog(
     input_path
 ):
@@ -375,7 +395,8 @@ def read_shape_catalog(
     g2 = dat[hdu_no].data['e2_uncal']
     w = dat[hdu_no].data['w']
     mag = dat[hdu_no].data['mag']
-    if 'snr' in dat[hdu_no].data:
+
+    if 'snr' in dat[hdu_no].data.dtype.names:
         snr = dat[hdu_no].data['snr']
     else:
         snr = None
@@ -595,61 +616,3 @@ def write_PSF_cat(output_path, ra, dec, e1, e2):
     cols = [c_ra, c_dec, c_e1, c_e2]
 
     cat.write_fits_BinTable_file(cols, output_path)
-
-
-def cut_data(data, cut, verbose=False):
-    """Cut Data.
-
-    Cut data according to selection criteria list.
-
-    Parameters
-    ----------
-    data : numpy,ndarray
-        input data
-    cut : str
-        selection criteria expressions, white-space separated
-    verbose : bool, optional
-        verbose output if `True`, default is `False`
-
-    Raises
-    ------
-    ValueError :
-        if cut expression is not valid
-
-    Returns
-    -------
-    numpy.ndarray
-        data after cuts
-
-    """
-    if cut is None:
-        if verbose:
-            print('No cuts applied to input galaxy catalogue')
-
-        return data
-
-    cut_list = cut.split(' ')
-
-    for cut in cut_list:
-        res = re.match(r'(\w+)([<>=!]+)(\w+)', cut)
-        if res is None:
-            raise ValueError(f'cut \'{cut}\' has incorrect syntax')
-        if len(res.groups()) != 3:
-            raise ValueError(
-                f'cut criterium \'{cut}\' does not match syntax '
-                '\'field rel val\''
-            )
-        field, rel, val = res.groups()
-
-        cond = 'data[\'{}\']{}{}'.format(field, rel, val)
-
-        if verbose:
-            print(f'Applying cut \'{cond}\' to input galaxy catalogue')
-
-        data = data[np.where(eval(cond))]
-
-    if verbose:
-        print(f'Using {len(data)} galaxies after cuts.')
-
-    return data
->>>>>>> origin/master
