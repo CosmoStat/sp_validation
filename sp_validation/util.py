@@ -42,29 +42,3 @@ def millify(n):
     )
 
     return '{n / 10**(3 * millidx):.0f}{millnames[millidx])}'
-
-
-def transform_nan(value):
-    """Transform Nan.
-
-    Transform a ``nan`` to a very large number.
-
-    Parameters
-    ----------
-    value : float
-        input value
-
-    Returns
-    -------
-    float
-        output value
-
-    """
-    large = 1e30
-
-    if np.isnan(value) or np.isinf(value):
-        res = 1e30
-    else:
-        res = value
-
-    return res
