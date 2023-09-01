@@ -6,7 +6,7 @@ getdist
 jupyterlab
 lmfit
 numpy
-#lenspack
+lenspack
 joblib
 jupyter
 jupytext
