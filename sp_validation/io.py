@@ -15,6 +15,8 @@ import numpy as np
 from astropy.io import ascii, fits
 from astropy.table import Table
 
+from cs_util import cat
+
 
 def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
     """Make output directories.
@@ -110,26 +112,7 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
     )
 
 
-def write_ascii_table_file(cols, names, fname):
-    """Write Ascii Table File.
-
-    Write ASCII file with table data
-
-    Parameters
-    ----------
-    cols : list
-        data columns
-    names : list of str
-        column names
-    fname : str
-        output file name
-
-    """
-    t = Table(cols, names=names)
-    with open(fname, 'w') as fout:
-        ascii.write(t, fout, delimiter='\t')
-
-
+# MKDEBUG: This is not implemented in leakage, clean this up
 def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     """Save Alpha.
 
@@ -152,7 +135,7 @@ def save_alpha(theta, alpha_leak, sig_alpha_leak, sh, output_dir):
     cols = [theta, alpha_leak, sig_alpha_leak]
     names = ['# theta[arcmin]', 'alpha', 'sig_alpha']
     fname = f'{output_dir}/alpha_leakage_{sh}.txt'
-    write_ascii_table_file(cols, names, fname)
+    cat.write_ascii_table_file(cols, names, fname)
 
 
 def save_xi_sys(
@@ -211,7 +194,7 @@ def save_xi_sys(
         'xi_-_theo',
     ]
     fname = f'{output_dir}/xi_sys_{sh}.txt'
-    write_ascii_table_file(cols, names, fname)
+    cat.write_ascii_table_file(cols, names, fname)
 
 
 def open_fits_or_npy(path, hdu_no=1):
