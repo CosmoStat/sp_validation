@@ -40,7 +40,7 @@ from astropy.io import ascii
 from sp_validation.plot_style import *
 from cs_util import plots
 
-from sp_validation import run
+from shear_psf_leakage import run_scale
 
 # +
 import treecorr
@@ -139,7 +139,7 @@ for ver in versions:
     params_in = set_params_leakage(cat, ver)
 
     # Create leakage instance
-    obj = run.LeakageScale()
+    obj = run_scale.LeakageScale()
 
     # Set instance parameters, copy from above
     for key in params_in:
