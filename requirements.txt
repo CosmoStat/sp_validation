@@ -1,5 +1,5 @@
 importlib_metadata
-cs_util==0.0.5
+cs_util==0.0.6
 astropy>=5.0
 healpy
 getdist
@@ -9,11 +9,13 @@ numpy
 lenspack
 joblib
 jupyter
-jupytext
+jupytext==1.15.1
 regions
 reproject
+shear_psf_leakage==0.1.5
 scipy
 seaborn
 setuptools==58.3.0
+treecorr
 tqdm
 uncertainties
