@@ -557,7 +557,7 @@ for ver in versions:
     )
     out_fname_map2 = f"{cat['paths']['output']}/for_map2_{ver}.txt"
     if os.path.exists(out_fname_map2):
-        print("Map2 output file {out_fname_map2} exists")
+        print(f"Map2 output file {out_fname_map2} exists")
     else:
         print("Writing Map2 to output file {out_fname_map2} ")
         gg.writeMapSq(out_fname_map2, R=R, m2_uform='Schneider')
@@ -725,8 +725,6 @@ scratch_dir = '/feynman/work/dap/lcs/lg268561/UNIONS/'
 # get_dist does not find the chain(s).
 #scratch_dir = './output/'
 
-# Right now only these versions!
-versions = ['SP_v1.0', 'LF_v1.0'] #, 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
 # Choose between blinds A, B or C (matched catalogues don't have blinds)
 blinds = ['A']
 # If we want to include full angular scale or cut angular scales ('cut'/'full'),
@@ -735,21 +733,29 @@ theta_range = 'cut'
 # -
 
 #CREATE PARAMNAME FILE
+mcmc_ok = {}
+print("Getting chain parameters...")
 for ver in versions:
     for blind in blinds:
-        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver, blind, theta_range)
-        with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
-            params = file.readline()[1:].split('\t')[:-2]
-            file.close()
+        mcmc_ok[f"{ver}_{blind}"] = False
 
-        output_dir = f"{output_base}/{chain_dir}"
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-        with open(output_dir + '/getdist_.paramnames', "w") as file:
-            for i in range(len(params)):
-                file.write(params[i].split('--')[1] + '\n')
-            file.close()
-        print(params)
+        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver, blind, theta_range)
+        chain_name = scratch_dir + '%s/samples_1.txt'%(chain_dir)
+
+        if os.path.exists(chain_name):
+            mcmc_ok[f"{ver}_{blind}"] = True
+            with open(chain_name, "r") as file:
+                params = file.readline()[1:].split('\t')[:-2]
+                file.close()
+
+            output_dir = f"{output_base}/{chain_dir}"
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            with open(output_dir + '/getdist_.paramnames', "w") as file:
+                for i in range(len(params)):
+                    file.write(params[i].split('--')[1] + '\n')
+                file.close()
+            print(params)
 
 # +
 #READ CHAIN
@@ -761,28 +767,33 @@ labels = []
 print("Reading chains...")
 for ver in versions:
     for blind in blinds:
-        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver,blind,theta_range)
+        if mcmc_ok[f"{ver}_{blind}"]:
+            chain_dir = '%s/blind_%s/chain_%s_theta' %(ver,blind,theta_range)
 
-        chain = g.samples_for_root(scratch_dir + '%s/getdist_' %(chain_dir),
-                                    settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
-        p=chain.getParams()
-        chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
-        chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
+            chain = g.samples_for_root(scratch_dir + '%s/getdist_' %(chain_dir),
+                                        settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
+            p = chain.getParams()
+            chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
+            chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
 
-        chains.append(chain)
-        colours.append(tuple(map(float,cat[ver]['getdist_colour'].split(","))))
-        line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
-        labels.append(ver + '_blind_' + blind + '_theta_' + theta_range) 
+            chains.append(chain)
+            colours.append(tuple(map(float,cat[ver]['getdist_colour'].split(","))))
+            line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
+            labels.append(ver + '_blind_' + blind + '_theta_' + theta_range) 
 
-        print(f"Done version {ver} blind {blind}") 
+            print(f"Done version {ver} blind {blind}") 
 
 # +
 # %matplotlib inline
-g.triangle_plot(chains,['omega_m','ln10^10A_s','SIGMA_8','S_8'],
-                legend_labels=labels,
-                filled=True,
-                colors=colours,
-                line_args=line_args)
+print("Creating triangle plot...")
+g.triangle_plot(
+    chains,
+    ['omega_m','ln10^10A_s','SIGMA_8','S_8'],
+    legend_labels=labels,
+    filled=True,
+    colors=colours,
+    line_args=line_args
+)
 
 out_path = f"{cat['paths']['output']}/corner_plot.pdf"
 g.export(out_path)
