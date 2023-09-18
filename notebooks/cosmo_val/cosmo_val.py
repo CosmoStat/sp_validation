@@ -337,8 +337,6 @@ print("Compute additive bias")
 c1 = {}
 c2 = {}
 
-print("# ver c1 (from yml) c2 (from yml)")
-
 for ver in versions:
     c1[ver] = np.average(
         results[ver].dat_shear["e1"],
@@ -348,11 +346,10 @@ for ver in versions:
         results[ver].dat_shear["e2"],
         weights=results[ver].dat_shear["w"]
     )
-    print(f"{ver} {c1[ver]} ({cat[ver]['shear']['e1_bias']}) {c2[ver]} ({cat[ver]['shear']['e2_bias']})")
+    print(f"{ver} {c1[ver]} {c2[ver]}")
 # -
 
 print("Compute 2PCF")
-treecorr.set_omp_threads(n_thread)
 sep_units = 'arcmin'
 coord_units = 'degrees'
 
@@ -412,6 +409,7 @@ print("Done 2PCF")
 plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
 
 #Plot of n_pairs
+plt.clf()
 for ver in versions:
     plt.plot(
         cat_ggs[ver].meanr,
@@ -428,6 +426,7 @@ plt.savefig(out_path)
 # -
 
 #Plot of xi_+
+plt.clf()
 for ver in versions:
     plt.errorbar(
         cat_ggs[ver].meanr,
@@ -437,7 +436,6 @@ for ver in versions:
         ls=cat[ver]["ls"],
         color=cat[ver]["colour"]
     )
-plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
@@ -445,9 +443,10 @@ plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([theta_min_plot, theta_max_plot])
 plt.ylabel(r'$\xi_+(\theta)$')
 out_path = f"{cat['paths']['output']}/xi_p"
-_ = plt.savefig(out_path)
+plt.savefig(out_path)
 
 #Plot of xi_-
+plt.clf()
 for ver in versions:
     plt.errorbar(
         cat_ggs[ver].meanr,
@@ -457,7 +456,6 @@ for ver in versions:
         ls=cat[ver]["ls"],
         color=cat[ver]["colour"]
     )
-plt.plot()
 plt.xscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
@@ -554,7 +552,7 @@ for ver in versions:
         R=R,
         m2_uform='Schneider',
     )
-    out_fname_map2 = f"{cat['paths']['output']}/for_map2_{ver}.txt"
+    out_fname_map2 = f"{cat['paths']['output']}/map2_{ver}.txt"
     if os.path.exists(out_fname_map2):
         print("Map2 output file {out_fname_map2} exists")
     else:
@@ -579,7 +577,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     for ver in versions:
         x.append(R)
         y.append(map2[ver][mode])
-        yerr.append(map2[ver]['varmapsq'])
+        yerr.append(np.sqrt(map2[ver]['varmapsq']))
 
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
@@ -611,7 +609,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     for ver in versions:
         x.append(R)
         y.append(np.abs(map2[ver][mode]))
-        yerr.append(map2[ver]['varmapsq'])
+        yerr.append(np.sqrt(map2[ver]['varmapsq']))
 
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
