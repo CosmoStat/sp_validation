@@ -18,8 +18,6 @@ SP_v1.0:
       #path: unions_shapepipe_extended_2022_v1.0.fits
       path: unions_shapepipe_2022_v1.0.fits
       label: SP
-      e1_bias: 0
-      e2_bias: 0
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
    psf:
       path: unions_shapepipe_psf_2022_v1.0.2.fits
@@ -40,8 +38,6 @@ LF_v1.0:
    shear:
       path: lensfit_goldshape_2022v1.fits
       label: LF_Full
-      e1_bias: 0
-      e2_bias: 0
       covmat_file: ./covs/lensfit_A/cov_lensfit_A.txt
    star:
       path: full_starcat_tmp_1_10_seed_1234.fits
@@ -58,8 +54,6 @@ LF_v2.0:
    shear:
       path: lensfit_goldshape_2022v2_psf1.fits
       label: LF_Full
-      e1_bias: 0
-      e2_bias: 0
    star:
       path: Pall_hdu1_THELI_psfs1_mosaic.fits
       e1_col: e1_psf
@@ -75,8 +69,6 @@ SP_matched_LF_v1.0:
    shear:
       path: masked_matched_unions_shapepipe_extended_2022_v1.0.fits
       label: SP_Match_LF
-      e1_bias: -5.6726e-5
-      e2_bias: 8.218e-4
       covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
    star:
       path: unions_shapepipe_star_2022_v1.0.3.fits
@@ -94,8 +86,6 @@ LF_matched_SP_v1.0:
    shear:
       path: masked_lensfit_goldshape_2022v1.fits
       label: LF_Match_SP
-      e1_bias: 3.939e-4
-      e2_bias: 6.482e-5
       covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
    star:
       path: full_starcat_tmp_1_10_seed_1234.fits
@@ -111,8 +101,6 @@ SP_matched_MP_v1.0:
    shear:
       path: cfis-shapepipe.parquet
       label: SP_Match_MegaPipe
-      e1_bias: 0
-      e2_bias: 0
 
 SP_matched_LF_fp_v1.0:
    pipeline: SP
@@ -122,7 +110,5 @@ SP_matched_LF_fp_v1.0:
    shear:
       path: matched_footprint_shapepipe.fits
       label: SP_Match LF_Footprint
-      e1_bias: 0
-      e2_bias: 0
       covmat_file: ./covs/lensfit_matched/cov_lensfit_matched.txt
       
