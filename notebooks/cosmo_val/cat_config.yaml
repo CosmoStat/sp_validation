@@ -174,8 +174,6 @@ SP_axel_v0.0:
       #path: unions_shapepipe_extended_2022_v1.0.fits
       path: shapepipe_1500_goldshape_v1.fits
       label: SP Axels
-      e1_bias: 0
-      e2_bias: 0
       e1_col: g1
       e2_col: g2
    psf:
