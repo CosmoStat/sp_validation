@@ -559,9 +559,9 @@ for ver in versions:
     )
     out_fname_map2 = f"{cat['paths']['output']}/for_map2_{ver}.txt"
     if os.path.exists(out_fname_map2):
-        print("Map2 output file {out_fname_map2} exists")
+        print(f"Map2 output file {out_fname_map2} exists")
     else:
-        print("Writing Map2 to output file {out_fname_map2} ")
+        print(f"Writing Map2 to output file {out_fname_map2} ")
         gg.writeMapSq(out_fname_map2, R=R, m2_uform='Schneider')
     map2[ver] = {}
     map2[ver]['mapsq'] = mapsq
