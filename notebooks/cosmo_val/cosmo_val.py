@@ -112,28 +112,23 @@ print('Computing scale-dependent leakage')
 
 def set_params_leakage(cat, ver):
     params_in = {}
-    
+
     # Set parameters
     params_in['input_path_shear'] = cat[ver]["shear"]["path"]
     params_in['input_path_PSF'] = cat[ver]["star"]["path"]
     params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
     params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
     params_in['sh'] = cat[ver]['shape']
-    
+
     # Note: for SP these are calibrated shear estimates
-    params_in['e1_col'] = 'e1'
-    params_in['e2_col'] = 'e2'
-   
-    # if ver=='SP_axel_v0.0':
-    #     params_in['e1_col'] = 'g1'
-    #     params_in['e2_col'] = 'g2'
-        
-        
+    params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
+    params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
+
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
-    
+
     params_in["verbose"] = True
-    
+
     return params_in
 
 # +
@@ -145,13 +140,13 @@ for ver in versions:
     obj = run_scale.LeakageScale()
 
     # Set instance parameters, copy from above
-    
+
     for key in params_in:
         obj._params[key] = params_in[key]
-        
+
     results[ver] = obj
 
-    
+
 # -
 
 for ver in versions:
@@ -161,13 +156,13 @@ for ver in versions:
     obj.check_params()
     obj.prepare_output()
     obj.read_data()
-    
+
     out_fname = f'{cat["paths"]["output"]}/leakage_{ver}/alpha_leakage_{cat[ver]["shape"]}.txt'
     if os.path.exists(out_fname) :
         print(f'Skipping computation, {out_fname} exists')
     else:
-        obj.compute_corr_gp_pp_alpha()                                         
-        obj.do_alpha()                                                         
+        obj.compute_corr_gp_pp_alpha()
+        obj.do_alpha()
         obj.do_xi_sys()
 
     print(f"done: {ver}")
@@ -184,7 +179,7 @@ colors = []
 linestyles = []
 
 for ver in versions:
-   
+
     if hasattr(results[ver], "r_corr_gp"):
         theta.append(results[ver].r_corr_gp.meanr)
         y.append(results[ver].alpha_leak)
@@ -291,8 +286,6 @@ if len(y) > 0:
 # MCMC
 # -
 
-print(params_in)
-
 # ### Catalogue ellipticity histograms
 
 # +
@@ -347,8 +340,6 @@ print("Compute additive bias")
 c1 = {}
 c2 = {}
 
-print("# ver c1 (from yml) c2 (from yml)")
-
 for ver in versions:
     c1[ver] = np.average(
         results[ver].dat_shear[cat[ver]['shear']['e1_col']],
@@ -385,13 +376,13 @@ TreeCorrConfig = {
 cat_ggs = {}
 for ver in versions:
     print(f"{ver}")
-    
-    gg = treecorr.GGCorrelation(TreeCorrConfig)        
+
+    gg = treecorr.GGCorrelation(TreeCorrConfig)
 
     out_fname = f"{cat['paths']['output']}/xi_pm_{ver}_{cat[ver]['shape']}.txt"
     if os.path.exists(out_fname) :
         print(f'Skipping 2PCF, {out_fname} exists')
-        
+
         gg.read(out_fname)
     else:
         print(f'Computing 2PCF')
@@ -410,7 +401,7 @@ for ver in versions:
         )
         gg.process(cat_gal)
         gg.write(out_fname)
-                 
+
     cat_ggs[ver] = gg
 
 print("Done 2PCF")
@@ -451,7 +442,7 @@ plt.plot()
 plt.xscale('log')
 plt.yscale('log')
 plt.legend(fontsize=20)
-plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+plt.ticklabel_format(axis="y")
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([theta_min_plot, theta_max_plot])
 plt.ylabel(r'$\xi_+(\theta)$')
@@ -472,7 +463,7 @@ plt.plot()
 plt.xscale('log')
 plt.yscale('log')
 plt.legend(fontsize=20)
-plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+plt.ticklabel_format(axis="y")
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([theta_min_plot, theta_max_plot])
 plt.ylabel(r'$\xi_-(\theta)$')
@@ -535,7 +526,7 @@ gg = treecorr.GGCorrelation(TreeCorrConfig)
 print("Compute aperture-mass dispersion")
 map2 = {}
 for ver in versions:
-    
+
     out_fname = f"{cat['paths']['output']}/xi_for_map2_{ver}.txt"
     if os.path.exists(out_fname):
         print(f'Skipping Map2, {out_fname} exists')
@@ -555,10 +546,10 @@ for ver in versions:
             dec_units=coord_units,
             npatch=npatch,
         )
-        
+
         gg.process(cat_gal)
         gg.write(out_fname)
-        
+
 
         print(f"done: {ver}")
 
@@ -593,7 +584,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     colors=[]
     linestyles=[]
     for ver in versions:
-        
+
         x.append(R)
         y.append(map2[ver][mode])
         yerr.append(np.sqrt(map2[ver]['varmapsq']))
@@ -621,7 +612,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         linestyles=linestyles,
     )
     plt.savefig(out_path)
-    
+
     # Plot aperture-mass dispersion
 
 for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
@@ -778,7 +769,7 @@ for ver in versions:
         chains.append(chain)
         colours.append(tuple(map(float,cat[ver]['getdist_colour'].split(","))))
         line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
-        labels.append(ver + '_blind_' + blind + '_theta_' + theta_range) 
+        labels.append(ver + '_blind_' + blind + '_theta_' + theta_range)
 
 # +
 # %matplotlib inline
