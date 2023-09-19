@@ -56,7 +56,7 @@ pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
 
 # +
 # Catalogue versions
-versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0']
+versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0', 'SP_LFmask', 'SP_v1.1']
 
 all_keys = ['nz']
 for ver in versions:
@@ -554,7 +554,7 @@ for ver in versions:
     )
     out_fname_map2 = f"{cat['paths']['output']}/map2_{ver}.txt"
     if os.path.exists(out_fname_map2):
-        print("Map2 output file {out_fname_map2} exists")
+        print(f"Map2 output file {out_fname_map2} exists")
     else:
         print("Writing Map2 to output file {out_fname_map2} ")
         gg.writeMapSq(out_fname_map2, R=R, m2_uform='Schneider')
