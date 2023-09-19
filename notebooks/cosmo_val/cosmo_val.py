@@ -6,11 +6,11 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.15.2
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python weak-l
 #     language: python
-#     name: python3
+#     name: wlenv
 # ---
 
 # # Cosmological validation of UNIONS shape catalogues
@@ -54,17 +54,15 @@ pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
 
 # ## Input parameters
 
-# +
 # Catalogue versions
-versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0']
-
+#versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0']
+versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0','SP_axel_v0.0']
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
-# -
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
+data_base_dir = '/home/mkilbing/astro/data/CFIS'
 
 # ## Loading data
 
@@ -81,6 +79,11 @@ for ver in all_keys:
 
 if not os.path.exists(cat["paths"]["output"]):
     os.mkdir(cat["paths"]["output"])
+
+# +
+
+
+
 
 # +
 # Variables
@@ -125,7 +128,12 @@ def set_params_leakage(cat, ver):
     # Note: for SP these are calibrated shear estimates
     params_in['e1_col'] = 'e1'
     params_in['e2_col'] = 'e2'
-    
+   
+    # if ver=='SP_axel_v0.0':
+    #     params_in['e1_col'] = 'g1'
+    #     params_in['e2_col'] = 'g2'
+        
+        
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
     
@@ -133,7 +141,7 @@ def set_params_leakage(cat, ver):
     
     return params_in
 
-
+# +
 for ver in versions:
 
     params_in = set_params_leakage(cat, ver)
@@ -142,10 +150,14 @@ for ver in versions:
     obj = run_scale.LeakageScale()
 
     # Set instance parameters, copy from above
+    
     for key in params_in:
         obj._params[key] = params_in[key]
-    
+        
     results[ver] = obj
+
+    
+# -
 
 for ver in versions:
     print(ver)
@@ -154,9 +166,9 @@ for ver in versions:
     obj.check_params()
     obj.prepare_output()
     obj.read_data()
-
+    
     out_fname = f'{cat["paths"]["output"]}/leakage_{ver}/alpha_leakage_{cat[ver]["shape"]}.txt'
-    if os.path.exists(out_fname):
+    if os.path.exists(out_fname) and ver!= 'SP_v1.0':
         print(f'Skipping computation, {out_fname} exists')
     else:
         obj.compute_corr_gp_pp_alpha()                                         
@@ -165,6 +177,8 @@ for ver in versions:
 
     print(f"done: {ver}")
 print('Done scale-dependent leakage')
+
+results['SP_v1.0'].r_corr_gp.meanr
 
 # +
 # Plot scale-dependent leakage
@@ -177,6 +191,7 @@ colors = []
 linestyles = []
 
 for ver in versions:
+   
     if hasattr(results[ver], "r_corr_gp"):
         theta.append(results[ver].r_corr_gp.meanr)
         y.append(results[ver].alpha_leak)
@@ -207,6 +222,9 @@ if len(theta) > 0:
         linestyles=linestyles,
     )
     plt.savefig(out_path)
+# -
+
+theta
 
 # +
 # Plot xi_sys
@@ -283,6 +301,8 @@ if len(y) > 0:
 # MCMC
 # -
 
+print(params_in)
+
 # ### Catalogue ellipticity histograms
 
 # +
@@ -292,7 +312,7 @@ fig, axs = plt.subplots(1, 2)
 nbins = 200
 
 for ver in versions:
-    e1 = results[ver].dat_shear['e1']
+    e1 = results[ver].dat_shear[cat[ver]['shear']['e1_col']]
     w = results[ver].dat_shear['w']
     n, bins, _ = axs[0].hist(e1, bins=nbins, density=False, histtype='step', weights=w,\
                             label=ver, color=cat[ver]["colour"])
@@ -302,7 +322,7 @@ axs[0].legend()
 axs[0].set_xlim([-1.5, 1.5])
 
 for ver in versions:
-    e2 = results[ver].dat_shear['e2']
+    e2 = results[ver].dat_shear[cat[ver]['shear']['e2_col']]
     w = results[ver].dat_shear['w']
     n, bins, _ = axs[1].hist(e2, bins=nbins, density=False, histtype='step', weights=w,\
                             label=ver, color=cat[ver]["colour"])
@@ -341,11 +361,11 @@ print("# ver c1 (from yml) c2 (from yml)")
 
 for ver in versions:
     c1[ver] = np.average(
-        results[ver].dat_shear["e1"],
+        results[ver].dat_shear[cat[ver]['shear']['e1_col']],
         weights=results[ver].dat_shear["w"]
     )
     c2[ver] = np.average(
-        results[ver].dat_shear["e2"],
+        results[ver].dat_shear[cat[ver]['shear']['e2_col']],
         weights=results[ver].dat_shear["w"]
     )
     print(f"{ver} {c1[ver]} ({cat[ver]['shear']['e1_bias']}) {c2[ver]} ({cat[ver]['shear']['e2_bias']})")
@@ -357,8 +377,8 @@ sep_units = 'arcmin'
 coord_units = 'degrees'
 
 # +
-theta_min = 1
-theta_max = 200
+theta_min = 0.5
+theta_max = 150
 nbins = 20
 npatch = 50
 
@@ -379,15 +399,15 @@ for ver in versions:
     gg = treecorr.GGCorrelation(TreeCorrConfig)        
 
     out_fname = f"{cat['paths']['output']}/xi_pm_{ver}_{cat[ver]['shape']}.txt"
-    if os.path.exists(out_fname):
+    if os.path.exists(out_fname) :
         print(f'Skipping 2PCF, {out_fname} exists')
         
         gg.read(out_fname)
     else:
         print(f'Computing 2PCF')
 
-        g1 = results[ver].dat_shear["e1"] - c1[ver]
-        g2 = results[ver].dat_shear["e2"] - c2[ver]
+        g1 = results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]
+        g2 = results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -439,6 +459,7 @@ for ver in versions:
     )
 plt.plot()
 plt.xscale('log')
+plt.yscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 plt.xlabel(rf'$\theta$ [{sep_units}]')
@@ -459,6 +480,7 @@ for ver in versions:
     )
 plt.plot()
 plt.xscale('log')
+plt.yscale('log')
 plt.legend(fontsize=20)
 plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
 plt.xlabel(rf'$\theta$ [{sep_units}]')
@@ -500,7 +522,7 @@ _ = plt.savefig(out_path)
 #### Aperture-mass dispersion
 
 # +
-theta_min = 1
+theta_min = 0.3
 theta_max = 200
 nbins = 200
 npatch = 50
@@ -525,14 +547,14 @@ map2 = {}
 for ver in versions:
     
     out_fname = f"{cat['paths']['output']}/xi_for_map2_{ver}.txt"
-    if os.path.exists(out_fname):
+    if os.path.exists(out_fname) :
         print(f'Skipping Map2, {out_fname} exists')
         gg.read(out_fname)
     else:
         print(f'Computing Map2')
 
-        g1 = results[ver].dat_shear["e1"] - c1[ver]
-        g2 = results[ver].dat_shear["e2"] - c2[ver]
+        g1 = results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]
+        g2 = results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -576,17 +598,25 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     x = []
     y = []
     yerr = []
+    theta=[]
+    labels=[]
+    colors=[]
+    linestyles=[]
     for ver in versions:
+        
         x.append(R)
         y.append(map2[ver][mode])
-        yerr.append(map2[ver]['varmapsq'])
+        yerr.append(np.sqrt(map2[ver]['varmapsq']))
+        labels.append(ver)
+        colors.append(cat[ver]["colour"])
+        linestyles.append(cat[ver]["ls"])
 
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
     title = f"Aperture-mass dispersion mode {mode}"
     out_path = f"{cat['paths']['output']}/{mode}.pdf"
     plots.plot_data_1d(
-        theta,
+        x,
         y,
         yerr,
         title,
@@ -611,14 +641,13 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     for ver in versions:
         x.append(R)
         y.append(np.abs(map2[ver][mode]))
-        yerr.append(map2[ver]['varmapsq'])
-
+        yerr.append(np.sqrt(map2[ver]['varmapsq']))
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
     title = f"Aperture-mass dispersion mode {mode}"
     out_path = f"{cat['paths']['output']}/{mode}_log.pdf"
     plots.plot_data_1d(
-        theta,
+        x,
         y,
         yerr,
         title,

@@ -5,7 +5,7 @@ healpy
 getdist
 jupyterlab
 lmfit
-numpy
+numpy==1.22
 lenspack
 joblib
 jupyter
