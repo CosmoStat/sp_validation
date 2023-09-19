@@ -498,10 +498,10 @@ _ = plt.savefig(out_path)
 #### Aperture-mass dispersion
 
 # +
-theta_min = 1
+theta_min = 0.25
 theta_max = 200
 nbins = 200
-npatch = 50
+npatch = 25
 
 # Set up angular smoothing scales for aperture-mass dispersion
 n_bins_map = 20
@@ -594,7 +594,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         labels=labels,
         xlog=True,
         xlim=[theta_min_plot, theta_max_plot],
-        ylim=[-1e-7, 1e-6],
+        ylim=[-1e-6, 2e-5],
         colors=colors,
         linestyles=linestyles,
     )
