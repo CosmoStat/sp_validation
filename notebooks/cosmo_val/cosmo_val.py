@@ -56,7 +56,7 @@ pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
 
 # Catalogue versions
 #versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0']
-versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0','SP_axel_v0.0']
+versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0','SP_axel_v0.0', 'SP_LFmask', 'SP_v1.1']
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
