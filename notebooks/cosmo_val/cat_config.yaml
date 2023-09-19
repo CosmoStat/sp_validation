@@ -7,6 +7,23 @@ nz:
       path: dndz
       blind: A
 
+DES:
+   shape: ngmix
+   pipeline: SP
+   subdir: DES
+   ls: solid
+   colour: b
+   getdist_colour: 0.0, 0.5, 1.0
+   shear:
+      path: DES_Y3_ziwen_lambda.fits
+      label: DES
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+   star:
+      path: psf_y3a1-v29.fits
+      label: SP_star
+      e1_col: obs_e1
+      e2_col: obs_e2
+
 SP_v1.0:
    shape: ngmix
    pipeline: SP
