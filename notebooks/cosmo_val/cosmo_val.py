@@ -56,13 +56,14 @@ pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
 
 # Catalogue versions
 #versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0']
-versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0','SP_axel_v0.0', 'SP_LFmask', 'SP_v1.1']
+versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0','SP_axel_v0.0', 'SP_LFmask', 'SP_v1.1', 'DES']
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
+#data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
+data_base_dir = '/n17data/zwzhang/Dats/'
 
 # ## Loading data
 
@@ -736,7 +737,9 @@ scratch_dir = f'{os.environ["HOME"]}'
 scratch_dir = '/feynman/work/dap/lcs/lg268561/UNIONS/'
 
 # Right now only these versions!
-versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
+#versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
+versions = ['DES']
+
 # Choose between blinds A, B or C (matched catalogues don't have blinds)
 blinds = ['A']
 # If we want to include full angular scale or cut angular scales ('cut'/'full'),
