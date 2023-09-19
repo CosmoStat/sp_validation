@@ -62,7 +62,7 @@ for ver in versions:
     all_keys.append(ver)
 
 # Base directory for data, on candide
-data_base_dir = '/home/mkilbing/astro/data/CFIS'
+data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
 
 # ## Loading data
 
@@ -79,11 +79,6 @@ for ver in all_keys:
 
 if not os.path.exists(cat["paths"]["output"]):
     os.mkdir(cat["paths"]["output"])
-
-# +
-
-
-
 
 # +
 # Variables
@@ -168,7 +163,7 @@ for ver in versions:
     obj.read_data()
     
     out_fname = f'{cat["paths"]["output"]}/leakage_{ver}/alpha_leakage_{cat[ver]["shape"]}.txt'
-    if os.path.exists(out_fname) and ver!= 'SP_v1.0':
+    if os.path.exists(out_fname) :
         print(f'Skipping computation, {out_fname} exists')
     else:
         obj.compute_corr_gp_pp_alpha()                                         
@@ -177,8 +172,6 @@ for ver in versions:
 
     print(f"done: {ver}")
 print('Done scale-dependent leakage')
-
-results['SP_v1.0'].r_corr_gp.meanr
 
 # +
 # Plot scale-dependent leakage
@@ -222,9 +215,6 @@ if len(theta) > 0:
         linestyles=linestyles,
     )
     plt.savefig(out_path)
-# -
-
-theta
 
 # +
 # Plot xi_sys
@@ -368,7 +358,7 @@ for ver in versions:
         results[ver].dat_shear[cat[ver]['shear']['e2_col']],
         weights=results[ver].dat_shear["w"]
     )
-    print(f"{ver} {c1[ver]} ({cat[ver]['shear']['e1_bias']}) {c2[ver]} ({cat[ver]['shear']['e2_bias']})")
+    #print(f"{ver} {c1[ver]} ({cat[ver]['shear']['e1_bias']}) {c2[ver]} ({cat[ver]['shear']['e2_bias']})")
 # -
 
 print("Compute 2PCF")
@@ -547,7 +537,7 @@ map2 = {}
 for ver in versions:
     
     out_fname = f"{cat['paths']['output']}/xi_for_map2_{ver}.txt"
-    if os.path.exists(out_fname) :
+    if os.path.exists(out_fname):
         print(f'Skipping Map2, {out_fname} exists')
         gg.read(out_fname)
     else:
