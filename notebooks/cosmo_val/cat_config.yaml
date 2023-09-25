@@ -7,29 +7,13 @@ nz:
       path: dndz
       blind: A
 
-DES:
-   shape: ngmix
-   pipeline: SP
-   subdir: DES
-   ls: solid
-   colour: b
-   getdist_colour: 0.0, 0.5, 1.0
-   shear:
-      path: DES_Y3_ziwen_lambda.fits
-      label: DES
-      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-   star:
-      path: psf_y3a1-v29.fits
-      label: SP_star
-      e1_col: obs_e1
-      e2_col: obs_e2
-
 SP_v1.0:
    shape: ngmix
    pipeline: SP
    subdir: v1.0/ShapePipe
    ls: solid
    colour: b
+   marker: o
    getdist_colour: 0.0, 0.5, 1.0
    shear:
       #path: unions_shapepipe_extended_2022_v1.0.fits
@@ -37,6 +21,7 @@ SP_v1.0:
       label: SP
       e1_col: e1
       e2_col: e2
+      R: 1.0
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
    psf:
       path: unions_shapepipe_psf_2022_v1.0.2.fits
@@ -52,7 +37,8 @@ SP_v1.1:
    pipeline: SP
    subdir: v1.0/ShapePipe
    ls: dashed
-   colour: r
+   colour: b
+   marker: s
    getdist_colour: 0.0, 0.5, 1.0
    shear:
       path: unions_shapepipe_2022_v1.1.fits
@@ -60,6 +46,7 @@ SP_v1.1:
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
+      R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.0.3.fits
       label: SP_star
@@ -71,7 +58,8 @@ LF_v1.0:
    pipeline: LF
    subdir: v1.0/Lensfit
    ls: solid
-   colour: g
+   colour: r
+   marker: "8"
    getdist_colour: 1.0, 0.5, 0.0
    shear:
       path: lensfit_goldshape_2022v1.fits
@@ -79,6 +67,7 @@ LF_v1.0:
       covmat_file: ./covs/lensfit_A/cov_lensfit_A.txt
       e1_col: e1
       e2_col: e2
+      R: 1.0
    star:
       path: full_starcat_tmp_1_10_seed_1234.fits
       label: LF_star
@@ -90,12 +79,14 @@ LF_v2.0:
    pipeline: LF
    subdir: v2.0/Lensfit
    ls: dashed
-   colour: g
+   colour: r
+   marker: p
    shear:
       path: lensfit_goldshape_2022v2_psf1.fits
       label: LF_Full
       e1_col: e1
       e2_col: e2
+      R: 1.0
    star:
       path: Pall_hdu1_THELI_psfs1_mosaic.fits
       e1_col: e1_psf
@@ -106,7 +97,8 @@ SP_matched_LF_v1.0:
    pipeline: SP
    subdir: v1.0/matched_LF_SP
    ls: dotted
-   colour: b
+   colour: magenta
+   marker: v
    getdist_colour: 0.90340530805574, 0.06198853997875753, 0.6527408678603205
    shear:
       path: masked_matched_unions_shapepipe_extended_2022_v1.0.fits
@@ -114,6 +106,7 @@ SP_matched_LF_v1.0:
       covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
       e1_col: e1
       e2_col: e2
+      R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.0.3.fits
       label: SP_star
@@ -125,7 +118,8 @@ LF_matched_SP_v1.0:
    pipeline: LF
    subdir: v1.0/matched_LF_SP
    ls: dashdot
-   colour: g
+   colour: magenta
+   marker: ^
    getdist_colour: 0.0, 0.5, 0.0
    shear:
       path: masked_lensfit_goldshape_2022v1.fits
@@ -133,6 +127,7 @@ LF_matched_SP_v1.0:
       covmat_file: ./covs/shapepipe_matched/cov_shapepipe_matched.txt
       e1_col: e1
       e2_col: e2
+      R: 1.0
    star:
       path: full_starcat_tmp_1_10_seed_1234.fits
       label: LF_star
@@ -144,12 +139,14 @@ SP_LFmask:
    pipeline: SP
    subdir: v1.0/SP_LFmask
    ls: dashdot
-   colour: orange
+   colour: lightblue
+   marker: h
    getdist_colour: 0.04606552309790213, 0.9780505945532256, 0.37684692395248665
    shear:
       path: unions_shapepipe_extended_2022_v1.0.fits
       e1_col: e1
       e2_col: e2
+      R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.0.3.fits
       label: SP_LFmask_star
@@ -160,18 +157,21 @@ SP_matched_MP_v1.0:
    pipeline: SP
    subdir: v1.0/matched_SP_MP
    ls: dashdot
-   colour: b
+   colour: lightblue
+   marker: D
    getdist_colour: 0.04606552309790213, 0.9780505945532256, 0.37684692395248665
    shear:
       path: cfis-shapepipe.parquet
       label: SP_Match_MegaPipe
       e1_col: e1
       e2_col: e2
+      R: 1.0
 
 SP_matched_LF_fp_v1.0:
    pipeline: SP
    ls: dashed
-   colour: b
+   colour: lightblue
+   marker: <
    getdist_colour: 0.08130806428547999, 0.1463709449188496, 0.674947827197815
    shear:
       path: matched_footprint_shapepipe.fits
@@ -179,22 +179,22 @@ SP_matched_LF_fp_v1.0:
       covmat_file: ./covs/lensfit_matched/cov_lensfit_matched.txt
       e1_col: e1
       e2_col: e2
+      R: 1.0
       
 SP_axel_v0.0:
    shape: ngmix
    pipeline: SP
-   subdir: v0.0/
-   ls: solid
+   subdir: v0.0
+   ls: dotted
    colour: b
+   marker: >
    getdist_colour: 0.0, 0.5, 1.0
    shear:
-      #path: unions_shapepipe_extended_2022_v1.0.fits
       path: shapepipe_1500_goldshape_v1.fits
-      label: SP Axels
-      e1_bias: 0
-      e2_bias: 0
+      label: SP_Axel
       e1_col: g1
       e2_col: g2
+      R: 1.0
    psf:
       path: /../v1.0/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits
       label: SP_psf
@@ -204,7 +204,25 @@ SP_axel_v0.0:
       e1_col: e1
       e2_col: e2
       
-      
- 
+DES:
+   shape: ngmix
+   pipeline: SP
+   subdir: DES
+   ls: solid
+   colour: orange
+   marker: "*"
+   getdist_colour: 0.0, 0.5, 1.0
+   shear:
+      path: DES_Y3_ziwen_lambda.fits
+      label: DES
+      e1_col: e1
+      e2_col: e2
+      R: 0.6
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+   star:
+      path: psf_y3a1-v29.fits
+      label: SP_star
+      e1_col: obs_e1
+      e2_col: obs_e2
 
-      
+

@@ -1,11 +1,12 @@
 importlib_metadata
+colorama
 cs_util==0.0.6
 astropy>=5.0
 healpy
 getdist
 jupyterlab
 lmfit
-numpy==1.22
+numpy==1.23
 lenspack
 joblib
 jupyter
