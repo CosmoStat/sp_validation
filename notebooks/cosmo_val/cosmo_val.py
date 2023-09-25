@@ -583,7 +583,6 @@ for ver in versions:
         print("MKDEBUG", results[ver].dat_shear['RA'][0], results[ver].dat_shear['Dec'][0], g1[0], g2[0], results[ver].dat_shear['w'][0])
         gg.process(cat_gal)
         gg.write(out_fname)
-        del(gg)
         del(cat_gal)
         del(g1)
         del(g2)
