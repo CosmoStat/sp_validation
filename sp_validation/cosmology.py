@@ -93,7 +93,6 @@ def stack_mm3(
 
         R_max_ang = radius / d_ang  # Rad         / deg_to_rad  # Deg
 
-        #res_match = tree.query(np.array([ra_c, dec_c]).T, k=n_match, n_jobs=-1)
         res_match = tree.query(np.array([ra_c, dec_c]).T, k=n_match)
 
         ind_gal = res_match[1][np.where(res_match[0] < R_max_ang)]
