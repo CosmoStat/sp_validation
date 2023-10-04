@@ -447,8 +447,8 @@ for ver in versions:
     else:
         print_cyan(f'Computing 2PCF')
         R = cat[ver]["shear"]["R"]
-        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R**2
-        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R**2
+        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -571,8 +571,8 @@ for ver in versions:
     else:
         print_cyan("Compute Map2")
         R = cat[ver]["shear"]["R"]
-        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R**2
-        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R**2
+        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
