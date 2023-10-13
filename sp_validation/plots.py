@@ -217,7 +217,6 @@ def plot_map(
         )
         xx = (x_cut + mean_x - min_x) / (max_x - min_x) * Nx
         yy = (y_cut + mean_y - min_y) / (max_y - min_y) * Ny
-        print('MKDEBUG 1', xx)
         xlim = plt.xlim(xx)
         ylim = plt.ylim(yy)
 
