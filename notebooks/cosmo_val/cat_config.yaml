@@ -199,10 +199,10 @@ SP_axel_v0.0:
       path: /../v1.0/ShapePipe/unions_shapepipe_psf_2022_v1.0.2.fits
       label: SP_psf
    star:
-      path: /../v1.0/ShapePipe/unions_shapepipe_star_2022_v1.0.3.fits
+      path: star_cat.npy
       label: SP_star
-      e1_col: e1
-      e2_col: e2
+      e1_col: E1_STAR_HSM
+      e2_col: E2_STAR_HSM
       
 DES:
    shape: ngmix

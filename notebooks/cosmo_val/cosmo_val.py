@@ -83,8 +83,8 @@ def print_cyan(msg):
 
 # ## Input parameters
 # Catalogue versions
-versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0',  'SP_LFmask',  'DES']
-# 'SP_axel_v0.0','SP_v1.1'
+versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'SP_axel_v0.0', 'SP_LFmask',  'DES']
+# 'SP_axel_v0.0','SP_v1.1', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0'
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
@@ -246,7 +246,7 @@ if len(theta) > 0:
 
     title = r'$\alpha$ leakage'
     xlabel = r'$\theta\, [arcmin]$'
-    ylabel = r'$\alpha(\theta$'
+    ylabel = r'$\alpha(\theta)$'
     plots.plot_data_1d(
         theta,
         y,
@@ -540,7 +540,7 @@ plt.savefig(out_path, bbox_inches="tight")
 # +
 theta_min = 0.3
 theta_max = 200
-nbins = 200
+nbins = 500
 npatch = 25
 
 TreeCorrConfig = {
@@ -554,7 +554,7 @@ TreeCorrConfig = {
 }
 
 # Set up angular smoothing scales for aperture-mass dispersion
-n_bins_map = 20
+n_bins_map = 15
 theta_map = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
 
 print_start("Aperture-mass dispersion")
@@ -584,7 +584,6 @@ for ver in versions:
             npatch=npatch,
         )
 
-        print("MKDEBUG", results[ver].dat_shear['RA'][0], results[ver].dat_shear['Dec'][0], g1[0], g2[0], results[ver].dat_shear['w'][0])
         gg.process(cat_gal)
         gg.write(out_fname)
         del(cat_gal)
@@ -622,9 +621,12 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     labels=[]
     colors=[]
     linestyles=[]
+    ft = 1.025
+    f0 = 1 / ft ** (len(versions) / 2)
     for ver in versions:
 
-        x.append(theta_map)
+        x.append(theta_map * f0)
+        f0 *= ft
         y.append(map2[ver][mode])
         yerr.append(np.sqrt(map2[ver]['varmapsq']))
         labels.append(ver)
@@ -678,7 +680,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         xlog=True,
         ylog=True,
         xlim=[theta_min_plot, theta_max_plot],
-        ylim=[1e-9, 1e-5],
+        ylim=[1e-9, 3e-5],
         colors=colors,
         linestyles=linestyles,
     )
