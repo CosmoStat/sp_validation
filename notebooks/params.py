@@ -146,8 +146,10 @@ gal_snr_min = 10
 gal_snr_max = 500
 
 ### Relative size, T_gal / T_psf (selection within metacal)
-### to select objects that are not too small compared to the PSF, thus not likely to be point-like
-gal_rel_size_min = 0.3
+### to select objects that are not too small compared to the PSF, thus not likely to be point-like,
+### or to big as they seem to bias the correlation functions
+gal_rel_size_min = 0.5
+gal_rel_size_max = 3.
 
 ### Correct galaxy size for ellipticity
 gal_size_corr_ell = False
