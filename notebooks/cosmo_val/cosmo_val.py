@@ -83,7 +83,7 @@ def print_cyan(msg):
 
 # ## Input parameters
 # Catalogue versions
-versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'SP_axel_v0.0', 'SP_LFmask',  'DES']
+versions=['SP_v1.0', 'LF_v2.0', 'SP_axel_v0.0', 'DES', 'SP_v1.3', 'SP_v1.3_LFmask']
 # 'SP_axel_v0.0','SP_v1.1', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0'
 all_keys = ['nz']
 for ver in versions:
@@ -144,7 +144,6 @@ def set_params_leakage(cat, ver):
     params_in['input_path_PSF'] = cat[ver]["star"]["path"]
     params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
     params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
-    params_in['sh'] = cat[ver]['shape']
 
     # Note: for SP these are calibrated shear estimates
     params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
@@ -493,10 +492,12 @@ plt.savefig(out_path)
 # -
 
 #Plot of xi_+
+nx = len(ver)
+fx = 1.025
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-for ver in versions:
+for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr,
+        cat_ggs[ver].meanr * fx ** (idx - nx),
         cat_ggs[ver].xip,
         yerr=np.sqrt(cat_ggs[ver].varxip),
         label=ver,
@@ -515,9 +516,9 @@ plt.savefig(out_path, bbox_inches="tight")
 
 #Plot of xi_-
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-for ver in versions:
+for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr,
+        cat_ggs[ver].meanr * fx ** (idx - nx),
         cat_ggs[ver].xim,
         yerr=np.sqrt(cat_ggs[ver].varxim),
         label=ver,
@@ -532,6 +533,48 @@ plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([theta_min_plot, theta_max_plot])
 plt.ylabel(r'$\xi_-(\theta)$')
 out_path = f"{cat['paths']['output']}/xi_m.png"
+plt.savefig(out_path, bbox_inches="tight")
+
+#Plot of xi_+(theta) * theta
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
+    plt.errorbar(
+        cat_ggs[ver].meanr,
+        cat_ggs[ver].xip * cat_ggs[ver].meanr,
+        yerr=np.sqrt(cat_ggs[ver].varxip) * cat_ggs[ver].meanr,
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
+plt.xscale('log')
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([theta_min_plot, theta_max_plot])
+plt.ylabel(r'$\theta \xi_+(\theta)$')
+out_path = f"{cat['paths']['output']}/xi_p_theta.png"
+plt.savefig(out_path, bbox_inches="tight")
+
+#Plot of xi_-
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
+    plt.errorbar(
+        cat_ggs[ver].meanr * f ** (idx - nx),
+        cat_ggs[ver].xim * cat_ggs[ver].meanr,
+        yerr=np.sqrt(cat_ggs[ver].varxim) * cat_ggs[ver].meanr,
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
+plt.xscale('log')
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([theta_min_plot, theta_max_plot])
+plt.ylabel(r'$\theta \xi_-(\theta)$')
+out_path = f"{cat['paths']['output']}/xi_m_theta.png"
 plt.savefig(out_path, bbox_inches="tight")
 
 # +
