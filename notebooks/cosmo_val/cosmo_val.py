@@ -83,7 +83,7 @@ def print_cyan(msg):
 
 # ## Input parameters
 # Catalogue versions
-versions=['SP_v1.0', 'LF_v2.0', 'SP_axel_v0.0', 'DES', 'SP_v1.3', 'SP_v1.3_LFmask']
+versions=['SP_v1.0', 'SP_v1.0_LFmask', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'SP_v1.3', 'SP_v1.3_LFmask']
 # 'SP_axel_v0.0','SP_v1.1', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0'
 all_keys = ['nz']
 for ver in versions:
@@ -149,6 +149,8 @@ def set_params_leakage(cat, ver):
     params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
     params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
 
+    params_in['ra_star_co'] = cat[ver]["star"]["ra_col"]
+    params_in["dec_star_col"] = cat[ver]["star"]["dec_col"]
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
 
@@ -179,7 +181,24 @@ for ver in versions:
     obj.check_params()
     obj.prepare_output()
     obj.read_data()
-print_done('Done reading catalogues')
+
+
+
+print_start('Plot footprint')
+for ver in versions:
+    print_magenta(ver)
+    plt.plot(
+        results[ver].dat_shear["RA"],
+        results[ver].dat_shear["Dec"],
+        ".",
+        markersize=0.5
+    )
+    plt.xlabel("R.A. [deg]")
+    plt.ylabel("Dec [deg]")
+    out_path = f"{cat['paths']['output']}/footprint.png"
+    plt.savefig(out_path)
+print_done('Done plotting')
+
 
 
 # #### $\xi_\textrm{sys}$ and scale-dependent leakage
@@ -439,7 +458,7 @@ for ver in versions:
 
     gg = treecorr.GGCorrelation(TreeCorrConfig)
 
-    out_fname = f"{cat['paths']['output']}/xi_pm_{ver}_{cat[ver]['shape']}.txt"
+    out_fname = f"{cat['paths']['output']}/xi_pm_{ver}.txt"
     if os.path.exists(out_fname) :
         print_green(f'Skipping 2PCF, {out_fname} exists')
         gg.read(out_fname)
@@ -492,12 +511,10 @@ plt.savefig(out_path)
 # -
 
 #Plot of xi_+
-nx = len(ver)
-fx = 1.025
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr * fx ** (idx - nx),
+        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
         cat_ggs[ver].xip,
         yerr=np.sqrt(cat_ggs[ver].varxip),
         label=ver,
@@ -518,7 +535,7 @@ plt.savefig(out_path, bbox_inches="tight")
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr * fx ** (idx - nx),
+        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
         cat_ggs[ver].xim,
         yerr=np.sqrt(cat_ggs[ver].varxim),
         label=ver,
@@ -560,7 +577,7 @@ plt.savefig(out_path, bbox_inches="tight")
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr * f ** (idx - nx),
+        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
         cat_ggs[ver].xim * cat_ggs[ver].meanr,
         yerr=np.sqrt(cat_ggs[ver].varxim) * cat_ggs[ver].meanr,
         label=ver,
