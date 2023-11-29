@@ -83,7 +83,7 @@ def print_cyan(msg):
 
 # ## Input parameters
 # Catalogue versions
-versions=['SP_v1.0', 'SP_v1.0_LFmask', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'SP_v1.3', 'SP_v1.3_LFmask']
+versions=['SP_v1.0', 'SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
 # 'SP_axel_v0.0','SP_v1.1', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0'
 all_keys = ['nz']
 for ver in versions:
@@ -195,7 +195,7 @@ for ver in versions:
     )
     plt.xlabel("R.A. [deg]")
     plt.ylabel("Dec [deg]")
-    out_path = f"{cat['paths']['output']}/footprint.png"
+    out_path = f"{cat['paths']['output']}/footprint_{ver}.png"
     plt.savefig(out_path)
 print_done('Done plotting')
 

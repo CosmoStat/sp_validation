@@ -158,7 +158,27 @@ LF_matched_SP_v1.0:
       e1_col: e1
       e2_col: e2
 
-SP_v1.0_LFmask:
+SP_v1.0_LFmask_4k:
+   pipeline: SP
+   subdir: CFIS/v1.0/SP_LFmask
+   ls: dashdot
+   colour: blue
+   marker: h
+   getdist_colour: 0.04606552309790213, 0.9780505945532256, 0.37684692395248665
+   shear:
+      path: unions_shapepipe_2022_v1.0_mtheli4k.fits
+      e1_col: e1
+      e2_col: e2
+      R: 1.0
+   star:
+      path: unions_shapepipe_star_2022_v1.0.3_mtheli4k.fits
+      label: SP_LFmask_star
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+
+SP_v1.0_LFmask_8k:
    pipeline: SP
    subdir: CFIS/v1.0/SP_LFmask
    ls: dashdot
@@ -178,7 +198,7 @@ SP_v1.0_LFmask:
       e1_col: e1
       e2_col: e2
 
-SP_v1.3_LFmask:
+SP_v1.3_LFmask_4k:
    pipeline: SP
    subdir: CFIS/v1.0/SP_LFmask
    ls: dashdot
@@ -197,6 +217,27 @@ SP_v1.3_LFmask:
       dec_col: Dec
       e1_col: e1
       e2_col: e2
+
+SP_v1.3_LFmask_8k:
+   pipeline: SP
+   subdir: CFIS/v1.0/SP_LFmask
+   ls: dashdot
+   colour: green
+   marker: h
+   getdist_colour: 0.04606552309790213, 0.9780505945532256, 0.37684692395248665
+   shear:
+      path: unions_shapepipe_2022_v1.3_mtheli8k.fits
+      e1_col: e1
+      e2_col: e2
+      R: 1.0
+   star:
+      path: unions_shapepipe_star_2022_v1.0.3_mtheli8k.fits
+      label: SP_LFmask_star
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+
 
 SP_matched_MP_v1.0:
    pipeline: SP
