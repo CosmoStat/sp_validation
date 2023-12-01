@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.15.1
+#       jupytext_version: 1.15.2
 #   kernelspec:
 #     display_name: sp_validation
 #     language: python
@@ -83,8 +83,9 @@ def print_cyan(msg):
 
 # ## Input parameters
 # Catalogue versions
-versions=['SP_v1.0', 'SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
-# 'SP_axel_v0.0','SP_v1.1', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0'
+versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES'] 
+#versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
+#versions = ["SP_v1.3_LFmask_4k"]
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
@@ -92,7 +93,7 @@ for ver in versions:
 # Base directory for data, on candide
 data_base_dir = f'{os.environ["HOME"]}/astro/data'
 
-# ## Loading data
+# ## Loading configuration
 
 # +
 # Read in dictionary about catalogue info from yaml file
@@ -128,7 +129,6 @@ print_start('Start cosmology validation')
 # ### Systematic tests
 
 # + active=""
-# # rho stats
 # # object-wise leakage
 # -
 
@@ -149,7 +149,7 @@ def set_params_leakage(cat, ver):
     params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
     params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
 
-    params_in['ra_star_co'] = cat[ver]["star"]["ra_col"]
+    params_in['ra_star_col'] = cat[ver]["star"]["ra_col"]
     params_in["dec_star_col"] = cat[ver]["star"]["dec_col"]
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
@@ -182,24 +182,97 @@ for ver in versions:
     obj.prepare_output()
     obj.read_data()
 
+# #### Rho statistics
 
+import emcee
+from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 
-print_start('Plot footprint')
+# +
+out_dir = f"{cat['paths']['output']}/rho_stats"
+#out_dir = "/"
+if not os.path.exists(out_dir):
+    os.mkdir(out_dir) 
+print_start('Rho stats')
+
+# Create class instance to compute, save, load and plot rho_stats
+rho_stat_handler = RhoStat(output=out_dir, verbose=True)
+
+for ver in versions:
+    out_base = f"rho_stats_{ver}.fits"
+    out_path = f"{out_dir}/{out_base}"
+
+    # Load previous results
+    if os.path.exists(out_path):
+        print_green(f"Skipping rho statis computation, file {out_path} exists")
+        rho_stat_handler.load_rho_stats(out_base)
+    else:
+        print_cyan("Computing rho stats")
+        
+        # Set parameters
+        params = results[ver]._params
+        params["patch_number"] = 120
+        params["ra_col"] = cat[ver]["psf"]["ra_col"]
+        params["dec_col"] = cat[ver]["psf"]["dec_col"]
+        params["e1_PSF_col"] = cat[ver]["psf"]["e1_PSF_col"]
+        params["e2_PSF_col"] = cat[ver]["psf"]["e2_PSF_col"]
+        params["e1_star_col"] = cat[ver]["psf"]["e1_star_col"]
+        params["e2_star_col"] = cat[ver]["psf"]["e2_star_col"]
+        params["PSF_size"] = cat[ver]["psf"]["PSF_size"]
+        params["star_size"] = cat[ver]["psf"]["star_size"]
+        params["ra_units"] = "deg"
+        params["dec_units"] = "deg"
+
+        #rho_stat_handler.catalogs.params_default(out_dir)
+        rho_stat_handler.catalogs.set_params(params, out_dir)
+
+        # Build catalogues
+        rho_stat_handler.build_cat_to_compute_rho(
+            cat[ver]["psf"]["path"],
+            catalog_id=ver, 
+            square_size=True,
+            mask=False
+        )
+
+        # Compute correlations
+        rho_stat_handler.compute_rho_stats(ver, out_base)
+
+# +
+
+filenames = []
+colors = []
+for ver in versions:
+    filenames.append(f"rho_stats_{ver}.fits")
+    colors.append(cat[ver]["colour"])
+
+# Create plots
+rho_stat_handler.plot_rho_stats(
+    filenames,
+    colors,
+    versions,
+    abs=True,
+    savefig='rho_stats.png'
+)
+# -
+
+print_start('Plot footprints')
 for ver in versions:
     print_magenta(ver)
-    plt.plot(
-        results[ver].dat_shear["RA"],
-        results[ver].dat_shear["Dec"],
-        ".",
-        markersize=0.5
-    )
-    plt.xlabel("R.A. [deg]")
-    plt.ylabel("Dec [deg]")
     out_path = f"{cat['paths']['output']}/footprint_{ver}.png"
-    plt.savefig(out_path)
+    if os.path.exists(out_path):
+        print_green(f'Skipping footprint computation, plot {out_path} exists')
+    else:
+        print_cyan("Compute footprint")
+        plt.clf()
+        plt.plot(
+            results[ver].dat_shear["RA"],
+            results[ver].dat_shear["Dec"],
+            ".",
+            markersize=0.5
+        )
+        plt.xlabel("R.A. [deg]")
+        plt.ylabel("Dec [deg]")
+        plt.savefig(out_path)
 print_done('Done plotting')
-
-
 
 # #### $\xi_\textrm{sys}$ and scale-dependent leakage
 
@@ -280,6 +353,7 @@ if len(theta) > 0:
         colors=colors,
         linestyles=linestyles,
         markers=markers,
+        shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -318,6 +392,7 @@ if len(y) > 0:
         xlim=[theta_min_plot, theta_max_plot],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -348,6 +423,7 @@ if len(y) > 0:
         ylim=[-1e-7, 1e-6],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 # +
@@ -681,12 +757,9 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     labels=[]
     colors=[]
     linestyles=[]
-    ft = 1.025
-    f0 = 1 / ft ** (len(versions) / 2)
-    for ver in versions:
+    for idx, ver in enumerate(versions):
 
-        x.append(theta_map * f0)
-        f0 *= ft
+        x.append(theta_map)
         y.append(map2[ver][mode])
         yerr.append(np.sqrt(map2[ver]['varmapsq']))
         labels.append(ver)
@@ -711,6 +784,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         ylim=[-1e-6, 2e-5],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -743,6 +817,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         ylim=[1e-9, 3e-5],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 # -
