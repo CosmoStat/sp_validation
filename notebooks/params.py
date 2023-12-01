@@ -110,7 +110,7 @@ mmap_mode = None
 ## Output
 
 ### Additional output columns
-add_cols = None
+add_cols = [FLUX_RADIUS]
 
 
 # Catalog parameters
