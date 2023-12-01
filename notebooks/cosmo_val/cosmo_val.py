@@ -82,15 +82,15 @@ def print_cyan(msg):
 
 
 # ## Input parameters
-
 # Catalogue versions
-versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0','SP_axel_v0.0', 'SP_LFmask', 'SP_v1.1'] #, 'DES']
+versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0',  'SP_LFmask',  'DES']
+# 'SP_axel_v0.0','SP_v1.1'
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
+data_base_dir = f'{os.environ["HOME"]}/astro/data'
 
 # ## Loading data
 
@@ -443,13 +443,12 @@ for ver in versions:
     out_fname = f"{cat['paths']['output']}/xi_pm_{ver}_{cat[ver]['shape']}.txt"
     if os.path.exists(out_fname) :
         print_green(f'Skipping 2PCF, {out_fname} exists')
-
         gg.read(out_fname)
     else:
         print_cyan(f'Computing 2PCF')
         R = cat[ver]["shear"]["R"]
-        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R**2
-        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R**2
+        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -462,8 +461,12 @@ for ver in versions:
         )
         gg.process(cat_gal)
         gg.write(out_fname)
+        del(cat_gal)
+        del(g1)
+        del(g2)
 
     cat_ggs[ver] = gg
+    del(gg)
 
 print_done("Done 2PCF")
 # -
@@ -540,26 +543,27 @@ theta_max = 200
 nbins = 200
 npatch = 25
 
+TreeCorrConfig = {
+        'ra_units': coord_units,
+        'dec_units': coord_units,
+        'max_sep': str(theta_max),
+        'min_sep': str(theta_min),
+        'sep_units': sep_units,
+        'nbins': nbins,
+        'var_method':'jackknife',
+}
+
 # Set up angular smoothing scales for aperture-mass dispersion
 n_bins_map = 20
-R = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
-
-TreeCorrConfig = {
-    'ra_units': coord_units,
-    'dec_units': coord_units,
-    'max_sep': str(theta_max),
-    'min_sep': str(theta_min),
-    'sep_units': sep_units,
-    'nbins': nbins,
-    'var_method':'jackknife',
-}
-gg = treecorr.GGCorrelation(TreeCorrConfig)
+theta_map = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
 
 print_start("Aperture-mass dispersion")
 map2 = {}
 for ver in versions:
-
     print_magenta(ver)
+
+    gg = treecorr.GGCorrelation(TreeCorrConfig)
+
     out_fname = f"{cat['paths']['output']}/xi_for_map2_{ver}.txt"
     if os.path.exists(out_fname):
         print_green(f'Skipping xi for Map2, {out_fname} exists')
@@ -567,8 +571,8 @@ for ver in versions:
     else:
         print_cyan("Compute Map2")
         R = cat[ver]["shear"]["R"]
-        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R**2
-        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R**2
+        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -588,7 +592,7 @@ for ver in versions:
         del(g2)
 
     mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
-        R=R,
+        R=theta_map,
         m2_uform='Schneider',
     )
     out_fname_map2 = f"{cat['paths']['output']}/map2_{ver}.txt"
@@ -596,13 +600,14 @@ for ver in versions:
         print(f"Map2 output file {out_fname_map2} exists")
     else:
         print(f"Writing Map2 to output file {out_fname_map2} ")
-        gg.writeMapSq(out_fname_map2, R=R, m2_uform='Schneider')
+        gg.writeMapSq(out_fname_map2, R=theta_map, m2_uform='Schneider')
     map2[ver] = {}
     map2[ver]['mapsq'] = mapsq
     map2[ver]['mapsq_im'] = mapsq_im
     map2[ver]['mxsq'] = mxsq
     map2[ver]['mxsq_im'] = mxsq_im
     map2[ver]['varmapsq'] = varmapsq
+    del(gg)
 
 print_done("Done aperture-mass dispersion")
 
@@ -619,7 +624,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     linestyles=[]
     for ver in versions:
 
-        x.append(R)
+        x.append(theta_map)
         y.append(map2[ver][mode])
         yerr.append(np.sqrt(map2[ver]['varmapsq']))
         labels.append(ver)
@@ -654,7 +659,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     y = []
     yerr = []
     for ver in versions:
-        x.append(R)
+        x.append(theta_map)
         y.append(np.abs(map2[ver][mode]))
         yerr.append(np.sqrt(map2[ver]['varmapsq']))
     xlabel = r"$\theta$ [arcmin]"
