@@ -129,6 +129,7 @@ print_start('Start cosmology validation')
 # ### Systematic tests
 
 # + active=""
+# # TODO:
 # # object-wise leakage
 # -
 
@@ -237,7 +238,6 @@ for ver in versions:
         rho_stat_handler.compute_rho_stats(ver, out_base)
 
 # +
-
 filenames = []
 colors = []
 for ver in versions:
