@@ -13,7 +13,7 @@ jupyter
 jupytext==1.15.1
 regions
 reproject
-shear_psf_leakage==0.1.5
+shear_psf_leakage==0.1.6
 scipy
 seaborn
 setuptools==58.3.0
