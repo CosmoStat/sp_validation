@@ -16,7 +16,7 @@ reproject
 shear_psf_leakage==0.1.6
 scipy
 seaborn
-setuptools==58.3.0
+setuptools
 treecorr
 tqdm
 uncertainties
