@@ -563,6 +563,47 @@ for ver in versions:
     del(gg)
 
 print_done("Done 2PCF")
+lst = np.arange(1,nbins+1)
+
+#create fits HDU with xi_p and xi_m data
+col1 = fits.Column(name ='BIN1', format ='K', array = np.ones(len(lst)))
+col2 = fits.Column(name ='BIN2', format ='K', array = np.ones(len(lst)))
+col3 = fits.Column(name ='ANGBIN', format ='K', array = lst)
+col4 = fits.Column(name ='VALUE', format ='D', array = gg.xip)
+col5 = fits.Column(name ='ANG', format ='D', unit ='arcmin', array = gg.meanr)
+coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+xiplus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_PLUS')
+
+
+col4 = fits.Column(name ='VALUE', format ='D', array = gg.xim)
+coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+ximinus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_MINUS')
+
+#append xi_p/xi_m header info 
+xip_dict = {'2PTDATA':'T',
+            'QUANT1':'G+R',
+             'QUANT2':'G+R',
+             'KERNEL_1':'NZ_SOURCE',
+             'KERNEL_2':'NZ_SOURCE',
+             'WINDOWS':'SAMPLE'}
+for key in xip_dict:
+    xiplus_hdu.header[key] = xip_dict[key]
+
+
+xim_dict = {'2PTDATA':'T',
+            'QUANT1':'G-R',
+             'QUANT2':'G-R',
+             'KERNEL_1':'NZ_SOURCE',
+             'KERNEL_2':'NZ_SOURCE',
+             'WINDOWS':'SAMPLE'}
+
+for key in xim_dict:
+    ximinus_hdu.header[key] = xim_dict[key]
+
+ximinus_hdu.writeto(f"{cat['paths']['output']}/xi_minus.fits",overwrite=True)
+xiplus_hdu.writeto(f"{cat['paths']['output']}/xi_plus.fits",overwrite=True)
+
+
 # -
 
 # #### Plot $\xi_\pm$
@@ -833,132 +874,3 @@ print("Done: Clean up memory")
 print_done("Exiting here")
 sys.exit(0)
 
-# #### Plot covariance matrices
-
-#Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
-for ver in versions:
-    try:
-        cc = np.loadtxt(cat[ver]['shear']['covmat_file'])
-    except KeyError:
-        print('No Covmat available, skipping analysis for this catalogue: %s' %ver)
-        continue
-    else:
-        cc_var = np.diag(cc)
-        cc_varxip = cc_var[:20]
-        cc_varxim = cc_var[20:]
-
-        cc_g = np.loadtxt(cat[ver]['shear']['covmat_file'][:-4]+'_g.txt')
-        cc_var = np.diag(cc_g)
-        cc_varxip_g = cc_var[:20]
-        cc_varxim_g = cc_var[20:]
-
-        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxip,
-                   ls='-',c='k',
-                   label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip,
-                   ls='--', c='%s' %cat[ver]['colour'],
-                   label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip_g,
-                   ls=':', c='%s' %cat[ver]['colour'],
-                   label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-
-        plt.grid()
-        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
-        plt.legend(fontsize=15)
-        plt.xlabel(rf'$\theta$ [{sep_units}]')
-        plt.ylabel(r'$\sigma(\xi_+)$')
-        out_path = f"{cat['paths']['output']}/cov_p"
-        plt.savefig(out_path)
-
-        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxim,
-                   ls='-', c='k',
-                    label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxim,
-                   ls='--', c='%s' %cat[ver]['colour'],
-                    label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxim_g,
-                    ls=':', c='%s' %cat[ver]['colour'],
-                    label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-
-        plt.grid()
-        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
-        plt.legend(fontsize=15)
-        plt.xlabel(rf'$\theta$ [{sep_units}]')
-        plt.ylabel(r'$\sigma(\xi_-)$')
-        out_path = f"{cat['paths']['output']}/cov_m"
-        plt.savefig(out_path)
-
-# ## MCMC Plotting
-
-# +
-from getdist import plots, loadMCSamples
-import uncertainties
-
-g = plots.get_subplot_plotter(width_inch=30)
-g.settings.axes_fontsize = 30
-g.settings.axes_labelsize = 30
-g.settings.alpha_filled_add = 0.6
-g.settings.legend_fontsize = 30
-
-#SPECIFY DATA DIRECTORY AND DESIRED CHAINS TO ANALYSE
-scratch_dir = f'{os.environ["HOME"]}'
-# For reference, currently the chains reside in Lisa's scratch space on CANDIDE
-scratch_dir = '/feynman/work/dap/lcs/lg268561/UNIONS/'
-
-# Right now only these versions!
-#versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
-versions = ['DES']
-
-# Choose between blinds A, B or C (matched catalogues don't have blinds)
-blinds = ['A']
-# If we want to include full angular scale or cut angular scales ('cut'/'full'),
-# option only possible for unmatched catalogue
-theta_range = 'cut'
-# -
-
-#CREATE PARAMNAME FILE
-for ver in versions:
-    for blind in blinds:
-        chain_dir = '%s/blind_%s/chain' %(ver,blind)
-        with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
-            params = file.readline()[1:].split('\t')[:-2]
-            file.close()
-
-        with open(scratch_dir + '%s/getdist_.paramnames'%(chain_dir), "w") as file:
-            for i in range(len(params)):
-                file.write(params[i].split('--')[1] + '\n')
-            file.close()
-        print(params)
-
-# +
-#READ CHAIN
-chains = []
-colours = []
-line_args = []
-labels = []
-
-for ver in versions:
-    for blind in blinds:
-        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver,blind,theta_range)
-
-        chain = g.samples_for_root(scratch_dir + '%s/getdist_' %(chain_dir),
-                                    settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
-        p=chain.getParams()
-        chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
-        chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
-
-        chains.append(chain)
-        colours.append(tuple(map(float,cat[ver]['getdist_colour'].split(","))))
-        line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
-        labels.append(ver + '_blind_' + blind + '_theta_' + theta_range)
-
-# +
-# %matplotlib inline
-g.triangle_plot(chains,['omega_m','ln10^10A_s','SIGMA_8','S_8'],
-                legend_labels=labels,
-                filled=True,
-                colors=colours,
-                line_args=line_args)
-
-# out_path = f"{cat['paths']['output']}/corner_plot.pdf"
-# g.export(out_path)
