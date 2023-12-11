@@ -185,15 +185,36 @@ for ver in versions:
 
 # #### Rho statistics
 
+def get_params_rho_tau(params_base, params_psf):
+
+    # Set parameters
+    params = params_base
+    params["patch_number"] = 120
+    params["ra_col"] = params_psf["ra_col"]
+    params["dec_col"] = params_psf["dec_col"]
+    params["e1_PSF_col"] = params_psf["e1_PSF_col"]
+    params["e2_PSF_col"] = params_psf["e2_PSF_col"]
+    params["e1_star_col"] = params_psf["e1_star_col"]
+    params["e2_star_col"] = params_psf["e2_star_col"]
+    params["PSF_size"] = params_psf["PSF_size"]
+    params["star_size"] = params_psf["star_size"]
+    params["ra_units"] = "deg"
+    params["dec_units"] = "deg"
+
+    params["w_col"] = "w"
+
+    return params
+
+
 import emcee
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 
 # +
-out_dir = f"{cat['paths']['output']}/rho_stats"
-#out_dir = "/"
+out_dir = f"{cat['paths']['output']}/tau_stats"
 if not os.path.exists(out_dir):
     os.mkdir(out_dir) 
 print_start('Rho stats')
+# -
 
 # Create class instance to compute, save, load and plot rho_stats
 rho_stat_handler = RhoStat(output=out_dir, verbose=True)
@@ -204,26 +225,15 @@ for ver in versions:
 
     # Load previous results
     if os.path.exists(out_path):
-        print_green(f"Skipping rho statis computation, file {out_path} exists")
+        print_green(f"Skipping rho statistics computation, file {out_path} exists")
         rho_stat_handler.load_rho_stats(out_base)
     else:
         print_cyan("Computing rho stats")
         
-        # Set parameters
-        params = results[ver]._params
-        params["patch_number"] = 120
-        params["ra_col"] = cat[ver]["psf"]["ra_col"]
-        params["dec_col"] = cat[ver]["psf"]["dec_col"]
-        params["e1_PSF_col"] = cat[ver]["psf"]["e1_PSF_col"]
-        params["e2_PSF_col"] = cat[ver]["psf"]["e2_PSF_col"]
-        params["e1_star_col"] = cat[ver]["psf"]["e1_star_col"]
-        params["e2_star_col"] = cat[ver]["psf"]["e2_star_col"]
-        params["PSF_size"] = cat[ver]["psf"]["PSF_size"]
-        params["star_size"] = cat[ver]["psf"]["star_size"]
-        params["ra_units"] = "deg"
-        params["dec_units"] = "deg"
-
-        #rho_stat_handler.catalogs.params_default(out_dir)
+        # Get rho and tau parameters
+        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"])
+        
+        # Set rho parameters
         rho_stat_handler.catalogs.set_params(params, out_dir)
 
         # Build catalogues
@@ -231,10 +241,10 @@ for ver in versions:
             cat[ver]["psf"]["path"],
             catalog_id=ver, 
             square_size=True,
-            mask=False
+            mask=False,
         )
 
-        # Compute correlations
+        # Compute and save rho stats
         rho_stat_handler.compute_rho_stats(ver, out_base)
 
 # +
@@ -244,15 +254,95 @@ for ver in versions:
     filenames.append(f"rho_stats_{ver}.fits")
     colors.append(cat[ver]["colour"])
 
-# Create plots
+# Create ploth
 rho_stat_handler.plot_rho_stats(
     filenames,
     colors,
     versions,
     abs=True,
-    savefig='rho_stats.png'
+    savefig='rho_stats.png',
+    legend="outside",
 )
 # -
+
+# #### Tau statistics
+
+# +
+out_dir = f"{cat['paths']['output']}/tau_stats"
+#out_dir = "/"
+if not os.path.exists(out_dir):
+    os.mkdir(out_dir) 
+print_start('Tau stats')
+# -
+
+# Create class instance to compute, save, load and plot rho_stats
+tau_stat_handler = TauStat(catalogs=rho_stat_handler.catalogs, output=out_dir, verbose=True)
+
+for ver in versions:
+    out_base = f"tau_stats_{ver}.fits"
+    out_path = f"{out_dir}/{out_base}"
+
+    # Load previous results
+    if os.path.exists(out_path):
+        print_green(f"Skipping tau statistics computation, file {out_path} exists")
+        tau_stat_handler.load_tau_stats(out_base)
+    else:
+        print_cyan("Computing tau stats")
+
+        # Get rho and tau parameters
+        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"])
+
+        # Set parameters
+        tau_stat_handler.catalogs.set_params(params, out_dir)
+
+        # Build the different catalogues
+        tau_stat_handler.build_cat_to_compute_tau(
+            cat[ver]["shear"]["path"],
+            cat_type='gal',
+            catalog_id=ver,
+            square_size=True,
+            mask=False,
+        ) 
+
+        # Build the catalog of galaxies. PSF was computed above
+        if f"psf_{ver}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
+            tau_stat_handler.build_cat_to_compute_tau(
+                cat[ver]["psf"]["path"],
+                cat_type='psf',
+                catalog_id=ver,
+                square_size=True,
+                mask=False,
+            ) 
+
+        # function to extract the tau_+
+        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+        tau_stat_handler.compute_tau_stats(
+            ver,
+            out_base,
+            save_cov=True,
+            func=only_p,
+            var_method='jackknife',
+        ) 
+
+# +
+filenames = []
+colors = []
+for ver in versions:
+    filenames.append(f"tau_stats_{ver}.fits")
+    colors.append(cat[ver]["colour"])
+
+# Create plots
+tau_stat_handler.plot_tau_stats(
+    filenames,
+    colors,
+    versions,
+    savefig='tau_stats.png',
+    plot_tau_m=False,
+    legend="outside",
+)
+# -
+
+# #### Footprint
 
 print_start('Plot footprints')
 for ver in versions:
