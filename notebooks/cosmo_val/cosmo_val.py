@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.15.1
+#       jupytext_version: 1.15.2
 #   kernelspec:
 #     display_name: sp_validation
 #     language: python
@@ -83,8 +83,9 @@ def print_cyan(msg):
 
 # ## Input parameters
 # Catalogue versions
-versions=['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0',  'SP_LFmask',  'DES']
-# 'SP_axel_v0.0','SP_v1.1'
+versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES'] 
+#versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
+#versions = ["SP_v1.3_LFmask_4k"]
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
@@ -92,7 +93,7 @@ for ver in versions:
 # Base directory for data, on candide
 data_base_dir = f'{os.environ["HOME"]}/astro/data'
 
-# ## Loading data
+# ## Loading configuration
 
 # +
 # Read in dictionary about catalogue info from yaml file
@@ -128,7 +129,7 @@ print_start('Start cosmology validation')
 # ### Systematic tests
 
 # + active=""
-# # rho stats
+# # TODO:
 # # object-wise leakage
 # -
 
@@ -144,12 +145,13 @@ def set_params_leakage(cat, ver):
     params_in['input_path_PSF'] = cat[ver]["star"]["path"]
     params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
     params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
-    params_in['sh'] = cat[ver]['shape']
 
     # Note: for SP these are calibrated shear estimates
     params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
     params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
 
+    params_in['ra_star_col'] = cat[ver]["star"]["ra_col"]
+    params_in["dec_star_col"] = cat[ver]["star"]["dec_col"]
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
 
@@ -180,8 +182,97 @@ for ver in versions:
     obj.check_params()
     obj.prepare_output()
     obj.read_data()
-print_done('Done reading catalogues')
 
+# #### Rho statistics
+
+import emcee
+from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
+
+# +
+out_dir = f"{cat['paths']['output']}/rho_stats"
+#out_dir = "/"
+if not os.path.exists(out_dir):
+    os.mkdir(out_dir) 
+print_start('Rho stats')
+
+# Create class instance to compute, save, load and plot rho_stats
+rho_stat_handler = RhoStat(output=out_dir, verbose=True)
+
+for ver in versions:
+    out_base = f"rho_stats_{ver}.fits"
+    out_path = f"{out_dir}/{out_base}"
+
+    # Load previous results
+    if os.path.exists(out_path):
+        print_green(f"Skipping rho statis computation, file {out_path} exists")
+        rho_stat_handler.load_rho_stats(out_base)
+    else:
+        print_cyan("Computing rho stats")
+        
+        # Set parameters
+        params = results[ver]._params
+        params["patch_number"] = 120
+        params["ra_col"] = cat[ver]["psf"]["ra_col"]
+        params["dec_col"] = cat[ver]["psf"]["dec_col"]
+        params["e1_PSF_col"] = cat[ver]["psf"]["e1_PSF_col"]
+        params["e2_PSF_col"] = cat[ver]["psf"]["e2_PSF_col"]
+        params["e1_star_col"] = cat[ver]["psf"]["e1_star_col"]
+        params["e2_star_col"] = cat[ver]["psf"]["e2_star_col"]
+        params["PSF_size"] = cat[ver]["psf"]["PSF_size"]
+        params["star_size"] = cat[ver]["psf"]["star_size"]
+        params["ra_units"] = "deg"
+        params["dec_units"] = "deg"
+
+        #rho_stat_handler.catalogs.params_default(out_dir)
+        rho_stat_handler.catalogs.set_params(params, out_dir)
+
+        # Build catalogues
+        rho_stat_handler.build_cat_to_compute_rho(
+            cat[ver]["psf"]["path"],
+            catalog_id=ver, 
+            square_size=True,
+            mask=False
+        )
+
+        # Compute correlations
+        rho_stat_handler.compute_rho_stats(ver, out_base)
+
+# +
+filenames = []
+colors = []
+for ver in versions:
+    filenames.append(f"rho_stats_{ver}.fits")
+    colors.append(cat[ver]["colour"])
+
+# Create plots
+rho_stat_handler.plot_rho_stats(
+    filenames,
+    colors,
+    versions,
+    abs=True,
+    savefig='rho_stats.png'
+)
+# -
+
+print_start('Plot footprints')
+for ver in versions:
+    print_magenta(ver)
+    out_path = f"{cat['paths']['output']}/footprint_{ver}.png"
+    if os.path.exists(out_path):
+        print_green(f'Skipping footprint computation, plot {out_path} exists')
+    else:
+        print_cyan("Compute footprint")
+        plt.clf()
+        plt.plot(
+            results[ver].dat_shear["RA"],
+            results[ver].dat_shear["Dec"],
+            ".",
+            markersize=0.5
+        )
+        plt.xlabel("R.A. [deg]")
+        plt.ylabel("Dec [deg]")
+        plt.savefig(out_path)
+print_done('Done plotting')
 
 # #### $\xi_\textrm{sys}$ and scale-dependent leakage
 
@@ -246,7 +337,7 @@ if len(theta) > 0:
 
     title = r'$\alpha$ leakage'
     xlabel = r'$\theta\, [arcmin]$'
-    ylabel = r'$\alpha(\theta$'
+    ylabel = r'$\alpha(\theta)$'
     plots.plot_data_1d(
         theta,
         y,
@@ -262,6 +353,7 @@ if len(theta) > 0:
         colors=colors,
         linestyles=linestyles,
         markers=markers,
+        shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -300,6 +392,7 @@ if len(y) > 0:
         xlim=[theta_min_plot, theta_max_plot],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -330,6 +423,7 @@ if len(y) > 0:
         ylim=[-1e-7, 1e-6],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 # +
@@ -440,7 +534,7 @@ for ver in versions:
 
     gg = treecorr.GGCorrelation(TreeCorrConfig)
 
-    out_fname = f"{cat['paths']['output']}/xi_pm_{ver}_{cat[ver]['shape']}.txt"
+    out_fname = f"{cat['paths']['output']}/xi_pm_{ver}.txt"
     if os.path.exists(out_fname) :
         print_green(f'Skipping 2PCF, {out_fname} exists')
         gg.read(out_fname)
@@ -535,9 +629,9 @@ plt.savefig(out_path)
 
 #Plot of xi_+
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-for ver in versions:
+for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr,
+        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
         cat_ggs[ver].xip,
         yerr=np.sqrt(cat_ggs[ver].varxip),
         label=ver,
@@ -556,9 +650,9 @@ plt.savefig(out_path, bbox_inches="tight")
 
 #Plot of xi_-
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-for ver in versions:
+for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr,
+        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
         cat_ggs[ver].xim,
         yerr=np.sqrt(cat_ggs[ver].varxim),
         label=ver,
@@ -575,13 +669,55 @@ plt.ylabel(r'$\xi_-(\theta)$')
 out_path = f"{cat['paths']['output']}/xi_m.png"
 plt.savefig(out_path, bbox_inches="tight")
 
+#Plot of xi_+(theta) * theta
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
+    plt.errorbar(
+        cat_ggs[ver].meanr,
+        cat_ggs[ver].xip * cat_ggs[ver].meanr,
+        yerr=np.sqrt(cat_ggs[ver].varxip) * cat_ggs[ver].meanr,
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
+plt.xscale('log')
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([theta_min_plot, theta_max_plot])
+plt.ylabel(r'$\theta \xi_+(\theta)$')
+out_path = f"{cat['paths']['output']}/xi_p_theta.png"
+plt.savefig(out_path, bbox_inches="tight")
+
+#Plot of xi_-
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
+    plt.errorbar(
+        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
+        cat_ggs[ver].xim * cat_ggs[ver].meanr,
+        yerr=np.sqrt(cat_ggs[ver].varxim) * cat_ggs[ver].meanr,
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
+plt.xscale('log')
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([theta_min_plot, theta_max_plot])
+plt.ylabel(r'$\theta \xi_-(\theta)$')
+out_path = f"{cat['paths']['output']}/xi_m_theta.png"
+plt.savefig(out_path, bbox_inches="tight")
+
 # +
 #### Aperture-mass dispersion
 
 # +
 theta_min = 0.3
 theta_max = 200
-nbins = 200
+nbins = 500
 npatch = 25
 
 TreeCorrConfig = {
@@ -595,7 +731,7 @@ TreeCorrConfig = {
 }
 
 # Set up angular smoothing scales for aperture-mass dispersion
-n_bins_map = 20
+n_bins_map = 15
 theta_map = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
 
 print_start("Aperture-mass dispersion")
@@ -625,7 +761,6 @@ for ver in versions:
             npatch=npatch,
         )
 
-        print("MKDEBUG", results[ver].dat_shear['RA'][0], results[ver].dat_shear['Dec'][0], g1[0], g2[0], results[ver].dat_shear['w'][0])
         gg.process(cat_gal)
         gg.write(out_fname)
         del(cat_gal)
@@ -663,7 +798,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     labels=[]
     colors=[]
     linestyles=[]
-    for ver in versions:
+    for idx, ver in enumerate(versions):
 
         x.append(theta_map)
         y.append(map2[ver][mode])
@@ -690,6 +825,7 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         ylim=[-1e-6, 2e-5],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -719,9 +855,10 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         xlog=True,
         ylog=True,
         xlim=[theta_min_plot, theta_max_plot],
-        ylim=[1e-9, 1e-5],
+        ylim=[1e-9, 3e-5],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
     plt.savefig(out_path)
 # -
