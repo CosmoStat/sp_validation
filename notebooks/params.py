@@ -110,7 +110,7 @@ mmap_mode = None
 ## Output
 
 ### Additional output columns
-add_cols = None
+add_cols = [FLUX_RADIUS]
 
 
 # Catalog parameters
@@ -134,7 +134,7 @@ do_spread_model = False
 
 ### SExtractor flags to keep in addition to FLAGS=0
 ### (bit-coded; list of powers of 2)
-flags_keep = [1, 2]
+flags_keep = [1]
 
 ## Minimum number of epochs
 n_epoch_min = 1

@@ -15,6 +15,8 @@ import numpy as np
 from astropy.io import ascii, fits
 from astropy.table import Table
 
+from cs_util import cat
+
 
 def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
     """Make output directories.
@@ -108,23 +110,3 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
         + f' = {ratio:.1f}%',
         stats_file, verbose=verbose
     )
-
-
-def write_ascii_table_file(cols, names, fname):
-    """Write Ascii Table File.
-
-    Write ASCII file with table data
-
-    Parameters
-    ----------
-    cols : list
-        data columns
-    names : list of str
-        column names
-    fname : str
-        output file name
-
-    """
-    t = Table(cols, names=names)
-    with open(fname, 'w') as fout:
-        ascii.write(t, fout, delimiter='\t')

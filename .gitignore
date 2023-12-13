@@ -152,3 +152,4 @@ notebooks/cosmo_val/match_LF_SP.ipynb
 notebooks/examples/*.ipynb
 
 cosmo_inference/data/
+notebooks/tests/star_response.ipynb

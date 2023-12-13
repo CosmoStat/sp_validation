@@ -45,8 +45,7 @@ __all__ = [
     'basic',
     'util',
     'plot_style',
-    'plots',
-    'run'
+    'plots'
 ]
 
 from . import *
