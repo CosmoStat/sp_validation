@@ -61,9 +61,9 @@ def nz_to_fits(filename):
     col3 = fits.Column(name ='Z_HIGH', format ='D', array = z_high) 
     cols = [col1,col2,col3]
     
-    for i in range(nbins):
-        bin_col = np.loadtxt(filename, usecols=i-1)
-        hdu_col = fits.Column(name ='BIN%d' %(i-1), format ='D', array = bin_col)
+    for i in range(nbins-1):
+        bin_col = np.loadtxt(filename, usecols=i+1)
+        hdu_col = fits.Column(name ='BIN%d' %(i+1), format ='D', array = bin_col)
         cols.append(hdu_col)
         
     coldefs = fits.ColDefs(cols)
