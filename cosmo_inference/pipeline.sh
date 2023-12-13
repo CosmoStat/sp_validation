@@ -1,59 +1,66 @@
 #!/bin/bash
-read -p 'ROOT: ' root
-read -p 'FITS FILE FOLDER: ' xi_folder
-read -p 'NZ BLIND:' blind
-read -p 'CHAIN FOLDER: ' data
-mkdir -p data/${root}
 
-################ STEP 1: CALCULATE COVARIANCE MATRICES###############
-# make a folder to store the covariances
-mkdir -p data/${root}/covs
-
-nz_file="data/nz/nz_shapepipe_${blind}.txt"
-
-# write to the ini file, paths to the nz file
-cat <<EOT >> cosmocov_config/cosmocov_${root}.ini
-
-\n
-shear_REDSHIFT_FILE : $nz_file 
-clustering_REDSHIFT_FILE : $nz_file
-outdir : data/$root/covs/
-EOT
-
-echo -e "Running CosmoCov...\n"
-
-# run cosmocov (SPECIFY LOCATION OF COSMOCOV LIBRARY)
-for i in {1..3}; 
-    do /feynman/work/dap/lcs/lg268561/UNIONS/CFIS-UNIONS/CosmoCov/covs/cov $i cosmocov_config/cosmocov_${root}.ini; 
+# Transform long options to short ones
+for arg in "$@"; do
+  shift
+  case "$arg" in
+    '--help')          set -- "$@" '-h'   ;;
+    '--pcf')           set -- "$@" '-p'   ;;
+    '--covmat')        set -- "$@" '-c'   ;;
+    '--inference')     set -- "$@" '-i'   ;;
+    '--mcmc_process')  set -- "$@" '-m'   ;;
+    *)                 set -- "$@" "$arg" ;;
+  esac
 done
 
-# do postprocessing (plot covmat and write into txt file)
-f="data/${root}/covs/cov_${root}"; cat data/${root}/covs/out_cov* > $f; python scripts/cosmocov_process.py $f
+# Parse short options
+OPTIND=1
+while getopts "hpcim" opt
+do
+  case "$opt" in
+    'h') 
+        echo "Please input a flag: --help, --pcf, --covmat, --inference or --mcmc_process "; 
+        exit 0 
+        ;;
+    'p') 
+        echo "Running cosmo_val.py to calculate 2 point correlation functions";
+        python notebooks/cosmo_val/cosmo_val.py
+        ;;
+    'c') 
+        read -p 'ROOT: ' root;
+        read -p 'NZ FILE:' nz_file;
+        echo "Calculating covariance matrices with CosmoCov";
+        python scripts/cosmocov_process.py $root $nz_file
+        ;;
+    'i')
+        read -p 'ROOT: ' root;
+        read -p 'XI_PLUS/XI_MINUS FITS FILE FOLDER: ' xi_folder;
+        read -p 'NZ FILE:' nz_file;
+        read -p 'RHO_STATS FILE FOLDER: ' rho_stats_folder;
+        read -p 'COVMAT TXT FILE:' covmat;
+        read -p 'OUTPUT MCMC CHAIN FOLDER: ' data;
+        
+        out_file="data/${root}/cosmosis_${root}.fits";
+        
+        #LG: add check if xi_plus/xi_minus fits file exists
+        python scripts/cosmosis_fitting.py $root $xi_folder $covmat $nz_file $rho_stats_folder $out_file;
 
-echo -e "Covmats written out to data/${root}/covs/cov_${root}\n"
-# ################## STEP 2: COMBINE##########################################################
-echo -e "Combining files...\n"
-
-# Specify paths to the xi_plus and xi_minus fits files, and the covmat txt file
-xip_cat="${xi_folder}/xiplus_shapepipe.fits"
-xim_cat="${xi_folder}/ximinus_shapepipe.fits"
-covmat="data/${root}/covs/cov_${root}.txt"
-
-out_file="data/${root}/cosmosis_${root}.fits"
-
-python scripts/cosmosis_fitting.py $xip_cat $xim_cat $covmat $nz_file $out_file
-
-# ################# STEP 3: RUN COSMOSIS#####################################################
-# Add path specification within cosmosis config file
-sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${root}.ini
-sed -i "/^\[output\]/a\filename = ${data}/samples_${root}.txt" cosmosis_config/cosmosis_pipeline_${root}.ini
-sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini
-sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini
-
-echo -e "Running CosmoSIS...\n"
-
-# Submit cosmosis job to run on cluster, specifying your output log file path
-sbatch -J unions_${root} --output=$WORK/UNIONS/cfis_${root}.log scripts/submit.sh
-
-echo -e "JOB SUBMITTED\n"
-echo -e "-------------PIPELINE END----------------"
+        sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        sed -i "/^\[output\]/a\filename = ${data}/samples_${root}.txt" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        
+        echo "Prepared CosmoSIS configuration file in cosmosis_config/cosmosis_pipeline_${root}.ini";
+        echo "You can now run the inference with the command: cosmosis cosmosis_config/cosmosis_pipeline_${root}.ini"
+        ;;
+    'm')
+        # LG: also convert this into a script to directly output contour plots
+        echo "Run the cosmo_inference/notebooks/MCMC.ipynb notebook to analyse your chains"
+        ;;
+    '?') 
+        print_usage >&2; 
+        exit 1 
+        ;;
+  esac
+done
+shift $(expr $OPTIND - 1) # remove options from positional parameters

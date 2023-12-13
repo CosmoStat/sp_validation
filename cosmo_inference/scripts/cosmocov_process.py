@@ -1,14 +1,39 @@
 #!/usr/bin/env python
 # coding: utf-8
-
-
+import os, sys
+from pathlib import Path
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
-import sys
+import subprocess
 
-def get_cov(filename):
+def calc_cov(root, nz_file):
+	Path("data/%s/covs" %root).mkdir(parents=True, exist_ok=True)
+	# write to the ini file, paths to the nz file
+	with open('cosmocov_config/cosmocov_%s.ini' %root,'a') as f:
+		f.write('shear_REDSHIFT_FILE : %s' %nz_file + '\n')
+		f.write('clustering_REDSHIFT_FILE : %s' %nz_file + '\n')
+		f.write('outdir : data/%s/covs/' %root + '\n')
+	f.close()
+		
+	print("Running CosmoCov...\n")
 
+	results = subprocess.run('for i in {1..3}; do \
+     						CosmoCov/covs/cov $i cosmocov_config/cosmocov_%s.ini; done' %root, 
+							capture_output = True, 
+							text = True,
+							shell=True)
+	print(results.stdout)
+	print(results.stderr)
+
+    
+def convert_cov(filename):
+
+	subprocess.run('f="%s"; cat data/%s/covs/out_cov* > $f' %(filename,root),							
+                    capture_output = True, 
+					text = True,
+					shell=True)
+ 
 	data = np.loadtxt(filename)
 	ndata = int(np.max(data[:,0]))+1
 
@@ -28,9 +53,14 @@ def get_cov(filename):
 
 if __name__ == '__main__':
 	
-	covfile = sys.argv[1]
+	root = sys.argv[1]
+	nz_file = sys.argv[2]
+ 
+	calc_cov(root,nz_file)
+ 
+	covfile = "data/%s/covs/cov_%s" %(root,root)
 	
-	c_g, c_ng, ndata = get_cov(covfile)	
+	c_g, c_ng, ndata = convert_cov(covfile)	
 	cov = c_ng+c_g
 	cov_g = c_g
 
@@ -73,12 +103,11 @@ if __name__ == '__main__':
 			plt.axvline(x=20*i,color='black',linewidth=0.3)
 			plt.axhline(y=20*i,color='black',linewidth=0.3)
 
-
-# plt.axvline(x=20*20,color='black')
-# plt.axvline(x=40*20,color='black')
-# plt.axhline(y=10*20,color='black')
-# plt.axhline(y=20*20,color='black')
-# plt.axhline(y=40*20,color='black')
+	# plt.axvline(x=20*20,color='black')
+	# plt.axvline(x=40*20,color='black')
+	# plt.axhline(y=10*20,color='black')
+	# plt.axhline(y=20*20,color='black')
+	# plt.axhline(y=40*20,color='black')
 	im3 = ax.imshow(pp_norm, cmap=cmap, vmin=-1, vmax=1)
 	# ax.set_xticks(np.arange(0,440,40))
 	# ax.set_yticks(np.arange(0,440,40))
@@ -97,6 +126,8 @@ if __name__ == '__main__':
 	# ax.text(905, 595, r'$\gamma_t$', fontsize=14)
 	# ax.text(905, 845, r'$w$', fontsize=14)
 	plt.savefig(plot_path,dpi=2000)
-	plt.show()
 	print("Plot saved as %s"%(plot_path))
-
+ 
+	subprocess.run('rm %s' %covfile,shell=True)
+	subprocess.run('rm data/%s/covs/order*' %root,shell=True)
+	subprocess.run('rm data/%s/covs/out_cov*' %root,shell=True)

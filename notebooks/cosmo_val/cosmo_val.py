@@ -91,7 +91,7 @@ for ver in versions:
     all_keys.append(ver)
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data'
+data_base_dir = '/home/mkilbing/astro/data'
 
 # ## Loading configuration
 
@@ -352,8 +352,7 @@ if len(theta) > 0:
         labels=labels,
         colors=colors,
         linestyles=linestyles,
-        markers=markers,
-        shift_x=True,
+        #shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -392,7 +391,7 @@ if len(y) > 0:
         xlim=[theta_min_plot, theta_max_plot],
         colors=colors,
         linestyles=linestyles,
-        shift_x=True,
+        #shift_x=True,
     )
     plt.savefig(out_path)
 
@@ -423,7 +422,7 @@ if len(y) > 0:
         ylim=[-1e-7, 1e-6],
         colors=colors,
         linestyles=linestyles,
-        shift_x=True,
+        #shift_x=True,
     )
     plt.savefig(out_path)
 # +
@@ -563,45 +562,47 @@ for ver in versions:
     del(gg)
 
 print_done("Done 2PCF")
-lst = np.arange(1,nbins+1)
+for ver in versions:
+    gg = cat_ggs[ver]
+    lst = np.arange(1,nbins+1)
 
-#create fits HDU with xi_p and xi_m data
-col1 = fits.Column(name ='BIN1', format ='K', array = np.ones(len(lst)))
-col2 = fits.Column(name ='BIN2', format ='K', array = np.ones(len(lst)))
-col3 = fits.Column(name ='ANGBIN', format ='K', array = lst)
-col4 = fits.Column(name ='VALUE', format ='D', array = gg.xip)
-col5 = fits.Column(name ='ANG', format ='D', unit ='arcmin', array = gg.meanr)
-coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-xiplus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_PLUS')
-
-
-col4 = fits.Column(name ='VALUE', format ='D', array = gg.xim)
-coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-ximinus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_MINUS')
-
-#append xi_p/xi_m header info 
-xip_dict = {'2PTDATA':'T',
-            'QUANT1':'G+R',
-             'QUANT2':'G+R',
-             'KERNEL_1':'NZ_SOURCE',
-             'KERNEL_2':'NZ_SOURCE',
-             'WINDOWS':'SAMPLE'}
-for key in xip_dict:
-    xiplus_hdu.header[key] = xip_dict[key]
+    #create fits HDU with xi_p and xi_m data
+    col1 = fits.Column(name ='BIN1', format ='K', array = np.ones(len(lst)))
+    col2 = fits.Column(name ='BIN2', format ='K', array = np.ones(len(lst)))
+    col3 = fits.Column(name ='ANGBIN', format ='K', array = lst)
+    col4 = fits.Column(name ='VALUE', format ='D', array = gg.xip)
+    col5 = fits.Column(name ='ANG', format ='D', unit ='arcmin', array = gg.meanr)
+    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+    xiplus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_PLUS')
 
 
-xim_dict = {'2PTDATA':'T',
-            'QUANT1':'G-R',
-             'QUANT2':'G-R',
-             'KERNEL_1':'NZ_SOURCE',
-             'KERNEL_2':'NZ_SOURCE',
-             'WINDOWS':'SAMPLE'}
+    col4 = fits.Column(name ='VALUE', format ='D', array = gg.xim)
+    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+    ximinus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_MINUS')
 
-for key in xim_dict:
-    ximinus_hdu.header[key] = xim_dict[key]
+    #append xi_p/xi_m header info 
+    xip_dict = {'2PTDATA':'T',
+                'QUANT1':'G+R',
+                'QUANT2':'G+R',
+                'KERNEL_1':'NZ_SOURCE',
+                'KERNEL_2':'NZ_SOURCE',
+                'WINDOWS':'SAMPLE'}
+    for key in xip_dict:
+        xiplus_hdu.header[key] = xip_dict[key]
 
-ximinus_hdu.writeto(f"{cat['paths']['output']}/xi_minus.fits",overwrite=True)
-xiplus_hdu.writeto(f"{cat['paths']['output']}/xi_plus.fits",overwrite=True)
+
+    xim_dict = {'2PTDATA':'T',
+                'QUANT1':'G-R',
+                'QUANT2':'G-R',
+                'KERNEL_1':'NZ_SOURCE',
+                'KERNEL_2':'NZ_SOURCE',
+                'WINDOWS':'SAMPLE'}
+
+    for key in xim_dict:
+        ximinus_hdu.header[key] = xim_dict[key]
+
+    ximinus_hdu.writeto(f"{cat['paths']['output']}/xi_minus_{ver}.fits",overwrite=True)
+    xiplus_hdu.writeto(f"{cat['paths']['output']}/xi_plus_{ver}.fits",overwrite=True)
 
 
 # -
@@ -631,7 +632,7 @@ plt.savefig(out_path)
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
+        cat_ggs[ver].meanr,
         cat_ggs[ver].xip,
         yerr=np.sqrt(cat_ggs[ver].varxip),
         label=ver,
@@ -652,7 +653,7 @@ plt.savefig(out_path, bbox_inches="tight")
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
+        cat_ggs[ver].meanr,
         cat_ggs[ver].xim,
         yerr=np.sqrt(cat_ggs[ver].varxim),
         label=ver,
@@ -694,7 +695,7 @@ plt.savefig(out_path, bbox_inches="tight")
 fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
 for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr * plots.dx(idx, len(ver)),
+        cat_ggs[ver].meanr,
         cat_ggs[ver].xim * cat_ggs[ver].meanr,
         yerr=np.sqrt(cat_ggs[ver].varxim) * cat_ggs[ver].meanr,
         label=ver,
