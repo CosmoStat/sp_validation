@@ -150,3 +150,5 @@ notebooks/cosmo_val/cosmo_val.ipynb
 notebooks/cosmo_val/match_LF_SP.ipynb
 
 notebooks/examples/*.ipynb
+
+cosmo_inference/data/
