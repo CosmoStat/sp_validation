@@ -45,8 +45,8 @@ def covdat_to_fits(filename):
 def nz_to_fits(filename):
     
 
-    line= np.loadtxt(filename)
-    nbins = len(line)-1
+    arr = np.loadtxt(filename)
+    rows, nbins = arr.shape
     
     z_low = np.loadtxt(filename, usecols=0)
     
@@ -62,8 +62,8 @@ def nz_to_fits(filename):
     cols = [col1,col2,col3]
     
     for i in range(nbins):
-        bin_col = np.loadtxt(filename, usecols=i+1)
-        hdu_col = fits.Column(name ='BIN%d' %(i+1), format ='D', array = bin_col)
+        bin_col = np.loadtxt(filename, usecols=i-1)
+        hdu_col = fits.Column(name ='BIN%d' %(i-1), format ='D', array = bin_col)
         cols.append(hdu_col)
         
     coldefs = fits.ColDefs(cols)

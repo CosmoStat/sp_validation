@@ -103,12 +103,11 @@ if __name__ == '__main__':
 			plt.axvline(x=20*i,color='black',linewidth=0.3)
 			plt.axhline(y=20*i,color='black',linewidth=0.3)
 
-
-# plt.axvline(x=20*20,color='black')
-# plt.axvline(x=40*20,color='black')
-# plt.axhline(y=10*20,color='black')
-# plt.axhline(y=20*20,color='black')
-# plt.axhline(y=40*20,color='black')
+	# plt.axvline(x=20*20,color='black')
+	# plt.axvline(x=40*20,color='black')
+	# plt.axhline(y=10*20,color='black')
+	# plt.axhline(y=20*20,color='black')
+	# plt.axhline(y=40*20,color='black')
 	im3 = ax.imshow(pp_norm, cmap=cmap, vmin=-1, vmax=1)
 	# ax.set_xticks(np.arange(0,440,40))
 	# ax.set_yticks(np.arange(0,440,40))
@@ -127,6 +126,9 @@ if __name__ == '__main__':
 	# ax.text(905, 595, r'$\gamma_t$', fontsize=14)
 	# ax.text(905, 845, r'$w$', fontsize=14)
 	plt.savefig(plot_path,dpi=2000)
-	plt.show()
 	print("Plot saved as %s"%(plot_path))
+ 
+	subprocess.run('rm %s' %covfile,shell=True)
+	subprocess.run('rm data/%s/covs/order*' %root,shell=True)
+	subprocess.run('rm data/%s/covs/out_cov*' %root,shell=True)
 
