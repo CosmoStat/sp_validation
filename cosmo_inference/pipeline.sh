@@ -30,6 +30,9 @@ do
         read -p 'ROOT: ' root;
         read -p 'NZ FILE:' nz_file;
         echo "Calculating covariance matrices with CosmoCov";
+        
+        cp cosmocov_config/cosmocov.ini cosmocov_config/cosmocov_${root}.ini
+        
         python scripts/cosmocov_process.py $root $nz_file
         ;;
     'i')
@@ -43,6 +46,10 @@ do
         
         #LG: add check if xi_plus/xi_minus fits file exists
         python scripts/cosmosis_fitting.py $root $xi_folder $covmat $nz_file $out_file;
+
+        cp cosmosis_config/cosmosis_pipeline.ini cosmosis_config/cosmosis_pipeline_${root}.ini
+        cp cosmosis_config/priors.ini cosmosis_config/priors_${root}.ini
+        cp cosmosis_config/values.ini cosmosis_config/values_${root}.ini
 
         sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${root}.ini;
         sed -i "/^\[output\]/a\filename = ${data}/samples_${root}.txt" cosmosis_config/cosmosis_pipeline_${root}.ini;

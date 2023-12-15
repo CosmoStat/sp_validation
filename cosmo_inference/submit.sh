@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=shapepipe_matching
+#SBATCH --job-name=shapepipe_A
 #SBATCH --mail-user=lisa.goh@cea.fr
 #SBATCH --mail-type=END,FAIL
 #SBATCH --partition=htc
