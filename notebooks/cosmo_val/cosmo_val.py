@@ -119,7 +119,7 @@ components = ['+', '-']
 
 # Angular scales for xi_+-
 theta_min = 0.1
-theta_max = 100
+theta_max = 200
 nbins = 20
 
 # Plotting
@@ -214,6 +214,9 @@ def get_params_rho_tau(params_base, params_psf, survey="other"):
     if survey == "DES":
         params["patch_number"] = 120
         print("DES, jackknife patch number = 120")
+    elif survey == 'SP_axel_v0.0':
+        params["patch_number"] = 120
+        print("SP_Axel_v0.0, jackknife patch number =120")
     else:
         params["patch_number"] = 200
     params["ra_col"] = params_psf["ra_col"]
@@ -224,6 +227,9 @@ def get_params_rho_tau(params_base, params_psf, survey="other"):
     params["e2_star_col"] = params_psf["e2_star_col"]
     params["PSF_size"] = params_psf["PSF_size"]
     params["star_size"] = params_psf["star_size"]
+    if survey != 'DES':
+        params["PSF_flag"] = params_psf["PSF_flag"]
+        params["star_flag"] = params_psf["star_flag"]
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
 
@@ -258,17 +264,19 @@ for ver in versions:
         print_cyan("Computing rho stats")
 
         # Get rho and tau parameters
-        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"])
+        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
 
         # Set rho parameters
         rho_stat_handler.catalogs.set_params(params, out_dir)
+
+        mask = (ver != 'DES')
 
         # Build catalogues
         rho_stat_handler.build_cat_to_compute_rho(
             cat[ver]["psf"]["path"],
             catalog_id=ver,
             square_size=True,
-            mask=False,
+            mask=mask,
         )
 
         # Compute and save rho stats
@@ -315,19 +323,12 @@ for ver in versions:
         print_cyan("Computing tau stats")
 
         # Get rho and tau parameters
-        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"])
+        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
 
         # Set parameters
         tau_stat_handler.catalogs.set_params(params, out_dir)
 
-        # Build the different catalogues
-        tau_stat_handler.build_cat_to_compute_tau(
-            cat[ver]["shear"]["path"],
-            cat_type='gal',
-            catalog_id=ver,
-            square_size=True,
-            mask=True,
-        )
+        mask = (ver != 'DES')
 
         # Build the catalog of galaxies. PSF was computed above
         if f"psf_{ver}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
@@ -336,8 +337,18 @@ for ver in versions:
                 cat_type='psf',
                 catalog_id=ver,
                 square_size=True,
-                mask=True,
+                mask=mask,
             )
+
+        # Build the different catalogues
+        tau_stat_handler.build_cat_to_compute_tau(
+            cat[ver]["shear"]["path"],
+            cat_type='gal',
+            catalog_id=ver,
+            square_size=True,
+            mask=mask,
+        )
+
 
         # function to extract the tau_+
         only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
@@ -387,6 +398,9 @@ for ver in versions:
         print_green(f"Skipping MCMC sampling, file {sample_file_path} exists")
         flat_samples = psf_fitter.load_samples(ver)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
+        print(mcmc_result)
+        psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
+        psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
     else:
         print_cyan("MCMC sampling")
         psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
