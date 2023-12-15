@@ -18,11 +18,11 @@ def treecorr_to_fits(filename1,filename2):
 
     #Create new dummy columns for the HDU Table
     raw_xiplus = fits.Column(name="RAW_VALUE", format='D', array=dummy_xiplus)
-    raw_ximinus = fits.Column(name="RAW_VALUE", format='D', array=dumm_ximinus)
+    raw_ximinus = fits.Column(name="RAW_VALUE", format='D', array=dummy_ximinus)
 
     #Update the bin tables
-    xiplus_hdu[1].columns.add_column(raw_xiplus)
-    ximinus_hdu[1].columns.add_column(raw_ximinus)
+    xiplus_hdu[1].columns.add_col(raw_xiplus)
+    ximinus_hdu[1].columns.add_col(raw_ximinus)
     
     return xiplus_hdu[1],ximinus_hdu[1]
 

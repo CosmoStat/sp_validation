@@ -29,8 +29,9 @@ do
     'c') 
         read -p 'ROOT: ' root;
         read -p 'NZ FILE:' nz_file;
+        read -p 'PATH COSMOCOV: ' cosmocov;
         echo "Calculating covariance matrices with CosmoCov";
-        python scripts/cosmocov_process.py $root $nz_file
+        python scripts/cosmocov_process.py $root $nz_file $cosmocov
         ;;
     'i')
         read -p 'ROOT: ' root;
@@ -46,6 +47,7 @@ do
         python scripts/cosmosis_fitting.py $root $xi_folder $covmat $nz_file $rho_stats_folder $out_file;
 
         sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        sed -i "/^\[DEFAULT\]/a\SAMPLES_FILE = ${rho_stats_folder}/samples_${root}.npy" cosmosis_config/cosmosis_pipeline_${root}.ini
         sed -i "/^\[output\]/a\filename = ${data}/samples_${root}.txt" cosmosis_config/cosmosis_pipeline_${root}.ini;
         sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
         sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;

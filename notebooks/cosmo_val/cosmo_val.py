@@ -118,7 +118,7 @@ if not os.path.exists(cat["paths"]["output"]):
 components = ['+', '-']
 
 # Angular scales for xi_+-
-theta_min = 0.1
+theta_min = 1.0
 theta_max = 200
 nbins = 20
 
@@ -803,6 +803,7 @@ for ver in versions:
     #del(gg)
 
 print_done("Done 2PCF")
+nbins=TreeCorrConfig_xi['nbins']
 for ver in versions:
     gg = cat_ggs[ver]
     lst = np.arange(1,nbins+1)
