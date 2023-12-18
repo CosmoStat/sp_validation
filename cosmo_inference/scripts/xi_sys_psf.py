@@ -32,8 +32,8 @@ def execute(block, config):
         + beta**2*rho_stats["rho_1_p"]
         + eta**2*rho_stats["rho_3_p"]
         + 2*alpha*beta*rho_stats["rho_2_p"]
-        + 2*beta*eta*rho_stats["rho_5_p"]
-        + 2*alpha*eta*rho_stats["rho_4_p"]
+        + 2*beta*eta*rho_stats["rho_4_p"]
+        + 2*alpha*eta*rho_stats["rho_5_p"]
     )
 
     xi_sys_m = (
@@ -41,8 +41,8 @@ def execute(block, config):
         + beta**2*rho_stats["rho_1_m"]
         + eta**2*rho_stats["rho_3_m"]
         + 2*alpha*beta*rho_stats["rho_2_m"]
-        + 2*beta*eta*rho_stats["rho_5_m"]
-        + 2*alpha*eta*rho_stats["rho_4_m"]
+        + 2*beta*eta*rho_stats["rho_4_m"]
+        + 2*alpha*eta*rho_stats["rho_5_m"]
     )
 
     xi_p.data["VALUE"] = xi_p.data["RAW_VALUE"]+xi_sys_p #SG: will add xi_sys for each sample. We need to keep in memory the value of the xi_sys
