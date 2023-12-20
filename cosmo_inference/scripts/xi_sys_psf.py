@@ -1,4 +1,5 @@
 from cosmosis.datablock import names, option_section
+from cosmosis.datablock.cosmosis_py import lib
 from astropy.io import fits
 import numpy as np
 
@@ -7,25 +8,22 @@ def setup(options):
     filename = options.get_string(option_section, 'data_file')
     data = fits.open(filename)
     rho_stats_name = options.get_string(option_section, 'rho_stats_name')
-    xi_plus_name = options.get_string(option_section, 'xi_plus_name')
-    xi_minus_name = options.get_string(option_section, 'xi_minus_name')
     samples_path = options.get_string(option_section,'samples')
-    return data, filename, rho_stats_name, xi_plus_name, xi_minus_name, samples_path
-
-def execute(block, config):
-
-    data, filename, rho_stats_name, xi_plus_name, xi_minus_name, samples_path = config
 
     samples = np.load(samples_path)
     mean = np.mean(samples, axis=0)
     cov = np.cov(samples.T)
 
-    alpha, beta, eta = np.random.multivariate_normal(mean, cov)
-    #alpha, beta, eta = block[cosmo, 'alpha'], block[cosmo, 'beta'], block[cosmo, 'eta']
-
-    xi_p, xi_m = data[xi_plus_name], data[xi_minus_name]
-
     rho_stats = data[rho_stats_name].data
+
+    return mean, cov, rho_stats
+
+def execute(block, config):
+
+    mean, cov, rho_stats = config
+
+    alpha, beta, eta = np.random.multivariate_normal(mean, cov)
+    block['xi_sys', 'alpha'], block['xi_sys', 'beta'], block['xi_sys', 'eta'] = alpha, beta, eta
 
     xi_sys_p = (
         alpha**2*rho_stats["rho_0_p"]
@@ -45,9 +43,6 @@ def execute(block, config):
         + 2*alpha*eta*rho_stats["rho_5_m"]
     )
 
-    xi_p.data["VALUE"] = xi_p.data["RAW_VALUE"]+xi_sys_p #SG: will add xi_sys for each sample. We need to keep in memory the value of the xi_sys
-    xi_m.data["VALUE"] = xi_m.data["RAW_VALUE"]+xi_sys_m
-
-    data.writeto(filename, overwrite=True)
+    block['xi_sys', 'xi_sys_vec'] = np.concatenate([xi_sys_p, xi_sys_m])
 
     return 0
