@@ -47,7 +47,7 @@ from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 # +
 import treecorr
 
-n_thread = 1
+n_thread = 8
 treecorr.set_omp_threads(n_thread)
 
 sep_units = 'arcmin'
@@ -87,7 +87,7 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0', 'DES']
+versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', 'DES', "SP_matched_LF_v1.0"]
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
 #versions = ['SP_axel_v0.0']
 all_keys = ['nz']
