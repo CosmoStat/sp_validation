@@ -279,7 +279,7 @@ def get_theo_xi(
         ell,
         cl,
         theta / 60,
-        corr_type='L+',
+        type='GG+',
         method='Bessel',
     )
     xim_fit = ccl.correlation(
@@ -287,7 +287,7 @@ def get_theo_xi(
         ell,
         cl,
         theta / 60,
-        corr_type='L-',
+        type='GG-',
         method='Bessel',
     )
 
