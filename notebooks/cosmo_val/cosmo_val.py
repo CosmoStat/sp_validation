@@ -6,24 +6,22 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.14.5
+#       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: sp_validation
 #     language: python
-#     name: python3
+#     name: sp_validation
 # ---
 
 # # Cosmological validation of UNIONS shape catalogues
 # 03/2023
 
-# +
 # %matplotlib inline
 # %load_ext autoreload
 # %autoreload 2
 
-print('v1')
-# -
 
+import sys
 import os
 import numpy as np
 import matplotlib.pylab as plt
@@ -34,39 +32,72 @@ import numpy as np
 from astropy.io import fits
 import treecorr
 import pandas as pd
+import colorama
+import emcee
 from astropy.io import ascii
 
 # +
 from sp_validation.plot_style import *
-from cs_util import plots
+from cs_util import plots as cs_plots
 
-from sp_validation import run
+from shear_psf_leakage import run_scale
+from shear_psf_leakage import plots as psfleak_plots
+from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 
 # +
 import treecorr
 
-n_thread = 8
+n_thread = 1
 treecorr.set_omp_threads(n_thread)
+
+sep_units = 'arcmin'
+coord_units = 'degrees'
 # -
 
 import pyccl
 pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
 
+def color_reset():
+    print(colorama.Fore.BLACK, end='')
+
+def print_blue(msg):
+    print(colorama.Fore.BLUE + msg)
+    color_reset()
+
+def print_start(msg):
+    print()
+    print_blue(msg)
+
+def print_done(msg):
+    print_blue(msg)
+
+def print_magenta(msg):
+    print(colorama.Fore.MAGENTA + msg)
+    color_reset()
+
+def print_green(msg):
+    print(colorama.Fore.GREEN + msg)
+    color_reset()
+
+def print_cyan(msg):
+    print(colorama.Fore.CYAN + msg)
+    color_reset()
+
+
 # ## Input parameters
-
-# +
 # Catalogue versions
-versions = ['SP_v1.0', 'LF_v1.0', 'LF_v2.0', 'SP_matched_LF_v1.0', 'LF_matched_SP_v1.0']
-
+#versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
+versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0', 'DES']
+#versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
+#versions = ['SP_axel_v0.0']
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
-# -
 
 # Base directory for data, on candide
-data_base_dir = f'{os.environ["HOME"]}/astro/data/CFIS'
+data_base_dir = '/home/mkilbing/astro/data'
 
-# ## Loading data
+# ## Loading configuration
 
 # +
 # Read in dictionary about catalogue info from yaml file
@@ -84,12 +115,15 @@ if not os.path.exists(cat["paths"]["output"]):
 
 # +
 # Variables
-
 components = ['+', '-']
 
-# Plotting
+# Angular scales for xi_+-
+theta_min = 1.0
+theta_max = 200
+nbins = 20
 
-theta_min_plot = 1
+# Plotting
+theta_min_plot = 0.1
 theta_max_plot = 300
 
 ylim_alpha = [-0.005, 0.05]
@@ -97,74 +131,438 @@ ylim_alpha = [-0.005, 0.05]
 ylim_xi_sys_ratio = [-0.02, 0.5]
 # -
 
+# ## Set up
+TreeCorrConfig_xi = {
+    'ra_units': coord_units,
+    'dec_units': coord_units,
+    'min_sep': theta_min,
+    'max_sep': theta_max,
+    'sep_units': sep_units,
+    'nbins': nbins,
+    'var_method':'jackknife',
+}
+
 # ## Processing
+
+print_start('Start cosmology validation')
+
 
 # ### Systematic tests
 
 # + active=""
-# # rho stats
+# # TODO:
 # # object-wise leakage
 # -
 
-# #### $\xi_\textrm{sys}$ and scale-dependent leakage
+# #### Init results dictionary
 
 results = {}
-print('Computing scale-dependent leakage')
-
 
 def set_params_leakage(cat, ver):
     params_in = {}
-    
+
     # Set parameters
     params_in['input_path_shear'] = cat[ver]["shear"]["path"]
     params_in['input_path_PSF'] = cat[ver]["star"]["path"]
     params_in['dndz_path'] = f"{cat['nz']['dndz']['path']}_{cat[ver]['pipeline']}_{cat['nz']['dndz']['blind']}.txt"
     params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
-    params_in['sh'] = cat[ver]['shape']
-    
+
     # Note: for SP these are calibrated shear estimates
-    params_in['e1_col'] = 'e1'
-    params_in['e2_col'] = 'e2'
-    
+    params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
+    params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
+
+    params_in['ra_star_col'] = cat[ver]["star"]["ra_col"]
+    params_in["dec_star_col"] = cat[ver]["star"]["dec_col"]
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
-    
-    params_in["verbose"] = True
-    
-    return params_in
 
+    params_in["verbose"] = False
+
+    return params_in
 
 for ver in versions:
 
     params_in = set_params_leakage(cat, ver)
 
     # Create leakage instance
-    obj = run.LeakageScale()
+    obj = run_scale.LeakageScale()
 
     # Set instance parameters, copy from above
+
     for key in params_in:
         obj._params[key] = params_in[key]
-    
+
     results[ver] = obj
 
+
+print_start('Read catalogues')
 for ver in versions:
-    print(ver)
+    print_magenta(ver)
     obj = results[ver]
 
     obj.check_params()
     obj.prepare_output()
     obj.read_data()
 
-    out_fname = f'{cat["paths"]["output"]}/leakage_{ver}/alpha_leakage_{cat[ver]["shape"]}.txt'
-    if os.path.exists(out_fname):
-        print(f'Skipping computation, {out_fname} exists')
-    else:
-        obj.compute_corr_gp_pp_alpha()                                         
-        obj.do_alpha()                                                         
-        obj.do_xi_sys()
+# #### Rho and tau tatistics
 
-    print(f"done: {ver}")
-print('Done scale-dependent leakage')
+def get_params_rho_tau(params_base, params_psf, survey="other"):
+
+    # Set parameters
+    params = params_base
+    # TODO to yaml file
+    if survey == "DES":
+        params["patch_number"] = 120
+        print("DES, jackknife patch number = 120")
+    elif survey == 'SP_axel_v0.0':
+        params["patch_number"] = 120
+        print("SP_Axel_v0.0, jackknife patch number =120")
+    else:
+        params["patch_number"] = 200
+    params["ra_col"] = params_psf["ra_col"]
+    params["dec_col"] = params_psf["dec_col"]
+    params["e1_PSF_col"] = params_psf["e1_PSF_col"]
+    params["e2_PSF_col"] = params_psf["e2_PSF_col"]
+    params["e1_star_col"] = params_psf["e1_star_col"]
+    params["e2_star_col"] = params_psf["e2_star_col"]
+    params["PSF_size"] = params_psf["PSF_size"]
+    params["star_size"] = params_psf["star_size"]
+    if survey != 'DES':
+        params["PSF_flag"] = params_psf["PSF_flag"]
+        params["star_flag"] = params_psf["star_flag"]
+    params["ra_units"] = "deg"
+    params["dec_units"] = "deg"
+
+    params["w_col"] = "w"
+
+    return params
+
+
+# ##### Rho statistics
+
+out_dir = f"{cat['paths']['output']}/rho_tau_stats"
+if not os.path.exists(out_dir):
+    os.mkdir(out_dir)
+print_start('Rho stats')
+
+# Create class instance to compute, save, load and plot rho_stats
+rho_stat_handler = RhoStat(
+    output=out_dir,
+    treecorr_config=TreeCorrConfig_xi,
+    verbose=False)
+
+# Compute correlations
+for ver in versions:
+    out_base = f"rho_stats_{ver}.fits"
+    out_path = f"{out_dir}/{out_base}"
+
+    # Load previous results
+    if os.path.exists(out_path):
+        print_green(f"Skipping rho statistics computation, file {out_path} exists")
+        rho_stat_handler.load_rho_stats(out_base)
+    else:
+        print_cyan("Computing rho stats")
+
+        # Get rho and tau parameters
+        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
+
+        # Set rho parameters
+        rho_stat_handler.catalogs.set_params(params, out_dir)
+
+        mask = (ver != 'DES')
+
+        # Build catalogues
+        rho_stat_handler.build_cat_to_compute_rho(
+            cat[ver]["psf"]["path"],
+            catalog_id=ver,
+            square_size=True,
+            mask=mask,
+        )
+
+        # Compute and save rho stats
+        rho_stat_handler.compute_rho_stats(ver, out_base)
+
+# +
+filenames = []
+colors = []
+for ver in versions:
+    filenames.append(f"rho_stats_{ver}.fits")
+    colors.append(cat[ver]["colour"])
+
+# Create plot
+rho_stat_handler.plot_rho_stats(
+    filenames,
+    colors,
+    versions,
+    abs=False,
+    savefig='rho_stats.png',
+    legend="outside",
+)
+# -
+
+# ##### Tau statistics
+
+
+# Create class instance to compute, save, load and plot rho_stats
+tau_stat_handler = TauStat(
+    catalogs=rho_stat_handler.catalogs,
+    output=out_dir,
+    treecorr_config=TreeCorrConfig_xi,
+    verbose=True,
+)
+
+for ver in versions:
+    out_base = f"tau_stats_{ver}.fits"
+    out_path = f"{out_dir}/{out_base}"
+
+    # Load previous results
+    if os.path.exists(out_path):
+        print_green(f"Skipping tau statistics computation, file {out_path} exists")
+        tau_stat_handler.load_tau_stats(out_base)
+    else:
+        print_cyan("Computing tau stats")
+
+        # Get rho and tau parameters
+        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
+
+        # Set parameters
+        tau_stat_handler.catalogs.set_params(params, out_dir)
+
+        mask = (ver != 'DES')
+
+        # Build the catalog of galaxies. PSF was computed above
+        if f"psf_{ver}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
+            tau_stat_handler.build_cat_to_compute_tau(
+                cat[ver]["psf"]["path"],
+                cat_type='psf',
+                catalog_id=ver,
+                square_size=True,
+                mask=mask,
+            )
+
+        # Build the different catalogues
+        tau_stat_handler.build_cat_to_compute_tau(
+            cat[ver]["shear"]["path"],
+            cat_type='gal',
+            catalog_id=ver,
+            square_size=True,
+            mask=mask,
+        )
+
+
+        # function to extract the tau_+
+        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+        tau_stat_handler.compute_tau_stats(
+            ver,
+            out_base,
+            save_cov=True,
+            func=only_p,
+            var_method='jackknife',
+        )
+
+# +
+filenames = []
+colors = []
+for ver in versions:
+    filenames.append(f"tau_stats_{ver}.fits")
+    colors.append(cat[ver]["colour"])
+
+# Create plots
+tau_stat_handler.plot_tau_stats(
+    filenames,
+    colors,
+    versions,
+    savefig='tau_stats.png',
+    plot_tau_m=False,
+    legend="outside",
+)
+# -
+
+# ##### Parameter fits
+
+psf_fitter = PSFErrorFit(rho_stat_handler, tau_stat_handler, out_dir)
+
+flat_sample_list = []
+mcmc_result_list = []
+q_list = []
+
+nwalkers = 124
+nsamples = 10000
+
+print_start('MCMC for leakage parameteres')
+for ver in versions:
+    print_magenta(ver)
+
+    sample_file_path = psf_fitter.get_sample_path(ver)
+    if os.path.exists(sample_file_path):
+        print_green(f"Skipping MCMC sampling, file {sample_file_path} exists")
+        flat_samples = psf_fitter.load_samples(ver)
+        mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
+        print(mcmc_result)
+        psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
+        psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
+    else:
+        print_cyan("MCMC sampling")
+        psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
+        psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
+        psf_fitter.load_covariance('cov_'+ ver +'.npy')
+
+        # Get rho and tau parameters
+        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
+
+        flat_samples, mcmc_result, q = psf_fitter.run_chain(
+            nwalkers=nwalkers,
+            nsamples=nsamples,
+            npatch=params["patch_number"],
+            apply_debias=True,
+            savefig='mcmc_samples_'+ ver +'.png',
+        )
+        psf_fitter.save_samples(flat_samples, ver)
+
+    flat_sample_list.append(flat_samples)
+    mcmc_result_list.append(mcmc_result)
+    q_list.append(q)
+
+    psf_fitter.plot_tau_stats_w_model(
+        mcmc_result[1],
+        'tau_stats_'+ ver + '.fits',
+        'blue',
+        ver,
+        savefig='best_fit_'+ ver + '.png'
+    )
+
+psfleak_plots.plot_contours(
+    flat_sample_list,
+    names=['x0', 'x1', 'x2'],
+    labels=['alpha', 'beta', 'eta'],
+    savefig=out_dir + '/contours_tau_stat.png',
+    legend_labels=versions,
+    legend_loc='upper right',
+    contour_colors=colors,
+    markers={'x0':0, 'x1':1, 'x2':1}
+)
+
+plt.figure(figsize=(15, 6))
+for mcmc_result, ver, color, flat_sample in zip(
+    mcmc_result_list,
+    versions,
+    colors,
+    flat_sample_list
+):
+    psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
+    for i in range(100):
+        psf_fitter.plot_xi_psf_sys(flat_sample[-i+1], ver, color, alpha=0.1)
+    psf_fitter.plot_xi_psf_sys(mcmc_result[1], ver, color)
+plt.legend()
+cs_plots.savefig(f"{out_dir}/xi_psf_sys_samples.png")
+
+xi_psf_sys_mean = {}
+xi_psf_sys_var = {}
+
+plt.figure(figsize=(15, 6))
+quant = 0.683
+quantiles = [1 - quant, quant]
+for mcmc_result, ver, color, flat_sample in zip(
+    mcmc_result_list,
+    versions,
+    colors,
+    flat_sample_list
+):
+    psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
+    nbins = psf_fitter.rho_stat_handler._treecorr_config["nbins"]
+    xi_psf_sys_samples = np.array([]).reshape(0, nbins)
+
+    for i in range(len(flat_sample)):
+        xi_psf_sys = psf_fitter.compute_xi_psf_sys(flat_sample[i])
+        xi_psf_sys_samples = np.vstack([xi_psf_sys_samples, xi_psf_sys])
+
+    xi_psf_sys_mean[ver] = np.mean(xi_psf_sys_samples, axis=0)
+    xi_psf_sys_var[ver] = np.var(xi_psf_sys_samples, axis=0)
+    xi_psf_sys_quan = np.quantile(xi_psf_sys_samples, quantiles, axis=0)
+    theta = psf_fitter.rho_stat_handler.rho_stats["theta"]
+    ls = cat[ver]["ls"]
+    plt.plot(theta, xi_psf_sys_mean[ver], linestyle=ls, color=color)
+    plt.plot(theta, xi_psf_sys_quan[0], linestyle=ls, color=color)
+    plt.plot(theta, xi_psf_sys_quan[1], linestyle=ls, color=color)
+    plt.fill_between(theta, xi_psf_sys_quan[0], xi_psf_sys_quan[1], color=color, alpha=0.25, label=ver)
+
+plt.xscale('log')
+plt.yscale('log')
+plt.xlabel(r"$\theta$ [arcmin]")
+plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
+plt.title(f"{quantiles[0]:.1%}, {quantiles[1]:.1%} quantiles")
+plt.legend()
+cs_plots.savefig(f"{out_dir}/xi_psf_sys_quantiles.png")
+
+for mcmc_result, ver, flat_sample in zip(
+    mcmc_result_list,
+    versions,
+    flat_sample_list
+):
+    for yscale in ("linear", "log"):
+        psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
+        out_path = f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
+        psf_fitter.plot_xi_psf_sys_terms(ver, mcmc_result[1], out_path, yscale=yscale)
+
+
+# #### Footprint
+
+print_start('Plot footprints')
+for ver in versions:
+    print_magenta(ver)
+    out_path = f"{cat['paths']['output']}/footprint_{ver}.png"
+    if os.path.exists(out_path):
+        print_green(f'Skipping footprint computation, plot {out_path} exists')
+    else:
+        print_cyan("Compute footprint")
+        plt.clf()
+        plt.plot(
+            results[ver].dat_shear["RA"],
+            results[ver].dat_shear["Dec"],
+            ".",
+            markersize=0.5
+        )
+        plt.xlabel("R.A. [deg]")
+        plt.ylabel("Dec [deg]")
+        cs_plots.savefig(out_path)
+print_done('Done plotting')
+
+# #### $\xi_\textrm{sys}$ and scale-dependent leakage
+
+print_start('Scale-dependent leakage')
+for ver in versions:
+    print_magenta(ver)
+    obj = results[ver]
+
+    output_base_path = f'{cat["paths"]["output"]}/leakage_{ver}/xi_for_leak_scale'
+    output_path_ab = f"{output_base_path}_a_b.txt"
+    output_path_aa = f"{output_base_path}_a_a.txt"
+    if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
+        print_green(f'Skipping computation, reading {output_path_ab} and {output_path_aa} instead')
+
+        # Todo: Use TreeCorrConfig_xi
+        TreeCorrConfig = {
+            'ra_units': coord_units,
+            'dec_units': coord_units,
+            'min_sep': obj._params["theta_min_amin"],
+            'max_sep': obj._params["theta_max_amin"],
+            'sep_units': sep_units,
+            'nbins': obj._params["n_theta"],
+            'var_method':'jackknife',
+        }
+        obj.r_corr_gp = treecorr.GGCorrelation(TreeCorrConfig)
+        obj.r_corr_gp.read(output_path_ab)
+
+        obj.r_corr_pp = treecorr.GGCorrelation(TreeCorrConfig)
+        obj.r_corr_pp.read(output_path_aa)
+
+    else:
+        obj.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
+
+    obj.do_alpha(fast=True)
+    obj.do_xi_sys()
+
+print_done('Done scale-dependent leakage')
 
 # +
 # Plot scale-dependent leakage
@@ -175,8 +573,10 @@ yerr = []
 labels = []
 colors = []
 linestyles = []
+markers = []
 
 for ver in versions:
+
     if hasattr(results[ver], "r_corr_gp"):
         theta.append(results[ver].r_corr_gp.meanr)
         y.append(results[ver].alpha_leak)
@@ -184,14 +584,15 @@ for ver in versions:
         labels.append(ver)
         colors.append(cat[ver]["colour"])
         linestyles.append(cat[ver]["ls"])
+        markers.append(cat[ver]["marker"])
 
 if len(theta) > 0:
     out_path = f"{cat['paths']['output']}/alpha_leak.pdf"
 
     title = r'$\alpha$ leakage'
     xlabel = r'$\theta\, [arcmin]$'
-    ylabel = r'$\alpha(\theta$'
-    plots.plot_data_1d(
+    ylabel = r'$\alpha(\theta)$'
+    cs_plots.plot_data_1d(
         theta,
         y,
         yerr,
@@ -205,8 +606,9 @@ if len(theta) > 0:
         labels=labels,
         colors=colors,
         linestyles=linestyles,
+        #shift_x=True,
     )
-    plt.savefig(out_path)
+    cs_plots.savefig(out_path)
 
 # +
 # Plot xi_sys
@@ -230,7 +632,7 @@ if len(y) > 0:
     title = 'Cross-correlation leakage'
     out_path = f"{cat['paths']['output']}/xi_sys_p"
     fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-    plots.plot_data_1d(
+    cs_plots.plot_data_1d(
         theta,
         y,
         yerr,
@@ -243,8 +645,9 @@ if len(y) > 0:
         xlim=[theta_min_plot, theta_max_plot],
         colors=colors,
         linestyles=linestyles,
+        #shift_x=True,
     )
-    plt.savefig(out_path)
+    cs_plots.savefig(out_path)
 
 y = []
 yerr = []
@@ -259,7 +662,7 @@ if len(y) > 0:
     title = 'Cross-correlation leakage'
     out_path = f"{cat['paths']['output']}/xi_sys_m"
     fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-    plots.plot_data_1d(
+    cs_plots.plot_data_1d(
         theta,
         y,
         yerr,
@@ -273,8 +676,9 @@ if len(y) > 0:
         ylim=[-1e-7, 1e-6],
         colors=colors,
         linestyles=linestyles,
+        #shift_x=True,
     )
-    plt.savefig(out_path)
+    cs_plots.savefig(out_path)
 # +
 # ### Cosmological analysis
 # xipm correlation functions
@@ -291,25 +695,32 @@ plt.rcParams.update({'figure.figsize': [22,7]})
 fig, axs = plt.subplots(1, 2)
 nbins = 200
 
-for ver in versions:
-    e1 = results[ver].dat_shear['e1']
-    w = results[ver].dat_shear['w']
-    n, bins, _ = axs[0].hist(e1, bins=nbins, density=False, histtype='step', weights=w,\
-                            label=ver, color=cat[ver]["colour"])
-axs[0].set_xlabel('$e_1$')
-axs[0].set_ylabel('frequency')
-axs[0].legend()
-axs[0].set_xlim([-1.5, 1.5])
+print_start("Ellipticity histograms")
 
-for ver in versions:
-    e2 = results[ver].dat_shear['e2']
-    w = results[ver].dat_shear['w']
-    n, bins, _ = axs[1].hist(e2, bins=nbins, density=False, histtype='step', weights=w,\
-                            label=ver, color=cat[ver]["colour"])
-axs[1].set_xlabel('$e_2$')
-axs[0].set_ylabel('frequency')
-axs[1].legend()
-_ = axs[1].set_xlim([-1.5,1.5])
+out_path = f"{cat['paths']['output']}/ell_hist.png"
+if os.path.exists(out_path):
+    print_green(f"Skipping ellipticity histograms, {out_path} exists")
+else:
+    print_cyan("Compute histograms")
+    for ver in versions:
+        print_magenta(ver)
+        R = cat[ver]["shear"]["R"]
+        e1 = results[ver].dat_shear[cat[ver]['shear']['e1_col']] / R
+        e2 = results[ver].dat_shear[cat[ver]['shear']['e2_col']] / R
+        w = results[ver].dat_shear['w']
+
+        n, bins, _ = axs[0].hist(e1, bins=nbins, density=False, histtype='step', weights=w,\
+                                label=ver, color=cat[ver]["colour"])
+        n, bins, _ = axs[1].hist(e2, bins=nbins, density=False, histtype='step', weights=w,\
+                                label=ver, color=cat[ver]["colour"])
+
+    for idx in (0, 1):
+        axs[idx].set_xlabel(f"$e_{idx}$")
+        axs[idx].set_ylabel('frequency')
+        axs[idx].legend()
+        axs[idx].set_xlim([-1.5,1.5])
+    cs_plots.savefig(out_path)
+print_done("Ellipticity histograms")
 
 # Plot separation for SP/MP match
 plt.rcParams.update({'figure.figsize': [10,7]})
@@ -332,62 +743,46 @@ if 'SP_matched_MP_v1.0' in versions:
 # +
 # Compute additive bias
 
-print("Compute additive bias")
+print_start("Additive bias")
 
 c1 = {}
 c2 = {}
 
-print("# ver c1 (from yml) c2 (from yml)")
-
 for ver in versions:
+    print_magenta(ver)
+    R = cat[ver]["shear"]["R"]
     c1[ver] = np.average(
-        results[ver].dat_shear["e1"],
+        results[ver].dat_shear[cat[ver]['shear']['e1_col']] / R,
         weights=results[ver].dat_shear["w"]
     )
     c2[ver] = np.average(
-        results[ver].dat_shear["e2"],
+        results[ver].dat_shear[cat[ver]['shear']['e2_col']] / R,
         weights=results[ver].dat_shear["w"]
     )
-    print(f"{ver} {c1[ver]} ({cat[ver]['shear']['e1_bias']}) {c2[ver]} ({cat[ver]['shear']['e2_bias']})")
+    print(f"{ver} {c1[ver]} {c2[ver]}")
+print_done("Done additive bias")
 # -
 
-print("Compute 2PCF")
-treecorr.set_omp_threads(n_thread)
-sep_units = 'arcmin'
-coord_units = 'degrees'
+print_start("2PCF")
 
 # +
-theta_min = 1
-theta_max = 200
-nbins = 20
 npatch = 50
-
-TreeCorrConfig = {
-        'ra_units': coord_units,
-        'dec_units': coord_units,
-        'max_sep': str(theta_max),
-        'min_sep': str(theta_min),
-        'sep_units': sep_units,
-        'nbins': nbins,
-        'var_method':'jackknife',
-    }
 
 cat_ggs = {}
 for ver in versions:
-    print(f"{ver}")
-    
-    gg = treecorr.GGCorrelation(TreeCorrConfig)        
+    print_magenta(ver)
 
-    out_fname = f"{cat['paths']['output']}/xi_pm_{ver}_{cat[ver]['shape']}.txt"
-    if os.path.exists(out_fname):
-        print(f'Skipping 2PCF, {out_fname} exists')
-        
+    gg = treecorr.GGCorrelation(TreeCorrConfig_xi)
+
+    out_fname = f"{cat['paths']['output']}/xi_pm_{ver}.txt"
+    if os.path.exists(out_fname) :
+        print_green(f'Skipping 2PCF, {out_fname} exists')
         gg.read(out_fname)
     else:
-        print(f'Computing 2PCF')
-
-        g1 = results[ver].dat_shear["e1"] - c1[ver]
-        g2 = results[ver].dat_shear["e2"] - c2[ver]
+        print_cyan(f'Computing 2PCF')
+        R = cat[ver]["shear"]["R"]
+        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -400,10 +795,58 @@ for ver in versions:
         )
         gg.process(cat_gal)
         gg.write(out_fname)
-                 
-    cat_ggs[ver] = gg
+        del(cat_gal)
+        del(g1)
+        del(g2)
 
-print("Done 2PCF")
+    cat_ggs[ver] = gg
+    #del(gg)
+
+print_done("Done 2PCF")
+nbins=TreeCorrConfig_xi['nbins']
+for ver in versions:
+    gg = cat_ggs[ver]
+    lst = np.arange(1,nbins+1)
+
+    #create fits HDU with xi_p and xi_m data
+    col1 = fits.Column(name ='BIN1', format ='K', array = np.ones(len(lst)))
+    col2 = fits.Column(name ='BIN2', format ='K', array = np.ones(len(lst)))
+    col3 = fits.Column(name ='ANGBIN', format ='K', array = lst)
+    col4 = fits.Column(name ='VALUE', format ='D', array = gg.xip)
+    col5 = fits.Column(name ='ANG', format ='D', unit ='arcmin', array = gg.meanr)
+    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+    xiplus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_PLUS')
+
+
+    col4 = fits.Column(name ='VALUE', format ='D', array = gg.xim)
+    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+    ximinus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_MINUS')
+
+    #append xi_p/xi_m header info 
+    xip_dict = {'2PTDATA':'T',
+                'QUANT1':'G+R',
+                'QUANT2':'G+R',
+                'KERNEL_1':'NZ_SOURCE',
+                'KERNEL_2':'NZ_SOURCE',
+                'WINDOWS':'SAMPLE'}
+    for key in xip_dict:
+        xiplus_hdu.header[key] = xip_dict[key]
+
+
+    xim_dict = {'2PTDATA':'T',
+                'QUANT1':'G-R',
+                'QUANT2':'G-R',
+                'KERNEL_1':'NZ_SOURCE',
+                'KERNEL_2':'NZ_SOURCE',
+                'WINDOWS':'SAMPLE'}
+
+    for key in xim_dict:
+        ximinus_hdu.header[key] = xim_dict[key]
+
+    ximinus_hdu.writeto(f"{cat['paths']['output']}/xi_minus_{ver}.fits",overwrite=True)
+    xiplus_hdu.writeto(f"{cat['paths']['output']}/xi_plus_{ver}.fits",overwrite=True)
+
+
 # -
 
 # #### Plot $\xi_\pm$
@@ -423,116 +866,173 @@ for ver in versions:
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.ylabel(r'$n_{\rm pair}$')
 plt.legend()
-out_path = f"{cat['paths']['output']}/n_pair"
-plt.savefig(out_path)
+out_path = f"{cat['paths']['output']}/n_pair.png"
+cs_plots.savefig(out_path)
 # -
 
-#Plot of xi_+
-for ver in versions:
+# Plot of xi_+
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr,
+        cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
         cat_ggs[ver].xip,
         yerr=np.sqrt(cat_ggs[ver].varxip),
         label=ver,
         ls=cat[ver]["ls"],
         color=cat[ver]["colour"]
     )
-plt.plot()
 plt.xscale('log')
-plt.legend(fontsize=20)
-plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([theta_min_plot, theta_max_plot])
 plt.ylabel(r'$\xi_+(\theta)$')
-out_path = f"{cat['paths']['output']}/xi_p"
-_ = plt.savefig(out_path)
+out_path = f"{cat['paths']['output']}/xi_p.png"
+cs_plots.savefig(out_path)
 
-#Plot of xi_-
-for ver in versions:
+# Plot of xi_-
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
     plt.errorbar(
-        cat_ggs[ver].meanr,
+        cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
         cat_ggs[ver].xim,
         yerr=np.sqrt(cat_ggs[ver].varxim),
         label=ver,
         ls=cat[ver]["ls"],
         color=cat[ver]["colour"]
     )
-plt.plot()
 plt.xscale('log')
-plt.legend(fontsize=20)
-plt.ticklabel_format(axis="y", style="sci", scilimits=(0,0))
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
 plt.xlabel(rf'$\theta$ [{sep_units}]')
 plt.xlim([theta_min_plot, theta_max_plot])
 plt.ylabel(r'$\xi_-(\theta)$')
-out_path = f"{cat['paths']['output']}/xi_m"
-_ = plt.savefig(out_path)
+out_path = f"{cat['paths']['output']}/xi_m.png"
+cs_plots.savefig(out_path)
 
-# #### Plot fractional difference
+#Plot of xi_+(theta) * theta
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
+    plt.errorbar(
+        cat_ggs[ver].meanr,
+        cat_ggs[ver].xip * cat_ggs[ver].meanr,
+        yerr=np.sqrt(cat_ggs[ver].varxip) * cat_ggs[ver].meanr,
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
+plt.xscale('log')
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([theta_min_plot, theta_max_plot])
+plt.ylabel(r'$\theta \xi_+(\theta)$')
+out_path = f"{cat['paths']['output']}/xi_p_theta.png"
+cs_plots.savefig(out_path)
 
-# +
-#plt.rcParams.update({'font.size': 20,'figure.figsize':[12,10]})
+#Plot of xi_- * theta
+fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+for idx, ver in enumerate(versions):
+    plt.errorbar(
+        cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+        cat_ggs[ver].xim * cat_ggs[ver].meanr,
+        yerr=np.sqrt(cat_ggs[ver].varxim) * cat_ggs[ver].meanr,
+        label=ver,
+        ls=cat[ver]["ls"],
+        color=cat[ver]["colour"]
+    )
+plt.xscale('log')
+plt.yscale('log')
+plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.ticklabel_format(axis="y")
+plt.xlabel(rf'$\theta$ [{sep_units}]')
+plt.xlim([theta_min_plot, theta_max_plot])
+plt.ylabel(r'$\theta \xi_-(\theta)$')
+out_path = f"{cat['paths']['output']}/xi_m_theta.png"
+cs_plots.savefig(out_path)
 
-#Define the two catalogues you wish to compare
-#cat1 = cat_options[0]
-#cat2 = cat_options[1]
+# Plot of xi_+ with and without xi_psf_sys
+for idx, ver in enumerate(versions):
+    fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+    plt.errorbar(
+        cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+        cat_ggs[ver].xip,
+        yerr=np.sqrt(cat_ggs[ver].varxim),
+        label=r"$\xi_+$",
+        ls="solid",
+        color="green",
+    )
+    plt.errorbar(
+        cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+        xi_psf_sys_mean[ver],
+        yerr=np.sqrt(xi_psf_sys_var[ver]),
+        label=r"$\xi^{\rm psf}_{+, {\rm sys}}$",
+        ls="dotted",
+        color="red",
+    )
+    plt.errorbar(
+        cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+        cat_ggs[ver].xip + xi_psf_sys_mean[ver],
+        yerr=np.sqrt(cat_ggs[ver].varxip + xi_psf_sys_var[ver]),
+        label=r"$\xi_+ + \xi^{\rm psf}_{+, {\rm sys}}$",
+        ls="dashdot",
+        color="magenta",
+    )
 
-#cat_key = cat1[0]+'_'+cat1[1]
-#cat_key2 = cat2[0]+'_'+cat2[1]
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.ticklabel_format(axis="y")
+    plt.xlabel(rf'$\theta$ [{sep_units}]')
+    plt.xlim([theta_min_plot, theta_max_plot])
+    plt.ylim(1e-8, 5e-4)
+    plt.ylabel(r'$\xi_+(\theta)$')
+    out_path = f"{cat['paths']['output']}/xi_p_xi_psf_sys_{ver}.png"
+    cs_plots.savefig(out_path)
 
-#ratio = np.abs(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip)/cat_ggs[cat_key2].xip
-#err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxip)+np.sqrt(cat_ggs[cat_key2].varxip))/(cat_ggs[cat_key2].xip-cat_ggs[cat_key].xip))**2+(cat_ggs[cat_key2].varxip/cat_ggs[cat_key2].xip)**2)
-#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err,
-             #label=r'$\xi_+$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='salmon')
-
-#ratio = np.abs(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim)/cat_ggs[cat_key2].xim
-#err = ratio * np.sqrt(((np.sqrt(cat_ggs[cat_key].varxim)+np.sqrt(cat_ggs[cat_key2].varxim))/(cat_ggs[cat_key2].xim-cat_ggs[cat_key].xim))**2+(cat_ggs[cat_key2].varxim/cat_ggs[cat_key2].xim)**2)
-#plt.errorbar(cat_ggs[cat_key].meanr, ratio, yerr=err,
-             #label=r'$\xi_-$ Fractional Diff (%s-%s)/%s' %(cat[cat2[0]][cat2[1]]['label'],cat[cat1[0]][cat1[1]]['label'],cat[cat2[0]][cat2[1]]['label']),ls='solid',color='indigo')
-#plt.hlines(0.0,0,200,colors='k')
-#plt.grid()
-#plt.xscale('log')
-#plt.ylim([-2.5,2.5])
-#plt.legend(fontsize=15)
-#plt.xlabel(rf'$\theta$ [{sep_units}]')
-#plt.xlim([1,200])
 
 # +
 #### Aperture-mass dispersion
 
 # +
-theta_min = 1
+theta_min = 0.3
 theta_max = 200
-nbins = 200
-npatch = 50
+nbins = 500
+npatch = 25
+
+TreeCorrConfig_map = {
+        'ra_units': coord_units,
+        'dec_units': coord_units,
+        'max_sep': str(theta_max),
+        'min_sep': str(theta_min),
+        'sep_units': sep_units,
+        'nbins': nbins,
+        'var_method':'jackknife',
+}
 
 # Set up angular smoothing scales for aperture-mass dispersion
-n_bins_map = 20
-R = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
+n_bins_map = 15
+theta_map = np.geomspace(theta_min * 5, theta_max / 2, n_bins_map)
 
-TreeCorrConfig = {
-    'ra_units': coord_units,
-    'dec_units': coord_units,
-    'max_sep': str(theta_max),
-    'min_sep': str(theta_min),
-    'sep_units': sep_units,
-    'nbins': nbins,
-    'var_method':'jackknife',
-}
-gg = treecorr.GGCorrelation(TreeCorrConfig)
-
-print("Compute aperture-mass dispersion")
+print_start("Aperture-mass dispersion")
 map2 = {}
 for ver in versions:
-    
+    print_magenta(ver)
+
+    gg = treecorr.GGCorrelation(TreeCorrConfig_map)
+
     out_fname = f"{cat['paths']['output']}/xi_for_map2_{ver}.txt"
     if os.path.exists(out_fname):
-        print(f'Skipping Map2, {out_fname} exists')
+        print_green(f'Skipping xi for Map2, {out_fname} exists')
         gg.read(out_fname)
     else:
-        print(f'Computing Map2')
-
-        g1 = results[ver].dat_shear["e1"] - c1[ver]
-        g2 = results[ver].dat_shear["e2"] - c2[ver]
+        print_cyan("Compute Map2")
+        R = cat[ver]["shear"]["R"]
+        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
@@ -543,31 +1043,32 @@ for ver in versions:
             dec_units=coord_units,
             npatch=npatch,
         )
-        
+
         gg.process(cat_gal)
         gg.write(out_fname)
-        
-
-        print(f"done: {ver}")
+        del(cat_gal)
+        del(g1)
+        del(g2)
 
     mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
-        R=R,
+        R=theta_map,
         m2_uform='Schneider',
     )
-    out_fname_map2 = f"{cat['paths']['output']}/for_map2_{ver}.txt"
+    out_fname_map2 = f"{cat['paths']['output']}/map2_{ver}.txt"
     if os.path.exists(out_fname_map2):
-        print("Map2 output file {out_fname_map2} exists")
+        print(f"Map2 output file {out_fname_map2} exists")
     else:
-        print("Writing Map2 to output file {out_fname_map2} ")
-        gg.writeMapSq(out_fname_map2, R=R, m2_uform='Schneider')
+        print(f"Writing Map2 to output file {out_fname_map2} ")
+        gg.writeMapSq(out_fname_map2, R=theta_map, m2_uform='Schneider')
     map2[ver] = {}
     map2[ver]['mapsq'] = mapsq
     map2[ver]['mapsq_im'] = mapsq_im
     map2[ver]['mxsq'] = mxsq
     map2[ver]['mxsq_im'] = mxsq_im
     map2[ver]['varmapsq'] = varmapsq
+    del(gg)
 
-print("Done aperture-mass dispersion")
+print_done("Done aperture-mass dispersion")
 
 # +
 # Plot aperture-mass dispersion
@@ -576,17 +1077,25 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     x = []
     y = []
     yerr = []
-    for ver in versions:
-        x.append(R)
+    theta=[]
+    labels=[]
+    colors=[]
+    linestyles=[]
+    for idx, ver in enumerate(versions):
+
+        x.append(theta_map)
         y.append(map2[ver][mode])
-        yerr.append(map2[ver]['varmapsq'])
+        yerr.append(np.sqrt(map2[ver]['varmapsq']))
+        labels.append(ver)
+        colors.append(cat[ver]["colour"])
+        linestyles.append(cat[ver]["ls"])
 
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
-    title = f"Aperture-mass dispersion mode {mode}"
+    title = f"Aperture-mass dispersion {mode}"
     out_path = f"{cat['paths']['output']}/{mode}.pdf"
-    plots.plot_data_1d(
-        theta,
+    cs_plots.plot_data_1d(
+        x,
         y,
         yerr,
         title,
@@ -596,12 +1105,13 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         labels=labels,
         xlog=True,
         xlim=[theta_min_plot, theta_max_plot],
-        ylim=[-1e-7, 1e-6],
+        ylim=[-1e-6, 2e-5],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
-    plt.savefig(out_path)
-    
+    cs_plots.savefig(out_path)
+
     # Plot aperture-mass dispersion
 
 for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
@@ -609,16 +1119,15 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
     y = []
     yerr = []
     for ver in versions:
-        x.append(R)
+        x.append(theta_map)
         y.append(np.abs(map2[ver][mode]))
-        yerr.append(map2[ver]['varmapsq'])
-
+        yerr.append(np.sqrt(map2[ver]['varmapsq']))
     xlabel = r"$\theta$ [arcmin]"
     ylabel = "dispersion"
     title = f"Aperture-mass dispersion mode {mode}"
     out_path = f"{cat['paths']['output']}/{mode}_log.pdf"
-    plots.plot_data_1d(
-        theta,
+    cs_plots.plot_data_1d(
+        x,
         y,
         yerr,
         title,
@@ -629,11 +1138,12 @@ for mode in ['mapsq', 'mapsq_im', 'mxsq', 'mxsq_im']:
         xlog=True,
         ylog=True,
         xlim=[theta_min_plot, theta_max_plot],
-        ylim=[1e-9, 1e-5],
+        ylim=[1e-9, 3e-5],
         colors=colors,
         linestyles=linestyles,
+        shift_x=True,
     )
-    plt.savefig(out_path)
+    cs_plots.savefig(out_path)
 # -
 
 # Clean up memory
@@ -644,130 +1154,6 @@ for ver in versions:
 gc.collect()
 print("Done: Clean up memory")
 
-# #### Plot covariance matrices
+print_done("Exiting here")
+sys.exit(0)
 
-#Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
-for ver in versions:
-    try:
-        cc = np.loadtxt(cat[ver]['shear']['covmat_file'])
-    except KeyError:
-        print('No Covmat available, skipping analysis for this catalogue: %s' %ver)
-        continue
-    else:
-        cc_var = np.diag(cc)
-        cc_varxip = cc_var[:20]
-        cc_varxim = cc_var[20:]
-
-        cc_g = np.loadtxt(cat[ver]['shear']['covmat_file'][:-4]+'_g.txt')
-        cc_var = np.diag(cc_g)
-        cc_varxip_g = cc_var[:20]
-        cc_varxim_g = cc_var[20:]
-
-        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxip,
-                   ls='-',c='k',
-                   label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip,
-                   ls='--', c='%s' %cat[ver]['colour'],
-                   label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip_g,
-                   ls=':', c='%s' %cat[ver]['colour'],
-                   label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-
-        plt.grid()
-        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
-        plt.legend(fontsize=15)
-        plt.xlabel(rf'$\theta$ [{sep_units}]')
-        plt.ylabel(r'$\sigma(\xi_+)$')
-        out_path = f"{cat['paths']['output']}/cov_p"
-        plt.savefig(out_path)
-
-        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxim,
-                   ls='-', c='k',
-                    label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxim,
-                   ls='--', c='%s' %cat[ver]['colour'],
-                    label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxim_g,
-                    ls=':', c='%s' %cat[ver]['colour'],
-                    label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-
-        plt.grid()
-        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
-        plt.legend(fontsize=15)
-        plt.xlabel(rf'$\theta$ [{sep_units}]')
-        plt.ylabel(r'$\sigma(\xi_-)$')
-        out_path = f"{cat['paths']['output']}/cov_m"
-        plt.savefig(out_path)
-
-# ## MCMC Plotting
-
-# +
-from getdist import plots, loadMCSamples
-import uncertainties
-
-g = plots.get_subplot_plotter(width_inch=30)
-g.settings.axes_fontsize = 30
-g.settings.axes_labelsize = 30
-g.settings.alpha_filled_add = 0.6
-g.settings.legend_fontsize = 30
-
-#SPECIFY DATA DIRECTORY AND DESIRED CHAINS TO ANALYSE
-scratch_dir = f'{os.environ["HOME"]}'
-# For reference, currently the chains reside in Lisa's scratch space on CANDIDE
-scratch_dir = '/feynman/work/dap/lcs/lg268561/UNIONS/'
-
-# Right now only these versions!
-versions = ['SP_v1.0', 'LF_v1.0', 'SP_matched_LF_v1.0','LF_matched_SP_v1.0']
-# Choose between blinds A, B or C (matched catalogues don't have blinds)
-blinds = ['A']
-# If we want to include full angular scale or cut angular scales ('cut'/'full'),
-# option only possible for unmatched catalogue
-theta_range = 'cut'
-# -
-
-#CREATE PARAMNAME FILE
-for ver in versions:
-    for blind in blinds:
-        chain_dir = '%s/blind_%s/chain' %(ver,blind)
-        with open(scratch_dir + '%s/samples_1.txt'%(chain_dir), "r") as file:
-            params = file.readline()[1:].split('\t')[:-2]
-            file.close()
-
-        with open(scratch_dir + '%s/getdist_.paramnames'%(chain_dir), "w") as file:
-            for i in range(len(params)):
-                file.write(params[i].split('--')[1] + '\n')
-            file.close()
-        print(params)
-
-# +
-#READ CHAIN
-chains = []
-colours = []
-line_args = []
-labels = []
-
-for ver in versions:
-    for blind in blinds:
-        chain_dir = '%s/blind_%s/chain_%s_theta' %(ver,blind,theta_range)
-
-        chain = g.samples_for_root(scratch_dir + '%s/getdist_' %(chain_dir),
-                                    settings={'ignore_rows':0.1,'smooth_scale_2D':0.7,'smooth_scale_1D':0.7})
-        p=chain.getParams()
-        chain.addDerived(np.log(p.a_s*10**10), name='ln10^10A_s', label=r'ln(10^{10}A_s)')
-        chain.addDerived(p.SIGMA_8*np.sqrt(p.omega_m/0.3), name='S_8', label=r'S_8')
-
-        chains.append(chain)
-        colours.append(tuple(map(float,cat[ver]['getdist_colour'].split(","))))
-        line_args.append({'color': tuple(map(float,cat[ver]['getdist_colour'].split(",")))})
-        labels.append(ver + '_blind_' + blind + '_theta_' + theta_range) 
-
-# +
-# %matplotlib inline
-g.triangle_plot(chains,['omega_m','ln10^10A_s','SIGMA_8','S_8'],
-                legend_labels=labels,
-                filled=True,
-                colors=colours,
-                line_args=line_args)
-
-# out_path = f"{cat['paths']['output']}/corner_plot.pdf"
-# g.export(out_path)
