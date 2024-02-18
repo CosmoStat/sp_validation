@@ -7,7 +7,7 @@ import matplotlib.pylab as plt
 import sys
 
 #transforms treecorr fits file of correlation functions into CosmoSIS-friendly 2pt FITS extension to be read by 2pt_likelihood
-def treecorr_to_fits(filename1,filename2):
+def treecorr_to_fits(xipm_file,root):
     
     xiplus_hdu = fits.open(filename1)
     ximinus_hdu = fits.open(filename2)
@@ -57,8 +57,8 @@ def covdat_to_fits(filename):
 def nz_to_fits(filename):
     
 
-    line= np.loadtxt(filename, max_rows=1)
-    nbins = len(line)-1
+    arr = np.loadtxt(filename)
+    rows, nbins = arr.shape
     
     z_low = np.loadtxt(filename, usecols=0)
     
@@ -73,7 +73,7 @@ def nz_to_fits(filename):
     col3 = fits.Column(name ='Z_HIGH', format ='D', array = z_high) 
     cols = [col1,col2,col3]
     
-    for i in range(nbins):
+    for i in range(nbins-1):
         bin_col = np.loadtxt(filename, usecols=i+1)
         hdu_col = fits.Column(name ='BIN%d' %(i+1), format ='D', array = bin_col)
         cols.append(hdu_col)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
 #outputs nothing, but writes a new FITS file with appropriate extensions
     root = sys.argv[1]
     xi_folder = sys.argv[2]
-
+    
     two_pt_file_xip = xi_folder+'/xi_plus_'+root+'.fits'
     two_pt_file_xim = xi_folder+'/xi_minus_'+root+'.fits'
     cov_file = sys.argv[3]        #in cosmocov combined txt format
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     
     #create the required FITS extensions
     print("Creating 2PT fits extension...\n")
-    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip,two_pt_file_xim)
+    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file,root)
     print("Creating CovMat fits extension...\n")
     cov_hdu = covdat_to_fits(cov_file)
     print("Creating n(z) fits extension...\n")
