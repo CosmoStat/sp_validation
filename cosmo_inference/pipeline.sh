@@ -29,29 +29,25 @@ do
     'c') 
         read -p 'ROOT: ' root;
         read -p 'NZ FILE:' nz_file;
+        read -p 'PATH COSMOCOV: ' cosmocov;
         echo "Calculating covariance matrices with CosmoCov";
-        
-        cp cosmocov_config/cosmocov.ini cosmocov_config/cosmocov_${root}.ini
-        
-        python scripts/cosmocov_process.py $root $nz_file
+        python scripts/cosmocov_process.py $root $nz_file $cosmocov
         ;;
     'i')
         read -p 'ROOT: ' root;
         read -p 'XI_PLUS/XI_MINUS FITS FILE FOLDER: ' xi_folder;
         read -p 'NZ FILE:' nz_file;
+        read -p 'RHO_STATS FILE FOLDER: ' rho_stats_folder;
         read -p 'COVMAT TXT FILE:' covmat;
         read -p 'OUTPUT MCMC CHAIN FOLDER: ' data;
         
         out_file="data/${root}/cosmosis_${root}.fits";
         
         #LG: add check if xi_plus/xi_minus fits file exists
-        python scripts/cosmosis_fitting.py $root $xi_folder $covmat $nz_file $out_file;
-
-        cp cosmosis_config/cosmosis_pipeline.ini cosmosis_config/cosmosis_pipeline_${root}.ini
-        cp cosmosis_config/priors.ini cosmosis_config/priors_${root}.ini
-        cp cosmosis_config/values.ini cosmosis_config/values_${root}.ini
+        python scripts/cosmosis_fitting.py $root $xi_folder $covmat $nz_file $rho_stats_folder $out_file;
 
         sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        sed -i "/^\[DEFAULT\]/a\SAMPLES_FILE = ${rho_stats_folder}/samples_${root}.npy" cosmosis_config/cosmosis_pipeline_${root}.ini
         sed -i "/^\[output\]/a\filename = ${data}/samples_${root}.txt" cosmosis_config/cosmosis_pipeline_${root}.ini;
         sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
         sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
@@ -70,4 +66,3 @@ do
   esac
 done
 shift $(expr $OPTIND - 1) # remove options from positional parameters
-

@@ -131,4 +131,3 @@ if __name__ == '__main__':
 	subprocess.run('rm %s' %covfile,shell=True)
 	subprocess.run('rm data/%s/covs/order*' %root,shell=True)
 	subprocess.run('rm data/%s/covs/out_cov*' %root,shell=True)
-

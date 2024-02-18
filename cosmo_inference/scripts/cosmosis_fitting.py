@@ -9,8 +9,20 @@ import sys
 #transforms treecorr fits file of correlation functions into CosmoSIS-friendly 2pt FITS extension to be read by 2pt_likelihood
 def treecorr_to_fits(xipm_file,root):
     
-    xiplus_hdu = fits.open(xipm_file + '/xi_plus.fits')
-    ximinus_hdu = fits.open(xipm_file + '/xi_minus.fits')
+    xiplus_hdu = fits.open(filename1)
+    ximinus_hdu = fits.open(filename2)
+
+    #Add a dummy column to keep track of xi_+- when we add the xi_sys for each sample
+    dummy_xiplus = xiplus_hdu[1].data["VALUE"]
+    dummy_ximinus = ximinus_hdu[1].data["VALUE"]
+
+    #Create new dummy columns for the HDU Table
+    raw_xiplus = fits.Column(name="RAW_VALUE", format='D', array=dummy_xiplus)
+    raw_ximinus = fits.Column(name="RAW_VALUE", format='D', array=dummy_ximinus)
+
+    #Update the bin tables
+    xiplus_hdu[1].columns.add_col(raw_xiplus)
+    ximinus_hdu[1].columns.add_col(raw_ximinus)
     
     return xiplus_hdu[1],ximinus_hdu[1]
 
@@ -80,6 +92,11 @@ def nz_to_fits(filename):
         
     return nz_hdu
 
+def rho_to_fits(filename):
+    rho_stat_hdu = fits.open(filename)
+    rho_stat_hdu[1].name = "RHO_STATS"
+    return rho_stat_hdu[1]
+
 
 if __name__ == "__main__":
     
@@ -88,12 +105,15 @@ if __name__ == "__main__":
 #into 1 fits file to be read by CosmoSIS 2pt-likelihood function
 #give file path of each of the 3 components as input, also file path of desired output FITS file
 #outputs nothing, but writes a new FITS file with appropriate extensions
-
     root = sys.argv[1]
-    two_pt_file = sys.argv[2]
+    xi_folder = sys.argv[2]
+    
+    two_pt_file_xip = xi_folder+'/xi_plus_'+root+'.fits'
+    two_pt_file_xim = xi_folder+'/xi_minus_'+root+'.fits'
     cov_file = sys.argv[3]        #in cosmocov combined txt format
     nz_file = sys.argv[4]         #in cosmocov format
-    out_file = sys.argv[5] 
+    rho_stats_file = sys.argv[5]+'/rho_stats_'+root+'.fits'
+    out_file = sys.argv[6] 
 
     
     #create the required FITS extensions
@@ -103,6 +123,8 @@ if __name__ == "__main__":
     cov_hdu = covdat_to_fits(cov_file)
     print("Creating n(z) fits extension...\n")
     nz_hdu = nz_to_fits(nz_file)
+    print('Creating rho stats fits extension...\n')
+    rho_hdu = rho_to_fits(rho_stats_file)
     
     
     #create header for primary HDU
@@ -117,7 +139,7 @@ if __name__ == "__main__":
     
     #create final FITS HDU
     print("Writing out combined FITS file...\n")
-    hdul = fits.HDUList([pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu])
+    hdul = fits.HDUList([pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu, rho_hdu])
     hdul.writeto(out_file,overwrite=True)
     print("FITS file written out to %s" %out_file)
     
