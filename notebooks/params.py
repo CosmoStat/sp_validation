@@ -41,8 +41,7 @@ pixel_size = 0.187
 ##  'ngix': multi-epoch model fitting
 ##  'galsim': stacked-image moments (experimental)
 shapes = ['ngmix']
-#shapes = ['ngmix', 'galsim']
-print('Shape measurement methods:', shapes)
+print('Shape measurement method(s):', shapes)
 
 # Paths
 
@@ -60,10 +59,11 @@ galaxy_cat_path = f'{data_dir}/final_cat.npy'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
 
 ### Star and PSF catalog name; optional, set to `None` if not required
-star_cat_path = f'{data_dir}/output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+star_cat_path = f'{data_dir}/output/run_sp_MsPl/merge_starcat_runner/output/full_starcat-0000000.fits'
 
 ### External mask; optional, set to `None` if not required
-mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
+#mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
+mask_external_path = None
 
 ## Output paths
 
@@ -110,7 +110,7 @@ mmap_mode = None
 ## Output
 
 ### Additional output columns
-add_cols = [FLUX_RADIUS]
+add_cols = ["FLUX_RADIUS"]
 
 
 # Catalog parameters

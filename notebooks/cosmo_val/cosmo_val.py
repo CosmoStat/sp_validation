@@ -87,7 +87,8 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', 'DES', "SP_matched_LF_v1.0"]
+versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', 'SP_v1.4-P3', "SP_v1.4-P3_LFmask"]
+#versions = ['SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', "SP_v1.4-P3_LFmask"]
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
 #versions = ['SP_axel_v0.0']
 all_keys = ['nz']
@@ -118,13 +119,13 @@ if not os.path.exists(cat["paths"]["output"]):
 components = ['+', '-']
 
 # Angular scales for xi_+-
-theta_min = 1.0
+theta_min = 0.1
 theta_max = 200
 nbins = 20
 
 # Plotting
-theta_min_plot = 0.1
-theta_max_plot = 300
+theta_min_plot = 0.08
+theta_max_plot = 250
 
 ylim_alpha = [-0.005, 0.05]
 
@@ -211,14 +212,13 @@ def get_params_rho_tau(params_base, params_psf, survey="other"):
     # Set parameters
     params = params_base
     # TODO to yaml file
-    if survey == "DES":
+    if survey in ("DES", 'SP_axel_v0.0', 'SP_axel_v0.0_repr'):
         params["patch_number"] = 120
-        print("DES, jackknife patch number = 120")
-    elif survey == 'SP_axel_v0.0':
-        params["patch_number"] = 120
-        print("SP_Axel_v0.0, jackknife patch number =120")
+    elif survey in ("SP_v1.4-P3_LFmask", "SP_v1.4-P3"):
+        params["patch_number"] = 100
     else:
         params["patch_number"] = 200
+    print(f"survey={survey}, jackknife patches = {params['patch_number']}")
     params["ra_col"] = params_psf["ra_col"]
     params["dec_col"] = params_psf["dec_col"]
     params["e1_PSF_col"] = params_psf["e1_PSF_col"]
@@ -277,6 +277,7 @@ for ver in versions:
             catalog_id=ver,
             square_size=True,
             mask=mask,
+            hdu=cat[ver]["psf"]["hdu"],
         )
 
         # Compute and save rho stats
@@ -338,6 +339,7 @@ for ver in versions:
                 catalog_id=ver,
                 square_size=True,
                 mask=mask,
+                hdu=cat[ver]["psf"]["hdu"],
             )
 
         # Build the different catalogues
@@ -544,8 +546,8 @@ for ver in versions:
         TreeCorrConfig = {
             'ra_units': coord_units,
             'dec_units': coord_units,
-            'min_sep': obj._params["theta_min_amin"],
-            'max_sep': obj._params["theta_max_amin"],
+            'min_sep': theta_min,
+            'max_sep': theta_max,
             'sep_units': sep_units,
             'nbins': obj._params["n_theta"],
             'var_method':'jackknife',
@@ -590,7 +592,7 @@ if len(theta) > 0:
     out_path = f"{cat['paths']['output']}/alpha_leak.pdf"
 
     title = r'$\alpha$ leakage'
-    xlabel = r'$\theta\, [arcmin]$'
+    xlabel = r'$\theta$ [arcmin]'
     ylabel = r'$\alpha(\theta)$'
     cs_plots.plot_data_1d(
         theta,
