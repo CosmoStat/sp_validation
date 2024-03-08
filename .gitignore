@@ -151,4 +151,10 @@ notebooks/cosmo_val/match_LF_SP.ipynb
 
 notebooks/examples/*.ipynb
 
+cosmo_inference/data/
+cosmo_inference/cosmocov_config/cosmocov_*
+cosmo_inference/cosmosis_config/cosmosis_pipeline_*
+cosmo_inference/cosmosis_config/priors_*
+cosmo_inference/cosmosis_config/values_*
+
 notebooks/tests/star_response.ipynb
