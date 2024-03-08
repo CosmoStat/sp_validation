@@ -15,6 +15,7 @@
 
 # # Cosmological validation of UNIONS shape catalogues
 # 03/2023
+# 03/2024
 
 # %matplotlib inline
 # %load_ext autoreload
@@ -41,6 +42,7 @@ from sp_validation.plot_style import *
 from cs_util import plots as cs_plots
 
 from shear_psf_leakage import run_scale
+from shear_psf_leakage import run_object
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 
@@ -87,10 +89,11 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', 'SP_v1.4-P3', "SP_v1.4-P3_LFmask"]
+#versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', 'SP_v1.4-P3', "SP_v1.4-P3_LFmask"]
 #versions = ['SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', "SP_v1.4-P3_LFmask"]
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
-#versions = ['SP_axel_v0.0']
+versions = ['SP_v1.4-P3']
+
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
@@ -150,16 +153,11 @@ print_start('Start cosmology validation')
 
 # ### Systematic tests
 
-# + active=""
-# # TODO:
-# # object-wise leakage
-# -
-
 # #### Init results dictionary
-
 results = {}
 
-def set_params_leakage(cat, ver):
+
+def set_params_leakage_scale(cat, ver):
     params_in = {}
 
     # Set parameters
@@ -181,15 +179,33 @@ def set_params_leakage(cat, ver):
 
     return params_in
 
-for ver in versions:
 
-    params_in = set_params_leakage(cat, ver)
+def set_params_leakage_object(cat, ver):
+    params_in = {}
+
+    # Set parameters
+    params_in['input_path_shear'] = cat[ver]["shear"]["path"]
+    params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
+
+    # Note: for SP these are calibrated shear estimates
+    params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
+    params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
+
+    params_in['e1_PSF_col'] = cat[ver]["shear"]["e1_PSF_col"]
+    params_in["e2_PSF_col"] = cat[ver]["shear"]["e2_PSF_col"]
+
+    params_in["verbose"] = False
+
+    return params_in
+
+
+for ver in versions:
 
     # Create leakage instance
     obj = run_scale.LeakageScale()
 
-    # Set instance parameters, copy from above
-
+    # Set instance parameters
+    params_in = set_params_leakage_scale(cat, ver)
     for key in params_in:
         obj._params[key] = params_in[key]
 
@@ -204,6 +220,8 @@ for ver in versions:
     obj.check_params()
     obj.prepare_output()
     obj.read_data()
+
+
 
 # #### Rho and tau tatistics
 
@@ -681,6 +699,46 @@ if len(y) > 0:
         #shift_x=True,
     )
     cs_plots.savefig(out_path)
+
+
+# ### Object-wise leakage
+results_object = {}
+for ver in versions:
+
+    # Create leakage instance
+    obj = run_object.LeakageObject()
+
+    # Set instance parameters
+    params_in = set_params_leakage_object(cat, ver)
+    for key in params_in:
+        obj._params[key] = params_in[key]
+
+    results_object[ver] = obj
+
+print_start("Compute object-wise leakage")
+for ver in versions:
+    print_magenta(ver)
+
+    obj = results_object[ver]
+    obj.check_params()
+    obj.update_params()
+    obj.prepare_output()
+
+    # Skip read_data() and copy catalogue from scale instance instead
+    obj._dat = results[ver].dat_shear
+
+    output_path = (
+        f"{params_in['output_dir']}/PSF_e_vs_e_gal_order-lin_mix-True.png"
+    )
+    if os.path.exists(output_path):
+        print_green("Skipping object-wise leakage, file {output_path} exists")
+    else:
+        print_cyan("Computing object-wise leakage regression")
+
+        # Run
+        obj.PSF_leakage()
+
+
 # +
 # ### Cosmological analysis
 # xipm correlation functions
