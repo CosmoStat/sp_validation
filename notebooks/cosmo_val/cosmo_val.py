@@ -87,7 +87,8 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0', 'DES']
+versions = ['SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_v1.4-P3', 'SP_v1.4-P3_LFmask',  'SP_axel_v0.0', 'DES']
+rho_tau_method = 'lsq' #lsq or emcee
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
 #versions = ['SP_axel_v0.0']
 all_keys = ['nz']
@@ -118,8 +119,8 @@ if not os.path.exists(cat["paths"]["output"]):
 components = ['+', '-']
 
 # Angular scales for xi_+-
-theta_min = 1.0
-theta_max = 200
+theta_min = 0.1
+theta_max = 250
 nbins = 20
 
 # Plotting
@@ -139,7 +140,7 @@ TreeCorrConfig_xi = {
     'max_sep': theta_max,
     'sep_units': sep_units,
     'nbins': nbins,
-    'var_method':'jackknife',
+    'var_method':'bootstrap',
 }
 
 # ## Processing
@@ -217,6 +218,9 @@ def get_params_rho_tau(params_base, params_psf, survey="other"):
     elif survey == 'SP_axel_v0.0':
         params["patch_number"] = 120
         print("SP_Axel_v0.0, jackknife patch number =120")
+    elif survey == 'SP_v1.4-P3' or survey == 'SP_v1.4-P3_LFmask':
+        params["patch_number"] = 80
+        print("SP_v1.4, jackknife patch number =120")
     else:
         params["patch_number"] = 200
     params["ra_col"] = params_psf["ra_col"]
@@ -270,17 +274,20 @@ for ver in versions:
         rho_stat_handler.catalogs.set_params(params, out_dir)
 
         mask = (ver != 'DES')
+        square_size = (ver != 'DES')
 
         # Build catalogues
         rho_stat_handler.build_cat_to_compute_rho(
             cat[ver]["psf"]["path"],
             catalog_id=ver,
-            square_size=True,
+            square_size=square_size,
             mask=mask,
+            hdu = cat[ver]["psf"]["hdu"]
         )
 
         # Compute and save rho stats
-        rho_stat_handler.compute_rho_stats(ver, out_base)
+        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+        rho_stat_handler.compute_rho_stats(ver, out_base, save_cov=True, func=only_p, var_method='bootstrap')
 
 # +
 filenames = []
@@ -330,22 +337,24 @@ for ver in versions:
 
         mask = (ver != 'DES')
 
-        # Build the catalog of galaxies. PSF was computed above
+        square_size = (ver != 'DES')
+
+        # Build the different catalogs if necessary
         if f"psf_{ver}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(
                 cat[ver]["psf"]["path"],
                 cat_type='psf',
                 catalog_id=ver,
-                square_size=True,
+                square_size=square_size,
                 mask=mask,
             )
 
-        # Build the different catalogues
+        # Build the catalog of galaxies. PSF was computed above
         tau_stat_handler.build_cat_to_compute_tau(
             cat[ver]["shear"]["path"],
             cat_type='gal',
             catalog_id=ver,
-            square_size=True,
+            square_size=square_size,
             mask=mask,
         )
 
@@ -357,7 +366,7 @@ for ver in versions:
             out_base,
             save_cov=True,
             func=only_p,
-            var_method='jackknife',
+            var_method='bootstrap',
         )
 
 # +
@@ -382,54 +391,99 @@ tau_stat_handler.plot_tau_stats(
 
 psf_fitter = PSFErrorFit(rho_stat_handler, tau_stat_handler, out_dir)
 
+
 flat_sample_list = []
-mcmc_result_list = []
+result_list = []
 q_list = []
 
-nwalkers = 124
-nsamples = 10000
+if rho_tau_method=="emcee":
 
-print_start('MCMC for leakage parameteres')
-for ver in versions:
-    print_magenta(ver)
+    nwalkers = 124
+    nsamples = 10000
 
-    sample_file_path = psf_fitter.get_sample_path(ver)
-    if os.path.exists(sample_file_path):
-        print_green(f"Skipping MCMC sampling, file {sample_file_path} exists")
-        flat_samples = psf_fitter.load_samples(ver)
-        mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
-        print(mcmc_result)
-        psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
-        psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
-    else:
-        print_cyan("MCMC sampling")
-        psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
-        psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
-        psf_fitter.load_covariance('cov_'+ ver +'.npy')
+    print_start('MCMC for leakage parameteres')
+    for ver in versions:
+        print_magenta(ver)
 
-        # Get rho and tau parameters
-        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
+        sample_file_path = psf_fitter.get_sample_path(ver)
+        if os.path.exists(sample_file_path):
+            print_green(f"Skipping MCMC sampling, file {sample_file_path} exists")
+            flat_samples = psf_fitter.load_samples(ver)
+            mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
+            print(mcmc_result)
+            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
+            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
+        else:
+            print_cyan("MCMC sampling")
+            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
+            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
+            psf_fitter.load_covariance('cov_tau_'+ ver +'.npy', cov_type='tau')
 
-        flat_samples, mcmc_result, q = psf_fitter.run_chain(
-            nwalkers=nwalkers,
-            nsamples=nsamples,
-            npatch=params["patch_number"],
-            apply_debias=True,
-            savefig='mcmc_samples_'+ ver +'.png',
+            # Get rho and tau parameters
+            params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
+
+            flat_samples, mcmc_result, q = psf_fitter.run_chain(
+                nwalkers=nwalkers,
+                nsamples=nsamples,
+                npatch=params["patch_number"],
+                apply_debias=True,
+                savefig='mcmc_samples_'+ ver +'.png',
+            )
+            psf_fitter.save_samples(flat_samples, ver)
+
+        flat_sample_list.append(flat_samples)
+        result_list.append(mcmc_result)
+        q_list.append(q)
+
+        psf_fitter.plot_tau_stats_w_model(
+            mcmc_result[1],
+            'tau_stats_'+ ver + '.fits',
+            'blue',
+            ver,
+            savefig='best_fit_'+ ver + '.png'
         )
-        psf_fitter.save_samples(flat_samples, ver)
 
-    flat_sample_list.append(flat_samples)
-    mcmc_result_list.append(mcmc_result)
-    q_list.append(q)
+elif rho_tau_method=="lsq":
+    print_start('Least squares for leakage parameteres')
+    for ver in versions:
+        print_magenta(ver)
 
-    psf_fitter.plot_tau_stats_w_model(
-        mcmc_result[1],
-        'tau_stats_'+ ver + '.fits',
-        'blue',
-        ver,
-        savefig='best_fit_'+ ver + '.png'
-    )
+        sample_file_path = psf_fitter.get_sample_path(ver)
+        if os.path.exists(sample_file_path):
+            print_green(f"Skipping least squares, file {sample_file_path} exists")
+            samples = psf_fitter.load_samples(ver)
+            result, q = psf_fitter.get_mcmc_from_samples(samples)
+            print(result)
+            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
+            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
+        else:
+            print_cyan("Least squares fitting")
+            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
+            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
+            psf_fitter.load_covariance('cov_rho_'+ ver +'.npy', cov_type='rho')
+            psf_fitter.load_covariance('cov_tau_'+ ver +'.npy', cov_type='tau')
+
+            params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
+
+            samples, result, q = psf_fitter.get_least_squares_params_samples(
+                npatch=params["patch_number"],
+                apply_debias=True
+            )
+
+        flat_sample_list.append(samples)
+        result_list.append(result)
+        q_list.append(q)
+
+        psf_fitter.plot_tau_stats_w_model(
+            result[1],
+            'tau_stats_'+ ver + '.fits',
+            'blue',
+            ver,
+            savefig='best_fit_'+ ver + '.png'
+        )
+
+else:
+    raise ValueError("rho_tau_method must be 'lsq' or 'emcee'")
 
 psfleak_plots.plot_contours(
     flat_sample_list,
@@ -444,7 +498,7 @@ psfleak_plots.plot_contours(
 
 plt.figure(figsize=(15, 6))
 for mcmc_result, ver, color, flat_sample in zip(
-    mcmc_result_list,
+    result_list,
     versions,
     colors,
     flat_sample_list
@@ -463,7 +517,7 @@ plt.figure(figsize=(15, 6))
 quant = 0.683
 quantiles = [1 - quant, quant]
 for mcmc_result, ver, color, flat_sample in zip(
-    mcmc_result_list,
+    result_list,
     versions,
     colors,
     flat_sample_list
@@ -495,7 +549,7 @@ plt.legend()
 cs_plots.savefig(f"{out_dir}/xi_psf_sys_quantiles.png")
 
 for mcmc_result, ver, flat_sample in zip(
-    mcmc_result_list,
+    result_list,
     versions,
     flat_sample_list
 ):
