@@ -36,6 +36,7 @@ import pandas as pd
 import colorama
 import emcee
 from astropy.io import ascii
+from uncertainties import ufloat
 
 # +
 from sp_validation.plot_style import *
@@ -92,7 +93,7 @@ def print_cyan(msg):
 #versions = ['SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', 'SP_v1.4-P3', "SP_v1.4-P3_LFmask"]
 #versions = ['SP_v1.3_LFmask_8k',  'SP_axel_v0.0_repr', "SP_v1.4-P3_LFmask"]
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
-versions = ['SP_v1.4-P3']
+versions = ['SP_v1.4-P3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0_repr', "SP_v1.4-P3_LFmask"]
 
 all_keys = ['nz']
 for ver in versions:
@@ -153,7 +154,16 @@ print_start('Start cosmology validation')
 
 # ### Systematic tests
 
-# #### Init results dictionary
+# +
+# Save leakage coeffieicnts values
+leakage_coeff = {}
+
+for ver in versions:
+    leakage_coeff[ver] = {}
+# -
+
+# #### Init dictionary for scale-dependent leakage
+# MKDEBUG -> results_scale
 results = {}
 
 
@@ -220,7 +230,6 @@ for ver in versions:
     obj.check_params()
     obj.prepare_output()
     obj.read_data()
-
 
 
 # #### Rho and tau tatistics
@@ -580,6 +589,7 @@ for ver in versions:
         obj.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
 
     obj.do_alpha(fast=True)
+    obj.compute_alpha_mean()
     obj.do_xi_sys()
 
 print_done('Done scale-dependent leakage')
@@ -699,9 +709,11 @@ if len(y) > 0:
         #shift_x=True,
     )
     cs_plots.savefig(out_path)
+# -
 
 
-# ### Object-wise leakage
+# #### Object-wise leakage
+
 results_object = {}
 for ver in versions:
 
@@ -714,6 +726,7 @@ for ver in versions:
         obj._params[key] = params_in[key]
 
     results_object[ver] = obj
+
 
 print_start("Compute object-wise leakage")
 for ver in versions:
@@ -739,12 +752,53 @@ for ver in versions:
         obj.PSF_leakage()
 
 
+# ### Leakge coefficients
+
+# Gather coefficients
+for ver in versions:
+    leakage_coeff[ver]["a11"] = ufloat(results_object[ver].par_best_fit["a11"].value, results_object[ver].par_best_fit["a11"].stderr)
+    leakage_coeff[ver]["a22"] = ufloat(results_object[ver].par_best_fit["a22"].value, results_object[ver].par_best_fit["a22"].stderr)
+    leakage_coeff[ver]["alpha_mean"] = ufloat(results[ver].alpha_leak_mean, 0)
+    leakage_coeff[ver]["alpha_1"] = ufloat(results[ver].alpha_leak[0], results[ver].sig_alpha_leak[0])
+
+    leakage_coeff[ver]["aii_mean"] = 0.5 * (leakage_coeff[ver]["a11"] + leakage_coeff[ver]["a22"])
+
+leakage_coeff[ver]
+
+# +
+# Plot coefficients
+fig, axs = plt.subplots(1, 1)
+
+linestyles = ["-", "--", ":"]
+
+for ver in versions:
+    label = ver
+    for key, ls in zip(["alpha_mean", "alpha_1"], linestyles): 
+        y = leakage_coeff[ver][key].nominal_value
+        dy = leakage_coeff[ver][key].std_dev
+        x = leakage_coeff[ver]["aii_mean"].nominal_value
+
+        eb = plt.errorbar(x, y, yerr=dy, fmt=cat[ver]["marker"], color=cat[ver]["colour"], label=label)
+        label = None
+        eb[-1][0].set_linestyle(ls)
+
+
+# y=x line
+xlim = 0.02
+x = [-xlim, xlim]
+y = x
+plt.plot(x, y, "k-")
+
+plt.legend()
+plt.ylabel(r"$\bar\alpha$")
+plt.xlabel(r"$a$")
+out_path = f"{cat['paths']['output']}/leakage_coefficients.png"
+plt.savefig(out_path)
+
 # +
 # ### Cosmological analysis
 # xipm correlation functions
 # B-modes
-# covariance
-# MCMC
 # -
 
 # ### Catalogue ellipticity histograms
