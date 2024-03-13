@@ -244,8 +244,8 @@ SP_matched_LF_v1.0:
       e2_star_col: E2_STAR_HSM
       PSF_size: SIGMA_PSF_HSM
       star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
+      PSF_flag: FLAG_PSF_HSM
+      star_flag: FLAG_STAR_HSM
 
 LF_matched_SP_v1.0:
    pipeline: LF
@@ -296,8 +296,8 @@ SP_v1.0_LFmask_4k:
       e2_star_col: E2_STAR_HSM
       PSF_size: SIGMA_PSF_HSM
       star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
+      PSF_flag: FLAG_PSF_HSM
+      star_flag: FLAG_STAR_HSM
 
 SP_v1.0_LFmask_8k:
    pipeline: SP
@@ -330,8 +330,8 @@ SP_v1.0_LFmask_8k:
       e2_star_col: E2_STAR_HSM
       PSF_size: SIGMA_PSF_HSM
       star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
+      PSF_flag: FLAG_PSF_HSM
+      star_flag: FLAG_STAR_HSM
 
 SP_v1.3_LFmask_4k:
    pipeline: SP
@@ -361,9 +361,8 @@ SP_v1.3_LFmask_4k:
       e1_star_col: E1_STAR_HSM
       e2_star_col: E2_STAR_HSM
       PSF_size: SIGMA_PSF_HSM
-      star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
+      PSF_flag: FLAG_PSF_HSM
+      star_flag: FLAG_STAR_HSM
 
 SP_v1.4-P3_LFmask:
    pipeline: SP
@@ -405,7 +404,7 @@ SP_v1.3_LFmask_8k:
    marker: h
    getdist_colour: 0.04606552309790213, 0.9780505945532256, 0.37684692395248665
    shear:
-      path: unions_shapepipe_2022_v1.3_mtheli8k.fits
+      path: unions_shapepipe_extended_2022_v1.3_mtheli8k.fits
       e1_col: e1
       e2_col: e2
       R: 1.0
@@ -426,8 +425,8 @@ SP_v1.3_LFmask_8k:
       e2_star_col: E2_STAR_HSM
       PSF_size: SIGMA_PSF_HSM
       star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
+      PSF_flag: FLAG_PSF_HSM
+      star_flag: FLAG_STAR_HSM
 
 SP_matched_MP_v1.0:
    pipeline: SP
@@ -484,8 +483,8 @@ SP_axel_v0.0:
       e2_star_col: E2_STAR_HSM
       PSF_size: SIGMA_PSF_HSM
       star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
+      PSF_flag: FLAG_PSF_HSM
+      star_flag: FLAG_STAR_HSM
    
 SP_axel_v0.0_repr:
    pipeline: SP
@@ -516,8 +515,8 @@ SP_axel_v0.0_repr:
       e2_star_col: E2_STAR_HSM
       PSF_size: SIGMA_PSF_HSM
       star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
+      PSF_flag: FLAG_PSF_HSM
+      star_flag: FLAG_STAR_HSM
 
 DES:
    pipeline: SP
