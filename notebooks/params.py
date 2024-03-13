@@ -110,7 +110,7 @@ mmap_mode = None
 ## Output
 
 ### Additional output columns
-add_cols = ["FLUX_RADIUS"]
+add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FHWM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER"]
 
 
 # Catalog parameters
