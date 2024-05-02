@@ -158,3 +158,4 @@ cosmo_inference/cosmosis_config/priors_*
 cosmo_inference/cosmosis_config/values_*
 
 notebooks/tests/star_response.ipynb
+sp_validation.code-workspace
