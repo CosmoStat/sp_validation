@@ -34,7 +34,7 @@ def get_params_rho_tau(cat, survey="other"):
     if survey != 'DES':
         params["PSF_flag"] = cat['psf']["PSF_flag"]
         params["star_flag"] = cat['psf']["star_flag"]
-        params["square_size"] = True
+        params["square_size"] = True if survey != 'SP_v1.3_LFmask_8k' else False
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
 
