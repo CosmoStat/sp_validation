@@ -44,7 +44,7 @@ def get_params_rho_tau(cat, survey="other"):
 
     return params
 
-def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method):
+def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method, cov_rho=False):
     """
     Method to compute the covariance matrices of rho and tau-statistics of a given list of versions in cosmo_val.
     Also computes rho and tau-statistics.
@@ -57,8 +57,9 @@ def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method):
         Method to compute the covariance matrices. Options are 'jk' or 'th'.
     """
     if method == 'th':
-        rho_stat_handler, tau_stat_handler = get_rho_tau(config, version, treecorr_config, outdir)
-        get_theory_cov(config, version, treecorr_config, outdir)
+        nbin_ang, nbin_rad = 100, 200
+        rho_stat_handler, tau_stat_handler = get_rho_tau(config, version, treecorr_config, outdir, cov_rho=cov_rho)
+        get_theory_cov(config, version, treecorr_config, outdir, nbin_ang=nbin_ang, nbin_rad=nbin_rad)
         return rho_stat_handler, tau_stat_handler
     elif method == 'jk':
         return get_jackknife_cov(config, version, treecorr_config, outdir)
@@ -66,13 +67,13 @@ def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method):
         if os.path.exists(outdir+'/cov_tau_'+version+'_th.npy'):
             print(f"Covariance from simulation available at the following file: {outdir+'/cov_tau_'+version+'_th.npy'}")
             print(f"Computing rho and tau statistics for the version: {version}")
-            return get_rho_tau(config, version, treecorr_config, outdir)
+            return get_rho_tau(config, version, treecorr_config, outdir, cov_rho=cov_rho)
         else:
             raise ValueError("Covariance from simulation not available. Please compute it first.")
     else:
         raise ValueError("Method must be either 'jk' or 'th' or 'sim'.")
 
-def get_rho_tau(config, version, treecorr_config, outdir):
+def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
     """
     Compute rho and tau statistics for a given version of the catalogue.
 
@@ -114,14 +115,19 @@ def get_rho_tau(config, version, treecorr_config, outdir):
 
         # Build catalogues
         rho_stat_handler.build_cat_to_compute_rho(
-            path_psf,
+            config[version]["psf"]["path"],
             catalog_id=version,
             square_size=square_size,
             mask=mask,
-            hdu = hdu_psf
+            hdu = config[version]["psf"]["hdu"] if config[version]["psf"]["hdu"] is not None else 1
         )
 
-        rho_stat_handler.compute_rho_stats(version, out_base, var_method=None)
+        if cov_rho: 
+            only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+            rho_stat_handler.compute_rho_stats(version, out_base, save_cov=True, func=only_p, var_method='jackknife')
+        else:
+            rho_stat_handler.compute_rho_stats(version, out_base, var_method=None)
+
 
     out_base = f"tau_stats_{version}.fits"
     out_path = f"{outdir}/{out_base}"
@@ -152,6 +158,7 @@ def get_rho_tau(config, version, treecorr_config, outdir):
                 catalog_id=version,
                 square_size=square_size,
                 mask=mask,
+                hdu = config[version]["psf"]["hdu"] if config[version]["psf"]["hdu"] is not None else 1
             )
 
         # Build the catalog of galaxies. PSF was computed above
@@ -327,7 +334,7 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     cov_rho = cov_rho_loc/ncov
 
     np.save(outdir+'/cov_tau_'+version+'_jk.npy', cov_tau)
-    np.save(outdir+'/cov_rho_'+version+'_jk.npy', cov_rho)
+    np.save(outdir+'/cov_rho_'+version+'.npy', cov_rho)
 
     return rho_stat_handler, tau_stat_handler
 
@@ -421,13 +428,13 @@ def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type='jk'):
     if os.path.exists(sample_file_path):
         print(f"Skipping sample computation, file {sample_file_path} already exists.")
         flat_samples = psf_fitter.load_samples(version)
-        mcmc_result, q = psf_fitter.get_mcmc_from_samples(version)
+        mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
     #Or run MCMC
     else:
         print("Least square sampling")
         psf_fitter.load_covariance('cov_tau_' + version + '_'+cov_type+'.npy', cov_type='tau')
-        psf_fitter.load_covariance('cov_rho_'+version+'_'+cov_type+'.npy', cov_type='rho')
+        psf_fitter.load_covariance('cov_rho_'+version+'.npy', cov_type='rho')
         npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.get_least_squares_params_samples(
             npatch=npatch, apply_debias=(npatch is not None)

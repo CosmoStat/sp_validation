@@ -157,6 +157,49 @@ SP_v1.4-P3:
       PSF_flag: "FLAG_PSF_HSM"
       star_flag: "FLAG_STAR_HSM"
 
+SP_v1.4-P1+3:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/P1+3
+   ls: dashed
+   colour: brown
+   marker: d
+   getdist_colour: 0.0, 0.5, 1.0
+   cov_th:
+      A: 1133 #deg^2
+      n_e: 7.67 #arcmin-2
+      n_psf: 0.41 #arcmin-2
+      sigma_e: 0.31
+      path_rho: rho_stats_SP_v1.4-P1+3.fits
+      path_tau: tau_stats_SP_v1.4-P1+3.fits
+      path_xi_plus: xi_plus_SP_v1.4-P1+3.fits
+      path_xi_minus: xi_minus_SP_v1.4-P1+3.fits
+   shear:
+      path: unions_shapepipe_2022_P1+3_v1.4.1.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      e1_col: e1
+      e2_col: e2
+      w: w
+      R: 1.0
+   star:
+      path: unions_shapepipe_star_2022_P1+3_v1.4.fits
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+   psf:
+      path: unions_shapepipe_psf_2022_P1+3_v1.4.fits
+      hdu: 1
+      ra_col: RA
+      dec_col: Dec
+      e1_PSF_col: E1_PSF_HSM
+      e2_PSF_col: E2_PSF_HSM
+      e1_star_col: E1_STAR_HSM
+      e2_star_col: E2_STAR_HSM
+      PSF_size: SIGMA_PSF_HSM
+      star_size: SIGMA_STAR_HSM
+      PSF_flag: "FLAG_PSF_HSM"
+      star_flag: "FLAG_STAR_HSM"
+
 LF_v1.0:
    pipeline: LF
    subdir: CFIS/v1.0/Lensfit
@@ -427,7 +470,7 @@ SP_v1.3_LFmask_8k:
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_2022_v1.0.2_mtheli8k.fits
+      path: unions_shapepipe_star_2022_v1.3_mtheli8k.fits
       label: SP_LFmask_psf
       hdu : 1
       ra_col: RA
@@ -436,10 +479,10 @@ SP_v1.3_LFmask_8k:
       e2_PSF_col: E2_PSF_HSM
       e1_star_col: E1_STAR_HSM
       e2_star_col: E2_STAR_HSM
-      PSF_size: SIGMA_PSF_HSM
-      star_size: SIGMA_STAR_HSM
-      PSF_flag: FLAG_PSF_HSM
-      star_flag: FLAG_STAR_HSM
+      PSF_size: T_PSF_HSM
+      star_size: T_STAR_HSM
+      PSF_flag: "FLAG_PSF_HSM"
+      star_flag: "FLAG_STAR_HSM"
 
 SP_matched_MP_v1.0:
    pipeline: SP
@@ -572,6 +615,8 @@ DES:
       e2_col: e2
       w: w
       R: 1.0
+      R11: R11
+      R22: R22
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
    star:
       path: psf_y3a1-v29.fits
@@ -592,3 +637,4 @@ DES:
       e2_star_col: obs_e2
       PSF_size: piff_T
       star_size: obs_T
+      square_size: False

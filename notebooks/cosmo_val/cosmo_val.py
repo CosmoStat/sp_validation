@@ -89,10 +89,11 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.4-P3']#, 'SP_v1.4-P3_LFmask',  'SP_axel_v0.0', 'DES']
+versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask',  'SP_v1.4-P1+3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'DES']
 #versions = ['SP_v1.4-P3_LFmask']
 rho_tau_method = 'lsq' #lsq or emcee
-cov_estimate_method = 'th' #or theory/jackknife
+cov_estimate_method = 'jk' #or theory/jackknife
+compute_cov_rho = True
 n_cov = 100 #number of covariance used to marginalize on the patching in the jackknife estimate.
 #Put to 1 to avoid recomputing all rho and tau statistics.
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
@@ -176,6 +177,8 @@ def set_params_leakage(cat, ver):
     # Note: for SP these are calibrated shear estimates
     params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
     params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
+    params_in["R11"]=None if ver != 'DES' else cat[ver]['shear']['R11']
+    params_in["R22"]=None if ver != 'DES' else cat[ver]['shear']['R22']
 
     params_in['ra_star_col'] = cat[ver]["star"]["ra_col"]
     params_in["dec_star_col"] = cat[ver]["star"]["dec_col"]
@@ -253,7 +256,7 @@ print_start('Rho stats')
 
 # Rho and Tau statistics
 for ver in versions: 
-    rho_stat_handler, tau_stat_handler = utils.get_rho_tau_w_cov(cat, ver, TreeCorrConfig_xi, out_dir, method=cov_estimate_method)
+    rho_stat_handler, tau_stat_handler = utils.get_rho_tau_w_cov(cat, ver, TreeCorrConfig_xi, out_dir, method=cov_estimate_method, cov_rho=compute_cov_rho)
 
 
 # + Plot rho-statistics
@@ -668,9 +671,15 @@ for ver in versions:
         gg.read(out_fname)
     else:
         print_cyan(f'Computing 2PCF')
-        R = cat[ver]["shear"]["R"]
-        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
-        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
+        if ver != 'DES':
+            R = cat[ver]["shear"]["R"]
+            g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+            g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
+        else:
+            R11 = cat[ver]["psf"]["R11"]
+            R22 = cat[ver]["psf"]["R22"]
+            g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / np.average(R11)
+            g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / np.average(R22)
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
