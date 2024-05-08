@@ -55,6 +55,8 @@ class metacal:
         signal-to-noise maximum
     rel_size_min : float, optional, default=0.5
         relative size minimum
+    rel_size_max : float, optional, default=3.0
+        relative size maximum
     size_corr_ell : bool, optional, default=True
     sigma_eps : float, optional
         ellipticity dispersion (one component) for computation
@@ -75,6 +77,7 @@ class metacal:
         snr_min=10,
         snr_max=500,
         rel_size_min=0.5,
+        rel_size_max=3.0,
         size_corr_ell=True,
         sigma_eps=0.34,
         verbose=False,
@@ -88,11 +91,13 @@ class metacal:
         self._snr_min = snr_min
         self._snr_max = snr_max
         self._rel_size_min = rel_size_min
+        self._rel_size_max = rel_size_max
         self._size_corr_ell = size_corr_ell
         if verbose:
             print(
                 f'Metacal cuts: {snr_min}<snr<{snr_max}, '
                 + f'rel_size_min={rel_size_min}, '
+                + f'rel_size_max={rel_size_max}, '
                 + f'size_corr_ell={size_corr_ell}'
             )
 
@@ -269,6 +274,7 @@ class metacal:
         self._snr_min = snr_min
         self._snr_max = snr_max
         self._rel_size_min = rel_size_min
+        self._rel_size_max = rel_size_max
         if self._verbose:
             print(
                 f'Metacal new cuts: {snr_min}<snr<{snr_max}, '
@@ -301,6 +307,7 @@ class metacal:
             mask_tmp = (
                 (data['flag'] == 0)
                 & (Tr_tmp / data['Tpsf'] > self._rel_size_min)
+                & (Tr_tmp / data['Tpsf'] < self._rel_size_max)
                 & (snr_flux > self._snr_min)
                 & (snr_flux < self._snr_max)
             )
