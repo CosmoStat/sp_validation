@@ -813,7 +813,6 @@ for ver in versions:
         results[ver].dat_shear[cat[ver]['shear']['e2_col']] / R,
         weights=results[ver].dat_shear["w"]
     )
-    print(f"{ver} {c1[ver]} {c2[ver]}")
 print_done("Done additive bias")
 # -
 
@@ -1110,7 +1109,7 @@ for ver in versions:
     )
     out_fname_map2 = f"{cat['paths']['output']}/map2_{ver}.txt"
     if os.path.exists(out_fname_map2):
-        print(f"Map2 output file {out_fname_map2} exists")
+        print_green(f"Skipping Map2, {out_fname_map2} exists")
     else:
         print(f"Writing Map2 to output file {out_fname_map2} ")
         gg.writeMapSq(out_fname_map2, R=theta_map, m2_uform='Schneider')
