@@ -1,6 +1,7 @@
 importlib_metadata
 colorama
-#cs_util==0.1.0
+emcee
+cs_util==0.1.0
 astropy>=5.0
 healpy
 getdist
