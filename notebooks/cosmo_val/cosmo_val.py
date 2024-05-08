@@ -91,10 +91,10 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.0', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_v1.4-P3', 'SP_v1.4.1-P3',  'SP_axel_v0.0_repr', 'DES']
+versions = ['SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_v1.4.1-P3',  "SP_v1.4.1-P1+3", 'SP_axel_v0.0_repr', 'DES']
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
 
-rho_tau_method = 'none' #lsq, emcee, or none
+rho_tau_method = 'lsq' #lsq, emcee, or none
 
 all_keys = ['nz']
 for ver in versions:
@@ -185,6 +185,9 @@ def set_params_leakage_scale(cat, ver):
     params_in["dec_star_col"] = cat[ver]["star"]["dec_col"]
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
+
+    params_in["theta_min_amin"] = theta_min
+    params_in["theta_max_amin"] = theta_max
 
     params_in["verbose"] = False
 
@@ -729,7 +732,7 @@ if len(theta) > 0:
         labels=labels,
         colors=colors,
         linestyles=linestyles,
-        shift_x=True,
+        shift_x=False,
     )
     cs_plots.savefig(out_path)
 
