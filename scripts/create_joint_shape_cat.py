@@ -327,7 +327,7 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.0.3bis'
+    version = '1.0.3'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
