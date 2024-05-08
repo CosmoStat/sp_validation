@@ -140,3 +140,21 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+notebooks/validation*.py
+notebooks/main_set_up.py
+notebooks/analyse_shear_cat/tutorial_UNIONS_SP_v1.0.py
+
+notebooks/cosmo_val/output
+notebooks/cosmo_val/cosmo_val.ipynb
+notebooks/cosmo_val/match_LF_SP.ipynb
+
+notebooks/examples/*.ipynb
+
+cosmo_inference/data/
+cosmo_inference/cosmocov_config/cosmocov_*
+cosmo_inference/cosmosis_config/cosmosis_pipeline_*
+cosmo_inference/cosmosis_config/priors_*
+cosmo_inference/cosmosis_config/values_*
+
+notebooks/tests/star_response.ipynb

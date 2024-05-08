@@ -1,54 +1,44 @@
-"""
-  
-:Name: util.py
+"""UTIL.
 
 :Description: This script contains utility methods.
 
-:Author: Martin Kilbinger
-
-:Date: 2021
-
-:Package: sp_validation
+:Author: Martin Kilbinger <martin.kilblinger@cea.fr>
 
 """
 
+
+import sys
+import os
+
 import math
-import io
 import numpy as np
 
 
 def millify(n):
+    """Millify.
 
-    millnames = ['',' Thousand',' Million',' Billion',' Trillion']
-
-    n = float(n)
-    millidx = max(0,min(len(millnames)-1,
-                        int(math.floor(0 if n == 0 else math.log10(abs(n))/3))))
-
-    return '{:.0f}{}'.format(n / 10**(3 * millidx), millnames[millidx])
-
-
-def transform_nan(value):
-    """Transform Nan
-
-    Transform a nan to a very large number.
+    Return human-readible names of large numbers.
 
     Parameters
     ----------
-    value : float
-        input value
+    n : int
+        input number
 
     Returns
     -------
-    res : float
-        output value
+    str
+        output name
+
     """
+    millnames = ['', ' Thousand', ' Million', ' Billion', ' Trillion']
 
-    large = 1e30
+    n = float(n)
+    millidx = max(
+        0,
+        min(
+            len(millnames) - 1,
+            int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))
+        )
+    )
 
-    if np.isnan(value) or np.isinf(value):
-        res = 1e30
-    else:
-        res = value
-
-    return res
+    return '{n / 10**(3 * millidx):.0f}{millnames[millidx])}'

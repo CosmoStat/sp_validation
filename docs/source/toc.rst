@@ -15,15 +15,8 @@
    :caption: API Documentation
 
    sp_validation
-   scripts
    z_ref
-
-.. toctree::
-  :hidden:
-  :titlesonly:
-  :caption: Examples
-
-  notebooks
+   Leakage_object_Tutorial
 
 .. toctree::
   :hidden:

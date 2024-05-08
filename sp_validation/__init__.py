@@ -2,7 +2,8 @@
 
 """sp_validation PACKAGE.
 
-Provide a basic description of what your package contains.
+Validation of weak-lensing catalogues (galaxy and star shapes and other
+parameters) produced by ShapePipe
 
 References
 ----------
@@ -25,9 +26,9 @@ This package makes use of the following third-party packages:
 
 from warnings import warn
 
-from importlib_metadata import version
 
 try:
+    from importlib_metadata import version
     _version = version('sp_validation')
 except Exception:  # pragma: no cover
     _version = 'Unkown'
@@ -37,5 +38,14 @@ except Exception:  # pragma: no cover
     )
 
 __version__ = _version
+__all__ = [
+    'survey',
+    'io',
+    'cat',
+    'basic',
+    'util',
+    'plot_style',
+    'plots'
+]
 
-__all__ = ['survey', 'io', 'cat', 'basic', 'util', 'plot_style', 'plots']
+from . import *

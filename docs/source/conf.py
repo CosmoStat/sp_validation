@@ -21,7 +21,7 @@ mdata = metadata(project)
 author = mdata['Author']
 version = mdata['Version']
 copyright = '2021, {}'.format(author)
-gh_user = 'martin.kilbinger'
+gh_user = mdata['Home-page']
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '3.3'
@@ -134,80 +134,80 @@ html_show_copyright = True
 # -- Options for nbshpinx output ------------------------------------------
 
 
-# Custom fucntion to find notebooks, create .nblink files and update the
-# notebooks.rst file
-def add_notebooks(nb_path='../../notebooks'):
-
-    print('Looking for notebooks')
-    nb_ext = '.ipynb'
-    nb_rst_file_name = 'notebooks.rst'
-    nb_link_format = '{{\n   "path": "{0}/{1}"\n}}'
-
-    nbs = sorted([nb for nb in os.listdir(nb_path) if nb.endswith(nb_ext)])
-
-    for list_pos, nb in enumerate(nbs):
-
-        nb_name = nb.rstrip(nb_ext)
-
-        nb_link_file_name = nb_name + '.nblink'
-        print('Writing {0}'.format(nb_link_file_name))
-        with open(nb_link_file_name, 'w') as nb_link_file:
-            nb_link_file.write(nb_link_format.format(nb_path, nb))
-
-        print('Looking for {0} in {1}'.format(nb_name, nb_rst_file_name))
-        with open(nb_rst_file_name, 'r') as nb_rst_file:
-            check_name = nb_name not in nb_rst_file.read()
-
-        if check_name:
-            print('Adding {0} to {1}'.format(nb_name, nb_rst_file_name))
-            with open(nb_rst_file_name, 'a') as nb_rst_file:
-                if list_pos == 0:
-                    nb_rst_file.write('\n')
-                nb_rst_file.write('   {0}\n'.format(nb_name))
-
-    return nbs
-
-
-# Add notebooks
-add_notebooks()
-
-binder = 'https://mybinder.org/v2/gh'
-binder_badge = 'https://mybinder.org/badge_logo.svg'
-github = 'https://github.com/'
-github_badge = 'https://badgen.net/badge/icon/github?icon=github&label'
-
-# Remove promts and add binder badge
-nb_header_pt1 = r'''
-{% if env.metadata[env.docname]['nbsphinx-link-target'] %}
-{% set docpath = env.metadata[env.docname]['nbsphinx-link-target'] %}
-{% else %}
-{% set docpath = env.doc2path(env.docname, base='docs/source/') %}
-{% endif %}
-
-.. raw:: html
-
-    <style>
-        .nbinput .prompt,
-        .nboutput .prompt {
-            display: none;
-        }
-    </style>
-
-'''
-nb_header_pt2 = (
-    r'''    <p><div class="inline-block">'''
-    r'''<a href="{0}/{1}/{2}/'''.format(binder, gh_user, project) +
-    r'''master?filepath={{ docpath }}">''' +
-    r'''<img alt="Binder badge" src="{0}" '''.format(binder_badge) +
-    r'''style="vertical-align:text-bottom"></a></div>'''
-    r'''<div class="inline-block"><a href=''' +
-    r'''"{0}/{1}/{2}/blob/master/'''.format(github, gh_user, project) +
-    r'''{{ docpath }}"><img alt="GitHub badge" ''' +
-    r'''src="{0}" style="vertical-align:text-bottom">'''.format(github_badge) +
-    r'''</a></div></p>'''
-)
-
-nbsphinx_prolog = nb_header_pt1 + nb_header_pt2
+# # Custom fucntion to find notebooks, create .nblink files and update the
+# # notebooks.rst file
+# def add_notebooks(nb_path='../../notebooks'):
+#
+#     print('Looking for notebooks')
+#     nb_ext = '.ipynb'
+#     nb_rst_file_name = 'notebooks.rst'
+#     nb_link_format = '{{\n   "path": "{0}/{1}"\n}}'
+#
+#     nbs = sorted([nb for nb in os.listdir(nb_path) if nb.endswith(nb_ext)])
+#
+#     for list_pos, nb in enumerate(nbs):
+#
+#         nb_name = nb.rstrip(nb_ext)
+#
+#         nb_link_file_name = nb_name + '.nblink'
+#         print('Writing {0}'.format(nb_link_file_name))
+#         with open(nb_link_file_name, 'w') as nb_link_file:
+#             nb_link_file.write(nb_link_format.format(nb_path, nb))
+#
+#         print('Looking for {0} in {1}'.format(nb_name, nb_rst_file_name))
+#         with open(nb_rst_file_name, 'r') as nb_rst_file:
+#             check_name = nb_name not in nb_rst_file.read()
+#
+#         if check_name:
+#             print('Adding {0} to {1}'.format(nb_name, nb_rst_file_name))
+#             with open(nb_rst_file_name, 'a') as nb_rst_file:
+#                 if list_pos == 0:
+#                     nb_rst_file.write('\n')
+#                 nb_rst_file.write('   {0}\n'.format(nb_name))
+#
+#     return nbs
+#
+#
+# # Add notebooks
+# add_notebooks()
+#
+# binder = 'https://mybinder.org/v2/gh'
+# binder_badge = 'https://mybinder.org/badge_logo.svg'
+# github = 'https://github.com/'
+# github_badge = 'https://badgen.net/badge/icon/github?icon=github&label'
+#
+# # Remove promts and add binder badge
+# nb_header_pt1 = r'''
+# {% if env.metadata[env.docname]['nbsphinx-link-target'] %}
+# {% set docpath = env.metadata[env.docname]['nbsphinx-link-target'] %}
+# {% else %}
+# {% set docpath = env.doc2path(env.docname, base='docs/source/') %}
+# {% endif %}
+#
+# .. raw:: html
+#
+#     <style>
+#         .nbinput .prompt,
+#         .nboutput .prompt {
+#             display: none;
+#         }
+#     </style>
+#
+# '''
+# nb_header_pt2 = (
+#     r'''    <p><div class="inline-block">'''
+#     r'''<a href="{0}/{1}/{2}/'''.format(binder, gh_user, project) +
+#     r'''master?filepath={{ docpath }}">''' +
+#     r'''<img alt="Binder badge" src="{0}" '''.format(binder_badge) +
+#     r'''style="vertical-align:text-bottom"></a></div>'''
+#     r'''<div class="inline-block"><a href=''' +
+#     r'''"{0}/{1}/{2}/blob/master/'''.format(github, gh_user, project) +
+#     r'''{{ docpath }}"><img alt="GitHub badge" ''' +
+#     r'''src="{0}" style="vertical-align:text-bottom">'''.format(github_badge) +
+#     r'''</a></div></p>'''
+# )
+#
+# nbsphinx_prolog = nb_header_pt1 + nb_header_pt2
 
 # -- Intersphinx Mapping ----------------------------------------------
 
