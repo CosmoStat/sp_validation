@@ -89,10 +89,10 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask',  'SP_v1.4-P1+3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'DES']
+versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_axel_v0.0', 'SP_v1.3_LFmask_8k', 'DES', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
 #versions = ['SP_v1.4-P3_LFmask']
 rho_tau_method = 'lsq' #lsq or emcee
-cov_estimate_method = 'jk' #or theory/jackknife
+cov_estimate_method = 'th' #or theory/jackknife
 compute_cov_rho = True
 n_cov = 100 #number of covariance used to marginalize on the patching in the jackknife estimate.
 #Put to 1 to avoid recomputing all rho and tau statistics.
@@ -103,7 +103,7 @@ for ver in versions:
     all_keys.append(ver)
 
 # Base directory for data, on candide
-data_base_dir = '/home/guerrini/data/'
+data_base_dir = '/n17data/mkilbing/astro/data/'
 
 # ## Loading configuration
 
@@ -657,7 +657,21 @@ print_done("Done additive bias")
 print_start("2PCF")
 
 # +
-npatch = 50
+theta_min = 0.1
+theta_max = 250
+nbins = 20
+
+npatch = 150
+
+TreeCorrConfig_xi = {
+    'ra_units': coord_units,
+    'dec_units': coord_units,
+    'min_sep': theta_min,
+    'max_sep': theta_max,
+    'sep_units': sep_units,
+    'nbins': nbins,
+    'var_method': 'jackknife'
+}
 
 cat_ggs = {}
 for ver in versions:
@@ -676,10 +690,10 @@ for ver in versions:
             g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
             g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
         else:
-            R11 = cat[ver]["psf"]["R11"]
-            R22 = cat[ver]["psf"]["R22"]
-            g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / np.average(R11)
-            g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / np.average(R22)
+            R11 = cat[ver]["shear"]["R11"]
+            R22 = cat[ver]["shear"]["R22"]
+            g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / np.average(results[ver].dat_shear[R11])
+            g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / np.average(results[ver].dat_shear[R22])
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],

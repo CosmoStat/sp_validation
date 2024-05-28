@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     base_dir = '/home/guerrini/data/'
 
-    versions = ['DES']
+    versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'DES']
 
     path_config = '/home/guerrini/sp_validation/notebooks/cosmo_val/cat_config.yaml'
     output_dir = '/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/'
@@ -93,5 +93,5 @@ if __name__ == "__main__":
         cov = cov_tau_th.build_cov(nbin_ang=nbin_ang, nbin_rad=nbin_rad)
 
         print("--- Covariance computation %s seconds ---" % (time.time() - start_time))
-        np.save(output_dir+'/cov_tau_'+ver+'_th_test_2.npy', cov)
+        np.save(output_dir+'/cov_tau_'+ver+'_th.npy', cov)
         print("Saved covariance matrix of version: ", ver)

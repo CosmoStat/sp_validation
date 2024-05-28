@@ -6,6 +6,8 @@ import os
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
+not_square_size = ['DES', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
+
 def get_params_rho_tau(cat, survey="other"):
 
     # Set parameters
@@ -30,17 +32,19 @@ def get_params_rho_tau(cat, survey="other"):
     params["e2_star_col"] = cat['psf']["e2_star_col"]
     params["PSF_size"] = cat['psf']["PSF_size"]
     params["star_size"] = cat['psf']["star_size"]
-    params["square_size"] = False
+    params["square_size"] = survey not in not_square_size
     if survey != 'DES':
         params["PSF_flag"] = cat['psf']["PSF_flag"]
         params["star_flag"] = cat['psf']["star_flag"]
-        params["square_size"] = True if survey != 'SP_v1.3_LFmask_8k' else False
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
+   
 
     params["w_col"] = cat['shear']["w"]
     params["e1_col"] = cat['shear']["e1_col"]
     params["e2_col"] = cat['shear']["e2_col"]
+    params["R11"] = cat['shear'].get("R11")
+    params["R22"] = cat['shear'].get("R22")
 
     return params
 
@@ -111,7 +115,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
         rho_stat_handler.catalogs.set_params(params, outdir)
 
         mask = (version != 'DES')
-        square_size = (version != 'DES')
+        square_size = params["square_size"]
 
         # Build catalogues
         rho_stat_handler.build_cat_to_compute_rho(
@@ -123,8 +127,9 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
         )
 
         if cov_rho: 
-            only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-            rho_stat_handler.compute_rho_stats(version, out_base, save_cov=True, func=only_p, var_method='jackknife')
+            if not os.path.exists(outdir+'/cov_rho_'+version+'.npy'):
+                only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+                rho_stat_handler.compute_rho_stats(version, out_base, save_cov=True, func=only_p, var_method='jackknife')
         else:
             rho_stat_handler.compute_rho_stats(version, out_base, var_method=None)
 
@@ -148,7 +153,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
 
         mask = (version != 'DES')
 
-        square_size = (version != 'DES')
+        square_size = params["square_size"]
 
         # Build the different catalogs if necessary
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
@@ -243,84 +248,86 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     
     for i in range(ncov):
 
-        params = get_params_rho_tau(config[version], survey=version)
+        if not os.path.exists(outdir+'/cov_tau_'+version+str(i)+'.npy'):
 
-        rho_stat_handler = RhoStat(
-            output=outdir,
-            treecorr_config=treecorr_config,
-            verbose=False)
-        
-        out_base = f"rho_stats_{version}.fits"
-        out_path = f"{outdir}/{out_base}"
+            params = get_params_rho_tau(config[version], survey=version)
 
-        print(f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}")
+            rho_stat_handler = RhoStat(
+                output=outdir,
+                treecorr_config=treecorr_config,
+                verbose=False)
+            
+            out_base = f"rho_stats_{version}.fits"
+            out_path = f"{outdir}/{out_base}"
 
-        rho_stat_handler.catalogs.set_params(params, outdir)
+            print(f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}")
 
-        mask = (version != 'DES')
-        square_size = (version != 'DES')
+            rho_stat_handler.catalogs.set_params(params, outdir)
 
-        # Build catalogues
-        rho_stat_handler.build_cat_to_compute_rho(
-            config[version]["psf"]["path"],
-            catalog_id=version+str(i),
-            square_size=square_size,
-            mask=mask,
-            hdu = config[version]["psf"]["hdu"]
-        )
+            mask = (version != 'DES')
+            square_size = params["square_size"]
 
-        # Compute and save rho stats
-        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-        rho_stat_handler.compute_rho_stats(version+str(i), out_base, save_cov=True, func=only_p, var_method='jackknife')
-
-        tau_stat_handler = TauStat(
-            catalogs=rho_stat_handler.catalogs,
-            output=outdir,
-            treecorr_config=treecorr_config,
-            verbose=True,
-        )
-
-        out_base = f"tau_stats_{version}.fits"
-        out_path = f"{outdir}/{out_base}"
-
-        tau_stat_handler.catalogs.set_params(params, outdir)
-
-        mask = (version != 'DES')
-
-        square_size = (version != 'DES')
-
-        # Build the different catalogs if necessary
-        if f"psf_{version}{i}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
-            tau_stat_handler.build_cat_to_compute_tau(
+            # Build catalogues
+            rho_stat_handler.build_cat_to_compute_rho(
                 config[version]["psf"]["path"],
-                cat_type='psf',
-                catalog_id=version,
+                catalog_id=version+str(i),
+                square_size=square_size,
+                mask=mask,
+                hdu = config[version]["psf"]["hdu"]
+            )
+
+            # Compute and save rho stats
+            only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+            rho_stat_handler.compute_rho_stats(version+str(i), out_base, save_cov=True, func=only_p, var_method='jackknife')
+
+            tau_stat_handler = TauStat(
+                catalogs=rho_stat_handler.catalogs,
+                output=outdir,
+                treecorr_config=treecorr_config,
+                verbose=True,
+            )
+
+            out_base = f"tau_stats_{version}.fits"
+            out_path = f"{outdir}/{out_base}"
+
+            tau_stat_handler.catalogs.set_params(params, outdir)
+
+            mask = (version != 'DES')
+
+            square_size = params["square_size"]
+
+            # Build the different catalogs if necessary
+            if f"psf_{version}{i}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
+                tau_stat_handler.build_cat_to_compute_tau(
+                    config[version]["psf"]["path"],
+                    cat_type='psf',
+                    catalog_id=version,
+                    square_size=square_size,
+                    mask=mask,
+                )
+
+            # Build the catalog of galaxies. PSF was computed above
+            tau_stat_handler.build_cat_to_compute_tau(
+                config[version]["shear"]["path"],
+                cat_type='gal',
+                catalog_id=version+str(i),
                 square_size=square_size,
                 mask=mask,
             )
 
-        # Build the catalog of galaxies. PSF was computed above
-        tau_stat_handler.build_cat_to_compute_tau(
-            config[version]["shear"]["path"],
-            cat_type='gal',
-            catalog_id=version+str(i),
-            square_size=square_size,
-            mask=mask,
-        )
 
+            # function to extract the tau_+
+            only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+            tau_stat_handler.compute_tau_stats(
+                version+str(i),
+                out_base,
+                save_cov=True,
+                func=only_p,
+                var_method='jackknife',
+            )
 
-        # function to extract the tau_+
-        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-        tau_stat_handler.compute_tau_stats(
-            version+str(i),
-            out_base,
-            save_cov=True,
-            func=only_p,
-            var_method='jackknife',
-        )
-
-        if (i+1) != ncov:
-            del rho_stat_handler, tau_stat_handler
+            if (i+1) != ncov:
+                del rho_stat_handler, tau_stat_handler
 
     cov_tau_loc = np.zeros((60, 60))
     cov_rho_loc = np.zeros((120, 120))
