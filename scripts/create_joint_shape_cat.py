@@ -319,6 +319,10 @@ def main(argv=None):
         patches = ['W3', 'P7']
     elif param.survey == "P1+3":
         patches = ["P1", "P3"]
+    elif param.survey == 'W3':
+        patches = ['W3']
+    elif param.survey == 'P3':
+        patches = ['P3']
 
     sh = 'ngmix'
 
