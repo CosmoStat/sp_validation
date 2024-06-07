@@ -87,10 +87,10 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_v1.4-P3', 'SP_v1.4-P3_LFmask',  'SP_axel_v0.0', 'DES']
+#versions = ['SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_v1.4-P3', 'SP_v1.4-P3_LFmask',  'SP_axel_v0.0', 'DES']
 rho_tau_method = 'lsq' #lsq or emcee
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
-#versions = ['SP_axel_v0.0']
+versions = ['SP_v1.4-P3']
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
