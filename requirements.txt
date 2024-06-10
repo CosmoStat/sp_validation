@@ -7,14 +7,14 @@ healpy
 getdist
 jupyterlab
 lmfit
-numpy==1.23
+numpy==1.26.4
 lenspack
 joblib
 jupyter
 jupytext==1.15.1
 regions
 reproject
-#shear_psf_leakage==0.1.6
+shear_psf_leakage==0.2.0
 scipy
 seaborn
 setuptools==65.5.1
