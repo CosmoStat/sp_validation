@@ -44,6 +44,8 @@ from shear_psf_leakage import run_scale
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 
+import utils
+
 # +
 import treecorr
 
@@ -87,8 +89,13 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_v1.4-P3', 'SP_v1.4-P3_LFmask',  'SP_axel_v0.0', 'DES']
+versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_axel_v0.0', 'SP_v1.3_LFmask_8k', 'DES', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
+#versions = ['SP_v1.4-P3_LFmask']
 rho_tau_method = 'lsq' #lsq or emcee
+cov_estimate_method = 'th' #or theory/jackknife
+compute_cov_rho = True
+n_cov = 100 #number of covariance used to marginalize on the patching in the jackknife estimate.
+#Put to 1 to avoid recomputing all rho and tau statistics.
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
 #versions = ['SP_axel_v0.0']
 all_keys = ['nz']
@@ -96,7 +103,7 @@ for ver in versions:
     all_keys.append(ver)
 
 # Base directory for data, on candide
-data_base_dir = '/home/mkilbing/astro/data'
+data_base_dir = '/n17data/mkilbing/astro/data/'
 
 # ## Loading configuration
 
@@ -140,7 +147,6 @@ TreeCorrConfig_xi = {
     'max_sep': theta_max,
     'sep_units': sep_units,
     'nbins': nbins,
-    'var_method':'bootstrap',
 }
 
 # ## Processing
@@ -171,6 +177,8 @@ def set_params_leakage(cat, ver):
     # Note: for SP these are calibrated shear estimates
     params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
     params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
+    params_in["R11"]=None if ver != 'DES' else cat[ver]['shear']['R11']
+    params_in["R22"]=None if ver != 'DES' else cat[ver]['shear']['R22']
 
     params_in['ra_star_col'] = cat[ver]["star"]["ra_col"]
     params_in["dec_star_col"] = cat[ver]["star"]["dec_col"]
@@ -219,10 +227,10 @@ def get_params_rho_tau(params_base, params_psf, survey="other"):
         params["patch_number"] = 120
         print("SP_Axel_v0.0, jackknife patch number =120")
     elif survey == 'SP_v1.4-P3' or survey == 'SP_v1.4-P3_LFmask':
-        params["patch_number"] = 80
+        params["patch_number"] = 120
         print("SP_v1.4, jackknife patch number =120")
     else:
-        params["patch_number"] = 200
+        params["patch_number"] = 150
     params["ra_col"] = params_psf["ra_col"]
     params["dec_col"] = params_psf["dec_col"]
     params["e1_PSF_col"] = params_psf["e1_PSF_col"]
@@ -241,55 +249,17 @@ def get_params_rho_tau(params_base, params_psf, survey="other"):
 
     return params
 
-
-# ##### Rho statistics
-
 out_dir = f"{cat['paths']['output']}/rho_tau_stats"
 if not os.path.exists(out_dir):
     os.mkdir(out_dir)
 print_start('Rho stats')
 
-# Create class instance to compute, save, load and plot rho_stats
-rho_stat_handler = RhoStat(
-    output=out_dir,
-    treecorr_config=TreeCorrConfig_xi,
-    verbose=False)
+# Rho and Tau statistics
+for ver in versions: 
+    rho_stat_handler, tau_stat_handler = utils.get_rho_tau_w_cov(cat, ver, TreeCorrConfig_xi, out_dir, method=cov_estimate_method, cov_rho=compute_cov_rho)
 
-# Compute correlations
-for ver in versions:
-    out_base = f"rho_stats_{ver}.fits"
-    out_path = f"{out_dir}/{out_base}"
 
-    # Load previous results
-    if os.path.exists(out_path):
-        print_green(f"Skipping rho statistics computation, file {out_path} exists")
-        rho_stat_handler.load_rho_stats(out_base)
-    else:
-        print_cyan("Computing rho stats")
-
-        # Get rho and tau parameters
-        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
-
-        # Set rho parameters
-        rho_stat_handler.catalogs.set_params(params, out_dir)
-
-        mask = (ver != 'DES')
-        square_size = (ver != 'DES')
-
-        # Build catalogues
-        rho_stat_handler.build_cat_to_compute_rho(
-            cat[ver]["psf"]["path"],
-            catalog_id=ver,
-            square_size=square_size,
-            mask=mask,
-            hdu = cat[ver]["psf"]["hdu"]
-        )
-
-        # Compute and save rho stats
-        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-        rho_stat_handler.compute_rho_stats(ver, out_base, save_cov=True, func=only_p, var_method='bootstrap')
-
-# +
+# + Plot rho-statistics
 filenames = []
 colors = []
 for ver in versions:
@@ -307,69 +277,7 @@ rho_stat_handler.plot_rho_stats(
 )
 # -
 
-# ##### Tau statistics
-
-
-# Create class instance to compute, save, load and plot rho_stats
-tau_stat_handler = TauStat(
-    catalogs=rho_stat_handler.catalogs,
-    output=out_dir,
-    treecorr_config=TreeCorrConfig_xi,
-    verbose=True,
-)
-
-for ver in versions:
-    out_base = f"tau_stats_{ver}.fits"
-    out_path = f"{out_dir}/{out_base}"
-
-    # Load previous results
-    if os.path.exists(out_path):
-        print_green(f"Skipping tau statistics computation, file {out_path} exists")
-        tau_stat_handler.load_tau_stats(out_base)
-    else:
-        print_cyan("Computing tau stats")
-
-        # Get rho and tau parameters
-        params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
-
-        # Set parameters
-        tau_stat_handler.catalogs.set_params(params, out_dir)
-
-        mask = (ver != 'DES')
-
-        square_size = (ver != 'DES')
-
-        # Build the different catalogs if necessary
-        if f"psf_{ver}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
-            tau_stat_handler.build_cat_to_compute_tau(
-                cat[ver]["psf"]["path"],
-                cat_type='psf',
-                catalog_id=ver,
-                square_size=square_size,
-                mask=mask,
-            )
-
-        # Build the catalog of galaxies. PSF was computed above
-        tau_stat_handler.build_cat_to_compute_tau(
-            cat[ver]["shear"]["path"],
-            cat_type='gal',
-            catalog_id=ver,
-            square_size=square_size,
-            mask=mask,
-        )
-
-
-        # function to extract the tau_+
-        only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-        tau_stat_handler.compute_tau_stats(
-            ver,
-            out_base,
-            save_cov=True,
-            func=only_p,
-            var_method='bootstrap',
-        )
-
-# +
+# + Plot tau-statistics
 filenames = []
 colors = []
 for ver in versions:
@@ -396,94 +304,23 @@ flat_sample_list = []
 result_list = []
 q_list = []
 
-if rho_tau_method=="emcee":
+for ver in versions:
 
-    nwalkers = 124
-    nsamples = 10000
+    params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
 
-    print_start('MCMC for leakage parameteres')
-    for ver in versions:
-        print_magenta(ver)
+    if cov_estimate_method == 'sim':
+        npatch = 300
+    elif cov_estimate_method == 'jk':
+        npatch = params['patch_number']
+    else:
+        npatch = None
+    
+    flat_samples, result, q = utils.get_samples(psf_fitter, ver, cov_type=cov_estimate_method, apply_debias=npatch, sampler=rho_tau_method)
 
-        sample_file_path = psf_fitter.get_sample_path(ver)
-        if os.path.exists(sample_file_path):
-            print_green(f"Skipping MCMC sampling, file {sample_file_path} exists")
-            flat_samples = psf_fitter.load_samples(ver)
-            mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
-            print(mcmc_result)
-            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
-            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
-        else:
-            print_cyan("MCMC sampling")
-            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
-            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
-            psf_fitter.load_covariance('cov_tau_'+ ver +'.npy', cov_type='tau')
+    flat_sample_list.append(flat_samples)
+    result_list.append(result)
+    q_list.append(q)
 
-            # Get rho and tau parameters
-            params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
-
-            flat_samples, mcmc_result, q = psf_fitter.run_chain(
-                nwalkers=nwalkers,
-                nsamples=nsamples,
-                npatch=params["patch_number"],
-                apply_debias=True,
-                savefig='mcmc_samples_'+ ver +'.png',
-            )
-            psf_fitter.save_samples(flat_samples, ver)
-
-        flat_sample_list.append(flat_samples)
-        result_list.append(mcmc_result)
-        q_list.append(q)
-
-        psf_fitter.plot_tau_stats_w_model(
-            mcmc_result[1],
-            'tau_stats_'+ ver + '.fits',
-            'blue',
-            ver,
-            savefig='best_fit_'+ ver + '.png'
-        )
-
-elif rho_tau_method=="lsq":
-    print_start('Least squares for leakage parameteres')
-    for ver in versions:
-        print_magenta(ver)
-
-        sample_file_path = psf_fitter.get_sample_path(ver)
-        if os.path.exists(sample_file_path):
-            print_green(f"Skipping least squares, file {sample_file_path} exists")
-            samples = psf_fitter.load_samples(ver)
-            result, q = psf_fitter.get_mcmc_from_samples(samples)
-            print(result)
-            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
-            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
-        else:
-            print_cyan("Least squares fitting")
-            psf_fitter.load_rho_stat('rho_stats_'+ ver + '.fits')
-            psf_fitter.load_tau_stat('tau_stats_'+ ver + '.fits')
-            psf_fitter.load_covariance('cov_rho_'+ ver +'.npy', cov_type='rho')
-            psf_fitter.load_covariance('cov_tau_'+ ver +'.npy', cov_type='tau')
-
-            params = get_params_rho_tau(results[ver]._params, cat[ver]["psf"], survey=ver)
-
-            samples, result, q = psf_fitter.get_least_squares_params_samples(
-                npatch=params["patch_number"],
-                apply_debias=True
-            )
-
-        flat_sample_list.append(samples)
-        result_list.append(result)
-        q_list.append(q)
-
-        psf_fitter.plot_tau_stats_w_model(
-            result[1],
-            'tau_stats_'+ ver + '.fits',
-            'blue',
-            ver,
-            savefig='best_fit_'+ ver + '.png'
-        )
-
-else:
-    raise ValueError("rho_tau_method must be 'lsq' or 'emcee'")
 
 psfleak_plots.plot_contours(
     flat_sample_list,
@@ -819,7 +656,21 @@ print_done("Done additive bias")
 print_start("2PCF")
 
 # +
-npatch = 50
+theta_min = 0.1
+theta_max = 250
+nbins = 20
+
+npatch = 150
+
+TreeCorrConfig_xi = {
+    'ra_units': coord_units,
+    'dec_units': coord_units,
+    'min_sep': theta_min,
+    'max_sep': theta_max,
+    'sep_units': sep_units,
+    'nbins': nbins,
+    'var_method': 'jackknife'
+}
 
 cat_ggs = {}
 for ver in versions:
@@ -833,9 +684,15 @@ for ver in versions:
         gg.read(out_fname)
     else:
         print_cyan(f'Computing 2PCF')
-        R = cat[ver]["shear"]["R"]
-        g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
-        g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
+        if ver != 'DES':
+            R = cat[ver]["shear"]["R"]
+            g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / R
+            g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / R
+        else:
+            R11 = cat[ver]["shear"]["R11"]
+            R22 = cat[ver]["shear"]["R22"]
+            g1 = (results[ver].dat_shear[cat[ver]['shear']['e1_col']] - c1[ver]) / np.average(results[ver].dat_shear[R11])
+            g2 = (results[ver].dat_shear[cat[ver]['shear']['e2_col']] - c2[ver]) / np.average(results[ver].dat_shear[R22])
         cat_gal = treecorr.Catalog(
             ra=results[ver].dat_shear['RA'],
             dec=results[ver].dat_shear['Dec'],
