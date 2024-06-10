@@ -100,7 +100,6 @@ cov_estimate_method = 'th' #or theory/jackknife
 compute_cov_rho = True
 n_cov = 100 #number of covariance used to marginalize on the patching in the jackknife estimate.
 #Put to 1 to avoid recomputing all rho and tau statistics.
->>>>>>> upstream/develop
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
 
 rho_tau_method = 'lsq' #lsq, emcee, or none
