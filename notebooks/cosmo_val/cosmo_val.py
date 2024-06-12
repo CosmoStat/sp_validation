@@ -93,7 +93,7 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_axel_v0.0', 'SP_v1.3_LFmask_8k', 'DES', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
+versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_v0.1', 'SP_v1.3_LFmask_8k', 'DES', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
 #versions = ['SP_v1.4-P3_LFmask']
 rho_tau_method = 'lsq' #lsq or emcee
 cov_estimate_method = 'th' #or theory/jackknife
