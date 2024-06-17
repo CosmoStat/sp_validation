@@ -213,7 +213,12 @@ def merge_catalogues(
             print(' ', patch)
 
         input_path = f'{patch}/{input_sub_path}'
-        dat = fits.getdata(input_path, hdu_in)
+        try:
+            dat = fits.getdata(input_path, hdu_in)
+        except:
+            print(f"No data found in file {input_path} at HDU #{hdu_in}")
+            print(f"Trying at HDU #{hdu_in-1}")
+            dat = fits.getdata(input_path, hdu_in - 1)
 
         if idx == 0:
             col_names = dat.dtype.names
@@ -319,6 +324,8 @@ def main(argv=None):
         patches = ['W3', 'P7']
     elif param.survey == "P1+3":
         patches = ["P1", "P3"]
+    elif param.survey == "P1+3+4":
+        patches = ["P1", "P3", "P4"]
     elif param.survey == 'W3':
         patches = ['W3']
     elif param.survey == 'P3':
