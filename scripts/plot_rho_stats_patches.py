@@ -13,14 +13,30 @@
 # ---
 
 import os
+import sys
+
 import itertools
 import numpy as np
 import matplotlib.pylab as plt
+
+from cs_util import args
+
 from shear_psf_leakage.rho_tau_stat import RhoStat
 
 # +
-#in_dir_base = "star_cat"
-in_dir_base = "."
+# Set parameters from file or user input
+class dummy(object):
+    def __init__(self):
+        
+        self._params = {
+            "in_dir_base": ".",
+            "title": None,
+        }
+
+obj = dummy()
+params_upd = args.read_param_script("params_rho.py", obj._params, verbose=True)
+for key in params_upd:
+    obj._params[key] = params_upd[key]
 
 n_patch = 7
 patches = [f'P{x}' for x in np.arange(n_patch) + 1]
@@ -50,7 +66,7 @@ TreeCorrConfig = {
 # -
 
 rho_stat_handler = RhoStat(                                                     
-    output=in_dir_base,
+    output=obj._params["in_dir_base"],
     treecorr_config=TreeCorrConfig,                                          
     verbose=True
 )
@@ -61,7 +77,7 @@ colors = []
 
 for patch in patches:
     path = f"{patch}/output/run_sp_Pl/mccd_plots_runner/output/rho_stats_id.fits"
-    if os.path.exists(f"{in_dir_base}/{path}"):
+    if os.path.exists(f"{obj._params['in_dir_base']}/{path}"):
         rho_stat_handler.load_rho_stats(path)
         filenames.append(path) 
         colors.append(col[patch])
@@ -74,7 +90,8 @@ rho_stat_handler.plot_rho_stats(
     patches,                                                                   
     abs=False,                                                                  
     savefig='rho_stats.png',                                                    
-    legend="outside",                                                           
+    legend="outside",
+    title=obj._params["title"],
 )
 
 
