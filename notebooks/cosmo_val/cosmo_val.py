@@ -93,10 +93,10 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.4-P1+3_wcs', 'SP_v1.4-P1+3+4_wcs', 'SP_v1.3_LFmask_8k', 'DES']
+versions = ['SP_v1.4-P1+3_wcs', 'SP_v1.4-P1+3+4_wcs', 'SP_axel_v0.0', 'SP_v1.3_LFmask_8k', 'DES']
 #versions = ['SP_v1.4-P3_LFmask']
 rho_tau_method = 'lsq' #lsq or emcee
-cov_estimate_method = 'th' #or theory/jackknife
+cov_estimate_method = 'jk' #or theory/jackknife
 compute_cov_rho = True
 n_cov = 100 #number of covariance used to marginalize on the patching in the jackknife estimate.
 #Put to 1 to avoid recomputing all rho and tau statistics.
