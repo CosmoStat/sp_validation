@@ -14,6 +14,7 @@
 
 import os
 import sys
+import glob
 
 import itertools
 import numpy as np
@@ -38,8 +39,9 @@ params_upd = args.read_param_script("params_rho.py", obj._params, verbose=True)
 for key in params_upd:
     obj._params[key] = params_upd[key]
 
-n_patch = 7
-patches = [f'P{x}' for x in np.arange(n_patch) + 1]
+#patches = [f'P{x}' for x in np.arange(n_patch) + 1]
+patches = glob.glob("P*")
+print(patches)
 
 default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 color_cycle = itertools.cycle(default_colors)
@@ -78,9 +80,14 @@ colors = []
 for patch in patches:
     path = f"{patch}/output/run_sp_Pl/mccd_plots_runner/output/rho_stats_id.fits"
     if os.path.exists(f"{obj._params['in_dir_base']}/{path}"):
+        print(f"Reading rho stats {obj._params['in_dir_base']}/{path}...")
         rho_stat_handler.load_rho_stats(path)
         filenames.append(path) 
         colors.append(col[patch])
+    else:
+        print(
+            f"File rho stats {obj._params['in_dir_base']}/{path} not found, skipping.."
+        )
 # -
 
 # Create plot                                                                   
