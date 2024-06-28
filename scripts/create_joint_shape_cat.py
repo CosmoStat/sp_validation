@@ -80,14 +80,14 @@ def parse_options(p_def):
         '--survey',
         dest='survey',
         type='string',
-        help='survey, one in \'v1\'|\'test\'|\'v1_small\''
+        help='survey, allowed is \'v1\'|\'test\'|\'v1_small\'|\'P1+3\''
     )
     parser.add_option(
         '-v',
         '--verbose',
         dest='verbose',
         action='store_true',
-        help=f'verbose output'
+        help='verbose output'
     )
 
     options, args = parser.parse_args()
@@ -213,7 +213,12 @@ def merge_catalogues(
             print(' ', patch)
 
         input_path = f'{patch}/{input_sub_path}'
-        dat = fits.getdata(input_path, hdu_in)
+        try:
+            dat = fits.getdata(input_path, hdu_in)
+        except:
+            print(f"No data found in file {input_path} at HDU #{hdu_in}")
+            print(f"Trying at HDU #{hdu_in-1}")
+            dat = fits.getdata(input_path, hdu_in - 1)
 
         if idx == 0:
             col_names = dat.dtype.names
@@ -317,6 +322,10 @@ def main(argv=None):
         patches = ['P7', 'W3', 'S4']
     elif param.survey == 'v1_small':
         patches = ['W3', 'P7']
+    elif param.survey == "P1+3":
+        patches = ["P1", "P3"]
+    elif param.survey == "P1+3+4":
+        patches = ["P1", "P3", "P4"]
     elif param.survey == 'W3':
         patches = ['W3']
     elif param.survey == 'P3':
@@ -327,20 +336,18 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.0.3'
+    version = '1.4.1'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
 
-    
-    if additive_bias == 'from_extended':
-        return_mean_e = True
-    else:
-        return_mean_e = False
-    if shear_response == 'from_extended':
-        return_mean_R_shear = True
-    else:
-        return_mean_R_shear = False
+
+    #if additive_bias == 'from_extended':
+        #return_mean_e = True
+    #else:
+        #return_mean_e = False
+    return_mean_e = additive_bias == "from_extended"
+    return_mean_R_shear = shear_response == 'from_extended'
 
     R_select = get_R('R_select')
 
@@ -418,7 +425,7 @@ def main(argv=None):
         w_all = np.append(w_all, w)
         mag_all = np.append(mag_all, mag)
         patch_all = np.append(patch_all, [idx + 1] * len(ra))
-        
+
         g = np.array([g1, g2])
 
         # Calibrate with global R and c
@@ -454,7 +461,10 @@ def main(argv=None):
     # PSF catalogue with single-epoch shapes (HSM moments)
     if param.verbose:
         print('Merging PSF catalogues (with single-epoch moments shapes)')
-    input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+    # Path of ShapePipe run
+    #input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+    # Path of copied file
+    input_sub_path = 'full_starcat-0000000.fits'
 
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
     merge_catalogues(

@@ -83,7 +83,7 @@ def print_mean_ellipticity(
 
     n_tot_val = len(np.where(ind_v)[0])
     n_tot_mil = util.millify(n_tot_val)
-    msg = ('Total number of valid objects = {n_tot_val} = {n_tot_mil}')
+    msg = f'Total number of valid objects = {n_tot_val} = {n_tot_mil}'
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = 'Fraction of invalid objects = {}/{} = {:.3g}%\n' \
@@ -462,7 +462,7 @@ def write_shape_catalog(
     g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
         uncalibrated shear estimates
     R_g11, R_g22, R_g12, R_g21 : arrays(ngal) of float, optional, default=None
-        shear response matrix elemencts per galaxy
+        shear response matrix elements per galaxy
     sigma_epsilon: float, optional
         shape noise, default is `None`
     add_cols : dict, optional, default is `None`
@@ -470,6 +470,7 @@ def write_shape_catalog(
     add_cols_format : dict, optional
         format for n additional columns to add, default is `None`, for which
         'float' format is used
+
     """
     # Data HDU
     c_ra = fits.Column(name='RA', array=ra, format='D', unit='deg')
@@ -495,7 +496,7 @@ def write_shape_catalog(
             ntype += 1
 
     if add_cols:
-        for i, name in enumerate(add_cols):
+        for name in add_cols:
             if add_cols_format:
                 my_format = add_cols_format[name]
             else:

@@ -15,6 +15,7 @@
 
 # # Cosmological validation of UNIONS shape catalogues
 # 03/2023
+# 03/2024
 
 # %matplotlib inline
 # %load_ext autoreload
@@ -34,22 +35,25 @@ import treecorr
 import pandas as pd
 import colorama
 import emcee
+from uncertainties import ufloat
 from astropy.io import ascii
 
 # +
 from sp_validation.plot_style import *
 from cs_util import plots as cs_plots
 
+from shear_psf_leakage import leakage
 from shear_psf_leakage import run_scale
+from shear_psf_leakage import run_object
 from shear_psf_leakage import plots as psfleak_plots
-from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
+from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 
 import utils
 
 # +
 import treecorr
 
-n_thread = 1
+n_thread = 8
 treecorr.set_omp_threads(n_thread)
 
 sep_units = 'arcmin'
@@ -89,7 +93,7 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_axel_v0.0', 'SP_v1.3_LFmask_8k', 'DES', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
+versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_v0.1', 'SP_v1.3_LFmask_8k', 'DES', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
 #versions = ['SP_v1.4-P3_LFmask']
 rho_tau_method = 'lsq' #lsq or emcee
 cov_estimate_method = 'th' #or theory/jackknife
@@ -97,7 +101,9 @@ compute_cov_rho = True
 n_cov = 100 #number of covariance used to marginalize on the patching in the jackknife estimate.
 #Put to 1 to avoid recomputing all rho and tau statistics.
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
-#versions = ['SP_axel_v0.0']
+
+rho_tau_method = 'lsq' #lsq, emcee, or none
+
 all_keys = ['nz']
 for ver in versions:
     all_keys.append(ver)
@@ -131,8 +137,8 @@ theta_max = 250
 nbins = 20
 
 # Plotting
-theta_min_plot = 0.1
-theta_max_plot = 300
+theta_min_plot = 0.08
+theta_max_plot = 250
 
 ylim_alpha = [-0.005, 0.05]
 
@@ -156,16 +162,20 @@ print_start('Start cosmology validation')
 
 # ### Systematic tests
 
-# + active=""
-# # TODO:
-# # object-wise leakage
+# +
+# Save leakage coeffieicnts values
+leakage_coeff = {}
+
+for ver in versions:
+    leakage_coeff[ver] = {}
 # -
 
-# #### Init results dictionary
-
+# #### Init dictionary for scale-dependent leakage
+# MKDEBUG -> results_scale
 results = {}
 
-def set_params_leakage(cat, ver):
+
+def set_params_leakage_scale(cat, ver):
     params_in = {}
 
     # Set parameters
@@ -185,19 +195,46 @@ def set_params_leakage(cat, ver):
     params_in['e1_PSF_star_col'] = cat[ver]["star"]["e1_col"]
     params_in["e2_PSF_star_col"] = cat[ver]["star"]["e2_col"]
 
+    params_in["theta_min_amin"] = theta_min
+    params_in["theta_max_amin"] = theta_max
+
     params_in["verbose"] = False
 
     return params_in
 
-for ver in versions:
 
-    params_in = set_params_leakage(cat, ver)
+def set_params_leakage_object(cat, ver):
+    params_in = {}
+
+    # Set parameters
+    params_in['input_path_shear'] = cat[ver]["shear"]["path"]
+    params_in['output_dir'] = f'{cat["paths"]["output"]}/leakage_{ver}'
+
+    # Note: for SP these are calibrated shear estimates
+    params_in['e1_col'] = cat[ver]["shear"]["e1_col"]
+    params_in['e2_col'] = cat[ver]["shear"]["e2_col"]
+    
+    if "e1_PSF_col" in cat[ver]["shear"] and "e2_PSF_col" in cat[ver]["shear"]:
+        params_in['e1_PSF_col'] = cat[ver]["shear"]["e1_PSF_col"]
+        params_in["e2_PSF_col"] = cat[ver]["shear"]["e2_PSF_col"]
+    else:
+        raise KeyError(
+            "Keys 'e1_PSF_col' and 'e2_PSF_col' not found in"
+            + f" shear yaml entry for version {ver}" 
+        )
+
+    params_in["verbose"] = False
+
+    return params_in
+
+
+for ver in versions:
 
     # Create leakage instance
     obj = run_scale.LeakageScale()
 
-    # Set instance parameters, copy from above
-
+    # Set instance parameters
+    params_in = set_params_leakage_scale(cat, ver)
     for key in params_in:
         obj._params[key] = params_in[key]
 
@@ -213,6 +250,8 @@ for ver in versions:
     obj.prepare_output()
     obj.read_data()
 
+
+
 # #### Rho and tau tatistics
 
 def get_params_rho_tau(params_base, params_psf, survey="other"):
@@ -220,7 +259,7 @@ def get_params_rho_tau(params_base, params_psf, survey="other"):
     # Set parameters
     params = params_base
     # TODO to yaml file
-    if survey == "DES":
+    if survey in ("DES", 'SP_axel_v0.0', 'SP_axel_v0.0_repr'):
         params["patch_number"] = 120
         print("DES, jackknife patch number = 120")
     elif survey == 'SP_axel_v0.0':
@@ -321,79 +360,79 @@ for ver in versions:
     result_list.append(result)
     q_list.append(q)
 
+if rho_tau_method != "none":
+    psfleak_plots.plot_contours(
+        flat_sample_list,
+        names=['x0', 'x1', 'x2'],
+        labels=[r'\alpha', r'\beta', r'\eta'],
+        savefig=out_dir + '/contours_tau_stat.png',
+        legend_labels=versions,
+        legend_loc='upper right',
+        contour_colors=colors,
+        markers={'x0':0, 'x1':1, 'x2':1}
+    )
 
-psfleak_plots.plot_contours(
-    flat_sample_list,
-    names=['x0', 'x1', 'x2'],
-    labels=['alpha', 'beta', 'eta'],
-    savefig=out_dir + '/contours_tau_stat.png',
-    legend_labels=versions,
-    legend_loc='upper right',
-    contour_colors=colors,
-    markers={'x0':0, 'x1':1, 'x2':1}
-)
-
-plt.figure(figsize=(15, 6))
-for mcmc_result, ver, color, flat_sample in zip(
-    result_list,
-    versions,
-    colors,
-    flat_sample_list
-):
-    psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
-    for i in range(100):
-        psf_fitter.plot_xi_psf_sys(flat_sample[-i+1], ver, color, alpha=0.1)
-    psf_fitter.plot_xi_psf_sys(mcmc_result[1], ver, color)
-plt.legend()
-cs_plots.savefig(f"{out_dir}/xi_psf_sys_samples.png")
-
-xi_psf_sys_mean = {}
-xi_psf_sys_var = {}
-
-plt.figure(figsize=(15, 6))
-quant = 0.683
-quantiles = [1 - quant, quant]
-for mcmc_result, ver, color, flat_sample in zip(
-    result_list,
-    versions,
-    colors,
-    flat_sample_list
-):
-    psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
-    nbins = psf_fitter.rho_stat_handler._treecorr_config["nbins"]
-    xi_psf_sys_samples = np.array([]).reshape(0, nbins)
-
-    for i in range(len(flat_sample)):
-        xi_psf_sys = psf_fitter.compute_xi_psf_sys(flat_sample[i])
-        xi_psf_sys_samples = np.vstack([xi_psf_sys_samples, xi_psf_sys])
-
-    xi_psf_sys_mean[ver] = np.mean(xi_psf_sys_samples, axis=0)
-    xi_psf_sys_var[ver] = np.var(xi_psf_sys_samples, axis=0)
-    xi_psf_sys_quan = np.quantile(xi_psf_sys_samples, quantiles, axis=0)
-    theta = psf_fitter.rho_stat_handler.rho_stats["theta"]
-    ls = cat[ver]["ls"]
-    plt.plot(theta, xi_psf_sys_mean[ver], linestyle=ls, color=color)
-    plt.plot(theta, xi_psf_sys_quan[0], linestyle=ls, color=color)
-    plt.plot(theta, xi_psf_sys_quan[1], linestyle=ls, color=color)
-    plt.fill_between(theta, xi_psf_sys_quan[0], xi_psf_sys_quan[1], color=color, alpha=0.25, label=ver)
-
-plt.xscale('log')
-plt.yscale('log')
-plt.xlabel(r"$\theta$ [arcmin]")
-plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
-plt.title(f"{quantiles[0]:.1%}, {quantiles[1]:.1%} quantiles")
-plt.legend()
-cs_plots.savefig(f"{out_dir}/xi_psf_sys_quantiles.png")
-
-for mcmc_result, ver, flat_sample in zip(
-    result_list,
-    versions,
-    flat_sample_list
-):
-    for yscale in ("linear", "log"):
+    plt.figure(figsize=(15, 6))
+    for mcmc_result, ver, color, flat_sample in zip(
+        result_list,
+        versions,
+        colors,
+        flat_sample_list
+    ):
         psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
-        out_path = f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
-        psf_fitter.plot_xi_psf_sys_terms(ver, mcmc_result[1], out_path, yscale=yscale)
+        for i in range(100):
+            psf_fitter.plot_xi_psf_sys(flat_sample[-i+1], ver, color, alpha=0.1)
+        psf_fitter.plot_xi_psf_sys(mcmc_result[1], ver, color)
+    plt.legend()
+    cs_plots.savefig(f"{out_dir}/xi_psf_sys_samples.png")
+
+    xi_psf_sys_mean = {}
+    xi_psf_sys_var = {}
+
+    plt.figure(figsize=(15, 6))
+    quant = 0.683
+    quantiles = [1 - quant, quant]
+    for mcmc_result, ver, color, flat_sample in zip(
+        result_list,
+        versions,
+        colors,
+        flat_sample_list
+    ):
+        psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
+        nbins = psf_fitter.rho_stat_handler._treecorr_config["nbins"]
+        xi_psf_sys_samples = np.array([]).reshape(0, nbins)
+
+        for i in range(len(flat_sample)):
+            xi_psf_sys = psf_fitter.compute_xi_psf_sys(flat_sample[i])
+            xi_psf_sys_samples = np.vstack([xi_psf_sys_samples, xi_psf_sys])
+
+        xi_psf_sys_mean[ver] = np.mean(xi_psf_sys_samples, axis=0)
+        xi_psf_sys_var[ver] = np.var(xi_psf_sys_samples, axis=0)
+        xi_psf_sys_quan = np.quantile(xi_psf_sys_samples, quantiles, axis=0)
+        theta = psf_fitter.rho_stat_handler.rho_stats["theta"]
+        ls = cat[ver]["ls"]
+        plt.plot(theta, xi_psf_sys_mean[ver], linestyle=ls, color=color)
+        plt.plot(theta, xi_psf_sys_quan[0], linestyle=ls, color=color)
+        plt.plot(theta, xi_psf_sys_quan[1], linestyle=ls, color=color)
+        plt.fill_between(theta, xi_psf_sys_quan[0], xi_psf_sys_quan[1], color=color, alpha=0.25, label=ver)
+
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel(r"$\theta$ [arcmin]")
+    plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
+    plt.title(f"{quantiles[0]:.1%}, {quantiles[1]:.1%} quantiles")
+    plt.legend()
+    cs_plots.savefig(f"{out_dir}/xi_psf_sys_quantiles.png")
+
+    for mcmc_result, ver, flat_sample in zip(
+        result_list,
+        versions,
+        flat_sample_list
+    ):
+        for yscale in ("linear", "log"):
+            psf_fitter.load_rho_stat('rho_stats_' + ver + '.fits')
+            out_path = f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
+            psf_fitter.plot_xi_psf_sys_terms(ver, mcmc_result[1], out_path, yscale=yscale)
 
 
 # #### Footprint
@@ -435,8 +474,8 @@ for ver in versions:
         TreeCorrConfig = {
             'ra_units': coord_units,
             'dec_units': coord_units,
-            'min_sep': obj._params["theta_min_amin"],
-            'max_sep': obj._params["theta_max_amin"],
+            'min_sep': theta_min,
+            'max_sep': theta_max,
             'sep_units': sep_units,
             'nbins': obj._params["n_theta"],
             'var_method':'jackknife',
@@ -478,10 +517,12 @@ for ver in versions:
         markers.append(cat[ver]["marker"])
 
 if len(theta) > 0:
-    out_path = f"{cat['paths']['output']}/alpha_leak.pdf"
+
+    # Log x
+    out_path = f"{cat['paths']['output']}/alpha_leak_log.pdf"
 
     title = r'$\alpha$ leakage'
-    xlabel = r'$\theta\, [arcmin]$'
+    xlabel = r'$\theta$ [arcmin]'
     ylabel = r'$\alpha(\theta)$'
     cs_plots.plot_data_1d(
         theta,
@@ -497,9 +538,34 @@ if len(theta) > 0:
         labels=labels,
         colors=colors,
         linestyles=linestyles,
-        #shift_x=True,
+        shift_x=True,
     )
     cs_plots.savefig(out_path)
+
+    # Lin x
+    out_path = f"{cat['paths']['output']}/alpha_leak_lin.pdf"
+
+    title = r'$\alpha$ leakage'
+    xlabel = r'$\theta$ [arcmin]'
+    ylabel = r'$\alpha(\theta)$'
+    cs_plots.plot_data_1d(
+        theta,
+        y,
+        yerr,
+        title,
+        xlabel,
+        ylabel,
+        out_path=None,
+        xlog=False,
+        xlim=[-10, theta_max_plot],
+        ylim=ylim_alpha,
+        labels=labels,
+        colors=colors,
+        linestyles=linestyles,
+        shift_x=False,
+    )
+    cs_plots.savefig(out_path)
+
 
 # +
 # Plot xi_sys
@@ -570,6 +636,107 @@ if len(y) > 0:
         #shift_x=True,
     )
     cs_plots.savefig(out_path)
+
+
+# #### Object-wise leakage
+results_object = {}
+for ver in versions:
+
+    # Create leakage instance
+    obj = run_object.LeakageObject()
+
+    # Set instance parameters
+    params_in = set_params_leakage_object(cat, ver)
+    for key in params_in:
+        obj._params[key] = params_in[key]
+
+    results_object[ver] = obj
+
+
+print_start("Compute object-wise leakage")
+mix = True
+order = "lin"
+for ver in versions:
+    print_magenta(ver)
+
+    obj = results_object[ver]
+    obj.check_params()
+    obj.update_params()
+    obj.prepare_output()
+
+    # Skip read_data() and copy catalogue from scale instance instead
+    obj._dat = results[ver].dat_shear
+
+    out_base = obj.get_out_base(mix, order)
+    out_path = f"{out_base}.pkl"
+    if os.path.exists(out_path):
+        print_green(f"Skipping object-wise leakage, file {out_path} exists")
+        obj.par_best_fit = leakage.read_from_file(out_path)
+    else:
+        print_cyan("Computing object-wise leakage regression")
+
+        # Run
+        obj.PSF_leakage()
+
+
+# ### Leakge coefficients
+
+# Gather coefficients
+for ver in versions:
+    # Object-wise leakage
+    leakage_coeff[ver]["a11"] = ufloat(results_object[ver].par_best_fit["a11"].value, results_object[ver].par_best_fit["a11"].stderr)
+    leakage_coeff[ver]["a22"] = ufloat(results_object[ver].par_best_fit["a22"].value, results_object[ver].par_best_fit["a22"].stderr)
+    leakage_coeff[ver]["aii_mean"] = 0.5 * (leakage_coeff[ver]["a11"] + leakage_coeff[ver]["a22"])
+
+    # Scale-dependent leakage: mean
+    leakage_coeff[ver]["alpha_mean"] = ufloat(results[ver].alpha_leak_mean, results[ver].alpha_leak_std)
+    # Scale-dependent leakage: value at smallest scale
+    leakage_coeff[ver]["alpha_1"] = ufloat(results[ver].alpha_leak[0], results[ver].sig_alpha_leak[0])
+    # Scale-dependent leakage: value extrapolated to 0 using affine model
+    leakage_coeff[ver]["alpha_0"] = ufloat(results[ver].alpha_affine_best_fit["c"].value, results[ver].alpha_affine_best_fit["c"].stderr)
+
+
+# +
+# Plot coefficients
+fig = cs_plots.figure(figsize=(15, 15))
+
+linestyles = ["-", "--", ":"]
+fillstyles = ["full", "none", "left", "right", "bottom", "top"]
+
+for ver in versions:
+    label = ver
+    for key, ls, fs in zip(["alpha_mean", "alpha_1", "alpha_0"], linestyles, fillstyles):
+        x = leakage_coeff[ver]["aii_mean"].nominal_value
+        dx = leakage_coeff[ver]["aii_mean"].std_dev
+        y = leakage_coeff[ver][key].nominal_value
+        dy = leakage_coeff[ver][key].std_dev
+
+        eb = plt.errorbar(
+            x,
+            y,
+            xerr=dx,
+            yerr=dy,
+            fmt=cat[ver]["marker"],
+            color=cat[ver]["colour"],
+            fillstyle=fs,
+            label=label
+        )
+        label = None
+        eb[-1][0].set_linestyle(ls)
+
+
+# y=x line
+xlim = 0.02
+x = [-xlim, xlim]
+y = x
+plt.plot(x, y, "k:", linewidth=0.5)
+
+plt.legend()
+plt.xlabel(r"tr $a$ (object-wise)")
+plt.ylabel(r"$\alpha$ (scale-dependent)")
+out_path = f"{cat['paths']['output']}/leakage_coefficients.png"
+cs_plots.savefig(out_path)
+
 # +
 # ### Cosmological analysis
 # xipm correlation functions
@@ -1066,4 +1233,3 @@ print("Done: Clean up memory")
 
 print_done("Exiting here")
 sys.exit(0)
-
