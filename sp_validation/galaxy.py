@@ -43,6 +43,8 @@ def T_to_fwhm(T):
     fwhm : (array of) float
         output fwhm(s)
     """
+
+    # MKDEBUG: Check this equation. Why is FWHM not quadratic in T???
     return T / 1.17741 * 2.355
 
 
@@ -143,7 +145,7 @@ def classification_galaxy_overlap_ra_dec(
 
     for idx, tile_ID in enumerate(tile_ID_str_list):
 
-        # Find tile ID towards increading RA
+        # Find tile ID towards increasing RA
         ID_upper = f'{int(nix[idx]) + 1:03d}.{int(niy[idx]):03d}'
         if ID_upper in tile_ID_str_list:
             # If found: compute halfway RA
