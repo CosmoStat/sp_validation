@@ -13,6 +13,7 @@ from cs_util import cat
 from cs_util import plots
 
 from sp_validation.cat import *
+from sp_validation.calibration import *
 
 
 
@@ -168,6 +169,7 @@ def merge_catalogues(
     patches,
     input_sub_path,
     output_path,
+    sh,
     R_select=None,
     return_mean_e=False,
     return_mean_R_shear=False,
@@ -223,15 +225,30 @@ def merge_catalogues(
         if idx == 0:
             col_names = dat.dtype.names
             for name in col_names:
-                dat_all[name] = []
+                if name != 'w':
+                    dat_all[name] = []
+                else:
+                    dat_all[name+'_iv'] = []
             dat_all['patch'] = []
         for name in col_names:
-            dat_all[name] = np.append(dat_all[name], dat[name])
+            if name != 'w':
+                dat_all[name] = np.append(dat_all[name], dat[name])
+            else:
+                dat_all[name+'_iv'] = np.append(dat_all[name+'_iv'], dat[name])
 
         # Add patch number
         dat_all['patch'] = np.append(dat_all['patch'], [idx + 1] * len(dat))
 
     col_names = col_names + ('patch',)
+
+    #Compute column for the DES weights (Gatti et al. 2021)
+    if sh == 'ngmix':
+        if verbose:
+            print(f"Compute DES weights for the combined catalogue.")
+        name = 'w_des'
+        num_bins = 20
+        dat_all['w_des'] = get_w_des(dat_all, num_bins)
+        col_names = col_names + ('w_des',)
 
     column_all = []
     for name in col_names:
@@ -239,6 +256,8 @@ def merge_catalogues(
             my_format = 'D'
         else:
             my_format = 'I'
+        if name == 'w':
+            name = 'w_iv'
         column = fits.Column(name=name, array=dat_all[name], format=my_format)
         column_all.append(column)
 
@@ -246,9 +265,13 @@ def merge_catalogues(
     c = np.empty(shape=(2))
     if return_mean_e:
         for idx in (0, 1):
+            if 'w_des' in col_names:
+                name = 'w_des'
+            else:
+                name = 'w_iv'
             c[idx] = np.average(
                 dat_all[f'e{idx+1}_uncal'],
-                weights=dat_all['w']
+                weights=dat_all[name]
         )
 
     R_shear = np.empty(shape=(2, 2))
@@ -336,7 +359,7 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.4.1'
+    version = '1.4.1_test'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -360,6 +383,7 @@ def main(argv=None):
         patches,
         input_sub_path,
         output_path,
+        sh,
         R_select=R_select,
         verbose=param.verbose,
         return_mean_e=return_mean_e,
@@ -437,11 +461,18 @@ def main(argv=None):
         g1_corr_mc_all = np.append(g1_corr_mc_all, g_corr_mc[0])
         g2_corr_mc_all = np.append(g2_corr_mc_all, g_corr_mc[1])
 
+    if sh == 'ngmix':
+        w_des = fits.getdata(output_path, 1)['w_des']
     output_path = f'{survey}_{pipeline}_{year}_v{version}.fits'
     g_corr_mc_all = np.array([g1_corr_mc_all, g2_corr_mc_all])
 
-    add_col_data = { 'patch' : patch_all }
+    add_col_data = { 'patch' : patch_all, }
     add_col_format = { 'patch' : 'I' }
+
+    if sh == 'ngmix':
+        add_col_data['w_des'] = w_des
+        add_col_format['w_des'] = 'D'
+    
     write_shape_catalog(
         output_path, 
         ra_all,
@@ -471,6 +502,7 @@ def main(argv=None):
         patches,
         input_sub_path,
         output_path,
+        sh,
         hdu_in=2,
         verbose=param.verbose,
     )

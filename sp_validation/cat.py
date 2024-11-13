@@ -477,7 +477,7 @@ def write_shape_catalog(
     c_dec = fits.Column(name='Dec', array=dec, format='D', unit='deg')
     c_g1 = fits.Column(name='e1', array=g[0], format='D')
     c_g2 = fits.Column(name='e2', array=g[1], format='D')
-    c_w = fits.Column(name='w', array=w, format='D')
+    c_w = fits.Column(name='w_iv', array=w, format='D')
     c_mag = fits.Column(name='mag', array=mag, format='D')
     cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag]
 
@@ -516,7 +516,7 @@ def write_shape_catalog(
         'e2',
         'Calibrated reduced shear estimate, 2nd comp'
     )
-    table_hdu.header['TTYPE5'] = ('w', 'Weight')
+    table_hdu.header['TTYPE5'] = ('w_iv', 'Inverse Variance Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
     if snr is not None:
         table_hdu.header['TTYPE7'] = (
