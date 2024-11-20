@@ -501,9 +501,14 @@ def main(argv=None):
             g2_corr_mc_all = np.append(g2_corr_mc_all, g_corr_mc[1])
 
     if sh == 'ngmix':
-        w_des = fits.getdata(output_path, 1)['w_des']
-        alpha_1 = fits.getdata(output_path, 1)['alpha_1']
-        alpha_2 = fits.getdata(output_path, 1)['alpha_2']
+        ext_cat = fits.getdata(output_path , 1)
+        w_all = ext_cat['w_des']
+        e1_psf = ext_cat['e1_PSF']
+        e2_psf = ext_cat['e2_PSF']
+        alpha_1 = ext_cat['alpha_1']
+        alpha_2 = ext_cat['alpha_2']
+        e1_noleakage = g1_corr_mc_all - alpha_1 * e1_psf
+        e2_noleakage = g2_corr_mc_all - alpha_2 * e2_psf
     output_path = f'{survey}_{pipeline}_{year}_v{version}.fits'
     g_corr_mc_all = np.array([g1_corr_mc_all, g2_corr_mc_all])
 
@@ -511,12 +516,10 @@ def main(argv=None):
     add_col_format = { 'patch' : 'I' }
 
     if sh == 'ngmix':
-        add_col_data['w_des'] = w_des
-        add_col_format['w_des'] = 'D'
-        add_col_data['alpha_1'] = alpha_1
-        add_col_format['alpha_1'] = 'D'
-        add_col_data['alpha_2'] = alpha_2
-        add_col_format['alpha_2'] = 'D'
+        add_col_data['e1_noleakage'] = e1_noleakage
+        add_col_format['e1_noleakage'] = 'D'
+        add_col_data['e2_noleakage'] = e2_noleakage
+        add_col_format['e2_noleakage'] = 'D'
     
     write_shape_catalog(
         output_path, 

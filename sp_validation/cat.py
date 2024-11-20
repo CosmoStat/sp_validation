@@ -477,7 +477,7 @@ def write_shape_catalog(
     c_dec = fits.Column(name='Dec', array=dec, format='D', unit='deg')
     c_g1 = fits.Column(name='e1', array=g[0], format='D')
     c_g2 = fits.Column(name='e2', array=g[1], format='D')
-    c_w = fits.Column(name='w_iv', array=w, format='D')
+    c_w = fits.Column(name='w', array=w, format='D')
     c_mag = fits.Column(name='mag', array=mag, format='D')
     cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag]
 
