@@ -241,7 +241,7 @@ def merge_catalogues(
 
     col_names = col_names + ('patch',)
 
-    #Compute column for the DES weights (Gatti et al. 2021)
+    #Compute coluivmn for the DES weights (Gatti et al. 2021)
     if sh == 'ngmix':
         if verbose:
             print(f"Compute DES weights for the combined catalogue.")
@@ -311,11 +311,48 @@ def merge_catalogues(
 
     if R_select is not None:
         R = R_shear + R_select
+        if verbose:
+            print('Performing calibration on the whole catalog.')
+        #Compute the calibration on the whole catalog for the ellipticities
+        #Find the index of the columns e1 and e2 of calibrated ellipticities
+        index_e1 = next((i for i, col in enumerate(column_all) if col.name == 'e1'), None)
+        index_e2 = next((i for i, col in enumerate(column_all) if col.name == 'e2'), None)
+
+        #Perform the calibration
+        g = np.array([dat_all['e1_uncal'], dat_all['e2_uncal']])
+        Rm1 = np.linalg.inv(R)
+
+        c_corr = Rm1.dot(c)
+        g_corr = Rm1.dot(g)
+        for comp in (0, 1):
+            g_corr[comp] = g_corr[comp] - c_corr[comp]
+
+        #Replace the columns
+        dat_all['e1'] = g_corr[0]
+        dat_all['e2'] = g_corr[1]
+        column_all[index_e1] = fits.Column(name='e1', array=g_corr[0], format='D')
+        column_all[index_e2] = fits.Column(name='e2', array=g_corr[1], format='D')
+
+        #Compute the leakage coefficients for each object
+        if sh == 'ngmix':
+            if verbose:
+                print('Computing leakage coefficients per object.')
+            num_bins = 20
+            weight_type = 'des' if 'w_des' in col_names else 'iv'
+            alpha_1, alpha_2 = get_alpha_leakage_per_object(dat_all, num_bins, weight_type)
+            #Add the columns to the fits file
+            column_all.append(fits.Column(name='alpha_1', array=alpha_1, format='D'))
+            column_all.append(fits.Column(name='alpha_2', array=alpha_2, format='D'))
+
+
         cat.write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
     else:
+        if verbose:
+            print('No calibration performed on the whole catalog.')
+        g_corr = None
         cat.write_fits_BinTable_file(column_all, output_path)
 
-    return c, R_shear
+    return c, R_shear, g_corr
 
 
 def main(argv=None):
@@ -336,7 +373,7 @@ def main(argv=None):
 
     param = update_param(p_def, options)
 
-    logging.log_command(argv)
+    #logging.log_command(argv)
 
     if param.survey == 'v1':
         n_patch = 7
@@ -379,7 +416,7 @@ def main(argv=None):
         print('Merging extended catalogue')
     input_sub_path = f'sp_output/shape_catalog_extended_{sh}.fits'
     output_path = f'{survey}_{pipeline}_extended_{year}_v{version}.fits'
-    c_ext, R_shear_ext = merge_catalogues(
+    c_ext, R_shear_ext, g_corr = merge_catalogues(
         patches,
         input_sub_path,
         output_path,
@@ -388,7 +425,7 @@ def main(argv=None):
         verbose=param.verbose,
         return_mean_e=return_mean_e,
         return_mean_R_shear=return_mean_R_shear,
-        hist_base=sh,
+        hist_base=None,
     )
 
     fname = 'c.txt'
@@ -428,8 +465,8 @@ def main(argv=None):
     # Base catalogue
     ra_all = np.array([])
     dec_all = np.array([])
-    g1_corr_mc_all = np.array([])
-    g2_corr_mc_all = np.array([])
+    g1_corr_mc_all = np.array([]) if g_corr is None else g_corr[0] #The columns are already computed from extended catalogue
+    g2_corr_mc_all = np.array([]) if g_corr is None else g_corr[1]
     w_all = np.array([])
     mag_all = np.array([])
     snr_all = np.array([])
@@ -450,19 +487,23 @@ def main(argv=None):
         mag_all = np.append(mag_all, mag)
         patch_all = np.append(patch_all, [idx + 1] * len(ra))
 
-        g = np.array([g1, g2])
+        #Only performs the calibration if the calibration is not done on the extended catalog
+        if g_corr is None:
+            g = np.array([g1, g2])
 
-        # Calibrate with global R and c
-        c_corr = Rm1.dot(c)
+            # Calibrate with global R and c
+            c_corr = Rm1.dot(c)
 
-        g_corr_mc = Rm1.dot(g)
-        for comp in (0, 1):
-            g_corr_mc[comp] = g_corr_mc[comp] - c_corr[comp]
-        g1_corr_mc_all = np.append(g1_corr_mc_all, g_corr_mc[0])
-        g2_corr_mc_all = np.append(g2_corr_mc_all, g_corr_mc[1])
+            g_corr_mc = Rm1.dot(g)
+            for comp in (0, 1):
+                g_corr_mc[comp] = g_corr_mc[comp] - c_corr[comp]
+            g1_corr_mc_all = np.append(g1_corr_mc_all, g_corr_mc[0])
+            g2_corr_mc_all = np.append(g2_corr_mc_all, g_corr_mc[1])
 
     if sh == 'ngmix':
         w_des = fits.getdata(output_path, 1)['w_des']
+        alpha_1 = fits.getdata(output_path, 1)['alpha_1']
+        alpha_2 = fits.getdata(output_path, 1)['alpha_2']
     output_path = f'{survey}_{pipeline}_{year}_v{version}.fits'
     g_corr_mc_all = np.array([g1_corr_mc_all, g2_corr_mc_all])
 
@@ -472,6 +513,10 @@ def main(argv=None):
     if sh == 'ngmix':
         add_col_data['w_des'] = w_des
         add_col_format['w_des'] = 'D'
+        add_col_data['alpha_1'] = alpha_1
+        add_col_format['alpha_1'] = 'D'
+        add_col_data['alpha_2'] = alpha_2
+        add_col_format['alpha_2'] = 'D'
     
     write_shape_catalog(
         output_path, 
