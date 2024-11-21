@@ -516,7 +516,7 @@ def write_shape_catalog(
         'e2',
         'Calibrated reduced shear estimate, 2nd comp'
     )
-    table_hdu.header['TTYPE5'] = ('w', 'Weight')
+    table_hdu.header['TTYPE5'] = ('w_iv', 'Inverse Variance Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
     if snr is not None:
         table_hdu.header['TTYPE7'] = (

@@ -28,7 +28,7 @@ np.set_printoptions(precision=3, formatter={'float': '{: .3g}'.format})
 # Survey parameters
 
 ## Field or patch name. Put None if n/a
-name = 'P3'
+name = 'P4'
 print('Field name = {}'.format(name))
 
 ## Area of a tile in deg^2
@@ -49,7 +49,7 @@ print('Shape measurement method(s):', shapes)
 
 ### Input data directory
 #data_dir = f'{os.environ["HOME"]}/data_WL'
-data_dir = '.'
+data_dir = '/home/mkilbing/astro/Runs/shapepipe/CFIS/v2/pre_v2/psfex/P4'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'

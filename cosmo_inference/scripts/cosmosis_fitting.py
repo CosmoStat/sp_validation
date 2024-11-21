@@ -7,7 +7,7 @@ import matplotlib.pylab as plt
 import sys
 
 #transforms treecorr fits file of correlation functions into CosmoSIS-friendly 2pt FITS extension to be read by 2pt_likelihood
-def treecorr_to_fits(xipm_file,root):
+def treecorr_to_fits(filename1, filename2, root):
     
     xiplus_hdu = fits.open(filename1)
     ximinus_hdu = fits.open(filename2)
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     
     #create the required FITS extensions
     print("Creating 2PT fits extension...\n")
-    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file,root)
+    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim, root)
     print("Creating CovMat fits extension...\n")
     cov_hdu = covdat_to_fits(cov_file)
     print("Creating n(z) fits extension...\n")
