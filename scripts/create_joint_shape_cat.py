@@ -150,7 +150,7 @@ def get_R(fname_base, key_base=None):
     dat = ascii.read(f'{fname_base}.txt')
     if dat[-1]['patch'] != 'all':
         raise ValueError(
-            f'Invalid file {fname}, last row does not correspond to patch=\'all\''
+            f'Invalid file {fname_base}, last row does not correspond to patch=\'all\''
         )
     R = np.empty(shape=(2, 2))
 
@@ -241,7 +241,7 @@ def merge_catalogues(
 
     col_names = col_names + ('patch',)
 
-    #Compute coluivmn for the DES weights (Gatti et al. 2021)
+    #Compute column for the DES weights (Gatti et al. 2021)
     if sh == 'ngmix':
         if verbose:
             print(f"Compute DES weights for the combined catalogue.")
@@ -373,7 +373,7 @@ def main(argv=None):
 
     param = update_param(p_def, options)
 
-    #logging.log_command(argv)
+    logging.log_command(argv)
 
     if param.survey == 'v1':
         n_patch = 7
@@ -425,7 +425,7 @@ def main(argv=None):
         verbose=param.verbose,
         return_mean_e=return_mean_e,
         return_mean_R_shear=return_mean_R_shear,
-        hist_base=None,
+        hist_base=sh,
     )
 
     fname = 'c.txt'

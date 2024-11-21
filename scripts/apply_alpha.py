@@ -48,6 +48,8 @@ def params_default():
         'output_path': 'shape_cat_cor_alpha.fits',
     }
 
+    param['alpha_leakage'] = f'./leakage/PSF_e_vs_e_gal_order-{param['order']}_mix-{param['mix']}.json'
+
     return param
 
 
@@ -118,6 +120,14 @@ def parse_options(p_def):
         type='string',                                                          
         help=f'PSF e2 column name, default=\'{p_def["e2_PSF_col"]}\''              
     )
+    parser.add_option(
+        '',
+        '--alpha_leakage',
+        dest='alpha_leakage',
+        default=p_def['alpha_leakage'],
+        type='string',
+        help=f'File containing the alpha leakage fitted parameters, default=\'{p_def['alpha_leakage']}\''
+    )
     parser.add_option(                                                          
         '-o',
         '--output_path',
@@ -151,8 +161,7 @@ def main(argv=None):
 
     # Load best-fit parameters for alpha leakage
     fname = (
-        f'/home/guerrini/sp_validation/notebooks/cosmo_val/output/leakage_SP_v1.4-P1+3_wcs/PSF_e_vs_e_gal_order-'
-        + f'{params["order"]}_mix-{params["mix"]}.pkl'
+        params['alpha_leakage']
     )
     with open(fname, 'rb') as fp:
         par_best_fit = pickle.load(fp)
