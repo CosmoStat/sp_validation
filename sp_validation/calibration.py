@@ -312,3 +312,56 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     alpha_2 += df_gal['alpha_2_corr'].values
 
     return alpha_1, alpha_2
+
+def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
+    assert (weight_type in ['iv', 'des']), "The weight_type is not correct. Options 'iv' (inverse variance) or 'des'."
+    
+    hdu_gal = fits.open(path_cat_gal)
+
+    cat_gal = hdu_gal[1].data
+
+    R_select = np.array([
+        [hdu_gal[0].header['R_S11'], hdu_gal[0].header['R_S12']],
+        [hdu_gal[0].header['R_S21'], hdu_gal[0].header['R_S22']]
+    ])
+
+    if verbose:
+        print('R_select\n', R_select)
+
+    g = np.array([cat_gal['e1_uncal'], cat_gal['e2_uncal']])
+
+    c = np.average(g, axis=1, weights=cat_gal['w_'+weight_type])
+
+    if verbose:
+        print('Additive bias\n', c)
+
+    R_shear = np.zeros((2, 2))
+    for iidx in range(2):
+        for jidx in range(2):
+            R_shear[iidx, jidx] = np.mean(cat_gal[f'R_g{iidx+1}{jidx+1}'])
+
+    if verbose:
+        print('R_shear\n', R_shear)
+
+    R = R_shear + R_select
+
+    if verbose:
+        print('R\n', R)
+    
+    c_corr = np.linalg.inv(R) @ c
+    g_cal = np.linalg.inv(R) @ g
+
+    for comp in (0, 1):
+        g_cal[comp] -= c_corr[comp]
+
+    return g_cal[0], g_cal[1]
+
+def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
+    
+    e1, e2 = get_calibrate_e_from_cat(path_cat_gal, weight_type, verbose)
+
+    cat_gal = fits.getdata(path_cat_gal)
+    e1_noleak = e1 - cat_gal['alpha_1']*cat_gal['e1_PSF']
+    e2_noleak = e2 - cat_gal['alpha_2']*cat_gal['e2_PSF']
+
+    return e1_noleak, e2_noleak
