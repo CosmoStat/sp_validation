@@ -28,7 +28,7 @@ np.set_printoptions(precision=3, formatter={'float': '{: .3g}'.format})
 # Survey parameters
 
 ## Field or patch name. Put None if n/a
-name = 'P3'
+name = 'P7'
 print('Field name = {}'.format(name))
 
 ## Area of a tile in deg^2
@@ -55,7 +55,7 @@ data_dir = '.'
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = f'{data_dir}/final_cat.npy'
+galaxy_cat_path = f'{data_dir}/final_cat_{name}.hdf5'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
 
 ### Star and PSF catalog name; optional, set to `None` if not required

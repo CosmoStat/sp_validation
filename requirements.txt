@@ -6,6 +6,7 @@ cs_util==0.1.0
 astropy>=5.0
 healpy
 getdist
+h5py
 jupyterlab
 lmfit
 numpy==1.26.4
