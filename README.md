@@ -11,12 +11,10 @@ Validation of weak-lensing catalogues (galaxy and star shapes and other paramete
 | [![coc](https://img.shields.io/badge/conduct-read-lightgrey)](https://github.com/martin.kilbinger/sp_validation/blob/master/CODE_OF_CONDUCT.md) | [![Updates](https://pyup.io/repos/github/martin.kilbinger/sp_validation/shield.svg)](https://pyup.io/repos/github/martin.kilbinger/sp_validation/) | |
 
 ---
-> Author: <a href="www.cosmostat.org/people/kilbinger" target="_blank" style="text-decoration:none; color: #F08080">Axel Guinot, Martin Kilbinger, Samuel Farrens, Emma Ayçoberry</a>  
+> Authors: <a href="www.cosmostat.org" target="_blank" style="text-decoration:none; color: #F08080">CosmoStat</a> lab at CEA Paris-Saclay, including:
+  Axel Guinot, Martin Kilbinger, Lucie Baumont, Sacha Guerrini, Fabian Hervas Peters, Samuel Farrens, Emma Ayçoberry.</a>
 > Email: <a href="mailto:martin.kilbinger@cea.fr" style="text-decoration:none; color: #F08080">martin.kilbinger@cea.fr</a>  
-> Year: 2021  
 ---
-
-See [pyraliddemo](https://github.com/sfarrens/pyraliddemo) for a demo package created with the Pyralid template.
 
 This package contains a library and several scripts and notebooks. The main
 tasks that can be performed by `sp_validation` are:
@@ -40,89 +38,16 @@ tasks that can be performed by `sp_validation` are:
 See the [documentation](docs/source/run_validation.md) for instructions how to set up and run `sp_validation`.
 
 
-## Further post-processing
+## Post processing
 
-After the shear validation is run, further processing steps can be carried out using python scripts, as follows.
+The output(s) of one or more [shear validation runs](#run-shear-validation) can
+be processed further with post-processing scripts. See
+[here](docs/sourcs/post_processing.md) for details.
 
-### Combine validation runs
+## Cosmology validation
 
-Summary statistics created by validation runs of sub-areas of a survey can be combined to create joint summary statistics.
-This is useful in cases where the galaxy catalogue of an entire survey is too large to process, and needs to be broken
-down in smaller patches. This step provides global summary statistics from those patches.
+TBD.
 
-Depending on the type of summary, their combination can be the sum (e.g. for number of objects), average, weighted average (e.g. for the additive bias),
-the weighted average of the square (e.g. the ellipticity dispersion), the weighted variance (to combine variance estimates), or the weighted variance of the mean
-(to combine mean variance estimates).
+## Cosmology inference
 
-In a directory containing the subpatches as subdirectories, and within each their own `sp_output` results of the validation runs, type
-```bash
-/path/to/sp_validation/scripts/combine_results.py
-```
-This script creates a number of output files, including `R.txt` and `c.txt` with the combined multiplicative and additive biases, respectively.
-
-### Create combined calibrated shear catalogue
-
-After creating the combined results described above, the global calibration outputs can be used to create a combined, globally calibrated shear catalogue.
-The calibration is obtained from the files `R.txt` and `c.txt` created above.
-
-In the same directory containing the subpatches as above, type
-```bash
-/path/to/sp_validation/scripts/create_joint_shape_cat.py
-```
-It creates the joint output catalogue `joint.fits`.
-
-### PSF - galaxy object-wise ellipticity leakage
-
-The validation notebooks, in particular `psf_leakage.ipynb`, compute the leakage from PSF to galaxy ellipticity, as part of the global validation.
-This can also be done with the stand-alone python script `scripts/leakage_object.py`.
-
-For example, for a given patch, run
-```bash
-leakage_object.py -i sp_output/shape_catalog_extended_ngmix.fits -o leakage --hdu_psf 2 -v
-```
-to output plots and text files for the object-wise and scale-dependent leakage for that patch.
-
-Leakage for the joint v1.0 catalogue can be computed via
-```bash
-leakage_object.py -i SP/unions_shapepipe_extended_2022_v1.0.fits -I SP/unions_shapepipe_psf_2022_v1.0.1.fits -o leakage -v
-```
-assuming `SP` is a link to the v1.0 ShapePipe data directory.
-If this call was done in a subdirectory from where in `..` are the patch runs, joint plots of the scale-dependent leakage can be produced by
-```bash
-plot_leakage.py leakage/alpha_leakage_ngmix.txt ../P[1234567]/leakage/alpha_leakage_ngmix.txt`
-```
-This will read in the text files produces by the previous calls of `leakage_object.py`.
-
-This script fits a consistent linear or quadratic model of the galaxy
-ellipticity as function of PSF ellipticity. The best-fit parameters are written
-in an output `json` file.
-
-A summary table of the object-wise leakage linear parameters will be created by
-`combine_results.py`, see above. This call will add the leakage from the joint
-catalogue, assuming the results are stored in `joint/leakage`.
-
-### PSF - galaxy scale-dependent ellipticity leakage
-
-Use the script `scripts/leakage_scale.py`.
-
-### Correct for PSF - galaxy ellipticity leakage
-
-Experimentally we can apply the correction alpha * eps_PSF to the galaxy
-elliptity.
-
-First, `leakage_object.py` (see above) needs to be run.
-
-Second, the best-fit result from that previous call of `leakage_object.py` is
-read, applied to the extended shear catalogue, and the corrected ellipticity is
-written in an output file.
-
-```bash
-apply_alpha.py`
-```
-
-Third, compute the shear correlation function and E-/B-mode statistics
-using `treecorr`, with the notebook (or ipython script)
-`notebooks/analt/xip_xim_v1_alpha_cor[.ipynb|.py]`.
-
-Fourth, use the notebook `TBD` to plot the results. 
-
+See the corresponding [documentation](cosmo_inference/README.md).
