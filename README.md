@@ -42,7 +42,7 @@ See the [documentation](docs/source/run_validation.md) for instructions how to s
 
 The output(s) of one or more [shear validation runs](#run-shear-validation) can
 be processed further with post-processing scripts. See
-[here](docs/sourcs/post_processing.md) for details.
+[here](docs/source/post_processing.md) for details.
 
 ## Cosmology validation
 
