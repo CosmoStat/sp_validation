@@ -21,15 +21,7 @@ See [pyraliddemo](https://github.com/sfarrens/pyraliddemo) for a demo package cr
 
 ## Run validation
 
-### Set up
-
-Edit the file `notebooks/params.py` according to your data.
-
-Make sure that all input files set in `params.py` are accessible from the run directory. These are
-the ASCII file containing the tile IDs (`path_tile_ID`), the FITS galaxy catalogue (`galaxy_cat_path`),
-and the FITS star catalogue (`star_cat_path`).
-
-The file `param.py` needs to be in the directory where the validation is run.
+See the [documentation](docs/source/run_validation.md).
 
 ### Run
 
