@@ -18,58 +18,31 @@ Validation of weak-lensing catalogues (galaxy and star shapes and other paramete
 
 See [pyraliddemo](https://github.com/sfarrens/pyraliddemo) for a demo package created with the Pyralid template.
 
+This package contains a library and several scripts and notebooks. The main
+tasks that can be performed by `sp_validation` are:
+- Shear validation, in particular for the output of the `shapepipe`
+  pipeline. This task takes on input a shear catalogue with metacal information,
+  performs the calibration and carries out various tests, e.g. PSF leakage.
+  A calibrated shear catalogue is then created on output.  
+- Post processing. A number of scripts allow further processing of the above
+  output calibrated shear catalogue.  
+- Cosmology validation. This task uses the calibrated shear catalogue from
+  above to run detailed diagnostics useful for further cosmology analysis,
+  e.g. rho- and tau-statistics, E-/B-mode decomposition. Several catalogues
+  can be compared and useful plots are created.
+- Cosmology inference. This task uses the calibrated shear catalogue from
+  a shear validation run and performes cosmology inference using the two-point
+  correlation function.
 
-## Run validation
 
-See the [documentation](docs/source/run_validation.md).
+## Run shear validation
 
-### Run
+See the [documentation](docs/source/run_validation.md) for instructions how to set up and run `sp_validation`.
 
-There are two possibilities to carry out the validation, by running the jupyter notebooks
-in a browser, or by running a python script in the command line via `ipython`.
-
-#### Running the jupyter notebooks
-
-1. In the run directory start JupyterLab:
-  ```bash
-  jupyer-lab
-  ```
-
-2. Load and run first notebook `main_set_up.ipynb`:
-   1. Double-click in file manager tab on the left.
-   2. Run notebook.
-
-3. Run all further notebooks:
-   1. Double-click as above.
-   2. Change kernel to `main_set_up.ipynb`:
-      Either via the menu `Kernel -> Change Kernel` or
-      by clicking on `Python 3` on the top left of the notebook.
-   3. Run notebook.
-
-Run the notebooks in the following order:
-   1. `main_set_up.ipynb` (main notebook)
-   2. `metacal_global.ipynb`
-   3. [`metacal_local.ipynb`] optional     
-   4. `psf_leakage.ipynb`
-   5. `write_cat.ipynb`
-   6. `maps.ipynb`
-   7. `cosmology.ipynb`
-
-#### Running the python script
-
-1. Create the python script from the jupyter notbooks. In `notebooks`:
-  ```bash
-  python config_convert.py
-  ```
-
-2. Run python script. In run directory:
-  ```bash
-   ipython /path/to/sp_validation/notebooks/validation.py
-   ```
 
 ## Further post-processing
 
-After the validation is run, further processing steps can be carried out using python scripts, as follows.
+After the shear validation is run, further processing steps can be carried out using python scripts, as follows.
 
 ### Combine validation runs
 
