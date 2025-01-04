@@ -58,6 +58,9 @@ path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 galaxy_cat_path = f'{data_dir}/final_cat_{name}.hdf5'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
 
+## Parameter list; optional, set to `None` if not required
+param_list_path = f"{data_dir}/final_cat.param"
+
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f'{data_dir}/full_starcat-0000000.fits'
 
