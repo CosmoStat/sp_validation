@@ -23,3 +23,5 @@ setuptools==65.5.1
 treecorr
 tqdm
 uncertainties
+pyccl
+opencv-python-headless
