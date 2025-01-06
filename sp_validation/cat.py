@@ -11,6 +11,7 @@
 import os
 import re
 import numpy as np
+import getpass
 
 import h5py
 import tqdm
@@ -548,7 +549,12 @@ def write_shape_catalog(
 
     # Primary HDU with information in header
     primary_header = fits.Header()
-    primary_header = cat.write_header_info_sp(primary_header)
+
+    primary_header = cat.write_header_info_sp(
+        primary_header,
+        name=getpass.getuser(),
+        version=__version__
+    )
     cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
     primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
