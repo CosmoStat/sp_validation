@@ -314,6 +314,23 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     return alpha_1, alpha_2
 
 def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
+    """
+    Calibrates ellipticities from a galaxy catalog with a certain weight type.
+
+    Parameters
+    ----------
+    path_cat_gal : str
+        Path to the galaxy catalog
+    weight_type : str, optional, default='des'
+        Type of weight to use. Options are 'des' (DES weight) or 'iv' (inverse variance)
+    verbose : bool, optional, default=False
+        If True, print intermediate results
+
+    Returns
+    -------
+    g_cal : np.array
+        Calibrated ellipticities
+    """
     assert (weight_type in ['iv', 'des']), "The weight_type is not correct. Options 'iv' (inverse variance) or 'des'."
     
     hdu_gal = fits.open(path_cat_gal)
@@ -357,7 +374,25 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
     return g_cal[0], g_cal[1]
 
 def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
+    """
+    Calibrate ellipticities and removes leakage from a galaxy catalog with a certain weight type.
+
+    Parameters
+    ----------
+    path_cat_gal : str
+        Path to the galaxy catalog
+    weight_type : str, optional, default='des'
+        Type of weight to use. Options are 'des' (DES weight) or 'iv' (inverse variance)
+    verbose : bool, optional, default=False
+        If True, print intermediate results
     
+    Returns
+    -------
+    e1_noleak : np.array
+        Calibrated ellipticities without leakage for the first component
+    e2_noleak : np.array
+        Calibrated ellipticities without leakage for the second component
+    """
     e1, e2 = get_calibrate_e_from_cat(path_cat_gal, weight_type, verbose)
 
     cat_gal = fits.getdata(path_cat_gal)
