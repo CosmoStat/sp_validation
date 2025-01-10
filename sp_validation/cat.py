@@ -551,8 +551,7 @@ def write_shape_catalog(
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
     primary_header['w'] = (
-        'Weight',
-        r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2))'
+        'DES Weight'
     )
     if sigma_epsilon:
         primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
