@@ -28,7 +28,7 @@ np.set_printoptions(precision=3, formatter={'float': '{: .3g}'.format})
 # Survey parameters
 
 ## Field or patch name. Put None if n/a
-name = 'P3'
+name = 'P4'
 print('Field name = {}'.format(name))
 
 ## Area of a tile in deg^2
@@ -59,6 +59,9 @@ print(f'Galaxy catalogue = {galaxy_cat_path}')
 
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f'{data_dir}/full_starcat-0000000.fits'
+
+# HDU number of star and PSF catalogue
+hdu_star_cat = 1
 
 ### External mask; optional, set to `None` if not required
 #mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'

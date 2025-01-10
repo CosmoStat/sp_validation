@@ -1,4 +1,5 @@
 importlib_metadata
+adjustText
 colorama
 emcee
 cs_util==0.1.0
