@@ -11,6 +11,10 @@
 import os
 import re
 import numpy as np
+import getpass
+
+import h5py
+import tqdm
 
 from datetime import datetime
 
@@ -54,7 +58,7 @@ def print_mean_ellipticity(
     stats_file : file handler
         summary statistics output file handler
     invalid : float, optional, default -10
-        flag objects with ellipticty value = invalid
+        flag objects with ellipticity value = invalid
     verbose : bool, optional, default=False
         verbose output if True
     """
@@ -545,7 +549,12 @@ def write_shape_catalog(
 
     # Primary HDU with information in header
     primary_header = fits.Header()
-    primary_header = cat.write_header_info_sp(primary_header)
+
+    primary_header = cat.write_header_info_sp(
+        primary_header,
+        name=getpass.getuser(),
+        version=__version__
+    )
     cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
     primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
@@ -616,3 +625,125 @@ def write_PSF_cat(output_path, ra, dec, e1, e2):
     cols = [c_ra, c_dec, c_e1, c_e2]
 
     cat.write_fits_BinTable_file(cols, output_path)
+
+
+def read_param_file(path, verbose=False):
+    """Read Param File.
+    MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.
+
+    Return parameter list read from file.
+
+    Parameters
+    ----------
+    path: str
+        input file name
+    verbose: bool, optional, default=False
+        verbose output if True
+
+    Returns
+    -------
+    list of str
+        parameter names
+
+    """
+    param_list = []
+
+    if path:
+        if verbose:
+            print(f"Reading parameter file {path}")
+
+        with open(path) as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                entry = line.rstrip()
+                if not entry or entry == "":
+                    continue
+                param_list.append(entry)
+
+    if verbose:
+        if len(param_list) > 0:
+            print(f"Read {len(param_list)} columns", end="")
+        else:
+            print("No parameters read", end="")
+        print(" into merged catalogue")
+
+    param_list_unique = list(set(param_list))
+    
+    if verbose:
+        n = len(param_list) - len(param_list_unique)
+        if n > 1:
+            print("Removed {n} duplicate entries")
+    
+    return param_list_unique
+
+
+def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=None):
+    """Read HDF5 File.
+
+    Read hdf5 file and return contained data.
+
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    name : str
+        patch name
+    stats_file : file handler
+        summary statistics output file handler
+    check_only : bool, optional
+        If True only check, not return data
+ 
+    Returns
+    -------
+    dict
+        data
+
+    """
+    param_list = read_param_file(param_path, verbose=True) if param_path else None
+
+    with h5py.File(file_path, "r") as hdf5_file:
+        # Find patch group in hierarchical structure
+        if not f"patches/{name}" in hdf5_file:
+            raise KeyError(f"Entry patches/{name} not found in file {file_path}")
+        patch_group = hdf5_file[f"patches/{name}"]
+
+        data_list = []
+        ID_pbl = set()
+        for ID in tqdm.tqdm(patch_group):
+
+            # Get data for this ID from file
+            data = patch_group[ID][()]
+
+            # Restrict to parameter list if given
+            data = data[param_list] if param_list is not None else data
+
+            #if data_list is None:
+            #    data_list = data
+            #    ID_first = ID
+            #else:
+            
+            #    # Check columns
+            #    for key in data.dtype.names:
+            #        if key not in data_list.dtype.names:
+            #            pass
+            #            #print(f"Not found in ID {ID_first}", key)
+            #            #ID_pbl.update([ID])
+            #    for key in data_list.dtype.names:
+            #        if key not in data.dtype.names:
+            #            pass
+            #            #print(f"Not found in ID {ID}", key)
+            #            #ID_pbl.update([ID])
+
+            if not check_only:
+                # Add new to existing data
+                data_list.append(data)
+
+        data_comb = np.concatenate(data_list, axis=0)
+ 
+    # Print problematic tile IDs
+    for ID in ID_pbl:
+        print("Tile IDs with missing keys:", file=stats_file)
+        print(ID, file=stats_file)
+
+    return data_comb

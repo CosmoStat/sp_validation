@@ -6,6 +6,7 @@ cs_util==0.1.0
 astropy>=5.0
 healpy
 getdist
+h5py
 jupyterlab
 lmfit
 numpy==1.26.4
@@ -22,3 +23,5 @@ setuptools==65.5.1
 treecorr
 tqdm
 uncertainties
+pyccl
+opencv-python-headless
