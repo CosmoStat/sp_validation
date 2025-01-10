@@ -28,7 +28,7 @@ def calc_cov(root, nz_file, cosmocov_path):
 
 	if not os.path.exists('%s/CosmoCov/covs/cov' %cosmocov_path):
 		raise Exception("CosmoCov executable not found! Please check the path to CosmoCov in the config file.")
-	
+		
 	results = subprocess.run('for i in {1..3}; do \
      						%s/CosmoCov/covs/cov $i cosmocov_config/cosmocov_%s.ini; done' %(cosmocov_path, root), 
 							capture_output = True, 

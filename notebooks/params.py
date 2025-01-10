@@ -49,7 +49,7 @@ print('Shape measurement method(s):', shapes)
 
 ### Input data directory
 #data_dir = f'{os.environ["HOME"]}/data_WL'
-data_dir = '.'
+data_dir = '/home/mkilbing/astro/Runs/shapepipe/CFIS/v2/pre_v2/psfex/P4'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'
