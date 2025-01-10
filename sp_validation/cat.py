@@ -74,7 +74,7 @@ def print_mean_ellipticity(
     EPS = 0.0001
 
     # Index list of valid objects
-    ind_val = np.zeros(shape=(2, n_tot), dtype=np.bool)
+    ind_val = np.zeros(shape=(2, n_tot), dtype=bool)
     for i in (0, 1):
         ind_val[i] = np.abs(all_ell[i] - invalid) > EPS
     # Valid objects = those for which both ellipticity

@@ -386,6 +386,8 @@ def main(argv=None):
         patches = ["P1", "P3"]
     elif param.survey == "P1+3+4":
         patches = ["P1", "P3", "P4"]
+    elif param.survey == "v2_test":
+        patches = ["P1", "P2", "P3", "P4", "P6", "P7"]
     elif param.survey == 'W3':
         patches = ['W3']
     elif param.survey == 'P3':
@@ -396,7 +398,7 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.4.1_test'
+    version = '1.4.0'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -541,9 +543,9 @@ def main(argv=None):
     if param.verbose:
         print('Merging PSF catalogues (with single-epoch moments shapes)')
     # Path of ShapePipe run
-    #input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+    input_sub_path = 'output/run_sp_Ms/merge_starcat_runner/output/full_starcat-0000000.fits'
     # Path of copied file
-    input_sub_path = 'full_starcat-0000000.fits'
+    # input_sub_path = 'full_starcat-0000000.fits'
 
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
     merge_catalogues(
