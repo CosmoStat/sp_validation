@@ -58,7 +58,7 @@ def print_mean_ellipticity(
     stats_file : file handler
         summary statistics output file handler
     invalid : float, optional, default -10
-        flag objects with ellipticty value = invalid
+        flag objects with ellipticity value = invalid
     verbose : bool, optional, default=False
         verbose output if True
     """
