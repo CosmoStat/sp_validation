@@ -13,6 +13,7 @@ from cs_util import cat
 from cs_util import plots
 
 from sp_validation.cat import *
+from sp_validation.calibration import *
 
 
 
@@ -149,7 +150,7 @@ def get_R(fname_base, key_base=None):
     dat = ascii.read(f'{fname_base}.txt')
     if dat[-1]['patch'] != 'all':
         raise ValueError(
-            f'Invalid file {fname}, last row does not correspond to patch=\'all\''
+            f'Invalid file {fname_base}, last row does not correspond to patch=\'all\''
         )
     R = np.empty(shape=(2, 2))
 
@@ -168,6 +169,7 @@ def merge_catalogues(
     patches,
     input_sub_path,
     output_path,
+    sh,
     R_select=None,
     return_mean_e=False,
     return_mean_R_shear=False,
@@ -223,15 +225,30 @@ def merge_catalogues(
         if idx == 0:
             col_names = dat.dtype.names
             for name in col_names:
-                dat_all[name] = []
+                if name != 'w':
+                    dat_all[name] = []
+                else:
+                    dat_all[name+'_iv'] = []
             dat_all['patch'] = []
         for name in col_names:
-            dat_all[name] = np.append(dat_all[name], dat[name])
+            if name != 'w':
+                dat_all[name] = np.append(dat_all[name], dat[name])
+            else:
+                dat_all[name+'_iv'] = np.append(dat_all[name+'_iv'], dat[name])
 
         # Add patch number
         dat_all['patch'] = np.append(dat_all['patch'], [idx + 1] * len(dat))
 
     col_names = col_names + ('patch',)
+
+    #Compute column for the DES weights (Gatti et al. 2021)
+    if sh == 'ngmix':
+        if verbose:
+            print(f"Compute DES weights for the combined catalogue.")
+        name = 'w_des'
+        num_bins = 20
+        dat_all['w_des'] = get_w_des(dat_all, num_bins)
+        col_names = col_names + ('w_des',)
 
     column_all = []
     for name in col_names:
@@ -239,6 +256,8 @@ def merge_catalogues(
             my_format = 'D'
         else:
             my_format = 'I'
+        if name == 'w':
+            name = 'w_iv'
         column = fits.Column(name=name, array=dat_all[name], format=my_format)
         column_all.append(column)
 
@@ -246,9 +265,13 @@ def merge_catalogues(
     c = np.empty(shape=(2))
     if return_mean_e:
         for idx in (0, 1):
+            if 'w_des' in col_names:
+                name = 'w_des'
+            else:
+                name = 'w_iv'
             c[idx] = np.average(
                 dat_all[f'e{idx+1}_uncal'],
-                weights=dat_all['w']
+                weights=dat_all[name]
         )
 
     R_shear = np.empty(shape=(2, 2))
@@ -288,11 +311,48 @@ def merge_catalogues(
 
     if R_select is not None:
         R = R_shear + R_select
+        if verbose:
+            print('Performing calibration on the whole catalog.')
+        #Compute the calibration on the whole catalog for the ellipticities
+        #Find the index of the columns e1 and e2 of calibrated ellipticities
+        index_e1 = next((i for i, col in enumerate(column_all) if col.name == 'e1'), None)
+        index_e2 = next((i for i, col in enumerate(column_all) if col.name == 'e2'), None)
+
+        #Perform the calibration
+        g = np.array([dat_all['e1_uncal'], dat_all['e2_uncal']])
+        Rm1 = np.linalg.inv(R)
+
+        c_corr = Rm1.dot(c)
+        g_corr = Rm1.dot(g)
+        for comp in (0, 1):
+            g_corr[comp] = g_corr[comp] - c_corr[comp]
+
+        #Replace the columns
+        dat_all['e1'] = g_corr[0]
+        dat_all['e2'] = g_corr[1]
+        column_all[index_e1] = fits.Column(name='e1', array=g_corr[0], format='D')
+        column_all[index_e2] = fits.Column(name='e2', array=g_corr[1], format='D')
+
+        #Compute the leakage coefficients for each object
+        if sh == 'ngmix':
+            if verbose:
+                print('Computing leakage coefficients per object.')
+            num_bins = 20
+            weight_type = 'des' if 'w_des' in col_names else 'iv'
+            alpha_1, alpha_2 = get_alpha_leakage_per_object(dat_all, num_bins, weight_type)
+            #Add the columns to the fits file
+            column_all.append(fits.Column(name='alpha_1', array=alpha_1, format='D'))
+            column_all.append(fits.Column(name='alpha_2', array=alpha_2, format='D'))
+
+
         cat.write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
     else:
+        if verbose:
+            print('No calibration performed on the whole catalog.')
+        g_corr = None
         cat.write_fits_BinTable_file(column_all, output_path)
 
-    return c, R_shear
+    return c, R_shear, g_corr
 
 
 def main(argv=None):
@@ -322,15 +382,28 @@ def main(argv=None):
         patches = ['P7', 'W3', 'S4']
     elif param.survey == 'v1_small':
         patches = ['W3', 'P7']
+<<<<<<< HEAD
     else:
         patches = param.survey.split("+")
+=======
+    elif param.survey == "P1+3":
+        patches = ["P1", "P3"]
+    elif param.survey == "P1+3+4":
+        patches = ["P1", "P3", "P4"]
+    elif param.survey == "v2_test":
+        patches = ["P1", "P2", "P3", "P4", "P6", "P7"]
+    elif param.survey == 'W3':
+        patches = ['W3']
+    elif param.survey == 'P3':
+        patches = ['P3']
+>>>>>>> ab5927bcbfae42bf28631843e1cbecdbb4fffc07
 
     sh = 'ngmix'
 
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2022
-    version = '1.4.1'
+    version = '1.4.0'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -350,10 +423,11 @@ def main(argv=None):
         print('Merging extended catalogue')
     input_sub_path = f'sp_output/shape_catalog_extended_{sh}.fits'
     output_path = f'{survey}_{pipeline}_extended_{year}_v{version}.fits'
-    c_ext, R_shear_ext = merge_catalogues(
+    c_ext, R_shear_ext, g_corr = merge_catalogues(
         patches,
         input_sub_path,
         output_path,
+        sh,
         R_select=R_select,
         verbose=param.verbose,
         return_mean_e=return_mean_e,
@@ -398,8 +472,8 @@ def main(argv=None):
     # Base catalogue
     ra_all = np.array([])
     dec_all = np.array([])
-    g1_corr_mc_all = np.array([])
-    g2_corr_mc_all = np.array([])
+    g1_corr_mc_all = np.array([]) if g_corr is None else g_corr[0] #The columns are already computed from extended catalogue
+    g2_corr_mc_all = np.array([]) if g_corr is None else g_corr[1]
     w_all = np.array([])
     mag_all = np.array([])
     snr_all = np.array([])
@@ -420,22 +494,40 @@ def main(argv=None):
         mag_all = np.append(mag_all, mag)
         patch_all = np.append(patch_all, [idx + 1] * len(ra))
 
-        g = np.array([g1, g2])
+        #Only performs the calibration if the calibration is not done on the extended catalog
+        if g_corr is None:
+            g = np.array([g1, g2])
 
-        # Calibrate with global R and c
-        c_corr = Rm1.dot(c)
+            # Calibrate with global R and c
+            c_corr = Rm1.dot(c)
 
-        g_corr_mc = Rm1.dot(g)
-        for comp in (0, 1):
-            g_corr_mc[comp] = g_corr_mc[comp] - c_corr[comp]
-        g1_corr_mc_all = np.append(g1_corr_mc_all, g_corr_mc[0])
-        g2_corr_mc_all = np.append(g2_corr_mc_all, g_corr_mc[1])
+            g_corr_mc = Rm1.dot(g)
+            for comp in (0, 1):
+                g_corr_mc[comp] = g_corr_mc[comp] - c_corr[comp]
+            g1_corr_mc_all = np.append(g1_corr_mc_all, g_corr_mc[0])
+            g2_corr_mc_all = np.append(g2_corr_mc_all, g_corr_mc[1])
 
+    if sh == 'ngmix':
+        ext_cat = fits.getdata(output_path , 1)
+        w_all = ext_cat['w_des']
+        e1_psf = ext_cat['e1_PSF']
+        e2_psf = ext_cat['e2_PSF']
+        alpha_1 = ext_cat['alpha_1']
+        alpha_2 = ext_cat['alpha_2']
+        e1_noleakage = g1_corr_mc_all - alpha_1 * e1_psf
+        e2_noleakage = g2_corr_mc_all - alpha_2 * e2_psf
     output_path = f'{survey}_{pipeline}_{year}_v{version}.fits'
     g_corr_mc_all = np.array([g1_corr_mc_all, g2_corr_mc_all])
 
-    add_col_data = { 'patch' : patch_all }
+    add_col_data = { 'patch' : patch_all, }
     add_col_format = { 'patch' : 'I' }
+
+    if sh == 'ngmix':
+        add_col_data['e1_noleakage'] = e1_noleakage
+        add_col_format['e1_noleakage'] = 'D'
+        add_col_data['e2_noleakage'] = e2_noleakage
+        add_col_format['e2_noleakage'] = 'D'
+    
     write_shape_catalog(
         output_path, 
         ra_all,
@@ -456,15 +548,16 @@ def main(argv=None):
     if param.verbose:
         print('Merging PSF catalogues (with single-epoch moments shapes)')
     # Path of ShapePipe run
-    #input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+    input_sub_path = 'output/run_sp_Ms/merge_starcat_runner/output/full_starcat-0000000.fits'
     # Path of copied file
-    input_sub_path = 'full_starcat-0000000.fits'
+    # input_sub_path = 'full_starcat-0000000.fits'
 
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
     merge_catalogues(
         patches,
         input_sub_path,
         output_path,
+        sh,
         hdu_in=2,
         verbose=param.verbose,
     )

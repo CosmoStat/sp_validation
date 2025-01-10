@@ -6,7 +6,7 @@ import os
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
-not_square_size = ['DES', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
+not_square_size = ['DES', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha', 'SP_v1.3_LFmask_8k_li_2024', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
 
 def get_params_rho_tau(cat, survey="other"):
 

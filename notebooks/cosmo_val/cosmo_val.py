@@ -93,8 +93,9 @@ def print_cyan(msg):
 # ## Input parameters
 # Catalogue versions
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
-versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_v0.1', 'SP_v1.3_LFmask_8k', 'DES', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
-#versions = ['SP_v1.4-P3_LFmask']
+#versions = ['SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha' , 'SP_v1.3_LFmask_8k_li_2024']
+#versions = ['SP_v1.4_LFmask_8k_noalpha', 'SP_v1.4_LFmask_8k', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha', 'DES']
+versions = ['SP_v1.4_conv', 'SP_v1.4_noalpha']
 rho_tau_method = 'lsq' #lsq or emcee
 cov_estimate_method = 'th' #or theory/jackknife
 compute_cov_rho = True
@@ -638,7 +639,7 @@ if len(y) > 0:
     cs_plots.savefig(out_path)
 
 
-# #### Object-wise leakage
+""" # #### Object-wise leakage
 results_object = {}
 for ver in versions:
 
@@ -693,10 +694,10 @@ for ver in versions:
     # Scale-dependent leakage: value at smallest scale
     leakage_coeff[ver]["alpha_1"] = ufloat(results[ver].alpha_leak[0], results[ver].sig_alpha_leak[0])
     # Scale-dependent leakage: value extrapolated to 0 using affine model
-    leakage_coeff[ver]["alpha_0"] = ufloat(results[ver].alpha_affine_best_fit["c"].value, results[ver].alpha_affine_best_fit["c"].stderr)
+    leakage_coeff[ver]["alpha_0"] = ufloat(results[ver].alpha_affine_best_fit["c"].value, results[ver].alpha_affine_best_fit["c"].stderr) """
 
 
-# +
+""" # +
 # Plot coefficients
 fig = cs_plots.figure(figsize=(15, 15))
 
@@ -735,7 +736,7 @@ plt.legend()
 plt.xlabel(r"tr $a$ (object-wise)")
 plt.ylabel(r"$\alpha$ (scale-dependent)")
 out_path = f"{cat['paths']['output']}/leakage_coefficients.png"
-cs_plots.savefig(out_path)
+cs_plots.savefig(out_path) """
 
 # +
 # ### Cosmological analysis
