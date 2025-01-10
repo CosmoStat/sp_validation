@@ -568,8 +568,8 @@ def main(argv=None):
     elif argv[1] == 'comb':
         # Validate with combined catalogue
         patches = ['comb']
-    elif argv[1] == "P1+3":
-        patches = ["P1", "P3"]
+    else:
+        patches = argv[1].split("+")
 
     n_patch = len(patches)
 
@@ -661,6 +661,8 @@ def main(argv=None):
             results_comb['value'][key]['comb'] = (results_comb['value'][key]['comb'] / results['all'][key] - 1) * 100
         print('\nFractional difference [%]:')
         print_all(results_comb, stats_file_comb, header=False)
+    else:
+        results_comb = None
 
     # Get value of entire-sample run
     if argv[1] == 'v1':
@@ -757,10 +759,11 @@ def main(argv=None):
         print_all(results, stats_files, use_keys=use_keys, fout=f, all=False)
 
         # Add joint sample results
-        print_all(results_comb, stats_file_comb, use_keys=use_keys, fout=f, all=False)
-        f.close()
-        col_names = ['m_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}']
-        latex_table(file_base, cols=use_keys, col_names=col_names)
+        if results_comb:
+            print_all(results_comb, stats_file_comb, use_keys=use_keys, fout=f, all=False)
+            f.close()
+            col_names = ['m_{11}', 'm_{22}', 'm_{12}', 'm_{21}', 'm_{\\rm s1}', 'm_{\\rm s2}']
+            latex_table(file_base, cols=use_keys, col_names=col_names)
 
 
     for file_base in file_base_arr:
