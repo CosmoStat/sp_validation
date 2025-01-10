@@ -20,6 +20,7 @@ shear_psf_leakage==0.2.0
 scipy
 seaborn
 setuptools==65.5.1
+statsmodels
 treecorr
 tqdm
 uncertainties
