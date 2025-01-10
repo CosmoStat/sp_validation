@@ -74,7 +74,7 @@ def print_mean_ellipticity(
     EPS = 0.0001
 
     # Index list of valid objects
-    ind_val = np.zeros(shape=(2, n_tot), dtype=np.bool)
+    ind_val = np.zeros(shape=(2, n_tot), dtype=bool)
     for i in (0, 1):
         ind_val[i] = np.abs(all_ell[i] - invalid) > EPS
     # Valid objects = those for which both ellipticity
@@ -83,7 +83,7 @@ def print_mean_ellipticity(
 
     n_tot_val = len(np.where(ind_v)[0])
     n_tot_mil = util.millify(n_tot_val)
-    msg = ('Total number of valid objects = {n_tot_val} = {n_tot_mil}')
+    msg = f'Total number of valid objects = {n_tot_val} = {n_tot_mil}'
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = 'Fraction of invalid objects = {}/{} = {:.3g}%\n' \
@@ -462,7 +462,7 @@ def write_shape_catalog(
     g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
         uncalibrated shear estimates
     R_g11, R_g22, R_g12, R_g21 : arrays(ngal) of float, optional, default=None
-        shear response matrix elemencts per galaxy
+        shear response matrix elements per galaxy
     sigma_epsilon: float, optional
         shape noise, default is `None`
     add_cols : dict, optional, default is `None`
@@ -470,6 +470,7 @@ def write_shape_catalog(
     add_cols_format : dict, optional
         format for n additional columns to add, default is `None`, for which
         'float' format is used
+
     """
     # Data HDU
     c_ra = fits.Column(name='RA', array=ra, format='D', unit='deg')
@@ -495,7 +496,7 @@ def write_shape_catalog(
             ntype += 1
 
     if add_cols:
-        for i, name in enumerate(add_cols):
+        for name in add_cols:
             if add_cols_format:
                 my_format = add_cols_format[name]
             else:
@@ -515,7 +516,7 @@ def write_shape_catalog(
         'e2',
         'Calibrated reduced shear estimate, 2nd comp'
     )
-    table_hdu.header['TTYPE5'] = ('w', 'Weight')
+    table_hdu.header['TTYPE5'] = ('w_iv', 'Inverse Variance Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
     if snr is not None:
         table_hdu.header['TTYPE7'] = (
@@ -550,8 +551,7 @@ def write_shape_catalog(
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
     primary_header['w'] = (
-        'Weight',
-        r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2))'
+        'DES Weight'
     )
     if sigma_epsilon:
         primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
