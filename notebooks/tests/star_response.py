@@ -10,7 +10,7 @@
 #   kernelspec:
 #     display_name: sp_validation
 #     language: python
-#     name: sp_validation
+#     name: python3
 # ---
 
 # # Star response tests
@@ -37,10 +37,15 @@ from sp_validation.galaxy import *
 from sp_validation.basic import *
 
 from cs_util.plots import plot_histograms
+from cs_util import args
 
 from unions_wl import catalogue as wl_cat
 
+print("star_response.py start")
+
 # +
+# Parameters: TODO move to parameter file, use cs_util.args (not working so fat)
+
 galaxy_cat_path = "final_cat.npy"
 mmap_mode = None
 col_name_ra = "XWIN_WORLD"
@@ -57,6 +62,10 @@ do_spread_model = False
 
 star_cat_path = "full_starcat-0000000.fits"
 star_cat_path_psfex = "/home/mkilbing/astro/Runs/shapepipe/CFIS/big_run/W3/psf_validation_merged/psf_cat_full.fits"
+print("Opening star cat")
+d_star = fits.getdata(star_cat_path, 1)
+d_star_psfex = fits.getdata(star_cat_path_psfex, 2)
+print("Done reading star cat")
 thresh = 0.0002
 
 input_mask = f"{os.environ['HOME']}/astro/data/CFIS/v1.0/Lensfit/masks/CFIS3500_THELI_mask_hp_4096.fits"
@@ -76,7 +85,7 @@ ddc = dd[cut_overlap]
 xlim = [-0.05, 0.75]
 ylim = [23, 17]
 plt.plot(
-    ddc["NGMIX_T_NOSHEAR"],
+    ddc["NGMIX_T_NOSHEAR"] / ddc["NGMIX_Tpsf_NOSHEAR"],
     ddc["MAG_AUTO"],
     ".",
     markersize=0.01,
@@ -87,6 +96,7 @@ plt.xlabel(r"$T / T_{\rm psf}$")
 plt.ylabel("$r$")
 plt.axvline(x=0.3, color="k", linewidth=1)
 plt.axvline(x=0.0, color="g", linewidth=1)
+plt.savefig("size_mag_all.png")
 
 # Apply THELI mask
 mask, nest, nside = wl_cat.read_hp_mask(input_mask, verbose=True)
@@ -125,6 +135,7 @@ plt.xlabel(r"$T / T_{\rm psf}$")
 plt.ylabel("$r$")
 plt.axvline(x=0.3, color="k", linewidth=1)
 plt.axvline(x=0.01, color="g", linewidth=1)
+plt.savefig("relsize_mag_infootprint.png")
 
 
 # ### Star sample
@@ -175,7 +186,9 @@ for key in stars:
 
 print(f'{len(stars_nm["resol"]) / len(stars_nm["point"]):.2f}')
 print(f'{len(stars["resol"]) / len(stars["point"]):.2f}')
-# -
+
+# +
+# Plot zoom-in relative size-magnitude diagram
 
 xlim = [-0.05, 0.75]
 plt.plot(
@@ -212,6 +225,7 @@ plt.xlabel(r"$T / T_{\rm{psf}}$")
 plt.ylabel("$r$")
 plt.legend()
 _ = plt.savefig("size_mag_zoom.png")
+# -
 
 # Call metacal to get R_shear
 stars_cal = {}
@@ -236,6 +250,8 @@ for key in stars_cal:
     print_stats(rs, stats_file, verbose=True)
 
 # +
+# Plot response matrix distribution
+
 y_label = "frequency"
 n_bin = 100
 colors = ["blue", "green", "red"]
@@ -302,8 +318,6 @@ plt.show()
 # ## Match to star catalogue
 
 
-d_star = fits.getdata(star_cat_path, 2)
-d_star_psfex = fits.getdata(star_cat_path_psfex, 2)
 
 # sp_validation matching: matches to multiple galaxies are removed.
 print("MCCD:")
@@ -335,6 +349,7 @@ mask_stars_matched, stars_matched = create_mask_stars(ddcm[ind_star])
 for key in mask_stars_matched:
     print_stats(f"{key} {len(stars_matched[key])}", stats_file, verbose=True)
 
+# Plot relative size - magnitude diagram for matched stars
 xlim = [-0.05, 0.75]
 plt.plot(
     ddcm[ind_star]["NGMIX_T_NOSHEAR"] / ddcm[ind_star]["NGMIX_Tpsf_NOSHEAR"],
@@ -348,6 +363,7 @@ plt.xlim(xlim)
 plt.xlabel(r"$T / T_{\rm{psf}}$")
 plt.ylabel("$r$")
 plt.legend()
+plt.savefig("relsize_mag_matched.png")
 
 # +
 xlim = [-0.05, 0.75]
@@ -460,6 +476,7 @@ plt.xlim(xlim)
 plt.xlabel(r"$T / T_{\rm{psf}}$")
 plt.ylabel("$r$")
 plt.legend()
+plt.savefig("relsize_mag_matched_resol_point.png")
 
 # +
 # Look at HSM quantities for point- and resolved stars
@@ -485,6 +502,7 @@ plt.xlim(xlim)
 plt.xlabel(r"$\sigma$")
 plt.ylabel("$r$")
 plt.legend()
+plt.savefig("relsize_hsm_mag_matched_resol_point.png")
 
 print("sample mean std: PSF sizes")
 for key in mask_stars_matched:
@@ -521,6 +539,7 @@ plt.xlim(xlim)
 plt.xlabel(r"$\sigma$")
 plt.ylabel("$r$")
 plt.legend()
+plt.savefig("dsize_hsm_mag_matched_resol_point.png")
 
 print("sample mean std")
 for key in mask_stars_matched:
@@ -555,6 +574,7 @@ plt.xlim(xlim)
 plt.xlabel(r"$e_1$")
 plt.ylabel("$r$")
 plt.legend()
+plt.savefig("dell1_hsm_mag_matched_resol_point.png")
 
 print("sample mean std")
 for key in mask_stars_matched:
@@ -584,15 +604,13 @@ plt.xlim(xlim)
 plt.xlabel(r"$e_2$")
 plt.ylabel("$r$")
 plt.legend()
+plt.savefig("dell2_hsm_mag_matched_resol_point.png")
 
 print("sample mean std")
 for key in mask_stars_matched:
     mu = np.mean(comb["E2_PSF_HSM"][mask_stars_matched[key]] - comb["E2_STAR_HSM"][mask_stars_matched[key]])
     std = np.std(comb["E2_PSF_HSM"][mask_stars_matched[key]] - comb["E2_STAR_HSM"][mask_stars_matched[key]])
     print(key, mu, std)
-# -
-
-FLUX_RADIUS SPREAD_MODEL 
 
 # +
 plt.plot(
@@ -649,3 +667,4 @@ for key in mask_stars_matched:
 for key in comb: print(key)
 
 
+print("star_response.py end")

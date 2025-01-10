@@ -41,4 +41,4 @@ def millify(n):
         )
     )
 
-    return '{n / 10**(3 * millidx):.0f}{millnames[millidx])}'
+    return f'{n / 10**(3 * millidx):.0f}{millnames[millidx]}'

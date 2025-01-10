@@ -337,7 +337,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 dmc = get_match(stats_files, patch, f'{key_base}{comp} = (\S+)', typ=float, previous=[f'^{shape}:$'], n_previous=[2*comp + 8])
                 results['value'][key][patch] = dmc
 
-        # Additive bias (jackknife)
+    # Additive bias (jackknife)
     key_base = 'cjk_'
     if use_keys[key_base]:
         for comp in (1, 2):
@@ -380,7 +380,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(stats_files, patch, ' \[\s?\S+\s+(\S+)\]\]', previous=['ngmix galaxies:', 'total response matrix:'], n_previous=[3, 2], typ=float)
             results['value'][keys[3]][patch] = tmp
 
-        # Noralised trace = mean diagonal
+        # Normalised trace = mean diagonal
         key_der = 'trN_R_tot'
         init_key(results, key_der, 'w_avg', extra='N_gal')
         for patch in stats_files:
@@ -408,7 +408,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(stats_files, patch, ' \[\s?\S+\s+(\S+)\]\]', previous=['ngmix galaxies:', 'shear response matrix:'], n_previous=[6, 2], typ=float)
             results['value'][keys[3]][patch] = tmp
 
-        # Noralised trace = mean diagonal
+        # Normalised trace = mean diagonal
         key_der = 'trN_R_shear'
         init_key(results, key_der, 'w_avg', extra='N_gal')
         for patch in stats_files:
@@ -437,7 +437,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(stats_files, patch, ' \[\s?\S+\s+(\S+)\]\]', previous=['ngmix galaxies:', 'selection response matrix:'], n_previous=[9, 2], typ=float)
             results['value'][keys[3]][patch] = tmp
 
-        # Noralised trace = mean diagonal
+        # Normalised trace = mean diagonal
         key_der = 'trN_R_select'
         init_key(results, key_der, 'w_avg', extra='N_gal')
         for patch in stats_files:
@@ -568,6 +568,8 @@ def main(argv=None):
     elif argv[1] == 'comb':
         # Validate with combined catalogue
         patches = ['comb']
+    elif argv[1] == "P1+3":
+        patches = ["P1", "P3"]
 
     n_patch = len(patches)
 

@@ -16,7 +16,9 @@ from collections import Counter
 def get_area(dd, area_tile, verbose=False):
     """Get area.
 
-    Return survey area.
+    Return total survey area. This ignores masking as well as
+    overlaps between tiles, and provides therefore an overestimation.
+    of the actual observed area.
 
     Parameters
     ----------
@@ -35,6 +37,7 @@ def get_area(dd, area_tile, verbose=False):
         area in square arc minutes
     list of float
         tile IDs
+
     """
     if 'TILE_ID' in dd.dtype.names:
         # Get unique tile IDs
