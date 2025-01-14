@@ -47,11 +47,11 @@ def params_default():
     Returns
     -------
     p_def: class param
-       parameter values
+        parameter values
     """
 
     p_def = param(
-        survey = 'v1'
+        survey = 'v1',
     )
 
     return p_def
@@ -81,7 +81,7 @@ def parse_options(p_def):
         '--survey',
         dest='survey',
         type='string',
-        help='survey, allowed is \'v1\'|\'test\'|\'v1_small\'|\'P1+3\''
+        help='survey, allowed is \'v1\'|\'test\'|\'v1_small\'|\'Pa+Pb+...\''
     )
     parser.add_option(
         '-v',
@@ -382,16 +382,8 @@ def main(argv=None):
         patches = ['P7', 'W3', 'S4']
     elif param.survey == 'v1_small':
         patches = ['W3', 'P7']
-    elif param.survey == "P1+3":
-        patches = ["P1", "P3"]
-    elif param.survey == "P1+3+4":
-        patches = ["P1", "P3", "P4"]
-    elif param.survey == "v2_test":
-        patches = ["P1", "P2", "P3", "P4", "P6", "P7"]
-    elif param.survey == 'W3':
-        patches = ['W3']
-    elif param.survey == 'P3':
-        patches = ['P3']
+    else:
+        patches = param.survey.split("+")
 
     sh = 'ngmix'
 
