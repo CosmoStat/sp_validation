@@ -726,6 +726,7 @@ def main(argv=None):
         f = open(f'{file_base}.txt', 'w')
         key_base = 'R_select_'
         use_keys=[f'{key_base}11', f'{key_base}12', f'{key_base}21', f'{key_base}22']
+        print(all, "MKDEBUG print_all all={all}")
         print_all(results, stats_files, use_keys=use_keys, fout=f, all=all)
         f.close()
         col_names = get_matrix_elements('R^{\\textrm{select}}', me)

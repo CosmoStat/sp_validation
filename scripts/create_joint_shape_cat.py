@@ -384,12 +384,12 @@ def main(argv=None):
         patches = ['W3', 'P7']
     else:
         patches = param.survey.split("+")
-
+    
     sh = 'ngmix'
 
     survey = 'unions'
     pipeline = 'shapepipe'
-    year = 2022
+    year = 2024
     version = '1.4.0'
 
     additive_bias = 'from_extended'
