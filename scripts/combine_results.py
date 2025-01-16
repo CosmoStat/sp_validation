@@ -666,14 +666,17 @@ def main(argv=None):
 
     # Get value of entire-sample run
     if argv[1] == 'v1':
-        stats_file_comb = read_stats_files(['joint'], f'leakage/{fbase}_leakage.txt', verbose=verbose)
-        n_patch_comb = len(stats_files)
-        results_comb = {
-            'value' : {},
-            'type' : {},
-            'extra' : {},
-        }
-        get_values(results_comb, stats_file_comb, shape, use_keys_m, area_deg2=1)
+        try:
+            stats_file_comb = read_stats_files(['joint'], f'leakage/{fbase}_leakage.txt', verbose=verbose)
+            n_patch_comb = len(stats_files)
+            results_comb = {
+                'value' : {},
+                'type' : {},
+                'extra' : {},
+            }
+            get_values(results_comb, stats_file_comb, shape, use_keys_m, area_deg2=1)
+        except:
+            print("leakage stats file of joint catalogue not found, skipping")
  
 
     # Print some key (combinations) to text and LaTeX file
