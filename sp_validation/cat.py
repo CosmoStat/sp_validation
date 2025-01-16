@@ -552,8 +552,9 @@ def write_shape_catalog(
 
     primary_header = cat.write_header_info_sp(
         primary_header,
-        name=getpass.getuser(),
-        version=__version__
+        software_name="sp_validation",
+        software_version=__version__,
+        author=getpass.getuser(),
     )
     cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
     primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
