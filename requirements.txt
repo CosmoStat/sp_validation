@@ -2,10 +2,11 @@ importlib_metadata
 adjustText
 colorama
 emcee
-cs_util==0.1.0
+cs_util==0.1.2
 astropy>=5.0
 healpy
 getdist
+h5py
 jupyterlab
 lmfit
 numpy==1.26.4
@@ -19,6 +20,9 @@ shear_psf_leakage==0.2.0
 scipy
 seaborn
 setuptools==65.5.1
+statsmodels
 treecorr
 tqdm
 uncertainties
+pyccl
+opencv-python-headless

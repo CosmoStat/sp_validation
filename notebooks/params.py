@@ -28,7 +28,7 @@ np.set_printoptions(precision=3, formatter={'float': '{: .3g}'.format})
 # Survey parameters
 
 ## Field or patch name. Put None if n/a
-name = 'P4'
+name = 'P7'
 print('Field name = {}'.format(name))
 
 ## Area of a tile in deg^2
@@ -48,15 +48,17 @@ print('Shape measurement method(s):', shapes)
 ## Input paths
 
 ### Input data directory
-#data_dir = f'{os.environ["HOME"]}/data_WL'
-data_dir = '/home/mkilbing/astro/Runs/shapepipe/CFIS/v2/pre_v2/psfex/P4'
+data_dir = '.'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = f'{data_dir}/final_cat.npy'
+galaxy_cat_path = f'{data_dir}/final_cat_{name}.hdf5'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
+
+## Parameter list; optional, set to `None` if not required
+param_list_path = f"{data_dir}/final_cat.param"
 
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f'{data_dir}/full_starcat-0000000.fits'
