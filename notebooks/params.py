@@ -64,7 +64,7 @@ param_list_path = f"{data_dir}/final_cat.param"
 star_cat_path = f'{data_dir}/full_starcat-0000000.fits'
 
 # HDU number of star and PSF catalogue
-hdu_star_cat = 2
+hdu_star_cat = 1
 
 ### External mask; optional, set to `None` if not required
 #mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
