@@ -7,19 +7,30 @@ from numpy import linalg as LA
 import matplotlib.pyplot as plt
 import subprocess
 
-def calc_cov(root, nz_file):
+def calc_cov(root, nz_file, cosmocov_path):
 	Path("data/%s/covs" %root).mkdir(parents=True, exist_ok=True)
 	# write to the ini file, paths to the nz file
-	with open('cosmocov_config/cosmocov_%s.ini' %root,'a') as f:
-		f.write('shear_REDSHIFT_FILE : %s' %nz_file + '\n')
-		f.write('clustering_REDSHIFT_FILE : %s' %nz_file + '\n')
-		f.write('outdir : data/%s/covs/' %root + '\n')
-	f.close()
+	print("Creating cosmocov ini file for %s..." %root)
+	if not os.path.exists('cosmocov_config/cosmocov_%s.ini' %root):
+		with open('cosmocov_config/cosmocov_%s.ini' %root,'a') as f:
+			with open('cosmocov_config/cosmocov.ini', 'r') as f2:
+				f.write(f2.read())
+			f.write('\n')
+			f.write('shear_REDSHIFT_FILE : %s' %nz_file + '\n')
+			f.write('clustering_REDSHIFT_FILE : %s' %nz_file + '\n')
+			f.write('outdir : data/%s/covs/' %root + '\n')
+		f.close()
+
+	else:
+		print("Cosmocov ini file for %s already exists!" %root)
 		
 	print("Running CosmoCov...\n")
 
+	if not os.path.exists('%s/CosmoCov/covs/cov' %cosmocov_path):
+		raise Exception("CosmoCov executable not found! Please check the path to CosmoCov in the config file.")
+		
 	results = subprocess.run('for i in {1..3}; do \
-     						CosmoCov/covs/cov $i cosmocov_config/cosmocov_%s.ini; done' %root, 
+     						%s/CosmoCov/covs/cov $i cosmocov_config/cosmocov_%s.ini; done' %(cosmocov_path, root), 
 							capture_output = True, 
 							text = True,
 							shell=True)
@@ -55,8 +66,9 @@ if __name__ == '__main__':
 	
 	root = sys.argv[1]
 	nz_file = sys.argv[2]
+	cosmocov_path = sys.argv[3]
  
-	calc_cov(root,nz_file)
+	calc_cov(root,nz_file, cosmocov_path)
  
 	covfile = "data/%s/covs/cov_%s" %(root,root)
 	

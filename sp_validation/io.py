@@ -12,10 +12,6 @@
 import os
 
 import numpy as np
-from astropy.io import ascii, fits
-from astropy.table import Table
-
-from cs_util import cat
 
 
 def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
