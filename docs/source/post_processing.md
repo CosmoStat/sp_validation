@@ -1,5 +1,7 @@
 ## Post processing
 
+Post processing steps carried out by the `sp_validation` package are, 
+
 ### Combine shear validation run output catalogues
 
 
