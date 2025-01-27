@@ -487,20 +487,20 @@ def write_shape_catalog(
     # Principal columns: coordinates and weights
     col_info_arr.append(
         (
-            fits.Column(name="RA", array=ra, format="D", unit="deg").
-            "Right Ascension"
+            fits.Column(name="RA", array=ra, format="D", unit="deg"),
+            "Right Ascension",
         )
     )
     col_info_arr.append(
         (
             fits.Column(name='Dec', array=dec, format='D', unit='deg'),
-            "Declination"
+            "Declination",
         )
     )
     col_info_arr.append(
         (
             fits.Column(name='w_iv', array=w, format='D'),
-            "Inverse-variance weight"
+            "Inverse-variance weight",
         )
     )
 
@@ -510,7 +510,8 @@ def write_shape_catalog(
         col_info_arr.append(
             (
                 fits.Column(name='mag', array=mag, format='D'),
-                "MAG_AUTO magnitude")
+                "MAG_AUTO magnitude",
+            )
         )
     ## Calibrated shear estimates
     if g:
@@ -518,7 +519,7 @@ def write_shape_catalog(
             col_info_arr.append(
                 (
                     fits.Column(name=f"e{idx+1}", array=g[idx], format='D'),
-                    "Calibrated reduced shear estimate comp {idx+1}"
+                    "Calibrated reduced shear estimate comp {idx+1}",
                 )
             )
     # Signal-to-noise ratio
