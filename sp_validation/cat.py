@@ -412,22 +412,22 @@ def write_shape_catalog(
     output_path,
     ra,
     dec,
-    g,
     w,
-    mag,
-    R,
-    R_shear,
-    R_select,
-    c,
-    c_err,
-    alpha_leakage=None,
+    mag=None,
     snr=None,
+    g=None,
     g1_uncal=None,
     g2_uncal=None,
     R_g11=None,
     R_g22=None,
     R_g12=None,
     R_g21=None,
+    R=None,
+    R_shear=None,
+    R_select=None,
+    c=None,
+    c_err=None,
+    alpha_leakage=None,
     sigma_epsilon=None,
     add_cols=None,
     add_cols_format=None,
@@ -442,62 +442,109 @@ def write_shape_catalog(
         output file path
     ra, dec : arrays(ngal) of float
         coordinates in deg
-    g : arrays(2, ngal) of float
-        calibrated reduced shear estimate components, corrected for
-        multiplicative and additive bias, g = R^-1 g_uncal - c
-    w : array(ngal) of float
-        weights
-    mag : array(ngal) of float
+    w : np.ndarray
+        inverse-variance weights
+    mag : array(ngal) of float, optional
         magnitude, signal-to-noise ratio
-    R : 2x2 matrix of float
-        Mean full response matrix
-    R_shear : 2x2 matrix of float
-        Mean shear response matrix
-    R_select : 2x2 matrix of float
-        Global selection response matrix
-    c : array(2) of float
-        additive shear bias
-    c_err : array(2) of float
-        error of c
-    alpha_leakage : float, optional
-        Mean scale-dependent PSF leakage, default is None
     snr : array(ngal) of float, optional
         signal-to-noise ratio, default is `None`
-    g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
-        uncalibrated shear estimates
-    R_g11, R_g22, R_g12, R_g21 : arrays(ngal) of float, optional, default=None
-        shear response matrix elements per galaxy
+    g : np.ndarray, optional
+        calibrated reduced shear estimate components, corrected for
+        multiplicative and additive bias, g = R^-1 g_uncal - c;
+        expected type is arrays(2, ngal) of float;
+        default is ``None`` (no calibrated shears written)
+    g1_uncal, g2_uncal : np.ndarray, optional
+        uncalibrated shear estimates;
+        expected types are arrays(ngal) of float
+        default is ``None`` (no uncalibrated shears written)
+    R_g11, R_g22, R_g12, R_g21 : np.ndarray, optional
+        shear response matrix elements per galaxy;
+        expected format is arrays(ngal) of float;
+         default is ``None``
+    R : 2x2 matrix of float, optional
+        Mean full response matrix, default is ``None``
+    R_shear : 2x2 matrix of float, optional
+        Mean shear response matrix, default is ``None``
+    R_select : 2x2 matrix of float, optional
+        Global selection response matrix, default is ``None``
+    c : array(2) of float, optional, default is ``None``
+        additive shear bias
+    c_err : array(2) of float, optional, default is ``None``
+        error of c
+    alpha_leakage : float, optional
+        Mean scale-dependent PSF leakage, default is ``None``
     sigma_epsilon: float, optional
-        shape noise, default is `None`
-    add_cols : dict, optional, default is `None`
+        shape noise, default is ``None``
+    add_cols : dict, optional, default is ``None``
         data for n additional columns to add
     add_cols_format : dict, optional
-        format for n additional columns to add, default is `None`, for which
-        'float' format is used
+        format for n additional columns to add, default is ``None``, for which
+        ``float`` format is used
 
     """
-    # Data HDU
-    c_ra = fits.Column(name='RA', array=ra, format='D', unit='deg')
-    c_dec = fits.Column(name='Dec', array=dec, format='D', unit='deg')
-    c_g1 = fits.Column(name='e1', array=g[0], format='D')
-    c_g2 = fits.Column(name='e2', array=g[1], format='D')
-    c_w = fits.Column(name='w', array=w, format='D')
-    c_mag = fits.Column(name='mag', array=mag, format='D')
-    cols = [c_ra, c_dec, c_g1, c_g2, c_w, c_mag]
+    col_info_arr = []
 
-    ntype = 6
-    if snr is not None:
-        c_snr = fits.Column(name='snr', array=snr, format='D')
-        cols.append(c_snr)
-        ntype += 1
+    # Principal columns: coordinates and weights
+    col_info_arr.append(
+        (
+            fits.Column(name="RA", array=ra, format="D", unit="deg").
+            "Right Ascension"
+        )
+    )
+    col_info_arr.append(
+        (
+            fits.Column(name='Dec', array=dec, format='D', unit='deg'),
+            "Declination"
+        )
+    )
+    col_info_arr.append(
+        (
+            fits.Column(name='w_iv', array=w, format='D'),
+            "Inverse-variance weight"
+        )
+    )
 
-    for x, name in zip(
+    # Additional columns
+    ## Magnitude
+    if mag:
+        col_info_arr.append(
+            (
+                fits.Column(name='mag', array=mag, format='D'),
+                "MAG_AUTO magnitude")
+        )
+    ## Calibrated shear estimates
+    if g:
+        for idx in (0, 1):
+            col_info_arr.append(
+                (
+                    fits.Column(name=f"e{idx+1}", array=g[idx], format='D'),
+                    "Calibrated reduced shear estimate comp {idx+1}"
+                )
+            )
+    # Signal-to-noise ratio
+    if snr:
+        col_info_arr.append(
+            (
+                fits.Column(name='snr', array=snr, format='D'),
+                "Signal-to-noise ratio",
+            )
+        )
+    for x, name, descr in zip(
         [g1_uncal, g2_uncal, R_g11, R_g22, R_g12, R_g21],
         ['e1_uncal', 'e2_uncal', 'R_g11', 'R_g22', 'R_g12', 'R_g21'],
+        [
+            "Uncalibrated shear comp 1",
+            "Uncalibrated shear comp 2",
+            "Shear response matrix comp 1 1",
+            "Shear response matrix comp 2 2",
+            "Shear response matrix comp 1 2",
+            "Shear response matrix comp 2 1",
+        ]
     ):
         if x is not None:
-            cols.append(fits.Column(name=name, array=x, format='D'))
-            ntype += 1
+            col_info_arr.append(
+                (fits.Column(name=name, array=x, format='D'), descr)
+            )
 
     if add_cols:
         for name in add_cols:
@@ -505,47 +552,30 @@ def write_shape_catalog(
                 my_format = add_cols_format[name]
             else:
                 my_format = 'D'
-            cols.append(
-                fits.Column(name=name, array=add_cols[name], format=my_format)
+            col_info_arr.append(
+                (
+                    fits.Column(
+                        name=name,
+                        array=add_cols[name],
+                        format=my_format
+                    ),
+                    name,
+                )
             )
-        ntype += len(add_cols)
+
+    # Create list of fits.Column objects
+    cols = []
+    for col_info in col_info_arr:
+        cols.append(col_info[0])
 
     table_hdu = fits.BinTableHDU.from_columns(cols)
 
-    table_hdu.header['TTYPE3'] = (
-        'e1',
-        'Calibrated reduced shear estimate, 1st comp'
-    )
-    table_hdu.header['TTYPE4'] = (
-        'e2',
-        'Calibrated reduced shear estimate, 2nd comp'
-    )
-    table_hdu.header['TTYPE5'] = ('w_iv', 'Inverse Variance Weight')
-    table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
-    if snr is not None:
-        table_hdu.header['TTYPE7'] = (
-            'snr',
-            'Signal-to-noise ratio = flux/flux_std'
+    # Add human-readable descriptions
+    for idx, col_info in enumerate(col_info_arr):
+        table_hdu.header[f"TTYPE{idx+1}"] = (
+            col_info[0].name,
+            col_info[1],
         )
-        ntype += 1
-
-    for x, name in zip([g1_uncal, g2_uncal], ['e1_uncal', 'e2_uncal']):
-        if x is not None:
-            table_hdu.header[f'TTYPE{ntype}'] = (
-                name,
-                'uncalibrated reduced shear'
-            )
-            ntype += 1
-    for x, name in zip(
-        [R_g11, R_g22, R_g12, R_g21],
-        ['R_g11', 'R_g22', 'R_g12', 'R_g21']
-    ):
-        if x is not None:
-            table_hdu.header[f'TTYPE{ntype}'] = (
-                name,
-                f'shear response matrix {name}'
-            )
-            ntype += 1
 
     # Primary HDU with information in header
     primary_header = fits.Header()
@@ -561,7 +591,7 @@ def write_shape_catalog(
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
     primary_header['w'] = (
-        'DES Weight'
+        'DES weight'
     )
     if sigma_epsilon:
         primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')

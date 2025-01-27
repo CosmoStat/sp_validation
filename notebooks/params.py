@@ -117,6 +117,8 @@ mmap_mode = None
 ### Additional output columns
 add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER", "NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"]
 
+## Pre-calibration catalogue, including masked objects and mask flags
+add_col_pre_cal = ["IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "N_EPOCH", "NGMIX_NEPOCH"]
 
 # Catalog parameters
 
