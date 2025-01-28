@@ -506,7 +506,7 @@ def write_shape_catalog(
 
     # Additional columns
     ## Magnitude
-    if mag:
+    if mag is not None:
         col_info_arr.append(
             (
                 fits.Column(name='mag', array=mag, format='D'),
@@ -514,16 +514,16 @@ def write_shape_catalog(
             )
         )
     ## Calibrated shear estimates
-    if g:
+    if g is not None:
         for idx in (0, 1):
             col_info_arr.append(
                 (
                     fits.Column(name=f"e{idx+1}", array=g[idx], format='D'),
-                    "Calibrated reduced shear estimate comp {idx+1}",
+                    f"Calibrated reduced shear estimate comp {idx+1}",
                 )
             )
     # Signal-to-noise ratio
-    if snr:
+    if snr is not None:
         col_info_arr.append(
             (
                 fits.Column(name='snr', array=snr, format='D'),
@@ -547,7 +547,7 @@ def write_shape_catalog(
                 (fits.Column(name=name, array=x, format='D'), descr)
             )
 
-    if add_cols:
+    if add_cols is not None:
         for name in add_cols:
             if add_cols_format:
                 my_format = add_cols_format[name]
