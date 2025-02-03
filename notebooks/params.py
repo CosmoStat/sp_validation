@@ -41,7 +41,6 @@ pixel_size = 0.187
 ##  'ngix': multi-epoch model fitting
 ##  'galsim': stacked-image moments (experimental)
 shapes = ['ngmix']
-print('Shape measurement method(s):', shapes)
 
 # Paths
 
@@ -73,7 +72,7 @@ mask_external_path = None
 ## Output paths
 
 ### Output base directory
-output_dir = f'{data_dir}/sp_output'
+output_dir = f'{data_dir}/sp_output_flags'
 
 ### Galaxy shape catalogue base name.
 ### Will be appended by
@@ -115,10 +114,20 @@ mmap_mode = None
 ## Output
 
 ### Additional output columns
-add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER", "NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"]
+add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER"]
 
 ## Pre-calibration catalogue, including masked objects and mask flags
-add_col_pre_cal = ["IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "N_EPOCH", "NGMIX_NEPOCH"]
+add_cols_pre_cal = ["IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "NGMIX_ELL_PSFo_NOSHEAR", "N_EPOCH", "NGMIX_N_EPOCH"]
+
+# Crete key names for metacal information
+prefix = "NGMIX"
+suffixes = ["1M", "1P", "2M", "2P", "NOSHEAR"]
+centers = ["FLAGS", "ELL", "FLUX", "FLUX_ERR", "T", "T_ERR", "Tpsf"]
+for center in centers:
+    for suffix in suffixes:
+        add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")
+
+#add_cols_pre_cal_descr = ["ShapePipe pipeline flags", "SExtractor flags"]
 
 # Catalog parameters
 

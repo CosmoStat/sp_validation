@@ -188,13 +188,32 @@ class metacal:
                 data[f'{self._prefix}_Tpsf_{name_shear.upper()}'][mask]
             )
 
-        ns['C11'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 0][mask]
-        ns['C22'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 1][mask]
-        ns['w'] = (
-            1. / (2 * self._sigma_eps ** 2 + dict_tmp['C11'] + dict_tmp['C22'])
+        #ns['C11'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 0][mask]
+        #ns['C22'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 1][mask]
+        #ns['w'] = (
+        #    1. / (2 * self._sigma_eps ** 2 + dict_tmp['C11'] + dict_tmp['C22'])
+        #)
+        ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
+            data,
+            self._sigma_eps,
+            self._prefix,
+            mask=mask,
         )
 
         return m1, p1, m2, p2, ns
+
+    @staticmethod
+    def get_variance_ivweights(data, sigma_eps, prefix="NGMIX", mask=None):
+        if mask is not None:
+            C11 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 0][mask]
+            C22 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 1][mask]
+        else:
+            C11 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 0]
+            C22 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 1]
+
+        iv_w = 1 / (2 * sigma_eps ** 2 + C11 + C22)
+
+        return C11, C22, iv_w
 
     def _read_data_galsim(self, data, mask, m1, p1, m2, p2, ns):
         """Read Data Galsim.

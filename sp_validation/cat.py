@@ -488,19 +488,19 @@ def write_shape_catalog(
     col_info_arr.append(
         (
             fits.Column(name="RA", array=ra, format="D", unit="deg"),
-            "Right Ascension",
+            "Right Ascension"
         )
     )
     col_info_arr.append(
         (
             fits.Column(name='Dec', array=dec, format='D', unit='deg'),
-            "Declination",
+            "Declination"
         )
     )
     col_info_arr.append(
         (
             fits.Column(name='w_iv', array=w, format='D'),
-            "Inverse-variance weight",
+            "Inverse-variance weight"
         )
     )
 
@@ -510,7 +510,7 @@ def write_shape_catalog(
         col_info_arr.append(
             (
                 fits.Column(name='mag', array=mag, format='D'),
-                "MAG_AUTO magnitude",
+                "MAG_AUTO magnitude"
             )
         )
     ## Calibrated shear estimates
@@ -519,7 +519,7 @@ def write_shape_catalog(
             col_info_arr.append(
                 (
                     fits.Column(name=f"e{idx+1}", array=g[idx], format='D'),
-                    f"Calibrated reduced shear estimate comp {idx+1}",
+                    f"Calibrated reduced shear estimate comp {idx+1}"
                 )
             )
     # Signal-to-noise ratio
@@ -527,7 +527,7 @@ def write_shape_catalog(
         col_info_arr.append(
             (
                 fits.Column(name='snr', array=snr, format='D'),
-                "Signal-to-noise ratio",
+                "Signal-to-noise ratio"
             )
         )
     for x, name, descr in zip(
@@ -548,11 +548,15 @@ def write_shape_catalog(
             )
 
     if add_cols is not None:
-        for name in add_cols:
+        for idx, name in enumerate(add_cols):
             if add_cols_format:
                 my_format = add_cols_format[name]
             else:
-                my_format = 'D'
+                shape = add_cols[name].shape
+                if len(shape) == 1:
+                    my_format = "D"
+                else:
+                    my_format = f"{shape[1]}D"
             col_info_arr.append(
                 (
                     fits.Column(
@@ -560,15 +564,14 @@ def write_shape_catalog(
                         array=add_cols[name],
                         format=my_format
                     ),
-                    name,
+                    name
                 )
             )
 
-    # Create list of fits.Column objects
+    # Write columns to FITS file
     cols = []
-    for col_info in col_info_arr:
-        cols.append(col_info[0])
-
+    for col, _ in col_info_arr:
+        cols.append(col)
     table_hdu = fits.BinTableHDU.from_columns(cols)
 
     # Add human-readable descriptions
@@ -587,14 +590,18 @@ def write_shape_catalog(
         software_version=__version__,
         author=getpass.getuser(),
     )
-    cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
-    primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
-    primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
+    
+    if all(v is not None for v in (R, R_shear, R_select, c)):
+        cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
+    if c_err is not None:
+        primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
+        primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
     primary_header['w'] = (
         'DES weight'
     )
-    if sigma_epsilon:
+
+    if sigma_epsilon is not None:
         primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
 
     if alpha_leakage:
