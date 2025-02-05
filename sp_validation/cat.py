@@ -551,7 +551,6 @@ def write_shape_catalog(
         for idx, name in enumerate(add_cols):
             if add_cols_format is not None and name in add_cols_format:
                 my_format = add_cols_format[name]
-                print("MKDEBUG setting", name, my_format)
             else:
                 shape = add_cols[name].shape
                 if len(shape) == 1:
