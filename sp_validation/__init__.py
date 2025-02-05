@@ -48,7 +48,10 @@ __all__ = [
     'cat',
     'plot_style',
     'plots',
+    'run_joint_cat',
+    'run_calibrate_cat',
     'survey',
+    'util',
 ]
 
 from . import *

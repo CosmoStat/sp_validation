@@ -72,7 +72,7 @@ mask_external_path = None
 ## Output paths
 
 ### Output base directory
-output_dir = f'{data_dir}/sp_output_flags'
+output_dir = f'{data_dir}/sp_output'
 
 ### Galaxy shape catalogue base name.
 ### Will be appended by
@@ -119,6 +119,11 @@ add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN",
 ## Pre-calibration catalogue, including masked objects and mask flags
 add_cols_pre_cal = ["IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "NGMIX_ELL_PSFo_NOSHEAR", "N_EPOCH", "NGMIX_N_EPOCH"]
 
+### Set flag columns as integer format
+add_cols_pre_cal_format = {}
+for key in ("IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
+    add_cols_pre_cal_format[key] = "I"
+
 # Crete key names for metacal information
 prefix = "NGMIX"
 suffixes = ["1M", "1P", "2M", "2P", "NOSHEAR"]
@@ -126,6 +131,10 @@ centers = ["FLAGS", "ELL", "FLUX", "FLUX_ERR", "T", "T_ERR", "Tpsf"]
 for center in centers:
     for suffix in suffixes:
         add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")
+        
+for suffix in suffixes:
+    add_cols_pre_cal_format[f"FLAGS_{suffix}"] = "I"
+
 
 #add_cols_pre_cal_descr = ["ShapePipe pipeline flags", "SExtractor flags"]
 
