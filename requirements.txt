@@ -24,5 +24,4 @@ statsmodels
 treecorr
 tqdm
 uncertainties
-pyccl
 opencv-python-headless
