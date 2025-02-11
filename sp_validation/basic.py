@@ -221,7 +221,35 @@ class metacal:
 
     @staticmethod
     def get_variance_ivweights(data, sigma_eps, prefix="NGMIX", mask=None, col_2d=True):
-        print("MKDEBUG ", col_2d)
+        """Get Variance IVWEIGHTS.
+
+        Compute variance and inverse-variance weights.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            input data
+        sigma_eps : float
+            ellipticity dispersion
+        prefix : str, optional
+            shape measurement identifier; default is "NGMIX"
+        mask : list, optional
+            indicates valid objects with ``True`` values; default is ``None`` = use all objects
+            type has to be bool
+        col_2d : bool, optional
+            if ``True`` (default), ellipticity is given in single 2D column;
+            if ``False``, ellipticity is expected in two 1D columns.
+
+        Returns
+        -------
+        float
+            variance first component
+        float
+            variance second component
+        float
+            weight
+
+        """
         if mask is not None:
             if col_2d:
                 C11 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 0][mask]
