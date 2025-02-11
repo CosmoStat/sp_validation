@@ -790,3 +790,76 @@ def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=Non
         print(ID, file=stats_file)
 
     return data_comb
+
+
+def get_col(dat, col, m_sel=None, m_flg=None):
+    """Get Col.
+
+    Retrieve a specific column from the data with optional selection and flag masks.
+
+    Parameters
+    ----------
+    dat: dict
+        Input data
+    col: str
+        Key of the column to be returned
+    m_sel: array-like, optional
+        Boolean mask used for selection. If specified, m_flg must also be specified;
+        default is ``None``
+    m_flg: array-like, optional
+        Boolean mask used as a flag. If specified, m_sel must also be specified.
+        default is ``None``
+
+    Returns
+    -------
+    array-like
+        Requested column from the data, optionally filtered by the selection and flag masks.
+
+    Raises
+    ------
+    ValueError
+        If only one of m_sel or m_flg is specified without the other.
+    """
+
+    if bool(m_sel is None) != bool(m_flg is None):
+        raise ValueError("Specify both or none of selection and flag masks")
+        
+    if m_sel is None and m_flg is None:
+        return dat[col]
+    else:
+        return dat[col][m_sel][m_flg]
+
+
+def get_snr(sh, dat, m_sel, m_flg):
+    """Get SNR.
+
+    Return signal-to-noise ratio.
+
+    Parameters
+    ----------
+    sh: str
+        shape method identified, e.g. "ngmix"
+    dat: dict
+        Input data
+    m_sel: array-like, optional
+        Boolean mask used for selection. If specified, m_flg must also be specified;
+        default is ``None``
+    m_flg: array-like, optional
+        Boolean mask used as a flag. If specified, m_sel must also be specified.
+        default is ``None``
+
+    Returns
+    -------
+    array-like
+        signal-to-noise ratios
+
+    """
+    if sh == 'ngmix':
+        my_snr = (
+            cat.get_col(dd, "NGMIX_FLUX_NOSHEAR", m_sel, m_flg)
+            / cat.get_col(dd, "NGMIX_FLUX_ERR_NOSHEAR", m_sel, m_flg)
+        )
+    elif sh == 'galsim':
+        my_snr = cat.get_col(dd, "SNR_WIN", m_sel, m_flg)
+
+    return my_snr
