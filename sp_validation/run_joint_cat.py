@@ -129,23 +129,43 @@ class JointCat:
 
             # Append new data
             for name in col_names:
-                dat_all[name] = np.append(dat_all[name], dat[name])
+                dat_all[name].append(dat[name])
+            if self._params["verbose"]:
+                print(f"Added {len(dat)} objects.")
 
             # Add patch number
-            dat_all["patch"] = np.append(dat_all["patch"], [idx + 1] * len(dat))
-
+            dat_all["patch"].append([idx + 1] * len(dat))
+        
         col_names = col_names + ("patch",)
         formats["patch"] = "I"
 
+        for name in col_names:
+            dat_all[name] = np.concatenate(dat_all[name], axis=0)
+
         column_all = []
         for name in col_names:
-            column = fits.Column(
-                name=name, array=dat_all[name], format=formats[name]
-            )
-            column_all.append(column)
-
+            if dat_all[name].ndim == 1:
+                column = fits.Column(
+                    name=name, array=dat_all[name], format=formats[name]
+                )
+                column_all.append(column)
+            else:
+                column_2d = [
+                    fits.Column(
+                        name=f"{name}_{idx}",
+                        array=dat_all[name][:, idx],
+                        format="D",
+                    ) for idx in range(dat_all[name].shape[1])
+                ]
+                for column in column_2d:
+                    column_all.append(column)
+        
+        print(f"Final total length = {len(dat_all[col_names[0]])}.")
+        
         # Write to disk
         cat.write_fits_BinTable_file(column_all, output_path)
+
+        table_hdu = fits.BinTableHDU.from_columns(column_all)
 
     def run(self):
         """Run.
