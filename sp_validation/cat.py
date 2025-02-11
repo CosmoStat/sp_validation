@@ -87,12 +87,16 @@ def print_mean_ellipticity(
 
     n_tot_val = len(np.where(ind_v)[0])
     n_tot_mil = util.millify(n_tot_val)
-    msg = f'Total number of valid objects = {n_tot_val} = {n_tot_mil}'
+    msg = (
+        f"Total number of valid objects ({ell_col_name}0,1 != {invalid})"
+        + f" = {n_tot_val} = {n_tot_mil}"
+    )
     io.print_stats(msg, stats_file, verbose=verbose)
 
-    msg = 'Fraction of invalid objects = {}/{} = {:.3g}%\n' \
-          ''.format(n_tot - n_tot_val, n_tot,
-                    (n_tot - n_tot_val) / n_tot * 100)
+    msg = (
+        f"Fraction of invalid objects = {n_tot-n_tot_val}/{n_tot}"
+        + f" = {(n_tot-n_tot_val)/n_tot:.3%}"
+    )
     io.print_stats(msg, stats_file, verbose=verbose)
 
     # Select valid objects
