@@ -1,15 +1,16 @@
 ## Post processing
 
 Post processing steps carried out by the `sp_validation` package are:
-- merging `shapepipe` output catalogues, e.g. processed by individual patches, into one or more joint catalogues;
-- masking of objects using flags and criteria in `shapepipe` output catalogues and external (e.g. mask) files;  
-- creating a galaxy sample by applying selection criteria, e.g. on SNR or size;  
-- calibrating the shear estimates with the `metacalibration` method, using the measured shapes and
+- extract relevant information from a final `shapepipe` output catalogue per patch, running basic diagnostic tests.
+- merge catalogues created in the previous step, e.g. processed by individual patches, into one or more joint catalogues;
+- mask objects using flags and criteria in `shapepipe` output catalogues and external (e.g. mask) files;  
+- create a galaxy sample by applying selection criteria, e.g. on SNR or size;  
+- calibrate the shear estimates with the `metacalibration` method, using the measured shapes and
   metacal information (sheared measurements) output by `shapepipe`.
 
 These steps are carried out as follows:
 
-### Merge catalogues.
+### Extract information, create catalogues.
 
 This is performed (currently both for pre- and post-v1.4.1 versions) with the series of notebooks
 in `sp_validation/notebooks` or the `ipython` script `validation.py` generated thereof.
@@ -23,6 +24,21 @@ This script creates plots, diagnostics, and three shear catalogue FITS files:
   metacal information (measured sheared quantities), mask information (`shapepipe` pre-processing). Masking and galaxy selection is not applied.
   This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.
 
+This step is carried out per patch.
+
+### Merge catalogues
+
+The patch-wise comprehensive catalogues extracted in the previous step are merged using the script `create_joint_comprehensive_cat.py`, which is a front-end
+of the `sp_validation` library class `run_joint_cat:JointCat`.
+
+### Mask, select, and calibrate
+
+The steps of masking, galaxy sample selection, and calibration are carried out jointly using the notebook
+`calibrate_comprehensive_cat.ipynb`.
+
+
+
+The following describes the pre-v1.4.2 method to create a joint, calibrated shear catalogue.
 
 ### Combine shear validation run output catalogues
 
