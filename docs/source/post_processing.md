@@ -1,6 +1,28 @@
 ## Post processing
 
-Post processing steps carried out by the `sp_validation` package are, 
+Post processing steps carried out by the `sp_validation` package are:
+- merging `shapepipe` output catalogues, e.g. processed by individual patches, into one or more joint catalogues;
+- masking of objects using flags and criteria in `shapepipe` output catalogues and external (e.g. mask) files;  
+- creating a galaxy sample by applying selection criteria, e.g. on SNR or size;  
+- calibrating the shear estimates with the `metacalibration` method, using the measured shapes and
+  metacal information (sheared measurements) output by `shapepipe`.
+
+These steps are carried out as follows:
+
+### Merge catalogues.
+
+This is performed (currently both for pre- and post-v1.4.1 versions) with the series of notebooks
+in `sp_validation/notebooks` or the `ipython` script `validation.py` generated thereof.
+
+This script creates plots, diagnostics, and three shear catalogue FITS files:
+- Basic catalogue containing
+  positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, patch ID. Masking and galaxy selection are applied.
+- Extended catalogue containing **in addition**
+  uncalibrated shapes inverse-variance weights, shear response matrices, SNR, flux, size, PSF quantities. Masking and galaxy selection are applied.  
+- Comprehensive catalogue containing **in addition**
+  metacal information (measured sheared quantities), mask information (`shapepipe` pre-processing). Masking and galaxy selection is not applied.
+  This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.
+
 
 ### Combine shear validation run output catalogues
 
