@@ -17,6 +17,8 @@ from cs_util import logging
 from cs_util import cat
 from cs_util import args as cs_args
 
+from . import util
+
 
 class JointCat:
     """Joint Cat.
@@ -84,6 +86,16 @@ class JointCat:
         }
 
     def get_patches(self):
+        """Get Patches.
+
+        Return list of patches according to option parameter value.
+
+        Returns
+        -------
+        list
+            patches, list of str
+
+        """
         if self._params["patches"] == "v1":
             n_patch = 7
             patches = [f"P{x}" for x in np.arange(n_patch) + 1]
@@ -93,7 +105,18 @@ class JointCat:
         return patches
 
     def merge_catalogues(self, patches, base_path="."):
-        
+        """Merge Catalogues.
+
+        Merge individual patch-based catalogues.
+
+        Parameters
+        ----------
+        patches : list
+            input patches; list of `str`
+        base_path : str, optional
+            input base directory path; default is "."
+
+        """
         input_sub_path = (
             f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
         )
@@ -114,7 +137,7 @@ class JointCat:
                 dat = fits.getdata(input_path, self._params["hdu"])
             except:
                 raise ValueError(
-                    "Could not read data of file {input_path} at HDU #{self._params['hdu']}"
+                    f"Could not read data of file {input_path} at HDU #{self._params['hdu']}"
                 )
 
             # Create empty lists if first patch
@@ -131,17 +154,23 @@ class JointCat:
             for name in col_names:
                 dat_all[name].append(dat[name])
             if self._params["verbose"]:
-                print(f"Added {len(dat)} objects.")
+                print(f"Added {len(dat)} (~{util.millify(len(dat))}) objects.")
 
             # Add patch number
             dat_all["patch"].append([idx + 1] * len(dat))
-        
+
+        if self._params["verbose"]:
+            print("Adding patch column")
         col_names = col_names + ("patch",)
         formats["patch"] = "I"
 
+        if self._params["verbose"]:
+            print("Concatenating all data")
         for name in col_names:
             dat_all[name] = np.concatenate(dat_all[name], axis=0)
 
+        if self._params["verbose"]:
+            print("Creating FITS columns")
         column_all = []
         for name in col_names:
             if dat_all[name].ndim == 1:
@@ -160,12 +189,10 @@ class JointCat:
                 for column in column_2d:
                     column_all.append(column)
         
-        print(f"Final total length = {len(dat_all[col_names[0]])}.")
+        print(f"Writing file to disk. Final total length = {len(dat_all[col_names[0]])}.")
         
         # Write to disk
         cat.write_fits_BinTable_file(column_all, output_path)
-
-        table_hdu = fits.BinTableHDU.from_columns(column_all)
 
     def run(self):
         """Run.
