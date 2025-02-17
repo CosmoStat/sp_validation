@@ -38,16 +38,16 @@ do
         read -p 'XI_PLUS/XI_MINUS FITS FILE FOLDER: ' xi_folder;
         read -p 'NZ FILE:' nz_file;
         read -p 'RHO_STATS FILE FOLDER: ' rho_stats_folder;
-        read -p 'COVMAT TXT FILE:' covmat;
+        read -p 'USE TAU_STATS? (y/n): ' tau_stats;
+        read -p 'COV_XI MAT TXT FILE:' covmat;
         read -p 'OUTPUT MCMC CHAIN FOLDER: ' data;
         
         out_file="data/${root}/cosmosis_${root}.fits";
         
         #LG: add check if xi_plus/xi_minus fits file exists
-        python scripts/cosmosis_fitting.py $root $xi_folder $covmat $nz_file $rho_stats_folder $out_file;
+        python scripts/cosmosis_fitting.py $root $xi_folder $covmat $nz_file $rho_stats_folder $out_file $tau_stats;
 
         sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${root}.ini;
-        sed -i "/^\[DEFAULT\]/a\SAMPLES_FILE = ${rho_stats_folder}/samples_${root}.npy" cosmosis_config/cosmosis_pipeline_${root}.ini
         sed -i "/^\[output\]/a\filename = ${data}/samples_${root}.txt" cosmosis_config/cosmosis_pipeline_${root}.ini;
         sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
         sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors_${root}.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;

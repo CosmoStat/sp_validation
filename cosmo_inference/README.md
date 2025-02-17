@@ -18,7 +18,7 @@ with one of the following flags:
 
 `--covmat`: The covariance matrix is calculated here using CosmoCov, by reading in the `./cosmocov_config/cosmocov_{output_root}.ini` file. **Hence make sure the `output_root` here corresponds to the one entered in the prompt**.
 
-`--inference`: This step writes out the relevant `./cosmosis_config/cosmosis_{output_root}.ini` file, in order to run CosmoSIS to conduct the cosmological inference. It also combines the data needed by CosmoSIS: the $\xi_{pm}$ fits files calculated in `cosmo_val.py`, the covariance matrix, and the nz catalogue, into a single `.fits` file. You can submit the job submission bash script to run CosmoSIS on your cluster. Here, an example `submit.sh` script is provided (assuming SLURM architecture, currently running on CEA feynman cluster).
+`--inference`: This step writes out the relevant `./cosmosis_config/cosmosis_{output_root}.ini` file, in order to run CosmoSIS to conduct the cosmological inference. It also combines the data needed by CosmoSIS: the $\xi_{pm}$ fits files calculated in `cosmo_val.py`, the covariance matrix, and the nz catalogue, into a single `.fits` file. It also fetches the rho-statistics computed in `cosmo_val.py` to marginalize on PSF leakage parameters. You can submit the job submission bash script to run CosmoSIS on your cluster. Here, an example `submit.sh` script is provided (assuming SLURM architecture, currently running on CEA feynman cluster).
 
 `--mcmc_process`: You can finally analyse the chains with the `MCMC.ipynb` notebook. 
 

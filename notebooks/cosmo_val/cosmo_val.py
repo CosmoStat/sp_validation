@@ -64,7 +64,7 @@ import pyccl
 pyccl.gsl_params.LENSING_KERNEL_SPLINE_INTEGRATION = False
 
 def color_reset():
-    print(colorama.Fore.BLACK, end='')
+    print(colorama.Fore.RED, end='')
 
 def print_blue(msg):
     print(colorama.Fore.BLUE + msg)
@@ -95,10 +95,10 @@ def print_cyan(msg):
 #versions = ['SP_v1.0', 'SP_v1.0_LFmask_8k', 'SP_v1.3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'SP_axel_v0.0_repr', 'DES']
 #versions = ['SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha' , 'SP_v1.3_LFmask_8k_li_2024']
 #versions = ['SP_v1.4_LFmask_8k_noalpha', 'SP_v1.4_LFmask_8k', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha', 'DES']
-versions = ['SP_v1.4_conv', 'SP_v1.4_noalpha']
+versions = ['SP_v1.4.1', 'SP_v1.4.1_noleakage']
 rho_tau_method = 'lsq' #lsq or emcee
 cov_estimate_method = 'th' #or theory/jackknife
-compute_cov_rho = True
+compute_cov_rho = False
 n_cov = 100 #number of covariance used to marginalize on the patching in the jackknife estimate.
 #Put to 1 to avoid recomputing all rho and tau statistics.
 #versions = ['SP_v1.0_LFmask_4k', 'SP_v1.0_LFmask_8k', 'SP_v1.3_LFmask_4k', 'SP_v1.3_LFmask_8k']
@@ -891,7 +891,7 @@ for ver in versions:
     col2 = fits.Column(name ='BIN2', format ='K', array = np.ones(len(lst)))
     col3 = fits.Column(name ='ANGBIN', format ='K', array = lst)
     col4 = fits.Column(name ='VALUE', format ='D', array = gg.xip)
-    col5 = fits.Column(name ='ANG', format ='D', unit ='arcmin', array = gg.meanr)
+    col5 = fits.Column(name ='ANG', format ='D', unit ='arcmin', array = gg.rnom)
     coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
     xiplus_hdu = fits.BinTableHDU.from_columns(coldefs,name ='XI_PLUS')
 

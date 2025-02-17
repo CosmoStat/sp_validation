@@ -11,26 +11,71 @@ def treecorr_to_fits(filename1, filename2, root):
     
     xiplus_hdu = fits.open(filename1)
     ximinus_hdu = fits.open(filename2)
-
-    #Add a dummy column to keep track of xi_+- when we add the xi_sys for each sample
-    dummy_xiplus = xiplus_hdu[1].data["VALUE"]
-    dummy_ximinus = ximinus_hdu[1].data["VALUE"]
-
-    #Create new dummy columns for the HDU Table
-    raw_xiplus = fits.Column(name="RAW_VALUE", format='D', array=dummy_xiplus)
-    raw_ximinus = fits.Column(name="RAW_VALUE", format='D', array=dummy_ximinus)
-
-    #Update the bin tables
-    xiplus_hdu[1].columns.add_col(raw_xiplus)
-    ximinus_hdu[1].columns.add_col(raw_ximinus)
     
     return xiplus_hdu[1],ximinus_hdu[1]
 
+def tau_to_fits(filename):
+
+    tau_stats = fits.getdata(filename)
+
+    ang = tau_stats['theta']
+    nbins = len(ang)
+    lst = np.arange(1, nbins+1)
+
+    #Create fits HDU for tau_0_+
+    col1 = fits.Column(name ='BIN1', format ='K', array = np.ones(len(lst)))
+    col2 = fits.Column(name ='BIN2', format ='K', array = np.ones(len(lst)))
+    col3 = fits.Column(name ='ANGBIN', format ='K', array = lst)
+    col4 = fits.Column(name = 'VALUE', format = 'D', array = tau_stats['tau_0_p'])
+    col5 = fits.Column(name = 'ANG', format = 'D', unit='arcmin', array = ang)
+    coldefs = fits.ColDefs([col1,col2,col3,col4,col5])
+    tau_0_p_hdu = fits.BinTableHDU.from_columns(coldefs,name ='TAU_0_PLUS')
+
+    #Create fits HDU for tau_2_+
+    col4 = fits.Column(name = 'VALUE', format = 'D', array = tau_stats['tau_2_p'])
+    coldefs = fits.ColDefs([col1,col2,col3,col4,col5])
+    tau_2_p_hdu = fits.BinTableHDU.from_columns(coldefs,name ='TAU_2_PLUS')
+
+    #Append tau_0_p/tau_2_p header info
+    tau_0_p_dict = {
+        '2PTDATA' : 'T',
+        'QUANT1' : 'G+R',
+        'QUANT2' : 'P+R',
+        'KERNEL_1': 'NZ_SOURCE',
+        'KERNEL_2': 'NZ_SOURCE',
+        'WINDOWS': 'SAMPLE'
+    }
+
+    for key in tau_0_p_dict:
+        tau_0_p_hdu.header[key]=tau_0_p_dict[key]
+
+    tau_2_p_dict = {
+        '2PTDATA' : 'T',
+        'QUANT1' : 'G+R',
+        'QUANT2' : 'SR+R',
+        'KERNEL_1': 'NZ_SOURCE',
+        'KERNEL_2': 'NZ_SOURCE',
+        'WINDOWS': 'SAMPLE'
+    }
+
+    for key in tau_2_p_dict:
+        tau_2_p_hdu.header[key]=tau_2_p_dict[key]
+
+    return tau_0_p_hdu, tau_2_p_hdu
+
+
+
 #transforms text file of CosmoCov data into covmat HDU extension
-def covdat_to_fits(filename):
+def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
     
     #read in cov txt data from CosmoCov
-    covmat = np.loadtxt(filename)
+    covmat_xi = np.loadtxt(filename_cov_xi)
+    if filename_cov_tau is not None:
+        covmat_tau = np.load(filename_cov_tau)
+        nbins = int(len(covmat_tau)/3)
+        covmat_tau = covmat_tau[:2*nbins, :2*nbins]
+        covmat = np.block([[covmat_xi, np.zeros((len(covmat_xi), len(covmat_tau)))],
+                            [np.zeros((len(covmat_tau), len(covmat_xi))), covmat_tau]])
     
     if len(covmat) != len(covmat[0]):
         print('Error: covmat not square!')
@@ -41,12 +86,24 @@ def covdat_to_fits(filename):
         cov_hdu = fits.ImageHDU(covmat)
         
         #create header
-        cov_dict = {'COVDATA': 'True', 
-                    'EXTNAME': 'COVMAT',
-                    'NAME_0':'XI_PLUS',
-                    'STRT_0': 0,
-                    'NAME_1':'XI_MINUS',
-                    'STRT_1' : int(len(covmat)/2)}
+        if filename_cov_tau is None:
+            cov_dict = {'COVDATA': 'True', 
+                        'EXTNAME': 'COVMAT',
+                        'NAME_0':'XI_PLUS',
+                        'STRT_0': 0,
+                        'NAME_1':'XI_MINUS',
+                        'STRT_1' : int(len(covmat)/2)}
+        else:
+            cov_dict = {'COVDATA': 'True',
+                        'EXTNAME': 'COVMAT',
+                        'NAME_0':'XI_PLUS',
+                        'STRT_0': 0,
+                        'NAME_1':'XI_MINUS',
+                        'STRT_1' : int(len(covmat_xi)/2),
+                        'NAME_2':'TAU_0_PLUS',
+                        'STRT_2': len(covmat_xi),
+                        'NAME_3':'TAU_2_PLUS',
+                        'STRT_3': len(covmat_xi)+int(len(covmat_tau)/2)}
         for key in cov_dict:
             cov_hdu.header[key] = cov_dict[key] 
 
@@ -110,17 +167,24 @@ if __name__ == "__main__":
     
     two_pt_file_xip = xi_folder+'/xi_plus_'+root+'.fits'
     two_pt_file_xim = xi_folder+'/xi_minus_'+root+'.fits'
-    cov_file = sys.argv[3]        #in cosmocov combined txt format
+    cov_xi_file = sys.argv[3]        #in cosmocov combined txt format
     nz_file = sys.argv[4]         #in cosmocov format
     rho_stats_file = sys.argv[5]+'/rho_stats_'+root+'.fits'
-    out_file = sys.argv[6] 
+    out_file = sys.argv[6]
+    use_tau_stats = sys.argv[7]
+    use_tau_stats = True if use_tau_stats == 'y' else False
+    tau_stats_file = sys.argv[5] +'/tau_stats_'+root+'.fits' if use_tau_stats else None
+    cov_tau_file = sys.argv[5] + '/cov_tau_'+root+'_th.npy' if use_tau_stats else None
 
     
     #create the required FITS extensions
     print("Creating 2PT fits extension...\n")
     xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim, root)
+    if use_tau_stats:
+        print("Creating tau fits extensions...\n")
+        tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(tau_stats_file)
     print("Creating CovMat fits extension...\n")
-    cov_hdu = covdat_to_fits(cov_file)
+    cov_hdu = covdat_to_fits(cov_xi_file, cov_tau_file)
     print("Creating n(z) fits extension...\n")
     nz_hdu = nz_to_fits(nz_file)
     print('Creating rho stats fits extension...\n')
@@ -139,7 +203,11 @@ if __name__ == "__main__":
     
     #create final FITS HDU
     print("Writing out combined FITS file...\n")
-    hdul = fits.HDUList([pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu, rho_hdu])
+    if use_tau_stats:
+        hdu_list = [pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu, tau_0_p_hdu, tau_2_p_hdu, rho_hdu]
+    else:
+        hdu_list = [pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu, rho_hdu]
+    hdul = fits.HDUList(hdu_list)
     hdul.writeto(out_file,overwrite=True)
     print("FITS file written out to %s" %out_file)
     
