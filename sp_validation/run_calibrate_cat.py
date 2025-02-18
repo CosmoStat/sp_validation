@@ -6,10 +6,12 @@ This module implements the class to calibrate a joint comprehensive catalogue.
 """
 
 import sys
+import os
 import numpy as np
 
 from optparse import OptionParser
 
+import h5py
 from astropy.io import fits
 from astropy.table import Column
 
@@ -69,9 +71,40 @@ class CalibrateCat:
         }
 
     def read_cat(self):
+        """Read Cat.
         
-        hdu = 1
-        dat = fits.getdata(self._params["input_path"], hdu)
+        Read input catalogue, either FITS or HDF5.
+        
+        Returns
+        -------
+        list
+            Catalogue data
+            
+        Raises
+        ------
+        IOError
+            If file extension is not .fits or .hd5
+
+        """
+        fpath = self._params["input_path"]
+        verbose = self._params["verbose"]
+        
+        extension = os.path.splitext(fpath)[1]
+        if extension == ".fits":
+            if verbose:
+                print(f"Reading FITS file {fpath}, HDU {hdu}...")
+                
+            hdu = 1
+            dat = fits.getdata(fpath, hdu)
+            
+        elif extension in (".hdf5", ".hd5"):
+            if verbose:
+                print(f"Reading HDF5 file {fpath}...")
+
+            with h5py.File(fpath, "r") as f:
+                dat = f["data"][:]
+        else:
+            raise IOError(f"Unknown file extension {extension}")
 
         return dat
 

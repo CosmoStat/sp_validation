@@ -255,6 +255,9 @@ class JointCat:
         )
         with h5py.File(output_path, "w") as f:
             dset = f.create_dataset("data", data=dat_all)
+            data = dset["data"]
+            
+            
 
         if self._params["verbose"]:
             print(f"Done.")
@@ -298,7 +301,10 @@ class ReadCat:
 
     def run(self):
 
-        f = cat.read_hdf5_file(self._params["input"])
+        obj = self
+        with h5py.File(obj._params["input"], "r") as hdf5_file:
+            pass
+
 
 
 def run_joint_comprehensive_cat(*args):
