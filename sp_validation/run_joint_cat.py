@@ -7,9 +7,11 @@ This module implements the class to create a joint comprehensive catalogue.
 
 import sys
 import numpy as np
+from tqdm import tqdm
 
 from optparse import OptionParser
 
+import h5py
 from astropy.io import fits
 from astropy.table import Column
 
@@ -104,6 +106,75 @@ class JointCat:
 
         return patches
 
+    def get_n_obj(self, patches, base_path, input_sub_path):
+        """Get N Obj.
+
+        Get number of objects from FITS file headers.
+
+        """
+        if self._params["verbose"]:
+            print("Getting number of objects")
+        n_obj_list = []
+        n_obj = 0
+        hdu_lists = []
+        for patch in patches:
+            input_path = f"{base_path}/{patch}/{input_sub_path}"
+            try:
+                hdu_list = fits.open(input_path)
+            except:
+                raise ValueError(
+                    f"Could not open file {input_path} at HDU #{self._params['hdu']}"
+                )
+            hdu_lists.append(hdu_list)
+
+            this_n = int(hdu_list[self._params["hdu"]].header["NAXIS2"])
+            n_obj_list.append(this_n)
+            n_obj += this_n
+
+        if self._params["verbose"]:
+            print(f"Found a total of {n_obj} (~{util.millify(n_obj)}) objects.")
+
+        return hdu_lists, n_obj_list, n_obj
+
+    def get_col_info(self, dat):
+        """Get Col Info.
+
+        """
+        col_names = dat.dtype.names
+
+        n_col = 0
+        formats = {}
+        ndim = {}
+        for name in col_names:
+            formats[name] = dat.dtype.fields[name][0]
+            ndim[name] = dat[name].ndim
+            n_col += ndim[name]
+            # Add one for patch
+            n_col += 1
+
+        if self._params["verbose"]:
+            print(f"#input (output) columns = {len(col_names)} ({n_col})")
+
+        return col_names, formats, ndim, n_col
+
+    def init_data(self, n_col, n_obj):
+        """Init Data.
+
+        """
+        if self._params["verbose"]:
+            print(
+                f"Allocating {n_col * n_obj * 8 / 1024**3:.1f}"
+                + "Gb memory...",
+                end="",
+            )
+        
+        dat_all = np.empty((n_col, n_obj), dtype=np.float64)
+        
+        if self._params["verbose"]:
+            print("done")
+
+        return dat_all
+
     def merge_catalogues(self, patches, base_path="."):
         """Merge Catalogues.
 
@@ -120,21 +191,22 @@ class JointCat:
         input_sub_path = (
             f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
         )
-        output_path = (
-            f"{self._params['survey']}_{self._params['pipeline']}"
-            + f"_comprehensive_{self._params['year']}_v{self._params['version']}.fits"
-        )
-        
-        dat_all = {}
 
-        # Loop over patches
+        hdu_lists, n_obj_list, n_obj = self.get_n_obj(
+            patches,
+            base_path,
+            input_sub_path,
+        )
+
+        # Read data
+        start = end = 0
         for idx, patch in enumerate(patches):
-            if self._params["verbose"]:
-                print(patch, end=" ")
 
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
-                dat = fits.getdata(input_path, self._params["hdu"])
+                # dat = fits.getdata(input_path, self._params["hdu"])
+                dat = hdu_lists[idx][self._params["hdu"]].data
+                hdu_lists[idx].close()
             except:
                 raise ValueError(
                     f"Could not read data of file {input_path} at HDU #{self._params['hdu']}"
@@ -142,57 +214,50 @@ class JointCat:
 
             # Create empty lists if first patch
             if idx == 0:
-                col_names = dat.dtype.names
-                formats = {}
-                for name in col_names:
-                    formats[name] = dat.dtype.fields[name][0]
-                for name in col_names:
-                    dat_all[name] = []
-                dat_all["patch"] = []
 
-            # Append new data
+                col_names, formats, ndim, n_col = self.get_col_info(dat)
+                dat_all = self.init_data(n_col, n_obj)
+
+            # Append new data for that patch (between start and end)
+            end += n_obj_list[idx]
+            i_col = 0
             for name in col_names:
-                dat_all[name].append(dat[name])
-            if self._params["verbose"]:
-                print(f"Added {len(dat)} (~{util.millify(len(dat))}) objects.")
-
+                if ndim[name] == 1:
+                    # Copy 1D column
+                    dat_all[i_col][start:end] = dat[name]
+                else:
+                    # Copy all components of multi-D column
+                    for jdx in range(ndim[name]):
+                        dat_all[i_col + jdx][start:end] = dat[name][:, jdx]
+                i_col += ndim[name]
             # Add patch number
-            dat_all["patch"].append([idx + 1] * len(dat))
+            dat_all[-1][start:end] = idx + 1
+            if self._params["verbose"]:
+                print(
+                    f"{patch}: Added {len(dat)} (~{util.millify(len(dat))})"
+                    + f"objects (from {start} to {end-1})."
+                )
+            start = end
 
-        if self._params["verbose"]:
-            print("Adding patch column")
+        del dat
+
+        # Adding patch column and format
         col_names = col_names + ("patch",)
         formats["patch"] = "I"
+        ndim["patch"] = 1
 
         if self._params["verbose"]:
-            print("Concatenating all data")
-        for name in col_names:
-            dat_all[name] = np.concatenate(dat_all[name], axis=0)
+            print("Creating hdf5 file")
+        output_path = (
+            f"{self._params['survey']}_{self._params['pipeline']}"
+            + f"_comprehensive_{self._params['year']}_"
+            + f"v{self._params['version']}.hdf5"
+        )
+        with h5py.File(output_path, "w") as f:
+            dset = f.create_dataset("data", data=dat_all)
 
         if self._params["verbose"]:
-            print("Creating FITS columns")
-        column_all = []
-        for name in col_names:
-            if dat_all[name].ndim == 1:
-                column = fits.Column(
-                    name=name, array=dat_all[name], format=formats[name]
-                )
-                column_all.append(column)
-            else:
-                column_2d = [
-                    fits.Column(
-                        name=f"{name}_{idx}",
-                        array=dat_all[name][:, idx],
-                        format="D",
-                    ) for idx in range(dat_all[name].shape[1])
-                ]
-                for column in column_2d:
-                    column_all.append(column)
-        
-        print(f"Writing file to disk. Final total length = {len(dat_all[col_names[0]])}.")
-        
-        # Write to disk
-        cat.write_fits_BinTable_file(column_all, output_path)
+            print(f"Done.")
 
     def run(self):
         """Run.
@@ -205,7 +270,36 @@ class JointCat:
             print("Merging patches", patches)
 
         self.merge_catalogues(patches)
-        
+
+
+class ReadCat:
+
+    def __init__(self):
+        self.params_default()
+
+    def params_default(self):
+        """Params Default.
+
+        Set default parameter values.
+
+        """
+        self._params = {
+            "input": "input_cat.hdf5",
+            "n_row": None,
+        }
+        self.short_options = {
+            "input": "-i",
+            "n_row": "-n",
+        }
+        self._help_string = {
+            "input": "input file, default={}",
+            "n_row": "print first N_ROW rows only",
+        }
+
+    def run(self):
+
+        f = cat.read_hdf5_file(self._params["input"])
+
 
 def run_joint_comprehensive_cat(*args):
     """Run Joint Comprehensive Cat.

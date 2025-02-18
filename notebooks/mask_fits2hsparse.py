@@ -34,7 +34,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # List of FITS mask files
-directory = "/arc/projects/unions/catalogues/unions/GAaP_photometry/extfinalmask_UNIONS5000"
+directory = f"{os.environ['HOME']}/arc/projects/unions/catalogues/unions/GAaP_photometry/extfinalmask_UNIONS5000"
 #directory = "."
 fits_mask_files = glob.glob(f"{directory}/UNIONS.*_extfinalmask.fits")
 
@@ -138,7 +138,7 @@ do_gif = True
 # +
 step = 10
 
-batch_size = 100
+batch_size = 10
 
 batch_ra, batch_dec, batch_mask = [], [], []
 
