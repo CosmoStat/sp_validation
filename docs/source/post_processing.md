@@ -16,11 +16,11 @@ This is performed (currently both for pre- and post-v1.4.1 versions) with the se
 in `sp_validation/notebooks` or the `ipython` script `validation.py` generated thereof.
 
 This script creates plots, diagnostics, and three shear catalogue FITS files:
-- Basic catalogue containing
+- _Basic_ catalogue containing
   positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, patch ID. Masking and galaxy selection are applied.
-- Extended catalogue containing **in addition**
+- _Extended_ catalogue containing **in addition**
   uncalibrated shapes inverse-variance weights, shear response matrices, SNR, flux, size, PSF quantities. Masking and galaxy selection are applied.  
-- Comprehensive catalogue containing **in addition**
+- _Comprehensive_ catalogue containing **in addition**
   metacal information (measured sheared quantities), mask information (`shapepipe` pre-processing). Masking and galaxy selection is not applied.
   This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.
 
