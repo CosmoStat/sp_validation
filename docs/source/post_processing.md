@@ -1,6 +1,6 @@
-## Post processing
+## Science-ready catalogue production
 
-Post processing steps of `ShapePipe` output catalogues carried out by the `sp_validation` package are:
+Processing steps of `ShapePipe` output catalogues carried out by the `sp_validation` package to produce science-ready catalogues are:
 1. Extract relevant information from a final `ShapePipe` output catalogue per patch; run basic diagnostic tests, create pre-calibration shear catalogues.
 2. Merge pre-calibration catalogues created in the previous step, e.g. processed by individual patches, into one or more joint catalogues;
 3. Create calibrated galaxy shear catalogue. This step includes the tasks:  
