@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # UNIONS Cosmological Inference Pipeline
 by Lisa Goh, CEA Paris-Saclay
 
@@ -22,4 +23,8 @@ with one of the following flags:
 
 `--mcmc_process`: You can finally analyse the chains with the `MCMC.ipynb` notebook. 
 
+=======
+## COSMOLOGICAL CONSTRAINS WITH UNIONS COSMIC SHEAR 
+>>>>>>> d5bc7c7 (update to cosmo_inference pipeline)
 
+This is the pipeline used to derive cosmological constraints with cosmic shear data from the UNIONS v1.4 catalogue.

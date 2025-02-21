@@ -7,13 +7,14 @@ import matplotlib.pylab as plt
 import sys
 
 #transforms treecorr fits file of correlation functions into CosmoSIS-friendly 2pt FITS extension to be read by 2pt_likelihood
-def treecorr_to_fits(filename1, filename2, root):
+def treecorr_to_fits(filename1,filename2):
     
     xiplus_hdu = fits.open(filename1)
     ximinus_hdu = fits.open(filename2)
     
     return xiplus_hdu[1],ximinus_hdu[1]
 
+<<<<<<< HEAD
 def tau_to_fits(filename):
 
     tau_stats = fits.getdata(filename)
@@ -64,6 +65,8 @@ def tau_to_fits(filename):
     return tau_0_p_hdu, tau_2_p_hdu
 
 
+=======
+>>>>>>> d5bc7c7 (update to cosmo_inference pipeline)
 
 #transforms text file of CosmoCov data into covmat HDU extension
 def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
@@ -110,12 +113,13 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
     
     return cov_hdu
 
+
 #transforms nz data (that was used in CosmoCov format) into nzdat HDU extension
 def nz_to_fits(filename):
     
 
-    arr = np.loadtxt(filename)
-    rows, nbins = arr.shape
+    line= np.loadtxt(filename, max_rows=1)
+    nbins = len(line)-1
     
     z_low = np.loadtxt(filename, usecols=0)
     
@@ -130,7 +134,7 @@ def nz_to_fits(filename):
     col3 = fits.Column(name ='Z_HIGH', format ='D', array = z_high) 
     cols = [col1,col2,col3]
     
-    for i in range(nbins-1):
+    for i in range(nbins):
         bin_col = np.loadtxt(filename, usecols=i+1)
         hdu_col = fits.Column(name ='BIN%d' %(i+1), format ='D', array = bin_col)
         cols.append(hdu_col)
@@ -149,14 +153,8 @@ def nz_to_fits(filename):
         
     return nz_hdu
 
-def rho_to_fits(filename):
-    rho_stat_hdu = fits.open(filename)
-    rho_stat_hdu[1].name = "RHO_STATS"
-    return rho_stat_hdu[1]
-
 
 if __name__ == "__main__":
-    
     
 #combines all the data: 2pt correlation functions from treecorr, covmat from CosmoCov (must already be combined into 1 txt file), nz txt data 
 #into 1 fits file to be read by CosmoSIS 2pt-likelihood function
@@ -187,8 +185,6 @@ if __name__ == "__main__":
     cov_hdu = covdat_to_fits(cov_xi_file, cov_tau_file)
     print("Creating n(z) fits extension...\n")
     nz_hdu = nz_to_fits(nz_file)
-    print('Creating rho stats fits extension...\n')
-    rho_hdu = rho_to_fits(rho_stats_file)
     
     
     #create header for primary HDU
@@ -211,3 +207,7 @@ if __name__ == "__main__":
     hdul.writeto(out_file,overwrite=True)
     print("FITS file written out to %s" %out_file)
     
+
+
+
+
