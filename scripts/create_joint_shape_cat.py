@@ -534,12 +534,6 @@ def main(argv=None):
         add_col_data['e2_noleakage'] = e2_noleakage
         add_col_format['e2_noleakage'] = 'D'
     
-    print("MKDEBUG", ra_all.shape, dec_all.shape, g_corr_mc_all.shape, w_all.shape, mag_all.shape)
-    print("MKDEBUG", R.shape, R_shear.shape, R_select.shape, c.shape, c_err.shape)
-    for col in add_col_data:
-        print(col)
-    print("MKDEBUG", len(add_col_data), len(add_col_format)) 
-    
     write_shape_catalog(
         output_path, 
         ra_all,

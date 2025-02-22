@@ -149,27 +149,38 @@ class JointCat:
             formats[name] = dat.dtype.fields[name][0]
             ndim[name] = dat[name].ndim
             n_col += ndim[name]
-            # Add one for patch
-            n_col += 1
+        # Add one for patch
+        n_col += 1
 
         if self._params["verbose"]:
-            print(f"#input (output) columns = {len(col_names)} ({n_col})")
+            print(f"Number of input (output) columns = {len(col_names)} ({n_col})")
 
         return col_names, formats, ndim, n_col
 
-    def init_data(self, n_col, n_obj):
+    def init_data(self, n_col, n_obj, ndim, dat):
         """Init Data.
 
         """
         if self._params["verbose"]:
             print(
                 f"Allocating {n_col * n_obj * 8 / 1024**3:.1f}"
-                + "Gb memory...",
+                + f" Gb memory for the ({n_col} x {n_obj}) data array ...",
                 end="",
             )
         
-        dat_all = np.empty((n_col, n_obj), dtype=np.float64)
-        
+        # Create dtypes from input column names and types.
+        # Transform multi-D columns into 1D columns
+        dtype_tmp_list = []
+        for name in ndim:
+            if ndim[name] == 1:
+                dtype_tmp_list.append((name, dat[name].dtype))
+            else:
+                for jdx in range(ndim[name]):
+                    dtype_tmp_list.append((f"{name}_{jdx}", dat[name].dtype))
+        dtype_tmp_list.append(('patch', np.int32))
+        dtype_tmp_struct = np.dtype(dtype_tmp_list)
+        dat_all = np.empty((n_obj,), dtype=dtype_tmp_struct)
+
         if self._params["verbose"]:
             print("done")
 
@@ -204,8 +215,9 @@ class JointCat:
 
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
-                # dat = fits.getdata(input_path, self._params["hdu"])
-                dat = hdu_lists[idx][self._params["hdu"]].data
+                dat = fits.getdata(input_path, self._params["hdu"])
+                #dat = hdu_lists[idx][self._params["hdu"]].data
+
                 hdu_lists[idx].close()
             except:
                 raise ValueError(
@@ -216,35 +228,39 @@ class JointCat:
             if idx == 0:
 
                 col_names, formats, ndim, n_col = self.get_col_info(dat)
-                dat_all = self.init_data(n_col, n_obj)
+                dat_all = self.init_data(n_col, n_obj, ndim, dat)
 
             # Append new data for that patch (between start and end)
             end += n_obj_list[idx]
+            
+            # Copy data
             i_col = 0
+            names_out = dat_all.dtype.names
             for name in col_names:
                 if ndim[name] == 1:
                     # Copy 1D column
-                    dat_all[i_col][start:end] = dat[name]
+                    dat_all[names_out[i_col]][start:end] = dat[name]
                 else:
                     # Copy all components of multi-D column
                     for jdx in range(ndim[name]):
-                        dat_all[i_col + jdx][start:end] = dat[name][:, jdx]
+                        dat_all[names_out[i_col + jdx]][start:end] = dat[name][:, jdx]
                 i_col += ndim[name]
             # Add patch number
-            dat_all[-1][start:end] = idx + 1
+            dat_all["patch"][start:end] = idx + 1
+            
+            if i_col + 1 != n_col:
+                raise ValueError(
+                    "Inconsistent number of columns, {i_col + 1}"
+                    + f" != {n_col}"
+                )
             if self._params["verbose"]:
                 print(
                     f"{patch}: Added {len(dat)} (~{util.millify(len(dat))})"
-                    + f"objects (from {start} to {end-1})."
+                    + f" objects (from {start} to {end-1})."
                 )
             start = end
-
+    
         del dat
-
-        # Adding patch column and format
-        col_names = col_names + ("patch",)
-        formats["patch"] = "I"
-        ndim["patch"] = 1
 
         if self._params["verbose"]:
             print("Creating hdf5 file")
@@ -253,11 +269,10 @@ class JointCat:
             + f"_comprehensive_{self._params['year']}_"
             + f"v{self._params['version']}.hdf5"
         )
+
         with h5py.File(output_path, "w") as f:
-            dset = f.create_dataset("data", data=dat_all)
-            data = dset["data"]
-            
-            
+            dset = f.create_dataset("data", data=dat_all) #, dtype=dtypes_out)
+            dset[:] = dat_all
 
         if self._params["verbose"]:
             print(f"Done.")
