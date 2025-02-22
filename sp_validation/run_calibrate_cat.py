@@ -71,11 +71,16 @@ class CalibrateCat:
             "input_path": "path input FITS catalogue",
         }
 
-    def read_cat(self):
+    def read_cat(self, load_into_memory=False):
         """Read Cat.
         
         Read input catalogue, either FITS or HDF5.
         
+        Parameters
+        ----------
+        load_into_memory: bool, optional
+            load data into memory (potentially slow) of ``True``;
+            default is ``False``
         Returns
         -------
         list
@@ -102,12 +107,22 @@ class CalibrateCat:
             if verbose:
                 print(f"Reading HDF5 file {fpath}...")
 
-            with h5py.File(fpath, "r") as f:
-                dat = f["data"]
+            self._hd5file = h5py.File(fpath, "r")
+            dat = self._hd5file["data"]
+            if load_into_memory:
+                return dat[()]
+            else:
+                return dat
         else:
             raise IOError(f"Unknown file extension {extension}")
 
-        return dat
+    def close_hd5(self):
+        """Close HD5.
+
+        Close HDF5 file.
+
+        """
+        self._hd5file.close()
 
     def run(self):
         """Run.

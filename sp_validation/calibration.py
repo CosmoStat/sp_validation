@@ -221,7 +221,7 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
         mod_wls = sm.WLS(e1_out, sm.add_constant(e1_PSF), weights=weight_out)
         try:
             res_wls = mod_wls.fit()
-        except;
+        except:
             print("Linear regression fit for PSF leakage failed")
             raise
         alpha_df.loc[i_group, 'alpha_1'] = res_wls.params[1]

@@ -34,7 +34,7 @@ obj = calibrate.CalibrateCat()
 obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.4.2.hdf5"
 obj._params["verbose"] = True
 
-dat = obj.read_cat()
+dat = obj.read_cat(load_into_memory=False)
 
 print(f"Found {len(dat)} (~{util.millify(len(dat))}) objects in catalogue")
 
@@ -359,4 +359,4 @@ for idx, key_1 in enumerate(keys):
 plt.show(block=False)
 # -
 
-
+obj.close_hd5()
