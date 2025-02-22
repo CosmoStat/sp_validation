@@ -8,6 +8,7 @@ This module implements the class to calibrate a joint comprehensive catalogue.
 import sys
 import os
 import numpy as np
+from scipy import stats
 
 from optparse import OptionParser
 
@@ -102,7 +103,7 @@ class CalibrateCat:
                 print(f"Reading HDF5 file {fpath}...")
 
             with h5py.File(fpath, "r") as f:
-                dat = f["data"][:]
+                dat = f["data"]
         else:
             raise IOError(f"Unknown file extension {extension}")
 
@@ -114,7 +115,38 @@ class CalibrateCat:
         Main processing function.
 
         """
-        
+
+def confusion_matrix(mask, confidence_level=0.9):
+    
+    n_key = len(mask)
+
+    cm = np.empty((n_key, n_key))
+    r_val = np.zeros_like(cm)
+    r_cl = np.empty((n_key, n_key, 2))
+
+    for idx, key1 in enumerate(mask):
+        for jdx, key2 in enumerate(mask):
+            res = stats.pearsonr(mask[key1], mask[key2])
+            r_val[idx][jdx] = res.statistic
+            r_cl[idx][jdx] = res.confidence_interval(confidence_level=confidence_level)
+            
+    return r_val, r_cl       
+
+def correlation_matrix(mask):
+    
+    n_tot = len(mask)
+    n_key = len
+
+    cm = np.empty((n_key, n_key))
+    r = np_like(cm)
+
+    for idx, key1 in enumerate(mask):
+        for jdx, key2 in enumerate(mask):
+            r[idx][jdx] = stats.pearsonr(mask[key1], mask[key2])
+            
+    return r
+            
+
 
 def run_calibrate_comprehensive_cat(*args):
     """Run Calibrate Comprehensive Cat.

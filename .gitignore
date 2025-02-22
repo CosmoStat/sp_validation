@@ -159,3 +159,5 @@ cosmo_inference/cosmosis_config/values_*
 
 notebooks/tests/star_response.ipynb
 sp_validation.code-workspace
+notebooks/calibrate_comprehensive_cat.ipynb
+notebooks/calibrate_comprehensive_cat.ipynb
