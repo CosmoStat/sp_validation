@@ -11,6 +11,10 @@
 import os
 import re
 import numpy as np
+import getpass
+
+import h5py
+import tqdm
 
 from datetime import datetime
 
@@ -54,7 +58,7 @@ def print_mean_ellipticity(
     stats_file : file handler
         summary statistics output file handler
     invalid : float, optional, default -10
-        flag objects with ellipticty value = invalid
+        flag objects with ellipticity value = invalid
     verbose : bool, optional, default=False
         verbose output if True
     """
@@ -74,7 +78,7 @@ def print_mean_ellipticity(
     EPS = 0.0001
 
     # Index list of valid objects
-    ind_val = np.zeros(shape=(2, n_tot), dtype=np.bool)
+    ind_val = np.zeros(shape=(2, n_tot), dtype=bool)
     for i in (0, 1):
         ind_val[i] = np.abs(all_ell[i] - invalid) > EPS
     # Valid objects = those for which both ellipticity
@@ -83,7 +87,7 @@ def print_mean_ellipticity(
 
     n_tot_val = len(np.where(ind_v)[0])
     n_tot_mil = util.millify(n_tot_val)
-    msg = ('Total number of valid objects = {n_tot_val} = {n_tot_mil}')
+    msg = f'Total number of valid objects = {n_tot_val} = {n_tot_mil}'
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = 'Fraction of invalid objects = {}/{} = {:.3g}%\n' \
@@ -335,22 +339,22 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     io.print_stats(msg, stats_file, verbose=verbose)
 
 
-def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):            
-    """Add docstring.                                                           
-                                                                                
-    ...                                                                         
-                                                                                
-    """                                                                         
-    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)   
-    star_coord = coords.SkyCoord(                                               
-        ra=ra_star * u.degree,                                                  
-        dec=dec_star * u.degree,                                                
-    )                                                                           
-                                                                                
-    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)             
-                                                                                
-    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]             
-                                                                                
+def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
+    """Add docstring.
+
+    ...
+
+    """
+    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)
+    star_coord = coords.SkyCoord(
+        ra=ra_star * u.degree,
+        dec=dec_star * u.degree,
+    )
+
+    res_coord = coords.match_coordinates_sky(star_coord, gal_coord)
+
+    ind_stars = res_coord[0][np.where(res_coord[1].value < thresh)]
+
     return ind_stars
 
 
@@ -462,7 +466,7 @@ def write_shape_catalog(
     g1_uncal, g2_uncal : arrays(ngal) of float, optional, default=None
         uncalibrated shear estimates
     R_g11, R_g22, R_g12, R_g21 : arrays(ngal) of float, optional, default=None
-        shear response matrix elemencts per galaxy
+        shear response matrix elements per galaxy
     sigma_epsilon: float, optional
         shape noise, default is `None`
     add_cols : dict, optional, default is `None`
@@ -470,6 +474,7 @@ def write_shape_catalog(
     add_cols_format : dict, optional
         format for n additional columns to add, default is `None`, for which
         'float' format is used
+
     """
     # Data HDU
     c_ra = fits.Column(name='RA', array=ra, format='D', unit='deg')
@@ -495,7 +500,7 @@ def write_shape_catalog(
             ntype += 1
 
     if add_cols:
-        for i, name in enumerate(add_cols):
+        for name in add_cols:
             if add_cols_format:
                 my_format = add_cols_format[name]
             else:
@@ -515,7 +520,7 @@ def write_shape_catalog(
         'e2',
         'Calibrated reduced shear estimate, 2nd comp'
     )
-    table_hdu.header['TTYPE5'] = ('w', 'Weight')
+    table_hdu.header['TTYPE5'] = ('w', 'DES Weight')
     table_hdu.header['TTYPE6'] = ('mag', 'Magnitude = MAG_AUTO (SExtractor)')
     if snr is not None:
         table_hdu.header['TTYPE7'] = (
@@ -544,14 +549,19 @@ def write_shape_catalog(
 
     # Primary HDU with information in header
     primary_header = fits.Header()
-    primary_header = cat.write_header_info_sp(primary_header)
+
+    primary_header = cat.write_header_info_sp(
+        primary_header,
+        software_name="sp_validation",
+        software_version=__version__,
+        author=getpass.getuser(),
+    )
     cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
     primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
     primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
 
     primary_header['w'] = (
-        'Weight',
-        r'1 / (2*sig_eps^2 + sig^2(g_1) + sig^2(g_2))'
+        'DES Weight'
     )
     if sigma_epsilon:
         primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
@@ -618,58 +628,123 @@ def write_PSF_cat(output_path, ra, dec, e1, e2):
     cat.write_fits_BinTable_file(cols, output_path)
 
 
-def cut_data(data, cut, verbose=False):
-    """Cut Data.
+def read_param_file(path, verbose=False):
+    """Read Param File.
+    MKDEBUG TODO: Move to cs_util. Also used in sp/create_final_cat.
 
-    Cut data according to selection criteria list.
+    Return parameter list read from file.
 
     Parameters
     ----------
-    data : numpy,ndarray
-        input data
-    cut : str
-        selection criteria expressions, white-space separated
-    verbose : bool, optional
-        verbose output if `True`, default is `False`
-
-    Raises
-    ------
-    ValueError :
-        if cut expression is not valid
+    path: str
+        input file name
+    verbose: bool, optional, default=False
+        verbose output if True
 
     Returns
     -------
-    numpy.ndarray
-        data after cuts
+    list of str
+        parameter names
 
     """
-    if cut is None:
+    param_list = []
+
+    if path:
         if verbose:
-            print('No cuts applied to input galaxy catalogue')
+            print(f"Reading parameter file {path}")
 
-        return data
-
-    cut_list = cut.split(' ')
-
-    for cut in cut_list:
-        res = re.match(r'(\w+)([<>=!]+)(\w+)', cut)
-        if res is None:
-            raise ValueError(f'cut \'{cut}\' has incorrect syntax')
-        if len(res.groups()) != 3:
-            raise ValueError(
-                f'cut criterium \'{cut}\' does not match syntax '
-                '\'field rel val\''
-            )
-        field, rel, val = res.groups()
-
-        cond = 'data[\'{}\']{}{}'.format(field, rel, val)
-
-        if verbose:
-            print(f'Applying cut \'{cond}\' to input galaxy catalogue')
-
-        data = data[np.where(eval(cond))]
+        with open(path) as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                entry = line.rstrip()
+                if not entry or entry == "":
+                    continue
+                param_list.append(entry)
 
     if verbose:
-        print(f'Using {len(data)} galaxies after cuts.')
+        if len(param_list) > 0:
+            print(f"Read {len(param_list)} columns", end="")
+        else:
+            print("No parameters read", end="")
+        print(" into merged catalogue")
 
-    return data
+    param_list_unique = list(set(param_list))
+    
+    if verbose:
+        n = len(param_list) - len(param_list_unique)
+        if n > 1:
+            print("Removed {n} duplicate entries")
+    
+    return param_list_unique
+
+
+def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=None):
+    """Read HDF5 File.
+
+    Read hdf5 file and return contained data.
+
+    Parameters
+    ----------
+    file_path : str
+        input file path
+    name : str
+        patch name
+    stats_file : file handler
+        summary statistics output file handler
+    check_only : bool, optional
+        If True only check, not return data
+ 
+    Returns
+    -------
+    dict
+        data
+
+    """
+    param_list = read_param_file(param_path, verbose=True) if param_path else None
+
+    with h5py.File(file_path, "r") as hdf5_file:
+        # Find patch group in hierarchical structure
+        if not f"patches/{name}" in hdf5_file:
+            raise KeyError(f"Entry patches/{name} not found in file {file_path}")
+        patch_group = hdf5_file[f"patches/{name}"]
+
+        data_list = []
+        ID_pbl = set()
+        for ID in tqdm.tqdm(patch_group):
+
+            # Get data for this ID from file
+            data = patch_group[ID][()]
+
+            # Restrict to parameter list if given
+            data = data[param_list] if param_list is not None else data
+
+            #if data_list is None:
+            #    data_list = data
+            #    ID_first = ID
+            #else:
+            
+            #    # Check columns
+            #    for key in data.dtype.names:
+            #        if key not in data_list.dtype.names:
+            #            pass
+            #            #print(f"Not found in ID {ID_first}", key)
+            #            #ID_pbl.update([ID])
+            #    for key in data_list.dtype.names:
+            #        if key not in data.dtype.names:
+            #            pass
+            #            #print(f"Not found in ID {ID}", key)
+            #            #ID_pbl.update([ID])
+
+            if not check_only:
+                # Add new to existing data
+                data_list.append(data)
+
+        data_comb = np.concatenate(data_list, axis=0)
+ 
+    # Print problematic tile IDs
+    for ID in ID_pbl:
+        print("Tile IDs with missing keys:", file=stats_file)
+        print(ID, file=stats_file)
+
+    return data_comb

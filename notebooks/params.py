@@ -28,7 +28,7 @@ np.set_printoptions(precision=3, formatter={'float': '{: .3g}'.format})
 # Survey parameters
 
 ## Field or patch name. Put None if n/a
-name = 'W3'
+name = 'P7'
 print('Field name = {}'.format(name))
 
 ## Area of a tile in deg^2
@@ -41,29 +41,34 @@ pixel_size = 0.187
 ##  'ngix': multi-epoch model fitting
 ##  'galsim': stacked-image moments (experimental)
 shapes = ['ngmix']
-#shapes = ['ngmix', 'galsim']
-print('Shape measurement methods:', shapes)
+print('Shape measurement method(s):', shapes)
 
 # Paths
 
 ## Input paths
 
 ### Input data directory
-#data_dir = f'{os.environ["HOME"]}/data_WL'
 data_dir = '.'
 
 ### Tile IDs
 path_tile_ID = f'{data_dir}/tiles_{name}.txt'
 
 ### Weak-lensing galaxy catalog name
-galaxy_cat_path = f'{data_dir}/final_cat.npy'
+galaxy_cat_path = f'{data_dir}/final_cat_{name}.hdf5'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
 
+## Parameter list; optional, set to `None` if not required
+param_list_path = f"{data_dir}/final_cat.param"
+
 ### Star and PSF catalog name; optional, set to `None` if not required
-star_cat_path = f'{data_dir}/output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
+star_cat_path = f'{data_dir}/full_starcat-0000000.fits'
+
+# HDU number of star and PSF catalogue
+hdu_star_cat = 1
 
 ### External mask; optional, set to `None` if not required
-mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
+#mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
+mask_external_path = None
 
 ## Output paths
 
@@ -110,7 +115,7 @@ mmap_mode = None
 ## Output
 
 ### Additional output columns
-add_cols = None
+add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER", "NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"]
 
 
 # Catalog parameters
@@ -133,11 +138,12 @@ gal_mag_faint = 30
 do_spread_model = False
 
 ### SExtractor flags to keep in addition to FLAGS=0
-### (bit-coded; list of powers of 2)
-flags_keep = [1, 2]
+### (bit-coded; list of powers of 2);
+### Empty list if no flags
+flags_keep = []
 
 ## Minimum number of epochs
-n_epoch_min = 1
+n_epoch_min = 2
 
 ### Signal-to-noise (selection within metacal)
 #### minimum to cut noisy objects
@@ -146,8 +152,10 @@ gal_snr_min = 10
 gal_snr_max = 500
 
 ### Relative size, T_gal / T_psf (selection within metacal)
-### to select objects that are not too small compared to the PSF, thus not likely to be point-like
-gal_rel_size_min = 0.3
+### to select objects that are not too small compared to the PSF, thus not likely to be point-like,
+### or to big as they seem to bias the correlation functions
+gal_rel_size_min = 0.5
+gal_rel_size_max = 3.
 
 ### Correct galaxy size for ellipticity
 gal_size_corr_ell = False
@@ -184,6 +192,9 @@ pixel_size_emap_amin = 0.4
 ## Pixel size of smoothed convergence map, in pixels
 ## of size pixel_size_emap_amin
 smoothing_scale_pix = 20
+
+# cutout map around specific coordinates, optional                              
+map_cut_coords = [112, 154, 41, 31]
 
 ## Sign of shear components, to correct for left-handed
 ## coordinate system

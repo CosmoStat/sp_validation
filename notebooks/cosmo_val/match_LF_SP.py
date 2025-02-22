@@ -43,7 +43,8 @@ sp_version = '1.0'
 lf_version = '1'
 version = sp_version
 
-path_to_unions_data = f'{os.environ["HOME"]}/astro/data/UNIONS/v{version}'
+path_to_unions_data = '/n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/'
+#path_to_unions_data = f'{os.environ["HOME"]}/astro/data/UNIONS/v{version}'
 
 # Input catalogues
 sp_cat_name = f'{path_to_unions_data}/ShapePipe/unions_shapepipe_extended_2022_v{sp_version}.fits'
@@ -129,7 +130,6 @@ _ = plt.ylabel('frequency')
 plt.xlim(1e-3, 5)
 _ = plt.ylim(1e-5, 5e1)
 
-d2d_arcsec = d2d.to('arcsec').value
 plt.hist(d2d_arcsec, bins=500, range=(0, 3), density=True)
 plt.xlabel('distance [arcsec]')
 _ = plt.ylabel('frequency')

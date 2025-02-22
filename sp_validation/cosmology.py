@@ -93,7 +93,6 @@ def stack_mm3(
 
         R_max_ang = radius / d_ang  # Rad         / deg_to_rad  # Deg
 
-        #res_match = tree.query(np.array([ra_c, dec_c]).T, k=n_match, n_jobs=-1)
         res_match = tree.query(np.array([ra_c, dec_c]).T, k=n_match)
 
         ind_gal = res_match[1][np.where(res_match[0] < R_max_ang)]
@@ -275,20 +274,22 @@ def get_theo_xi(
     ell = np.logspace(0, np.log10(10000), 1000)
     cl = ccl.angular_cl(cosmo, lens1, lens1, ell)
 
+    theta_deg = theta / 60
+
     xip_fit = ccl.correlation(
         cosmo,
-        ell,
-        cl,
-        theta / 60,
-        corr_type='L+',
+        ell=ell,
+        C_ell=cl,
+        theta=theta_deg,
+        type='GG+',
         method='Bessel',
     )
     xim_fit = ccl.correlation(
         cosmo,
-        ell,
-        cl,
-        theta / 60,
-        corr_type='L-',
+        ell=ell,
+        C_ell=cl,
+        theta=theta_deg,
+        type='GG-',
         method='Bessel',
     )
 

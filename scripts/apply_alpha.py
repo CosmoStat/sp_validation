@@ -10,6 +10,7 @@ Write FITS file with added columns.
 """
 
 import sys
+import pickle
 
 from optparse import OptionParser                                               
 
@@ -19,7 +20,8 @@ from astropy.table import Table, Column
 
 from cs_util import logging
 
-from sp_validation import correlation as corr
+from shear_psf_leakage.leakage import func_bias_2d
+
 from sp_validation import cat
 from sp_validation import util
 
@@ -36,7 +38,7 @@ def params_default():
 
     """
     param = {
-        'order': 'quad',
+        'order': 'lin',
         'mix': True,
         'e1_col': 'e1',
         'e2_col': 'e2',
@@ -45,6 +47,8 @@ def params_default():
         'input_path_shear': 'SP/unions_shapepipe_extended_2022_v1.0.fits',
         'output_path': 'shape_cat_cor_alpha.fits',
     }
+
+    param['alpha_leakage'] = f'./leakage/PSF_e_vs_e_gal_order-{param['order']}_mix-{param['mix']}.json'
 
     return param
 
@@ -116,6 +120,14 @@ def parse_options(p_def):
         type='string',                                                          
         help=f'PSF e2 column name, default=\'{p_def["e2_PSF_col"]}\''              
     )
+    parser.add_option(
+        '',
+        '--alpha_leakage',
+        dest='alpha_leakage',
+        default=p_def['alpha_leakage'],
+        type='string',
+        help=f'File containing the alpha leakage fitted parameters, default=\'{p_def['alpha_leakage']}\''
+    )
     parser.add_option(                                                          
         '-o',
         '--output_path',
@@ -149,12 +161,10 @@ def main(argv=None):
 
     # Load best-fit parameters for alpha leakage
     fname = (
-        f'./leakage/PSF_e_vs_e_gal_order-'
-        + f'{params["order"]}_mix-{params["mix"]}.json'
+        params['alpha_leakage']
     )
-    fp = open(fname)
-    par_best_fit = Parameters()
-    par_best_fit.load(fp)
+    with open(fname, 'rb') as fp:
+        par_best_fit = pickle.load(fp)
 
     # Set additive component to zero to avoid double accounting
     for c in ('c1', 'c2'):
@@ -168,9 +178,11 @@ def main(argv=None):
     dat_shear = hdu_list[1].data
     e1_PSF = dat_shear[params['e1_PSF_col']]
     e2_PSF = dat_shear[params['e2_PSF_col']]
+    e1 = dat_shear[params['e1_col']]
+    e2 = dat_shear[params['e2_col']]
 
     # Get ellipticity correction de = alpha e
-    de1, de2 = util.func_bias_2d(                                     
+    de1, de2 = func_bias_2d(                                     
         par_best_fit,
         e1_PSF,
         e2_PSF,
@@ -180,8 +192,8 @@ def main(argv=None):
 
     # If the PSF leakage term has contaminated the data, correct
     # for it by subtracting this term
-    e1_cor = dat_shear['e1'] - de1
-    e2_cor = dat_shear['e2'] - de2
+    e1_cor = e1 - de1
+    e2_cor = e2 - de2
 
     t = Table(dat_shear)
     t.add_column(Column(name='e1_cor', data=e1_cor))
