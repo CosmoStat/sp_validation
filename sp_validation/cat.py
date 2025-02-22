@@ -363,7 +363,8 @@ def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
 
 
 def read_shape_catalog(
-    input_path
+    input_path,
+    w_name="w",
 ):
     """Read Shape Catalog.
 
@@ -373,6 +374,8 @@ def read_shape_catalog(
     ----------
     input_path : str
         input file path
+    w_name : str, optional
+        name of weight column, default is "w"
 
     Returns
     -------
@@ -401,7 +404,7 @@ def read_shape_catalog(
     g = [np.empty_like(ra), np.empty_like(ra)]
     g1 = dat[hdu_no].data['e1_uncal']
     g2 = dat[hdu_no].data['e2_uncal']
-    w = dat[hdu_no].data['w']
+    w = dat[hdu_no].data[w_name]
     mag = dat[hdu_no].data['mag']
 
     if 'snr' in dat[hdu_no].data.dtype.names:
@@ -760,23 +763,6 @@ def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=Non
 
             # Restrict to parameter list if given
             data = data[param_list] if param_list is not None else data
-
-            #if data_list is None:
-            #    data_list = data
-            #    ID_first = ID
-            #else:
-            
-            #    # Check columns
-            #    for key in data.dtype.names:
-            #        if key not in data_list.dtype.names:
-            #            pass
-            #            #print(f"Not found in ID {ID_first}", key)
-            #            #ID_pbl.update([ID])
-            #    for key in data_list.dtype.names:
-            #        if key not in data.dtype.names:
-            #            pass
-            #            #print(f"Not found in ID {ID}", key)
-            #            #ID_pbl.update([ID])
 
             if not check_only:
                 # Add new to existing data

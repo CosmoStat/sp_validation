@@ -360,6 +360,8 @@ def merge_catalogues(
             column_all.append(fits.Column(name='alpha_2', array=alpha_2, format='D'))
 
 
+        if verbose:
+            print(f"Wrting file {output_path}")
         cat.write_fits_BinTable_file(column_all, output_path, R, R_shear, R_select, c)
     else:
         if verbose:
@@ -490,7 +492,7 @@ def main(argv=None):
             print(' ', patch)
 
         input_path = f'{patch}/sp_output/shape_catalog_{sh}.fits'
-        ra, dec, g1, g2, w, mag, _ = read_shape_catalog(input_path)
+        ra, dec, g1, g2, w, mag, _ = read_shape_catalog(input_path, w_name="w_iv")
 
         ra_all = np.append(ra_all, ra)
         dec_all = np.append(dec_all, dec)
@@ -532,18 +534,24 @@ def main(argv=None):
         add_col_data['e2_noleakage'] = e2_noleakage
         add_col_format['e2_noleakage'] = 'D'
     
+    print("MKDEBUG", ra_all.shape, dec_all.shape, g_corr_mc_all.shape, w_all.shape, mag_all.shape)
+    print("MKDEBUG", R.shape, R_shear.shape, R_select.shape, c.shape, c_err.shape)
+    for col in add_col_data:
+        print(col)
+    print("MKDEBUG", len(add_col_data), len(add_col_format)) 
+    
     write_shape_catalog(
         output_path, 
         ra_all,
         dec_all,
-        g_corr_mc_all,
         w_all,
-        mag_all,
-        R,
-        R_shear, 
-        R_select,
-        c,
-        c_err,
+        mag=mag_all,
+        g=g_corr_mc_all,
+        R=R,
+        R_shear=R_shear, 
+        R_select=R_select,
+        c=c,
+        c_err=c_err,
         add_cols=add_col_data,
         add_cols_format=add_col_format, 
     )
