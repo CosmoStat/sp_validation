@@ -246,7 +246,7 @@ class JointCat:
                         dat_all[names_out[i_col + jdx]][start:end] = dat[name][:, jdx]
                 i_col += ndim[name]
             # Add patch number
-            dat_all["patch"][start:end] = idx + 1
+            dat_all["patch"][start:end] = patch[1:]
             
             if i_col + 1 != n_col:
                 raise ValueError(
