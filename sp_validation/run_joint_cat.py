@@ -6,6 +6,7 @@ This module implements the class to create a joint comprehensive catalogue.
 """
 
 import sys
+import os
 import numpy as np
 from tqdm import tqdm
 
@@ -242,8 +243,7 @@ class JointCat:
 
         return dat_all
     
-    @staticmethod
-    def write_header(cls, hd5file, patches):
+    def write_header(self, hd5file, patches):
         """Write Header.
         
         Write header information to HDF5 file.
@@ -269,14 +269,14 @@ class JointCat:
         hd5file.attrs["patches"] = patches_str
 
         
-    def write_hdf5_file(dat_all):
+    def write_hdf5_file(self, dat_all, patches):
         """Write HDF5 File.
         
         Write data to HDF5 file.
         
         Parameters
         ----------
-        dat_all : numpy.ndarray
+        dat_all i numpy.ndarray
 
         """
         if self._params["verbose"]:
@@ -374,7 +374,7 @@ class JointCat:
     
         del dat
 
-        self.write_hdf5_file(dat_all)
+        self.write_hdf5_file(dat_all, patches)
 
     def run(self):
         """Run.

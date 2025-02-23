@@ -21,6 +21,16 @@ from cs_util import cat
 from cs_util import args as cs_args
 
 
+class StructuralMask(object):
+    
+    def __init__(self, path, label):
+        
+        self._path = path
+        self._label = label
+
+    def open(self):
+        pass
+
 class CalibrateCat:
     """Calibrate Cat.
 

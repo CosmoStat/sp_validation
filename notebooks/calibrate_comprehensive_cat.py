@@ -141,10 +141,58 @@ num_ok = sum(cut_galaxy)
 print(f"{name:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
 
 # +
-# TODO: Apply post-proc structural masks
+# Structural masks
 
-cut_combined = cut_pre_combined
+# Bits and labels
+labels_struc = {
+    "0" : "Faint star halo",
+    "1" : "Bright star halo",
+    "2" : "Star",
+    "3" : "Manual",
+    "4" : "u",
+    "5" : "g",
+    "6" : "r",
+    "7" : "i",
+    "8" : "z",
+    "9"	: "Tile_RA_DEC_cut",
+    "10" : "Maximask"
+}
+
+
+# Bits set for non-tomographic catalogues
+n_list = [0, 1, 2, 3, 10]
+
+bits = []
+for n in n_list:
+    bits.append(2 ** n)
+
+base_dir = f"{os.environ['HOME']}/v1.4.x/masks"
+nside = 131072
+band = "r"
+
+import healsparse as hsp
+for bit in bits:
+    path = f"{base_dir}/mask_{band}_nside{nside}_n{bit}.hsp"
+
+    break
+
+print(path)
+
+
+# +
+
+
+mask = hsp.HealSparseMap.read(path)
+
 # -
+
+ra = dat["ra"][0:5]
+
+mask
+
+#
+
+cut_combined a= cut_pre_combined
 
 # ### Calibration
 
