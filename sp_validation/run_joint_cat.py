@@ -10,6 +10,8 @@ import numpy as np
 from tqdm import tqdm
 
 from optparse import OptionParser
+from importlib.metadata import version 
+
 
 import h5py
 from astropy.io import fits
@@ -25,7 +27,7 @@ from . import util
 class JointCat:
     """Joint Cat.
 
-    Class to create joint catalogue.
+    Class to create joint weak-lensing catalogues.
 
     """
 
@@ -111,6 +113,26 @@ class JointCat:
 
         Get number of objects from FITS file headers.
 
+        Parameters
+        ----------
+        patches : list
+            input patches, type is str
+        base_path : str
+            input base directory, root dir of patches
+        input_sub_path : str
+            input file name; input path is base_path/patch/input_sub_path
+        
+        Raises:
+            ValueError: if input file canont be read
+
+        Returns:
+            list
+                HDUs
+            list
+                number of objects per file
+            int
+                total number of objects
+
         """
         if self._params["verbose"]:
             print("Getting number of objects")
@@ -138,6 +160,22 @@ class JointCat:
 
     def get_col_info(self, dat):
         """Get Col Info.
+        
+        Return information of input columns.
+
+        Parameters
+        ----------
+        dat : numpy.ndarray
+            input data
+        
+        Returns
+        -------
+        list
+            column names
+        list
+            column formats
+        int
+            number of columns
 
         """
         col_names = dat.dtype.names
@@ -159,6 +197,24 @@ class JointCat:
 
     def init_data(self, n_col, n_obj, ndim, dat):
         """Init Data.
+        
+        Initialize empty structured data.
+        
+        Parameters
+        ----------
+        n_col : int
+            number of columns
+        n_obj : int
+            number of objects (rows)
+        ndim : dict
+            dimension of input columns
+        dat : numpy.ndarray
+            example data
+            
+        Returns
+        -------
+        numpy.ndarray
+            combined structure data, (n_col x n_obj) array
 
         """
         if self._params["verbose"]:
@@ -185,6 +241,61 @@ class JointCat:
             print("done")
 
         return dat_all
+    
+    @staticmethod
+    def write_header(cls, hd5file, patches):
+        """Write Header.
+        
+        Write header information to HDF5 file.
+        
+        Parameters
+        ----------
+        hd5file : h5py.File
+            input HDF5 file
+        patches : list
+            input patches, list of str
+            
+        """ 
+        author = os.getenv("USER")
+        software_name = "sp_validation"
+        software_version = version(software_name)
+        date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        patches_str = " ".join(patches)
+        
+        hd5file.attrs["author"] = author
+        hd5file.attrs["softname"] = software_name
+        hd5file.attrs["softver"] = software_version
+        hd5file.attrs["date"] = date
+        hd5file.attrs["patches"] = patches_str
+
+        
+    def write_hdf5_file(dat_all):
+        """Write HDF5 File.
+        
+        Write data to HDF5 file.
+        
+        Parameters
+        ----------
+        dat_all : numpy.ndarray
+
+        """
+        if self._params["verbose"]:
+            print("Creating hdf5 file")
+        output_path = (
+            f"{self._params['survey']}_{self._params['pipeline']}"
+            + f"_comprehensive_{self._params['year']}_"
+            + f"v{self._params['version']}.hdf5"
+        )
+
+        with h5py.File(output_path, "w") as f:
+
+            self.write_header(f, patches)
+
+            dset = f.create_dataset("data", data=dat_all)
+            dset[:] = dat_all
+
+        if self._params["verbose"]:
+            print(f"Done.")
 
     def merge_catalogues(self, patches, base_path="."):
         """Merge Catalogues.
@@ -203,6 +314,7 @@ class JointCat:
             f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
         )
 
+        # Get input FITS files    
         hdu_lists, n_obj_list, n_obj = self.get_n_obj(
             patches,
             base_path,
@@ -262,20 +374,7 @@ class JointCat:
     
         del dat
 
-        if self._params["verbose"]:
-            print("Creating hdf5 file")
-        output_path = (
-            f"{self._params['survey']}_{self._params['pipeline']}"
-            + f"_comprehensive_{self._params['year']}_"
-            + f"v{self._params['version']}.hdf5"
-        )
-
-        with h5py.File(output_path, "w") as f:
-            dset = f.create_dataset("data", data=dat_all) #, dtype=dtypes_out)
-            dset[:] = dat_all
-
-        if self._params["verbose"]:
-            print(f"Done.")
+        self.write_hdf5_file(dat_all)
 
     def run(self):
         """Run.
