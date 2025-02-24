@@ -8,6 +8,7 @@ This module implements the class to create a joint comprehensive catalogue.
 import sys
 import os
 import numpy as np
+import datetime
 from tqdm import tqdm
 
 from optparse import OptionParser
