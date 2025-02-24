@@ -7,7 +7,7 @@ import matplotlib.pylab as plt
 import sys
 
 #transforms treecorr fits file of correlation functions into CosmoSIS-friendly 2pt FITS extension to be read by 2pt_likelihood
-def treecorr_to_fits(filename1, filename2, root):
+def treecorr_to_fits(filename1,filename2):
     
     xiplus_hdu = fits.open(filename1)
     ximinus_hdu = fits.open(filename2)
@@ -110,12 +110,13 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
     
     return cov_hdu
 
+
 #transforms nz data (that was used in CosmoCov format) into nzdat HDU extension
 def nz_to_fits(filename):
     
 
-    arr = np.loadtxt(filename)
-    rows, nbins = arr.shape
+    line= np.loadtxt(filename, max_rows=1)
+    nbins = len(line)-1
     
     z_low = np.loadtxt(filename, usecols=0)
     
@@ -130,7 +131,7 @@ def nz_to_fits(filename):
     col3 = fits.Column(name ='Z_HIGH', format ='D', array = z_high) 
     cols = [col1,col2,col3]
     
-    for i in range(nbins-1):
+    for i in range(nbins):
         bin_col = np.loadtxt(filename, usecols=i+1)
         hdu_col = fits.Column(name ='BIN%d' %(i+1), format ='D', array = bin_col)
         cols.append(hdu_col)
@@ -157,29 +158,28 @@ def rho_to_fits(filename):
 
 if __name__ == "__main__":
     
-    
 #combines all the data: 2pt correlation functions from treecorr, covmat from CosmoCov (must already be combined into 1 txt file), nz txt data 
 #into 1 fits file to be read by CosmoSIS 2pt-likelihood function
 #give file path of each of the 3 components as input, also file path of desired output FITS file
 #outputs nothing, but writes a new FITS file with appropriate extensions
     root = sys.argv[1]
-    xi_folder = sys.argv[2]
+    output_folder = sys.argv[2]
     
-    two_pt_file_xip = xi_folder+'/xi_plus_'+root+'.fits'
-    two_pt_file_xim = xi_folder+'/xi_minus_'+root+'.fits'
+    two_pt_file_xip = output_folder+'/xi_plus_'+root+'.fits'
+    two_pt_file_xim = output_folder+'/xi_minus_'+root+'.fits'
     cov_xi_file = sys.argv[3]        #in cosmocov combined txt format
     nz_file = sys.argv[4]         #in cosmocov format
-    rho_stats_file = sys.argv[5]+'/rho_stats_'+root+'.fits'
-    out_file = sys.argv[6]
-    use_tau_stats = sys.argv[7]
+    rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+root+'.fits'
+    out_file = sys.argv[5]
+    use_tau_stats = sys.argv[6]
     use_tau_stats = True if use_tau_stats == 'y' else False
-    tau_stats_file = sys.argv[5] +'/tau_stats_'+root+'.fits' if use_tau_stats else None
-    cov_tau_file = sys.argv[5] + '/cov_tau_'+root+'_th.npy' if use_tau_stats else None
+    tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+root+'.fits' if use_tau_stats else None
+    cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+root+'_th.npy' if use_tau_stats else None
 
     
     #create the required FITS extensions
     print("Creating 2PT fits extension...\n")
-    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim, root)
+    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim)
     if use_tau_stats:
         print("Creating tau fits extensions...\n")
         tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(tau_stats_file)
@@ -211,3 +211,7 @@ if __name__ == "__main__":
     hdul.writeto(out_file,overwrite=True)
     print("FITS file written out to %s" %out_file)
     
+
+
+
+
