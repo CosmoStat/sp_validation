@@ -1,1 +1,0 @@
-apply_alpha.py -i /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3/unions_shapepipe_extended_2022_P1+3_v1.4.1.fits -o /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3/unions_shapepipe_extended_rmalpha_2022_P1+3_v1.4.1.fits
