@@ -32,7 +32,10 @@ import sp_validation.cat as cat
 obj = calibrate.CalibrateCat()
 
 obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.4.2.hdf5"
+obj._params["cmatrices"] = True
 obj._params["verbose"] = True
+
+# !pwd
 
 dat = obj.read_cat(load_into_memory=False)
 
@@ -323,6 +326,11 @@ def correlation_matrix(mask, confidence_level=0.9):
             
     return r_val, r_cl
 
+
+# +
+if not obj._params["cmatrices"]:
+    print("Skipping cmatric calculations")
+    sys.exit(0)
 
 r_val, r_cl = correlation_matrix(cut_pre)
 
