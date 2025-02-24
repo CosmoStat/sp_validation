@@ -1,0 +1,1 @@
+apply_alpha_snr_size_bin.py -i /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_extended_2022_v1.4.0_mtheli8k.fits -o /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/unions_shapepipe_extended_rmalpha_2022_v1.4.0_mtheli8k.fits

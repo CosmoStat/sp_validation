@@ -1,0 +1,6 @@
+ERROR: Unable to locate a modulefile for 'intelpython3'
+/usr/bin/which: no fi_info in (/softs/intelpython/intelpython3-2024.1.0_814/bin:/softs/intelpython/intelpython3-2024.1.0_814/condabin:/home/guerrini/.vscode-server/bin/8b3775030ed1a69b13e4f4c628c612102e30a681/bin/remote-cli:/usr/share/Modules/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/usr/local/slurm/latest/bin:/softs/_umon)
+Traceback (most recent call last):
+  File "/home/guerrini/sp_validation/notebooks/cosmo_val/cosmo_val.py", line 36, in <module>
+    import emcee
+ModuleNotFoundError: No module named 'emcee'

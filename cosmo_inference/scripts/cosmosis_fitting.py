@@ -14,7 +14,6 @@ def treecorr_to_fits(filename1,filename2):
     
     return xiplus_hdu[1],ximinus_hdu[1]
 
-<<<<<<< HEAD
 def tau_to_fits(filename):
 
     tau_stats = fits.getdata(filename)
@@ -65,8 +64,6 @@ def tau_to_fits(filename):
     return tau_0_p_hdu, tau_2_p_hdu
 
 
-=======
->>>>>>> d5bc7c7 (update to cosmo_inference pipeline)
 
 #transforms text file of CosmoCov data into covmat HDU extension
 def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
