@@ -71,14 +71,18 @@ class CalibrateCat:
         """
         self._params = {
             "input_path": None,
+            "cmatrices": False,
         }
         self._short_options = {
             "input_path": "-i",
+            "cmatrices": "-C",
         }
         self._types = {
+            "cmatrices": "bool",
         }
         self._help_strings = {
             "input_path": "path input FITS catalogue",
+            "cmatrices": "compute correlation and confusion matrices",
         }
 
     def read_cat(self, load_into_memory=False):
@@ -118,7 +122,11 @@ class CalibrateCat:
                 print(f"Reading HDF5 file {fpath}...")
 
             self._hd5file = h5py.File(fpath, "r")
-            dat = self._hd5file["data"]
+            try:
+                dat = self._hd5file["data"]
+            except:
+                print(f"Error while reading file {fpath}")
+                raise
             if load_into_memory:
                 return dat[()]
             else:
