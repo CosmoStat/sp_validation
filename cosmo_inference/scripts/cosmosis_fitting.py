@@ -150,6 +150,11 @@ def nz_to_fits(filename):
         
     return nz_hdu
 
+def rho_to_fits(filename):
+    rho_stat_hdu = fits.open(filename)
+    rho_stat_hdu[1].name = "RHO_STATS"
+    return rho_stat_hdu[1]
+
 
 if __name__ == "__main__":
     
@@ -158,23 +163,23 @@ if __name__ == "__main__":
 #give file path of each of the 3 components as input, also file path of desired output FITS file
 #outputs nothing, but writes a new FITS file with appropriate extensions
     root = sys.argv[1]
-    xi_folder = sys.argv[2]
+    output_folder = sys.argv[2]
     
-    two_pt_file_xip = xi_folder+'/xi_plus_'+root+'.fits'
-    two_pt_file_xim = xi_folder+'/xi_minus_'+root+'.fits'
+    two_pt_file_xip = output_folder+'/xi_plus_'+root+'.fits'
+    two_pt_file_xim = output_folder+'/xi_minus_'+root+'.fits'
     cov_xi_file = sys.argv[3]        #in cosmocov combined txt format
     nz_file = sys.argv[4]         #in cosmocov format
-    rho_stats_file = sys.argv[5]+'/rho_stats_'+root+'.fits'
-    out_file = sys.argv[6]
-    use_tau_stats = sys.argv[7]
+    rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+root+'.fits'
+    out_file = sys.argv[5]
+    use_tau_stats = sys.argv[6]
     use_tau_stats = True if use_tau_stats == 'y' else False
-    tau_stats_file = sys.argv[5] +'/tau_stats_'+root+'.fits' if use_tau_stats else None
-    cov_tau_file = sys.argv[5] + '/cov_tau_'+root+'_th.npy' if use_tau_stats else None
+    tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+root+'.fits' if use_tau_stats else None
+    cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+root+'_th.npy' if use_tau_stats else None
 
     
     #create the required FITS extensions
     print("Creating 2PT fits extension...\n")
-    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim, root)
+    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim)
     if use_tau_stats:
         print("Creating tau fits extensions...\n")
         tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(tau_stats_file)
@@ -182,6 +187,8 @@ if __name__ == "__main__":
     cov_hdu = covdat_to_fits(cov_xi_file, cov_tau_file)
     print("Creating n(z) fits extension...\n")
     nz_hdu = nz_to_fits(nz_file)
+    print('Creating rho stats fits extension...\n')
+    rho_hdu = rho_to_fits(rho_stats_file)
     
     
     #create header for primary HDU
