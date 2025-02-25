@@ -1236,61 +1236,6 @@ for ver in versions:
 gc.collect()
 print("Done: Clean up memory")
 
-# #### Plot covariance matrices
-
-#Plot comparison of covariance matrices calculated by Jackknife and CosmoCov (here cosmocov files have been provided)
-for ver in versions:
-    try:
-        cc = np.loadtxt(cat[ver]['shear']['covmat_file'])
-    except KeyError:
-        print('No Covmat available, skipping analysis for this catalogue: %s' %ver)
-        continue
-    else:
-        cc_var = np.diag(cc)
-        cc_varxip = cc_var[:20]
-        cc_varxim = cc_var[20:]
-
-        cc_g = np.loadtxt(cat[ver]['shear']['covmat_file'][:-4]+'_g.txt')
-        cc_var = np.diag(cc_g)
-        cc_varxip_g = cc_var[:20]
-        cc_varxim_g = cc_var[20:]
-
-        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxip,
-                   ls='-',c='k',
-                   label=r'$\sigma(\xi_+)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip,
-                   ls='--', c='%s' %cat[ver]['colour'],
-                   label=r'$\sigma(\xi_+)$ CosmoCov %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxip_g,
-                   ls=':', c='%s' %cat[ver]['colour'],
-                   label=r'$\sigma(\xi_+)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-
-        plt.grid()
-        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
-        plt.legend(fontsize=15)
-        plt.xlabel(rf'$\theta$ [{sep_units}]')
-        plt.ylabel(r'$\sigma(\xi_+)$')
-        out_path = f"{cat['paths']['output']}/cov_p"
-        plt.savefig(out_path)
-
-        plt.loglog(cat_ggs[ver].meanr,cat_ggs[ver].varxim,
-                   ls='-', c='k',
-                    label=r'$\sigma(\xi_-)$ TreeCorr Jackknife %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxim,
-                   ls='--', c='%s' %cat[ver]['colour'],
-                    label=r'$\sigma(\xi_-)$ CosmoCov %s' %cat[ver]['shear']['label'])
-        plt.loglog(cat_ggs[ver].meanr,cc_varxim_g,
-                    ls=':', c='%s' %cat[ver]['colour'],
-                    label=r'$\sigma(\xi_-)$ CosmoCov Gaussian %s' %cat[ver]['shear']['label'])
-
-        plt.grid()
-        plt.xlim([cat_ggs[ver].meanr[0],cat_ggs[ver].meanr[-1]])
-        plt.legend(fontsize=15)
-        plt.xlabel(rf'$\theta$ [{sep_units}]')
-        plt.ylabel(r'$\sigma(\xi_-)$')
-        out_path = f"{cat['paths']['output']}/cov_m"
-        plt.savefig(out_path)
-
 # ## MCMC Plotting
 
 # +
