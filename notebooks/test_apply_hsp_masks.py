@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
 #     name: python3
 # ---
@@ -24,9 +24,9 @@ import numpy as np
 import healsparse as hsp
 # -
 
-from sp_validation import run_calibrate_cat as calibrate
+from sp_validation import run_joint_cat as sp_joint
 
-obj = calibrate.ApplyHspMasks()
+obj = sp_joint.ApplyHspMasks()
 
 
 # Bits set for non-tomographic catalogues
@@ -50,14 +50,25 @@ obj._params["file_base"] = "mask_r_"
 obj._params["bits"] = bits
 obj._params["verbose"] = True
 
-#dat = obj.read_cat(load_into_memory=True, mode="a")
-import h5py
-f = h5py.File(obj._params["input_path"], mode="a")
-dat = f["data"]
+dat = obj.read_cat(load_into_memory=True, mode="r")
+
+
+# +
+
+#import h5py
+#f = h5py.File(obj._params["input_path"], mode="a")
+#dat = f["data"]
+# -
+
+f.close()
 
 masks = obj.get_masks(dat=dat)
 
 dat_new = obj.append_masks(dat, masks)
+
+obj.write_hdf5_file(dat_new)
+
+obj.close_hd5()
 
 # MKDEBUG TODO:
 # Use JointCat function; write header

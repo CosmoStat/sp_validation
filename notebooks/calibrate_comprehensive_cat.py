@@ -23,13 +23,13 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pylab as plt
 
-from sp_validation import run_calibrate_cat as calibrate
+from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
 from sp_validation.basic import metacal
 from sp_validation import calibration
 import sp_validation.cat as cat
 
-obj = calibrate.CalibrateCat()
+obj = sp_joint.CalibrateCat()
 
 obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.4.2.hdf5"
 obj._params["cmatrices"] = True
@@ -109,8 +109,8 @@ cut_pre[name] = (
 )
 # MKDEBUG TODO: check should be two components, see galaxy.py.
 labels[name] = "bad PSF ell"
-# -
 
+# +
 # Initialise combined mask
 cut_pre_combined = np.ones_like(cut_pre["FLAGS"], dtype=bool)
 
@@ -142,60 +142,34 @@ cut_galaxy = cut_common & cut_pre["NGMIX_MCAL_FLAGS"] & cut_pre["NGMIX_ELL_PSFo_
 name = "galaxy"
 num_ok = sum(cut_galaxy)
 print(f"{name:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
+# -
+
+help(hsp.get_values)
 
 # +
-# Structural masks
+# Initialise combined mask
+cut_struct_combined = np.ones_like(cut_pre["FLAGS"], dtype=bool)
 
-# Bits and labels
-labels_struc = {
-    "0" : "Faint star halo",
-    "1" : "Bright star halo",
-    "2" : "Star",
-    "3" : "Manual",
-    "4" : "u",
-    "5" : "g",
-    "6" : "r",
-    "7" : "i",
-    "8" : "z",
-    "9"	: "Tile_RA_DEC_cut",
-    "10" : "Maximask"
-}
-
-
-# Bits set for non-tomographic catalogues
-n_list = [0, 1, 2, 3, 10]
-
-bits = []
-for n in n_list:
-    bits.append(2 ** n)
-
-base_dir = f"{os.environ['HOME']}/v1.4.x/masks"
-nside = 131072
-band = "r"
-
-import healsparse as hsp
-for bit in bits:
-    path = f"{base_dir}/mask_{band}_nside{nside}_n{bit}.hsp"
-
-    break
-
-print(path)
-
+# Combine all masks with &
+cut_struct_combined = np.logical_and.reduce(list(cut_struct.values()))
 
 # +
+print(f"{'flag':30s} {'label':30s} {'n_ok':>10} {'n_ok[%]':>10}")
+for name in cut_struct:
+    num_ok = sum(cut_struct[name])
+    print(f"{name:30s} {name:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
 
-
-mask = hsp.HealSparseMap.read(path)
+name = "combined"
+num_ok = sum(cut_struct_combined)
+print(f"{name:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
 
 # -
 
-ra = dat["ra"][0:5]
-
-mask
+#
 
 #
 
-cut_combined a= cut_pre_combined
+cut_combined = cut_pre_combined & cutc_struct_combined
 
 # ### Calibration
 
@@ -253,7 +227,6 @@ g_corr_mc = np.zeros_like(g_corr)
 c_corr = np.linalg.inv(gal_metacal.R).dot(c)
 for comp in (0, 1):
     g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
-
 # -
 
 name = "after cuts"
@@ -273,11 +246,6 @@ add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN",
 add_cols_data = {}    
 for key in add_cols:
     add_cols_data[key] = dat[key][cut_combined][mask]
-# -
-
-c
-
-c_corr
 
 # +
 output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
