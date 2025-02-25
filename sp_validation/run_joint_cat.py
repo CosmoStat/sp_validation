@@ -524,7 +524,21 @@ class ApplyHspMasks(BaseCat):
 
     @classmethod
     def get_label_struct(cls, bit):
+        """Get Label Struct.
         
+        Return label of bit-coded mask.
+        
+        Parameters
+        ----------
+        bit: int
+            input bit
+
+        Returns
+        -------
+        str
+            label
+
+        """
         # Labels of bit-coded structural masks
         labels_struct = {
             1 : "Faint_star_halos",
@@ -540,7 +554,28 @@ class ApplyHspMasks(BaseCat):
             1024 : "Maximask",
         }
         
-        return label_struct[bit] 
+        return labels_struct[bit]
+    
+    @classmethod
+    def get_mask_col_name(cls, bit):
+        """Get Mask Col Name.
+    
+        Return column name of mask corresponding to input bit.
+        
+        Parameters
+        ----------
+        bit : int
+            input bit
+            
+        Returns
+        -------
+        str
+            column name
+        
+        """
+        return f"{bit}_{cls.get_label_struct(bit)}"
+        
+
 
     def params_default(self):
         """Params Default.
@@ -678,13 +713,7 @@ class ApplyHspMasks(BaseCat):
             masks[bit] = ~hsp_mask.get_values_pos(ra, dec, lonlat=True)
         
         return masks
-    
-    @classmethod
-    def get_mask_col_name(cls, bit):
         
-        return f"{bit}_{cls.get_labels_struct(bit)}"
-        
-    
     def append_masks(self, dat, masks):
         """Append Masks.
         
