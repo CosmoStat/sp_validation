@@ -112,17 +112,15 @@ class BaseCat(object):
         else:
             raise IOError(f"Unknown file extension {extension}")
         
-    def write_hdf5_header(self, hd5file, patches=None):
+    def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
         
-        Write header information to HDF5 file.
+        Write basic header information to HDF5 file.
         
         Parameters
         ----------
         hd5file : h5py.File
             input HDF5 file
-        patches : list, optional
-            input patches, list of str, default is ``None``
             
         """ 
         author = os.getenv("USER")
@@ -134,11 +132,7 @@ class BaseCat(object):
         hd5file.attrs["softname"] = software_name
         hd5file.attrs["softver"] = software_version
         hd5file.attrs["date"] = date
-        
-        if patches is not None:
-            patches_str = " ".join(patches)
-            hd5file.attrs["patches"] = patches_str
-            
+
     def write_hdf5_file(self, dat, output_path=None, patches=None):
         """Write HDF5 File.
         
@@ -396,7 +390,6 @@ class JointCat(BaseCat):
             print("done")
 
         return dat_all
-    
         
     def write_hdf5_file(self, dat_all, patches):
         """Write HDF5 File.
@@ -422,6 +415,30 @@ class JointCat(BaseCat):
             output_path=output_path, 
             patches=patches
         )
+        
+    def write_hdf5_header(self, hd5file, patches=None):
+        """Write HDF5 Header.
+        
+        Write header information to HDF5 file.
+        
+        Parameters
+        ----------
+        hd5file : h5py.File
+            input HDF5 file
+        patches : list, optional
+            input patches, list of str, default is ``None``
+            
+        """
+        super().write_hdf5_header(hd5file)
+        
+        hd5file.attrs["author"] = author
+        hd5file.attrs["softname"] = software_name
+        hd5file.attrs["softver"] = software_version
+        hd5file.attrs["date"] = date
+        
+        if patches is not None:
+            patches_str = " ".join(patches)
+            hd5file.attrs["patches"] = patches_str
 
     def merge_catalogues(self, patches, base_path="."):
         """Merge Catalogues.
@@ -574,8 +591,6 @@ class ApplyHspMasks(BaseCat):
         
         """
         return f"{bit}_{cls.get_label_struct(bit)}"
-        
-
 
     def params_default(self):
         """Params Default.
@@ -748,6 +763,26 @@ class ApplyHspMasks(BaseCat):
             new_data[self.get_mask_col_name(bit)] = masks[bit]
 
         return new_data
+    
+    def write_hdf5_header(self, hd5file):
+        """Write HDF5 Header.
+        
+        Write header information to HDF5 file.
+        
+        Parameters
+        ----------
+        hd5file : h5py.File
+            input HDF5 file
+        patches : list, optional
+            input patches, list of str, default is ``None``
+            
+        """
+        super().write_hdf5_header(hd5file)
+    
+        hd5file.attrs["hsp_nside"] = self._params["nside"]
+        paths = self.get_paths()
+        for bit in patsh:
+            hd5file.attrs[f"hsp_path_{bit}"] = paths[bit]
 
 class CalibrateCat(BaseCat):
     """Calibrate Cat.
