@@ -60,8 +60,6 @@ dat = obj.read_cat(load_into_memory=True, mode="r")
 #dat = f["data"]
 # -
 
-f.close()
-
 masks = obj.get_masks(dat=dat)
 
 dat_new = obj.append_masks(dat, masks)
