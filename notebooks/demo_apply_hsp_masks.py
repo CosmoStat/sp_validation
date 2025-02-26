@@ -65,7 +65,7 @@ obj.update_params()
 # -
 
 # Read catalogue
-dat = obj.read_cat(load_into_memory=True, mode="r")
+dat = obj.read_cat(load_into_memory=False, mode="r")
 
 # Get bit-coded masks
 masks = obj.get_masks(dat=dat)
