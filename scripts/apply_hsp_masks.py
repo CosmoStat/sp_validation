@@ -2,13 +2,18 @@
 
 import sys
 
-from sp_validation.run_calibrate_cat import run_joint_comprehensive_cat
+from sp_validation import run_joint_cat as sp_joint
+
 
 def main(argv=None):
+    """Main
 
+    Main program
+
+    """
     if argv is None:
-        args = sys.argv[0:]
-    run_joint_comprehensive_cat(*argv)
+        argv = sys.argv[1:]
+    sp_joint.run_apply_hsp_masks(*argv)
 
     return 0
 

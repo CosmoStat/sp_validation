@@ -622,8 +622,8 @@ class ApplyHspMasks(BaseCat):
             "nside": "healsparse resolution parameter, default={}",
             "file_base": "base name of mask files, default={}",
             "bits": "bits to apply, default={}",
-            "aux_mask_files": "auxilliary mask files separated with '\', defualt={}",
-            "aux_mask_labels": "auxilliary mask column names separated with '\'",
+            "aux_mask_files": "auxilliary mask files separated with '\\', defualt={}",
+            "aux_mask_labels": "auxilliary mask column names separated with '\\'",
         }
         
     def check_params(self):
