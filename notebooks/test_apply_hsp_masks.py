@@ -73,11 +73,8 @@ masks = obj.get_masks(dat=dat)
 # Add mask bits as new columns
 dat_new = obj.append_masks(dat, masks)
 
+# Write extended data to new HDF5 file
 obj.write_hdf5_file(dat_new)
 
+# Close input HDF5 catalogue file
 obj.close_hd5()
-
-# MKDEBUG TODO:
-# Use JointCat function; write header
-with h5py.File(obj._params["output_path"], "w") as f:
-    dset = f.create_dataset("data", data=dat_new)

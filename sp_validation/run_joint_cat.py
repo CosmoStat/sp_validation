@@ -980,10 +980,8 @@ class ReadCat:
         }
 
     def run(self):
-
-        obj = self
-        with h5py.File(obj._params["input"], "r") as hdf5_file:
-            pass
+        
+        pass
 
 
 def run_joint_comprehensive_cat(*args):
