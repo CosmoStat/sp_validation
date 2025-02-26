@@ -133,7 +133,7 @@ class BaseCat(object):
         hd5file.attrs["softver"] = software_version
         hd5file.attrs["date"] = date
 
-    def write_hdf5_file(self, dat, output_path=None, patches=None):
+    def write_hdf5_file(self, dat, output_path=None):
         """Write HDF5 File.
         
         Write HDF5 data to file.
@@ -157,7 +157,7 @@ class BaseCat(object):
 
         with h5py.File(output_path, "w") as f:
 
-            self.write_hdf5_header(f, patches=patches)
+            self.write_hdf5_header(f)
 
             dset = f.create_dataset("data", data=dat)
             dset[:] = dat
@@ -409,12 +409,15 @@ class JointCat(BaseCat):
             + f"_comprehensive_{self._params['year']}_"
             + f"v{self._params['version']}.hdf5"
         )
+        
+        with h5py.File(output_path, "w") as f:
 
-        super().write_hdf5_file(
-            dat_all,
-            output_path=output_path, 
-            patches=patches
-        )
+            self.write_hdf5_header(f)
+
+            dset = f.create_dataset("data", data=dat)
+            dset[:] = dat
+
+        #super().write_hdf5_file(dat_all, output_path=output_path)
         
     def write_hdf5_header(self, hd5file, patches=None):
         """Write HDF5 Header.
@@ -430,11 +433,6 @@ class JointCat(BaseCat):
             
         """
         super().write_hdf5_header(hd5file)
-        
-        hd5file.attrs["author"] = author
-        hd5file.attrs["softname"] = software_name
-        hd5file.attrs["softver"] = software_version
-        hd5file.attrs["date"] = date
         
         if patches is not None:
             patches_str = " ".join(patches)
@@ -604,6 +602,8 @@ class ApplyHspMasks(BaseCat):
             "nside": 131072,
             "file_base": "mask_r_",
             "bits": 1,
+            "aux_mask_files": None,
+            "aux_mask_labels": None,
         }
         self._short_options = {
             "input_path": "-i",
@@ -622,8 +622,53 @@ class ApplyHspMasks(BaseCat):
             "nside": "healsparse resolution parameter, default={}",
             "file_base": "base name of mask files, default={}",
             "bits": "bits to apply, default={}",
+            "aux_mask_files": "auxilliary mask files separated with '\', defualt={}",
+            "aux_mask_labels": "auxilliary mask column names separated with '\'",
         }
         
+    def check_params(self):
+        """Check Params.
+
+        Check whether parameter values are valid.
+
+        Raises
+        ------
+        ValueError
+            if a parameter value is not valid
+
+        """
+        if (
+            (self._params["aux_mask_files"] is None)
+            != (self._params["aux_mask_labels"] is None)
+        ):
+            raise ValueError("Both or none of the 'aux_mask_*' can be None")
+        
+    def update_params(self):
+        """Update Params.
+
+        Update and transform parameter values.
+
+        """
+        if self._params["aux_mask_files"] is not None:
+            self._params["aux_mask_file_list"] = cs_args.my_string_split(
+                self._params["aux_mask_files"],
+                verbose=self._params["verbose"],
+                stop=True,
+                sep="\\",
+            )
+            self._params["aux_mask_num"] = (
+                len(self._params["aux_mask_file_list"])
+            )
+            self._params["aux_mask_label_list"] = cs_args.my_string_split(
+                self._params["aux_mask_labels"],
+                verbose=self._params["verbose"],
+                stop=True,
+                num=self._params["aux_mask_num"],
+                sep="\\",
+            )
+        else:
+            self._params["aux_mask_file_list"] = []
+
     def read_hsp_mask(self, path):
         """Read Hsp Mask.
     
@@ -635,11 +680,12 @@ class ApplyHspMasks(BaseCat):
         Returns
         -------
         np.ndarray
-            Mask array.
+            Mask
         """
     
         if self._params["verbose"]:
             print(f"Reading healsparse mask file {path}...")
+
         return hsp.HealSparseMap.read(path)
 
     def reverse_bit_list(self):
@@ -667,10 +713,10 @@ class ApplyHspMasks(BaseCat):
 
         return bit_list
 
-    def get_paths(self):
-        """Get Paths.
+    def get_paths_bit_masks(self):
+        """Get Paths Bit Masks.
         
-        Return paths of mask files.
+        Return paths of bit-coded mask files.
         
         Returns
         -------
@@ -690,7 +736,7 @@ class ApplyHspMasks(BaseCat):
     def get_masks(self, dat=None):
         """Get Masks.
         
-        Returns masks for all bits.
+        Returns per-object masks for all bits.
         
         Parameters
         ----------
@@ -706,8 +752,8 @@ class ApplyHspMasks(BaseCat):
         """
         masks = {}
     
-        # Get mask file paths
-        paths = self.get_paths()
+        # Get bit-coded mask file paths
+        paths = self.get_paths_bit_masks()
     
         # Get coordinates from data
         if dat is None:
@@ -723,11 +769,48 @@ class ApplyHspMasks(BaseCat):
                 print(f"Reading mask for bit {bit}...")
             hsp_mask = hsp.HealSparseMap.read(paths[bit])
     
+            label = self.get_mask_col_name(bit)
+    
             if self._params["verbose"]:
                 print(f"Computing mask bit={bit}...")
-            masks[bit] = ~hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = ~hsp_mask.get_values_pos(ra, dec, lonlat=True)
+        
+        # Read auxilliary mask files"
+        for idx, path in enumerate(self._params["aux_mask_file_list"]):
+            label = self._params["aux_mask_label_list"][idx]
+            masks[label] = hsp.HealSparseMap.read(path)
         
         return masks
+    
+    def run(self):
+        """Run.
+        
+        Main processing function.
+        
+        """
+        obj = self
+        
+        # Check parameters
+        obj.check_params()
+        
+        # Update parameters
+        obj.update_params()
+        
+        # Read input data
+        dat = obj.read_cat(load_into_memory=True, mode="r")
+        
+        # Get masks
+        masks = obj.get_masks(dat=dat)
+        
+        # Append masks to data
+        dat_ext = obj.append_masks(dat, masks)
+        
+        # Write extended data to new HDF5 file
+        obj.write_hdf5_file(dat_ext)
+        
+        # Close input HDF5 catalogue file
+        obj.close_hd5()
+
         
     def append_masks(self, dat, masks):
         """Append Masks.
@@ -750,7 +833,7 @@ class ApplyHspMasks(BaseCat):
         n_masks = len(masks)
         new_dtype = np.dtype(
             dat.dtype.descr
-            + [(self.get_mask_col_name(bit), np.bool_) for bit in masks]
+            + [(label, np.bool_) for label in masks]
         )
         new_data = np.zeros(dat.shape, dtype=new_dtype)
 
@@ -759,10 +842,19 @@ class ApplyHspMasks(BaseCat):
             new_data[name] = dat[name]
         
         # Copy masks as new columns
-        for bit in masks:
-            new_data[self.get_mask_col_name(bit)] = masks[bit]
+        for label in masks:
+            new_data[label] = masks[label]
 
         return new_data
+    
+    def write_hdf5_file(self, dat):
+        
+        with h5py.File(self._params["output_path"], "w") as f:
+
+            self.write_hdf5_header(f)
+
+            dset = f.create_dataset("data", data=dat)
+            dset[:] = dat
     
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
@@ -780,9 +872,17 @@ class ApplyHspMasks(BaseCat):
         super().write_hdf5_header(hd5file)
     
         hd5file.attrs["hsp_nside"] = self._params["nside"]
-        paths = self.get_paths()
-        for bit in patsh:
+        
+        # Bit-mask file paths
+        paths = self.get_paths_bit_masks()
+        for bit in paths:
             hd5file.attrs[f"hsp_path_{bit}"] = paths[bit]
+    
+        # Auxilliary mask file paths 
+        for idx, path in enumerate(self._params["aux_mask_file_list"]):
+            label = self._params["aux_mask_label_list"][idx]
+            hd5file.attrs[f"hsp_path_{label}"] = path
+
 
 class CalibrateCat(BaseCat):
     """Calibrate Cat.
