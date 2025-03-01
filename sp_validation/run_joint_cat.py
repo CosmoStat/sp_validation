@@ -380,7 +380,7 @@ class JointCat(BaseCat):
         elif name not in cols_keep_dtype:
             if dtype_in == np.float64:
                 return np.float32
-            if dtype_in == np.in32:
+            if dtype_in == np.int32:
                 return np.int8
 
         return dtype_in
