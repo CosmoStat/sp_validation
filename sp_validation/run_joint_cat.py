@@ -16,7 +16,7 @@ import datetime
 from tqdm import tqdm
 
 from optparse import OptionParser
-from importlib.metadata import version 
+from importlib.metadata import version
 
 
 import h5py
@@ -37,7 +37,7 @@ class BaseCat(object):
     """Base_Cat.
 
     Basic catalogue class.
-    
+
     """
 
     def __init__(self):
@@ -63,9 +63,9 @@ class BaseCat(object):
 
     def read_cat(self, load_into_memory=False, mode="r"):
         """Read Cat.
-        
+
         Read input catalogue, either FITS or HDF5.
-        
+
         Parameters
         ----------
         load_into_memory: bool, optional
@@ -78,7 +78,7 @@ class BaseCat(object):
         -------
         list
             Catalogue data
-            
+
         Raises
         ------
         IOError
@@ -87,15 +87,15 @@ class BaseCat(object):
         """
         fpath = self._params["input_path"]
         verbose = self._params["verbose"]
-        
+
         extension = os.path.splitext(fpath)[1]
         if extension == ".fits":
             if verbose:
                 print(f"Reading FITS file {fpath}, HDU {hdu}...")
-                
+
             hdu = 1
             dat = fits.getdata(fpath, hdu)
-            
+
         elif extension in (".hdf5", ".hd5"):
             if verbose:
                 print(f"Reading HDF5 file {fpath}...")
@@ -112,23 +112,23 @@ class BaseCat(object):
                 return dat
         else:
             raise IOError(f"Unknown file extension {extension}")
-        
+
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
-        
+
         Write basic header information to HDF5 file.
-        
+
         Parameters
         ----------
         hd5file : h5py.File
             input HDF5 file
-            
-        """ 
+
+        """
         author = os.getenv("USER")
         software_name = "sp_validation"
         software_version = version(software_name)
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         hd5file.attrs["author"] = author
         hd5file.attrs["softname"] = software_name
         hd5file.attrs["softver"] = software_version
@@ -136,9 +136,9 @@ class BaseCat(object):
 
     def write_hdf5_file(self, dat, output_path=None):
         """Write HDF5 File.
-        
+
         Write HDF5 data to file.
-        
+
         Parameters
         ----------
         dat : numpy.ndarray
@@ -148,10 +148,10 @@ class BaseCat(object):
             self._params['output_path']
         patches : list, optional
             input patches, list of str, default is ``None``
-        
+
         """
         if output_path is None:
-             output_path = self._params["output_path"]
+            output_path = self._params["output_path"]
 
         if self._params["verbose"]:
             print("Creating hdf5 file")
@@ -173,6 +173,7 @@ class BaseCat(object):
 
         """
         self._hd5file.close()
+
 
 class JointCat(BaseCat):
     """Joint Cat.
@@ -220,6 +221,7 @@ class JointCat(BaseCat):
             "version": "1.4.2",
             "pipeline": "shapepipe",
             "hdu": 1,
+            "reduce_mem": False,
         }
         self._short_options = {
             "patches": "-p",
@@ -227,9 +229,11 @@ class JointCat(BaseCat):
             "survey": "-s",
             "year": "-y",
             "version": "-V",
+            "reduce_mem": "-r",
         }
         self._types = {
             "hdu": "int",
+            "reduce_mem": "bool",
         }
         self._help_strings = {
             "patches": "list of patches separated by '+', or shortcut (allowed are 'v1'), default={}",
@@ -237,6 +241,7 @@ class JointCat(BaseCat):
             "survey": "survey name, default={}",
             "year": "year of processing, default={}",
             "version": "catalogue version, default={}",
+            "reduce_mem": "output some columns in lower precision to reduce memory",
         }
 
     def get_patches(self):
@@ -271,7 +276,7 @@ class JointCat(BaseCat):
             input base directory, root dir of patches
         input_sub_path : str
             input file name; input path is base_path/patch/input_sub_path
-        
+
         Raises:
             ValueError: if input file canont be read
 
@@ -295,7 +300,8 @@ class JointCat(BaseCat):
                 hdu_list = fits.open(input_path)
             except:
                 raise ValueError(
-                    f"Could not open file {input_path} at HDU #{self._params['hdu']}"
+                    f"Could not open file {input_path} at HDU"
+                    + f" #{self._params['hdu']}"
                 )
             hdu_lists.append(hdu_list)
 
@@ -310,14 +316,14 @@ class JointCat(BaseCat):
 
     def get_col_info(self, dat):
         """Get Col Info.
-        
+
         Return information of input columns.
 
         Parameters
         ----------
         dat : numpy.ndarray
             input data
-        
+
         Returns
         -------
         list
@@ -341,15 +347,49 @@ class JointCat(BaseCat):
         n_col += 1
 
         if self._params["verbose"]:
-            print(f"Number of input (output) columns = {len(col_names)} ({n_col})")
+            print(
+                f"Number of input (output) columns = {len(col_names)} ({n_col})"
+            )
 
         return col_names, formats, ndim, n_col
 
+    def dtype_out(self, name, dtype_in):
+        """Set output dtype.
+
+        Parameters
+        ----------
+        name : str
+            column name
+        dtype_in : np.dtype
+            input dtype
+
+        Returns
+        -------
+        np.dtype
+            output dtype
+
+        """
+        cols_keep_dtype = [
+            "RA",
+            "Dec",
+            "FLAGS",
+            "IMAFLAGS_ISO",
+        ]
+        if self._params["reduce_mem"] == False:
+            return dtype_in
+        elif name not in cols_keep_dtype:
+            if dtype_in == np.float64:
+                return np.float32
+            if dtype_in == np.in32:
+                return np.int8
+
+        return dtype_in
+
     def init_data(self, n_col, n_obj, ndim, dat):
         """Init Data.
-        
+
         Initialize empty structured data.
-        
+
         Parameters
         ----------
         n_col : int
@@ -360,7 +400,7 @@ class JointCat(BaseCat):
             dimension of input columns
         dat : numpy.ndarray
             example data
-            
+
         Returns
         -------
         numpy.ndarray
@@ -373,17 +413,22 @@ class JointCat(BaseCat):
                 + f" Gb memory for the ({n_col} x {n_obj}) data array ...",
                 end="",
             )
-        
+
         # Create dtypes from input column names and types.
+        # Reduce memory if flag set.
         # Transform multi-D columns into 1D columns
         dtype_tmp_list = []
         for name in ndim:
             if ndim[name] == 1:
-                dtype_tmp_list.append((name, dat[name].dtype))
+                dtype_tmp_list.append(
+                    (name, self.dtype_out(name, dat[name].dtype))
+                )
             else:
                 for jdx in range(ndim[name]):
-                    dtype_tmp_list.append((f"{name}_{jdx}", dat[name].dtype))
-        dtype_tmp_list.append(('patch', np.int32))
+                    dtype_tmp_list.append(
+                        (f"{name}_{jdx}", self.dtype_out(name, dat[name].dtype))
+                    )
+        dtype_tmp_list.append(("patch", np.int8))
         dtype_tmp_struct = np.dtype(dtype_tmp_list)
         dat_all = np.empty((n_obj,), dtype=dtype_tmp_struct)
 
@@ -391,12 +436,12 @@ class JointCat(BaseCat):
             print("done")
 
         return dat_all
-        
+
     def write_hdf5_file(self, dat_all, patches):
         """Write HDF5 File.
-        
+
         Write data to HDF5 file.
-        
+
         Parameters
         ----------
         dat_all : numpy.ndarray
@@ -410,7 +455,7 @@ class JointCat(BaseCat):
             + f"_comprehensive_{self._params['year']}_"
             + f"v{self._params['version']}.hdf5"
         )
-        
+
         with h5py.File(output_path, "w") as f:
 
             self.write_hdf5_header(f)
@@ -418,23 +463,23 @@ class JointCat(BaseCat):
             dset = f.create_dataset("data", data=dat)
             dset[:] = dat
 
-        #super().write_hdf5_file(dat_all, output_path=output_path)
-        
+        # super().write_hdf5_file(dat_all, output_path=output_path)
+
     def write_hdf5_header(self, hd5file, patches=None):
         """Write HDF5 Header.
-        
+
         Write header information to HDF5 file.
-        
+
         Parameters
         ----------
         hd5file : h5py.File
             input HDF5 file
         patches : list, optional
             input patches, list of str, default is ``None``
-            
+
         """
         super().write_hdf5_header(hd5file)
-        
+
         if patches is not None:
             patches_str = " ".join(patches)
             hd5file.attrs["patches"] = patches_str
@@ -456,7 +501,7 @@ class JointCat(BaseCat):
             f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
         )
 
-        # Get input FITS files    
+        # Get input FITS files
         hdu_lists, n_obj_list, n_obj = self.get_n_obj(
             patches,
             base_path,
@@ -470,12 +515,13 @@ class JointCat(BaseCat):
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
                 dat = fits.getdata(input_path, self._params["hdu"])
-                #dat = hdu_lists[idx][self._params["hdu"]].data
+                # dat = hdu_lists[idx][self._params["hdu"]].data
 
                 hdu_lists[idx].close()
             except:
                 raise ValueError(
-                    f"Could not read data of file {input_path} at HDU #{self._params['hdu']}"
+                    f"Could not read data of file {input_path} at HDU"
+                    + f" #{self._params['hdu']}"
                 )
 
             # Create empty lists if first patch
@@ -486,7 +532,7 @@ class JointCat(BaseCat):
 
             # Append new data for that patch (between start and end)
             end += n_obj_list[idx]
-            
+
             # Copy data
             i_col = 0
             names_out = dat_all.dtype.names
@@ -497,11 +543,13 @@ class JointCat(BaseCat):
                 else:
                     # Copy all components of multi-D column
                     for jdx in range(ndim[name]):
-                        dat_all[names_out[i_col + jdx]][start:end] = dat[name][:, jdx]
+                        dat_all[names_out[i_col + jdx]][start:end] = dat[name][
+                            :, jdx
+                        ]
                 i_col += ndim[name]
             # Add patch number
             dat_all["patch"][start:end] = patch[1:]
-            
+
             if i_col + 1 != n_col:
                 raise ValueError(
                     "Inconsistent number of columns, {i_col + 1}"
@@ -513,7 +561,7 @@ class JointCat(BaseCat):
                     + f" objects (from {start} to {end-1})."
                 )
             start = end
-    
+
         del dat
 
         self.write_hdf5_file(dat_all, patches)
@@ -541,9 +589,9 @@ class ApplyHspMasks(BaseCat):
     @classmethod
     def get_label_struct(cls, bit):
         """Get Label Struct.
-        
+
         Return label of bit-coded mask.
-        
+
         Parameters
         ----------
         bit: int
@@ -557,37 +605,37 @@ class ApplyHspMasks(BaseCat):
         """
         # Labels of bit-coded structural masks
         labels_struct = {
-            1 : "Faint_star_halos",
-            2 : "Bright_star_halos",
-            4 : "Stars",
-            8 : "Manual",
-            16 : "u",
-            32 : "g",
-            64 : "r",
-            128 : "i",
-            256 : "z",
-            512 : "Tile_RA_DEC_cut",
-            1024 : "Maximask",
+            1: "Faint_star_halos",
+            2: "Bright_star_halos",
+            4: "Stars",
+            8: "Manual",
+            16: "u",
+            32: "g",
+            64: "r",
+            128: "i",
+            256: "z",
+            512: "Tile_RA_DEC_cut",
+            1024: "Maximask",
         }
-        
+
         return labels_struct[bit]
-    
+
     @classmethod
     def get_mask_col_name(cls, bit):
         """Get Mask Col Name.
-    
+
         Return column name of mask corresponding to input bit.
-        
+
         Parameters
         ----------
         bit : int
             input bit
-            
+
         Returns
         -------
         str
             column name
-        
+
         """
         return f"{bit}_{cls.get_label_struct(bit)}"
 
@@ -617,7 +665,7 @@ class ApplyHspMasks(BaseCat):
         }
         self._types = {
             "nside": "int",
-            "bits" : "int",
+            "bits": "int",
         }
         self._help_strings = {
             "input_path": "path of input hdf5 catalogue, default={}",
@@ -629,7 +677,7 @@ class ApplyHspMasks(BaseCat):
             "aux_mask_files": "auxiliary mask files separated with '\\', defualt={}",
             "aux_mask_labels": "auxiliary mask column names separated with '\\'",
         }
-        
+
     def check_params(self):
         """Check Params.
 
@@ -641,12 +689,11 @@ class ApplyHspMasks(BaseCat):
             if a parameter value is not valid
 
         """
-        if (
-            (self._params["aux_mask_files"] is None)
-            != (self._params["aux_mask_labels"] is None)
+        if (self._params["aux_mask_files"] is None) != (
+            self._params["aux_mask_labels"] is None
         ):
             raise ValueError("Both or none of the 'aux_mask_*' can be None")
-        
+
     def update_params(self):
         """Update Params.
 
@@ -660,8 +707,8 @@ class ApplyHspMasks(BaseCat):
                 stop=True,
                 sep="\\",
             )
-            self._params["aux_mask_num"] = (
-                len(self._params["aux_mask_file_list"])
+            self._params["aux_mask_num"] = len(
+                self._params["aux_mask_file_list"]
             )
             self._params["aux_mask_label_list"] = cs_args.my_string_split(
                 self._params["aux_mask_labels"],
@@ -675,18 +722,18 @@ class ApplyHspMasks(BaseCat):
 
     def read_hsp_mask(self, path):
         """Read Hsp Mask.
-    
+
         Parameters
         ----------
         path : str
             Path to the mask file.
-        
+
         Returns
         -------
         np.ndarray
             Mask
         """
-    
+
         if self._params["verbose"]:
             print(f"Reading healsparse mask file {path}...")
 
@@ -694,19 +741,19 @@ class ApplyHspMasks(BaseCat):
 
     def reverse_bit_list(self):
         """Reverse Bit List.
-        
+
         Split bit-coded integer into bits.
-        
+
         Parameters
         ----------
         bit : int
             Bit-coded integer
-            
+
         Returns
         -------
         list
             List of bits
-            
+
         """
         bit_list = []
         bits = self._params["bits"]
@@ -719,14 +766,14 @@ class ApplyHspMasks(BaseCat):
 
     def get_paths_bit_masks(self):
         """Get Paths Bit Masks.
-        
+
         Return paths of bit-coded mask files.
-        
+
         Returns
         -------
         dict
             Dictionary with bit as key and path as value.
-        
+
         """
         paths = {}
         bit_list = self.reverse_bit_list()
@@ -734,14 +781,14 @@ class ApplyHspMasks(BaseCat):
             paths[bit] = (
                 f"{self._params['mask_dir']}/{self._params['file_base']}"
                 + f"nside{self._params['nside']}_n{bit}.hsp"
-        )
+            )
         return paths
 
     def get_masks(self, dat=None):
         """Get Masks.
-        
+
         Returns per-object masks for all bits.
-        
+
         Parameters
         ----------
         dat: numpy.ndarray, optional
@@ -752,13 +799,13 @@ class ApplyHspMasks(BaseCat):
         -------
         dict
             masks
-        
+
         """
         masks = {}
-    
+
         # Get bit-coded mask file paths
         paths = self.get_paths_bit_masks()
-    
+
         # Get coordinates from data
         if dat is None:
             dat = self.read_cat()
@@ -766,19 +813,19 @@ class ApplyHspMasks(BaseCat):
             print("Reading coordinates from data...")
         ra = dat["RA"]
         dec = dat["Dec"]
-    
+
         # Read healsparse files and apply masks to coordinate
         for bit in paths:
             if self._params["verbose"]:
                 print(f"Reading mask for bit {bit}...")
             hsp_mask = hsp.HealSparseMap.read(paths[bit])
-    
+
             label = self.get_mask_col_name(bit)
-    
+
             if self._params["verbose"]:
                 print(f"Computing mask bit={bit}...")
             masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
-        
+
         # Read auxiliary mask files"
         for idx, path in enumerate(self._params["aux_mask_file_list"]):
             label = self._params["aux_mask_label_list"][idx]
@@ -786,44 +833,43 @@ class ApplyHspMasks(BaseCat):
                 print(f"Reading aux mask for label {label}...")
             hsp_mask = hsp.HealSparseMap.read(path)
             masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
-        
+
         return masks
-    
+
     def run(self):
         """Run.
-        
+
         Main processing function.
-        
+
         """
         obj = self
-        
+
         # Check parameters
         obj.check_params()
-        
+
         # Update parameters
         obj.update_params()
-        
+
         # Read input data
         dat = obj.read_cat(load_into_memory=True, mode="r")
-        
+
         # Get masks
         masks = obj.get_masks(dat=dat)
-        
+
         # Append masks to data
         dat_ext = obj.append_masks(dat, masks)
-        
+
         # Write extended data to new HDF5 file
         obj.write_hdf5_file(dat_ext)
-        
+
         # Close input HDF5 catalogue file
         obj.close_hd5()
 
-        
     def append_masks(self, dat, masks):
         """Append Masks.
-        
+
         Add mask information as columns to data.
-        
+
         Parameters
         ----------
         dat: numpy.ndarray
@@ -835,8 +881,8 @@ class ApplyHspMasks(BaseCat):
         --------
         numpy.ndarray
             updated data
- 
-        """     
+
+        """
         labels = [label for label in masks]
         dtypes = [masks[label].dtype for label in masks]
 
@@ -844,65 +890,62 @@ class ApplyHspMasks(BaseCat):
         structured_dtype = np.dtype(
             [(label, dtype) for label, dtype in zip(labels, dtypes)]
         )
-        
+
         new_data = np.zeros(dat.shape, dtype=structured_dtype)
-        
+
         # Copy masks as new columns
         for label in masks:
             new_data[label] = masks[label]
 
         return new_data
-    
+
     def write_hdf5_file(self, dat, dat_new):
-        
+
         with h5py.File(self._params["output_path"], "w") as f:
 
             self.write_hdf5_header(f)
 
             dset = f.create_dataset(
-                "data",
-                shape=dat.shape,
-                dtype=dat.dtype,
-                chunks=True
+                "data", shape=dat.shape, dtype=dat.dtype, chunks=True
             )
             dset_new = f.create_dataset(
                 "data_ext",
                 shape=dat_new.shape,
                 dtype=dat_new.dtype,
-                chunks=True
+                chunks=True,
             )
-            
-            chunk_size = 10000  
+
+            chunk_size = 10000
             nrow = dat.shape[0]
 
             for i in range(0, nrow, chunk_size):
                 end = min(i + chunk_size, nrow)
-                dset[i:end] = dat[i:end]          # Write chunk to dataset
+                dset[i:end] = dat[i:end]  # Write chunk to dataset
                 dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
-    
+
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
-        
+
         Write header information to HDF5 file.
-        
+
         Parameters
         ----------
         hd5file : h5py.File
             input HDF5 file
         patches : list, optional
             input patches, list of str, default is ``None``
-            
+
         """
         super().write_hdf5_header(hd5file)
-    
+
         hd5file.attrs["hsp_nside"] = self._params["nside"]
-        
+
         # Bit-mask file paths
         paths = self.get_paths_bit_masks()
         for bit in paths:
             hd5file.attrs[f"hsp_path_{bit}"] = paths[bit]
-    
-        # Auxiliary mask file paths 
+
+        # Auxiliary mask file paths
         for idx, path in enumerate(self._params["aux_mask_file_list"]):
             label = self._params["aux_mask_label_list"][idx]
             hd5file.attrs[f"hsp_path_{label}"] = path
@@ -940,18 +983,18 @@ class CalibrateCat(BaseCat):
             "input_path": "path input FITS catalogue",
             "cmatrices": "compute correlation and confusion matrices",
         }
-        
+
     def read_cat(self, load_into_memory=False):
         """Read Cat.
-        
+
         Read input HDF5 catalogue.
-        
+
         Parameters
         ----------
         load_into_memory: bool, optional
             load data into memory (potentially slow) of ``True``;
             default is ``False``
-        
+
         Returns
         -------
         list
@@ -962,7 +1005,7 @@ class CalibrateCat(BaseCat):
         """
         fpath = self._params["input_path"]
         verbose = self._params["verbose"]
-        
+
         if verbose:
             print(f"Reading HDF5 file {fpath}...")
 
@@ -985,8 +1028,9 @@ class CalibrateCat(BaseCat):
 
         """
 
+
 def confusion_matrix(mask, confidence_level=0.9):
-    
+
     n_key = len(mask)
 
     cm = np.empty((n_key, n_key))
@@ -997,12 +1041,15 @@ def confusion_matrix(mask, confidence_level=0.9):
         for jdx, key2 in enumerate(mask):
             res = stats.pearsonr(mask[key1], mask[key2])
             r_val[idx][jdx] = res.statistic
-            r_cl[idx][jdx] = res.confidence_interval(confidence_level=confidence_level)
-            
-    return r_val, r_cl       
+            r_cl[idx][jdx] = res.confidence_interval(
+                confidence_level=confidence_level
+            )
+
+    return r_val, r_cl
+
 
 def correlation_matrix(mask):
-    
+
     n_tot = len(mask)
     n_key = len
 
@@ -1012,9 +1059,9 @@ def correlation_matrix(mask):
     for idx, key1 in enumerate(mask):
         for jdx, key2 in enumerate(mask):
             r[idx][jdx] = stats.pearsonr(mask[key1], mask[key2])
-            
+
     return r
-           
+
 
 class ReadCat:
 
@@ -1041,7 +1088,7 @@ class ReadCat:
         }
 
     def run(self):
-        
+
         pass
 
 
