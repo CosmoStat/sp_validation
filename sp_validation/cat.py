@@ -64,11 +64,11 @@ def print_mean_ellipticity(
     """
     # Get ellipticity columns
     all_ell = []
-    ell_str = ''
+    ell_str = ""
     if ell_n_comp == 1:
         for i in (0, 1):
             all_ell.append(dd[ell_col_name[i]])
-            ell_str = f'{ell_str}{ell_col_name[i]} '
+            ell_str = f"{ell_str}{ell_col_name[i]} "
     elif ell_n_comp == 2:
         for i in (0, 1):
             all_ell.append(dd[ell_col_name][:, i])
@@ -109,12 +109,12 @@ def print_mean_ellipticity(
         ell[i] = all_ell[i].mean()
 
     io.print_stats(
-        f'Mean ellipticity of valid objects ({ell_str}):',
+        f"Mean ellipticity of valid objects ({ell_str}):",
         stats_file,
         verbose=verbose,
     )
     for i in (0, 1):
-        msg = '<e_{}> = {:.3g}'.format(i + 1, ell[i])
+        msg = "<e_{}> = {:.3g}".format(i + 1, ell[i])
         io.print_stats(msg, stats_file, verbose=verbose)
 
 
@@ -139,13 +139,13 @@ def print_some_quantities(dd, stats_file, verbose=False):
     """
     # Print all column names
     if verbose:
-        print('Column names:')
+        print("Column names:")
         print(dd.dtype.names)
-        print('')
+        print("")
 
     n_tot = len(dd)
     n_mil = util.millify(n_tot)
-    msg = f'Total number of objects = {n_tot} = {n_mil}'
+    msg = f"Total number of objects = {n_tot} = {n_mil}"
     io.print_stats(msg, stats_file, verbose=verbose)
 
     return n_tot
@@ -190,7 +190,7 @@ def check_matching(
         # Filter stars outside footprint for efficiency
         mask_area_tiles = get_footprint(name, d1[keys_1[0]], d1[keys_1[1]])
         if len(np.where(mask_area_tiles)[0]) == 0:
-            raise ValueError(f'Error: no object found in field \'{name}\'')
+            raise ValueError(f"Error: no object found in field '{name}'")
     else:
         mask_area_tiles = np.arange(len(d1))
 
@@ -200,13 +200,13 @@ def check_matching(
         d2[keys_2[1]],
         d1[keys_1[0]][mask_area_tiles],
         d1[keys_1[1]][mask_area_tiles],
-        thresh=thresh
+        thresh=thresh,
     )
 
     n_tot = len(d1[keys_1[0]][mask_area_tiles])
     msg = (
-        'Number of matched stars from exposures to total catalogue = '
-        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
+        "Number of matched stars from exposures to total catalogue = "
+        + f"{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}"
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -214,8 +214,8 @@ def check_matching(
     ind = np.array(list(set(ind)))
 
     msg = (
-        'Number of matched stars after removing multiple matches = '
-        + f'{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}'
+        "Number of matched stars after removing multiple matches = "
+        + f"{len(ind)}/{n_tot} = {len(ind) / n_tot:.1%}"
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -253,8 +253,9 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
 
         w = dd[key[i]][:, comp[i]] == val[i]
         n_inv_psf = len(np.where(w)[0])
-        msg = 'Invalid {} found for {}/{} = {:.1g}% objects' \
-              ''.format(name[i], n_inv_psf, n_all, n_inv_psf / n_all)
+        msg = "Invalid {} found for {}/{} = {:.1g}% objects" "".format(
+            name[i], n_inv_psf, n_all, n_inv_psf / n_all
+        )
         io.print_stats(msg, stats_file, verbose=verbose)
 
 
@@ -299,9 +300,9 @@ def match_subsample(
         ellipticities
     """
     msg = (
-        'Number of stars matched to valid sample = '
-        + f'{len(dd[pos_key[0]][ind][mask])}/{n_ref} = '
-        + f'{len(dd[pos_key[0]][ind][mask]) / n_ref * 100:.1f}%'
+        "Number of stars matched to valid sample = "
+        + f"{len(dd[pos_key[0]][ind][mask])}/{n_ref} = "
+        + f"{len(dd[pos_key[0]][ind][mask]) / n_ref * 100:.1f}%"
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -320,25 +321,25 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     Match
     """
     tot_star = n_ref
-    tot_as_star = len(np.where(dd['SPREAD_CLASS'][ind][mask] == 0)[0])
-    tot_as_gal = len(np.where(dd['SPREAD_CLASS'][ind][mask] == 1)[0])
-    tot_as_other = len(np.where(dd['SPREAD_CLASS'][ind][mask] == 2)[0])
+    tot_as_star = len(np.where(dd["SPREAD_CLASS"][ind][mask] == 0)[0])
+    tot_as_gal = len(np.where(dd["SPREAD_CLASS"][ind][mask] == 1)[0])
+    tot_as_other = len(np.where(dd["SPREAD_CLASS"][ind][mask] == 2)[0])
 
     msg = (
-        'Number of stars selected as star (SPREAD_CLASS=0)   = '
-        + f'{tot_as_star}/{tot_star} = {tot_as_star / tot_star * 100:.1f}%'
+        "Number of stars selected as star (SPREAD_CLASS=0)   = "
+        + f"{tot_as_star}/{tot_star} = {tot_as_star / tot_star * 100:.1f}%"
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = (
-        'Number of stars selected as galaxy (SPREAD_CLASS=1) = '
-        + f'{tot_as_gal}/{tot_star} = {tot_as_gal / tot_star * 100:.1f}%'
+        "Number of stars selected as galaxy (SPREAD_CLASS=1) = "
+        + f"{tot_as_gal}/{tot_star} = {tot_as_gal / tot_star * 100:.1f}%"
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = (
-        'Number of stars selected as other (SPREAD_CLASS=2)  = '
-        + f'{tot_as_other}/{tot_star} = {tot_as_other / tot_star * 100:.1f}%'
+        "Number of stars selected as other (SPREAD_CLASS=2)  = "
+        + f"{tot_as_other}/{tot_star} = {tot_as_other / tot_star * 100:.1f}%"
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -398,17 +399,17 @@ def read_shape_catalog(
 
     hdu_no = 1
 
-    ra = dat[hdu_no].data['RA']
-    dec = dat[hdu_no].data['Dec']
+    ra = dat[hdu_no].data["RA"]
+    dec = dat[hdu_no].data["Dec"]
 
     g = [np.empty_like(ra), np.empty_like(ra)]
-    g1 = dat[hdu_no].data['e1_uncal']
-    g2 = dat[hdu_no].data['e2_uncal']
+    g1 = dat[hdu_no].data["e1_uncal"]
+    g2 = dat[hdu_no].data["e2_uncal"]
     w = dat[hdu_no].data[w_name]
-    mag = dat[hdu_no].data['mag']
+    mag = dat[hdu_no].data["mag"]
 
-    if 'snr' in dat[hdu_no].data.dtype.names:
-        snr = dat[hdu_no].data['snr']
+    if "snr" in dat[hdu_no].data.dtype.names:
+        snr = dat[hdu_no].data["snr"]
     else:
         snr = None
 
@@ -495,19 +496,19 @@ def write_shape_catalog(
     col_info_arr.append(
         (
             fits.Column(name="RA", array=ra, format="D", unit="deg"),
-            "Right Ascension"
+            "Right Ascension",
         )
     )
     col_info_arr.append(
         (
-            fits.Column(name='Dec', array=dec, format='D', unit='deg'),
-            "Declination"
+            fits.Column(name="Dec", array=dec, format="D", unit="deg"),
+            "Declination",
         )
     )
     col_info_arr.append(
         (
-            fits.Column(name='w_iv', array=w, format='D'),
-            "Inverse-variance weight"
+            fits.Column(name="w_iv", array=w, format="D"),
+            "Inverse-variance weight",
         )
     )
 
@@ -516,8 +517,8 @@ def write_shape_catalog(
     if mag is not None:
         col_info_arr.append(
             (
-                fits.Column(name='mag', array=mag, format='D'),
-                "MAG_AUTO magnitude"
+                fits.Column(name="mag", array=mag, format="D"),
+                "MAG_AUTO magnitude",
             )
         )
     ## Calibrated shear estimates
@@ -525,21 +526,21 @@ def write_shape_catalog(
         for idx in (0, 1):
             col_info_arr.append(
                 (
-                    fits.Column(name=f"e{idx+1}", array=g[idx], format='D'),
-                    f"Calibrated reduced shear estimate comp {idx+1}"
+                    fits.Column(name=f"e{idx+1}", array=g[idx], format="D"),
+                    f"Calibrated reduced shear estimate comp {idx+1}",
                 )
             )
     # Signal-to-noise ratio
     if snr is not None:
         col_info_arr.append(
             (
-                fits.Column(name='snr', array=snr, format='D'),
-                "Signal-to-noise ratio"
+                fits.Column(name="snr", array=snr, format="D"),
+                "Signal-to-noise ratio",
             )
         )
     for x, name, descr in zip(
         [g1_uncal, g2_uncal, R_g11, R_g22, R_g12, R_g21],
-        ['e1_uncal', 'e2_uncal', 'R_g11', 'R_g22', 'R_g12', 'R_g21'],
+        ["e1_uncal", "e2_uncal", "R_g11", "R_g22", "R_g12", "R_g21"],
         [
             "Uncalibrated shear comp 1",
             "Uncalibrated shear comp 2",
@@ -547,11 +548,11 @@ def write_shape_catalog(
             "Shear response matrix comp 2 2",
             "Shear response matrix comp 1 2",
             "Shear response matrix comp 2 1",
-        ]
+        ],
     ):
         if x is not None:
             col_info_arr.append(
-                (fits.Column(name=name, array=x, format='D'), descr)
+                (fits.Column(name=name, array=x, format="D"), descr)
             )
 
     if add_cols is not None:
@@ -567,11 +568,9 @@ def write_shape_catalog(
             col_info_arr.append(
                 (
                     fits.Column(
-                        name=name,
-                        array=add_cols[name],
-                        format=my_format
+                        name=name, array=add_cols[name], format=my_format
                     ),
-                    name
+                    name,
                 )
             )
 
@@ -597,24 +596,22 @@ def write_shape_catalog(
         software_version=__version__,
         author=getpass.getuser(),
     )
-    
+
     if all(v is not None for v in (R, R_shear, R_select, c)):
         cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
     if c_err is not None:
-        primary_header['c1_err'] = (c_err[0], 'Standard deviation of c_1')
-        primary_header['c2_err'] = (c_err[1], 'Standard deviation of c_2')
+        primary_header["c1_err"] = (c_err[0], "Standard deviation of c_1")
+        primary_header["c2_err"] = (c_err[1], "Standard deviation of c_2")
 
-    primary_header['w'] = (
-        'DES weight'
-    )
+    primary_header["w"] = "DES weight"
 
     if sigma_epsilon is not None:
-        primary_header['sig_eps'] = (sigma_epsilon, 'Shape noise RMS')
+        primary_header["sig_eps"] = (sigma_epsilon, "Shape noise RMS")
 
     if alpha_leakage:
-        primary_header['alpha'] = (
+        primary_header["alpha"] = (
             alpha_leakage,
-            'Mean scale-dependent PSF leakage'
+            "Mean scale-dependent PSF leakage",
         )
 
     primary_hdu = fits.PrimaryHDU(header=primary_header)
@@ -640,9 +637,9 @@ def write_galaxy_cat(output_path, ra, dec, tile_id):
     tile_id : array(ngal) of float
         tile ID of objects
     """
-    c_ra = fits.Column(name='ra', array=ra, format='E', unit='deg')
-    c_dec = fits.Column(name='dec', array=dec, format='E', unit='deg')
-    c_id = fits.Column(name='tile_id', array=tile_id, format='E')
+    c_ra = fits.Column(name="ra", array=ra, format="E", unit="deg")
+    c_dec = fits.Column(name="dec", array=dec, format="E", unit="deg")
+    c_id = fits.Column(name="tile_id", array=tile_id, format="E")
     cols = [c_ra, c_dec, c_id]
 
     cat.write_fits_BinTable_file(cols, output_path)
@@ -664,10 +661,10 @@ def write_PSF_cat(output_path, ra, dec, e1, e2):
     e2 : list of float
         second ellipticity  component
     """
-    c_ra = fits.Column(name='RA', array=ra, format='D', unit='deg')
-    c_dec = fits.Column(name='Dec', array=dec, format='D', unit='deg')
-    c_e1 = fits.Column(name='e1', array=e1, format='D')
-    c_e2 = fits.Column(name='e2', array=e2, format='D')
+    c_ra = fits.Column(name="RA", array=ra, format="D", unit="deg")
+    c_dec = fits.Column(name="Dec", array=dec, format="D", unit="deg")
+    c_e1 = fits.Column(name="e1", array=e1, format="D")
+    c_e2 = fits.Column(name="e2", array=e2, format="D")
     cols = [c_ra, c_dec, c_e1, c_e2]
 
     cat.write_fits_BinTable_file(cols, output_path)
@@ -696,7 +693,7 @@ def read_param_file(path, verbose=False):
 
     if path:
         if verbose:
-            print(f"Reading parameter file {path}")
+            print(f"Reading parameter file: {path}")
 
         with open(path) as f:
             for line in f:
@@ -715,16 +712,18 @@ def read_param_file(path, verbose=False):
         print(" into merged catalogue")
 
     param_list_unique = list(set(param_list))
-    
+
     if verbose:
         n = len(param_list) - len(param_list_unique)
         if n > 1:
             print("Removed {n} duplicate entries")
-    
+
     return param_list_unique
 
 
-def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=None):
+def read_hdf5_file(
+    file_path, name, stats_file, check_only=False, param_path=None
+):
     """Read HDF5 File.
 
     Read hdf5 file and return contained data.
@@ -739,20 +738,36 @@ def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=Non
         summary statistics output file handler
     check_only : bool, optional
         If True only check, not return data
- 
+
     Returns
     -------
     dict
         data
 
     """
-    param_list = read_param_file(param_path, verbose=True) if param_path else None
+    param_list = (
+        read_param_file(param_path, verbose=True) if param_path else None
+    )
 
     with h5py.File(file_path, "r") as hdf5_file:
         # Find patch group in hierarchical structure
         if not f"patches/{name}" in hdf5_file:
-            raise KeyError(f"Entry patches/{name} not found in file {file_path}")
+            raise KeyError(
+                f"Entry patches/{name} not found in file {file_path}"
+            )
         patch_group = hdf5_file[f"patches/{name}"]
+
+        # Get size of data array
+        num_rows = sum(patch_group[ID].shape[0] for ID in patch_group)
+        # num_cols = patch_group[next(iter(patch_group))].shape[1]
+        num_cols = len(param_list)
+
+        print(
+            f"Estimating {num_cols * num_rows * 8 / 1024**3:.1f}"
+            + f" Gb memory for the ({num_cols} x {num_rows}) data array ..."
+        )
+        # data_comb = np.memmap(output_file, dtype=patch_group[next(iter(patch_group))].dtype,
+        #              mode="w+", shape=(num_rows, num_cols))
 
         data_list = []
         ID_pbl = set()
@@ -768,8 +783,10 @@ def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=Non
                 # Add new to existing data
                 data_list.append(data)
 
+        print("Combine tile catalogues")
         data_comb = np.concatenate(data_list, axis=0)
- 
+        print("Done")
+
     # Print problematic tile IDs
     for ID in ID_pbl:
         print("Tile IDs with missing keys:", file=stats_file)
@@ -809,7 +826,7 @@ def get_col(dat, col, m_sel=None, m_flg=None):
 
     if bool(m_sel is None) != bool(m_flg is None):
         raise ValueError("Specify both or none of selection and flag masks")
-        
+
     if m_sel is None and m_flg is None:
         return dat[col]
     else:
@@ -840,12 +857,11 @@ def get_snr(sh, dat, m_sel, m_flg):
         signal-to-noise ratios
 
     """
-    if sh == 'ngmix':
-        my_snr = (
-            get_col(dat, "NGMIX_FLUX_NOSHEAR", m_sel, m_flg)
-            / get_col(dat, "NGMIX_FLUX_ERR_NOSHEAR", m_sel, m_flg)
+    if sh == "ngmix":
+        my_snr = get_col(dat, "NGMIX_FLUX_NOSHEAR", m_sel, m_flg) / get_col(
+            dat, "NGMIX_FLUX_ERR_NOSHEAR", m_sel, m_flg
         )
-    elif sh == 'galsim':
+    elif sh == "galsim":
         my_snr = get_col(dat, "SNR_WIN", m_sel, m_flg)
 
     return my_snr
