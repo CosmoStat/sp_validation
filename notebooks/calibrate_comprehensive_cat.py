@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
 #     name: python3
 # ---
@@ -31,19 +31,19 @@ import sp_validation.cat as cat
 
 obj = sp_joint.CalibrateCat()
 
-obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.4.2.hdf5"
+obj._params["input_path"] = "unions_shapepipe_comprehensive_struc_2024_v1.4.2.hdf5"
 obj._params["cmatrices"] = True
 obj._params["verbose"] = True
 
 # !pwd
 
-dat = obj.read_cat(load_into_memory=False)
+dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 print(f"Found {len(dat)} (~{util.millify(len(dat))}) objects in catalogue")
 
 # ## Masking
 
-# ## Pre-processing ShapePipe flags
+# ### Pre-processing ShapePipe flags
 
 cut_pre = {}
 labels = {}
@@ -66,9 +66,10 @@ name = "overlap"
 good_mask_value = True
 cut_pre[name] = (dat[name] == good_mask_value)
 labels[name] = "tile overlap"
-# -
 
+# +
 # ShapePipe mask
+
 name = "IMAFLAGS_ISO"
 good_mask_value = 0
 cut_pre[name] = (dat[name] == good_mask_value)
@@ -76,15 +77,17 @@ labels[name] = "SP mask"
 
 # +
 # Number of epochs
+
 name = "N_EPOCH"
 val_min = 2
 cut_pre[name] = (dat[name] >= val_min)
 
 # MKDEBUG check NGMIX_N_EPOCH
 labels[name] = r"$n_{\rm epoch}$"
-# -
 
+# +
 # Magnitude range
+
 name = "mag"
 min_max = [15, 30]
 cut_pre[name] = (
@@ -95,6 +98,7 @@ labels[name] = "mag range"
 
 # +
 # ngmix flags
+
 names = ["NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL"]
 good_mask_values = [0, 0]
 for name, good_mask_value in zip(names, good_mask_values):
@@ -122,7 +126,7 @@ cut_pre_combined = np.logical_and.reduce(list(cut_pre.values()))
 
 num_obj = dat.shape[0]
 
-print(f"{'flag':30s} {'label':30s} {'n_ok':>10} {'n_ok[%]':>10}")
+print(f"{'flag':30s} {'label':30s} {'num_ok':>10} {'num_ok[%]':>10}")
 for name in cut_pre:
     num_ok = sum(cut_pre[name])
     print(f"{name:30s} {labels[name]:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
@@ -144,7 +148,32 @@ num_ok = sum(cut_galaxy)
 print(f"{name:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
 # -
 
-help(hsp.get_values)
+# ### Structural masks
+
+cut_struct = {}
+
+# +
+# Get all columns of type ``bool'' from the extended catalogue
+column_ext_info = {
+    name: "bool" if dat_ext.dtype.fields[name][0] == "int8" else dat_ext.dtype.fields[name][0]
+    for name in dat_ext.dtype.names
+}
+
+good_mask_values = False
+
+for name in column_ext_info:
+    if column_ext_info[name] == "bool":
+        cut_struct[name] = (dat_ext[name] == good_mask_values)
+        labels[name] = name
+    else:
+        print(f"Type for column {name} not bool, skipping")
+# -
+
+# Number of pointings
+name = "npoint3"
+val_min = 3
+cut_struct[name] = (dat_ext[name] >= val_min)
+labels[name] = r"$n_{\rm pointing}$"
 
 # +
 # Initialise combined mask
@@ -165,11 +194,13 @@ print(f"{name:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
 
 # -
 
+# # Plots:
 #
+# # mag histogram, footprint, when applying different cuts
 
 #
 
-cut_combined = cut_pre_combined & cutc_struct_combined
+cut_combined = cut_pre_combined & cut_struct_combined
 
 # ### Calibration
 
@@ -248,6 +279,14 @@ for key in add_cols:
     add_cols_data[key] = dat[key][cut_combined][mask]
 
 # +
+# Correct for PSF leakage
+
+
+
+# +
+# Compute DES weights
+
+# +
 output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
 output_shape_cat_path = output_shape_cat_path.replace("hdf5", "fits")
 
@@ -267,13 +306,6 @@ cat.write_shape_catalog(
     c_err=c_err,
     add_cols=add_cols_data
 )
-
-# +
-
-
-# Correct for PSF leakage
-
-# Compute DES weights
 # -
 
 from scipy import stats

@@ -214,7 +214,7 @@ class metacal:
         self._n_input = len(data)
         self._n_after_gal_mask = len(dict_tmp['flag'])
         if self._verbose:
-            print(f"Number of objects on metal input = {self._n_input}")
+            print(f"Number of objects on metacal input = {self._n_input}")
             print(f"Number of objects after galaxy selection masking = {self._n_after_gal_mask}")
         
         return m1, p1, m2, p2, ns

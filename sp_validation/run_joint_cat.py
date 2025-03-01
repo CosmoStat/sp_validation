@@ -21,6 +21,7 @@ from importlib.metadata import version
 
 import h5py
 import healsparse as hsp
+import numpy as np
 
 from astropy.io import fits
 from astropy.table import Column
@@ -598,6 +599,7 @@ class ApplyHspMasks(BaseCat):
         """
         self._params = {
             "input_path": None,
+            "output_path": "output.hdf5",
             "mask_dir": ".",
             "nside": 131072,
             "file_base": "mask_r_",
@@ -607,6 +609,7 @@ class ApplyHspMasks(BaseCat):
         }
         self._short_options = {
             "input_path": "-i",
+            "output_path": "-o",
             "mask_dir": "-d",
             "nside": "-n",
             "file_base": "-f",
@@ -617,13 +620,14 @@ class ApplyHspMasks(BaseCat):
             "bits" : "int",
         }
         self._help_strings = {
-            "input_path": "path input FITS catalogue, default={}",
+            "input_path": "path of input hdf5 catalogue, default={}",
+            "output_path": "path of output hdf5 catalogue, default={}",
             "mask_dir": "directory with mask files, default={}",
             "nside": "healsparse resolution parameter, default={}",
             "file_base": "base name of mask files, default={}",
             "bits": "bits to apply, default={}",
-            "aux_mask_files": "auxilliary mask files separated with '\\', defualt={}",
-            "aux_mask_labels": "auxilliary mask column names separated with '\\'",
+            "aux_mask_files": "auxiliary mask files separated with '\\', defualt={}",
+            "aux_mask_labels": "auxiliary mask column names separated with '\\'",
         }
         
     def check_params(self):
@@ -773,12 +777,15 @@ class ApplyHspMasks(BaseCat):
     
             if self._params["verbose"]:
                 print(f"Computing mask bit={bit}...")
-            masks[label] = ~hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
         
-        # Read auxilliary mask files"
+        # Read auxiliary mask files"
         for idx, path in enumerate(self._params["aux_mask_file_list"]):
             label = self._params["aux_mask_label_list"][idx]
-            masks[label] = hsp.HealSparseMap.read(path)
+            if self._params["verbose"]:
+                print(f"Reading aux mask for label {label}...")
+            hsp_mask = hsp.HealSparseMap.read(path)
+            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
         
         return masks
     
@@ -829,17 +836,16 @@ class ApplyHspMasks(BaseCat):
         numpy.ndarray
             updated data
  
-        """
-        n_masks = len(masks)
-        new_dtype = np.dtype(
-            dat.dtype.descr
-            + [(label, np.bool_) for label in masks]
-        )
-        new_data = np.zeros(dat.shape, dtype=new_dtype)
+        """     
+        labels = [label for label in masks]
+        dtypes = [masks[label].dtype for label in masks]
 
-        # Copy previous columns
-        for name in dat.dtype.names:
-            new_data[name] = dat[name]
+        # Create a structured dtype
+        structured_dtype = np.dtype(
+            [(label, dtype) for label, dtype in zip(labels, dtypes)]
+        )
+        
+        new_data = np.zeros(dat.shape, dtype=structured_dtype)
         
         # Copy masks as new columns
         for label in masks:
@@ -847,14 +853,32 @@ class ApplyHspMasks(BaseCat):
 
         return new_data
     
-    def write_hdf5_file(self, dat):
+    def write_hdf5_file(self, dat, dat_new):
         
         with h5py.File(self._params["output_path"], "w") as f:
 
             self.write_hdf5_header(f)
 
-            dset = f.create_dataset("data", data=dat)
-            dset[:] = dat
+            dset = f.create_dataset(
+                "data",
+                shape=dat.shape,
+                dtype=dat.dtype,
+                chunks=True
+            )
+            dset_new = f.create_dataset(
+                "data_ext",
+                shape=dat_new.shape,
+                dtype=dat_new.dtype,
+                chunks=True
+            )
+            
+            chunk_size = 10000  
+            nrow = dat.shape[0]
+
+            for i in range(0, nrow, chunk_size):
+                end = min(i + chunk_size, nrow)
+                dset[i:end] = dat[i:end]          # Write chunk to dataset
+                dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
     
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
@@ -878,7 +902,7 @@ class ApplyHspMasks(BaseCat):
         for bit in paths:
             hd5file.attrs[f"hsp_path_{bit}"] = paths[bit]
     
-        # Auxilliary mask file paths 
+        # Auxiliary mask file paths 
         for idx, path in enumerate(self._params["aux_mask_file_list"]):
             label = self._params["aux_mask_label_list"][idx]
             hd5file.attrs[f"hsp_path_{label}"] = path
@@ -916,6 +940,43 @@ class CalibrateCat(BaseCat):
             "input_path": "path input FITS catalogue",
             "cmatrices": "compute correlation and confusion matrices",
         }
+        
+    def read_cat(self, load_into_memory=False):
+        """Read Cat.
+        
+        Read input HDF5 catalogue.
+        
+        Parameters
+        ----------
+        load_into_memory: bool, optional
+            load data into memory (potentially slow) of ``True``;
+            default is ``False``
+        
+        Returns
+        -------
+        list
+            Catalogue data
+        list_ext
+            Extended catalogue data
+
+        """
+        fpath = self._params["input_path"]
+        verbose = self._params["verbose"]
+        
+        if verbose:
+            print(f"Reading HDF5 file {fpath}...")
+
+        self._hd5file = h5py.File(fpath, "r")
+        try:
+            dat = self._hd5file["data"]
+            dat_ext = self._hd5file["data_ext"]
+        except:
+            print(f"Error while reading file {fpath}")
+            raise
+        if load_into_memory:
+            return dat[()], dat_ext[()]
+        else:
+            return dat, dat_ext
 
     def run(self):
         """Run.
