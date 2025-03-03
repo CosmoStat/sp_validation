@@ -3,7 +3,8 @@
 Processing steps of `ShapePipe` output catalogues carried out by the `sp_validation` package to produce science-ready catalogues are:
 1. Extract relevant information from a final `ShapePipe` output catalogue per patch; run basic diagnostic tests, create pre-calibration shear catalogues.
 2. Merge pre-calibration catalogues created in the previous step, e.g. processed by individual patches, into one or more joint catalogues;
-3. Create calibrated galaxy shear catalogue. This step includes the tasks:  
+3. Apply external area and footprint masks. These are the "structural" and the coverage masks.  
+4. Create calibrated galaxy shear catalogue. This step includes the tasks:  
    a. Mask objects using flags and criteria in `ShapePipe` output catalogues and external (e.g. mask) files;  
    b. Select a galaxy sample by applying selection criteria, e.g. on SNR or size;  
    c. Calibrate the shear estimates with the `metacalibration` method, using the measured shapes and metacal information (sheared measurements) output by `ShapePipe`.
@@ -31,7 +32,11 @@ This step is carried out per patch.
 The patch-wise comprehensive catalogues extracted in the previous step are merged using the script `create_joint_comprehensive_cat.py`, which is a front-end
 of the `sp_validation` library class `run_joint_cat:JointCat`.
 
-### 3. Mask, select, and calibrate
+### 3. Apply external masks
+
+Code for this step is developed in the library file `run_calibrate_joint.py`.
+
+### 4. Mask, select, and calibrate
 
 The steps of masking, galaxy sample selection, and calibration are carried out jointly using the notebook
 `calibrate_comprehensive_cat.ipynb`.
