@@ -18,6 +18,7 @@ from tqdm import tqdm
 from optparse import OptionParser
 from importlib.metadata import version
 
+import tracemalloc
 
 import h5py
 import healsparse as hsp
@@ -185,6 +186,8 @@ class JointCat(BaseCat):
     def __init__(self):
         # Set default parameters
         self.params_default()
+
+        tracemalloc.start()
 
     def set_params_from_command_line(self, args):
         """Set Params From Command Line.
@@ -505,6 +508,9 @@ class JointCat(BaseCat):
             f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
         )
 
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"1 Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
+
         # Get input FITS files
         hdu_lists, n_obj_list, n_obj = self.get_n_obj(
             patches,
@@ -515,6 +521,9 @@ class JointCat(BaseCat):
         # Read data
         start = end = 0
         for idx, patch in enumerate(patches):
+
+            current, peak = tracemalloc.get_traced_memory()
+            print(f"P{patch} Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
 
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
@@ -566,7 +575,13 @@ class JointCat(BaseCat):
                 )
             start = end
 
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"3 Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
+
         del dat
+
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"3 Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
 
         self.write_hdf5_file(dat_all, patches)
 
