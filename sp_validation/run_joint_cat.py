@@ -382,9 +382,9 @@ class JointCat(BaseCat):
         if self._params["reduce_mem"] == False:
             return dtype_in
         elif name not in cols_keep_dtype:
-            if dtype_in == np.float64:
+            if dtype_in.kind == "f" and dtype_in.itemsize == 8:
                 return np.float32
-            if dtype_in == np.int32:
+            if dtype_in.kind == "i" and dtype_in.itemsize == 4:
                 return np.int8
 
         return dtype_in
@@ -413,8 +413,8 @@ class JointCat(BaseCat):
         """
         if self._params["verbose"]:
             print(
-                f"Allocating {n_col * n_obj * 8 / 1024**3:.1f}"
-                + f" Gb memory for the ({n_col} x {n_obj}) data array ...",
+                f"Allocating <= {n_col * n_obj * 8 / 1024**3:.1f}"
+                + f" Gb memory for the ({n_col} x {n_obj}) input data array ...",
                 end="",
             )
 
