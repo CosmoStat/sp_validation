@@ -258,6 +258,10 @@ class JointCat(BaseCat):
         if self._params["patches"] == "v1":
             n_patch = 7
             patches = [f"P{x}" for x in np.arange(n_patch) + 1]
+        elif self._params["patches"] == "v1.5":
+            n_patch = 8
+            patches = [f"P{x}" for x in np.arange(n_patch) + 1]
+
         else:
             patches = self._params["patches"].split("+")
 
