@@ -58,8 +58,6 @@ for section, mask_list in config.items():
         my_mask = sp_joint.Mask(**mask_params, dat=dat_source, verbose=obj._params["verbose"])
         masks.append(my_mask)
 
-#
-
 print(f"Combining {len(masks)} masks")
 mask_combined = sp_joint.Mask.from_list(masks, label="combined")
 
@@ -74,8 +72,6 @@ for my_mask in masks:
 
 mask_combined.print_stats(num_obj)
 # -
-
-#
 
 # ### Calibration
 
@@ -95,19 +91,6 @@ gal_rel_size_max = 3
 
 # Correct relative size for ellipticity?
 gal_size_corr_ell = False
-
-# For output
-mask_metacal = []
-
-col_name = "T_gal/T_PSF"
-label = "metacal relaive galaxy_size"
-my_mask = sp_joint.Mask(col_name=col_name, label=label, kind="range", value=[gal_rel_size_min, gal_rel_size_max])
-masks.append(my_mask)
-
-col_name = "snr"
-label = "metacal signal-to-noise ratio"
-my_mask = sp_joint.Mask(col_name=col_name, label=label, kind="range", value=[gal_snr_min, gal_snr_max])
-masks.append(my_mask)
 
 # +
 # Call metacal
@@ -148,9 +131,18 @@ for comp in (0, 1):
     g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
 # -
 
-name = "after cuts"
-num_ok = len(masks)
-print(f"{name:30s} {num_ok:10d} {num_ok/num_obj:10.2%}")
+num_ok = len(w)
+Mask.print_strings("metacal", "gal selection", str(num_ok), f"{num_ok / num_obj:10.2%}"ls[classprint(f"After metacal: {num_ok} objects selected.")
+
+# +
+#nok = np.where(masks[1]._mask == False)[0]
+#ok = np.where(masks[1]._mask == True)[0]
+#print(len(nok), len(ok), len(ok) / len(nok))
+#ra = dat["RA"][()]
+#dec = dat["Dec"][()]
+#plt.plot(ra[nok], dec[nok], ".", markersize=0.1)
+#plt.xlim(100, 150)
+#plt.ylim(65, 75)
 
 # +
 # Additional quantities
