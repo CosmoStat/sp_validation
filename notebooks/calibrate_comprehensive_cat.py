@@ -20,7 +20,6 @@
 import sys
 import os
 import numpy as np
-from astropy.io import fits
 import matplotlib.pylab as plt
 
 from sp_validation import run_joint_cat as sp_joint
@@ -31,9 +30,7 @@ import sp_validation.cat as cat
 
 obj = sp_joint.CalibrateCat()
 
-obj._params["input_path"] = "unions_shapepipe_comprehensive_struc_2024_v1.4.2.hdf5"
-obj._params["cmatrices"] = True
-obj._params["verbose"] = True
+config = obj.read_config_set_params("config_mask.yaml")
 
 # !pwd
 
@@ -41,178 +38,42 @@ dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 print(f"Found {len(dat)} (~{util.millify(len(dat))}) objects in catalogue")
 
-
 # ## Masking
-
-class mask():
-    def __init__(self, col_name, label, kind="equal", value=0, dat=None):
-        self._col_name = col_name
-        self._label = label
-        self._value = value
-        self._kind = kind
-        self._num_ok = None
-
-        if dat is not None:
-            self.apply(dat)
-        
-    @classmethod    
-    def from_list(cls, masks, label="combined"):
-        my_mask = cls(label, label, kind="combined", value=None)
-
-        my_mask._mask = np.logical_and.reduce([m._mask for m in masks])
-
-        return my_mask
-
-    def apply(self, dat):
-        if self._kind == "equal":
-            self._mask = dat[self._col_name] == self._value
-        elif self._kind == "not_equal":
-            self._mask = dat[self._col_name] != self._value
-        elif self._kind == "greater_equal":
-            self._mask = dat[self._col_name] >= self._value
-        elif self._kind == "range":
-            self._mask = (dat[self._col_name] >= self._value[0]) & (dat[self._col_name] <= self._value[1])
-        else:
-            raise ValueError(f"Invalid kind {kind}")
-        
-    @classmethod
-    def print_strings(cls, coln, lab, num, fnum):
-        print(f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}")
-        
-    def print_stats(self, num_obj):
-        if self._num_ok is None:
-            self._num_ok = sum(self._mask)
-
-        si = f"{self._num_ok:10d}"
-        sf = f"{self._num_ok/num_obj:10.2%}"
-        self.print_strings(self._col_name, self._label, si, sf)
-        
-    def print_summary(self, f_out):
-        print(f"[{self._label}]\t\t\t", file=f_out, end="")
-        sign = None
-        if self._kind =="equal":
-            sign = "="
-        elif self._kind =="not_equal":
-            sign = "!="
-        elif self._kind =="greater_equal":
-            sign = ">="
-        if sign is not None:
-            print(f"{self._col_name} {sign} {self._value}", file=f_out)
-            
-        if self._kind == "range":
-            print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)            
-
 
 # ### Pre-processing ShapePipe flags
 
 masks = []
 
-# +
-# SExtractor flags (see galaxy.py:classification_galaxy_base)
+for section, mask_list in config.items():
 
-my_mask = mask(col_name="FLAGS", label="SE FLAGS", kind="equal", value=0, dat=dat)
-masks.append(my_mask)
+    dat_source = dat if section == "dat" else dat_ext
+    for mask_params in mask_list:
+        value = mask_params["value"]
+        
+        # Ensure 'range' kind has exactly two values
+        if mask_params["kind"] == "range" and (not isinstance(value, list) or len(value) != 2):
+            raise ValueError(f"Range kind requires a list of two values, got {value}")
 
-# +
-# Duplicate objects
+        #print(mask_params)
+        my_mask = sp_joint.Mask(**mask_params, dat=dat_source, verbose=obj._params["verbose"])
+        masks.append(my_mask)
 
-my_mask = mask(col_name="overlap", label="tile overlap", kind="equal", value=True, dat=dat)
-masks.append(my_mask)
-# -
+#
 
-my_mask = mask(col_name="IMAFLAGS_ISO", label="SP mask", kind="equal", value=0, dat=dat)
-masks.append(my_mask)
-
-# +
-# Number of epochs
-
-my_mask = mask(col_name="N_EPOCH", label=r"$n_{\rm epoch}$", kind="greater_equal", value=2, dat=dat)
-masks.append(my_mask)
-
-# +
-# Magnitude range
-
-my_mask = mask(col_name="mag", label="mag range", kind="range", value=[15, 30], dat=dat)
-masks.append(my_mask)
-
-# +
-# ngmix flags
-
-col_names = ["NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL"]
-tmp_labels = ["ngmix flag", "ngmix moments fail"]
-good_mask_value = 0
-
-for col_name, label in zip(col_names, tmp_labels):
-    my_mask = mask(col_name=col_name, label=label, kind="equal", value=good_mask_value, dat=dat)
-    masks.append(my_mask)
-
-# MKDEBUG TODO: check should be two components, see galaxy.py.
-col_name = "NGMIX_ELL_PSFo_NOSHEAR_0"
-label = "bad PSF ell"
-kind = "not_equal"
-value = -10
-my_mask = mask(col_name=col_name, label=label, kind=kind, value=value, dat=dat)
-masks.append(my_mask)
-
-# -
-
-print(f"Combining {len(masks)} pre-processing masks")
-mask_combined_pre = mask.from_list(masks, label="combined_pre")
+print(f"Combining {len(masks)} masks")
+mask_combined = sp_joint.Mask.from_list(masks, label="combined")
 
 # +
 # Output some mask statistics
 
 num_obj = dat.shape[0]
 
-mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
+Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
 for my_mask in masks:
     my_mask.print_stats(num_obj)
 
-mask_combined_pre.print_stats(num_obj)
+mask_combined.print_stats(num_obj)
 # -
-
-# ### Structural masks
-
-# Get all columns of type ``bool'' from the extended catalogue
-column_ext_info = {
-    name: "bool" if dat_ext.dtype.fields[name][0] == "int8" else dat_ext.dtype.fields[name][0]
-    for name in dat_ext.dtype.names
-}
-
-# +
-# Get all columns of type ``bool'' from the extended catalogue.
-# 0 = good mask value
-
-# Store the index of the first structural mask = current length of masks list
-idx_first_struct = len(masks)
-
-value = False
-for name in column_ext_info:
-    if column_ext_info[name] == "bool":
-        my_mask = mask(col_name=name, label=name, kind="equal", value=value, dat=dat_ext)
-        masks.append(my_mask)
-    else:
-        print(f"Type for column {name} not bool, skipping")
-# -
-
-# Number of pointings
-name = "npoint3"
-label = r"$n_{\rm pointing}$"
-value = 3
-kind = "greater_equal"
-my_mask = mask(col_name=name, label=label, kind=kind, value=value, dat=dat_ext)
-masks.append(my_mask)
-
-n_struct = len(masks) - idx_first_struct
-print(f"Combining {n_struct} structural masks")
-mask_combined_struct = mask.from_list(masks[idx_first_struct:], label="combined_struct")
-
-for my_mask in masks[idx_first_struct:]:
-    my_mask.print_stats(num_obj)
-mask_combined_struct.print_stats(num_obj)
-
-print(f"Combining pre-processing and structural masks, {len(masks)} in total")
-mask_combined = mask.from_list([mask_combined_pre, mask_combined_struct], label="combined")
 
 #
 
@@ -240,12 +101,12 @@ mask_metacal = []
 
 col_name = "T_gal/T_PSF"
 label = "metacal relaive galaxy_size"
-my_mask = mask(col_name=col_name, label=label, kind="range", value=[gal_rel_size_min, gal_rel_size_max])
+my_mask = sp_joint.Mask(col_name=col_name, label=label, kind="range", value=[gal_rel_size_min, gal_rel_size_max])
 masks.append(my_mask)
 
 col_name = "snr"
 label = "metacal signal-to-noise ratio"
-my_mask = mask(col_name=col_name, label=label, kind="range", value=[gal_snr_min, gal_snr_max])
+my_mask = sp_joint.Mask(col_name=col_name, label=label, kind="range", value=[gal_snr_min, gal_snr_max])
 masks.append(my_mask)
 
 # +
