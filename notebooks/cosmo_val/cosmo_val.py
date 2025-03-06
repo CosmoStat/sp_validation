@@ -1349,30 +1349,35 @@ class CosmologyValidation:
                 gg.process(cat)
                 gg.write(out_fname, write_patch_results=True, write_cov=True)
 
-            # self.print_cyan("Covariance")
-            theta = np.geomspace(theta_min, theta_max, nbins)
-            theta_int = np.geomspace(theta_min_int, theta_max_int, nbins_int)
-
-            return theta, theta_int, gg, gg_int
-
             def pure_EB(corrs):
                 gg, gg_int = corrs
-                return np.hstack(
-                    get_pure_EB_modes(
-                        theta=theta,
-                        xip=gg.xip,
-                        xim=gg.xim,
-                        theta_int=theta_int,
-                        xip_int=gg_int.xip,
-                        xim_int=gg_int.xim,
-                        tmin=theta_min,
-                        tmax=theta_min,
-                    )
+                return get_pure_EB_modes(
+                    theta=gg.meanr,
+                    xip=gg.xip,
+                    xim=gg.xim,
+                    theta_int=gg_int.meanr,
+                    xip_int=gg_int.xip,
+                    xim_int=gg_int.xim,
+                    tmin=theta_min,
+                    tmax=theta_max,
                 )
 
-            pure_EB_vector = pure_EB([gg, gg_int])
-            # cov = treecorr.estimate_cov("jackknife", [gg, gg_int], func=pure_EB)
-            # return pure_EB_vector, cov
+            xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = pure_EB([gg, gg_int])
+            cov = treecorr.estimate_multi_cov(
+                [gg, gg_int], "jackknife", func=lambda x: np.hstack(pure_EB(x))
+            )
+
+            results = {
+                "xip_E": xip_E,
+                "xim_E": xim_E,
+                "xip_B": xip_B,
+                "xim_B": xim_B,
+                "xip_amb": xip_amb,
+                "xim_amb": xim_amb,
+                "cov": cov,
+            }
+
+            return results
 
 
 # %%
