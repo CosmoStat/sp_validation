@@ -47,11 +47,12 @@ def params_default():
     Returns
     -------
     p_def: class param
-       parameter values
+        parameter values
     """
 
     p_def = param(
-        survey = 'v1'
+        survey = 'v1',
+        star_cat_base_path='./star_cat',
     )
 
     return p_def
@@ -81,14 +82,23 @@ def parse_options(p_def):
         '--survey',
         dest='survey',
         type='string',
-        help='survey, allowed is \'v1\'|\'test\'|\'v1_small\'|\'P1+3\''
+        help='survey, allowed is \'v1\'|\'test\'|\'v1_small\'|\'Pa+Pb+...\'',
     )
+    parser.add_option(
+        '-S',
+        '--star_cat_base_path',
+        dest='star_cat_base_path',
+        default=p_def.star_cat_base_path,
+        type='string',
+        help=f'star catalogue base path, default is {p_def.star_cat_base_path}',
+    )
+
     parser.add_option(
         '-v',
         '--verbose',
         dest='verbose',
         action='store_true',
-        help='verbose output'
+        help='verbose output',
     )
 
     options, args = parser.parse_args()
@@ -167,6 +177,7 @@ def get_R(fname_base, key_base=None):
 
 def merge_catalogues(
     patches,
+    base_path,
     input_sub_path,
     output_path,
     sh,
@@ -185,10 +196,14 @@ def merge_catalogues(
     ----------
     patches : list of str
         list of patches/sub-directories
+    base_path : str
+        base path
     input_sub_path : str
         common part of input path (below patch)
     output_path : str
         output file path
+    sh : str
+        shape measurement method, for DES weights use 'ngmix'
     R_select : np.array(2, 2), optional
         selection matrix
     return_mean_e : bool, optional
@@ -196,7 +211,7 @@ def merge_catalogues(
     return_mean_R_shear : bool, optional
         return mean response matrix if `True`; default is `False`
     hdu_in : int, optional
-        input data HD, default is `1`
+        input data HD, default is `1` 
     verbose : bool, optional
         verbose output if `True`; default is `False`
 
@@ -214,7 +229,7 @@ def merge_catalogues(
         if verbose:
             print(' ', patch)
 
-        input_path = f'{patch}/{input_sub_path}'
+        input_path = f'{base_path}/{patch}/{input_sub_path}'
         try:
             dat = fits.getdata(input_path, hdu_in)
         except:
@@ -241,7 +256,7 @@ def merge_catalogues(
 
     col_names = col_names + ('patch',)
 
-    #Compute column for the DES weights (Gatti et al. 2021)
+    # Compute column for the DES weights (Gatti et al. 2021)
     if sh == 'ngmix':
         if verbose:
             print(f"Compute DES weights for the combined catalogue.")
@@ -313,12 +328,12 @@ def merge_catalogues(
         R = R_shear + R_select
         if verbose:
             print('Performing calibration on the whole catalog.')
-        #Compute the calibration on the whole catalog for the ellipticities
-        #Find the index of the columns e1 and e2 of calibrated ellipticities
+        # Compute the calibration on the whole catalog for the ellipticities
+        # Find the index of the columns e1 and e2 of calibrated ellipticities
         index_e1 = next((i for i, col in enumerate(column_all) if col.name == 'e1'), None)
         index_e2 = next((i for i, col in enumerate(column_all) if col.name == 'e2'), None)
 
-        #Perform the calibration
+        # Perform the calibration
         g = np.array([dat_all['e1_uncal'], dat_all['e2_uncal']])
         Rm1 = np.linalg.inv(R)
 
@@ -327,20 +342,20 @@ def merge_catalogues(
         for comp in (0, 1):
             g_corr[comp] = g_corr[comp] - c_corr[comp]
 
-        #Replace the columns
+        # Replace the columns
         dat_all['e1'] = g_corr[0]
         dat_all['e2'] = g_corr[1]
         column_all[index_e1] = fits.Column(name='e1', array=g_corr[0], format='D')
         column_all[index_e2] = fits.Column(name='e2', array=g_corr[1], format='D')
 
-        #Compute the leakage coefficients for each object
+        # Compute the leakage coefficients for each object
         if sh == 'ngmix':
             if verbose:
                 print('Computing leakage coefficients per object.')
             num_bins = 20
             weight_type = 'des' if 'w_des' in col_names else 'iv'
             alpha_1, alpha_2 = get_alpha_leakage_per_object(dat_all, num_bins, weight_type)
-            #Add the columns to the fits file
+            # Add the columns to the fits file
             column_all.append(fits.Column(name='alpha_1', array=alpha_1, format='D'))
             column_all.append(fits.Column(name='alpha_2', array=alpha_2, format='D'))
 
@@ -382,21 +397,15 @@ def main(argv=None):
         patches = ['P7', 'W3', 'S4']
     elif param.survey == 'v1_small':
         patches = ['W3', 'P7']
-    elif param.survey == "P1+3":
-        patches = ["P1", "P3"]
-    elif param.survey == "P1+3+4":
-        patches = ["P1", "P3", "P4"]
-    elif param.survey == 'W3':
-        patches = ['W3']
-    elif param.survey == 'P3':
-        patches = ['P3']
-
+    else:
+        patches = param.survey.split("+")
+    
     sh = 'ngmix'
 
     survey = 'unions'
     pipeline = 'shapepipe'
-    year = 2022
-    version = '1.4.1_test'
+    year = 2024
+    version = '1.4.1'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -414,10 +423,12 @@ def main(argv=None):
     # Extended catalogue
     if param.verbose:
         print('Merging extended catalogue')
+    base_path = "."
     input_sub_path = f'sp_output/shape_catalog_extended_{sh}.fits'
     output_path = f'{survey}_{pipeline}_extended_{year}_v{version}.fits'
     c_ext, R_shear_ext, g_corr = merge_catalogues(
         patches,
+        base_path,
         input_sub_path,
         output_path,
         sh,
@@ -541,16 +552,18 @@ def main(argv=None):
     if param.verbose:
         print('Merging PSF catalogues (with single-epoch moments shapes)')
     # Path of ShapePipe run
-    #input_sub_path = 'output/run_sp_MsPl/mccd_merge_starcat_runner/output/full_starcat-0000000.fits'
-    # Path of copied file
-    input_sub_path = 'full_starcat-0000000.fits'
+    base_path = param.star_cat_base_path
+    input_sub_path = (
+        "output/run_sp_Ms/merge_starcat_runner/output/full_starcat-0000000.fits"
+    )
 
     output_path = f'{survey}_{pipeline}_psf_{year}_v{version}.fits'
     merge_catalogues(
         patches,
+        base_path,
         input_sub_path,
         output_path,
-        sh,
+        None,
         hdu_in=2,
         verbose=param.verbose,
     )
@@ -559,12 +572,15 @@ def main(argv=None):
     # galaxy sample
     if param.verbose:
         print('Merging star catalogues (matched with galaxy catalogue for shapes')
+    base_path = "."
     input_sub_path = f'sp_output/psf_catalog_{sh}.fits'
     output_path = f'{survey}_{pipeline}_star_{year}_v{version}.fits'
     merge_catalogues(
         patches,
+        base_path,
         input_sub_path,
         output_path,
+        None,
         verbose=param.verbose,
     )
 
