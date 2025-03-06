@@ -9,16 +9,13 @@ import treecorr
 import utils
 import yaml
 from astropy.io import fits
-# from shear_psf_leakage import leakage
-# from shear_psf_leakage import plots as psfleak_plots
-# from shear_psf_leakage import run_object, run_scale
-# from shear_psf_leakage.rho_tau_stat import PSFErrorFit
+from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+from cs_util import plots as cs_plots
+from shear_psf_leakage import leakage
+from shear_psf_leakage import plots as psfleak_plots
+from shear_psf_leakage import run_object, run_scale
+from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
-
-# from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
-
-
-# from cs_util import plots as cs_plots
 
 
 # %%
