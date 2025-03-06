@@ -22,6 +22,7 @@ dependencies = [
     "adjustText",
     "astropy>=5.0",
     "colorama",
+    "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
     "cs_util==0.1.2",
     "emcee",
     "getdist",
