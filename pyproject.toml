@@ -28,6 +28,7 @@ dependencies = [
     "getdist",
     "h5py",
     "healpy",
+    "healsparse",
     "importlib_metadata",
     "joblib>=0.13",
     "jupyter",
