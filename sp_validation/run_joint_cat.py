@@ -202,8 +202,6 @@ class JointCat(BaseCat):
         # Set default parameters
         self.params_default()
 
-        tracemalloc.start()
-
     def set_params_from_command_line(self, args):
         """Set Params From Command Line.
 
