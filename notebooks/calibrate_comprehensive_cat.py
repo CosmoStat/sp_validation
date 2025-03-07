@@ -20,6 +20,7 @@
 import sys
 import os
 import numpy as np
+from astropy.io import fits
 import matplotlib.pylab as plt
 
 from sp_validation import run_joint_cat as sp_joint
@@ -28,34 +29,56 @@ from sp_validation.basic import metacal
 from sp_validation import calibration
 import sp_validation.cat as cat
 
+# Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
 
+# Read configuration file and set parameters
 config = obj.read_config_set_params("config_mask.yaml")
 
 # !pwd
 
+# Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
 
-print(f"Found {len(dat)} (~{util.millify(len(dat))}) objects in catalogue")
+# +
+#print("MKDEBUG testing only first 100k objects")
+#dat = dat[:100000]
+#dat_ext = dat_ext[:100000]
+# -
 
 # ## Masking
 
 # ### Pre-processing ShapePipe flags
 
+# List to store all mask objects
 masks = []
 
-for section, mask_list in config.items():
+# Loop over mask sections from config file
+config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
+for section, mask_list in config_data.items():
 
+    # Set data source
     dat_source = dat if section == "dat" else dat_ext
+    
+    # Loop over mask information in this section
     for mask_params in mask_list:
         value = mask_params["value"]
         
         # Ensure 'range' kind has exactly two values
-        if mask_params["kind"] == "range" and (not isinstance(value, list) or len(value) != 2):
-            raise ValueError(f"Range kind requires a list of two values, got {value}")
+        if (
+            mask_params["kind"] == "range"
+            and (not isinstance(value, list) or len(value) != 2)
+        ):
+            raise ValueError(
+                f"Range kind requires a list of two values, got {value}"
+            )
 
-        #print(mask_params)
-        my_mask = sp_joint.Mask(**mask_params, dat=dat_source, verbose=obj._params["verbose"])
+        # Create mask instance and append to list
+        my_mask = sp_joint.Mask(
+            **mask_params,
+            dat=dat_source,
+            verbose=obj._params["verbose"]
+        )
         masks.append(my_mask)
 
 print(f"Combining {len(masks)} masks")
@@ -66,7 +89,7 @@ mask_combined = sp_joint.Mask.from_list(masks, label="combined")
 
 num_obj = dat.shape[0]
 
-Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
+sp_joint.Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
 for my_mask in masks:
     my_mask.print_stats(num_obj)
 
@@ -76,34 +99,19 @@ mask_combined.print_stats(num_obj)
 # ### Calibration
 
 # +
-# Define cuts and metacal input parameters
-
-# Ellipticity dispersion
-sigma_eps_prior = 0.34
-
-# Signal-to-noise range
-gal_snr_min = 10
-gal_snr_max = 500
-
-# Relative-size (hlr / hlr_psf) range
-gal_rel_size_min = 0.5
-gal_rel_size_max = 3
-
-# Correct relative size for ellipticity?
-gal_size_corr_ell = False
-
-# +
 # Call metacal
+
+cm = config["metacal"]
 
 gal_metacal = metacal(
     dat,
     mask_combined._mask,
-    snr_min=gal_snr_min,
-    snr_max=gal_snr_max, 
-    rel_size_min=gal_rel_size_min,
-    rel_size_max=gal_rel_size_max,
-    size_corr_ell=gal_size_corr_ell,
-    sigma_eps=sigma_eps_prior,
+    snr_min=cm["gal_snr_min"],
+    snr_max=cm["gal_snr_max"], 
+    rel_size_min=cm["gal_rel_size_min"],
+    rel_size_max=cm["gal_rel_size_max"],
+    size_corr_ell=cm["gal_size_corr_ell"],
+    sigma_eps=cm["sigma_eps_prior"],
     col_2d=False,
     verbose=True,
 )
@@ -132,7 +140,7 @@ for comp in (0, 1):
 # -
 
 num_ok = len(w)
-Mask.print_strings("metacal", "gal selection", str(num_ok), f"{num_ok / num_obj:10.2%}"ls[classprint(f"After metacal: {num_ok} objects selected.")
+sp_joint.Mask.print_strings("metacal", "gal selection", str(num_ok), f"{num_ok / num_obj:10.2%}")
 
 # +
 #nok = np.where(masks[1]._mask == False)[0]
@@ -145,20 +153,6 @@ Mask.print_strings("metacal", "gal selection", str(num_ok), f"{num_ok / num_obj:
 #plt.ylim(65, 75)
 
 # +
-# Additional quantities
-R_shear = np.mean(gal_metacal.R_shear, 2)
-
-ra = cat.get_col(dat, "RA", mask_combined._mask,  mask_metacal)
-dec = cat.get_col(dat, "Dec", mask_combined._mask,  mask_metacal)
-mag = cat.get_col(dat, "mag", mask_combined._mask,  mask_metacal)
-snr = cat.get_snr("ngmix", dat, mask_combined._mask,  mask_metacal)
-
-add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER"]
-add_cols_data = {}    
-for key in add_cols:
-    add_cols_data[key] = dat[key][mask_combined._mask][mask_metacal]
-
-# +
 # Compute DES weights
 
 cat_gal = {}
@@ -168,9 +162,9 @@ cat_gal["R_g11"] = gal_metacal.R11
 cat_gal["R_g12"] = gal_metacal.R12
 cat_gal["R_g21"] = gal_metacal.R21
 cat_gal["R_g22"] = gal_metacal.R22
-cat_gal["NGMIX_T_NOSHEAR"] = dat["NGMIX_T_NOSHEAR"][mask_combined._mask][mask_metacal]
-cat_gal["NGMIX_Tpsf_NOSHEAR"] = dat["NGMIX_Tpsf_NOSHEAR"][mask_combined._mask][mask_metacal]
-cat_gal["snr"] = snr
+cat_gal["NGMIX_T_NOSHEAR"] = cat.get_col(dat, "NGMIX_T_NOSHEAR", mask_combined._mask, mask_metacal)
+cat_gal["NGMIX_Tpsf_NOSHEAR"] = cat.get_col(dat, "NGMIX_Tpsf_NOSHEAR", mask_combined._mask, mask_metacal)
+cat_gal["snr"] = cat.get_snr("ngmix", dat, mask_combined._mask,  mask_metacal)
 
 name = 'w_des'
 num_bins = 20
@@ -181,11 +175,54 @@ w = calibration.get_w_des(cat_gal, num_bins)
 
 cat_gal["e1"] = g_corr_mc[0]
 cat_gal["e2"] = g_corr_mc[1]
-#cat_gal["e1_PSF"] = e_psf
+cat_gal["e1_PSF"] = cat.get_col(dat, "e1_PSF", mask_combined._mask, mask_metacal)
+cat_gal["e2_PSF"] = cat.get_col(dat, "e2_PSF", mask_combined._mask, mask_metacal)
+cat_gal["w_des"] = w
 
 num_bins = 20
 weight_type = 'des'
-#alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(cat_gal, num_bins, weight_type)
+try:
+    alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(cat_gal, num_bins, weight_type)
+except:
+    alpha_1, alpha_2 = -99, -99
+
+# -
+
+# Compute leakage-corrected ellipticities
+e1_leak_corrected = g_corr_mc[0] - alpha_1 * cat_gal["e1_PSF"]
+e2_leak_corrected = g_corr_mc[1] - alpha_2 * cat_gal["e2_PSF"]
+
+# +
+# Additional quantities
+R_shear = np.mean(gal_metacal.R_shear, 2)
+
+ra = cat.get_col(dat, "RA", mask_combined._mask,  mask_metacal)
+dec = cat.get_col(dat, "Dec", mask_combined._mask,  mask_metacal)
+mag = cat.get_col(dat, "mag", mask_combined._mask,  mask_metacal)
+
+add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER"]
+add_cols_data = {}    
+for key in add_cols:
+    add_cols_data[key] = dat[key][mask_combined._mask][mask_metacal]
+    
+add_cols_data["e1_leak_corrected"] = e1_leak_corrected
+add_cols_data["e2_leak_corrected"] = e2_leak_corrected
+
+# +
+# Add information to FITS header
+
+# Generate new header
+header = fits.Header()
+
+# Add general config information to FITS header
+obj.add_params_to_FITS_header(header)
+
+# Add mask information to FITS header
+for my_mask in masks:
+    my_mask.add_summary_to_FITS_header(header)
+# -
+
+header
 
 # +
 output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
@@ -197,6 +234,7 @@ cat.write_shape_catalog(
     dec,
     w,
     mag=mag,
+    snr=cat_gal["snr"],
     g=g_corr_mc,
     g1_uncal=g_uncorr[0],
     g2_uncal=g_uncorr[1],
@@ -205,13 +243,12 @@ cat.write_shape_catalog(
     R_select=gal_metacal.R_selection,
     c=c,
     c_err=c_err,
-    add_cols=add_cols_data
+    add_cols=add_cols_data,
+    add_header=header,
 )
 # -
 
 with open("masks.txt", "w") as f_out:
-    for my_mask in masks:
-        my_mask.print_summary(f_out)
     for my_mask in masks:
         my_mask.print_summary(f_out)
 

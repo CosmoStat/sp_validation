@@ -92,3 +92,19 @@ dat_ext:
     label: r"$n_{\rm pointing}$"
     kind: greater_equal
     value: 3
+
+# Metacal parameters
+metacal:
+  # Ellipticity dispersion
+  sigma_eps_prior: 0.34
+
+  # Signal-to-noise range
+  gal_snr_min: 10
+  gal_snr_max: 500
+
+  # Relative-size (hlr / hlr_psf) range
+  gal_rel_size_min: 0.5
+  gal_rel_size_max: 3
+
+  # Correct relative size for ellipticity?
+  gal_size_corr_ell: False

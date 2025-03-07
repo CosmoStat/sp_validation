@@ -1041,10 +1041,28 @@ class CalibrateCat(BaseCat):
         except:
             print(f"Error while reading file {fpath}")
             raise
+   
+        if verbose:
+            print(
+                f"Found {len(dat)} (~{util.millify(len(dat))}) objects"
+                + " in catalogue"
+            )
+
         if load_into_memory:
             return dat[()], dat_ext[()]
         else:
             return dat, dat_ext
+        
+    def add_params_to_FITS_header(self, header):
+
+        header_new = fits.Header()
+
+        keys = ["input_path"]
+        descriptions = ["input comprehensive catalogue"]
+        for key, descr in zip(keys, descriptions):
+            header_new[key] = (key, descr)
+        
+        header.update(header_new)
 
     def run(self):
         """Run.
@@ -1161,9 +1179,9 @@ class Mask():
         si = f"{self._num_ok:10d}"
         sf = f"{self._num_ok/num_obj:10.2%}"
         self.print_strings(self._col_name, self._label, si, sf)
+    
+    def get_sign(self):
         
-    def print_summary(self, f_out):
-        print(f"[{self._label}]\t\t\t", file=f_out, end="")
         sign = None
         if self._kind =="equal":
             sign = "="
@@ -1171,11 +1189,32 @@ class Mask():
             sign = "!="
         elif self._kind =="greater_equal":
             sign = ">="
+     
+        return sign
+        
+    def print_summary(self, f_out):
+        print(f"[{self._label}]\t\t\t", file=f_out, end="")
+        
+        sign = self.get_sign()
+
         if sign is not None:
             print(f"{self._col_name} {sign} {self._value}", file=f_out)
             
         if self._kind == "range":
             print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)
+            
+    def add_summary_to_FITS_header(self, header):
+
+        header_new = fits.Header()
+
+        sign = self.get_sign()
+        if sign is not None:
+            expr = f"{sign}{self._value}"
+        if self._kind == "range":
+            expr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+        header_new[self._col_name] = (expr, self._label)
+        
+        header.update(header_new)
 
 class ReadCat:
 
