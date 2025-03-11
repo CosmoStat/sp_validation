@@ -742,6 +742,9 @@ class ApplyHspMasks(BaseCat):
             )
         else:
             self._params["aux_mask_file_list"] = []
+            
+        if "verbose" not in self._params:
+            self._params["verbose"] = False
 
     def read_hsp_mask(self, path):
         """Read Hsp Mask.
@@ -1061,7 +1064,7 @@ class CalibrateCat(BaseCat):
             header_new[key] = (key, descr)
         
         header.update(header_new)
-
+        
     def run(self):
         """Run.
 
@@ -1069,6 +1072,64 @@ class CalibrateCat(BaseCat):
 
         """
 
+def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
+        """Sky Plots.
+        
+        Plot sky regions with different masks.
+        
+        """
+        ra = dat["RA"][:]
+        dec = dat["Dec"][:]
+        
+        zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
+        zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
+        zoom = zoom_ra & zoom_dec
+
+        # No mask        
+        plot_area_mask(ra, dec, zoom)
+        
+        # SExtractor and SP flags
+        m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
+        plot_area_mask(ra, dec, zoom, mask=m_flags)
+        
+        # Overlap regions
+        m_over = masks[labels["overlap"]]._mask & m_flags
+        plot_area_mask(ra, dec, zoom, mask=m_over)
+        
+        # Coverage mask
+        m_point = masks[labels["npoint3"]]._mask & m_over
+                plot_area_mask(ra, dec, zoom, mask=m_point)
+
+        # Maximask
+        m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
+        plot_area_mask(ra, dec, zoom, mask=m_maxi)
+        
+        m_comb = mask_combined._mask
+        plot_area_mask(ra, dec, zoom, mask=m_comb)
+        
+        m_man = m_maxi & masks[labels["8_Manual"]]._mask
+    )   plot_area_mask(ra, dec, zoom, mask=m_man)
+        
+        m_halos = (
+            m_maxi
+            & masks[labels['1_Faint_star_halos']]._mask
+            & masks[labels['2_Bright_star_halos']]._mask
+)       )
+        plot_area_mask(ra, dec, zoom, mask=m_halos)
+        
+
+
+def plot_area)mask(ra, dec, zoom, mask=None):
+
+    if mask is None:
+        mask == np.ones_like(ra)
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30,15))
+    axes[0].hexbin(ra[mask], dec[mask], gridsize=100)
+    axes[1].hexbin(ra[mask & zoom], dec[mask & zoom], gridsize=200)
+    for idx in (0, 1):
+        axes[idx].set_xlabel("R.A. [deg]")
+        axes[idx].set_ylabel("Dec [deg]")
 
 def confusion_matrix(mask, confidence_level=0.9):
 
@@ -1115,7 +1176,8 @@ class Mask():
     label : str
         label
     kind : str
-        operation type, allowed are "equal", "not_equal, ""greater_equal", "range"
+        operation type, allowed are "equal", "not_equal, ""greater_equal",
+        "smaller_equal", "range"
     value : float or list
         value(s) to be used in mask operation
     dat : numpy.ndarray, optional
@@ -1161,10 +1223,12 @@ class Mask():
             self._mask = dat[self._col_name] != self._value
         elif self._kind == "greater_equal":
             self._mask = dat[self._col_name] >= self._value
+        elif self._kind == "smaller_equal":
+            self._mask = dat[self._col_name] <= self._value
         elif self._kind == "range":
             self._mask = (dat[self._col_name] >= self._value[0]) & (dat[self._col_name] <= self._value[1])
         else:
-            raise ValueError(f"Invalid kind {kind}")
+            raise ValueError(f"Invalid kind {self._kind}")
         
     @classmethod
     def print_strings(cls, coln, lab, num, fnum):
@@ -1187,7 +1251,8 @@ class Mask():
             sign = "!="
         elif self._kind =="greater_equal":
             sign = ">="
-     
+        elif self._kind =="smaller_equal":
+            sign = "<="
         return sign
         
     def print_summary(self, f_out):

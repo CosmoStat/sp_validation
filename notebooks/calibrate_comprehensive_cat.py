@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
 #     name: python3
 # ---
@@ -50,11 +50,17 @@ dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 # ### Pre-processing ShapePipe flags
 
+# +
 # List to store all mask objects
 masks = []
 
+# Dict to associate labels with index in mask list 
+labels = {}
+# -
+
 # Loop over mask sections from config file
 config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
+idx = 0
 for section, mask_list in config_data.items():
 
     # Set data source
@@ -80,6 +86,8 @@ for section, mask_list in config_data.items():
             verbose=obj._params["verbose"]
         )
         masks.append(my_mask)
+        labels[my_mask._col_name] = idx
+        idx += 1
 
 print(f"Combining {len(masks)} masks")
 mask_combined = sp_joint.Mask.from_list(masks, label="combined")
@@ -95,6 +103,14 @@ for my_mask in masks:
 
 mask_combined.print_stats(num_obj)
 # -
+
+if obj._params["sky_regions"]:
+    
+    # MKDBEUG TODO: zooms as list in config
+    zoom_ra = [200, 205]
+    zoom_dec = [55, 60]
+
+    sp_joint.sky_plots(sky_plots(dat, masks, labels, zoom_ra, zoom_dec)
 
 # ### Calibration
 
@@ -220,9 +236,6 @@ obj.add_params_to_FITS_header(header)
 # Add mask information to FITS header
 for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
-# -
-
-header
 
 # +
 output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
