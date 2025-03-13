@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: sp_validation
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -48,12 +48,13 @@ bit_list = [1, 2, 4, 8, 64, 1024]
 bits = 0
 for b in bit_list:
     bits = bits | b
+print(bits)
 
 # +
 # Set parameters
-obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.5.0.hdf5"
-obj._params["output_path"] = "unions_shapepipe_comprehensive_struc_2024_v1.5.0.hdf5"
-obj._params["mask_dir"] = f"{os.environ['HOME']}/v1.5.x/masks"
+obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.4.c.hdf5"
+obj._params["output_path"] = "unions_shapepipe_comprehensive_struc_2024_v1.4.c.hdf5"
+obj._params["mask_dir"] = f"{os.environ['HOME']}/v1.4.x/masks"
 obj._params["nside"] = 131072
 obj._params["file_base"] = "mask_r_"
 obj._params["bits"] = bits
@@ -108,3 +109,5 @@ if trace_mem:
     current, peak = tracemalloc.get_traced_memory()
     print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
     tracemalloc.stop()
+
+

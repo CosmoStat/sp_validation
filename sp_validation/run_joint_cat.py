@@ -1098,7 +1098,7 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
         
         # Coverage mask
         m_point = masks[labels["npoint3"]]._mask & m_over
-                plot_area_mask(ra, dec, zoom, mask=m_point)
+        plot_area_mask(ra, dec, zoom, mask=m_point)
 
         # Maximask
         m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
@@ -1108,18 +1108,18 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
         plot_area_mask(ra, dec, zoom, mask=m_comb)
         
         m_man = m_maxi & masks[labels["8_Manual"]]._mask
-    )   plot_area_mask(ra, dec, zoom, mask=m_man)
+        plot_area_mask(ra, dec, zoom, mask=m_man)
         
         m_halos = (
             m_maxi
             & masks[labels['1_Faint_star_halos']]._mask
             & masks[labels['2_Bright_star_halos']]._mask
-)       )
+        )
         plot_area_mask(ra, dec, zoom, mask=m_halos)
         
 
 
-def plot_area)mask(ra, dec, zoom, mask=None):
+def plot_area_mask(ra, dec, zoom, mask=None):
 
     if mask is None:
         mask == np.ones_like(ra)
