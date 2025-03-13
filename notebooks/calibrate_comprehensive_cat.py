@@ -29,8 +29,6 @@ from sp_validation.basic import metacal
 from sp_validation import calibration
 import sp_validation.cat as cat
 
-print("Starting calibration of comprehensive catalogue")
-
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
 
@@ -158,7 +156,7 @@ for comp in (0, 1):
     g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
 # -
 
-num_ok = len(w)
+num_ok = len(g_corr[0])
 sp_joint.Mask.print_strings(
     "metacal", "gal selection", str(num_ok), f"{num_ok / num_obj:10.2%}"
 )
@@ -223,6 +221,10 @@ except:
 e1_leak_corrected = g_corr_mc[0] - alpha_1 * cat_gal["e1_PSF"]
 e2_leak_corrected = g_corr_mc[1] - alpha_2 * cat_gal["e2_PSF"]
 
+# Get some memory back
+for mask in masks:
+    del mask
+
 # +
 # Additional quantities
 R_shear = np.mean(gal_metacal.R_shear, 2)
@@ -230,6 +232,9 @@ R_shear = np.mean(gal_metacal.R_shear, 2)
 ra = cat.get_col(dat, "RA", mask_combined._mask, mask_metacal)
 dec = cat.get_col(dat, "Dec", mask_combined._mask, mask_metacal)
 mag = cat.get_col(dat, "mag", mask_combined._mask, mask_metacal)
+
+
+# +
 
 add_cols = [
     "FLUX_RADIUS",
@@ -246,6 +251,8 @@ add_cols = [
 add_cols_data = {}
 for key in add_cols:
     add_cols_data[key] = dat[key][mask_combined._mask][mask_metacal]
+
+# +
 
 add_cols_data["e1_leak_corrected"] = e1_leak_corrected
 add_cols_data["e2_leak_corrected"] = e2_leak_corrected
