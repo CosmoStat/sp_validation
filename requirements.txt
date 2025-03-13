@@ -26,3 +26,4 @@ tqdm
 uncertainties
 pyccl
 opencv-python-headless
+https://github.com/aguinot/cosmo-numba.git
