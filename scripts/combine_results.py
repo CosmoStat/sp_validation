@@ -771,10 +771,10 @@ def main(argv=None):
 
     for file_base in file_base_arr:
 
-        os.system(f'~/txt2tex.pl {file_base}.tex > {file_base}_out.tex')
-        print(f'Creating LaTeX file {file_base}.tex')
-        os.system(f'pdflatex {file_base}_out 2&>/dev/null')
-
+        #os.system(f'~/txt2tex.pl {file_base}.tex > {file_base}_out.tex')
+        #print(f'Creating LaTeX file {file_base}.tex')
+        #os.system(f'pdflatex {file_base}_out 2&>/dev/null')
+        print("Skipping calling LaTeX")
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))

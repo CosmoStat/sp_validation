@@ -61,6 +61,9 @@ class metacal:
     sigma_eps : float, optional
         ellipticity dispersion (one component) for computation
         of weights; default is 0.34
+    col_2d : bool, optional
+        if `True` (default, ellipticity in one 2D column;
+        if `False`, ellipticity in two columns ELL_0, ELL_1
     verbose : bool, optional, default=False
         verbose output if True
 
@@ -80,6 +83,7 @@ class metacal:
         rel_size_max=3.0,
         size_corr_ell=True,
         sigma_eps=0.34,
+        col_2d=True,
         verbose=False,
     ):
 
@@ -102,6 +106,7 @@ class metacal:
             )
 
         self._sigma_eps = sigma_eps
+        self._col_2d = col_2d
 
         self._verbose = verbose
 
@@ -154,7 +159,7 @@ class metacal:
         Read data from ngmix catalogue.
         """
         for name_shear, dict_tmp in zip(
-            ['1m', '1p', '2m', '2p', 'noshear'],
+            ['1M', '1P', '2M', '2P', 'NOSHEAR'],
             [m1, p1, m2, p2, ns]
         ):
 
@@ -162,39 +167,107 @@ class metacal:
                 print('Extracting {}'.format(name_shear))
 
             dict_tmp['flag'] = (
-                data[f'{self._prefix}_FLAGS_{name_shear.upper()}'][mask]
-            )
-            dict_tmp['g1'] = (
-                data[f'{self._prefix}_ELL_{name_shear.upper()}'][:, 0][mask]
-            )
-            dict_tmp['g2'] = (
-                data[f'{self._prefix}_ELL_{name_shear.upper()}'][:, 1][mask]
+                data[f'{self._prefix}_FLAGS_{name_shear}'][mask]
             )
 
+            if self._col_2d:
+                # Ellipticity in one 2D column
+                for comp in (0, 1):
+                    dict_tmp[f"g{comp+1}"] = (
+                        data[f"{self._prefix}_ELL_{name_shear}"][:, comp][mask]
+                    )
+                #dict_tmp['g2'] = (
+                #    data[f'{self._prefix}_ELL_{name_shear}'][:, 1][mask]
+                #)
+            else:
+                # Ellipcitiy in two different columns
+                for comp in (0, 1):
+                    dict_tmp[f"g{comp+1}"] = (
+                        data[f"{self._prefix}_ELL_{name_shear}_{comp}"][mask]
+                    )
+
             dict_tmp['flux'] = (
-                data[f'{self._prefix}_FLUX_{name_shear.upper()}'][mask]
+                data[f'{self._prefix}_FLUX_{name_shear}'][mask]
             )
             dict_tmp['flux_err'] = (
-                data[f'{self._prefix}_FLUX_ERR_{name_shear.upper()}'][mask]
+                data[f'{self._prefix}_FLUX_ERR_{name_shear}'][mask]
             )
 
             dict_tmp['T'] = (
-                data[f'{self._prefix}_T_{name_shear.upper()}'][mask]
+                data[f'{self._prefix}_T_{name_shear}'][mask]
             )
             dict_tmp['T_err'] = (
-                data[f'{self._prefix}_T_ERR_{name_shear.upper()}'][mask]
+                data[f'{self._prefix}_T_ERR_{name_shear}'][mask]
             )
             dict_tmp['Tpsf'] = (
-                data[f'{self._prefix}_Tpsf_{name_shear.upper()}'][mask]
+                data[f'{self._prefix}_Tpsf_{name_shear}'][mask]
             )
 
-        ns['C11'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 0][mask]
-        ns['C22'] = data[f'{self._prefix}_ELL_ERR_NOSHEAR'][:, 1][mask]
-        ns['w'] = (
-            1. / (2 * self._sigma_eps ** 2 + dict_tmp['C11'] + dict_tmp['C22'])
+        ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
+            data,
+            self._sigma_eps,
+            self._prefix,
+            mask=mask,
+            col_2d=self._col_2d,
         )
 
+        self._n_input = len(data)
+        self._n_after_gal_mask = len(dict_tmp['flag'])
+        if self._verbose:
+            print(f"Number of objects on metacal input = {self._n_input}")
+            print(f"Number of objects after galaxy selection masking = {self._n_after_gal_mask}")
+        
         return m1, p1, m2, p2, ns
+
+    @staticmethod
+    def get_variance_ivweights(data, sigma_eps, prefix="NGMIX", mask=None, col_2d=True):
+        """Get Variance IVWEIGHTS.
+
+        Compute variance and inverse-variance weights.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            input data
+        sigma_eps : float
+            ellipticity dispersion
+        prefix : str, optional
+            shape measurement identifier; default is "NGMIX"
+        mask : list, optional
+            indicates valid objects with ``True`` values; default is ``None`` = use all objects
+            type has to be bool
+        col_2d : bool, optional
+            if ``True`` (default), ellipticity is given in single 2D column;
+            if ``False``, ellipticity is expected in two 1D columns.
+
+        Returns
+        -------
+        float
+            variance first component
+        float
+            variance second component
+        float
+            weight
+
+        """
+        if mask is not None:
+            if col_2d:
+                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 0][mask]
+                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 1][mask]
+            else:
+                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR_0"][mask]
+                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR_1"][mask]
+        else:
+            if col_2d:
+                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 0]
+                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 1]
+            else:
+                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR_0"]
+                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR_1"]
+
+        iv_w = 1 / (2 * sigma_eps ** 2 + C11 + C22)
+
+        return C11, C22, iv_w
 
     def _read_data_galsim(self, data, mask, m1, p1, m2, p2, ns):
         """Read Data Galsim.
