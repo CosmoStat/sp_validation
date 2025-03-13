@@ -72,6 +72,12 @@ class CosmologyValidation:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
         for ver in ["nz", *versions]:
+
+            if ver not in cc:
+                raise KeyError(
+                    f"Version string {ver} not found in config file"
+                    + f "{catalog_config}"
+                )
             version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
