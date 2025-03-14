@@ -6,7 +6,7 @@ import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
-import utils
+from . import utils_cosmo_val
 import yaml
 from astropy.io import fits
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
@@ -74,10 +74,7 @@ class CosmologyValidation:
         for ver in ["nz", *versions]:
 
             if ver not in cc:
-                raise KeyError(
-                    f"Version string {ver} not found in config file"
-                    + f "{catalog_config}"
-                )
+                raise KeyError(f"Version string {ver} not found in config file{catalog_config}")
             version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
@@ -223,7 +220,7 @@ class CosmologyValidation:
 
         self.print_start("Rho stats")
         for ver in self.versions:
-            rho_stat_handler, tau_stat_handler = utils.get_rho_tau_w_cov(
+            rho_stat_handler, tau_stat_handler = utils_cosmo_val.get_rho_tau_w_cov(
                 self.cc,
                 ver,
                 self.treecorr_config,
@@ -349,7 +346,7 @@ class CosmologyValidation:
                 self.cov_estimate_method, None
             )
 
-            flat_samples, result, q = utils.get_samples(
+            flat_samples, result, q = utils_cosmo_val.get_samples(
                 self.psf_fitter,
                 ver,
                 cov_type=self.cov_estimate_method,
@@ -508,22 +505,24 @@ class CosmologyValidation:
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
-            if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
-                self.print_green(
-                    f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
-                )
+            with self.results[ver].temporarily_load_data():
+                if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
+                    self.print_green(
+                        f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
+                    )
 
-                results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
-                results.r_corr_gp.read(output_path_ab)
+                    # MKDEBUG the following lines do not need the data catalogue
+                    results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
+                    results.r_corr_gp.read(output_path_ab)
 
-                results.r_corr_pp = treecorr.GGCorrelation(self.treecorr_config)
-                results.r_corr_pp.read(output_path_aa)
+                    results.r_corr_pp = treecorr.GGCorrelation(self.treecorr_config)
+                    results.r_corr_pp.read(output_path_aa)
 
-            else:
-                results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
+                else:
+                    results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
 
-            results.do_alpha(fast=True)
-            results.do_xi_sys()
+                results.do_alpha(fast=True)
+                results.do_xi_sys()
 
         self.print_done("Finished scale-dependent leakage calculation.")
 
