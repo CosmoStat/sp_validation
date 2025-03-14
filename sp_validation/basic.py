@@ -11,7 +11,6 @@
 """
 
 import numpy as np
-from scipy.integrate import simps
 from scipy.interpolate import interp1d
 from scipy.spatial import cKDTree
 from scipy.special import gamma
