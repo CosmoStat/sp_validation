@@ -248,7 +248,7 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     
     for i in range(ncov):
 
-        if not os.path.exists(outdir+'/cov_tau_'+version+str(i)+'.npy'):
+        if not (os.path.exists(outdir+'/cov_tau_'+version+str(i)+'.npy') and os.path.exists(outdir+'/cov_rho_'+version+str(i)+'.npy')):
 
             params = get_params_rho_tau(config[version], survey=version)
 
