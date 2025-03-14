@@ -25,6 +25,7 @@ statsmodels
 treecorr
 tqdm
 uncertainties
+clmm
 pyccl
 opencv-python-headless
-https://github.com/aguinot/cosmo-numba.git
+#git+https://github.com/aguinot/cosmo-numba.git@main
