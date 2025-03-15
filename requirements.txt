@@ -5,6 +5,7 @@ emcee
 cs_util==0.1.2
 astropy>=5.0
 healpy
+healsparse
 getdist
 h5py
 jupyterlab
