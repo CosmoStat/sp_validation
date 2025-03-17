@@ -55,7 +55,6 @@ class mask():
         if dat is not None:
             self.apply(dat)
         
-    @classmethod    
     def from_list(cls, masks, label="combined"):
         my_mask = cls(label, label, kind="combined", value=None)
 
