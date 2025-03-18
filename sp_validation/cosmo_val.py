@@ -5,10 +5,19 @@ from contextlib import contextmanager
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
+import re
+
 import treecorr
 from . import utils_cosmo_val
 import yaml
 from astropy.io import fits
+
+import healpy as hp
+import healsparse as hsp
+from collections import Counter
+import skyproj
+
+
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
@@ -470,6 +479,7 @@ class CosmologyValidation:
             self.calculate_rho_tau_fits()
         return self._xi_psf_sys
 
+    # MKDEBUG TODO use FootprintPlotter()
     def plot_footprints(self):
         self.print_start("Plotting footprints:")
         for ver in self.versions:
@@ -1384,5 +1394,164 @@ class CosmologyValidation:
 
             return results
 
+class FootprintPlotter:
+    """Class to create footprint plots.
+    
+    Parameters
+    -----------
+    nside_coverage: int, optional
+        basic resolution of map; default is 32
+    nside_map:
+        fine resolution for plotting; default is 2048
 
+    """
+    
+    # Dictionary storing region parameters
+    _regions = {
+        "NGC": {"ra_0": 180, "extend": [120, 270, 20, 70], "vmax": 60},
+        "SGC": {"ra_0": 15, "extend": [-20, 45, 20, 45], "vmax": 60},
+        "fullsky": {"ra_0": 150, "extend": [0, 360, -90, 90], "vmax": 60},
+    }
+    
+    def __init__(self, nside_coverage=32, nside_map=2048):
+        
+        self._nside_coverage = nside_coverage
+        self._nside_map = nside_map
+    
+    def create_hsp_map(self, ra, dec):
+        """Create Hsp Map.
+        
+        Create healsparse map.
+        
+        Parameters
+        ----------
+        ra : numpy.ndarray
+            right ascension values
+        dec : numpy.ndarray
+            declination values
+            
+        Returns
+        -------
+        hsp.HealSparseMap
+            map
+            
+        """
+        # Create empty map
+        hsp_map = hsp.HealSparseMap.make_empty(
+            self._nside_coverage,
+            self._nside_map,
+            dtype=np.float32,
+            sentinel=np.nan
+        )
+
+        # Get pixel list corresponding to coordinates
+        hpix = hp.ang2pix(self._nside_map, ra, dec, nest=True, lonlat=True)
+
+        # Get count of objects per pixel
+        pixel_counts = Counter(hpix)
+
+        # List of unique pixels
+        unique_hpix = np.array(list(pixel_counts.keys()))
+
+        # Number of objects
+        values = np.array(list(pixel_counts.values()), dtype=np.float32)
+
+        # Create maps with numbers per pixel
+        hsp_map[unique_hpix] = values
+    
+        return hsp_map
+    
+    def plot_area(
+        self,
+        hsp_map,
+        ra_0=0,
+        extend=[120, 270, 29, 70],
+        vmax=60,
+        projection=None,
+        outpath=None,
+    ):
+        """Plot Area.
+        
+        Plot catalogue in an area on the sky.
+        
+        Parameters
+        ----------
+        hsp_map : hsp_HealSparseMap
+            input map
+        ra_0 : float, optional
+            anchor point in R.A.; default is 0
+        extend : list, optional
+            sky region, extend=[ra_low, ra_high, dec_low, dec_high];
+            default is [120, 270, 29, 70]
+        vmax : float, optional
+            maximum pixel value to plot with color; default is 60
+        projection : skyproj.McBrydeSkyproj
+            if ``None`` (default), a new plot is created
+        outpath : str, optional
+            output path, default is ``None``
+            
+        Returns
+        --------
+        skyproj.McBrydeSkyproj
+            projection instance
+        plt.axes.Axes
+            axes instance
+            
+        Raises
+        ------
+        ValueError
+            if no object found in region
+        
+        """
+        if not projection:
+            
+            # Create new figure and axes
+            fig, ax = plt.subplots(figsize=(10, 10))
+
+            # Create new projection
+            projection = skyproj.McBrydeSkyproj(
+                ax=ax,
+                lon_0=ra_0,
+                extent=extend,
+                autorescale=True,
+                vmax=vmax
+            )
+        else:
+            ax = None
+
+        try:
+            _ = projection.draw_hspmap(
+                hsp_map, lon_range=extend[0:2],
+                lat_range=extend[2:]
+            )
+        except ValueError:
+            msg = "No object found in region to draw"
+            print(f"{msg}, continuing...")
+            #raise ValueError(msg)
+
+        if outpath:
+            plt.savefig(outpath)
+            
+        return projection, ax
+        
+    def plot_region(self, hsp_map, region, projection=None, outpath=None):
+        
+        return self.plot_area(
+            hsp_map,
+            region["ra_0"],
+            region["extend"],
+            region["vmax"],
+            projection=projection,
+            outpath=outpath,
+        )
+
+    def plot_all_regions(self, hsp_map, outbase=None):
+
+        for region in self._regions:
+            if outbase:
+                outpath = f"{outbase}_{region}.png"
+            else:
+                outpath = None
+            self.plot_region(hsp_map, self._regions[region], outpath=outpath)
+    
 # %%
