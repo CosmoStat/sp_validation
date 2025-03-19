@@ -479,29 +479,27 @@ class CosmologyValidation:
             self.calculate_rho_tau_fits()
         return self._xi_psf_sys
 
-    # MKDEBUG TODO use FootprintPlotter()
     def plot_footprints(self):
         self.print_start("Plotting footprints:")
         for ver in self.versions:
             self.print_magenta(ver)
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/footprint_{ver}.png"
-            )
+            
+            fp = FootprintPlotter()
+                
+            for region in fp._regions: 
+                out_path = os.path.abspath(
+                    f"{self.cc['paths']['output']}footprint_{ver}_{region}.png"
+                )
             if os.path.exists(out_path):
                 self.print_done(
-                    f"Skipping footprint computation, plot {out_path} exists"
+                    f"Skipping footprint plot, {out_path} exists"
                 )
             else:
-                plt.clf()
-                plt.plot(
+                hsp_map = fp.create_hsp_map(
                     self.results[ver].dat_shear["RA"],
                     self.results[ver].dat_shear["Dec"],
-                    ".",
-                    markersize=0.5,
                 )
-                plt.xlabel("R.A. [deg]")
-                plt.ylabel("Dec [deg]")
-                cs_plots.savefig(out_path)
+                fp.plot_region(hsp_map, region, outpath=outpath)
                 self.print_done("Footprint plot saved to " + out_path)
 
     def calculate_scale_dependent_leakage(self):
