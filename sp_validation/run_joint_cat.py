@@ -605,6 +605,21 @@ class JointCat(BaseCat):
 class ApplyHspMasks(BaseCat):
     """Apply Hsp Masks."""
 
+    # Labels of bit-coded structural masks
+    _labels_struct = {
+        1: "Faint_star_halos",
+        2: "Bright_star_halos",
+        4: "Stars",
+        8: "Manual",
+        16: "u",
+        32: "g",
+        64: "r",
+        128: "i",
+        256: "z",
+        512: "Tile_RA_DEC_cut",
+        1024: "Maximask",
+    }
+
     def __init__(self):
         # Set default parameters
         self.params_default()
@@ -626,22 +641,8 @@ class ApplyHspMasks(BaseCat):
             label
 
         """
-        # Labels of bit-coded structural masks
-        labels_struct = {
-            1: "Faint_star_halos",
-            2: "Bright_star_halos",
-            4: "Stars",
-            8: "Manual",
-            16: "u",
-            32: "g",
-            64: "r",
-            128: "i",
-            256: "z",
-            512: "Tile_RA_DEC_cut",
-            1024: "Maximask",
-        }
 
-        return labels_struct[bit]
+        return cls._labels_struct[bit]
 
     @classmethod
     def get_mask_col_name(cls, bit):
@@ -809,6 +810,51 @@ class ApplyHspMasks(BaseCat):
                 + f"nside{self._params['nside']}_n{bit}.hsp"
             )
         return paths
+    
+    def get_mask(self, path):
+        """Get Mask.
+        
+        Read from file and return healsparse mask.
+        
+        Parameters
+        ----------
+        path: str
+            input path
+        
+        Returns
+        -------
+        hsp.HealSparseMap
+            mask
+    
+        """
+        if self._params["verbose"]:
+            print(f"Reading mask file {path}...")
+        return hsp.HealSparseMap.read(path)
+
+    def apply_mask(self, ra, dec, hsp_mask, label):
+        """Apply Mask.
+
+        Apply mask to input coordinates.
+
+        Parameters
+        ----------
+        hsp_mask : hsp.HealSparseMap
+            input mask
+        ra : numpy.ndarray
+            input right ascension
+        dec : numpy.ndarray
+            input declination
+
+        Returns
+        -------
+        numpy.ndarray
+            mask values
+
+        """
+        if self._params["verbose"]:
+            print(f"Applying mask {label}...")
+
+        return hsp_mask.get_values_pos(ra, dec, lonlat=True)
 
     def get_masks(self, dat=None):
         """Get Masks.
@@ -842,23 +888,16 @@ class ApplyHspMasks(BaseCat):
 
         # Read healsparse files and apply masks to coordinate
         for bit in paths:
-            if self._params["verbose"]:
-                print(f"Reading mask for bit {bit}...")
-            hsp_mask = hsp.HealSparseMap.read(paths[bit])
+            hsp_mask = self.get_mask(paths[bit])
 
             label = self.get_mask_col_name(bit)
-
-            if self._params["verbose"]:
-                print(f"Computing mask bit={bit}...")
-            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = self.apply_mask(ra, dec, hsp_mask, label)
 
         # Read auxiliary mask files"
         for idx, path in enumerate(self._params["aux_mask_file_list"]):
+            hsp_mask = self.get_mask(path)
             label = self._params["aux_mask_label_list"][idx]
-            if self._params["verbose"]:
-                print(f"Reading aux mask for label {label}...")
-            hsp_mask = hsp.HealSparseMap.read(path)
-            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = self.apply_mask(ra, dec, hsp_mask, label)
 
         return masks
 
