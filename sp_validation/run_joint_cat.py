@@ -77,7 +77,7 @@ class BaseCat(object):
                 
         return config
 
-    def read_cat(self, load_into_memory=False, mode="r"):
+    def read_cat(self, load_into_memory=False, mode="r", hdu=1):
         """Read Cat.
 
         Read input catalogue, either FITS or HDF5.
@@ -89,6 +89,8 @@ class BaseCat(object):
             default is ``False``
         mode: bool, optional
             HDF5 read mode, default is "r"
+        hdu: int, optional
+            HDU number (for FITS file); default is 1
 
         Returns
         -------
@@ -641,7 +643,6 @@ class ApplyHspMasks(BaseCat):
             label
 
         """
-
         return cls._labels_struct[bit]
 
     @classmethod
@@ -746,25 +747,6 @@ class ApplyHspMasks(BaseCat):
             
         if "verbose" not in self._params:
             self._params["verbose"] = False
-
-    def read_hsp_mask(self, path):
-        """Read Hsp Mask.
-
-        Parameters
-        ----------
-        path : str
-            Path to the mask file.
-
-        Returns
-        -------
-        np.ndarray
-            Mask
-        """
-
-        if self._params["verbose"]:
-            print(f"Reading healsparse mask file {path}...")
-
-        return hsp.HealSparseMap.read(path)
 
     def reverse_bit_list(self):
         """Reverse Bit List.
@@ -1233,8 +1215,9 @@ class Mask():
         self._value = value
         self._kind = kind
         self._num_ok = None
+        self._verbose = verbose
 
-        if verbose:
+        if self._verbose:
             print("Initialising mask:", self)
 
         if dat is not None:
@@ -1268,7 +1251,27 @@ class Mask():
             self._mask = (dat[self._col_name] >= self._value[0]) & (dat[self._col_name] <= self._value[1])
         else:
             raise ValueError(f"Invalid kind {self._kind}")
-        
+
+    def to_bool(self, hsp_mask):
+
+        if self._verbose:
+            print("to_bool: get valid pixels")
+        valid_pixels = hsp_mask.valid_pixels
+
+        # Abuse of col_name
+        self._col_name = valid_pixels
+
+        if self._verbose:
+            print("to_bool: apply mask")
+        self.apply(hsp_mask)
+        mask_bool = hsp.HealSparseMap.make_empty(
+            hsp_mask.nside_coverage,
+            hsp_mask.nside_sparse,
+            dtype="bool",
+        )
+        mask_bool[valid_pixels] = self._mask
+        return mask_bool
+ 
     @classmethod
     def print_strings(cls, coln, lab, num, fnum):
         print(f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}")

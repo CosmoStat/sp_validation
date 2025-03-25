@@ -49,9 +49,7 @@ __all__ = [
     'plot_style',
     'plots',
     'run_joint_cat',
-    'cosmo_val',
     'survey',
-    'util',
 ]
 
 from . import *
