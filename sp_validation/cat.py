@@ -437,6 +437,7 @@ def write_shape_catalog(
     c_err=None,
     alpha_leakage=None,
     sigma_epsilon=None,
+    w_type="iv",
     add_cols=None,
     add_cols_format=None,
     add_header=None,
@@ -484,6 +485,8 @@ def write_shape_catalog(
         Mean scale-dependent PSF leakage, default is ``None``
     sigma_epsilon: float, optional
         shape noise, default is ``None``
+    w_type : str, optional
+        weight type, allowed are "iv" (default), "des"
     add_cols : dict, optional, default is ``None``
         data for n additional columns to add
     add_cols_format : dict, optional
@@ -508,12 +511,15 @@ def write_shape_catalog(
             "Declination",
         )
     )
-    col_info_arr.append(
-        (
-            fits.Column(name="w_iv", array=w, format="D"),
-            "Inverse-variance weight",
-        )
-    )
+    if w_type == "iv":
+        descr = "Inverse-variance weight"
+    elif w_type == "des":
+        descr = "DES-like weight"
+    else:
+        raise ValueError(f"Invalid weight type {w_type}")
+
+    name = f"w_{w_type}"
+    col_info_arr.append(fits.Column(name=name, array=w, format="D"), descr)
 
     # Additional columns
     ## Magnitude

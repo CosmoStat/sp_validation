@@ -291,6 +291,7 @@ cat.write_shape_catalog(
     R_select=gal_metacal.R_selection,
     c=c,
     c_err=c_err,
+    w_type="des",
     add_cols=add_cols_data,
     add_header=header,
 )
