@@ -258,8 +258,8 @@ for key in add_cols:
 add_cols_data["e1_leak_corrected"] = e1_leak_corrected
 add_cols_data["e2_leak_corrected"] = e2_leak_corrected
 
-add_cols_data["e1_PSF"] = cat["e1_PSF"]
-add_cols_data["e2_PSF"] = cat["e2_PSF"]
+add_cols_data["e1_PSF"] = cat_gal["e1_PSF"]
+add_cols_data["e2_PSF"] = cat_gal["e2_PSF"]
 
 # +
 # Add information to FITS header
