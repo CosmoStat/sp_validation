@@ -164,8 +164,6 @@ class BaseCat(object):
         output_path : str, optional
             output file path; when ``None`` (default) use
             self._params['output_path']
-        patches : list, optional
-            input patches, list of str, default is ``None``
 
         """
         if output_path is None:
@@ -487,8 +485,6 @@ class JointCat(BaseCat):
 
             dset = f.create_dataset("data", data=dat)
             dset[:] = dat
-
-        # super().write_hdf5_file(dat, output_path=output_path)
 
     def write_hdf5_header(self, hd5file, patches=None):
         """Write HDF5 Header.
@@ -1273,16 +1269,20 @@ class Mask():
         return mask_bool
  
     @classmethod
-    def print_strings(cls, coln, lab, num, fnum):
-        print(f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}")
+    def print_strings(cls, coln, lab, num, fnum, f_out=None):
+        msg = f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}"
+        print(msg)
+        if f_out:
+            print(msg, file=f_out)
+
         
-    def print_stats(self, num_obj):
+    def print_stats(self, num_obj, f_out=None):
         if self._num_ok is None:
             self._num_ok = sum(self._mask)
 
         si = f"{self._num_ok:10d}"
         sf = f"{self._num_ok/num_obj:10.2%}"
-        self.print_strings(self._col_name, self._label, si, sf)
+        self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
     
     def get_sign(self):
         
