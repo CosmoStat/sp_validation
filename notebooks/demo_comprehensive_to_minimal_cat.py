@@ -41,10 +41,11 @@ config = obj.read_config_set_params("config_mask.yaml")
 # Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
 
-n_max = 1_000_000
-print(f"MKDEBUG testing only first {n_max} objects")
-dat = dat[:n_max]
-dat_ext = dat_ext[:n_max]
+if False:
+    n_max = 1_000_000
+    print(f"MKDEBUG testing only first {n_max} objects")
+    dat = dat[:n_max]
+    dat_ext = dat_ext[:n_max]
 
 # ## Masking
 

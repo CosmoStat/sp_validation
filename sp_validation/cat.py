@@ -519,7 +519,7 @@ def write_shape_catalog(
         raise ValueError(f"Invalid weight type {w_type}")
 
     name = f"w_{w_type}"
-    col_info_arr.append(fits.Column(name=name, array=w, format="D"), descr)
+    col_info_arr.append((fits.Column(name=name, array=w, format="D"), descr))
 
     # Additional columns
     ## Magnitude
