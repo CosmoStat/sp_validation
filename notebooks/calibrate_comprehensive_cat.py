@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: sp_validation
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
