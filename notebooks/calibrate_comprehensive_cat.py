@@ -260,6 +260,9 @@ add_cols_data["e2_leak_corrected"] = e2_leak_corrected
 
 add_cols_data["e1_PSF"] = cat_gal["e1_PSF"]
 add_cols_data["e2_PSF"] = cat_gal["e2_PSF"]
+add_cols_data["fwhm_PSF"] = cat.get_col(
+    dat, "fwhm_PSF", mask_combined._mask, mask_metacal
+)
 
 # +
 # Add information to FITS header
