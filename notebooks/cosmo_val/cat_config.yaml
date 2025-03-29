@@ -617,13 +617,13 @@ SP_v1.4.2:
       w: w_iv
       R: 1.0
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_2024_v1.4.1.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
