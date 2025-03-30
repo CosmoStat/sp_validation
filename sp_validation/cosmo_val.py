@@ -484,17 +484,18 @@ class CosmologyValidation:
                     f"Skipping footprint computation, plot {out_path} exists"
                 )
             else:
-                plt.clf()
-                plt.plot(
-                    self.results[ver].dat_shear["RA"],
-                    self.results[ver].dat_shear["Dec"],
-                    ".",
-                    markersize=0.5,
-                )
-                plt.xlabel("R.A. [deg]")
-                plt.ylabel("Dec [deg]")
-                cs_plots.savefig(out_path)
-                self.print_done("Footprint plot saved to " + out_path)
+                with self.results[ver].temporarily_load_data():
+                    plt.clf()
+                    plt.plot(
+                        self.results[ver].dat_shear["RA"],
+                        self.results[ver].dat_shear["Dec"],
+                        ".",
+                        markersize=0.5,
+                    )
+                    plt.xlabel("R.A. [deg]")
+                    plt.ylabel("Dec [deg]")
+                    cs_plots.savefig(out_path)
+                    self.print_done("Footprint plot saved to " + out_path)
 
     def calculate_scale_dependent_leakage(self):
         self.print_start("Calculating scale-dependent leakage:")
@@ -799,38 +800,39 @@ class CosmologyValidation:
 
             fig, axs = plt.subplots(1, 2, figsize=(22, 7))
             for ver in self.versions:
-                self.print_magenta(ver)
-                R = self.cc[ver]["shear"]["R"]
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                w = self.results[ver].dat_shear["w"]
+                with self.results[ver].temporarily_load_data():
+                    self.print_magenta(ver)
+                    R = self.cc[ver]["shear"]["R"]
+                    e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
+                    e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
+                    w = self.results[ver].dat_shear["w"]
 
-                axs[0].hist(
-                    e1,
-                    bins=nbins,
-                    density=False,
-                    histtype="step",
-                    weights=w,
-                    label=ver,
-                    color=self.cc[ver]["colour"],
-                )
-                axs[1].hist(
-                    e2,
-                    bins=nbins,
-                    density=False,
-                    histtype="step",
-                    weights=w,
-                    label=ver,
-                    color=self.cc[ver]["colour"],
-                )
+                    axs[0].hist(
+                        e1,
+                        bins=nbins,
+                        density=False,
+                        histtype="step",
+                        weights=w,
+                        label=ver,
+                        color=self.cc[ver]["colour"],
+                    )
+                    axs[1].hist(
+                        e2,
+                        bins=nbins,
+                        density=False,
+                        histtype="step",
+                        weights=w,
+                        label=ver,
+                        color=self.cc[ver]["colour"],
+                    )
 
-            for idx in (0, 1):
-                axs[idx].set_xlabel(f"$e_{idx}$")
-                axs[idx].set_ylabel("frequency")
-                axs[idx].legend()
-                axs[idx].set_xlim([-1.5, 1.5])
-            cs_plots.savefig(out_path)
-            self.print_done("Ellipticity histograms saved to " + out_path)
+                for idx in (0, 1):
+                    axs[idx].set_xlabel(f"$e_{idx}$")
+                    axs[idx].set_ylabel("frequency")
+                    axs[idx].legend()
+                    axs[idx].set_xlim([-1.5, 1.5])
+                cs_plots.savefig(out_path)
+                self.print_done("Ellipticity histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
