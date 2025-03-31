@@ -6,12 +6,15 @@ import colorama
 import matplotlib.pyplot as plt
 import numpy as np
 
-import pymaster as nmt
+try:
+    import pymaster as nmt
+except:
+    print("Could not import pymaster, continuing without")
+
 import healpy as hp
 import healsparse as hsp
 import treecorr
 import camb
-import utils
 import yaml
 from collections import Counter
 
@@ -36,7 +39,7 @@ from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 import matplotlib.scale as mscale
 
-mscale.register_scale(utils.SquareRootScale)
+mscale.register_scale(utils_cosmo_val.SquareRootScale)
 
 
 # %%
@@ -350,8 +353,6 @@ class CosmologyValidation:
         params["ra_units"] = "deg"
         params["dec_units"] = "deg"
 
-        params["w_col"] = self.cc[ver]["shear"]["w_col"]
-
         return params
 
     @property
@@ -374,7 +375,9 @@ class CosmologyValidation:
         self._xi_psf_sys = {}
         for ver in self.versions:
             params = self.set_params_rho_tau(
-                self.results[ver]._params, self.cc[ver]["psf"], survey=ver
+                self.results[ver]._params,
+                self.cc[ver]["psf"],
+                survey=ver,
             )
 
             npatch = {"sim": 300, "jk": params["patch_number"]}.get(
@@ -1721,7 +1724,7 @@ def hsp_map_logical_or(maps, verbose=False):
                 self._pseudo_cls[ver]['cov'] = fits.open(out_path)
             else:
 
-                params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
@@ -1841,7 +1844,7 @@ def hsp_map_logical_or(maps, verbose=False):
                 cl_shear = fits.getdata(out_path)
                 self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
             else:
-                params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
 
                 #Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
@@ -2204,4 +2207,3 @@ def hsp_map_logical_or(maps, verbose=False):
         plt.legend()
         plt.savefig(out_path)
 # %%
->>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py

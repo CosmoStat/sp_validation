@@ -597,7 +597,7 @@ SP_v1.4-P1+3+4_no_alpha:
 
 SP_v1.4.2:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: CFIS/v1.0/ShapePipe/v1.4.x/v1.4.2
    ls: dashed
    colour: brown
    marker: d
@@ -608,7 +608,7 @@ SP_v1.4.2:
       n_psf: 0.5705736293858423 #arcmin-2
       sigma_e: 0.317469332009887
    shear:
-      path: unions_shapepipe_2024_v1.4.1.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.2.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
