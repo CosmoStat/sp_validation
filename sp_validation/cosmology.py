@@ -26,19 +26,6 @@ from sp_validation import basic
 from sp_validation.survey import get_footprint
 
 
-# For theoretical modelling of cluster lensing
-try:
-    import clmm
-except Exception:
-    print('Could not import clmm, continuing...')
-
-try:
-    # import clmm.modeling as cm
-    from clmm import Cosmology
-except Exception:
-    print('Could not import clmm.Cosmology, continuing...')
-
-
 # For correlation function calculations
 import treecorr
 

@@ -1,6 +1,7 @@
 # %%
 import os
 from contextlib import contextmanager
+from functools import partial
 
 import colorama
 import matplotlib.pyplot as plt
@@ -160,7 +161,7 @@ class CosmologyValidation:
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
         params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
-        params_in["w_col"] = self.cc[ver]["shear"]["w"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
         params_in["R11"] = None if ver != "DES" else self.cc[ver]["shear"]["R11"]
         params_in["R22"] = None if ver != "DES" else self.cc[ver]["shear"]["R22"]
 
@@ -187,7 +188,7 @@ class CosmologyValidation:
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
         params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
-        params_in["w_col"] = self.cc[ver]["shear"]["w"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
 
         if (
             "e1_PSF_col" in self.cc[ver]["shear"]
@@ -200,6 +201,9 @@ class CosmologyValidation:
                 "Keys 'e1_PSF_col' and 'e2_PSF_col' not found in"
                 + f" shear yaml entry for version {ver}"
             )
+
+        if "cols" in self.cc[ver]["shear"]:
+            params_in["cols"] = self.cc[ver]["shear"]["cols"]
 
         params_in["verbose"] = False
 
@@ -222,20 +226,18 @@ class CosmologyValidation:
             results[ver].prepare_output()
 
             @contextmanager
-            def temporarily_load_data(results):
+            def temporarily_load_data(results_instance):
                 try:
-                    self.print_start(f"Loading catalog for {ver}...", end="")
-                    results.read_data()
+                    self.print_start(f"Loading catalog {results_instance._params['input_path_shear']} ...", end="")
+                    results_instance.read_data()
                     self.print_done(f"done")
                     yield
                 finally:
-                    self.print_done(f"Freeing {ver} from memory")
-                    del results.dat_shear
-                    del results.dat_PSF
+                    self.print_done(f"Freeing {results_instance._params['input_path_shear']} from memory")
+                    del results_instance.dat_shear
+                    del results_instance.dat_PSF
 
-            results[ver].temporarily_load_data = lambda: temporarily_load_data(
-                results[ver]
-            )
+            results[ver].temporarily_load_data = partial(temporarily_load_data, results[ver])
 
         return results
 
@@ -546,7 +548,7 @@ class CosmologyValidation:
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
 
-            with self.results[ver].temporarily_load_data():
+            with results.temporarily_load_data():
                 if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
                     self.print_green(
                         f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
@@ -829,6 +831,38 @@ class CosmologyValidation:
         cs_plots.savefig(out_path)
         self.print_done(f"Object-wise leakage coefficients plot saved to {out_path}")
 
+    def calculate_objectwise_leakage_aux(self):
+
+        self.print_start("Object-wise leakage auxiliary quantities:")
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            results_obj = self.results_objectwise[ver]
+            results_obj.check_params()
+            results_obj.update_params()
+            results_obj.prepare_output()
+
+            with self.results[ver].temporarily_load_data():
+                results_obj._dat = self.results[ver].dat_shear
+
+                #out_base = results_obj.get_out_base(mix, order)
+                #out_path = f"{out_base}.pkl"
+                #if os.path.exists(out_path):
+                    #self.print_green(
+                        #f"Skipping object-wise leakage, file {out_path} exists"
+                    #)
+                    #results_obj.par_best_fit = leakage.read_from_file(out_path)
+                if not "cols" in results_obj._params:
+                    self.print_green("Skipping object-wise leakage (aux quantities), no input columns for regression found")
+                else:
+                    self.print_cyan("Computing object-wise leakage regression with aux quantities:", results_obj._params["cols"]) 
+
+                    # Run
+                    results_obj.obs_leakage()
+
+    def plot_objectwise_leakage_aux(self):
+            self.calculate_objectwise_leakage_aux()
+
     def plot_ellipticity(self, nbins=200):
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/ell_hist.png")
         if os.path.exists(out_path):
@@ -843,7 +877,8 @@ class CosmologyValidation:
                     R = self.cc[ver]["shear"]["R"]
                     e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
                     e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                    w = self.results[ver].dat_shear["w"]
+                    w_key = self.cc[ver]["shear"]["w_col"]
+                    w = self.results[ver].dat_shear[w_key]
 
                     axs[0].hist(
                         e1,
@@ -897,26 +932,29 @@ class CosmologyValidation:
         self._c2 = {}
         for ver in self.versions:
             self.print_magenta(ver)
-            R = self.cc[ver]["shear"]["R"]
-            self._c1[ver] = np.average(
-                self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
-                weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
-            )
-            self._c2[ver] = np.average(
-                self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R,
-                weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
-            )
-        self.print_done("Finished additive bias calculation.")
+            with self.results[ver].temporarily_load_data():
+                R = self.cc[ver]["shear"]["R"]
+                self._c1[ver] = np.average(
+                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
+                    weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
+                )
+                self._c2[ver] = np.average(
+                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R,
+                    weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
+                )
+            self.print_done("Finished additive bias calculation.")
 
     @property
     def c1(self):
         if not hasattr(self, "_c1"):
+            print("MKDEBUG calc c1")
             self.calculate_additive_bias()
         return self._c1
 
     @property
     def c2(self):
         if not hasattr(self, "_c2"):
+            print("MKDEBUG calc c2")
             self.calculate_additive_bias()
         return self._c2
 
@@ -956,7 +994,7 @@ class CosmologyValidation:
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear["w"],
+                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=self.npatch,
@@ -1203,7 +1241,7 @@ class CosmologyValidation:
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear["w"],
+                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
