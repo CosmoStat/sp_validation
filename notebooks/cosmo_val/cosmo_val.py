@@ -201,15 +201,21 @@ class CosmologyValidation:
 
             @contextmanager
             def temporarily_load_data(results):
-                try:
-                    self.print_start(f"Loading catalog for {ver}")
-                    results.read_data()
-                    self.print_done(f"Catalog loaded for {ver}")
-                    yield
-                finally:
-                    self.print_done(f"Freeing {ver} from memory")
-                    del results.dat_shear
-                    del results.dat_PSF
+                if hasattr(results, "dat_shear") and hasattr(results, "dat_PSF"):
+                    try:
+                        yield
+                    finally:
+                        return results
+                else:
+                    try:
+                        self.print_start(f"Loading catalog for {ver}")
+                        results.read_data()
+                        self.print_done(f"Catalog loaded for {ver}")
+                        yield
+                    finally:
+                        self.print_done(f"Freeing {ver} from memory")
+                        del results.dat_shear
+                        del results.dat_PSF
 
             results[ver].temporarily_load_data = lambda: temporarily_load_data(
                 results[ver]
@@ -708,7 +714,7 @@ class CosmologyValidation:
             results_obj.prepare_output()
 
             # Skip read_data() and copy catalogue from scale leakage instance instead
-            results_obj._dat = self.results[ver].dat_shear
+            # results_obj._dat = self.results[ver].dat_shear
 
             out_base = results_obj.get_out_base(mix, order)
             out_path = f"{out_base}.pkl"
@@ -721,7 +727,8 @@ class CosmologyValidation:
                 self.print_cyan("Computing object-wise leakage regression")
 
                 # Run
-                results_obj.PSF_leakage()
+                with results_obj.temporarily_load_data():
+                    results_obj.PSF_leakage()
 
         # Gather coefficients
         leakage_coeff = {}
@@ -817,9 +824,10 @@ class CosmologyValidation:
             for ver in self.versions:
                 self.print_magenta(ver)
                 R = self.cc[ver]["shear"]["R"]
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                w = self.results[ver].dat_shear["w"]
+                with self.results[ver].temporarily_load_data():
+                    e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
+                    e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
+                    w = self.results[ver].dat_shear["w"]
 
                 axs[0].hist(
                     e1,
@@ -852,7 +860,8 @@ class CosmologyValidation:
         self.print_start("Separation histograms")
         if "SP_matched_MP_v1.0" in self.versions:
             fig, axs = plt.subplots(1, 1, figsize=(10, 7))
-            sep = self.results["SP_matched_MP_v1.0"].dat_shear["Separation"]
+            with self.results["SP_matched_MP_v1.0"].temporarily_load_data():
+                sep = self.results["SP_matched_MP_v1.0"].dat_shear["Separation"]
             axs.hist(
                 sep,
                 bins=nbins,
@@ -874,14 +883,15 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
             R = self.cc[ver]["shear"]["R"]
-            self._c1[ver] = np.average(
-                self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
-                weights=self.results[ver].dat_shear["w"],
-            )
-            self._c2[ver] = np.average(
-                self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R,
-                weights=self.results[ver].dat_shear["w"],
-            )
+            with self.results[ver].temporarily_load_data():
+                self._c1[ver] = np.average(
+                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
+                    weights=self.results[ver].dat_shear["w"],
+                )
+                self._c2[ver] = np.average(
+                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R,
+                    weights=self.results[ver].dat_shear["w"],
+                )
         self.print_done("Finished additive bias calculation.")
 
     @property
