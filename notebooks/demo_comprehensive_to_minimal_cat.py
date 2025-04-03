@@ -49,6 +49,7 @@ if False:
 
 # ## Masking
 
+# +
 # List of masks to apply
 masks_to_apply = [
     "overlap",
@@ -58,6 +59,14 @@ masks_to_apply = [
     "NGMIX_ELL_PSFo_NOSHEAR_1",
     "8_Manual",
 ]
+
+# List of masks not to include in minimal catalogue
+masks_not_to_include = [
+    "overlap",
+    "IMAFLAGS_ISO",
+    "8_Manual",
+]
+# -
 
 # ### Pre-processing ShapePipe flags
 
@@ -147,7 +156,7 @@ for mask in masks:
 # Remove mask columns that were applied earlier
 
 # Columns to keep
-names_to_keep = [name for name in dat.dtype.names + dat_ext.dtype.names if name not in masks_to_apply]
+names_to_keep = [name for name in dat.dtype.names + dat_ext.dtype.names if name not in masks_not_to_include]
 
 new_dtype = [
     (name, dt) for name, dt in
@@ -189,7 +198,9 @@ output_path = obj._params["input_path"].replace("1.X.c", "1.X.m")
 obj_appl._params["output_path"] = output_path
 obj_appl._params["aux_mask_file_list"] = []
 
-obj_appl.write_hdf5_file(dat, dat_ext)
+print("Saving file to", output_path)
+obj_appl.write_hdf5_file(new_dat)
+print("Done")
 # -
 
 from scipy import stats
