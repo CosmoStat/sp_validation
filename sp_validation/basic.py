@@ -175,9 +175,6 @@ class metacal:
                     dict_tmp[f"g{comp+1}"] = (
                         data[f"{self._prefix}_ELL_{name_shear}"][:, comp][mask]
                     )
-                #dict_tmp['g2'] = (
-                #    data[f'{self._prefix}_ELL_{name_shear}'][:, 1][mask]
-                #)
             else:
                 # Ellipcitiy in two different columns
                 for comp in (0, 1):
@@ -185,19 +182,11 @@ class metacal:
                         data[f"{self._prefix}_ELL_{name_shear}_{comp}"][mask]
                     )
 
-            dict_tmp['flux'] = (
-                data[f'{self._prefix}_FLUX_{name_shear}'][mask]
-            )
-            dict_tmp['flux_err'] = (
-                data[f'{self._prefix}_FLUX_ERR_{name_shear}'][mask]
-            )
+            for key in ("flux", "flux_err", "T", "T_err"):
+                dict_tmp[key] = (
+                    data[f'{self._prefix}_{key.upper()}_{name_shear}'][mask]
+                )
 
-            dict_tmp['T'] = (
-                data[f'{self._prefix}_T_{name_shear}'][mask]
-            )
-            dict_tmp['T_err'] = (
-                data[f'{self._prefix}_T_ERR_{name_shear}'][mask]
-            )
             dict_tmp['Tpsf'] = (
                 data[f'{self._prefix}_Tpsf_{name_shear}'][mask]
             )
