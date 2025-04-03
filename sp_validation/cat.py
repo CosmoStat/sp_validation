@@ -439,6 +439,7 @@ def write_shape_catalog(
     sigma_epsilon=None,
     add_cols=None,
     add_cols_format=None,
+    add_header=None,
 ):
     """Write Shape Catalog.
 
@@ -488,6 +489,8 @@ def write_shape_catalog(
     add_cols_format : dict, optional
         format for n additional columns to add, default is ``None``, for which
         ``float`` format is used
+    add_header : fits.header.Header, optional
+        additional header information; default is ``None``
 
     """
     col_info_arr = []
@@ -589,7 +592,11 @@ def write_shape_catalog(
 
     # Primary HDU with information in header
     primary_header = fits.Header()
+    
+    if add_header:
+        primary_header.update(add_header)
 
+    print("MKDEBUG spv cat.py [", getpass.getuser(), "]= user")
     primary_header = cat.write_header_info_sp(
         primary_header,
         software_name="sp_validation",
