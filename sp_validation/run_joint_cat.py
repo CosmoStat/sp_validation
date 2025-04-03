@@ -64,7 +64,7 @@ class BaseCat(object):
     def read_config_set_params(self, fpath):
         
         # Load YAML configuration file.
-        with open("config_mask.yaml", "r") as f:
+        with open(fpath, "r") as f:
             config = yaml.safe_load(f)
     
         # Read general parameters from configuration and remove
@@ -942,7 +942,7 @@ class ApplyHspMasks(BaseCat):
 
         return new_data
 
-    def write_hdf5_file(self, dat, dat_new):
+    def write_hdf5_file(self, dat, dat_new=None):
 
         with h5py.File(self._params["output_path"], "w") as f:
 
@@ -951,12 +951,13 @@ class ApplyHspMasks(BaseCat):
             dset = f.create_dataset(
                 "data", shape=dat.shape, dtype=dat.dtype, chunks=True
             )
-            dset_new = f.create_dataset(
-                "data_ext",
-                shape=dat_new.shape,
-                dtype=dat_new.dtype,
-                chunks=True,
-            )
+            if dat_new:
+                dset_new = f.create_dataset(
+                    "data_ext",
+                    shape=dat_new.shape,
+                    dtype=dat_new.dtype,
+                    chunks=True,
+                )
 
             chunk_size = 10000
             nrow = dat.shape[0]
@@ -964,7 +965,8 @@ class ApplyHspMasks(BaseCat):
             for i in range(0, nrow, chunk_size):
                 end = min(i + chunk_size, nrow)
                 dset[i:end] = dat[i:end]  # Write chunk to dataset
-                dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
+                if dat_new:
+                    dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
 
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
@@ -1043,7 +1045,7 @@ class CalibrateCat(BaseCat):
         list
             Catalogue data
         list_ext
-            Extended catalogue data
+            Extended catalogue data if exists in input file
 
         """
         fpath = self._params["input_path"]
@@ -1055,7 +1057,10 @@ class CalibrateCat(BaseCat):
         self._hd5file = h5py.File(fpath, "r")
         try:
             dat = self._hd5file["data"]
-            dat_ext = self._hd5file["data_ext"]
+            if "data_ext" in self._hd5file:
+                dat_ext = self._hd5file["data_ext"]
+            else:
+                dat_ext = None
         except:
             print(f"Error while reading file {fpath}")
             raise
@@ -1067,7 +1072,10 @@ class CalibrateCat(BaseCat):
             )
 
         if load_into_memory:
-            return dat[()], dat_ext[()]
+            if dat_ext:
+                return dat[()], dat_ext[()]
+            else:
+                return dat[()]
         else:
             return dat, dat_ext
         
