@@ -6,6 +6,59 @@ import os
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
+import matplotlib.scale as mscale
+from matplotlib.ticker import Locator
+from matplotlib.colors import Normalize
+import matplotlib.ticker as ticker
+import matplotlib.transforms as mtransforms
+
+class SquareRootScale(mscale.ScaleBase):
+    """
+    ScaleBase class for generating square root scale.
+
+    Usage example: axis.set_yscale('squareroot')
+
+    """
+
+    name = 'squareroot'
+
+    def __init__(self, axis, **kwargs):
+        mscale.ScaleBase.__init__(self, axis, **kwargs)
+
+    def set_default_locators_and_formatters(self, axis):
+        axis.set_major_locator(ticker.AutoLocator())
+        axis.set_major_formatter(ticker.ScalarFormatter())
+        axis.set_minor_locator(ticker.NullLocator())
+        axis.set_minor_formatter(ticker.NullFormatter())
+
+    def limit_range_for_scale(self, vmin, vmax, minpos):
+        return max(0., vmin), vmax
+
+    class SquareRootTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform_non_affine(self, a):
+            return np.array(a)**0.5
+
+        def inverted(self):
+            return SquareRootScale.InvertedSquareRootTransform()
+
+    class InvertedSquareRootTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform(self, a):
+            return np.array(a)**2
+
+        def inverted(self):
+            return SquareRootScale.SquareRootTransform()
+
+    def get_transform(self):
+        return self.SquareRootTransform()
+
 not_square_size = ['DES', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha', 'SP_v1.3_LFmask_8k_li_2024', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
 
 def get_params_rho_tau(cat, survey="other"):
@@ -248,7 +301,7 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     
     for i in range(ncov):
 
-        if not os.path.exists(outdir+'/cov_tau_'+version+str(i)+'.npy'):
+        if not (os.path.exists(outdir+'/cov_tau_'+version+str(i)+'.npy') and os.path.exists(outdir+'/cov_rho_'+version+str(i)+'.npy')):
 
             params = get_params_rho_tau(config[version], survey=version)
 

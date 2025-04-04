@@ -46,7 +46,7 @@ import treecorr
 try:
     import pyccl as ccl
 except Exception:
-    print('Could not import pyccl')
+    print('Could not import pyccl, continuing...')
 
 
 # Convergence maps

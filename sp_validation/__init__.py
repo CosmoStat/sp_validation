@@ -39,13 +39,18 @@ except Exception:  # pragma: no cover
 
 __version__ = _version
 __all__ = [
-    'survey',
-    'io',
-    'cat',
-    'basic',
     'util',
+    'io',
+    'basic',
+    'galaxy',
+    'cosmology',
+    'calibration',
+    'cat',
     'plot_style',
-    'plots'
+    'plots',
+    'run_joint_cat',
+    'survey',
+    'util',
 ]
 
 from . import *
