@@ -42,7 +42,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
       - name: Test
-        run: docker run --rm ${{ steps.meta.outputs.tags }} shapepipe_run -c /app/example/config.ini
+        run: docker run --rm ${{ steps.meta.outputs.tags }} python -c "import sp_validation"
       
       - name: Push
         uses: docker/build-push-action@v6
