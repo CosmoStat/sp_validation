@@ -1,6 +1,5 @@
 # Development image with more bells and whistles
-FROM shapepipe as shapepipe-dev
-
+FROM ghcr.io/cosmostat/shapepipe:develop
 
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
