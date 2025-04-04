@@ -7,14 +7,10 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.6,<3.12"
 classifiers = [
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3",
     "Operating System :: Unix",
     "Operating System :: MacOS"
 ]
@@ -23,7 +19,7 @@ dependencies = [
     "astropy>=5.0",
     "colorama",
     "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
-    "cs_util==0.1.2",
+    "cs_util==0.1.4",
     "emcee",
     "getdist",
     "h5py",
@@ -39,11 +35,12 @@ dependencies = [
     "numpy>=1.14",
     "opencv-python-headless",
     "pyccl",
+    "pymaster",
     "regions",
     "reproject",
     "scipy",
     "seaborn",
-    "shear_psf_leakage==0.2.0",
+    "shear_psf_leakage==0.2.1",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",
@@ -54,7 +51,7 @@ dependencies = [
 Homepage = "https://github.com/CosmoStat/sp_validation"
 
 [project.optional-dependencies]
-develop = [
+test = [
     "pytest",
     "pytest-cov",
     "pytest-pycodestyle",
@@ -70,9 +67,8 @@ docs = [
     "sphinxcontrib-bibtex==2.4.1",
     "sphinxawesome-theme==3.2.1"
 ]
+develop = ["sp_validation[test,docs]"]
 
-[tool.setuptools]
-packages = ["sp_validation"]
 
 [tool.pytest.ini_options]
 testpaths = ["sp_validation"]
