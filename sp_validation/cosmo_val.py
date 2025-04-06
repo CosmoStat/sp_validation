@@ -855,7 +855,7 @@ class CosmologyValidation:
                 if not "cols" in results_obj._params:
                     self.print_green("Skipping object-wise leakage (aux quantities), no input columns for regression found")
                 else:
-                    self.print_cyan("Computing object-wise leakage regression with aux quantities:", results_obj._params["cols"]) 
+                    self.print_cyan(f"Computing object-wise leakage regression with aux quantities: {results_obj._params['cols']}")
 
                     # Run
                     results_obj.obs_leakage()
