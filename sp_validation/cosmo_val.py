@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
-import pymaster as nmt
+#import pymaster as nmt
 import healpy as hp
 import treecorr
 from . import utils_cosmo_val
