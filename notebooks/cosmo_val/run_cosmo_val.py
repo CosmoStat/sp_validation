@@ -30,7 +30,7 @@ cv.plot_footprints()
 cv.plot_scale_dependent_leakage()
 
 # %%
-cv.plot_objectwise_leakage()
+#cv.plot_objectwise_leakage()
 
 # %%
 cv.plot_ellipticity()
@@ -43,3 +43,6 @@ cv.plot_2pcf()
 
 # %%
 cv.plot_aperture_mass_dispersion()
+
+# %%
+cv.plot_pseudo_cl()
