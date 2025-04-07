@@ -845,13 +845,6 @@ class CosmologyValidation:
             with self.results[ver].temporarily_load_data():
                 results_obj._dat = self.results[ver].dat_shear
 
-                #out_base = results_obj.get_out_base(mix, order)
-                #out_path = f"{out_base}.pkl"
-                #if os.path.exists(out_path):
-                    #self.print_green(
-                        #f"Skipping object-wise leakage, file {out_path} exists"
-                    #)
-                    #results_obj.par_best_fit = leakage.read_from_file(out_path)
                 if not "cols" in results_obj._params:
                     self.print_green("Skipping object-wise leakage (aux quantities), no input columns for regression found")
                 else:
