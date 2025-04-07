@@ -87,6 +87,3 @@ ignore = ["W503", "E712"]
 [pydocstyle]
 convention = "numpy"
 add-ignore = ["D105", "D107"]
-
-[tool.setuptools.packages.find]
-where = ["src"]
