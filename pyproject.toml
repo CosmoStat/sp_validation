@@ -69,7 +69,6 @@ docs = [
 ]
 develop = ["sp_validation[test,docs]"]
 
-
 [tool.pytest.ini_options]
 testpaths = ["sp_validation"]
 addopts = [
@@ -88,3 +87,6 @@ ignore = ["W503", "E712"]
 [pydocstyle]
 convention = "numpy"
 add-ignore = ["D105", "D107"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

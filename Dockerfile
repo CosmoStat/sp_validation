@@ -11,5 +11,5 @@ RUN pip install --no-cache-dir \
 WORKDIR /sp_validation
 COPY . /sp_validation
 
-# Install shapepipe and symlink scripts
+# Install sp_validation
 RUN pip install --no-cache-dir -e .
