@@ -40,7 +40,7 @@ We recommend running the image with **Apptainer** (formerly Singularity) which i
 
 ```bash
 # build writeable "sandbox" container in the current directory
-# ./shapepipe will be a directory that functions like a vm
+# ./sp_validation will be a directory that functions like a vm
 apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:pyproject_docker
 
 # open a shell in the container
