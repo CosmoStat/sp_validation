@@ -8,7 +8,7 @@ from cosmo_val import CosmologyValidation
 
 # %%
 cv = CosmologyValidation(
-    versions=["SP_v1.4.5_glass_mock"],
+    versions=["SP_v1.4.5"],
     data_base_dir="/n17data/mkilbing/astro/data/",
     npatch=100,
 )
@@ -30,7 +30,7 @@ cv.plot_footprints()
 cv.plot_scale_dependent_leakage()
 
 # %%
-#cv.plot_objectwise_leakage()
+cv.plot_objectwise_leakage()
 
 # %%
 cv.plot_ellipticity()
