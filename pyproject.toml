@@ -17,7 +17,7 @@ classifiers = [
 dependencies = [
     "adjustText",
     "astropy>=5.0",
-    "cllm",
+    "clmm",
     "colorama",
     "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
     "cs_util==0.1.4",
