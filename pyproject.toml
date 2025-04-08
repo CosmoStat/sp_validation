@@ -22,7 +22,7 @@ dependencies = [
     "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
     "cs_util==0.1.4",
     "emcee",
-    "getdist",
+    "getdist @  git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
     "h5py",
     "healpy",
     "healsparse",
