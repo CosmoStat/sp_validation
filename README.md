@@ -55,9 +55,7 @@ You can also run the image with **Docker**:
 docker run --rm -it ghcr.io/cosmostat/shapepipe:pyproject_docker python -c "import sp_validation"  
 ```
 
-```{attention}
 We do not currently build images for Apple Silicon/amr64; however the amd64 images should work on these systems, albeit with reduced performance.
-```
 
 
 
