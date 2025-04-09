@@ -3,7 +3,9 @@ FROM ghcr.io/cosmostat/shapepipe:develop
 
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
-    apt-get install -y libgsl-dev
+    apt-get install -y --quiet \
+        libgsl-dev \
+        htop
 
 RUN pip install --no-cache-dir \ 
     snakemake
