@@ -82,7 +82,7 @@ class SquareRootScale(mscale.ScaleBase):
     def get_transform(self):
         return self.SquareRootTransform()
 
-mscale.register_scale(utils_cosmo_val.SquareRootScale)
+mscale.register_scale(SquareRootScale)
 
 not_square_size = ['DES', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha', 'SP_v1.3_LFmask_8k_li_2024', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
 
@@ -753,7 +753,7 @@ class CosmologyValidation:
 
         self.print_start("Rho stats")
         for ver in self.versions:
-            rho_stat_handler, tau_stat_handler = utils_cosmo_val.get_rho_tau_w_cov(
+            rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
                 self.cc,
                 ver,
                 self.treecorr_config,
@@ -879,7 +879,7 @@ class CosmologyValidation:
                 self.cov_estimate_method, None
             )
 
-            flat_samples, result, q = utils_cosmo_val.get_samples(
+            flat_samples, result, q = get_samples(
                 self.psf_fitter,
                 ver,
                 cov_type=self.cov_estimate_method,
@@ -1948,7 +1948,7 @@ class CosmologyValidation:
                 self._pseudo_cls[ver]['cov'] = fits.open(out_path)
             else:
 
-                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
+                params = get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
@@ -2068,7 +2068,7 @@ class CosmologyValidation:
                 cl_shear = fits.getdata(out_path)
                 self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
             else:
-                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
+                params = get_params_rho_tau(self.cc[ver], survey=ver)
 
                 #Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
