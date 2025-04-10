@@ -5,7 +5,8 @@ RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
     apt-get install -y --quiet \
         libgsl-dev \
-        htop
+        htop \
+        tmux
 
 RUN pip install --no-cache-dir \ 
     snakemake
