@@ -906,7 +906,7 @@ SP_v1.5.4_leak_corr:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: v1.5.x/v1.5.4/unions_shapepipe_cut_struc_2024_v1.5.4.fits
+      path: v1.5.4/unions_shapepipe_cut_struc_2024_v1.5.4.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1_leak_corrected
       e2_col: e2_leak_corrected
