@@ -724,7 +724,7 @@ SP_v1.4.5:
 
 SP_v1.4.5_glass_mock:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: CFIS/v1.0/ShapePipe
    ls: dashed
    colour: blue
    marker: d
@@ -853,7 +853,7 @@ SP_v1.4.5_leak_corr:
 
 SP_v1.5.4:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: ../../../UNIONS/WL/v1.5.x
    ls: dashed
    colour: green
    marker: d
@@ -864,7 +864,7 @@ SP_v1.5.4:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: v1.5.x/v1.5.4/unions_shapepipe_cut_struc_2024_v1.5.4.fits
+      path: v1.5.4/unions_shapepipe_cut_struc_2024_v1.5.4.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
@@ -873,13 +873,13 @@ SP_v1.5.4:
       w: w_iv
       R: 1.0
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.5.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: v1.5.x/unions_shapepipe_psf_2024_v1.5.2.fits
+      path: unions_shapepipe_psf_2024_v1.5.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -895,7 +895,7 @@ SP_v1.5.4:
 
 SP_v1.5.4_leak_corr:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: ../../../UNIONS/WL/v1.5.x
    ls: dashed
    colour: darkgreen
    marker: d
@@ -915,13 +915,13 @@ SP_v1.5.4_leak_corr:
       w: w_iv
       R: 1.0
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.5.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: v1.5.x/unions_shapepipe_psf_2024_v1.5.2.fits
+      path: unions_shapepipe_psf_2024_v1.5.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
