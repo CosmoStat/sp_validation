@@ -1567,7 +1567,7 @@ class CosmologyValidation:
                     f"Skipping footprint computation, plot {out_path} exists"
                 )
             else:
-                with self.results[ver].temporarily_load_data():
+                with self.results[ver].temporarily_read_data():
                     plt.clf()
                     plt.plot(
                         self.results[ver].dat_shear["RA"],
@@ -1591,7 +1591,7 @@ class CosmologyValidation:
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
-            with self.results[ver].temporarily_load_data():
+            with self.results[ver].temporarily_read_data():
                 if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
                     self.print_green(
                         f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
@@ -1789,7 +1789,7 @@ class CosmologyValidation:
                 self.print_cyan("Computing object-wise leakage regression")
 
             # Run
-            with results_obj.temporarily_load_data():
+            with results_obj.temporarily_read_data():
                 results_obj.PSF_leakage()
 
         # Gather coefficients
@@ -1886,7 +1886,7 @@ class CosmologyValidation:
             for ver in self.versions:
                 self.print_magenta(ver)
                 R = self.cc[ver]["shear"]["R"]
-                with self.results[ver].temporarily_load_data():
+                with self.results[ver].temporarily_read_data():
                     e1 = (
                         self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
                     )
@@ -1926,7 +1926,7 @@ class CosmologyValidation:
         self.print_start("Separation histograms")
         if "SP_matched_MP_v1.0" in self.versions:
             fig, axs = plt.subplots(1, 1, figsize=(10, 7))
-            with self.results["SP_matched_MP_v1.0"].temporarily_load_data():
+            with self.results["SP_matched_MP_v1.0"].temporarily_read_data():
                 sep = self.results["SP_matched_MP_v1.0"].dat_shear["Separation"]
             axs.hist(
                 sep,
@@ -1949,7 +1949,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
             R = self.cc[ver]["shear"]["R"]
-            with self.results[ver].temporarily_load_data():
+            with self.results[ver].temporarily_read_data():
                 self._c1[ver] = np.average(
                     self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
                     weights=self.results[ver].dat_shear["w"],
@@ -1986,7 +1986,7 @@ class CosmologyValidation:
                 gg.read(out_fname)
             else:
                 # Run TreeCorr
-                with self.results[ver].temporarily_load_data():
+                with self.results[ver].temporarily_read_data():
                     e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
                     e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
                     if ver != "DES":
@@ -2244,7 +2244,7 @@ class CosmologyValidation:
                 self.print_green(f"Skipping xi for Map2, {out_fname} exists")
                 gg.read(out_fname)
             else:
-                with self.results[ver].temporarily_load_data():
+                with self.results[ver].temporarily_read_data():
                     R = self.cc[ver]["shear"]["R"]
                     g1 = (
                         self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
