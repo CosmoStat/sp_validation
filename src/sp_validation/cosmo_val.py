@@ -1,39 +1,32 @@
 # %%
 import os
+import time
 from contextlib import contextmanager
 
+import camb
 import colorama
+import healpy as hp
 import matplotlib.pyplot as plt
+import matplotlib.scale as mscale
+import matplotlib.ticker as ticker
+import matplotlib.transforms as mtransforms
 import numpy as np
 import pymaster as nmt
-import healpy as hp
 import treecorr
-import camb
 import yaml
-from astropy.io import fits
 from astropy.cosmology import Planck18
+from astropy.io import fits
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
+from matplotlib.colors import Normalize
+from matplotlib.ticker import Locator
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage import run_object, run_scale
-from shear_psf_leakage.rho_tau_stat import PSFErrorFit
-from uncertainties import ufloat
-import matplotlib.scale as mscale
-
-import numpy as np
-import time
-import yaml
-import os
-
 from shear_psf_leakage.rho_tau_cov import CovTauTh
-from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
+from shear_psf_leakage.rho_tau_stat import PSFErrorFit, RhoStat, TauStat
+from uncertainties import ufloat
 
-import matplotlib.scale as mscale
-from matplotlib.ticker import Locator
-from matplotlib.colors import Normalize
-import matplotlib.ticker as ticker
-import matplotlib.transforms as mtransforms
 
 class SquareRootScale(mscale.ScaleBase):
     """
@@ -43,7 +36,7 @@ class SquareRootScale(mscale.ScaleBase):
 
     """
 
-    name = 'squareroot'
+    name = "squareroot"
 
     def __init__(self, axis, **kwargs):
         mscale.ScaleBase.__init__(self, axis, **kwargs)
@@ -55,7 +48,7 @@ class SquareRootScale(mscale.ScaleBase):
         axis.set_minor_formatter(ticker.NullFormatter())
 
     def limit_range_for_scale(self, vmin, vmax, minpos):
-        return max(0., vmin), vmax
+        return max(0.0, vmin), vmax
 
     class SquareRootTransform(mtransforms.Transform):
         input_dims = 1
@@ -63,7 +56,7 @@ class SquareRootScale(mscale.ScaleBase):
         is_separable = True
 
         def transform_non_affine(self, a):
-            return np.array(a)**0.5
+            return np.array(a) ** 0.5
 
         def inverted(self):
             return SquareRootScale.InvertedSquareRootTransform()
@@ -74,7 +67,7 @@ class SquareRootScale(mscale.ScaleBase):
         is_separable = True
 
         def transform(self, a):
-            return np.array(a)**2
+            return np.array(a) ** 2
 
         def inverted(self):
             return SquareRootScale.SquareRootTransform()
@@ -82,9 +75,18 @@ class SquareRootScale(mscale.ScaleBase):
     def get_transform(self):
         return self.SquareRootTransform()
 
+
 mscale.register_scale(SquareRootScale)
 
-not_square_size = ['DES', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha', 'SP_v1.3_LFmask_8k_li_2024', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
+not_square_size = [
+    "DES",
+    "SP_v1.3_LFmask_8k",
+    "SP_v1.3_LFmask_8k_no_alpha",
+    "SP_v1.3_LFmask_8k_li_2024",
+    "SP_v1.3_LFmask_8k_SN8",
+    "SP_v1.3_LFmask_8k_F2",
+]
+
 
 def get_params_rho_tau(cat, survey="other"):
 
@@ -94,37 +96,37 @@ def get_params_rho_tau(cat, survey="other"):
     if survey == "DES":
         params["patch_number"] = 120
         print("DES, jackknife patch number = 120")
-    elif survey == 'SP_axel_v0.0':
+    elif survey == "SP_axel_v0.0":
         params["patch_number"] = 120
         print("SP_Axel_v0.0, jackknife patch number =120")
-    elif survey == 'SP_v1.4-P3' or survey == 'SP_v1.4-P3_LFmask':
+    elif survey == "SP_v1.4-P3" or survey == "SP_v1.4-P3_LFmask":
         params["patch_number"] = 120
         print("SP_v1.4, jackknife patch number =120")
     else:
         params["patch_number"] = 150
-    params["ra_col"] = cat['psf']["ra_col"]
-    params["dec_col"] = cat['psf']["dec_col"]
-    params["e1_PSF_col"] = cat['psf']["e1_PSF_col"]
-    params["e2_PSF_col"] = cat['psf']["e2_PSF_col"]
-    params["e1_star_col"] = cat['psf']["e1_star_col"]
-    params["e2_star_col"] = cat['psf']["e2_star_col"]
-    params["PSF_size"] = cat['psf']["PSF_size"]
-    params["star_size"] = cat['psf']["star_size"]
+    params["ra_col"] = cat["psf"]["ra_col"]
+    params["dec_col"] = cat["psf"]["dec_col"]
+    params["e1_PSF_col"] = cat["psf"]["e1_PSF_col"]
+    params["e2_PSF_col"] = cat["psf"]["e2_PSF_col"]
+    params["e1_star_col"] = cat["psf"]["e1_star_col"]
+    params["e2_star_col"] = cat["psf"]["e2_star_col"]
+    params["PSF_size"] = cat["psf"]["PSF_size"]
+    params["star_size"] = cat["psf"]["star_size"]
     params["square_size"] = survey not in not_square_size
-    if survey != 'DES':
-        params["PSF_flag"] = cat['psf']["PSF_flag"]
-        params["star_flag"] = cat['psf']["star_flag"]
+    if survey != "DES":
+        params["PSF_flag"] = cat["psf"]["PSF_flag"]
+        params["star_flag"] = cat["psf"]["star_flag"]
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
-   
 
-    params["w_col"] = cat['shear']["w"]
-    params["e1_col"] = cat['shear']["e1_col"]
-    params["e2_col"] = cat['shear']["e2_col"]
-    params["R11"] = cat['shear'].get("R11")
-    params["R22"] = cat['shear'].get("R22")
+    params["w_col"] = cat["shear"]["w"]
+    params["e1_col"] = cat["shear"]["e1_col"]
+    params["e2_col"] = cat["shear"]["e2_col"]
+    params["R11"] = cat["shear"].get("R11")
+    params["R22"] = cat["shear"].get("R22")
 
     return params
+
 
 def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method, cov_rho=False):
     """
@@ -138,22 +140,38 @@ def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method, cov_rho=
     method : str
         Method to compute the covariance matrices. Options are 'jk' or 'th'.
     """
-    if method == 'th':
+    if method == "th":
         nbin_ang, nbin_rad = 100, 200
-        rho_stat_handler, tau_stat_handler = get_rho_tau(config, version, treecorr_config, outdir, cov_rho=cov_rho)
-        get_theory_cov(config, version, treecorr_config, outdir, nbin_ang=nbin_ang, nbin_rad=nbin_rad)
+        rho_stat_handler, tau_stat_handler = get_rho_tau(
+            config, version, treecorr_config, outdir, cov_rho=cov_rho
+        )
+        get_theory_cov(
+            config,
+            version,
+            treecorr_config,
+            outdir,
+            nbin_ang=nbin_ang,
+            nbin_rad=nbin_rad,
+        )
         return rho_stat_handler, tau_stat_handler
-    elif method == 'jk':
+    elif method == "jk":
         return get_jackknife_cov(config, version, treecorr_config, outdir)
-    elif method == 'sim':
-        if os.path.exists(outdir+'/cov_tau_'+version+'_th.npy'):
-            print(f"Covariance from simulation available at the following file: {outdir+'/cov_tau_'+version+'_th.npy'}")
+    elif method == "sim":
+        if os.path.exists(outdir + "/cov_tau_" + version + "_th.npy"):
+            print(
+                f"Covariance from simulation available at the following file: {outdir+'/cov_tau_'+version+'_th.npy'}"
+            )
             print(f"Computing rho and tau statistics for the version: {version}")
-            return get_rho_tau(config, version, treecorr_config, outdir, cov_rho=cov_rho)
+            return get_rho_tau(
+                config, version, treecorr_config, outdir, cov_rho=cov_rho
+            )
         else:
-            raise ValueError("Covariance from simulation not available. Please compute it first.")
+            raise ValueError(
+                "Covariance from simulation not available. Please compute it first."
+            )
     else:
         raise ValueError("Method must be either 'jk' or 'th' or 'sim'.")
+
 
 def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
     """
@@ -180,9 +198,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
     out_path = f"{outdir}/{out_base}"
 
     rho_stat_handler = RhoStat(
-        output=outdir,
-        treecorr_config=treecorr_config,
-        verbose=True
+        output=outdir, treecorr_config=treecorr_config, verbose=True
     )
 
     if os.path.exists(out_path):
@@ -192,7 +208,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
 
         rho_stat_handler.catalogs.set_params(params, outdir)
 
-        mask = (version != 'DES')
+        mask = version != "DES"
         square_size = params["square_size"]
 
         # Build catalogues
@@ -201,16 +217,25 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
             catalog_id=version,
             square_size=square_size,
             mask=mask,
-            hdu = config[version]["psf"]["hdu"] if config[version]["psf"]["hdu"] is not None else 1
+            hdu=(
+                config[version]["psf"]["hdu"]
+                if config[version]["psf"]["hdu"] is not None
+                else 1
+            ),
         )
 
-        if cov_rho: 
-            if not os.path.exists(outdir+'/cov_rho_'+version+'.npy'):
+        if cov_rho:
+            if not os.path.exists(outdir + "/cov_rho_" + version + ".npy"):
                 only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-                rho_stat_handler.compute_rho_stats(version, out_base, save_cov=True, func=only_p, var_method='jackknife')
+                rho_stat_handler.compute_rho_stats(
+                    version,
+                    out_base,
+                    save_cov=True,
+                    func=only_p,
+                    var_method="jackknife",
+                )
         else:
             rho_stat_handler.compute_rho_stats(version, out_base, var_method=None)
-
 
     out_base = f"tau_stats_{version}.fits"
     out_path = f"{outdir}/{out_base}"
@@ -229,7 +254,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
 
         tau_stat_handler.catalogs.set_params(params, outdir)
 
-        mask = (version != 'DES')
+        mask = version != "DES"
 
         square_size = params["square_size"]
 
@@ -237,70 +262,83 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(
                 config[version]["psf"]["path"],
-                cat_type='psf',
+                cat_type="psf",
                 catalog_id=version,
                 square_size=square_size,
                 mask=mask,
-                hdu = config[version]["psf"]["hdu"] if config[version]["psf"]["hdu"] is not None else 1
+                hdu=(
+                    config[version]["psf"]["hdu"]
+                    if config[version]["psf"]["hdu"] is not None
+                    else 1
+                ),
             )
 
         # Build the catalog of galaxies. PSF was computed above
         tau_stat_handler.build_cat_to_compute_tau(
             config[version]["shear"]["path"],
-            cat_type='gal',
+            cat_type="gal",
             catalog_id=version,
             square_size=square_size,
             mask=mask,
         )
 
-
         # function to extract the tau_+
-        tau_stat_handler.compute_tau_stats(
-            version,
-            out_base,
-            var_method=None
-        )
+        tau_stat_handler.compute_tau_stats(version, out_base, var_method=None)
 
     print(f"Time to compute rho and tau statistics: {time.time() - start_time:.2f} s")
     return rho_stat_handler, tau_stat_handler
 
 
-def get_theory_cov(config, version, treecorr_config, outdir, nbin_ang=100, nbin_rad=100):
+def get_theory_cov(
+    config, version, treecorr_config, outdir, nbin_ang=100, nbin_rad=100
+):
     """
     Compute an analytical estimate of the covariance matrix of rho and tau-statistics.
     """
 
     params = get_params_rho_tau(config[version], survey=version)
-    
-    info = config[version]
-    A = info['cov_th']['A']*60*60
-    n_e = info['cov_th']['n_e']
-    n_psf = info['cov_th']['n_psf']
 
-    path_gal = info['shear']['path']
-    path_psf = info['psf']['path']
-    hdu_psf = info['psf']['hdu']
-    
+    info = config[version]
+    A = info["cov_th"]["A"] * 60 * 60
+    n_e = info["cov_th"]["n_e"]
+    n_psf = info["cov_th"]["n_psf"]
+
+    path_gal = info["shear"]["path"]
+    path_psf = info["psf"]["path"]
+    hdu_psf = info["psf"]["hdu"]
+
     print("Computing the covariance matrix for the version: ", version)
     start_time = time.time()
 
-    if os.path.exists(outdir+'/cov_tau_'+version+'_th.npy'):
-        print(f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_th.npy'} already exists.")
+    if os.path.exists(outdir + "/cov_tau_" + version + "_th.npy"):
+        print(
+            f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_th.npy'} already exists."
+        )
         return
-    
+
     cov_tau_th = CovTauTh(
-        path_gal=path_gal, path_psf=path_psf, hdu_psf=hdu_psf, treecorr_config=treecorr_config,
-        A=A, n_e=n_e, n_psf=n_psf, params=params
+        path_gal=path_gal,
+        path_psf=path_psf,
+        hdu_psf=hdu_psf,
+        treecorr_config=treecorr_config,
+        A=A,
+        n_e=n_e,
+        n_psf=n_psf,
+        params=params,
     )
 
-    print("--- Computation of the rho and tau statistics for the covariance %s seconds ---" % (time.time() - start_time))
+    print(
+        "--- Computation of the rho and tau statistics for the covariance %s seconds ---"
+        % (time.time() - start_time)
+    )
 
     cov = cov_tau_th.build_cov(nbin_ang=nbin_ang, nbin_rad=nbin_rad)
     print("--- Covariance computation %s seconds ---" % (time.time() - start_time))
-    np.save(outdir+'/cov_tau_'+version+'_th.npy', cov)
+    np.save(outdir + "/cov_tau_" + version + "_th.npy", cov)
     print("Saved covariance matrix of version: ", version)
     del cov_tau_th
     return
+
 
 def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     """
@@ -308,55 +346,66 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     Also compute rho and tau-statistics.
     """
 
-    if os.path.exists(outdir+'/cov_tau_'+version+'_jk.npy'):
-        print(f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_jk.npy'} already exists.")
+    if os.path.exists(outdir + "/cov_tau_" + version + "_jk.npy"):
+        print(
+            f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_jk.npy'} already exists."
+        )
         rho_stat_handler = RhoStat(
-            output=outdir,
-            treecorr_config=treecorr_config,
-            verbose=False)
-        
+            output=outdir, treecorr_config=treecorr_config, verbose=False
+        )
+
         tau_stat_handler = TauStat(
             catalogs=rho_stat_handler.catalogs,
             output=outdir,
             treecorr_config=treecorr_config,
             verbose=True,
         )
-        
+
         return rho_stat_handler, tau_stat_handler
-    
+
     for i in range(ncov):
 
-        if not (os.path.exists(outdir+'/cov_tau_'+version+str(i)+'.npy') and os.path.exists(outdir+'/cov_rho_'+version+str(i)+'.npy')):
+        if not (
+            os.path.exists(outdir + "/cov_tau_" + version + str(i) + ".npy")
+            and os.path.exists(outdir + "/cov_rho_" + version + str(i) + ".npy")
+        ):
 
             params = get_params_rho_tau(config[version], survey=version)
 
             rho_stat_handler = RhoStat(
-                output=outdir,
-                treecorr_config=treecorr_config,
-                verbose=False)
-            
+                output=outdir, treecorr_config=treecorr_config, verbose=False
+            )
+
             out_base = f"rho_stats_{version}.fits"
             out_path = f"{outdir}/{out_base}"
 
-            print(f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}")
+            print(
+                f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}"
+            )
 
             rho_stat_handler.catalogs.set_params(params, outdir)
 
-            mask = (version != 'DES')
+            mask = version != "DES"
             square_size = params["square_size"]
 
             # Build catalogues
             rho_stat_handler.build_cat_to_compute_rho(
                 config[version]["psf"]["path"],
-                catalog_id=version+str(i),
+                catalog_id=version + str(i),
                 square_size=square_size,
                 mask=mask,
-                hdu = config[version]["psf"]["hdu"]
+                hdu=config[version]["psf"]["hdu"],
             )
 
             # Compute and save rho stats
             only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-            rho_stat_handler.compute_rho_stats(version+str(i), out_base, save_cov=True, func=only_p, var_method='jackknife')
+            rho_stat_handler.compute_rho_stats(
+                version + str(i),
+                out_base,
+                save_cov=True,
+                func=only_p,
+                var_method="jackknife",
+            )
 
             tau_stat_handler = TauStat(
                 catalogs=rho_stat_handler.catalogs,
@@ -370,15 +419,18 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
 
             tau_stat_handler.catalogs.set_params(params, outdir)
 
-            mask = (version != 'DES')
+            mask = version != "DES"
 
             square_size = params["square_size"]
 
             # Build the different catalogs if necessary
-            if f"psf_{version}{i}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
+            if (
+                f"psf_{version}{i}"
+                not in tau_stat_handler.catalogs.catalogs_dict.keys()
+            ):
                 tau_stat_handler.build_cat_to_compute_tau(
                     config[version]["psf"]["path"],
-                    cat_type='psf',
+                    cat_type="psf",
                     catalog_id=version,
                     square_size=square_size,
                     mask=mask,
@@ -387,43 +439,43 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
             # Build the catalog of galaxies. PSF was computed above
             tau_stat_handler.build_cat_to_compute_tau(
                 config[version]["shear"]["path"],
-                cat_type='gal',
-                catalog_id=version+str(i),
+                cat_type="gal",
+                catalog_id=version + str(i),
                 square_size=square_size,
                 mask=mask,
             )
 
-
             # function to extract the tau_+
             only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
             tau_stat_handler.compute_tau_stats(
-                version+str(i),
+                version + str(i),
                 out_base,
                 save_cov=True,
                 func=only_p,
-                var_method='jackknife',
+                var_method="jackknife",
             )
 
-            if (i+1) != ncov:
+            if (i + 1) != ncov:
                 del rho_stat_handler, tau_stat_handler
 
     cov_tau_loc = np.zeros((60, 60))
     cov_rho_loc = np.zeros((120, 120))
     for i in range(ncov):
-        cov_tau_loc += np.load(outdir+f'/cov_tau_{version}{i}.npy')
-        cov_rho_loc += np.load(outdir+f'/cov_rho_{version}{i}.npy')
-        os.remove(outdir+f'/cov_tau_{version}{i}.npy')
-        os.remove(outdir+f'/cov_rho_{version}{i}.npy')
-    
-    cov_tau = cov_tau_loc/ncov
-    cov_rho = cov_rho_loc/ncov
+        cov_tau_loc += np.load(outdir + f"/cov_tau_{version}{i}.npy")
+        cov_rho_loc += np.load(outdir + f"/cov_rho_{version}{i}.npy")
+        os.remove(outdir + f"/cov_tau_{version}{i}.npy")
+        os.remove(outdir + f"/cov_rho_{version}{i}.npy")
 
-    np.save(outdir+'/cov_tau_'+version+'_jk.npy', cov_tau)
-    np.save(outdir+'/cov_rho_'+version+'.npy', cov_rho)
+    cov_tau = cov_tau_loc / ncov
+    cov_rho = cov_rho_loc / ncov
+
+    np.save(outdir + "/cov_tau_" + version + "_jk.npy", cov_tau)
+    np.save(outdir + "/cov_rho_" + version + ".npy", cov_rho)
 
     return rho_stat_handler, tau_stat_handler
 
-def get_samples(psf_fitter, version, cov_type='jk', apply_debias=None, sampler='emcee'):
+
+def get_samples(psf_fitter, version, cov_type="jk", apply_debias=None, sampler="emcee"):
     """
     Samples (alpha, beta, eta) using the sampler 'emcee' or 'lsq'
 
@@ -440,15 +492,21 @@ def get_samples(psf_fitter, version, cov_type='jk', apply_debias=None, sampler='
     sampler : str
         Sampler to use. Options are 'emcee' or 'lsq'. (Default: 'emcee')
     """
-    if sampler=='emcee':
-        return get_samples_emcee(psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias)
-    elif sampler=='lsq':
-        return get_samples_lsq(psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias)
+    if sampler == "emcee":
+        return get_samples_emcee(
+            psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias
+        )
+    elif sampler == "lsq":
+        return get_samples_lsq(
+            psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias
+        )
     else:
         raise ValueError("Sampler must be either 'emcee' or 'lsq'.")
 
 
-def get_samples_emcee(psf_fitter, version, nwalkers=124, nsamples=10000, cov_type='jk', apply_debias=None):
+def get_samples_emcee(
+    psf_fitter, version, nwalkers=124, nsamples=10000, cov_type="jk", apply_debias=None
+):
     """
     Samples (alpha, beta, eta) using the covariance of the tau statistics and emcee.
 
@@ -465,33 +523,35 @@ def get_samples_emcee(psf_fitter, version, nwalkers=124, nsamples=10000, cov_typ
     cov_type : str
         Type of covariance matrix to use. Options are 'jk' or 'th' or 'sim'. (Default: 'jk')
     """
-    #Load rho and tau stats
-    psf_fitter.load_rho_stat('rho_stats_'+ version + '.fits')
-    psf_fitter.load_tau_stat('tau_stats_'+ version + '.fits')
+    # Load rho and tau stats
+    psf_fitter.load_rho_stat("rho_stats_" + version + ".fits")
+    psf_fitter.load_tau_stat("tau_stats_" + version + ".fits")
 
-    #Check if the path exists
+    # Check if the path exists
     sample_file_path = psf_fitter.get_sample_file_path(version)
     if os.path.exists(sample_file_path):
         print(f"Skipping sample computation, file {sample_file_path} already exists.")
         flat_samples = psf_fitter.load_samples(version)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(version)
         print(mcmc_result)
-    #Or run MCMC
+    # Or run MCMC
     else:
         print("MCMC sampling")
-        psf_fitter.load_covariance('cov_tau_' + version + '_' + cov_type + '.npy')
+        psf_fitter.load_covariance("cov_tau_" + version + "_" + cov_type + ".npy")
 
         npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.run_chain(
-            nwalkers=nwalkers, nsamples=nsamples,
+            nwalkers=nwalkers,
+            nsamples=nsamples,
             npatch=npatch,
             apply_debias=npatch is not None,
-            savefig='mcmc_samples_'+version+'.png'
+            savefig="mcmc_samples_" + version + ".png",
         )
         psf_fitter.save_samples(flat_samples, version)
     return flat_samples, mcmc_result, q
 
-def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type='jk'):
+
+def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type="jk"):
     """
     Samples (alpha, beta, eta) using the covariance of the tau statistics and least square method.
 
@@ -504,22 +564,24 @@ def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type='jk'):
     apply_debias : int
         If not None, apply debiasing to the least square method. (Default: None)
     """
-    #Load rho and tau stats
-    psf_fitter.load_rho_stat('rho_stats_'+ version + '.fits')
-    psf_fitter.load_tau_stat('tau_stats_'+ version + '.fits')
+    # Load rho and tau stats
+    psf_fitter.load_rho_stat("rho_stats_" + version + ".fits")
+    psf_fitter.load_tau_stat("tau_stats_" + version + ".fits")
 
-    #Check if the path exists
+    # Check if the path exists
     sample_file_path = psf_fitter.get_sample_path(version)
     if os.path.exists(sample_file_path):
         print(f"Skipping sample computation, file {sample_file_path} already exists.")
         flat_samples = psf_fitter.load_samples(version)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
-    #Or run MCMC
+    # Or run MCMC
     else:
         print("Least square sampling")
-        psf_fitter.load_covariance('cov_tau_' + version + '_'+cov_type+'.npy', cov_type='tau')
-        psf_fitter.load_covariance('cov_rho_'+version+'.npy', cov_type='rho')
+        psf_fitter.load_covariance(
+            "cov_tau_" + version + "_" + cov_type + ".npy", cov_type="tau"
+        )
+        psf_fitter.load_covariance("cov_rho_" + version + ".npy", cov_type="rho")
         npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.get_least_squares_params_samples(
             npatch=npatch, apply_debias=(npatch is not None)
@@ -528,8 +590,15 @@ def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type='jk'):
     return flat_samples, mcmc_result, q
 
 
+not_square_size = [
+    "DES",
+    "SP_v1.3_LFmask_8k",
+    "SP_v1.3_LFmask_8k_no_alpha",
+    "SP_v1.3_LFmask_8k_li_2024",
+    "SP_v1.3_LFmask_8k_SN8",
+    "SP_v1.3_LFmask_8k_F2",
+]
 
-not_square_size = ['DES', 'SP_v1.3_LFmask_8k', 'SP_v1.3_LFmask_8k_no_alpha', 'SP_v1.3_LFmask_8k_li_2024', 'SP_v1.3_LFmask_8k_SN8', 'SP_v1.3_LFmask_8k_F2']
 
 def get_params_rho_tau(cat, survey="other"):
 
@@ -539,37 +608,37 @@ def get_params_rho_tau(cat, survey="other"):
     if survey == "DES":
         params["patch_number"] = 120
         print("DES, jackknife patch number = 120")
-    elif survey == 'SP_axel_v0.0':
+    elif survey == "SP_axel_v0.0":
         params["patch_number"] = 120
         print("SP_Axel_v0.0, jackknife patch number =120")
-    elif survey == 'SP_v1.4-P3' or survey == 'SP_v1.4-P3_LFmask':
+    elif survey == "SP_v1.4-P3" or survey == "SP_v1.4-P3_LFmask":
         params["patch_number"] = 120
         print("SP_v1.4, jackknife patch number =120")
     else:
         params["patch_number"] = 150
-    params["ra_col"] = cat['psf']["ra_col"]
-    params["dec_col"] = cat['psf']["dec_col"]
-    params["e1_PSF_col"] = cat['psf']["e1_PSF_col"]
-    params["e2_PSF_col"] = cat['psf']["e2_PSF_col"]
-    params["e1_star_col"] = cat['psf']["e1_star_col"]
-    params["e2_star_col"] = cat['psf']["e2_star_col"]
-    params["PSF_size"] = cat['psf']["PSF_size"]
-    params["star_size"] = cat['psf']["star_size"]
+    params["ra_col"] = cat["psf"]["ra_col"]
+    params["dec_col"] = cat["psf"]["dec_col"]
+    params["e1_PSF_col"] = cat["psf"]["e1_PSF_col"]
+    params["e2_PSF_col"] = cat["psf"]["e2_PSF_col"]
+    params["e1_star_col"] = cat["psf"]["e1_star_col"]
+    params["e2_star_col"] = cat["psf"]["e2_star_col"]
+    params["PSF_size"] = cat["psf"]["PSF_size"]
+    params["star_size"] = cat["psf"]["star_size"]
     params["square_size"] = survey not in not_square_size
-    if survey != 'DES':
-        params["PSF_flag"] = cat['psf']["PSF_flag"]
-        params["star_flag"] = cat['psf']["star_flag"]
+    if survey != "DES":
+        params["PSF_flag"] = cat["psf"]["PSF_flag"]
+        params["star_flag"] = cat["psf"]["star_flag"]
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
-   
 
-    params["w_col"] = cat['shear']["w"]
-    params["e1_col"] = cat['shear']["e1_col"]
-    params["e2_col"] = cat['shear']["e2_col"]
-    params["R11"] = cat['shear'].get("R11")
-    params["R22"] = cat['shear'].get("R22")
+    params["w_col"] = cat["shear"]["w"]
+    params["e1_col"] = cat["shear"]["e1_col"]
+    params["e2_col"] = cat["shear"]["e2_col"]
+    params["R11"] = cat["shear"].get("R11")
+    params["R22"] = cat["shear"].get("R22")
 
     return params
+
 
 def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method, cov_rho=False):
     """
@@ -583,22 +652,38 @@ def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method, cov_rho=
     method : str
         Method to compute the covariance matrices. Options are 'jk' or 'th'.
     """
-    if method == 'th':
+    if method == "th":
         nbin_ang, nbin_rad = 100, 200
-        rho_stat_handler, tau_stat_handler = get_rho_tau(config, version, treecorr_config, outdir, cov_rho=cov_rho)
-        get_theory_cov(config, version, treecorr_config, outdir, nbin_ang=nbin_ang, nbin_rad=nbin_rad)
+        rho_stat_handler, tau_stat_handler = get_rho_tau(
+            config, version, treecorr_config, outdir, cov_rho=cov_rho
+        )
+        get_theory_cov(
+            config,
+            version,
+            treecorr_config,
+            outdir,
+            nbin_ang=nbin_ang,
+            nbin_rad=nbin_rad,
+        )
         return rho_stat_handler, tau_stat_handler
-    elif method == 'jk':
+    elif method == "jk":
         return get_jackknife_cov(config, version, treecorr_config, outdir)
-    elif method == 'sim':
-        if os.path.exists(outdir+'/cov_tau_'+version+'_th.npy'):
-            print(f"Covariance from simulation available at the following file: {outdir+'/cov_tau_'+version+'_th.npy'}")
+    elif method == "sim":
+        if os.path.exists(outdir + "/cov_tau_" + version + "_th.npy"):
+            print(
+                f"Covariance from simulation available at the following file: {outdir+'/cov_tau_'+version+'_th.npy'}"
+            )
             print(f"Computing rho and tau statistics for the version: {version}")
-            return get_rho_tau(config, version, treecorr_config, outdir, cov_rho=cov_rho)
+            return get_rho_tau(
+                config, version, treecorr_config, outdir, cov_rho=cov_rho
+            )
         else:
-            raise ValueError("Covariance from simulation not available. Please compute it first.")
+            raise ValueError(
+                "Covariance from simulation not available. Please compute it first."
+            )
     else:
         raise ValueError("Method must be either 'jk' or 'th' or 'sim'.")
+
 
 def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
     """
@@ -625,9 +710,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
     out_path = f"{outdir}/{out_base}"
 
     rho_stat_handler = RhoStat(
-        output=outdir,
-        treecorr_config=treecorr_config,
-        verbose=True
+        output=outdir, treecorr_config=treecorr_config, verbose=True
     )
 
     if os.path.exists(out_path):
@@ -637,7 +720,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
 
         rho_stat_handler.catalogs.set_params(params, outdir)
 
-        mask = (version != 'DES')
+        mask = version != "DES"
         square_size = params["square_size"]
 
         # Build catalogues
@@ -646,16 +729,25 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
             catalog_id=version,
             square_size=square_size,
             mask=mask,
-            hdu = config[version]["psf"]["hdu"] if config[version]["psf"]["hdu"] is not None else 1
+            hdu=(
+                config[version]["psf"]["hdu"]
+                if config[version]["psf"]["hdu"] is not None
+                else 1
+            ),
         )
 
-        if cov_rho: 
-            if not os.path.exists(outdir+'/cov_rho_'+version+'.npy'):
+        if cov_rho:
+            if not os.path.exists(outdir + "/cov_rho_" + version + ".npy"):
                 only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-                rho_stat_handler.compute_rho_stats(version, out_base, save_cov=True, func=only_p, var_method='jackknife')
+                rho_stat_handler.compute_rho_stats(
+                    version,
+                    out_base,
+                    save_cov=True,
+                    func=only_p,
+                    var_method="jackknife",
+                )
         else:
             rho_stat_handler.compute_rho_stats(version, out_base, var_method=None)
-
 
     out_base = f"tau_stats_{version}.fits"
     out_path = f"{outdir}/{out_base}"
@@ -674,7 +766,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
 
         tau_stat_handler.catalogs.set_params(params, outdir)
 
-        mask = (version != 'DES')
+        mask = version != "DES"
 
         square_size = params["square_size"]
 
@@ -682,70 +774,83 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(
                 config[version]["psf"]["path"],
-                cat_type='psf',
+                cat_type="psf",
                 catalog_id=version,
                 square_size=square_size,
                 mask=mask,
-                hdu = config[version]["psf"]["hdu"] if config[version]["psf"]["hdu"] is not None else 1
+                hdu=(
+                    config[version]["psf"]["hdu"]
+                    if config[version]["psf"]["hdu"] is not None
+                    else 1
+                ),
             )
 
         # Build the catalog of galaxies. PSF was computed above
         tau_stat_handler.build_cat_to_compute_tau(
             config[version]["shear"]["path"],
-            cat_type='gal',
+            cat_type="gal",
             catalog_id=version,
             square_size=square_size,
             mask=mask,
         )
 
-
         # function to extract the tau_+
-        tau_stat_handler.compute_tau_stats(
-            version,
-            out_base,
-            var_method=None
-        )
+        tau_stat_handler.compute_tau_stats(version, out_base, var_method=None)
 
     print(f"Time to compute rho and tau statistics: {time.time() - start_time:.2f} s")
     return rho_stat_handler, tau_stat_handler
 
 
-def get_theory_cov(config, version, treecorr_config, outdir, nbin_ang=100, nbin_rad=100):
+def get_theory_cov(
+    config, version, treecorr_config, outdir, nbin_ang=100, nbin_rad=100
+):
     """
     Compute an analytical estimate of the covariance matrix of rho and tau-statistics.
     """
 
     params = get_params_rho_tau(config[version], survey=version)
-    
-    info = config[version]
-    A = info['cov_th']['A']*60*60
-    n_e = info['cov_th']['n_e']
-    n_psf = info['cov_th']['n_psf']
 
-    path_gal = info['shear']['path']
-    path_psf = info['psf']['path']
-    hdu_psf = info['psf']['hdu']
-    
+    info = config[version]
+    A = info["cov_th"]["A"] * 60 * 60
+    n_e = info["cov_th"]["n_e"]
+    n_psf = info["cov_th"]["n_psf"]
+
+    path_gal = info["shear"]["path"]
+    path_psf = info["psf"]["path"]
+    hdu_psf = info["psf"]["hdu"]
+
     print("Computing the covariance matrix for the version: ", version)
     start_time = time.time()
 
-    if os.path.exists(outdir+'/cov_tau_'+version+'_th.npy'):
-        print(f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_th.npy'} already exists.")
+    if os.path.exists(outdir + "/cov_tau_" + version + "_th.npy"):
+        print(
+            f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_th.npy'} already exists."
+        )
         return
-    
+
     cov_tau_th = CovTauTh(
-        path_gal=path_gal, path_psf=path_psf, hdu_psf=hdu_psf, treecorr_config=treecorr_config,
-        A=A, n_e=n_e, n_psf=n_psf, params=params
+        path_gal=path_gal,
+        path_psf=path_psf,
+        hdu_psf=hdu_psf,
+        treecorr_config=treecorr_config,
+        A=A,
+        n_e=n_e,
+        n_psf=n_psf,
+        params=params,
     )
 
-    print("--- Computation of the rho and tau statistics for the covariance %s seconds ---" % (time.time() - start_time))
+    print(
+        "--- Computation of the rho and tau statistics for the covariance %s seconds ---"
+        % (time.time() - start_time)
+    )
 
     cov = cov_tau_th.build_cov(nbin_ang=nbin_ang, nbin_rad=nbin_rad)
     print("--- Covariance computation %s seconds ---" % (time.time() - start_time))
-    np.save(outdir+'/cov_tau_'+version+'_th.npy', cov)
+    np.save(outdir + "/cov_tau_" + version + "_th.npy", cov)
     print("Saved covariance matrix of version: ", version)
     del cov_tau_th
     return
+
 
 def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     """
@@ -753,55 +858,66 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     Also compute rho and tau-statistics.
     """
 
-    if os.path.exists(outdir+'/cov_tau_'+version+'_jk.npy'):
-        print(f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_jk.npy'} already exists.")
+    if os.path.exists(outdir + "/cov_tau_" + version + "_jk.npy"):
+        print(
+            f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_jk.npy'} already exists."
+        )
         rho_stat_handler = RhoStat(
-            output=outdir,
-            treecorr_config=treecorr_config,
-            verbose=False)
-        
+            output=outdir, treecorr_config=treecorr_config, verbose=False
+        )
+
         tau_stat_handler = TauStat(
             catalogs=rho_stat_handler.catalogs,
             output=outdir,
             treecorr_config=treecorr_config,
             verbose=True,
         )
-        
+
         return rho_stat_handler, tau_stat_handler
-    
+
     for i in range(ncov):
 
-        if not (os.path.exists(outdir+'/cov_tau_'+version+str(i)+'.npy') and os.path.exists(outdir+'/cov_rho_'+version+str(i)+'.npy')):
+        if not (
+            os.path.exists(outdir + "/cov_tau_" + version + str(i) + ".npy")
+            and os.path.exists(outdir + "/cov_rho_" + version + str(i) + ".npy")
+        ):
 
             params = get_params_rho_tau(config[version], survey=version)
 
             rho_stat_handler = RhoStat(
-                output=outdir,
-                treecorr_config=treecorr_config,
-                verbose=False)
-            
+                output=outdir, treecorr_config=treecorr_config, verbose=False
+            )
+
             out_base = f"rho_stats_{version}.fits"
             out_path = f"{outdir}/{out_base}"
 
-            print(f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}")
+            print(
+                f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}"
+            )
 
             rho_stat_handler.catalogs.set_params(params, outdir)
 
-            mask = (version != 'DES')
+            mask = version != "DES"
             square_size = params["square_size"]
 
             # Build catalogues
             rho_stat_handler.build_cat_to_compute_rho(
                 config[version]["psf"]["path"],
-                catalog_id=version+str(i),
+                catalog_id=version + str(i),
                 square_size=square_size,
                 mask=mask,
-                hdu = config[version]["psf"]["hdu"]
+                hdu=config[version]["psf"]["hdu"],
             )
 
             # Compute and save rho stats
             only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-            rho_stat_handler.compute_rho_stats(version+str(i), out_base, save_cov=True, func=only_p, var_method='jackknife')
+            rho_stat_handler.compute_rho_stats(
+                version + str(i),
+                out_base,
+                save_cov=True,
+                func=only_p,
+                var_method="jackknife",
+            )
 
             tau_stat_handler = TauStat(
                 catalogs=rho_stat_handler.catalogs,
@@ -815,15 +931,18 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
 
             tau_stat_handler.catalogs.set_params(params, outdir)
 
-            mask = (version != 'DES')
+            mask = version != "DES"
 
             square_size = params["square_size"]
 
             # Build the different catalogs if necessary
-            if f"psf_{version}{i}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
+            if (
+                f"psf_{version}{i}"
+                not in tau_stat_handler.catalogs.catalogs_dict.keys()
+            ):
                 tau_stat_handler.build_cat_to_compute_tau(
                     config[version]["psf"]["path"],
-                    cat_type='psf',
+                    cat_type="psf",
                     catalog_id=version,
                     square_size=square_size,
                     mask=mask,
@@ -832,43 +951,43 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
             # Build the catalog of galaxies. PSF was computed above
             tau_stat_handler.build_cat_to_compute_tau(
                 config[version]["shear"]["path"],
-                cat_type='gal',
-                catalog_id=version+str(i),
+                cat_type="gal",
+                catalog_id=version + str(i),
                 square_size=square_size,
                 mask=mask,
             )
 
-
             # function to extract the tau_+
             only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
             tau_stat_handler.compute_tau_stats(
-                version+str(i),
+                version + str(i),
                 out_base,
                 save_cov=True,
                 func=only_p,
-                var_method='jackknife',
+                var_method="jackknife",
             )
 
-            if (i+1) != ncov:
+            if (i + 1) != ncov:
                 del rho_stat_handler, tau_stat_handler
 
     cov_tau_loc = np.zeros((60, 60))
     cov_rho_loc = np.zeros((120, 120))
     for i in range(ncov):
-        cov_tau_loc += np.load(outdir+f'/cov_tau_{version}{i}.npy')
-        cov_rho_loc += np.load(outdir+f'/cov_rho_{version}{i}.npy')
-        os.remove(outdir+f'/cov_tau_{version}{i}.npy')
-        os.remove(outdir+f'/cov_rho_{version}{i}.npy')
-    
-    cov_tau = cov_tau_loc/ncov
-    cov_rho = cov_rho_loc/ncov
+        cov_tau_loc += np.load(outdir + f"/cov_tau_{version}{i}.npy")
+        cov_rho_loc += np.load(outdir + f"/cov_rho_{version}{i}.npy")
+        os.remove(outdir + f"/cov_tau_{version}{i}.npy")
+        os.remove(outdir + f"/cov_rho_{version}{i}.npy")
 
-    np.save(outdir+'/cov_tau_'+version+'_jk.npy', cov_tau)
-    np.save(outdir+'/cov_rho_'+version+'.npy', cov_rho)
+    cov_tau = cov_tau_loc / ncov
+    cov_rho = cov_rho_loc / ncov
+
+    np.save(outdir + "/cov_tau_" + version + "_jk.npy", cov_tau)
+    np.save(outdir + "/cov_rho_" + version + ".npy", cov_rho)
 
     return rho_stat_handler, tau_stat_handler
 
-def get_samples(psf_fitter, version, cov_type='jk', apply_debias=None, sampler='emcee'):
+
+def get_samples(psf_fitter, version, cov_type="jk", apply_debias=None, sampler="emcee"):
     """
     Samples (alpha, beta, eta) using the sampler 'emcee' or 'lsq'
 
@@ -885,15 +1004,21 @@ def get_samples(psf_fitter, version, cov_type='jk', apply_debias=None, sampler='
     sampler : str
         Sampler to use. Options are 'emcee' or 'lsq'. (Default: 'emcee')
     """
-    if sampler=='emcee':
-        return get_samples_emcee(psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias)
-    elif sampler=='lsq':
-        return get_samples_lsq(psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias)
+    if sampler == "emcee":
+        return get_samples_emcee(
+            psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias
+        )
+    elif sampler == "lsq":
+        return get_samples_lsq(
+            psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias
+        )
     else:
         raise ValueError("Sampler must be either 'emcee' or 'lsq'.")
 
 
-def get_samples_emcee(psf_fitter, version, nwalkers=124, nsamples=10000, cov_type='jk', apply_debias=None):
+def get_samples_emcee(
+    psf_fitter, version, nwalkers=124, nsamples=10000, cov_type="jk", apply_debias=None
+):
     """
     Samples (alpha, beta, eta) using the covariance of the tau statistics and emcee.
 
@@ -910,33 +1035,35 @@ def get_samples_emcee(psf_fitter, version, nwalkers=124, nsamples=10000, cov_typ
     cov_type : str
         Type of covariance matrix to use. Options are 'jk' or 'th' or 'sim'. (Default: 'jk')
     """
-    #Load rho and tau stats
-    psf_fitter.load_rho_stat('rho_stats_'+ version + '.fits')
-    psf_fitter.load_tau_stat('tau_stats_'+ version + '.fits')
+    # Load rho and tau stats
+    psf_fitter.load_rho_stat("rho_stats_" + version + ".fits")
+    psf_fitter.load_tau_stat("tau_stats_" + version + ".fits")
 
-    #Check if the path exists
+    # Check if the path exists
     sample_file_path = psf_fitter.get_sample_file_path(version)
     if os.path.exists(sample_file_path):
         print(f"Skipping sample computation, file {sample_file_path} already exists.")
         flat_samples = psf_fitter.load_samples(version)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(version)
         print(mcmc_result)
-    #Or run MCMC
+    # Or run MCMC
     else:
         print("MCMC sampling")
-        psf_fitter.load_covariance('cov_tau_' + version + '_' + cov_type + '.npy')
+        psf_fitter.load_covariance("cov_tau_" + version + "_" + cov_type + ".npy")
 
         npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.run_chain(
-            nwalkers=nwalkers, nsamples=nsamples,
+            nwalkers=nwalkers,
+            nsamples=nsamples,
             npatch=npatch,
             apply_debias=npatch is not None,
-            savefig='mcmc_samples_'+version+'.png'
+            savefig="mcmc_samples_" + version + ".png",
         )
         psf_fitter.save_samples(flat_samples, version)
     return flat_samples, mcmc_result, q
 
-def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type='jk'):
+
+def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type="jk"):
     """
     Samples (alpha, beta, eta) using the covariance of the tau statistics and least square method.
 
@@ -949,30 +1076,30 @@ def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type='jk'):
     apply_debias : int
         If not None, apply debiasing to the least square method. (Default: None)
     """
-    #Load rho and tau stats
-    psf_fitter.load_rho_stat('rho_stats_'+ version + '.fits')
-    psf_fitter.load_tau_stat('tau_stats_'+ version + '.fits')
+    # Load rho and tau stats
+    psf_fitter.load_rho_stat("rho_stats_" + version + ".fits")
+    psf_fitter.load_tau_stat("tau_stats_" + version + ".fits")
 
-    #Check if the path exists
+    # Check if the path exists
     sample_file_path = psf_fitter.get_sample_path(version)
     if os.path.exists(sample_file_path):
         print(f"Skipping sample computation, file {sample_file_path} already exists.")
         flat_samples = psf_fitter.load_samples(version)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
-    #Or run MCMC
+    # Or run MCMC
     else:
         print("Least square sampling")
-        psf_fitter.load_covariance('cov_tau_' + version + '_'+cov_type+'.npy', cov_type='tau')
-        psf_fitter.load_covariance('cov_rho_'+version+'.npy', cov_type='rho')
+        psf_fitter.load_covariance(
+            "cov_tau_" + version + "_" + cov_type + ".npy", cov_type="tau"
+        )
+        psf_fitter.load_covariance("cov_rho_" + version + ".npy", cov_type="rho")
         npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.get_least_squares_params_samples(
             npatch=npatch, apply_debias=(npatch is not None)
         )
         psf_fitter.save_samples(flat_samples, version)
     return flat_samples, mcmc_result, q
-
-
 
 
 # %%
@@ -998,11 +1125,11 @@ class CosmologyValidation:
         ylim_alpha=[-0.005, 0.05],
         ylim_xi_sys_ratio=[-0.02, 0.5],
         nside=1024,
-        binning='powspace',
-        power=1/2,
+        binning="powspace",
+        power=1 / 2,
         n_ell_bins=32,
         pol_factor=True,
-        nrandom_cell=10
+        nrandom_cell=10,
     ):
 
         self.versions = versions
@@ -1020,7 +1147,7 @@ class CosmologyValidation:
         self.theta_max_plot = theta_max_plot
         self.ylim_alpha = ylim_alpha
         self.ylim_xi_sys_ratio = ylim_xi_sys_ratio
-        #For pseudo-Cls
+        # For pseudo-Cls
         self.nside = nside
         self.binning = binning
         self.power = power
@@ -1044,7 +1171,9 @@ class CosmologyValidation:
         for ver in ["nz", *versions]:
 
             if ver not in cc:
-                raise KeyError(f"Version string {ver} not found in config file{catalog_config}")
+                raise KeyError(
+                    f"Version string {ver} not found in config file{catalog_config}"
+                )
             version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
@@ -1153,28 +1282,6 @@ class CosmologyValidation:
 
             results[ver].check_params()
             results[ver].prepare_output()
-
-            @contextmanager
-            def temporarily_load_data(results):
-                if hasattr(results, "dat_shear") and hasattr(results, "dat_PSF"):
-                    try:
-                        yield
-                    finally:
-                        return results
-                else:
-                    try:
-                        self.print_start(f"Loading catalog for {ver}")
-                        results.read_data()
-                        self.print_done(f"Catalog loaded for {ver}")
-                        yield
-                    finally:
-                        self.print_done(f"Freeing {ver} from memory")
-                        del results.dat_shear
-                        del results.dat_PSF
-
-            results[ver].temporarily_load_data = lambda: temporarily_load_data(
-                results[ver]
-            )
 
         return results
 
@@ -1780,8 +1887,12 @@ class CosmologyValidation:
                 self.print_magenta(ver)
                 R = self.cc[ver]["shear"]["R"]
                 with self.results[ver].temporarily_load_data():
-                    e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
-                    e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
+                    e1 = (
+                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
+                    )
+                    e2 = (
+                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
+                    )
                     w = self.results[ver].dat_shear["w"]
 
                     axs[0].hist(
@@ -1920,7 +2031,9 @@ class CosmologyValidation:
 
                     col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
                     coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-                    ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
+                    ximinus_hdu = fits.BinTableHDU.from_columns(
+                        coldefs, name="XI_MINUS"
+                    )
 
                     # append xi_plus header info
                     xiplus_dict = {
@@ -1934,7 +2047,8 @@ class CosmologyValidation:
                     for key in xiplus_dict:
                         xiplus_hdu.header[key] = xiplus_dict[key]
                     xiplus_hdu.writeto(
-                        f"{self.cc['paths']['output']}/xi_plus_{ver}.fits", overwrite=True
+                        f"{self.cc['paths']['output']}/xi_plus_{ver}.fits",
+                        overwrite=True,
                     )
 
                     # append xi_minus header info
@@ -1942,7 +2056,8 @@ class CosmologyValidation:
                     for key in ximinus_dict:
                         ximinus_hdu.header[key] = ximinus_dict[key]
                     ximinus_hdu.writeto(
-                        f"{self.cc['paths']['output']}/xi_minus_{ver}.fits", overwrite=True
+                        f"{self.cc['paths']['output']}/xi_minus_{ver}.fits",
+                        overwrite=True,
                     )
 
             self.print_done("Done 2PCF")
@@ -2308,7 +2423,7 @@ class CosmologyValidation:
                 gg.read(out_fname)
                 gg_int.read(out_fname_int)
             else:
-                with self.results[ver].temporarily_load_data():
+                with self.results[ver].temporarily_read_data():
                     R = self.cc[ver]["shear"]["R"]
                     g1 = (
                         self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
@@ -2387,64 +2502,98 @@ class CosmologyValidation:
             if not ver in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
-            out_path = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_{ver}.fits")
+            out_path = os.path.abspath(
+                f"{self.cc['paths']['output']}/pseudo_cl_cov_{ver}.fits"
+            )
             if os.path.exists(out_path):
-                self.print_done(f"Skipping Pseudo-Cl covariance calculation, {out_path} exists")
-                self._pseudo_cls[ver]['cov'] = fits.open(out_path)
+                self.print_done(
+                    f"Skipping Pseudo-Cl covariance calculation, {out_path} exists"
+                )
+                self._pseudo_cls[ver]["cov"] = fits.open(out_path)
             else:
 
                 params = get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
-                lmax = 2*self.nside
-                path_redshift_distr = self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
+                lmax = 2 * self.nside
+                path_redshift_distr = (
+                    self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
+                )
                 pw = hp.pixwin(nside, lmax=lmax)
-                fiducial_cl = self.get_fiducial(lmax, path_redshift_distr)*pw**2
+                fiducial_cl = self.get_fiducial(lmax, path_redshift_distr) * pw**2
 
                 self.print_cyan("Getting a sample of the fiducial Cl's with noise")
 
                 lmin = 8
-                lmax = 2*self.nside
+                lmax = 2 * self.nside
                 b_lmax = lmax - 1
 
-                if self.binning == 'linear':
+                if self.binning == "linear":
                     step = 10
                     b = nmt.NmtBin.from_nside_linear(self.nside, step)
-                elif self.binning == 'powspace':
-                    ells = np.arange(lmin, lmax+1)
+                elif self.binning == "powspace":
+                    ells = np.arange(lmin, lmax + 1)
 
                     start = np.power(lmin, self.power)
                     end = np.power(lmax, self.power)
-                    bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
+                    bins_ell = np.power(
+                        np.linspace(start, end, self.n_ell_bins + 1), 1 / self.power
+                    )
 
-                    #Get bandpowers
+                    # Get bandpowers
                     bpws = np.digitize(ells.astype(float), bins_ell) - 1
                     bpws[0] = 0
-                    bpws[-1] = self.n_ell_bins-1
+                    bpws[-1] = self.n_ell_bins - 1
 
                     b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
 
-                #Load data and create shear and noise maps
+                # Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-                n_gal, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
+                n_gal, unique_pix, idx, idx_rep = self.get_n_gal_map(
+                    params, nside, cat_gal
+                )
                 mask = n_gal != 0
-                
-                cl_noise, f, wsp = self.get_sample(params, self.nside, b_lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep)
-                
-                fiducial_cl = np.array([fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl])+ np.mean(cl_noise, axis=1, keepdims=True)
-                
+
+                cl_noise, f, wsp = self.get_sample(
+                    params,
+                    self.nside,
+                    b_lmax,
+                    b,
+                    cat_gal,
+                    n_gal,
+                    mask,
+                    unique_pix,
+                    idx_rep,
+                )
+
+                fiducial_cl = np.array(
+                    [
+                        fiducial_cl,
+                        0.0 * fiducial_cl,
+                        0.0 * fiducial_cl,
+                        0.0 * fiducial_cl,
+                    ]
+                ) + np.mean(cl_noise, axis=1, keepdims=True)
+
                 self.print_cyan("Computing the Pseudo-Cl covariance")
 
                 cw = nmt.NmtCovarianceWorkspace.from_fields(f, f, f, f)
 
-                covar_22_22 = nmt.gaussian_covariance(cw, 2, 2, 2, 2,
-                                                        fiducial_cl,
-                                                        fiducial_cl,
-                                                        fiducial_cl,
-                                                        fiducial_cl,
-                                                        wsp, wb=wsp).reshape([self.n_ell_bins, 4, self.n_ell_bins, 4])
+                covar_22_22 = nmt.gaussian_covariance(
+                    cw,
+                    2,
+                    2,
+                    2,
+                    2,
+                    fiducial_cl,
+                    fiducial_cl,
+                    fiducial_cl,
+                    fiducial_cl,
+                    wsp,
+                    wb=wsp,
+                ).reshape([self.n_ell_bins, 4, self.n_ell_bins, 4])
 
                 covar_EE_EE = covar_22_22[:, 0, :, 0]
                 covar_EE_EB = covar_22_22[:, 0, :, 1]
@@ -2486,7 +2635,7 @@ class CosmologyValidation:
 
                 hdu.writeto(out_path, overwrite=True)
 
-                self._pseudo_cls[ver]['cov'] = hdu
+                self._pseudo_cls[ver]["cov"] = hdu
 
         self.print_done("Done Pseudo-Cl covariance")
 
@@ -2507,43 +2656,47 @@ class CosmologyValidation:
 
             self._pseudo_cls[ver] = {}
 
-            out_path = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_{ver}.fits")
+            out_path = os.path.abspath(
+                f"{self.cc['paths']['output']}/pseudo_cl_{ver}.fits"
+            )
             if os.path.exists(out_path):
                 self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
                 cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+                self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
             else:
                 params = get_params_rho_tau(self.cc[ver], survey=ver)
 
-                #Load data and create shear and noise maps
+                # Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-                w = cat_gal[params['w_col']]
+                w = cat_gal[params["w_col"]]
                 self.print_cyan("Creating maps and computing Cl's...")
-                n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
+                n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(
+                    params, nside, cat_gal
+                )
                 mask = n_gal_map != 0
 
                 shear_map_e1 = np.zeros(hp.nside2npix(nside))
                 shear_map_e2 = np.zeros(hp.nside2npix(nside))
 
-                e1 = cat_gal[params['e1_col']]
-                e2 = cat_gal[params['e2_col']]
+                e1 = cat_gal[params["e1_col"]]
+                e2 = cat_gal[params["e2_col"]]
 
                 del cat_gal
-                
-                shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1*w)
-                shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2*w)
+
+                shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1 * w)
+                shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2 * w)
                 shear_map_e1[mask] /= n_gal_map[mask]
                 shear_map_e2[mask] /= n_gal_map[mask]
 
-                shear_map = shear_map_e1 + 1j*shear_map_e2
+                shear_map = shear_map_e1 + 1j * shear_map_e2
 
                 del shear_map_e1, shear_map_e2
 
                 ell_eff, cl_shear, wsp = self.get_pseudo_cls(shear_map)
 
                 cl_noise = np.zeros((4, self.n_ell_bins))
-                
+
                 for i in range(self.nrandom_cell):
 
                     noise_map_e1 = np.zeros(hp.nside2npix(nside))
@@ -2551,32 +2704,31 @@ class CosmologyValidation:
 
                     e1_rot, e2_rot = self.apply_random_rotation(e1, e2)
 
-                    
-                    noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
-                    noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
+                    noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot * w)
+                    noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot * w)
 
                     noise_map_e1[mask] /= n_gal_map[mask]
                     noise_map_e2[mask] /= n_gal_map[mask]
 
-                    noise_map = noise_map_e1 + 1j*noise_map_e2
+                    noise_map = noise_map_e1 + 1j * noise_map_e2
                     del noise_map_e1, noise_map_e2
 
                     _, cl_noise_, _ = self.get_pseudo_cls(noise_map, wsp)
                     cl_noise += cl_noise_
-                
+
                 cl_noise /= self.nrandom_cell
                 del e1, e2, e1_rot, e2_rot, w
-                del n_gal_map              
+                del n_gal_map
 
-                #This is a problem because the measurement depends on the seed. To be fixed.
-                #cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
+                # This is a problem because the measurement depends on the seed. To be fixed.
+                # cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
                 cl_shear = cl_shear - cl_noise
 
                 self.print_cyan("Saving pseudo-Cl's...")
                 self.save_pseudo_cl(ell_eff, cl_shear, out_path)
 
                 cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+                self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
 
         self.print_done("Done pseudo-Cl's")
 
@@ -2586,7 +2738,7 @@ class CosmologyValidation:
         """
         planck = Planck18
 
-        h = planck.H0.value/100
+        h = planck.H0.value / 100
         Om = planck.Om0
         Ob = planck.Ob0
         Oc = Om - Ob
@@ -2594,56 +2746,86 @@ class CosmologyValidation:
         As = 2.1e-9
         m_nu = 0.06
         w = -1
-        
-        pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
+
+        pars = camb.set_params(
+            H0=100 * h,
+            omch2=Oc * h**2,
+            ombh2=Ob * h**2,
+            ns=ns,
+            mnu=m_nu,
+            w=w,
+            As=As,
+            WantTransfer=True,
+            NonLinear=camb.model.NonLinear_both,
+        )
         Onu = pars.omeganu
         Oc = Om - Ob - Onu
-        pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
+        pars = camb.set_params(
+            H0=100 * h,
+            omch2=Oc * h**2,
+            ombh2=Ob * h**2,
+            ns=ns,
+            mnu=m_nu,
+            w=w,
+            As=As,
+            WantTransfer=True,
+            NonLinear=camb.model.NonLinear_both,
+        )
 
         z, dndz = np.loadtxt(redshift_distr, unpack=True)
 
-        #getthe expected cl's from CAMB
+        # getthe expected cl's from CAMB
         pars.min_l = 1
         pars.set_for_lmax(lmax)
         pars.SourceWindows = [
-            camb.sources.SplinedSourceWindow(z=z, W=dndz, source_type='lensing')
+            camb.sources.SplinedSourceWindow(z=z, W=dndz, source_type="lensing")
         ]
         theory_cls = camb.get_results(pars).get_source_cls_dict(lmax=lmax, raw_cl=True)
-        return theory_cls['W1xW1']
+        return theory_cls["W1xW1"]
 
     def get_n_gal_map(self, params, nside, cat_gal):
         """
         Compute the galaxy number density map.
         """
-        ra = cat_gal[params['ra_col']]
-        dec = cat_gal[params['dec_col']]
-        w = cat_gal[params['w_col']]
+        ra = cat_gal[params["ra_col"]]
+        dec = cat_gal[params["dec_col"]]
+        w = cat_gal[params["w_col"]]
 
-        theta = (90. - dec) * np.pi / 180.
-        phi = ra * np.pi / 180.
+        theta = (90.0 - dec) * np.pi / 180.0
+        phi = ra * np.pi / 180.0
         pix = hp.ang2pix(nside, theta, phi)
 
-        unique_pix, idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
+        unique_pix, idx, idx_rep = np.unique(
+            pix, return_index=True, return_inverse=True
+        )
         n_gal = np.zeros(hp.nside2npix(nside))
         n_gal[unique_pix] = np.bincount(idx_rep, weights=w)
         return n_gal, unique_pix, idx, idx_rep
 
-    def get_gaussian_real(self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep):
+    def get_gaussian_real(
+        self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
+    ):
 
-        e1_rot, e2_rot = self.apply_random_rotation(cat_gal[params['e1_col']], cat_gal[params['e2_col']])
+        e1_rot, e2_rot = self.apply_random_rotation(
+            cat_gal[params["e1_col"]], cat_gal[params["e2_col"]]
+        )
         noise_map_e1 = np.zeros(hp.nside2npix(nside))
         noise_map_e2 = np.zeros(hp.nside2npix(nside))
 
-        w = cat_gal[params['w_col']]
-        noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
-        noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
+        w = cat_gal[params["w_col"]]
+        noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot * w)
+        noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot * w)
         noise_map_e1[mask] /= n_gal[mask]
         noise_map_e2[mask] /= n_gal[mask]
 
-        return noise_map_e1 + 1j*noise_map_e2
+        return noise_map_e1 + 1j * noise_map_e2
 
-    def get_sample(self, params, nside, lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep):
-        noise_map = self.get_gaussian_real(params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep)
+    def get_sample(
+        self, params, nside, lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep
+    ):
+        noise_map = self.get_gaussian_real(
+            params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
+        )
 
         f = nmt.NmtField(mask=mask, maps=[noise_map.real, noise_map.imag], lmax=lmax)
 
@@ -2653,30 +2835,32 @@ class CosmologyValidation:
         cl_noise = wsp.decouple_cell(cl_noise)
 
         return cl_noise, f, wsp
-    
+
     def get_pseudo_cls(self, map, wsp=None):
         """
         Compute the pseudo-cl for a given map.
         """
 
         lmin = 8
-        lmax = 2*self.nside
+        lmax = 2 * self.nside
         b_lmax = lmax - 1
 
-        if self.binning == 'linear':
+        if self.binning == "linear":
             step = 10
             b = nmt.NmtBin.from_nside_linear(self.nside, step)
-        elif self.binning == 'powspace':
-            ells = np.arange(lmin, lmax+1)
+        elif self.binning == "powspace":
+            ells = np.arange(lmin, lmax + 1)
 
             start = np.power(lmin, self.power)
             end = np.power(lmax, self.power)
-            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
+            bins_ell = np.power(
+                np.linspace(start, end, self.n_ell_bins + 1), 1 / self.power
+            )
 
-            #Get bandpowers
+            # Get bandpowers
             bpws = np.digitize(ells.astype(float), bins_ell) - 1
             bpws[0] = 0
-            bpws[-1] = self.n_ell_bins-1
+            bpws[-1] = self.n_ell_bins - 1
 
             b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
 
@@ -2684,11 +2868,13 @@ class CosmologyValidation:
 
         factor = -1 if self.pol_factor else 1
 
-        f_all = nmt.NmtField(mask=(map!=0), maps=[map.real, factor*map.imag], lmax=b_lmax)
-        
+        f_all = nmt.NmtField(
+            mask=(map != 0), maps=[map.real, factor * map.imag], lmax=b_lmax
+        )
+
         if wsp is None:
             wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
-        
+
         cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
         cl_all = wsp.decouple_cell(cl_coupled)
 
@@ -2713,9 +2899,9 @@ class CosmologyValidation:
             Second component of the rotated ellipticity.
         """
         np.random.seed()
-        rot_angle = np.random.rand(len(e1))*2*np.pi
-        e1_out = e1*np.cos(rot_angle) + e2*np.sin(rot_angle)
-        e2_out = -e1*np.sin(rot_angle) + e2*np.cos(rot_angle)
+        rot_angle = np.random.rand(len(e1)) * 2 * np.pi
+        e1_out = e1 * np.cos(rot_angle) + e2 * np.sin(rot_angle)
+        e2_out = -e1 * np.sin(rot_angle) + e2 * np.cos(rot_angle)
         return e1_out, e2_out
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
@@ -2729,7 +2915,7 @@ class CosmologyValidation:
         out_path : str
             Path to save the pseudo-Cl's to.
         """
-        #Create columns of the fits file
+        # Create columns of the fits file
         col1 = fits.Column(name="ELL", format="D", array=ell_eff)
         col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
         col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
@@ -2752,127 +2938,174 @@ class CosmologyValidation:
         """
         self.print_cyan("Plotting pseudo-Cl's")
 
-        #Plotting EE
+        # Plotting EE
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_ee.png")
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
-            cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
-            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"], capsize=2)
+            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
+            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
+            ax[0].errorbar(
+                ell,
+                ell * self.pseudo_cls[ver]["pseudo_cl"]["EE"],
+                yerr=ell * np.sqrt(np.diag(cov)),
+                fmt=self.cc[ver]["marker"],
+                label=ver + " EE",
+                color=self.cc[ver]["colour"],
+                capsize=2,
+            )
 
-        ax[0].set_ylabel('$\ell C_\ell$')
+        ax[0].set_ylabel("$\ell C_\ell$")
 
-        ax[0].set_xlim(ell.min()-10, ell.max()+100)
-        ax[0].set_xscale('squareroot')
+        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
+        ax[0].set_xscale("squareroot")
         ax[0].set_xticks(np.array([100, 400, 900, 1600]))
         ax[0].minorticks_on()
-        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
-        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
+        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
         ax[0].xaxis.set_ticks(minor_ticks, minor=True)
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
-            cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
-            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"])
+            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
+            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
+            ax[1].errorbar(
+                ell,
+                self.pseudo_cls[ver]["pseudo_cl"]["EE"],
+                yerr=np.sqrt(np.diag(cov)),
+                fmt=self.cc[ver]["marker"],
+                label=ver + " EE",
+                color=self.cc[ver]["colour"],
+            )
 
-        ax[1].set_xlabel('$\ell$')
-        ax[1].set_ylabel('$C_\ell$')
+        ax[1].set_xlabel("$\ell$")
+        ax[1].set_ylabel("$C_\ell$")
 
-        ax[1].set_xlim(ell.min()-10, ell.max()+100)
-        ax[1].set_xscale('squareroot')
-        ax[1].set_yscale('log')
+        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
+        ax[1].set_xscale("squareroot")
+        ax[1].set_yscale("log")
         ax[1].set_xticks(np.array([100, 400, 900, 1600]))
         ax[1].minorticks_on()
-        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
-        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
+        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
         ax[1].xaxis.set_ticks(minor_ticks, minor=True)
 
-        plt.suptitle('Pseudo-Cl EE (Gaussian covariance)')
+        plt.suptitle("Pseudo-Cl EE (Gaussian covariance)")
         plt.legend()
         plt.savefig(out_path)
 
-        #Plotting EB
+        # Plotting EB
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_eb.png")
 
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
-            cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
-            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"], capsize=2)
+            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
+            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
+            ax[0].errorbar(
+                ell,
+                ell * self.pseudo_cls[ver]["pseudo_cl"]["EB"],
+                yerr=ell * np.sqrt(np.diag(cov)),
+                fmt=self.cc[ver]["marker"],
+                label=ver + " EB",
+                color=self.cc[ver]["colour"],
+                capsize=2,
+            )
 
-        ax[0].axhline(0, color='black', linestyle='--')
-        ax[0].set_ylabel('$\ell C_\ell$')
+        ax[0].axhline(0, color="black", linestyle="--")
+        ax[0].set_ylabel("$\ell C_\ell$")
 
-        ax[0].set_xlim(ell.min()-10, ell.max()+100)
-        ax[0].set_xscale('squareroot')
+        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
+        ax[0].set_xscale("squareroot")
         ax[0].set_xticks(np.array([100, 400, 900, 1600]))
         ax[0].minorticks_on()
-        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
-        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
+        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
         ax[0].xaxis.set_ticks(minor_ticks, minor=True)
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
-            cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
-            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"])
+            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
+            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
+            ax[1].errorbar(
+                ell,
+                self.pseudo_cls[ver]["pseudo_cl"]["EB"],
+                yerr=np.sqrt(np.diag(cov)),
+                fmt=self.cc[ver]["marker"],
+                label=ver + " EB",
+                color=self.cc[ver]["colour"],
+            )
 
-        ax[1].set_xlabel('$\ell$')
-        ax[1].set_ylabel('$C_\ell$')
+        ax[1].set_xlabel("$\ell$")
+        ax[1].set_ylabel("$C_\ell$")
 
-        ax[1].set_xlim(ell.min()-10, ell.max()+100)
-        ax[1].set_xscale('squareroot')
-        ax[1].set_yscale('log')
+        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
+        ax[1].set_xscale("squareroot")
+        ax[1].set_yscale("log")
         ax[1].set_xticks(np.array([100, 400, 900, 1600]))
         ax[1].minorticks_on()
-        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
-        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
+        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
         ax[1].xaxis.set_ticks(minor_ticks, minor=True)
 
-        plt.suptitle('Pseudo-Cl EB (Gaussian covariance)')
+        plt.suptitle("Pseudo-Cl EB (Gaussian covariance)")
         plt.legend()
         plt.savefig(out_path)
 
-        #Plotting BB
+        # Plotting BB
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_bb.png")
 
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
-            cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
-            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"], capsize=2)
+            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
+            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
+            ax[0].errorbar(
+                ell,
+                ell * self.pseudo_cls[ver]["pseudo_cl"]["BB"],
+                yerr=ell * np.sqrt(np.diag(cov)),
+                fmt=self.cc[ver]["marker"],
+                label=ver + " BB",
+                color=self.cc[ver]["colour"],
+                capsize=2,
+            )
 
-        ax[0].axhline(0, color='black', linestyle='--')
-        ax[0].set_ylabel('$\ell C_\ell$')
+        ax[0].axhline(0, color="black", linestyle="--")
+        ax[0].set_ylabel("$\ell C_\ell$")
 
-        ax[0].set_xlim(ell.min()-10, ell.max()+100)
-        ax[0].set_xscale('squareroot')
+        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
+        ax[0].set_xscale("squareroot")
         ax[0].set_xticks(np.array([100, 400, 900, 1600]))
         ax[0].minorticks_on()
-        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
-        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
+        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
         ax[0].xaxis.set_ticks(minor_ticks, minor=True)
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
-            cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
-            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"])
+            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
+            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
+            ax[1].errorbar(
+                ell,
+                self.pseudo_cls[ver]["pseudo_cl"]["BB"],
+                yerr=np.sqrt(np.diag(cov)),
+                fmt=self.cc[ver]["marker"],
+                label=ver + " BB",
+                color=self.cc[ver]["colour"],
+            )
 
-        ax[1].set_xlabel('$\ell$')
-        ax[1].set_ylabel('$C_\ell$')
+        ax[1].set_xlabel("$\ell$")
+        ax[1].set_ylabel("$C_\ell$")
 
-        ax[1].set_xlim(ell.min()-10, ell.max()+100)
-        ax[1].set_xscale('squareroot')
-        ax[1].set_yscale('log')
+        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
+        ax[1].set_xscale("squareroot")
+        ax[1].set_yscale("log")
         ax[1].set_xticks(np.array([100, 400, 900, 1600]))
         ax[1].minorticks_on()
-        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
-        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
+        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
         ax[1].xaxis.set_ticks(minor_ticks, minor=True)
 
-        plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
+        plt.suptitle("Pseudo-Cl BB (Gaussian covariance)")
         plt.legend()
         plt.savefig(out_path)
+
+
 # %%
