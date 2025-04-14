@@ -18,8 +18,6 @@ from astropy.cosmology import Planck18
 from astropy.io import fits
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
-from matplotlib.colors import Normalize
-from matplotlib.ticker import Locator
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage import run_object, run_scale
@@ -1346,8 +1344,9 @@ class CosmologyValidation:
             savefig=savefig,
             legend="outside",
             abs=abs,
+            show=True,
+            close=True,
         )
-        plt.close()
 
         self.print_done(
             f"Rho stats plot saved to "
@@ -1365,8 +1364,9 @@ class CosmologyValidation:
             savefig=savefig,
             legend="outside",
             plot_tau_m=plot_tau_m,
+            show=True,
+            close=True,
         )
-        plt.close()
 
         self.print_done(
             f"Tau stats plot saved to "
@@ -1476,8 +1476,9 @@ class CosmologyValidation:
             legend_loc="upper right",
             contour_colors=self.colors,
             markers={"x0": 0, "x1": 1, "x2": 1},
+            show=True,
+            close=True,
         )
-        plt.close()
         self.print_done(f"Tau contours plot saved to {os.path.abspath(savefig)}")
 
         plt.figure(figsize=(15, 6))
@@ -1495,7 +1496,7 @@ class CosmologyValidation:
             self.psf_fitter.plot_xi_psf_sys(mcmc_result[1], ver, color)
         plt.legend()
         savefig = os.path.abspath(f"{out_dir}/xi_psf_sys_samples.png")
-        cs_plots.savefig(savefig)
+        cs_plots.savefig(savefig, show=True)
         self.print_done(f"xi_psf_sys samples plot saved to {savefig}")
 
         plt.figure(figsize=(15, 6))
@@ -1527,9 +1528,8 @@ class CosmologyValidation:
         plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
         plt.title(f"{1 - self.quantile:.1%}, {self.quantile:.1%} quantiles")
         plt.legend()
-        plt.show()
         savefig = os.path.abspath(f"{out_dir}/xi_psf_sys_quantiles.png")
-        cs_plots.savefig(savefig)
+        cs_plots.savefig(savefig, show=True)
         self.print_done(f"xi_psf_sys quantiles plot saved to {savefig}")
 
         for mcmc_result, ver, flat_sample in zip(
@@ -1543,7 +1543,7 @@ class CosmologyValidation:
                     f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
                 )
                 self.psf_fitter.plot_xi_psf_sys_terms(
-                    ver, mcmc_result[1], out_path, yscale=yscale
+                    ver, mcmc_result[1], out_path, yscale=yscale, show=True
                 )
                 self.print_done(
                     f"{yscale}-scale xi_psf_sys terms plot saved to {out_path}"
@@ -1577,7 +1577,7 @@ class CosmologyValidation:
                     )
                     plt.xlabel("R.A. [deg]")
                     plt.ylabel("Dec [deg]")
-                    cs_plots.savefig(out_path)
+                    cs_plots.savefig(out_path, show=True)
                     self.print_done("Footprint plot saved to " + out_path)
 
     def calculate_scale_dependent_leakage(self):
@@ -1660,7 +1660,7 @@ class CosmologyValidation:
                 linestyles=linestyles,
                 shift_x=True,
             )
-            cs_plots.savefig(out_path)
+            cs_plots.savefig(out_path, show=True)
             self.print_done(f"Log-scale alpha leakage plot saved to {out_path}")
 
             # Lin x
@@ -1687,7 +1687,7 @@ class CosmologyValidation:
                 linestyles=linestyles,
                 shift_x=False,
             )
-            cs_plots.savefig(out_path)
+            cs_plots.savefig(out_path, show=True)
             self.print_done(f"Lin-scale alpha leakage plot saved to {out_path}")
 
         # Plot xi_sys
@@ -1725,7 +1725,7 @@ class CosmologyValidation:
                 linestyles=linestyles,
                 # shift_x=True,
             )
-            cs_plots.savefig(out_path)
+            cs_plots.savefig(out_path, show=True)
             self.print_done(f"xi_sys_plus plot saved to {out_path}")
 
         y = []
@@ -1757,7 +1757,7 @@ class CosmologyValidation:
                 linestyles=linestyles,
                 # shift_x=True,
             )
-            cs_plots.savefig(out_path)
+            cs_plots.savefig(out_path, show=True)
             self.print_done(f"xi_sys_minus plot saved to {out_path}")
 
     def calculate_objectwise_leakage(self):
@@ -1872,7 +1872,7 @@ class CosmologyValidation:
         out_path = os.path.abspath(
             f"{self.cc['paths']['output']}/leakage_coefficients.png"
         )
-        cs_plots.savefig(out_path)
+        cs_plots.savefig(out_path, show=True)
         self.print_done(f"Object-wise leakage coefficients plot saved to {out_path}")
 
     def plot_ellipticity(self, nbins=200):
@@ -1919,7 +1919,7 @@ class CosmologyValidation:
                     axs[idx].set_ylabel("frequency")
                     axs[idx].legend()
                     axs[idx].set_xlim([-1.5, 1.5])
-                cs_plots.savefig(out_path)
+                cs_plots.savefig(out_path, show=True)
                 self.print_done("Ellipticity histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
@@ -2083,7 +2083,7 @@ class CosmologyValidation:
         plt.ylabel(r"$n_{\rm pair}$")
         plt.legend()
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/n_pair.png")
-        cs_plots.savefig(out_path)
+        cs_plots.savefig(out_path, show=True)
         self.print_done(f"n_pair plot saved to {out_path}")
 
         # Plot of xi_+
@@ -2105,7 +2105,7 @@ class CosmologyValidation:
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\xi_+(\theta)$")
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_p.png")
-        cs_plots.savefig(out_path)
+        cs_plots.savefig(out_path, show=True)
         self.print_done(f"xi_plus plot saved to {out_path}")
 
         # Plot of xi_-
@@ -2127,7 +2127,7 @@ class CosmologyValidation:
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\xi_-(\theta)$")
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_m.png")
-        cs_plots.savefig(out_path)
+        cs_plots.savefig(out_path, show=True)
         self.print_done(f"xi_minus plot saved to {out_path}")
 
         # Plot of xi_+(theta) * theta
@@ -2149,7 +2149,7 @@ class CosmologyValidation:
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\theta \xi_+(\theta)$")
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_p_theta.png")
-        cs_plots.savefig(out_path)
+        cs_plots.savefig(out_path, show=True)
         self.print_done(f"xi_plus_theta plot saved to {out_path}")
 
         # Plot of xi_- * theta
@@ -2171,7 +2171,7 @@ class CosmologyValidation:
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\theta \xi_-(\theta)$")
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_m_theta.png")
-        cs_plots.savefig(out_path)
+        cs_plots.savefig(out_path, show=True)
         self.print_done(f"xi_minus_theta plot saved to {out_path}")
 
         # Plot of xi_+ with and without xi_psf_sys
@@ -2213,7 +2213,7 @@ class CosmologyValidation:
             out_path = os.path.abspath(
                 f"{self.cc['paths']['output']}/xi_p_xi_psf_sys_{ver}.png"
             )
-            cs_plots.savefig(out_path)
+            cs_plots.savefig(out_path, show=True)
             self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
 
     def calculate_aperture_mass_dispersion(
@@ -2335,7 +2335,7 @@ class CosmologyValidation:
                 linestyles=linestyles,
                 shift_x=True,
             )
-            cs_plots.savefig(out_path)
+            cs_plots.savefig(out_path, show=True)
             self.print_done(f"linear-scale {mode} plot saved to {out_path}")
 
         for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
@@ -2367,7 +2367,7 @@ class CosmologyValidation:
                 linestyles=linestyles,
                 shift_x=True,
             )
-            cs_plots.savefig(out_path)
+            cs_plots.savefig(out_path, show=True)
             self.print_done(f"log-scale {mode} plot saved to {out_path}")
 
     def calculate_pure_eb(
