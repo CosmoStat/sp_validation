@@ -683,7 +683,7 @@ SP_v1.4.5:
    pipeline: SP
    subdir: CFIS/v1.0/ShapePipe/
    ls: dashed
-   colour: blue
+   colour: dodgerblue
    marker: d
    getdist_colour: 0.0, 0.5, 1.0
    cov_th:
@@ -726,7 +726,7 @@ SP_v1.4.5_glass_mock:
    pipeline: SP
    subdir: CFIS/v1.0/ShapePipe
    ls: dashed
-   colour: blue
+   colour: crimson
    marker: d
    getdist_colour: 0.0, 0.5, 1.0
    cov_th:
@@ -812,7 +812,7 @@ SP_v1.4.5_leak_corr:
    pipeline: SP
    subdir: CFIS/v1.0/ShapePipe/
    ls: dashed
-   colour: midnightblue
+   colour: teal
    marker: d
    getdist_colour: 0.0, 0.5, 1.0
    cov_th:
