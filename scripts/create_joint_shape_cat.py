@@ -546,6 +546,7 @@ def main(argv=None):
         R_select=R_select,
         c=c,
         c_err=c_err,
+        w_type="des",
         add_cols=add_col_data,
         add_cols_format=add_col_format, 
     )

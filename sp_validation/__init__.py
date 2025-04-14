@@ -50,7 +50,6 @@ __all__ = [
     'plots',
     'run_joint_cat',
     'survey',
-    'util',
 ]
 
 from . import *

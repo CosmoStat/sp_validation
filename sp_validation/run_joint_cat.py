@@ -11,14 +11,13 @@ import os
 
 import numpy as np
 from scipy import stats
+import yaml
 
 import datetime
 from tqdm import tqdm
 
 from optparse import OptionParser
 from importlib.metadata import version
-
-import tracemalloc
 
 import h5py
 import healsparse as hsp
@@ -61,8 +60,24 @@ class BaseCat(object):
 
         # Save calling command
         logging.log_command(args)
+        
+    def read_config_set_params(self, fpath):
+        
+        # Load YAML configuration file.
+        with open("config_mask.yaml", "r") as f:
+            config = yaml.safe_load(f)
+    
+        # Read general parameters from configuration and remove
+        if "params" in config:
+            params = config.pop("params")
 
-    def read_cat(self, load_into_memory=False, mode="r"):
+            # Copy parameters to object
+            for key in params:
+                self._params[key] = params[key]
+                
+        return config
+
+    def read_cat(self, load_into_memory=False, mode="r", hdu=1):
         """Read Cat.
 
         Read input catalogue, either FITS or HDF5.
@@ -74,6 +89,8 @@ class BaseCat(object):
             default is ``False``
         mode: bool, optional
             HDF5 read mode, default is "r"
+        hdu: int, optional
+            HDU number (for FITS file); default is 1
 
         Returns
         -------
@@ -186,8 +203,6 @@ class JointCat(BaseCat):
     def __init__(self):
         # Set default parameters
         self.params_default()
-
-        tracemalloc.start()
 
     def set_params_from_command_line(self, args):
         """Set Params From Command Line.
@@ -414,12 +429,6 @@ class JointCat(BaseCat):
             combined structure data, (n_col x n_obj) array
 
         """
-        if self._params["verbose"]:
-            print(
-                f"Allocating <= {n_col * n_obj * 8 / 1024**3:.1f}"
-                + f" Gb memory for the ({n_col} x {n_obj}) input data array ...",
-                end="",
-            )
 
         # Create dtypes from input column names and types.
         # Reduce memory if flag set.
@@ -437,6 +446,15 @@ class JointCat(BaseCat):
                     )
         dtype_tmp_list.append(("patch", np.int8))
         dtype_tmp_struct = np.dtype(dtype_tmp_list)
+
+        if self._params["verbose"]:
+            memory = n_obj * dtype_tmp_struct.itemsize
+            print(
+                f"Allocating <= {memory / 1024**3:.1f}"
+                + f" Gb memory for the ({n_col} x {n_obj}) input data array ...",
+                end="",
+            )
+
         dat_all = np.empty((n_obj,), dtype=dtype_tmp_struct)
 
         if self._params["verbose"]:
@@ -444,7 +462,7 @@ class JointCat(BaseCat):
 
         return dat_all
 
-    def write_hdf5_file(self, dat_all, patches):
+    def write_hdf5_file(self, dat, patches):
         """Write HDF5 File.
 
         Write data to HDF5 file.
@@ -470,7 +488,7 @@ class JointCat(BaseCat):
             dset = f.create_dataset("data", data=dat)
             dset[:] = dat
 
-        # super().write_hdf5_file(dat_all, output_path=output_path)
+        # super().write_hdf5_file(dat, output_path=output_path)
 
     def write_hdf5_header(self, hd5file, patches=None):
         """Write HDF5 Header.
@@ -508,9 +526,6 @@ class JointCat(BaseCat):
             f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
         )
 
-        current, peak = tracemalloc.get_traced_memory()
-        print(f"1 Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-
         # Get input FITS files
         hdu_lists, n_obj_list, n_obj = self.get_n_obj(
             patches,
@@ -521,9 +536,6 @@ class JointCat(BaseCat):
         # Read data
         start = end = 0
         for idx, patch in enumerate(patches):
-
-            current, peak = tracemalloc.get_traced_memory()
-            print(f"P{patch} Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
 
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
@@ -575,13 +587,7 @@ class JointCat(BaseCat):
                 )
             start = end
 
-        current, peak = tracemalloc.get_traced_memory()
-        print(f"3 Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-
         del dat
-
-        current, peak = tracemalloc.get_traced_memory()
-        print(f"3 Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
 
         self.write_hdf5_file(dat_all, patches)
 
@@ -600,6 +606,21 @@ class JointCat(BaseCat):
 
 class ApplyHspMasks(BaseCat):
     """Apply Hsp Masks."""
+
+    # Labels of bit-coded structural masks
+    _labels_struct = {
+        1: "Faint_star_halos",
+        2: "Bright_star_halos",
+        4: "Stars",
+        8: "Manual",
+        16: "u",
+        32: "g",
+        64: "r",
+        128: "i",
+        256: "z",
+        512: "Tile_RA_DEC_cut",
+        1024: "Maximask",
+    }
 
     def __init__(self):
         # Set default parameters
@@ -622,22 +643,7 @@ class ApplyHspMasks(BaseCat):
             label
 
         """
-        # Labels of bit-coded structural masks
-        labels_struct = {
-            1: "Faint_star_halos",
-            2: "Bright_star_halos",
-            4: "Stars",
-            8: "Manual",
-            16: "u",
-            32: "g",
-            64: "r",
-            128: "i",
-            256: "z",
-            512: "Tile_RA_DEC_cut",
-            1024: "Maximask",
-        }
-
-        return labels_struct[bit]
+        return cls._labels_struct[bit]
 
     @classmethod
     def get_mask_col_name(cls, bit):
@@ -738,25 +744,9 @@ class ApplyHspMasks(BaseCat):
             )
         else:
             self._params["aux_mask_file_list"] = []
-
-    def read_hsp_mask(self, path):
-        """Read Hsp Mask.
-
-        Parameters
-        ----------
-        path : str
-            Path to the mask file.
-
-        Returns
-        -------
-        np.ndarray
-            Mask
-        """
-
-        if self._params["verbose"]:
-            print(f"Reading healsparse mask file {path}...")
-
-        return hsp.HealSparseMap.read(path)
+            
+        if "verbose" not in self._params:
+            self._params["verbose"] = False
 
     def reverse_bit_list(self):
         """Reverse Bit List.
@@ -802,6 +792,51 @@ class ApplyHspMasks(BaseCat):
                 + f"nside{self._params['nside']}_n{bit}.hsp"
             )
         return paths
+    
+    def get_mask(self, path):
+        """Get Mask.
+        
+        Read from file and return healsparse mask.
+        
+        Parameters
+        ----------
+        path: str
+            input path
+        
+        Returns
+        -------
+        hsp.HealSparseMap
+            mask
+    
+        """
+        if self._params["verbose"]:
+            print(f"Reading mask file {path}...")
+        return hsp.HealSparseMap.read(path)
+
+    def apply_mask(self, ra, dec, hsp_mask, label):
+        """Apply Mask.
+
+        Apply mask to input coordinates.
+
+        Parameters
+        ----------
+        hsp_mask : hsp.HealSparseMap
+            input mask
+        ra : numpy.ndarray
+            input right ascension
+        dec : numpy.ndarray
+            input declination
+
+        Returns
+        -------
+        numpy.ndarray
+            mask values
+
+        """
+        if self._params["verbose"]:
+            print(f"Applying mask {label}...")
+
+        return hsp_mask.get_values_pos(ra, dec, lonlat=True)
 
     def get_masks(self, dat=None):
         """Get Masks.
@@ -835,23 +870,16 @@ class ApplyHspMasks(BaseCat):
 
         # Read healsparse files and apply masks to coordinate
         for bit in paths:
-            if self._params["verbose"]:
-                print(f"Reading mask for bit {bit}...")
-            hsp_mask = hsp.HealSparseMap.read(paths[bit])
+            hsp_mask = self.get_mask(paths[bit])
 
             label = self.get_mask_col_name(bit)
-
-            if self._params["verbose"]:
-                print(f"Computing mask bit={bit}...")
-            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = self.apply_mask(ra, dec, hsp_mask, label)
 
         # Read auxiliary mask files"
         for idx, path in enumerate(self._params["aux_mask_file_list"]):
+            hsp_mask = self.get_mask(path)
             label = self._params["aux_mask_label_list"][idx]
-            if self._params["verbose"]:
-                print(f"Reading aux mask for label {label}...")
-            hsp_mask = hsp.HealSparseMap.read(path)
-            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = self.apply_mask(ra, dec, hsp_mask, label)
 
         return masks
 
@@ -1035,11 +1063,29 @@ class CalibrateCat(BaseCat):
         except:
             print(f"Error while reading file {fpath}")
             raise
+   
+        if verbose:
+            print(
+                f"Found {len(dat)} (~{util.millify(len(dat))}) objects"
+                + " in catalogue"
+            )
+
         if load_into_memory:
             return dat[()], dat_ext[()]
         else:
             return dat, dat_ext
+        
+    def add_params_to_FITS_header(self, header):
 
+        header_new = fits.Header()
+
+        keys = ["input_path"]
+        descriptions = ["input comprehensive catalogue"]
+        for key, descr in zip(keys, descriptions):
+            header_new[key] = (key, descr)
+        
+        header.update(header_new)
+        
     def run(self):
         """Run.
 
@@ -1047,6 +1093,64 @@ class CalibrateCat(BaseCat):
 
         """
 
+def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
+        """Sky Plots.
+        
+        Plot sky regions with different masks.
+        
+        """
+        ra = dat["RA"][:]
+        dec = dat["Dec"][:]
+        
+        zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
+        zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
+        zoom = zoom_ra & zoom_dec
+
+        # No mask        
+        plot_area_mask(ra, dec, zoom)
+        
+        # SExtractor and SP flags
+        m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
+        plot_area_mask(ra, dec, zoom, mask=m_flags)
+        
+        # Overlap regions
+        m_over = masks[labels["overlap"]]._mask & m_flags
+        plot_area_mask(ra, dec, zoom, mask=m_over)
+        
+        # Coverage mask
+        m_point = masks[labels["npoint3"]]._mask & m_over
+        plot_area_mask(ra, dec, zoom, mask=m_point)
+
+        # Maximask
+        m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
+        plot_area_mask(ra, dec, zoom, mask=m_maxi)
+        
+        m_comb = mask_combined._mask
+        plot_area_mask(ra, dec, zoom, mask=m_comb)
+        
+        m_man = m_maxi & masks[labels["8_Manual"]]._mask
+        plot_area_mask(ra, dec, zoom, mask=m_man)
+        
+        m_halos = (
+            m_maxi
+            & masks[labels['1_Faint_star_halos']]._mask
+            & masks[labels['2_Bright_star_halos']]._mask
+        )
+        plot_area_mask(ra, dec, zoom, mask=m_halos)
+        
+
+
+def plot_area_mask(ra, dec, zoom, mask=None):
+
+    if mask is None:
+        mask == np.ones_like(ra)
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30,15))
+    axes[0].hexbin(ra[mask], dec[mask], gridsize=100)
+    axes[1].hexbin(ra[mask & zoom], dec[mask & zoom], gridsize=200)
+    for idx in (0, 1):
+        axes[idx].set_xlabel("R.A. [deg]")
+        axes[idx].set_ylabel("Dec [deg]")
 
 def confusion_matrix(mask, confidence_level=0.9):
 
@@ -1081,6 +1185,141 @@ def correlation_matrix(mask):
 
     return r
 
+class Mask():
+    """Mask.
+    
+    Class to handle masking of catalogues.
+    
+    Parameters
+    ----------
+    col_name : str
+        column name
+    label : str
+        label
+    kind : str
+        operation type, allowed are "equal", "not_equal, ""greater_equal",
+        "smaller_equal", "range"
+    value : float or list
+        value(s) to be used in mask operation
+    dat : numpy.ndarray, optional
+        input data, default is `None`; apply mask if given
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
+
+    """
+
+    def __init__(self, col_name, label, kind="equal", value=0, dat=None, verbose=False):
+        
+        self._col_name = col_name
+        self._label = label
+        self._value = value
+        self._kind = kind
+        self._num_ok = None
+        self._verbose = verbose
+
+        if self._verbose:
+            print("Initialising mask:", self)
+
+        if dat is not None:
+            self.apply(dat)
+            
+    def __repr__(self):
+        
+        return (
+            f"Mask(col_name={self._col_name}, label={self._label}, kind={self._kind},"
+            + f" value={self._value})"
+        )
+         
+    @classmethod    
+    def from_list(cls, masks, label="combined"):
+        my_mask = cls(label, label, kind="combined", value=None)
+
+        my_mask._mask = np.logical_and.reduce([m._mask for m in masks])
+
+        return my_mask
+
+    def apply(self, dat):
+        if self._kind == "equal":
+            self._mask = dat[self._col_name] == self._value
+        elif self._kind == "not_equal":
+            self._mask = dat[self._col_name] != self._value
+        elif self._kind == "greater_equal":
+            self._mask = dat[self._col_name] >= self._value
+        elif self._kind == "smaller_equal":
+            self._mask = dat[self._col_name] <= self._value
+        elif self._kind == "range":
+            self._mask = (dat[self._col_name] >= self._value[0]) & (dat[self._col_name] <= self._value[1])
+        else:
+            raise ValueError(f"Invalid kind {self._kind}")
+
+    def to_bool(self, hsp_mask):
+
+        if self._verbose:
+            print("to_bool: get valid pixels")
+        valid_pixels = hsp_mask.valid_pixels
+
+        # Abuse of col_name
+        self._col_name = valid_pixels
+
+        if self._verbose:
+            print("to_bool: apply mask")
+        self.apply(hsp_mask)
+        mask_bool = hsp.HealSparseMap.make_empty(
+            hsp_mask.nside_coverage,
+            hsp_mask.nside_sparse,
+            dtype="bool",
+        )
+        mask_bool[valid_pixels] = self._mask
+        return mask_bool
+ 
+    @classmethod
+    def print_strings(cls, coln, lab, num, fnum):
+        print(f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}")
+        
+    def print_stats(self, num_obj):
+        if self._num_ok is None:
+            self._num_ok = sum(self._mask)
+
+        si = f"{self._num_ok:10d}"
+        sf = f"{self._num_ok/num_obj:10.2%}"
+        self.print_strings(self._col_name, self._label, si, sf)
+    
+    def get_sign(self):
+        
+        sign = None
+        if self._kind =="equal":
+            sign = "="
+        elif self._kind =="not_equal":
+            sign = "!="
+        elif self._kind =="greater_equal":
+            sign = ">="
+        elif self._kind =="smaller_equal":
+            sign = "<="
+        return sign
+        
+    def print_summary(self, f_out):
+        print(f"[{self._label}]\t\t\t", file=f_out, end="")
+        
+        sign = self.get_sign()
+
+        if sign is not None:
+            print(f"{self._col_name} {sign} {self._value}", file=f_out)
+            
+        if self._kind == "range":
+            print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)
+            
+    def add_summary_to_FITS_header(self, header):
+
+        header_new = fits.Header()
+
+        sign = self.get_sign()
+        if sign is not None:
+            expr = f"{sign}{self._value}"
+        if self._kind == "range":
+            expr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+        header_new[self._col_name] = (expr, self._label)
+        
+        header.update(header_new)
 
 class ReadCat:
 
