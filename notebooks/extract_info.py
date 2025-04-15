@@ -13,8 +13,17 @@
 # ---
 
 # # Extract information
-# from shapepipe output final weak-lensing galaxy shape catalogue
-# for postprocessing (merging, object selection, cuts, calibration).
+#
+#
+# from:
+#
+# shapepipe output final weak-lensing galaxy shape catalogue
+#
+# for:
+#
+# postprocessing (merging, object selection, cuts, calibration).
+#
+# This was formerly the series of notebooks / validation.py.
 
 # %reload_ext autoreload
 # %autoreload 2
@@ -847,3 +856,164 @@ print_stats('Dispersion of complex ellipticity = {:.3f}' \
             ''.format(sig_eps), stats_file, verbose=verbose)
 print_stats('Dispersion of (average) single-component ellipticity = {:.3f} = {:.3f} / sqrt(2)' \
             ''.format(sig_eps /  np.sqrt(2), sig_eps), stats_file, verbose=verbose)
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.15.1
+#   kernelspec:
+#     display_name: sp_validation
+#     language: python
+#     name: sp_validation
+# ---
+
+# ## Write catalogues
+
+# > **_NOTE:_** Before running this notebook, set kernel to `main_set.ipynb'
+
+import os
+
+from sp_validation.util import *
+from sp_validation.cat import *
+from sp_validation.basic import metacal
+
+# Shear response per galaxy
+R_shear_ind = gal_metacal.R_shear
+
+# ### Write basic shape catalogue
+
+write_shape_catalog(
+    f'{output_shape_cat_base}_{shape}.fits',
+    ra,
+    dec,
+    w,
+    mag=mag,
+    g=g_corr_mc,
+    g1_uncal=g_uncorr[0],
+    g2_uncal=g_uncorr[1],
+    R=gal_metacal.R,
+    R_shear=R_shear,
+    R_select=gal_metacal.R_selection,
+    c=c,
+    c_err=c_er,
+    alpha_leakage=alpha_leak_mean,
+    add_cols=add_cols_data,
+)
+
+# ### Write extended shape catalogue
+
+ext_cols = {}
+if add_cols:
+    ext_cols = add_cols_data[
+else:
+    ext_cols = {}
+
+# Optional: Create flag from external mask
+if mask_external_path:
+    m_extern = mask_overlap(ra, dec[sh], tile_ID, mask_external_path)
+
+# +
+# Additional columns:
+# {e1, e2, size}_PSF
+ext_cols[sh]['e1_PSF'] = dd[key_PSF_ell[sh]][:,0][m_gal[sh]][mask[sh]]
+ext_cols[sh]['e2_PSF'] = dd[key_PSF_ell[sh]][:,1][m_gal[sh]][mask[sh]]
+ext_cols[sh]['fwhm_PSF'] = size_to_fwhm[sh](dd[key_PSF_size[sh]][m_gal[sh]][mask[sh]])
+if mask_external_path:
+    ext_cols[sh]['mask_extern'] = m_extern
+
+# Extended catalogue with SNR, individual R matrices, ext_cols
+write_shape_catalog(
+    f'{output_shape_cat_base}_extended_{shape}.fits',
+    ra,
+    dec,
+    w,
+    mag=mag,
+    snr=snr,
+    g=g_corr_mc,
+    g1_uncal=g_uncorr[0],
+    g2_uncal=g_uncorr[1],
+    R_g11=R_shear_ind[0, 0],
+    R_g12=R_shear_ind[0, 1],
+    R_g21=R_shear_ind[1, 0],
+    R_g22=R_shear_ind[1, 1],       
+    R=gal_metacal.R,
+    R_shear=R_shear,
+    R_select=gal_metacal.R_selection,
+    c=c,
+    c_err=c_err,
+    alpha_leakage=alpha_leak_mean,
+    add_cols=ext_cols,
+ )
+# -
+
+# ### Write comprehensive shape catalogue (all objects, no cuts)
+
+# +
+# Add additional columns without cuts nor mask applied
+
+for sh in shapes:
+    ext_cols_pre_cal = {}
+
+# Standard additional columns
+if add_cols:
+    for key in add_cols:
+        ext_cols_pre_cal[key] = dd[key]
+
+# Pre-calibration columns
+if add_cols_pre_cal:
+    for key in add_cols_pre_cal:
+        ext_cols_pre_cal[key] = dd[key]
+
+# Flag to cut duplicate objects in overlapping region with neighbouring tiles
+ext_cols_pre_cal["overlap"] = cut_overlap
+add_cols_pre_cal_format["overlap"] = "I"
+
+# Additional columns {e1, e2, size}_PSF
+ext_cols_pre_cal['e1_PSF'] = dd[key_PSF_ell[:,0]
+ext_cols_pre_cal['e2_PSF'] = dd[key_PSF_ell[:,1]
+ext_cols_pre_cal['fwhm_PSF'] = size_to_fwhm(dd[key_PSF_size[sh]])
+
+_, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None, col_2d=True)
+
+mag = get_col(dd, "MAG_AUTO", None, None)
+snr = get_snr(shape, dd, None, None)
+g1_uncal = dd["NGMIX_ELL_NOSHEAR"][:, 0]
+g2_uncal = dd["NGMIX_ELL_NOSHEAR"][:, 1]
+    
+# Comprehensive catalogue without cuts nor mask applied
+write_shape_catalog(
+    f'{output_shape_cat_base}_comprehensive_{shape}.fits',
+    ra["all"],
+    dec["all"],
+    iv_w,
+    mag=mag,
+    snr=snr,
+    g1_uncal=g1_uncal,
+    g2_uncal=g2_uncal,
+    add_cols=ext_cols_pre_cal,
+    add_cols_format=add_cols_pre_cal_format,
+ )
+# -
+
+# ### Write galaxy (or random) position catalogue
+
+if shapes == "":
+    print('writing random cat (hack)')
+        
+    ra = dd['RA'][cut_overlap]
+    dec = dd['DEC'][cut_overlap]
+    tile_id = dd['TILE_ID'][cut_overlap]
+    write_galaxy_cat(f'{output_shape_cat_base}.fits', ra, dec, tile_id)
+
+# ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
+
+write_PSF_cat(                                         
+    f'{output_PSF_cat_base}_{shape}.fits',
+    ra_star,
+    dec_star,
+    g_star_psf[0],
+    g_star_psf[1],
+) 
