@@ -1374,6 +1374,7 @@ class CosmologyValidation:
         )
 
     def set_params_rho_tau(self, params, params_psf, survey="other"):
+        params = {**params}
         if survey in ("DES", "SP_axel_v0.0", "SP_axel_v0.0_repr"):
             params["patch_number"] = 120
             print("DES, jackknife patch number = 120")
