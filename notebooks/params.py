@@ -91,9 +91,6 @@ path_missing_ID = f'{output_dir}/missing_ID.txt'
 
 ### Plot directory and subdirs
 plot_dir = f'{output_dir}/plots/'
-plot_subdirs = []
-plot_subdirs.append(f'psf_leak_{shape}')
-plot_subdirs.append(f'local_cal_{shape}')
 
 ### Statistics text file
 stats_file_name = 'stats_file.txt'
@@ -115,12 +112,13 @@ mmap_mode = None
 add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER", "NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"]
 
 ## Pre-calibration catalogue, including masked objects and mask flags
-add_cols_pre_cal = ["NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH", "NGMIX_ELL_PSFo_NOSHEAR", "NGMIX_ELL_ERR_NOSHEAR"]
+add_cols_pre_cal = ["TILE_ID", "NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH", "NGMIX_ELL_PSFo_NOSHEAR", "NGMIX_ELL_ERR_NOSHEAR"]
 
 ### Set flag columns as integer format
 add_cols_pre_cal_format = {}
 for key in ("NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
     add_cols_pre_cal_format[key] = "I"
+add_cols_pre_cal_format["TILE_ID"] = "A7"
 
 # Crete key names for metacal information
 prefix = "NGMIX"
@@ -182,48 +180,5 @@ gal_size_corr_ell = False
 sigma_eps_prior = 0.34
 
 
-# Correlation parameters
-
-## Minimum and maximum angular scales, in arcmin
-theta_min_amin = 1
-theta_max_amin = 350
-
-## Number of bins
-n_theta = 20
-
-
-# Plotting parameters
-
 ## Wrap coordinates around this value [deg], set to != 0 if ra=0 is within coordinate range
 wrap_ra = 0
-
-## PSF leakage y-axis limits
-leakage_alpha_ylim = [-0.1, 0.1]
-leakage_xi_sys_ylim = [-4e-5, 5e-5]
-leakage_xi_sys_log_ylim = [2e-13, 5e-5]
-
-# Maps parameters
-
-## Pixel size of ellipticty maps in arc minutes
-pixel_size_emap_amin = 0.4
-
-## Pixel size of smoothed convergence map, in pixels
-## of size pixel_size_emap_amin
-smoothing_scale_pix = 20
-
-# cutout map around specific coordinates, optional                              
-map_cut_coords = [112, 154, 41, 31]
-
-## Sign of shear components, to correct for left-handed
-## coordinate system
-g1_sign = +1
-g2_sign = -1
-
-# Cosmology
-
-## Basic cosmological parameters
-Om = 0.3153
-sig8 = 0.8111
-ns = 0.9649
-Ob = 0.0493
-h = 0.6736

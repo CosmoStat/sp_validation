@@ -44,11 +44,12 @@ from sp_validation.calibration import *
 # ## 1. Set-up
 
 # Load parameters
+sys.path.insert(0, os.getcwd())
 from params import *
 
 # ### Create and open output files and directories
 
-make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=verbose)
+make_out_dirs(output_dir, plot_dir, [], verbose=verbose)
 stats_file = open_stats_file(plot_dir, stats_file_name)
 
 # ## 2. Load data
@@ -90,8 +91,6 @@ print_mean_ellipticity(
 
 # #### Survey area and potential missing tiles
 # The approximate observed area is the number of tiles $\times$ 0.25 deg$^2$ (ignoring overlaps and masking).
-
-print("NUMBER? ",  "NUMBER" in dd.dtype.names) 
 
 area_deg2, area_amin2, tile_IDs = get_area(dd, area_tile, verbose=verbose)
 
