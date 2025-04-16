@@ -56,7 +56,7 @@ galaxy_cat_path = f'{data_dir}/final_cat_{name}.hdf5'
 print(f'Galaxy catalogue = {galaxy_cat_path}')
 
 ## Parameter list; optional, set to `None` if not required
-param_list_path = f"{data_dir}/final_cat.param"
+param_list_path = f"{data_dir}/cfis/final_cat.param"
 
 ### Star and PSF catalog name; optional, set to `None` if not required
 star_cat_path = f'{data_dir}/full_starcat-0000000.fits'
@@ -115,11 +115,11 @@ mmap_mode = None
 add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER", "NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"]
 
 ## Pre-calibration catalogue, including masked objects and mask flags
-add_cols_pre_cal = ["IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH", "NGMIX_ELL_PSFo_NOSHEAR", "NGMIX_ELL_ERR_NOSHEAR"]
+add_cols_pre_cal = ["NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH", "NGMIX_ELL_PSFo_NOSHEAR", "NGMIX_ELL_ERR_NOSHEAR"]
 
 ### Set flag columns as integer format
 add_cols_pre_cal_format = {}
-for key in ("IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
+for key in ("NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
     add_cols_pre_cal_format[key] = "I"
 
 # Crete key names for metacal information

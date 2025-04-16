@@ -44,7 +44,7 @@ from sp_validation.calibration import *
 # ## 1. Set-up
 
 # Load parameters
-# %run params.py
+from params import *
 
 # ### Create and open output files and directories
 
@@ -90,6 +90,8 @@ print_mean_ellipticity(
 
 # #### Survey area and potential missing tiles
 # The approximate observed area is the number of tiles $\times$ 0.25 deg$^2$ (ignoring overlaps and masking).
+
+print("NUMBER? ",  "NUMBER" in dd.dtype.names) 
 
 area_deg2, area_amin2, tile_IDs = get_area(dd, area_tile, verbose=verbose)
 
