@@ -36,10 +36,10 @@ area_tile = 0.25
 ## Pixel size in arcsec
 pixel_size = 0.187
 
-## Shape measurement method list, implemented are
+## Shape measurement method, implemented is
 ##  'ngix': multi-epoch model fitting
 ##  'galsim': stacked-image moments (experimental)
-shapes = ['ngmix']
+shape = 'ngmix'
 
 # Paths
 
@@ -92,9 +92,8 @@ path_missing_ID = f'{output_dir}/missing_ID.txt'
 ### Plot directory and subdirs
 plot_dir = f'{output_dir}/plots/'
 plot_subdirs = []
-for sh in shapes:
-    plot_subdirs.append(f'psf_leak_{sh}')
-    plot_subdirs.append(f'local_cal_{sh}')
+plot_subdirs.append(f'psf_leak_{shape}')
+plot_subdirs.append(f'local_cal_{shape}')
 
 ### Statistics text file
 stats_file_name = 'stats_file.txt'

@@ -71,8 +71,9 @@ print_stats(f'Read {n_obj} objects from file {galaxy_cat_path}', stats_file, ver
 # #### Print some quantities to check nothing obvious is wrong with catalogue
 
 # PSF keys
-key_PSF_ell = 'NGMIX_ELL_PSFo_NOSHEAR'
-key_PSF_size = 'NGMIX_T_PSFo_NOSHEAR'
+key_base = shape.upper()
+key_PSF_ell = f'{key_base}_ELL_PSFo_NOSHEAR'
+key_PSF_size = f'{key_base}_T_PSFo_NOSHEAR'
 size_to_fwhm = T_to_fwhm
 
 print_stats('Galaxies:', stats_file, verbose=verbose)
@@ -192,7 +193,7 @@ check_invalid(
 cut_overlap = classification_galaxy_overlap_ra_dec(
     dd,
     ra_key=col_name_ra,
-    dec_key=col_name_dec
+    dec_key=col_name_dec,
 )
 
 n_ok = sum(cut_overlap)
@@ -207,19 +208,22 @@ cut_common = classification_galaxy_base(
     n_epoch_min=n_epoch_min,
     do_spread_model=do_spread_model,
 )
-m_gal = classification_galaxy_base(
-    dd,
-    cut_common,
-    stats_file,
-    verbose=verbose,
-)
+if shape == "ngmix":
+    m_gal = classification_galaxy_ngmix(
+        dd,
+        cut_common,
+        stats_file,
+        verbose=verbose,
+    )
+else:
+    raise ValueError(f"Invalid shape measurement method {shape}")
 
 n_ok = sum(cut_common)
-print_stats(f": objects after common cut: {n_ok:10d}, {n_ok/n_obj:10.2%}", stats_file, verbose=verbose)
+print_stats(f"objects after common cut: {n_ok:10d}, {n_ok/n_obj:3.2%}", stats_file, verbose=verbose)
 
 # MKDEBUG for debugging calibrate_comprehensive
 n_ok = sum(m_gal)
-print_stats(f"common & ngmix = galaxy selection: {n_ok:10d}, {n_ok/n_obj:10.2%}", stats_file, verbose=verbose)
+print_stats(f"common & ngmix = galaxy selection: {n_ok:10d}, {n_ok/n_obj:3.2%}", stats_file, verbose=verbose)
 # -
 
 # ### Metacal global
@@ -248,7 +252,7 @@ from sp_validation import cat as spv_cat
 gal_metacal = metacal(
     dd,
     m_gal,
-    prefix=sh.upper(),
+    prefix=key_base,
     snr_min=gal_snr_min,
     snr_max=gal_snr_max,
     rel_size_min=gal_rel_size_min,
@@ -304,7 +308,7 @@ ra_mean = np.mean(ra_wrap)
 dec_mean = np.mean(dec)
     
 print_stats(
-    f': Mean coordinates (ra, dec) ='
+    f'Mean coordinates (ra, dec) ='
     + f' ({ra_mean:.3f}, {dec_mean:.3f}) deg,'
     + f' wrap_ra={wrap_ra} deg',
     stats_file,
@@ -326,7 +330,7 @@ snr = spv_cat.get_snr(shape, dd, m_gal, mask)
 if add_cols:
     add_cols_data = {}
     for key in add_cols:
-        add_cols_data[key] = dd[key][m_gal[mask
+        add_cols_data[key] = dd[key][m_gal][mask]
 else:
     add_cols_data = None                               
 
@@ -386,16 +390,16 @@ print_stats(
 # Write number of galaxies for each tile to file
 fname = f'{output_dir}/tile_id_gal_counts_{shape}.txt'
 detection_IDs = dd['TILE_ID']
-galaxy_IDs = detection_IDs[m_gal
-shape_IDs = galaxy_IDs[mask
+galaxy_IDs = detection_IDs[m_gal]
+shape_IDs = galaxy_IDs[mask]
 write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname) 
 
 # +
 # Add all weights (for combining weighted averages of subpatches)
 
-w_tot[sh] = np.sum(w)
+w_tot = np.sum(w)
     
-rint_stats(f'Sum of weights = {w_tot:.1f}', stats_file, verbose=verbose)
+print_stats(f'Sum of weights = {w_tot:.1f}', stats_file, verbose=verbose)
 
 # +
 # Effective sample size ESS = 1/sum(w_n^2)
@@ -403,7 +407,7 @@ rint_stats(f'Sum of weights = {w_tot:.1f}', stats_file, verbose=verbose)
 # Range [1; N]
     
 # normalised weights
-wn = w[sh] / w_tot
+wn = w / w_tot
 s = np.sum(wn**2)
 ess = 1/s
     
@@ -416,6 +420,8 @@ print_stats(f'effective sample size, ESS/N = {ess:.1f}/{n_gal} = {ess/n_gal:.3g}
 x_label = 'R.A. [deg]'
 y_label = 'DEC [deg]'
 cbar_label_base = 'Density [$A_{\\rm pix}^{-1}$]'
+
+len(dec)
 
 # +
 # Galaxies
@@ -444,8 +450,8 @@ plot_spatial_density(
 title = f'Galaxies (all, no overlap)'
 out_path = f'{plot_dir}/galaxy_number_count_all_nooverlap'
 plot_spatial_density(
-    ra_wrap[cut_overlap],
-    dec[cut_overlap],
+    ra_wrap_all[cut_overlap],
+    dec_all[cut_overlap],
     title,
     x_label,
     y_label,
@@ -470,10 +476,10 @@ labels = []
 if shape == 'ngmix':
 # Do not apply `mask_ns`, so use all galaxies
     xs = [
-        dd['NGMIX_FLUX_NOSHEAR'][m_gal[sh]] / dd['NGMIX_FLUX_ERR_NOSHEAR'][m_gal[sh]],
-        dd['SNR_WIN'][m_gal[sh]]
+        dd['NGMIX_FLUX_NOSHEAR'][m_gal] / dd['NGMIX_FLUX_ERR_NOSHEAR'][m_gal],
+        dd['SNR_WIN'][m_gal]
     ]
-    labels.append([f'{sh} $F/\\sigma(F)$'])
+    labels.append([f'$F/\\sigma(F)$'])
 
 else:
     raise ValueError(f"Unknown shape measurement method {shape}")
@@ -513,7 +519,7 @@ labels = []
 if shape == 'ngmix':
     # Do not apply `mask_ns`, so use all galaxies
     xs = [
-        dd['NGMIX_T_NOSHEAR'][m_gal[sh]] / dd['NGMIX_Tpsf_NOSHEAR'][m_gal[sh]]
+        dd['NGMIX_T_NOSHEAR'][m_gal] / dd['NGMIX_Tpsf_NOSHEAR'][m_gal]
     ]
     labels.append(f'size ratio')
 
@@ -554,7 +560,7 @@ star_metacal = metacal(
 # mask for 'no shear' images
 
 mask_ns_stars = star_metacal.mask_dict['ns']
-n_star = len(star_metacal.ns['g1'][mask_ns_stars)
+n_star = len(star_metacal.ns['g1'][mask_ns_stars])
 
 print_stats(f'Number of stars = {n_star}', stats_file, verbose=verbose)
 print_stats('Star density = {:.2f} stars/deg2'.format(n_star / area_deg2), stats_file, verbose=verbose)
@@ -629,12 +635,12 @@ for comp in (0, 1):
 # ### Mean
 
 # +
-rint_stats('total response matrix:', stats_file, verbose=verbose)
+print_stats('total response matrix:', stats_file, verbose=verbose)
 rs = np.array2string(gal_metacal.R)
 print_stats(rs, stats_file, verbose=verbose)
 
 print_stats('shear response matrix:', stats_file, verbose=verbose)
-R_shear[sh] = np.mean(gal_metacal.R_shear, 2)
+R_shear = np.mean(gal_metacal.R_shear, 2)
 rs = np.array2string(R_shear)
 print_stats(rs, stats_file, verbose=verbose)
 
@@ -643,7 +649,7 @@ rs = np.array2string(gal_metacal.R_selection)
 print_stats(rs, stats_file, verbose=verbose)
 
 # +
-print_stats(f'{sh} stars:', stats_file, verbose=verbose)
+print_stats("stars:", stats_file, verbose=verbose)
 
 print_stats('total response matrix:', stats_file, verbose=verbose)
 rs = np.array2string(star_metacal.R)
@@ -746,7 +752,7 @@ linestyles = ['-', '-']
 
 # +
 xs = [g_corr[0], g_corr[1]]
-weights = [w * 2
+weights = [w] * 2
 
 title = f'{shape} galaxies'
 out_name = f'ell_gal_{shape}.pdf'
@@ -767,10 +773,10 @@ plot_histograms(
 )
 
 # +
-xs = [star_metacal.ns['g1'][mask_ns_stars], star_metacal[sh].ns['g2'][mask_ns_stars]]
+xs = [star_metacal.ns['g1'][mask_ns_stars], star_metacal.ns['g2'][mask_ns_stars]]
 weights = [star_metacal.ns['w'][mask_ns_stars]] * 2
 
-title = f'{sh} stars'
+title = "stars"
 out_name = f'ell_stars_{shape}.pdf'
 out_path = os.path.join(plot_dir, out_name)
 
@@ -798,7 +804,7 @@ xs = [
     dd[key][:,0][mask_ns_stars],
     dd[key][:,1][mask_ns_stars]
 ]
-title = f'{shape} PSF'
+title = "PSF"
 out_name = f'ell_PSF_{shape}.pdf'
 out_path = os.path.join(plot_dir, out_name)
 
@@ -856,23 +862,8 @@ print_stats('Dispersion of complex ellipticity = {:.3f}' \
             ''.format(sig_eps), stats_file, verbose=verbose)
 print_stats('Dispersion of (average) single-component ellipticity = {:.3f} = {:.3f} / sqrt(2)' \
             ''.format(sig_eps /  np.sqrt(2), sig_eps), stats_file, verbose=verbose)
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.15.1
-#   kernelspec:
-#     display_name: sp_validation
-#     language: python
-#     name: sp_validation
-# ---
 
 # ## Write catalogues
-
-# > **_NOTE:_** Before running this notebook, set kernel to `main_set.ipynb'
 
 import os
 
@@ -898,8 +889,7 @@ write_shape_catalog(
     R_shear=R_shear,
     R_select=gal_metacal.R_selection,
     c=c,
-    c_err=c_er,
-    alpha_leakage=alpha_leak_mean,
+    c_err=c_err,
     add_cols=add_cols_data,
 )
 
@@ -907,22 +897,22 @@ write_shape_catalog(
 
 ext_cols = {}
 if add_cols:
-    ext_cols = add_cols_data[
+    ext_cols = add_cols_data
 else:
     ext_cols = {}
 
 # Optional: Create flag from external mask
 if mask_external_path:
-    m_extern = mask_overlap(ra, dec[sh], tile_ID, mask_external_path)
+    m_extern = mask_overlap(ra, dec, tile_ID, mask_external_path)
 
 # +
 # Additional columns:
 # {e1, e2, size}_PSF
-ext_cols[sh]['e1_PSF'] = dd[key_PSF_ell[sh]][:,0][m_gal[sh]][mask[sh]]
-ext_cols[sh]['e2_PSF'] = dd[key_PSF_ell[sh]][:,1][m_gal[sh]][mask[sh]]
-ext_cols[sh]['fwhm_PSF'] = size_to_fwhm[sh](dd[key_PSF_size[sh]][m_gal[sh]][mask[sh]])
+ext_cols['e1_PSF'] = dd[key_PSF_ell][:,0][m_gal][mask]
+ext_cols['e2_PSF'] = dd[key_PSF_ell][:,1][m_gal][mask]
+ext_cols['fwhm_PSF'] = size_to_fwhm(dd[key_PSF_size][m_gal][mask])
 if mask_external_path:
-    ext_cols[sh]['mask_extern'] = m_extern
+    ext_cols['mask_extern'] = m_extern
 
 # Extended catalogue with SNR, individual R matrices, ext_cols
 write_shape_catalog(
@@ -944,7 +934,6 @@ write_shape_catalog(
     R_select=gal_metacal.R_selection,
     c=c,
     c_err=c_err,
-    alpha_leakage=alpha_leak_mean,
     add_cols=ext_cols,
  )
 # -
@@ -954,8 +943,7 @@ write_shape_catalog(
 # +
 # Add additional columns without cuts nor mask applied
 
-for sh in shapes:
-    ext_cols_pre_cal = {}
+ext_cols_pre_cal = {}
 
 # Standard additional columns
 if add_cols:
@@ -972,22 +960,22 @@ ext_cols_pre_cal["overlap"] = cut_overlap
 add_cols_pre_cal_format["overlap"] = "I"
 
 # Additional columns {e1, e2, size}_PSF
-ext_cols_pre_cal['e1_PSF'] = dd[key_PSF_ell[:,0]
-ext_cols_pre_cal['e2_PSF'] = dd[key_PSF_ell[:,1]
-ext_cols_pre_cal['fwhm_PSF'] = size_to_fwhm(dd[key_PSF_size[sh]])
+ext_cols_pre_cal['e1_PSF'] = dd[key_PSF_ell][:,0]
+ext_cols_pre_cal['e2_PSF'] = dd[key_PSF_ell][:,1]
+ext_cols_pre_cal['fwhm_PSF'] = size_to_fwhm(dd[key_PSF_size])
 
 _, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None, col_2d=True)
 
 mag = get_col(dd, "MAG_AUTO", None, None)
 snr = get_snr(shape, dd, None, None)
-g1_uncal = dd["NGMIX_ELL_NOSHEAR"][:, 0]
-g2_uncal = dd["NGMIX_ELL_NOSHEAR"][:, 1]
+g1_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 0]
+g2_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 1]
     
 # Comprehensive catalogue without cuts nor mask applied
 write_shape_catalog(
     f'{output_shape_cat_base}_comprehensive_{shape}.fits',
-    ra["all"],
-    dec["all"],
+    ra_all,
+    dec_all,
     iv_w,
     mag=mag,
     snr=snr,
@@ -1000,7 +988,7 @@ write_shape_catalog(
 
 # ### Write galaxy (or random) position catalogue
 
-if shapes == "":
+if shape == "":
     print('writing random cat (hack)')
         
     ra = dd['RA'][cut_overlap]
