@@ -1710,7 +1710,6 @@ class CosmologyValidation:
             ylabel = r"$\xi^{\rm sys}_+(\theta)$"
             title = "Cross-correlation leakage"
             out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_sys_p.png")
-            fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
             cs_plots.plot_data_1d(
                 theta,
                 y,
@@ -1741,7 +1740,6 @@ class CosmologyValidation:
             ylabel = r"$\xi^{\rm sys}_-(\theta)$"
             title = "Cross-correlation leakage"
             out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_sys_m.png")
-            fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
             cs_plots.plot_data_1d(
                 theta,
                 y,
@@ -1894,7 +1892,7 @@ class CosmologyValidation:
                     e2 = (
                         self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
                     )
-                    w = self.results[ver].dat_shear["w"]
+                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
 
                     axs[0].hist(
                         e1,
@@ -1915,13 +1913,13 @@ class CosmologyValidation:
                         color=self.cc[ver]["colour"],
                     )
 
-                for idx in (0, 1):
-                    axs[idx].set_xlabel(f"$e_{idx}$")
-                    axs[idx].set_ylabel("frequency")
-                    axs[idx].legend()
-                    axs[idx].set_xlim([-1.5, 1.5])
-                cs_plots.savefig(out_path, show=True)
-                self.print_done("Ellipticity histograms saved to " + out_path)
+            for idx in (0, 1):
+                axs[idx].set_xlabel(f"$e_{idx}$")
+                axs[idx].set_ylabel("frequency")
+                axs[idx].legend()
+                axs[idx].set_xlim([-1.5, 1.5])
+            cs_plots.savefig(out_path, show=True)
+            self.print_done("Ellipticity histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
@@ -1950,14 +1948,17 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
             R = self.cc[ver]["shear"]["R"]
+            e1_col, e2_col, w_col = [
+                self.cc[ver]["shear"][k] for k in ["e1_col", "e2_col", "w"]
+            ]
             with self.results[ver].temporarily_read_data():
                 self._c1[ver] = np.average(
-                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
-                    weights=self.results[ver].dat_shear["w"],
+                    self.results[ver].dat_shear[e1_col] / R,
+                    weights=self.results[ver].dat_shear[w_col],
                 )
                 self._c2[ver] = np.average(
-                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R,
-                    weights=self.results[ver].dat_shear["w"],
+                    self.results[ver].dat_shear[e2_col] / R,
+                    weights=self.results[ver].dat_shear[w_col],
                 )
         self.print_done("Finished additive bias calculation.")
 
@@ -1990,6 +1991,7 @@ class CosmologyValidation:
                 with self.results[ver].temporarily_read_data():
                     e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
                     e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
                     if ver != "DES":
                         R = self.cc[ver]["shear"]["R"]
                         g1 = (e1 - self.c1[ver]) / R
@@ -2009,7 +2011,7 @@ class CosmologyValidation:
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear["w"],
+                        w=w,
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=self.npatch,
