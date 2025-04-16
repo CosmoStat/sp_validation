@@ -1161,6 +1161,7 @@ class CosmologyValidation:
             "sep_units": "arcmin",
             "nbins": nbins,
             "var_method": var_method,
+            "cross_patch_weight": "match",
         }
 
         with open(catalog_config, "r") as file:
