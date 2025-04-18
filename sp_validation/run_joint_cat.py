@@ -31,6 +31,7 @@ from cs_util import cat
 from cs_util import args as cs_args
 
 from . import util
+from . import calibration
 
 
 class BaseCat(object):
@@ -1175,19 +1176,60 @@ def confusion_matrix(mask, confidence_level=0.9):
     return r_val, r_cl
 
 
-def correlation_matrix(mask):
+def correlation_matrix(masks, confidence_level=0.9):
 
-    n_tot = len(mask)
-    n_key = len
+    n_key = len(masks)
+    print(n_key)
 
     cm = np.empty((n_key, n_key))
-    r = np_like(cm)
+    r_val = np.zeros_like(cm)
+    r_cl = np.empty((n_key, n_key, 2))
 
-    for idx, key1 in enumerate(mask):
-        for jdx, key2 in enumerate(mask):
-            r[idx][jdx] = stats.pearsonr(mask[key1], mask[key2])
+    for idx, mask_idx in enumerate(masks):
+        for jdx, mask_jdx in enumerate(masks):
+            res = stats.pearsonr(mask_idx._mask, mask_jdx._mask)
+            r_val[idx][jdx] = res.statistic
+            r_cl[idx][jdx] = res.confidence_interval(
+                confidence_level=confidence_level
+            )
 
-    return r
+    return r_val, r_cl
+
+
+def confusion_matrix(prediction, observation):
+
+    result = {}
+
+    pred_pos = sum(prediction)
+    result["true_pos"] = sum(prediction & observation)
+    result["true_neg"] = sum(
+        np.logical_not(prediction) & np.logical_not(observation)
+    )
+    result["false_neg"] = sum(prediction & np.logical_not(observation))
+    result["false_pos"] = sum(np.logical_not(prediction) & observation)
+    result["false_pos_rate"] = result["false_pos"] / (
+        result["false_pos"] + result["true_neg"]
+    )
+    result["false_neg_rate"] = result["false_neg"] / (
+        result["false_neg"] + result["true_pos"]
+    )
+    result["sensitivity"] = result["true_pos"] / (
+        result["true_pos"] + result["false_neg"]
+    )
+    result["specificity"] = result["true_neg"] / (
+        result["true_neg"] + result["false_pos"]
+    )
+
+    cm = np.zeros((2, 2))
+    cm[0][0] = result["true_pos"]
+    cm[1][1] = result["true_neg"]
+    cm[0][1] = result["false_neg"]
+    cm[1][0] = result["false_pos"]
+    cmn = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+    result["cmn"] = cmn
+
+    return result
+
 
 class Mask():
     """Mask.
@@ -1235,7 +1277,11 @@ class Mask():
         )
          
     @classmethod    
-    def from_list(cls, masks, label="combined"):
+    def from_list(cls, masks, label="combined", verbose=False):
+
+        if verbose:
+            print(f"Combining {len(masks)} masks")
+        
         my_mask = cls(label, label, kind="combined", value=None)
 
         my_mask._mask = np.logical_and.reduce([m._mask for m in masks])
@@ -1356,6 +1402,140 @@ class ReadCat:
     def run(self):
 
         pass
+    
+    
+def get_masks_from_config(config, masks_to_apply=None):
+    """Get Masks From Config.
+    
+    Return mask information from yaml config structure.
+    
+    Parameters
+    ----------
+    config : dict
+        config information
+    masks_to_apply: list, optional
+        masks to apply exclusively; if `None` (default), use all masks
+    
+    Returns
+    -------
+    list
+        list of masks
+    dict
+        list of indices for given mask column name (label)
+        
+    """
+    # List to store all mask objects
+    masks = []
+
+    # Dict to associate labels with index in mask list
+    labels = {}
+    
+     # Loop over mask sections from config file
+    config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
+    idx = 0
+    for section, mask_list in config_data.items():
+
+        # Set data source
+        dat_source = dat if section == "dat" else dat_ext
+
+        # Loop over mask information in this section
+        for mask_params in mask_list:
+            value = mask_params["value"]
+
+            use_this_mask = False            
+            if masks_to_apply is not None:
+                if mask_params["col_name"] in masks_to_apply:
+                    use_this_mask = True
+            else:
+                    use_this_mask = True
+                    
+            if use_this_mask:
+                # Ensure 'range' kind has exactly two values
+                if mask_params["kind"] == "range" and (
+                    not isinstance(value, list) or len(value) != 2
+                ):
+                    raise ValueError(
+                        f"Range kind requires a list of two values, got {value}"
+                    )
+
+                # Create mask instance and append to list
+                my_mask = sp_joint.Mask(
+                    **mask_params, dat=dat_source, verbose=obj._params["verbose"]
+                )
+                masks.append(my_mask)
+                labels[my_mask._col_name] = idx
+                idx += 1
+            else:
+                if obj._params["verbose"]:
+                    print(f"Skipping mask {mask_params['col_name']}")
+                continue
+            
+    return masks, labels
+
+
+def compute_weights_gatti(
+    cat_gal,
+    g_uncorr,
+    gal_metacal,
+    dat,
+    mask_combined,
+    mask_metacal,
+    num_bins=20,
+):
+    """Compute Weights Gatti.
+    
+    Compute Gatti et al. (2021) DES-like weights.
+    
+    """
+    cat_gal["e1_uncal"] = g_uncorr[0]
+    cat_gal["e2_uncal"] = g_uncorr[1]
+    cat_gal["R_g11"] = gal_metacal.R11
+    cat_gal["R_g12"] = gal_metacal.R12
+    cat_gal["R_g21"] = gal_metacal.R21
+    cat_gal["R_g22"] = gal_metacal.R22
+    cat_gal["NGMIX_T_NOSHEAR"] = cat.get_col(
+        dat, "NGMIX_T_NOSHEAR", mask_combined._mask, mask_metacal
+    )
+    cat_gal["NGMIX_Tpsf_NOSHEAR"] = cat.get_col(
+        dat, "NGMIX_Tpsf_NOSHEAR", mask_combined._mask, mask_metacal
+    )
+    cat_gal["snr"] = cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
+
+    name = "w_des"
+    w_des = calibration.get_w_des(cat_gal, num_bins)
+
+    return w_des
+
+def compute_PSF_leakage():
+    cat_gal,
+    g_corr_mc,
+    dat,
+    mask_combined,
+    mask_metacal,
+    num_bins=20,
+):
+    """Compute PSF Leakage.
+    
+    """
+    cat_gal["e1"] = g_corr_mc[0]
+    cat_gal["e2"] = g_corr_mc[1]
+    cat_gal["e1_PSF"] = cat.get_col(
+        dat, "e1_PSF", mask_combined._mask, mask_metacal
+    )
+    cat_gal["e2_PSF"] = cat.get_col(
+        dat, "e2_PSF", mask_combined._mask, mask_metacal
+    )
+    cat_gal["w_des"] = w_des
+
+    weight_type = "des"
+    try:
+        alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(
+            cat_gal, num_bins, weight_type
+        )
+    except:
+        alpha_1, alpha_2 = -99, -99
+
+    return alpha_1, alpha_2
 
 
 def run_joint_comprehensive_cat(*args):

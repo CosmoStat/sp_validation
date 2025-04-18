@@ -31,8 +31,6 @@ def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
         galaxy metacalibration catalogue
     shape_method : string, optional, default='ngmix'
         shape measurement method, one in 'ngmix', 'galsim'
-    verbose : optional, bool, default=False
-        verbose output if True
 
     Returns
     -------
@@ -61,6 +59,59 @@ def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
     w = gal_metacal.ns['w'][mask]
 
     return g_corr, g_uncorr, w, mask
+
+
+def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
+    """Get Calibrated C.
+
+    Return catalogue quantities for objects calibrated for multiplicative and
+    additive bias.
+
+    Parameters
+    ----------
+    gal_metacal : dict
+        galaxy metacalibration catalogue
+    shape_method : string, optional, default='ngmix'
+        shape measurement method, one in 'ngmix', 'galsim'
+        
+    Returns
+    -------
+    numpy.ndarray :
+        shear estimates calibrated for multiplicative and additive bias;
+        array(2, ngal) of float
+    numpy.ndarray : 
+        uncalibrated shear estimates; array(2, ngal) of float
+    numpy.ndarray :
+        weights; array of float
+    numpy.ndarray : 
+        mask to indicate valid objects in "no-shear" sample; array of bool
+    numpy.ndarray :
+        additive bias for both components;
+    numpy.ndarray :
+        error on the additive bias for both components
+
+    """
+    # Get m-calibrated quantities
+    g_corr, g_uncorr, w, mask_metacal = get_calibrated_quantities(gal_metacal)
+
+    # Additive bias
+    c = np.zeros(2)
+    c_err = np.zeros(2)
+
+    for comp in (0, 1):
+        c[comp] = np.mean(g_uncorr[comp])
+
+        # MKDEBUG TODO: Use std of mean instead, which is consistent with jackknife
+        c_err[comp] = np.std(g_uncorr[comp])
+
+    # Shear estimate corrected for additive bias
+    g_corr_mc = np.zeros_like(g_corr)
+    c_corr = np.linalg.inv(gal_metacal.R).dot(c)
+    for comp in (0, 1):
+        g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
+        
+    return g_corr_mc, g_uncorr, w, nask)metacal, c, c_err
+    
 
 def get_w_des(cat_gal, num_bins):
     """
@@ -140,6 +191,7 @@ def get_w_des(cat_gal, num_bins):
         
     return np.array(df_gal['w_des'])
 
+
 def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     """
     Compute the leakage per object (Li et al. 2024)
@@ -196,11 +248,11 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     ngroups = df_gal_grouped.ngroups
 
     #Performing first round calibration
-    alpha_df = pd.DataFrame(0.,
-                            index = np.arange(ngroups),
-                            columns = ['R', 'SNR',
-                                       'alpha_1', 'alpha_2',
-                                       'alpha_1_err', 'alpha_2_err'])
+    alpha_df = pd.DataFrame(
+        0.,
+        index=np.arange(ngroups),
+        columns=['R', 'SNR','alpha_1', 'alpha_2', 'alpha_1_err', 'alpha_2_err'],
+    )
     
     i_group = 0
     for name, group in df_gal_grouped:
@@ -316,6 +368,7 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
 
     return alpha_1, alpha_2
 
+
 def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
     """
     Calibrates ellipticities from a galaxy catalog with a certain weight type.
@@ -375,6 +428,7 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
         g_cal[comp] -= c_corr[comp]
 
     return g_cal[0], g_cal[1]
+
 
 def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
     """
