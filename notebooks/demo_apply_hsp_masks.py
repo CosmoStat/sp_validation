@@ -52,14 +52,15 @@ print(bits)
 
 # +
 # Set parameters
-obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.4.c.hdf5"
-obj._params["output_path"] = "unions_shapepipe_comprehensive_struc_2024_v1.4.c.hdf5"
-obj._params["mask_dir"] = f"{os.environ['HOME']}/v1.4.x/masks"
+ver_maj = "v1.5"
+obj._params["input_path"] = f"unions_shapepipe_comprehensive_2024_{ver_maj}.c.hdf5"
+obj._params["output_path"] = f"unions_shapepipe_comprehensive_struc_2024_{ver_maj}.c.hdf5"
+obj._params["mask_dir"] = f"{os.environ['HOME']}/{ver_maj}.x/masks"
 obj._params["nside"] = 131072
 obj._params["file_base"] = "mask_r_"
 obj._params["bits"] = bits
 
-obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage.hsp"
+obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_{ver_maj}.x.hsp"
 obj._params["aux_mask_labels"] = "npoint3"
 obj._params["verbose"] = True
 # -
