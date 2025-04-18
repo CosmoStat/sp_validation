@@ -50,7 +50,7 @@ dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 # ### Pre-processing ShapePipe flags
 
-masks, labels = sp_joint.get_masks_from_config(config)
+masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext)
 
 mask_combined = sp_joint.Mask.from_list(
     masks,

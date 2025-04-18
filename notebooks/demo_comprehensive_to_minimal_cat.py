@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
 #     name: python3
 # ---
@@ -41,7 +41,7 @@ config = obj.read_config_set_params("config_mask.yaml")
 # Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
 
-if False:
+if True:
     n_max = 1_000_000
     print(f"MKDEBUG testing only first {n_max} objects")
     dat = dat[:n_max]
@@ -70,51 +70,19 @@ masks_not_to_include = [
 
 # ### Pre-processing ShapePipe flags
 
-# +
-# List to store all mask objects
-masks = []
+masks, labels = sp_joint.get_masks_from_config(
+    config,
+    dat,
+    dat_ext,
+    masks_to_apply=masks_to_apply,
+    verbose=obj._params["verbose"],
+)
 
-# Dict to associate labels with index in mask list
-labels = {}
-# -
-
-# Loop over mask sections from config file
-config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
-idx = 0
-for section, mask_list in config_data.items():
-
-    # Set data source
-    dat_source = dat if section == "dat" else dat_ext
-
-    # Loop over mask information in this section
-    for mask_params in mask_list:
-        value = mask_params["value"]
-        
-        if mask_params["col_name"] in masks_to_apply:
-
-            # Ensure 'range' kind has exactly two values
-            if mask_params["kind"] == "range" and (
-                not isinstance(value, list) or len(value) != 2
-            ):
-                raise ValueError(
-                    f"Range kind requires a list of two values, got {value}"
-                )
-
-            # Create mask instance and append to list
-            my_mask = sp_joint.Mask(
-                **mask_params, dat=dat_source, verbose=obj._params["verbose"]
-            )
-            masks.append(my_mask)
-            labels[my_mask._col_name] = idx
-            idx += 1
-        else:
-            if obj._params["verbose"]:
-                print(f"Skipping mask {mask_params['col_name']}")
-            continue
-
-if obj._params["verbose"]:
-    print(f"Combining {len(masks)} masks (check: {len(masks_to_apply)})")
-mask_combined = sp_joint.Mask.from_list(masks, label="combined")
+mask_combined = sp_joint.Mask.from_list(
+    masks,
+    label="combined",
+    verbose=obj._params["verbose"],
+)
 
 if obj._params["sky_regions"]:
 

@@ -1404,7 +1404,7 @@ class ReadCat:
         pass
     
     
-def get_masks_from_config(config, masks_to_apply=None):
+def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=False):
     """Get Masks From Config.
     
     Return mask information from yaml config structure.
@@ -1413,9 +1413,15 @@ def get_masks_from_config(config, masks_to_apply=None):
     ----------
     config : dict
         config information
+    dat : numpy.ndarray
+        input data
+    det_ext : numpy.ndarray
+        input extended data
     masks_to_apply: list, optional
         masks to apply exclusively; if `None` (default), use all masks
-    
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
+        
     Returns
     -------
     list
@@ -1459,14 +1465,12 @@ def get_masks_from_config(config, masks_to_apply=None):
                     )
 
                 # Create mask instance and append to list
-                my_mask = sp_joint.Mask(
-                    **mask_params, dat=dat_source, verbose=obj._params["verbose"]
-                )
+                my_mask = Mask(**mask_params, dat=dat_source, verbose=verbose)
                 masks.append(my_mask)
                 labels[my_mask._col_name] = idx
                 idx += 1
             else:
-                if obj._params["verbose"]:
+                if verbose:
                     print(f"Skipping mask {mask_params['col_name']}")
                 continue
             
@@ -1506,7 +1510,7 @@ def compute_weights_gatti(
 
     return w_des
 
-def compute_PSF_leakage():
+def compute_PSF_leakage(
     cat_gal,
     g_corr_mc,
     dat,

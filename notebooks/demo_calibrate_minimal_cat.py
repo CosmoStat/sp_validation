@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
 #     name: python3
 # ---
@@ -26,7 +26,6 @@ import matplotlib.pylab as plt
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
 from sp_validation.basic import metacal
-from sp_validation import calibration
 import sp_validation.cat as cat
 
 # Initialize calibration class instance
@@ -47,11 +46,22 @@ if True:
     print(f"MKDEBUG testing only first {n_max} objects")
     dat = dat[:n_max]
 
+
 # ## Masking
 
-# ### Pre-processing ShapePipe flags
+masks_to_apply = [
+    "FLAGS",
+    "4_Stars",
+    "64_r",
+    "1024_Maximask",
+    "N_EPOCH",
+    "mag",
+    "NGMIX_MOM_FAIL",
+    "NGMIX_ELL_PSFo_NOSHEAR_0",
+    "NGMIX_ELL_PSFo_NOSHEAR_1",
+]
 
-masks, labels = sp_joint.get_masks_from_config(config)
+masks, labels = sp_joint.get_masks_from_config(config, dat, dat, masks_to_apply=masks_to_apply, verbose=obj._params["verbose"])
 
 mask_combined = sp_joint.Mask.from_list(
     masks,
@@ -80,6 +90,8 @@ if obj._params["sky_regions"]:
     zoom_dec = [55, 60]
 
     sp_joint.sky_plots(dat, masks, labels, zoom_ra, zoom_dec)
+
+# ### PSF leakage
 
 # ### Calibration
 

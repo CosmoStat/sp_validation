@@ -110,7 +110,7 @@ def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
     for comp in (0, 1):
         g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
         
-    return g_corr_mc, g_uncorr, w, nask)metacal, c, c_err
+    return g_corr_mc, g_uncorr, w, mask_metacal, c, c_err
     
 
 def get_w_des(cat_gal, num_bins):
