@@ -153,6 +153,30 @@ class BaseCat(object):
         hd5file.attrs["softver"] = software_version
         hd5file.attrs["date"] = date
 
+    def get_header(self, path=None):
+        """Get Header.
+
+        Return header of hd5 file.
+
+        Parameters
+        ----------
+        path : str, optional
+            input path; if not ``None`` (default) use `output_path` of
+            self._params dict
+
+        Returns
+        -------
+        dict
+            header
+
+        """
+        if path is None:
+            path = self._params["output_path"]
+            
+        with h5py.File(path, "r") as f:
+            header = dict(f.attrs)
+        return header
+
     def write_hdf5_file(self, dat, output_path=None):
         """Write HDF5 File.
 
@@ -1337,7 +1361,7 @@ class Mask():
         si = f"{self._num_ok:10d}"
         sf = f"{self._num_ok/num_obj:10.2%}"
         self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
-    
+
     def get_sign(self):
         
         sign = None
@@ -1374,6 +1398,24 @@ class Mask():
         header_new[self._col_name] = (expr, self._label)
         
         header.update(header_new)
+
+
+def print_mask_stats(num_obj, masks, masks_combined):
+    """Print Mask Stats.
+
+    Print mask statistics.
+
+    Parameters
+    ----------
+    num_obj
+
+    Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
+    for my_mask in masks:
+        my_mask.print_stats(num_obj)
+
+    mask_combined.print_stats(num_obj)
+    
+
 
 class ReadCat:
 
