@@ -414,11 +414,14 @@ class JointCat(BaseCat):
             output dtype
 
         """
+        # Specify columns for which original (high-precision) format
+        # needs to be kept and not reduced to lower precision
         cols_keep_dtype = [
             "RA",
             "Dec",
             "FLAGS",
             "IMAFLAGS_ISO",
+            "NUMBER",
         ]
         if self._params["reduce_mem"] == False:
             return dtype_in
@@ -452,7 +455,6 @@ class JointCat(BaseCat):
             combined structure data, (n_col x n_obj) array
 
         """
-
         # Create dtypes from input column names and types.
         # Reduce memory if flag set.
         # Transform multi-D columns into 1D columns
