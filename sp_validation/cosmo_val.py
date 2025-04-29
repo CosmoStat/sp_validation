@@ -60,7 +60,7 @@ class CosmologyValidation:
         nbins=20,
         var_method="jackknife",
         npatch=20,
-        quantile=0.683,
+        quantile=0.1587,
         theta_min_plot=0.08,
         theta_max_plot=250,
         ylim_alpha=[-0.005, 0.05],
@@ -547,14 +547,12 @@ class CosmologyValidation:
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
-
-            with results.temporarily_load_data():
+            with self.results[ver].temporarily_load_data():
                 if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
                     self.print_green(
                         f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
                     )
 
-                    # MKDEBUG the following lines do not need the data catalogue
                     results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
                     results.r_corr_gp.read(output_path_ab)
 
