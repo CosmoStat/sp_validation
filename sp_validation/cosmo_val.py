@@ -42,7 +42,7 @@ class CosmologyValidation:
         nbins=20,
         var_method="jackknife",
         npatch=20,
-        quantile=0.683,
+        quantile=0.1587,
         theta_min_plot=0.08,
         theta_max_plot=250,
         ylim_alpha=[-0.005, 0.05],
