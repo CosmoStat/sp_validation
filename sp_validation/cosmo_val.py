@@ -534,7 +534,6 @@ class CosmologyValidation:
                         f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
                     )
 
-                    # MKDEBUG the following lines do not need the data catalogue
                     results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
                     results.r_corr_gp.read(output_path_ab)
 

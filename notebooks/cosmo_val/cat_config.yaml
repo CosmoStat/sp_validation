@@ -681,7 +681,7 @@ SP_v1.4.1_noleakage:
 
 SP_v1.4.5:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.5
    ls: dashed
    colour: blue
    marker: d
@@ -692,7 +692,7 @@ SP_v1.4.5:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: v1.4.x/v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
@@ -702,13 +702,13 @@ SP_v1.4.5:
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_2024_v1.4.1.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -810,7 +810,7 @@ SP_test:
 
 SP_v1.4.5_leak_corr:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.5
    ls: dashed
    colour: midnightblue
    marker: d
@@ -821,7 +821,7 @@ SP_v1.4.5_leak_corr:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: v1.4.x/v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1_leak_corrected
       e2_col: e2_leak_corrected
@@ -831,13 +831,13 @@ SP_v1.4.5_leak_corr:
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_2024_v1.4.1.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
