@@ -5,17 +5,41 @@ from contextlib import contextmanager
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
+
+try:
+    import pymaster as nmt
+except:
+    print("Could not import pymaster, continuing without")
+
+import healpy as hp
+import healsparse as hsp
 import treecorr
-import utils
+import camb
 import yaml
+from collections import Counter
+
+import skyproj
+
 from astropy.io import fits
-from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+from astropy.cosmology import Planck18
+from astropy import units as u
+from astropy.coordinates import SkyCoord        
+
+try:
+    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+except:
+    print("Could not import cosmo_numba, continuing without")
+
+from . import utils_cosmo_val
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage import run_object, run_scale
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
+import matplotlib.scale as mscale
+
+mscale.register_scale(utils_cosmo_val.SquareRootScale)
 
 
 # %%
@@ -40,6 +64,12 @@ class CosmologyValidation:
         theta_max_plot=250,
         ylim_alpha=[-0.005, 0.05],
         ylim_xi_sys_ratio=[-0.02, 0.5],
+        nside=1024,
+        binning='powspace',
+        power=1/2,
+        n_ell_bins=32,
+        pol_factor=True,
+        nrandom_cell=10
     ):
 
         self.versions = versions
@@ -57,6 +87,13 @@ class CosmologyValidation:
         self.theta_max_plot = theta_max_plot
         self.ylim_alpha = ylim_alpha
         self.ylim_xi_sys_ratio = ylim_xi_sys_ratio
+        #For pseudo-Cls
+        self.nside = nside
+        self.binning = binning
+        self.power = power
+        self.n_ell_bins = n_ell_bins
+        self.pol_factor = pol_factor
+        self.nrandom_cell = nrandom_cell
 
         self.treecorr_config = {
             "ra_units": "degrees",
@@ -72,6 +109,9 @@ class CosmologyValidation:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
         for ver in ["nz", *versions]:
+
+            if ver not in cc:
+                raise KeyError(f"Version string {ver} not found in config file{catalog_config}")
             version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
@@ -83,13 +123,13 @@ class CosmologyValidation:
     def color_reset(self):
         print(colorama.Fore.BLACK, end="")
 
-    def print_blue(self, msg):
-        print(colorama.Fore.BLUE + msg)
+    def print_blue(self, msg, end="\n"):
+        print(colorama.Fore.BLUE + msg, end=end)
         self.color_reset()
 
-    def print_start(self, msg):
+    def print_start(self, msg, end="\n"):
         print()
-        self.print_blue(msg)
+        self.print_blue(msg, end=end)
 
     def print_done(self, msg):
         self.print_blue(msg)
@@ -120,6 +160,7 @@ class CosmologyValidation:
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
         params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w"]
         params_in["R11"] = None if ver != "DES" else self.cc[ver]["shear"]["R11"]
         params_in["R22"] = None if ver != "DES" else self.cc[ver]["shear"]["R22"]
 
@@ -146,6 +187,7 @@ class CosmologyValidation:
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
         params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w"]
 
         if (
             "e1_PSF_col" in self.cc[ver]["shear"]
@@ -182,9 +224,9 @@ class CosmologyValidation:
             @contextmanager
             def temporarily_load_data(results):
                 try:
-                    self.print_start(f"Loading catalog for {ver}")
+                    self.print_start(f"Loading catalog for {ver}...", end="")
                     results.read_data()
-                    self.print_done(f"Catalog loaded for {ver}")
+                    self.print_done(f"done")
                     yield
                 finally:
                     self.print_done(f"Freeing {ver} from memory")
@@ -217,7 +259,7 @@ class CosmologyValidation:
 
         self.print_start("Rho stats")
         for ver in self.versions:
-            rho_stat_handler, tau_stat_handler = utils.get_rho_tau_w_cov(
+            rho_stat_handler, tau_stat_handler = utils_cosmo_val.get_rho_tau_w_cov(
                 self.cc,
                 ver,
                 self.treecorr_config,
@@ -312,8 +354,6 @@ class CosmologyValidation:
         params["ra_units"] = "deg"
         params["dec_units"] = "deg"
 
-        params["w_col"] = "w"
-
         return params
 
     @property
@@ -336,14 +376,16 @@ class CosmologyValidation:
         self._xi_psf_sys = {}
         for ver in self.versions:
             params = self.set_params_rho_tau(
-                self.results[ver]._params, self.cc[ver]["psf"], survey=ver
+                self.results[ver]._params,
+                self.cc[ver]["psf"],
+                survey=ver,
             )
 
             npatch = {"sim": 300, "jk": params["patch_number"]}.get(
                 self.cov_estimate_method, None
             )
 
-            flat_samples, result, q = utils.get_samples(
+            flat_samples, result, q = utils_cosmo_val.get_samples(
                 self.psf_fitter,
                 ver,
                 cov_type=self.cov_estimate_method,
@@ -471,24 +513,25 @@ class CosmologyValidation:
         self.print_start("Plotting footprints:")
         for ver in self.versions:
             self.print_magenta(ver)
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/footprint_{ver}.png"
-            )
+            results = self.results[ver]
+            
+            fp = FootprintPlotter()
+                
+            for region in fp._regions: 
+                out_path = os.path.abspath(
+                    f"{self.cc['paths']['output']}/footprint_{ver}_{region}.png"
+                )
             if os.path.exists(out_path):
                 self.print_done(
-                    f"Skipping footprint computation, plot {out_path} exists"
+                    f"Skipping footprint plot, {out_path} exists"
                 )
             else:
-                plt.clf()
-                plt.plot(
-                    self.results[ver].dat_shear["RA"],
-                    self.results[ver].dat_shear["Dec"],
-                    ".",
-                    markersize=0.5,
-                )
-                plt.xlabel("R.A. [deg]")
-                plt.ylabel("Dec [deg]")
-                cs_plots.savefig(out_path)
+                with self.results[ver].temporarily_load_data():
+                    hsp_map = fp.create_hsp_map(
+                        self.results[ver].dat_shear["RA"],
+                        self.results[ver].dat_shear["Dec"],
+                    )
+                fp.plot_region(hsp_map, fp._regions[region], outpath=out_path)
                 self.print_done("Footprint plot saved to " + out_path)
 
     def calculate_scale_dependent_leakage(self):
@@ -502,22 +545,25 @@ class CosmologyValidation:
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
-            if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
-                self.print_green(
-                    f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
-                )
 
-                results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
-                results.r_corr_gp.read(output_path_ab)
+            with self.results[ver].temporarily_load_data():
+                if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
+                    self.print_green(
+                        f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
+                    )
 
-                results.r_corr_pp = treecorr.GGCorrelation(self.treecorr_config)
-                results.r_corr_pp.read(output_path_aa)
+                    # MKDEBUG the following lines do not need the data catalogue
+                    results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
+                    results.r_corr_gp.read(output_path_ab)
 
-            else:
-                results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
+                    results.r_corr_pp = treecorr.GGCorrelation(self.treecorr_config)
+                    results.r_corr_pp.read(output_path_aa)
 
-            results.do_alpha(fast=True)
-            results.do_xi_sys()
+                else:
+                    results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
+
+                results.do_alpha(fast=True)
+                results.do_xi_sys()
 
         self.print_done("Finished scale-dependent leakage calculation.")
 
@@ -684,21 +730,21 @@ class CosmologyValidation:
             results_obj.update_params()
             results_obj.prepare_output()
 
-            # Skip read_data() and copy catalogue from scale leakage instance instead
-            results_obj._dat = self.results[ver].dat_shear
+            with self.results[ver].temporarily_load_data():
+                results_obj._dat = self.results[ver].dat_shear
 
-            out_base = results_obj.get_out_base(mix, order)
-            out_path = f"{out_base}.pkl"
-            if os.path.exists(out_path):
-                self.print_green(
-                    f"Skipping object-wise leakage, file {out_path} exists"
-                )
-                results_obj.par_best_fit = leakage.read_from_file(out_path)
-            else:
-                self.print_cyan("Computing object-wise leakage regression")
+                out_base = results_obj.get_out_base(mix, order)
+                out_path = f"{out_base}.pkl"
+                if os.path.exists(out_path):
+                    self.print_green(
+                        f"Skipping object-wise leakage, file {out_path} exists"
+                    )
+                    results_obj.par_best_fit = leakage.read_from_file(out_path)
+                else:
+                    self.print_cyan("Computing object-wise leakage regression")
 
-                # Run
-                results_obj.PSF_leakage()
+                    # Run
+                    results_obj.PSF_leakage()
 
         # Gather coefficients
         leakage_coeff = {}
@@ -792,38 +838,39 @@ class CosmologyValidation:
 
             fig, axs = plt.subplots(1, 2, figsize=(22, 7))
             for ver in self.versions:
-                self.print_magenta(ver)
-                R = self.cc[ver]["shear"]["R"]
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                w = self.results[ver].dat_shear["w"]
+                with self.results[ver].temporarily_load_data():
+                    self.print_magenta(ver)
+                    R = self.cc[ver]["shear"]["R"]
+                    e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
+                    e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
+                    w = self.results[ver].dat_shear["w"]
 
-                axs[0].hist(
-                    e1,
-                    bins=nbins,
-                    density=False,
-                    histtype="step",
-                    weights=w,
-                    label=ver,
-                    color=self.cc[ver]["colour"],
-                )
-                axs[1].hist(
-                    e2,
-                    bins=nbins,
-                    density=False,
-                    histtype="step",
-                    weights=w,
-                    label=ver,
-                    color=self.cc[ver]["colour"],
-                )
+                    axs[0].hist(
+                        e1,
+                        bins=nbins,
+                        density=False,
+                        histtype="step",
+                        weights=w,
+                        label=ver,
+                        color=self.cc[ver]["colour"],
+                    )
+                    axs[1].hist(
+                        e2,
+                        bins=nbins,
+                        density=False,
+                        histtype="step",
+                        weights=w,
+                        label=ver,
+                        color=self.cc[ver]["colour"],
+                    )
 
-            for idx in (0, 1):
-                axs[idx].set_xlabel(f"$e_{idx}$")
-                axs[idx].set_ylabel("frequency")
-                axs[idx].legend()
-                axs[idx].set_xlim([-1.5, 1.5])
-            cs_plots.savefig(out_path)
-            self.print_done("Ellipticity histograms saved to " + out_path)
+                for idx in (0, 1):
+                    axs[idx].set_xlabel(f"$e_{idx}$")
+                    axs[idx].set_ylabel("frequency")
+                    axs[idx].legend()
+                    axs[idx].set_xlim([-1.5, 1.5])
+                cs_plots.savefig(out_path)
+                self.print_done("Ellipticity histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
@@ -853,11 +900,11 @@ class CosmologyValidation:
             R = self.cc[ver]["shear"]["R"]
             self._c1[ver] = np.average(
                 self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
-                weights=self.results[ver].dat_shear["w"],
+                weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
             )
             self._c2[ver] = np.average(
                 self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R,
-                weights=self.results[ver].dat_shear["w"],
+                weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
             )
         self.print_done("Finished additive bias calculation.")
 
@@ -887,74 +934,75 @@ class CosmologyValidation:
                 gg.read(out_fname)
             else:
                 # Run TreeCorr
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                if ver != "DES":
-                    R = self.cc[ver]["shear"]["R"]
-                    g1 = (e1 - self.c1[ver]) / R
-                    g2 = (e2 - self.c2[ver]) / R
-                else:
-                    R11 = self.cc[ver]["shear"]["R11"]
-                    R22 = self.cc[ver]["shear"]["R22"]
-                    g1 = (e1 - self.c1[ver]) / np.average(
-                        self.results[ver].dat_shear[R11]
+                with self.results[ver].temporarily_load_data():
+                    e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
+                    e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                    if ver != "DES":
+                        R = self.cc[ver]["shear"]["R"]
+                        g1 = (e1 - self.c1[ver]) / R
+                        g2 = (e2 - self.c2[ver]) / R
+                    else:
+                        R11 = self.cc[ver]["shear"]["R11"]
+                        R22 = self.cc[ver]["shear"]["R22"]
+                        g1 = (e1 - self.c1[ver]) / np.average(
+                            self.results[ver].dat_shear[R11]
+                        )
+                        g2 = (
+                            self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                            - self.c2[ver]
+                        ) / np.average(self.results[ver].dat_shear[R22])
+                    cat_gal = treecorr.Catalog(
+                        ra=self.results[ver].dat_shear["RA"],
+                        dec=self.results[ver].dat_shear["Dec"],
+                        g1=g1,
+                        g2=g2,
+                        w=self.results[ver].dat_shear["w"],
+                        ra_units=self.treecorr_config["ra_units"],
+                        dec_units=self.treecorr_config["dec_units"],
+                        npatch=self.npatch,
                     )
-                    g2 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                        - self.c2[ver]
-                    ) / np.average(self.results[ver].dat_shear[R22])
-                cat_gal = treecorr.Catalog(
-                    ra=self.results[ver].dat_shear["RA"],
-                    dec=self.results[ver].dat_shear["Dec"],
-                    g1=g1,
-                    g2=g2,
-                    w=self.results[ver].dat_shear["w"],
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=self.npatch,
-                )
-                gg.process(cat_gal)
-                gg.write(out_fname)
+                    gg.process(cat_gal)
+                    gg.write(out_fname)
 
-                # Save xi_p and xi_m results to fits file
-                lst = np.arange(1, self.treecorr_config["nbins"] + 1)
+                    # Save xi_p and xi_m results to fits file
+                    lst = np.arange(1, self.treecorr_config["nbins"] + 1)
 
-                col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
-                col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
-                col3 = fits.Column(name="ANGBIN", format="K", array=lst)
-                col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
-                col5 = fits.Column(
-                    name="ANG", format="D", unit="arcmin", array=gg.meanr
-                )
-                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-                xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
+                    col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
+                    col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
+                    col3 = fits.Column(name="ANGBIN", format="K", array=lst)
+                    col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
+                    col5 = fits.Column(
+                        name="ANG", format="D", unit="arcmin", array=gg.meanr
+                    )
+                    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+                    xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
 
-                col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
-                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-                ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
+                    col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
+                    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+                    ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
 
-                # append xi_plus header info
-                xiplus_dict = {
-                    "2PTDATA": "T",
-                    "QUANT1": "G+R",
-                    "QUANT2": "G+R",
-                    "KERNEL_1": "NZ_SOURCE",
-                    "KERNEL_2": "NZ_SOURCE",
-                    "WINDOWS": "SAMPLE",
-                }
-                for key in xiplus_dict:
-                    xiplus_hdu.header[key] = xiplus_dict[key]
-                xiplus_hdu.writeto(
-                    f"{self.cc['paths']['output']}/xi_plus_{ver}.fits", overwrite=True
-                )
+                    # append xi_plus header info
+                    xiplus_dict = {
+                        "2PTDATA": "T",
+                        "QUANT1": "G+R",
+                        "QUANT2": "G+R",
+                        "KERNEL_1": "NZ_SOURCE",
+                        "KERNEL_2": "NZ_SOURCE",
+                        "WINDOWS": "SAMPLE",
+                    }
+                    for key in xiplus_dict:
+                        xiplus_hdu.header[key] = xiplus_dict[key]
+                    xiplus_hdu.writeto(
+                        f"{self.cc['paths']['output']}/xi_plus_{ver}.fits", overwrite=True
+                    )
 
-                # append xi_minus header info
-                ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
-                for key in ximinus_dict:
-                    ximinus_hdu.header[key] = ximinus_dict[key]
-                ximinus_hdu.writeto(
-                    f"{self.cc['paths']['output']}/xi_minus_{ver}.fits", overwrite=True
-                )
+                    # append xi_minus header info
+                    ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
+                    for key in ximinus_dict:
+                        ximinus_hdu.header[key] = ximinus_dict[key]
+                    ximinus_hdu.writeto(
+                        f"{self.cc['paths']['output']}/xi_minus_{ver}.fits", overwrite=True
+                    )
 
             self.print_done("Done 2PCF")
 
@@ -1140,31 +1188,32 @@ class CosmologyValidation:
                 self.print_green(f"Skipping xi for Map2, {out_fname} exists")
                 gg.read(out_fname)
             else:
-                R = self.cc[ver]["shear"]["R"]
-                g1 = (
-                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                    - self.c1[ver]
-                ) / R
-                g2 = (
-                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                    - self.c2[ver]
-                ) / R
-                cat_gal = treecorr.Catalog(
-                    ra=self.results[ver].dat_shear["RA"],
-                    dec=self.results[ver].dat_shear["Dec"],
-                    g1=g1,
-                    g2=g2,
-                    w=self.results[ver].dat_shear["w"],
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=npatch,
-                )
+                with self.results[ver].temporarily_load_data():
+                    R = self.cc[ver]["shear"]["R"]
+                    g1 = (
+                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
+                        - self.c1[ver]
+                    ) / R
+                    g2 = (
+                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                        - self.c2[ver]
+                    ) / R
+                    cat_gal = treecorr.Catalog(
+                        ra=self.results[ver].dat_shear["RA"],
+                        dec=self.results[ver].dat_shear["Dec"],
+                        g1=g1,
+                        g2=g2,
+                        w=self.results[ver].dat_shear["w"],
+                        ra_units=self.treecorr_config["ra_units"],
+                        dec_units=self.treecorr_config["dec_units"],
+                        npatch=npatch,
+                    )
 
-                gg.process(cat_gal)
-                gg.write(out_fname)
-                del cat_gal
-                del g1
-                del g2
+                    gg.process(cat_gal)
+                    gg.write(out_fname)
+                    del cat_gal
+                    del g1
+                    del g2
 
             mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
                 R=theta_map,
@@ -1334,7 +1383,7 @@ class CosmologyValidation:
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear["w"],
+                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=self.npatch,
@@ -1379,5 +1428,783 @@ class CosmologyValidation:
 
             return results
 
+class FootprintPlotter:
+    """Class to create footprint plots.
+    
+    Parameters
+    -----------
+    nside_coverage: int, optional
+        basic resolution of map; default is 32
+    nside_map:
+        fine resolution for plotting; default is 2048
 
+    """
+    
+    # Dictionary storing region parameters
+    _regions = {
+        "NGC": {"ra_0": 180, "extend": [120, 270, 20, 70], "vmax": 60},
+        "SGC": {"ra_0": 15, "extend": [-20, 45, 20, 45], "vmax": 60},
+        "fullsky": {"ra_0": 150, "extend": [0, 360, -90, 90], "vmax": 60},
+    }
+    
+    def __init__(self, nside_coverage=32, nside_map=2048):
+        
+        self._nside_coverage = nside_coverage
+        self._nside_map = nside_map
+    
+    def create_hsp_map(self, ra, dec):
+        """Create Hsp Map.
+        
+        Create healsparse map.
+        
+        Parameters
+        ----------
+        ra : numpy.ndarray
+            right ascension values
+        dec : numpy.ndarray
+            declination values
+            
+        Returns
+        -------
+        hsp.HealSparseMap
+            map
+            
+        """
+        # Create empty map
+        hsp_map = hsp.HealSparseMap.make_empty(
+            self._nside_coverage,
+            self._nside_map,
+            dtype=np.float32,
+            sentinel=np.nan
+        )
+
+        # Get pixel list corresponding to coordinates
+        hpix = hp.ang2pix(self._nside_map, ra, dec, nest=True, lonlat=True)
+
+        # Get count of objects per pixel
+        pixel_counts = Counter(hpix)
+
+        # List of unique pixels
+        unique_hpix = np.array(list(pixel_counts.keys()))
+
+        # Number of objects
+        values = np.array(list(pixel_counts.values()), dtype=np.float32)
+
+        # Create maps with numbers per pixel
+        hsp_map[unique_hpix] = values
+    
+        return hsp_map
+    
+    def plot_area(
+        self,
+        hsp_map,
+        ra_0=0,
+        extend=[120, 270, 29, 70],
+        vmax=60,
+        projection=None,
+        outpath=None,
+        title=None,
+    ):
+        """Plot Area.
+        
+        Plot catalogue in an area on the sky.
+        
+        Parameters
+        ----------
+        hsp_map : hsp_HealSparseMap
+            input map
+        ra_0 : float, optional
+            anchor point in R.A.; default is 0
+        extend : list, optional
+            sky region, extend=[ra_low, ra_high, dec_low, dec_high];
+            default is [120, 270, 29, 70]
+        vmax : float, optional
+            maximum pixel value to plot with color; default is 60
+        projection : skyproj.McBrydeSkyproj
+            if ``None`` (default), a new plot is created
+        outpath : str, optional
+            output path, default is ``None``
+        title : str, optional
+            print title if not ``None`` (default)
+            
+        Returns
+        --------
+        skyproj.McBrydeSkyproj
+            projection instance
+        plt.axes.Axes
+            axes instance
+            
+        Raises
+        ------
+        ValueError
+            if no object found in region
+        
+        """
+        if not projection:
+            
+            # Create new figure and axes
+            fig, ax = plt.subplots(figsize=(10, 10))
+
+            # Create new projection
+            projection = skyproj.McBrydeSkyproj(
+                ax=ax,
+                lon_0=ra_0,
+                extent=extend,
+                autorescale=True,
+                vmax=vmax
+            )
+        else:
+            ax = None
+
+        try:
+            _ = projection.draw_hspmap(
+                hsp_map, lon_range=extend[0:2],
+                lat_range=extend[2:]
+            )
+        except ValueError:
+            msg = "No object found in region to draw"
+            print(f"{msg}, continuing...")
+            #raise ValueError(msg)
+            
+        projection.draw_milky_way(width=25, linewidth=1.5, color='black', linestyle='-')
+            
+        if title:
+            plt.title(title, pad=5)
+
+        if outpath:
+            plt.savefig(outpath)
+            
+        return projection, ax
+        
+    def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None):
+        
+        return self.plot_area(
+            hsp_map,
+            region["ra_0"],
+            region["extend"],
+            region["vmax"],
+            projection=projection,
+            outpath=outpath,
+            title=title,
+        )
+
+    def plot_all_regions(self, hsp_map, outbase=None):  
+
+        for region in self._regions:
+            if outbase:
+                outpath = f"{outbase}_{region}.png"
+            else:
+                outpath = None
+            self.plot_region(hsp_map, self._regions[region], outpath=outpath)
+            
+
+    @classmethod            
+    def hp_pixel_centers(cls, nside, nest=False):
+        
+        # Get number of pixels for given nside        
+        npix = hp.nside2npix(nside)
+        
+        # Get pixel indices
+        pix_indices = np.arange(npix)
+    
+        # Get coordinates of pixel centers
+        ra, dec = hp.pix2ang(nside, pix_indices, nest=nest, lonlat=True)
+
+        return ra, dec, npix
+
+    @classmethod
+    def plot_footprint_as_hp(cls, hsp_map, nside, outpath=None, title=None):
+
+        ra, dec, npix = cls.hp_pixel_centers(nside)
+
+        # Create an empty HEALPix map
+        m = np.full(npix, np.nan)  
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        # Plot the HEALPix grid
+        hp.mollview(m, title=title, coord="C", notext=True, rot=(180, 0, 0))
+        
+        # Define the Galactic Plane: l = [0, 360], b = 0°
+        for l0, ls in zip((-5, 0, 5), (":", "-", ":")):
+            l_values = np.linspace(0, 360, 500)  # 500 points along the plane
+            b_values = np.zeros_like(l_values)   # Galactic latitude is 0 (the plane)
+
+            # Convert (l, b) to (λ, β) - Ecliptic coordinates
+            coords = SkyCoord(l=l_values*u.degree, b=b_values*u.degree, frame='galactic')
+            ecl_coords = coords.transform_to('barycentrictrueecliptic')  # Ecliptic frame
+
+            # Extract Ecliptic longitude (λ) and latitude (β)
+            lambda_ecl = ecl_coords.lon.deg  # Ecliptic longitude
+            beta_ecl = ecl_coords.lat.deg    # Ecliptic latitude
+
+            # Convert to HEALPix projection coordinates (colatitude, longitude)
+            theta = np.radians(90 - beta_ecl)  # HEALPix uses colatitude
+            phi = np.radians(lambda_ecl)  # HEALPix uses longitude
+
+            # Create a healpy Mollweide projection in Ecliptic coordinates
+            hp.projplot(theta, phi, linestyle=ls, color='black', linewidth=1)  # Plot the outline
+
+        # Apply mask
+        mask_values = hsp_map.get_values_pos(ra, dec, valid_mask=True, lonlat=True)
+
+        ok = np.where(mask_values == False)[0]
+        #nok = np.where(mask_values == False)[0]
+
+        hp.projscatter(ra[ok], dec[ok], lonlat=True, color="green", s=1, marker=".")        
+        #hp.projscatter(ra[nok], dec[nok], lonlat=True, color="red", s=1, marker=".")
+        
+        plt.tight_layout()
+        
+        if outpath:
+            plt.savefig(outpath)
+            
+        plt.show()
+
+def hsp_map_logical_or(maps, verbose=False):
+    """
+    Hsp Map Logical Or.
+    
+    Logical AND of HealSparseMaps.
+    
+    """
+    if verbose:
+        print("Combine all maps...")
+    
+    # Ensure consistency in coverage and data type
+    nside_coverage = maps[0].nside_coverage
+    nside_sparse = maps[0].nside_sparse
+    dtype = maps[0].dtype
+
+    for m in maps:
+        # MKDEBUG TODO: Change nside if possible
+        if m.nside_coverage != nside_coverage:
+            raise ValueError(
+                f"Coverage nside={m.nside_coverage} does not match {nside_coverage}"
+            )
+        if m.dtype != dtype:
+            raise ValueError(
+                f"Data type {m.dtype} does not match {dtype}"
+            )
+
+    # Create an empty HealSparse map
+    map_comb = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=dtype)
+    for idx, m in enumerate(maps):
+        map_comb |= m
+        
+        if verbose:
+            valid_pixels = map_comb.valid_pixels
+            n_tot = np.sum(valid_pixels)
+            n_true = np.count_nonzero(valid_pixels)
+            n_false = n_tot - n_true
+            print(f"after map {idx}: frac_true={n_true / n_tot:g}, frac_false={n_false / n_tot:g}")
+
+    return map_comb
+
+    def calculate_pseudo_cl_eb_cov(self):
+        """
+        Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
+        """
+        self.print_start("Computing Pseudo-Cl covariance")
+
+        nside = self.nside
+
+        try:
+            self._pseudo_cls
+        except AttributeError:
+            self._pseudo_cls = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            if not ver in self._pseudo_cls.keys():
+                self._pseudo_cls[ver] = {}
+
+            out_path = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_{ver}.fits")
+            if os.path.exists(out_path):
+                self.print_done(f"Skipping Pseudo-Cl covariance calculation, {out_path} exists")
+                self._pseudo_cls[ver]['cov'] = fits.open(out_path)
+            else:
+
+                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
+
+                self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
+
+                lmax = 2*self.nside
+                path_redshift_distr = self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
+                pw = hp.pixwin(nside, lmax=lmax)
+                fiducial_cl = self.get_fiducial(lmax, path_redshift_distr)*pw**2
+
+                self.print_cyan("Getting a sample of the fiducial Cl's with noise")
+
+                lmin = 8
+                lmax = 2*self.nside
+                b_lmax = lmax - 1
+
+                if self.binning == 'linear':
+                    step = 10
+                    b = nmt.NmtBin.from_nside_linear(self.nside, step)
+                elif self.binning == 'powspace':
+                    ells = np.arange(lmin, lmax+1)
+
+                    start = np.power(lmin, self.power)
+                    end = np.power(lmax, self.power)
+                    bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
+
+                    #Get bandpowers
+                    bpws = np.digitize(ells.astype(float), bins_ell) - 1
+                    bpws[0] = 0
+                    bpws[-1] = self.n_ell_bins-1
+
+                    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+
+                #Load data and create shear and noise maps
+                cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+                n_gal, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
+                mask = n_gal != 0
+                
+                cl_noise, f, wsp = self.get_sample(params, self.nside, b_lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep)
+                
+                fiducial_cl = np.array([fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl])+ np.mean(cl_noise, axis=1, keepdims=True)
+                
+                self.print_cyan("Computing the Pseudo-Cl covariance")
+
+                cw = nmt.NmtCovarianceWorkspace.from_fields(f, f, f, f)
+
+                covar_22_22 = nmt.gaussian_covariance(cw, 2, 2, 2, 2,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        wsp, wb=wsp).reshape([self.n_ell_bins, 4, self.n_ell_bins, 4])
+
+                covar_EE_EE = covar_22_22[:, 0, :, 0]
+                covar_EE_EB = covar_22_22[:, 0, :, 1]
+                covar_EE_BE = covar_22_22[:, 0, :, 2]
+                covar_EE_BB = covar_22_22[:, 0, :, 3]
+                covar_EB_EE = covar_22_22[:, 1, :, 0]
+                covar_EB_EB = covar_22_22[:, 1, :, 1]
+                covar_EB_BE = covar_22_22[:, 1, :, 2]
+                covar_EB_BB = covar_22_22[:, 1, :, 3]
+                covar_BE_EE = covar_22_22[:, 2, :, 0]
+                covar_BE_EB = covar_22_22[:, 2, :, 1]
+                covar_BE_BE = covar_22_22[:, 2, :, 2]
+                covar_BE_BB = covar_22_22[:, 2, :, 3]
+                covar_BB_EE = covar_22_22[:, 3, :, 0]
+                covar_BB_EB = covar_22_22[:, 3, :, 1]
+                covar_BB_BE = covar_22_22[:, 3, :, 2]
+                covar_BB_BB = covar_22_22[:, 3, :, 3]
+
+                self.print_cyan("Saving Pseudo-Cl covariance")
+
+                hdu = fits.HDUList()
+
+                hdu.append(fits.ImageHDU(covar_EE_EE, name="COVAR_EE_EE"))
+                hdu.append(fits.ImageHDU(covar_EE_EB, name="COVAR_EE_EB"))
+                hdu.append(fits.ImageHDU(covar_EE_BE, name="COVAR_EE_BE"))
+                hdu.append(fits.ImageHDU(covar_EE_BB, name="COVAR_EE_BB"))
+                hdu.append(fits.ImageHDU(covar_EB_EE, name="COVAR_EB_EE"))
+                hdu.append(fits.ImageHDU(covar_EB_EB, name="COVAR_EB_EB"))
+                hdu.append(fits.ImageHDU(covar_EB_BE, name="COVAR_EB_BE"))
+                hdu.append(fits.ImageHDU(covar_EB_BB, name="COVAR_EB_BB"))
+                hdu.append(fits.ImageHDU(covar_BE_EE, name="COVAR_BE_EE"))
+                hdu.append(fits.ImageHDU(covar_BE_EB, name="COVAR_BE_EB"))
+                hdu.append(fits.ImageHDU(covar_BE_BE, name="COVAR_BE_BE"))
+                hdu.append(fits.ImageHDU(covar_BE_BB, name="COVAR_BE_BB"))
+                hdu.append(fits.ImageHDU(covar_BB_EE, name="COVAR_BB_EE"))
+                hdu.append(fits.ImageHDU(covar_BB_EB, name="COVAR_BB_EB"))
+                hdu.append(fits.ImageHDU(covar_BB_BE, name="COVAR_BB_BE"))
+                hdu.append(fits.ImageHDU(covar_BB_BB, name="COVAR_BB_BB"))
+
+                hdu.writeto(out_path, overwrite=True)
+
+                self._pseudo_cls[ver]['cov'] = hdu
+
+        self.print_done("Done Pseudo-Cl covariance")
+
+    def calculate_pseudo_cl(self):
+        """
+        Compute the pseudo-Cl of given catalogs.
+        """
+        self.print_start("Computing pseudo-Cl's")
+
+        nside = self.nside
+
+        try:
+            self._pseudo_cls
+        except AttributeError:
+            self._pseudo_cls = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            self._pseudo_cls[ver] = {}
+
+            out_path = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_{ver}.fits")
+            if os.path.exists(out_path):
+                self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
+                cl_shear = fits.getdata(out_path)
+                self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+            else:
+                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
+
+                #Load data and create shear and noise maps
+                cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+                w = cat_gal[params['w_col']]
+                self.print_cyan("Creating maps and computing Cl's...")
+                n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
+                mask = n_gal_map != 0
+
+                shear_map_e1 = np.zeros(hp.nside2npix(nside))
+                shear_map_e2 = np.zeros(hp.nside2npix(nside))
+
+                e1 = cat_gal[params['e1_col']]
+                e2 = cat_gal[params['e2_col']]
+
+                del cat_gal
+                
+                shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1*w)
+                shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2*w)
+                shear_map_e1[mask] /= n_gal_map[mask]
+                shear_map_e2[mask] /= n_gal_map[mask]
+
+                shear_map = shear_map_e1 + 1j*shear_map_e2
+
+                del shear_map_e1, shear_map_e2
+
+                ell_eff, cl_shear, wsp = self.get_pseudo_cls(shear_map)
+
+                cl_noise = np.zeros((4, self.n_ell_bins))
+                
+                for i in range(self.nrandom_cell):
+
+                    noise_map_e1 = np.zeros(hp.nside2npix(nside))
+                    noise_map_e2 = np.zeros(hp.nside2npix(nside))
+
+                    e1_rot, e2_rot = self.apply_random_rotation(e1, e2)
+
+                    
+                    noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
+                    noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
+
+                    noise_map_e1[mask] /= n_gal_map[mask]
+                    noise_map_e2[mask] /= n_gal_map[mask]
+
+                    noise_map = noise_map_e1 + 1j*noise_map_e2
+                    del noise_map_e1, noise_map_e2
+
+                    _, cl_noise_, _ = self.get_pseudo_cls(noise_map, wsp)
+                    cl_noise += cl_noise_
+                
+                cl_noise /= self.nrandom_cell
+                del e1, e2, e1_rot, e2_rot, w
+                del n_gal_map              
+
+                #This is a problem because the measurement depends on the seed. To be fixed.
+                #cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
+                cl_shear = cl_shear - cl_noise
+
+                self.print_cyan("Saving pseudo-Cl's...")
+                self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+
+                cl_shear = fits.getdata(out_path)
+                self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+
+        self.print_done("Done pseudo-Cl's")
+
+    def get_fiducial(self, lmax, redshift_distr):
+        """
+        Get the power spectrum at Planck18 cosmology using CAMB.
+        """
+        planck = Planck18
+
+        h = planck.H0.value/100
+        Om = planck.Om0
+        Ob = planck.Ob0
+        Oc = Om - Ob
+        ns = 0.965
+        As = 2.1e-9
+        m_nu = 0.06
+        w = -1
+        
+        pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
+        Onu = pars.omeganu
+        Oc = Om - Ob - Onu
+        pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
+
+        z, dndz = np.loadtxt(redshift_distr, unpack=True)
+
+        #getthe expected cl's from CAMB
+        pars.min_l = 1
+        pars.set_for_lmax(lmax)
+        pars.SourceWindows = [
+            camb.sources.SplinedSourceWindow(z=z, W=dndz, source_type='lensing')
+        ]
+        theory_cls = camb.get_results(pars).get_source_cls_dict(lmax=lmax, raw_cl=True)
+        return theory_cls['W1xW1']
+
+    def get_n_gal_map(self, params, nside, cat_gal):
+        """
+        Compute the galaxy number density map.
+        """
+        ra = cat_gal[params['ra_col']]
+        dec = cat_gal[params['dec_col']]
+        w = cat_gal[params['w_col']]
+
+        theta = (90. - dec) * np.pi / 180.
+        phi = ra * np.pi / 180.
+        pix = hp.ang2pix(nside, theta, phi)
+
+        unique_pix, idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
+        n_gal = np.zeros(hp.nside2npix(nside))
+        n_gal[unique_pix] = np.bincount(idx_rep, weights=w)
+        return n_gal, unique_pix, idx, idx_rep
+
+    def get_gaussian_real(self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep):
+
+        e1_rot, e2_rot = self.apply_random_rotation(cat_gal[params['e1_col']], cat_gal[params['e2_col']])
+        noise_map_e1 = np.zeros(hp.nside2npix(nside))
+        noise_map_e2 = np.zeros(hp.nside2npix(nside))
+
+        w = cat_gal[params['w_col']]
+        noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
+        noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
+        noise_map_e1[mask] /= n_gal[mask]
+        noise_map_e2[mask] /= n_gal[mask]
+
+        return noise_map_e1 + 1j*noise_map_e2
+
+    def get_sample(self, params, nside, lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep):
+        noise_map = self.get_gaussian_real(params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep)
+
+        f = nmt.NmtField(mask=mask, maps=[noise_map.real, noise_map.imag], lmax=lmax)
+
+        wsp = nmt.NmtWorkspace.from_fields(f, f, b)
+
+        cl_noise = nmt.compute_coupled_cell(f, f)
+        cl_noise = wsp.decouple_cell(cl_noise)
+
+        return cl_noise, f, wsp
+    
+    def get_pseudo_cls(self, map, wsp=None):
+        """
+        Compute the pseudo-cl for a given map.
+        """
+
+        lmin = 8
+        lmax = 2*self.nside
+        b_lmax = lmax - 1
+
+        if self.binning == 'linear':
+            step = 10
+            b = nmt.NmtBin.from_nside_linear(self.nside, step)
+        elif self.binning == 'powspace':
+            ells = np.arange(lmin, lmax+1)
+
+            start = np.power(lmin, self.power)
+            end = np.power(lmax, self.power)
+            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
+
+            #Get bandpowers
+            bpws = np.digitize(ells.astype(float), bins_ell) - 1
+            bpws[0] = 0
+            bpws[-1] = self.n_ell_bins-1
+
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+
+        ell_eff = b.get_effective_ells()
+
+        factor = -1 if self.pol_factor else 1
+
+        f_all = nmt.NmtField(mask=(map!=0), maps=[map.real, factor*map.imag], lmax=b_lmax)
+        
+        if wsp is None:
+            wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+        
+        cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
+        cl_all = wsp.decouple_cell(cl_coupled)
+
+        return ell_eff, cl_all, wsp
+
+    def apply_random_rotation(self, e1, e2):
+        """
+        Apply a random rotation to the ellipticity components e1 and e2.
+
+        Parameters
+        ----------
+        e1 : np.array
+            First component of the ellipticity.
+        e2 : np.array
+            Second component of the ellipticity.
+
+        Returns
+        -------
+        np.array
+            First component of the rotated ellipticity.
+        np.array
+            Second component of the rotated ellipticity.
+        """
+        np.random.seed()
+        rot_angle = np.random.rand(len(e1))*2*np.pi
+        e1_out = e1*np.cos(rot_angle) + e2*np.sin(rot_angle)
+        e2_out = -e1*np.sin(rot_angle) + e2*np.cos(rot_angle)
+        return e1_out, e2_out
+
+    def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
+        """
+        Save pseudo-Cl's to a FITS file.
+
+        Parameters
+        ----------
+        pseudo_cl : np.array
+            Pseudo-Cl's to save.
+        out_path : str
+            Path to save the pseudo-Cl's to.
+        """
+        #Create columns of the fits file
+        col1 = fits.Column(name="ELL", format="D", array=ell_eff)
+        col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
+        col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
+        col4 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
+        coldefs = fits.ColDefs([col1, col2, col3, col4])
+        cell_hdu = fits.BinTableHDU.from_columns(coldefs, name="PSEUDO_CELL")
+
+        cell_hdu.writeto(out_path, overwrite=True)
+
+    @property
+    def pseudo_cls(self):
+        if not hasattr(self, "_pseudo_cls"):
+            self.calculate_pseudo_cl()
+            self.calculate_pseudo_cl_eb_cov()
+        return self._pseudo_cls
+
+    def plot_pseudo_cl(self):
+        """
+        Plot pseudo-Cl's for given catalogs.
+        """
+        self.print_cyan("Plotting pseudo-Cl's")
+
+        #Plotting EE
+        out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_ee.png")
+        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+
+        for ver in self.versions:
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
+            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"], capsize=2)
+
+        ax[0].set_ylabel('$\ell C_\ell$')
+
+        ax[0].set_xlim(ell.min()-10, ell.max()+100)
+        ax[0].set_xscale('squareroot')
+        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
+        ax[0].minorticks_on()
+        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
+
+        for ver in self.versions:
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
+            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"])
+
+        ax[1].set_xlabel('$\ell$')
+        ax[1].set_ylabel('$C_\ell$')
+
+        ax[1].set_xlim(ell.min()-10, ell.max()+100)
+        ax[1].set_xscale('squareroot')
+        ax[1].set_yscale('log')
+        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
+        ax[1].minorticks_on()
+        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
+
+        plt.suptitle('Pseudo-Cl EE (Gaussian covariance)')
+        plt.legend()
+        plt.savefig(out_path)
+
+        #Plotting EB
+        out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_eb.png")
+
+        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+
+        for ver in self.versions:
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
+            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"], capsize=2)
+
+        ax[0].axhline(0, color='black', linestyle='--')
+        ax[0].set_ylabel('$\ell C_\ell$')
+
+        ax[0].set_xlim(ell.min()-10, ell.max()+100)
+        ax[0].set_xscale('squareroot')
+        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
+        ax[0].minorticks_on()
+        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
+
+        for ver in self.versions:
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
+            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"])
+
+        ax[1].set_xlabel('$\ell$')
+        ax[1].set_ylabel('$C_\ell$')
+
+        ax[1].set_xlim(ell.min()-10, ell.max()+100)
+        ax[1].set_xscale('squareroot')
+        ax[1].set_yscale('log')
+        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
+        ax[1].minorticks_on()
+        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
+
+        plt.suptitle('Pseudo-Cl EB (Gaussian covariance)')
+        plt.legend()
+        plt.savefig(out_path)
+
+        #Plotting BB
+        out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_bb.png")
+
+        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+
+        for ver in self.versions:
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"], capsize=2)
+
+        ax[0].axhline(0, color='black', linestyle='--')
+        ax[0].set_ylabel('$\ell C_\ell$')
+
+        ax[0].set_xlim(ell.min()-10, ell.max()+100)
+        ax[0].set_xscale('squareroot')
+        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
+        ax[0].minorticks_on()
+        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
+
+        for ver in self.versions:
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"])
+
+        ax[1].set_xlabel('$\ell$')
+        ax[1].set_ylabel('$C_\ell$')
+
+        ax[1].set_xlim(ell.min()-10, ell.max()+100)
+        ax[1].set_xscale('squareroot')
+        ax[1].set_yscale('log')
+        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
+        ax[1].minorticks_on()
+        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
+
+        plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
+        plt.legend()
+        plt.savefig(out_path)
 # %%
