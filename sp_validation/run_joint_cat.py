@@ -375,6 +375,9 @@ class JointCat(BaseCat):
             "FLAGS",
             "IMAFLAGS_ISO",
         ]
+        if dtype_in.kind == "U":
+            return np.dtype(f"S{dtype_in.itemsize // 4}")
+
         if self._params["reduce_mem"] == False:
             return dtype_in
         elif name not in cols_keep_dtype:
@@ -382,6 +385,8 @@ class JointCat(BaseCat):
                 return np.float32
             if dtype_in == np.int32:
                 return np.int8
+            if dtype_in.kind == "U":
+                return np.dtype('S10')
 
         return dtype_in
 
@@ -460,8 +465,8 @@ class JointCat(BaseCat):
 
             self.write_hdf5_header(f)
 
-            dset = f.create_dataset("data", data=dat)
-            dset[:] = dat
+            dset = f.create_dataset("data", data=dat_all)
+            dset[:] = dat_all
 
         # super().write_hdf5_file(dat_all, output_path=output_path)
 
