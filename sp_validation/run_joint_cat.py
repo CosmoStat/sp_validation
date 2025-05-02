@@ -976,7 +976,7 @@ class ApplyHspMasks(BaseCat):
 
         return new_data
 
-    def write_hdf5_file(self, dat, dat_new=None):
+    def write_hdf5_file(self, dat, dat_new=None, masks=None):
 
         with h5py.File(self._params["output_path"], "w") as f:
 
@@ -1001,6 +1001,17 @@ class ApplyHspMasks(BaseCat):
                 dset[i:end] = dat[i:end]  # Write chunk to dataset
                 if dat_new is not None:
                     dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
+                    
+            if masks is not None:
+                # Adding mask descriptions to header
+                dtype = np.dtype([("expr", "S20"), ("desc", "S20")])
+                descr_arr = np.zeros(len(masks), dtype=dtype)
+                for idx, mask in enumerate(masks):
+                    descr_arr[idx] = (
+                        (mask._descr.encode("utf-8"), mask._label.encode("utf-8"))
+                    )
+                f.create_dataset("applied_masks", data=descr_arr)
+                
 
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
@@ -1025,9 +1036,10 @@ class ApplyHspMasks(BaseCat):
             hd5file.attrs[f"hsp_path_{bit}"] = paths[bit]
 
         # Auxiliary mask file paths
-        for idx, path in enumerate(self._params["aux_mask_file_list"]):
-            label = self._params["aux_mask_label_list"][idx]
-            hd5file.attrs[f"hsp_path_{label}"] = path
+        if "aux_mask_file_list" in self._params:
+            for idx, path in enumerate(self._params["aux_mask_file_list"]):
+                label = self._params["aux_mask_label_list"][idx]
+                hd5file.attrs[f"hsp_path_{label}"] = path
 
 
 class CalibrateCat(BaseCat):
@@ -1395,17 +1407,33 @@ class Mask():
             
         if self._kind == "range":
             print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)
-            
+
+    def create_descr(self):
+        """Create Descr.
+
+        Create description of mask for later use in output file header.
+
+        Returns
+        -------
+        str
+            description
+
+        """
+        sign = self.get_sign()
+        if sign is not None:
+            descr = f"{sign}{self._value}"
+        if self._kind == "range":
+            descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+        self._descr = descr
+    
+        # Create description for FITS header
     def add_summary_to_FITS_header(self, header):
 
         header_new = fits.Header()
+        
+        self.create_descr()
 
-        sign = self.get_sign()
-        if sign is not None:
-            expr = f"{sign}{self._value}"
-        if self._kind == "range":
-            expr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
-        header_new[self._col_name] = (expr, self._label)
+        header_new[self._col_name] = (self._descr, self._label)
         
         header.update(header_new)
 
