@@ -43,7 +43,7 @@ class BaseCat(object):
     """
 
     def __init__(self):
-        self.params_default()
+        pass
 
     def set_params_from_command_line(self, args):
         """Set Params From Command Line.
@@ -649,6 +649,7 @@ class ApplyHspMasks(BaseCat):
         256: "z",
         512: "Tile_RA_DEC_cut",
         1024: "Maximask",
+        2048: "z2",
     }
 
     def __init__(self):
