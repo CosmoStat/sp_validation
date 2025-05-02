@@ -32,6 +32,7 @@ from cs_util import args as cs_args
 
 from . import util
 from . import calibration
+from . import cat as sp_cat
 
 
 class BaseCat(object):
@@ -263,6 +264,7 @@ class JointCat(BaseCat):
             "pipeline": "shapepipe",
             "hdu": 1,
             "reduce_mem": False,
+            "verbose": False,
         }
         self._short_options = {
             "patches": "-p",
@@ -424,6 +426,7 @@ class JointCat(BaseCat):
             "NUMBER",
         ]
         if dtype_in.kind == "U":
+            # Transform unicode to string of equal length
             return np.dtype(f"S{dtype_in.itemsize // 4}")
 
         if self._params["reduce_mem"] == False:
@@ -433,8 +436,6 @@ class JointCat(BaseCat):
                 return np.float32
             if dtype_in.kind == "i" and dtype_in.itemsize == 4:
                 return np.int8
-            if dtype_in.kind == "U":
-                return np.dtype('S10')
 
         return dtype_in
 
@@ -707,6 +708,7 @@ class ApplyHspMasks(BaseCat):
             "bits": 1,
             "aux_mask_files": None,
             "aux_mask_labels": None,
+            "verbose": False,
         }
         self._short_options = {
             "input_path": "-i",
@@ -983,7 +985,7 @@ class ApplyHspMasks(BaseCat):
             dset = f.create_dataset(
                 "data", shape=dat.shape, dtype=dat.dtype, chunks=True
             )
-            if dat_new:
+            if dat_new is not None:
                 dset_new = f.create_dataset(
                     "data_ext",
                     shape=dat_new.shape,
@@ -997,7 +999,7 @@ class ApplyHspMasks(BaseCat):
             for i in range(0, nrow, chunk_size):
                 end = min(i + chunk_size, nrow)
                 dset[i:end] = dat[i:end]  # Write chunk to dataset
-                if dat_new:
+                if dat_new is not None:
                     dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
 
     def write_hdf5_header(self, hd5file):
@@ -1048,6 +1050,7 @@ class CalibrateCat(BaseCat):
         self._params = {
             "input_path": None,
             "cmatrices": False,
+            "verbose": False,
         }
         self._short_options = {
             "input_path": "-i",
@@ -1415,7 +1418,8 @@ def print_mask_stats(num_obj, masks, masks_combined):
     Parameters
     ----------
     num_obj
-
+    
+    """
     Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
     for my_mask in masks:
         my_mask.print_stats(num_obj)
@@ -1438,6 +1442,7 @@ class ReadCat:
         self._params = {
             "input": "input_cat.hdf5",
             "n_row": None,
+            "verbose": False,
         }
         self.short_options = {
             "input": "-i",
@@ -1546,18 +1551,16 @@ def compute_weights_gatti(
     cat_gal["R_g12"] = gal_metacal.R12
     cat_gal["R_g21"] = gal_metacal.R21
     cat_gal["R_g22"] = gal_metacal.R22
-    cat_gal["NGMIX_T_NOSHEAR"] = cat.get_col(
+    cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(
         dat, "NGMIX_T_NOSHEAR", mask_combined._mask, mask_metacal
     )
-    cat_gal["NGMIX_Tpsf_NOSHEAR"] = cat.get_col(
+    cat_gal["NGMIX_Tpsf_NOSHEAR"] = sp_cat.get_col(
         dat, "NGMIX_Tpsf_NOSHEAR", mask_combined._mask, mask_metacal
     )
-    cat_gal["snr"] = cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
+    cat_gal["snr"] = sp_cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
 
-    name = "w_des"
-    w_des = calibration.get_w_des(cat_gal, num_bins)
+    cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
 
-    return w_des
 
 def compute_PSF_leakage(
     cat_gal,
@@ -1572,15 +1575,18 @@ def compute_PSF_leakage(
     """
     cat_gal["e1"] = g_corr_mc[0]
     cat_gal["e2"] = g_corr_mc[1]
-    cat_gal["e1_PSF"] = cat.get_col(
+    cat_gal["e1_PSF"] = sp_cat.get_col(
         dat, "e1_PSF", mask_combined._mask, mask_metacal
     )
-    cat_gal["e2_PSF"] = cat.get_col(
+    cat_gal["e2_PSF"] = sp_cat.get_col(
         dat, "e2_PSF", mask_combined._mask, mask_metacal
     )
-    cat_gal["w_des"] = w_des
 
     weight_type = "des"
+    key = f"w_{weight_type}"
+    if key not in cat_gal:
+        raise KeyError("Key '{key}' not found in cat_gal")
+
     try:
         alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(
             cat_gal, num_bins, weight_type
