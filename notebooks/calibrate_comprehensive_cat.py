@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: sp_validation
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -33,18 +33,23 @@ import sp_validation.cat as cat
 obj = sp_joint.CalibrateCat()
 
 # Read configuration file and set parameters
-config = obj.read_config_set_params("config_mask.yaml")
+config = obj.read_config_set_params("config_mask.P37.yaml")
 
 # !pwd
 
-# Get data. Set load_into_memory to False for very large files
-dat, dat_ext = obj.read_cat(load_into_memory=False)
-
 # +
-# print("MKDEBUG testing only first 100k objects")
-# dat = dat[:100000]
-# dat_ext = dat_ext[:100000]
+# Get data. Set load_into_memory to False for very large files
+
+
+dat, dat_ext = obj.read_cat(load_into_memory=False)
 # -
+
+#n_test = -1
+n_test = 100000
+if n_test > 0:
+    print(f"MKDEBUG testing only first {n_test} objects")
+    dat = dat[:n_test]
+    dat_ext = dat_ext[:n_test]
 
 # ## Masking
 
@@ -55,7 +60,7 @@ masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext)
 mask_combined = sp_joint.Mask.from_list(
     masks,
     label="combined",
-    verbose=obj,_params["verbose"],
+    verbose=obj._params["verbose"],
 )
 
 # +
@@ -101,7 +106,7 @@ gal_metacal = metacal(
 )
 # -
 
-g_corr_mc, g_uncorr, w, nask)metacal, c, c_err = get_calibrated_m_c(gal_metacal
+g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(gal_metacal)
 
 num_ok = len(g_corr_mc[0])
 sp_joint.Mask.print_strings(
@@ -113,7 +118,7 @@ sp_joint.Mask.print_strings(
 
 cat_gal = {}
 
-w_des = sp_joint.compute_weights_gatti(
+sp_joint.compute_weights_gatti(
     cat_gal,
     g_uncorr,
     gal_metacal,
@@ -206,7 +211,7 @@ cat.write_shape_catalog(
     output_shape_cat_path,
     ra,
     dec,
-    w_des,
+    cat_gal["w_des"],
     mag=mag,
     snr=cat_gal["snr"],
     g=g_corr_mc,
