@@ -493,7 +493,7 @@ class JointCat(BaseCat):
 
         return dat_all
 
-    def write_hdf5_file(self, dat, patches):
+    def write_hdf5_file(self, dat_all, patches):
         """Write HDF5 File.
 
         Write data to HDF5 file.
