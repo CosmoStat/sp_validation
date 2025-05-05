@@ -521,26 +521,12 @@ class CosmologyValidation:
                 )
             else:
                 with self.results[ver].temporarily_load_data():
-<<<<<<< HEAD:sp_validation/cosmo_val.py
                     hsp_map = fp.create_hsp_map(
                         self.results[ver].dat_shear["RA"],
                         self.results[ver].dat_shear["Dec"],
                     )
                 fp.plot_region(hsp_map, fp._regions[region], outpath=out_path)
                 self.print_done("Footprint plot saved to " + out_path)
-=======
-                    plt.clf()
-                    plt.plot(
-                        self.results[ver].dat_shear["RA"],
-                        self.results[ver].dat_shear["Dec"],
-                        ".",
-                        markersize=0.5,
-                    )
-                    plt.xlabel("R.A. [deg]")
-                    plt.ylabel("Dec [deg]")
-                    cs_plots.savefig(out_path)
-                    self.print_done("Footprint plot saved to " + out_path)
->>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py
 
     def calculate_scale_dependent_leakage(self):
         self.print_start("Calculating scale-dependent leakage:")
@@ -553,24 +539,6 @@ class CosmologyValidation:
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
-<<<<<<< HEAD:sp_validation/cosmo_val.py
-            with self.results[ver].temporarily_load_data():
-                if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
-                    self.print_green(
-                        f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
-                    )
-
-                    # MKDEBUG the following lines do not need the data catalogue
-                    results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
-                    results.r_corr_gp.read(output_path_ab)
-
-                    results.r_corr_pp = treecorr.GGCorrelation(self.treecorr_config)
-                    results.r_corr_pp.read(output_path_aa)
-
-                else:
-                    results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
-
-=======
 
             with self.results[ver].temporarily_load_data():
                 if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
@@ -587,7 +555,6 @@ class CosmologyValidation:
                 else:
                     results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
 
->>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py
                 results.do_alpha(fast=True)
                 results.do_xi_sys()
 
@@ -987,27 +954,8 @@ class CosmologyValidation:
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=self.npatch,
                     )
-<<<<<<< HEAD:sp_validation/cosmo_val.py
-                    g2 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                        - self.c2[ver]
-                    ) / np.average(self.results[ver].dat_shear[R22])
-                cat_gal = treecorr.Catalog(
-                    ra=self.results[ver].dat_shear["RA"],
-                    dec=self.results[ver].dat_shear["Dec"],
-                    g1=g1,
-                    g2=g2,
-                    w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=self.npatch,
-                )
-                gg.process(cat_gal)
-                gg.write(out_fname)
-=======
                     gg.process(cat_gal)
                     gg.write(out_fname)
->>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py
 
                     # Save xi_p and xi_m results to fits file
                     lst = np.arange(1, self.treecorr_config["nbins"] + 1)
@@ -1233,27 +1181,6 @@ class CosmologyValidation:
                 self.print_green(f"Skipping xi for Map2, {out_fname} exists")
                 gg.read(out_fname)
             else:
-<<<<<<< HEAD:sp_validation/cosmo_val.py
-                R = self.cc[ver]["shear"]["R"]
-                g1 = (
-                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                    - self.c1[ver]
-                ) / R
-                g2 = (
-                    self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                    - self.c2[ver]
-                ) / R
-                cat_gal = treecorr.Catalog(
-                    ra=self.results[ver].dat_shear["RA"],
-                    dec=self.results[ver].dat_shear["Dec"],
-                    g1=g1,
-                    g2=g2,
-                    w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
-                    ra_units=self.treecorr_config["ra_units"],
-                    dec_units=self.treecorr_config["dec_units"],
-                    npatch=npatch,
-                )
-=======
                 with self.results[ver].temporarily_load_data():
                     R = self.cc[ver]["shear"]["R"]
                     g1 = (
@@ -1274,7 +1201,6 @@ class CosmologyValidation:
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
                     )
->>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py
 
                     gg.process(cat_gal)
                     gg.write(out_fname)
@@ -1495,7 +1421,6 @@ class CosmologyValidation:
 
             return results
 
-<<<<<<< HEAD:sp_validation/cosmo_val.py
 class FootprintPlotter:
     """Class to create footprint plots.
     
@@ -1768,7 +1693,7 @@ def hsp_map_logical_or(maps, verbose=False):
             print(f"after map {idx}: frac_true={n_true / n_tot:g}, frac_false={n_false / n_tot:g}")
 
     return map_comb
-=======
+
     def calculate_pseudo_cl_eb_cov(self):
         """
         Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
