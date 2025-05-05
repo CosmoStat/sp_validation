@@ -602,7 +602,6 @@ def write_shape_catalog(
     if add_header:
         primary_header.update(add_header)
 
-    print("MKDEBUG spv cat.py [", getpass.getuser(), "]= user")
     primary_header = cat.write_header_info_sp(
         primary_header,
         software_name="sp_validation",
