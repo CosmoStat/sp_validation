@@ -4,11 +4,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
-from cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val import CosmologyValidation
 
 # %%
 cv = CosmologyValidation(
-    versions=["SP_v1.4.5_glass_mock"],
+    versions=["SP_v1.4.2"],
     data_base_dir="/n17data/mkilbing/astro/data/",
     npatch=100,
 )

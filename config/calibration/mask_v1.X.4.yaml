@@ -1,11 +1,11 @@
 # Config file for masking and calibration.
 # Standard cuts without coverage mask, type v1.X.4.
 
-
 # General parameters (can also given on command line)
 params:
-  input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.0.hdf5
+  input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
   cmatrices: True
+  sky_regions: False
   verbose: True
 
 # Masks

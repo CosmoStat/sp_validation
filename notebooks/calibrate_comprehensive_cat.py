@@ -191,7 +191,7 @@ cat_gal["snr"] = cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
 
 name = "w_des"
 num_bins = 20
-w = calibration.get_w_des(cat_gal, num_bins)
+w_des = calibration.get_w_des(cat_gal, num_bins)
 
 # +
 # Correct for PSF leakage
@@ -204,7 +204,7 @@ cat_gal["e1_PSF"] = cat.get_col(
 cat_gal["e2_PSF"] = cat.get_col(
     dat, "e2_PSF", mask_combined._mask, mask_metacal
 )
-cat_gal["w_des"] = w
+cat_gal["w_des"] = w_des
 
 num_bins = 20
 weight_type = "des"
@@ -237,6 +237,7 @@ mag = cat.get_col(dat, "mag", mask_combined._mask, mask_metacal)
 # +
 
 add_cols = [
+    "w_iv",
     "FLUX_RADIUS",
     "FWHM_IMAGE",
     "FWHM_WORLD",
@@ -256,6 +257,9 @@ for key in add_cols:
 
 add_cols_data["e1_leak_corrected"] = e1_leak_corrected
 add_cols_data["e2_leak_corrected"] = e2_leak_corrected
+
+add_cols_data["e1_PSF"] = cat_gal["e1_PSF"]
+add_cols_data["e2_PSF"] = cat_gal["e2_PSF"]
 
 # +
 # Add information to FITS header
@@ -280,7 +284,7 @@ cat.write_shape_catalog(
     output_shape_cat_path,
     ra,
     dec,
-    w,
+    w_des,
     mag=mag,
     snr=cat_gal["snr"],
     g=g_corr_mc,
@@ -291,6 +295,7 @@ cat.write_shape_catalog(
     R_select=gal_metacal.R_selection,
     c=c,
     c_err=c_err,
+    w_type="des",
     add_cols=add_cols_data,
     add_header=header,
 )

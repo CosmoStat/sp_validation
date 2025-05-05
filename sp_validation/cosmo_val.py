@@ -5,15 +5,27 @@ from contextlib import contextmanager
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
-import pymaster as nmt
-import healpy as hp
+import re
+
 import treecorr
-import camb
-import utils
+from . import utils_cosmo_val
 import yaml
 from astropy.io import fits
-from astropy.cosmology import Planck18
-from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+from astropy import units as u
+from astropy.coordinates import SkyCoord        
+
+import healpy as hp
+import healsparse as hsp
+from collections import Counter
+import skyproj
+
+
+try:
+    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+except:
+    print("Could not import  cosmo_numba, continuing without")
+
+import pymaster as nmt
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
@@ -92,6 +104,9 @@ class CosmologyValidation:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
         for ver in ["nz", *versions]:
+
+            if ver not in cc:
+                raise KeyError(f"Version string {ver} not found in config file{catalog_config}")
             version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
@@ -166,6 +181,7 @@ class CosmologyValidation:
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
         params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
 
         if (
             "e1_PSF_col" in self.cc[ver]["shear"]
@@ -237,7 +253,7 @@ class CosmologyValidation:
 
         self.print_start("Rho stats")
         for ver in self.versions:
-            rho_stat_handler, tau_stat_handler = utils.get_rho_tau_w_cov(
+            rho_stat_handler, tau_stat_handler = utils_cosmo_val.get_rho_tau_w_cov(
                 self.cc,
                 ver,
                 self.treecorr_config,
@@ -332,7 +348,7 @@ class CosmologyValidation:
         params["ra_units"] = "deg"
         params["dec_units"] = "deg"
 
-        params["w_col"] = "w"
+        params["w_col"] = self.cc[ver]["shear"]["w_col"]
 
         return params
 
@@ -363,7 +379,7 @@ class CosmologyValidation:
                 self.cov_estimate_method, None
             )
 
-            flat_samples, result, q = utils.get_samples(
+            flat_samples, result, q = utils_cosmo_val.get_samples(
                 self.psf_fitter,
                 ver,
                 cov_type=self.cov_estimate_method,
@@ -491,26 +507,26 @@ class CosmologyValidation:
         self.print_start("Plotting footprints:")
         for ver in self.versions:
             self.print_magenta(ver)
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/footprint_{ver}.png"
-            )
+            results = self.results[ver]
+            
+            fp = FootprintPlotter()
+                
+            for region in fp._regions: 
+                out_path = os.path.abspath(
+                    f"{self.cc['paths']['output']}/footprint_{ver}_{region}.png"
+                )
             if os.path.exists(out_path):
                 self.print_done(
-                    f"Skipping footprint computation, plot {out_path} exists"
+                    f"Skipping footprint plot, {out_path} exists"
                 )
             else:
                 with self.results[ver].temporarily_load_data():
-                    plt.clf()
-                    plt.plot(
+                    hsp_map = fp.create_hsp_map(
                         self.results[ver].dat_shear["RA"],
                         self.results[ver].dat_shear["Dec"],
-                        ".",
-                        markersize=0.5,
                     )
-                    plt.xlabel("R.A. [deg]")
-                    plt.ylabel("Dec [deg]")
-                    cs_plots.savefig(out_path)
-                    self.print_done("Footprint plot saved to " + out_path)
+                fp.plot_region(hsp_map, fp._regions[region], outpath=out_path)
+                self.print_done("Footprint plot saved to " + out_path)
 
     def calculate_scale_dependent_leakage(self):
         self.print_start("Calculating scale-dependent leakage:")
@@ -708,7 +724,6 @@ class CosmologyValidation:
             results_obj.prepare_output()
 
             # Skip read_data() and copy catalogue from scale leakage instance instead
-            results_obj._dat = self.results[ver].dat_shear
 
             out_base = results_obj.get_out_base(mix, order)
             out_path = f"{out_base}.pkl"
@@ -719,9 +734,11 @@ class CosmologyValidation:
                 results_obj.par_best_fit = leakage.read_from_file(out_path)
             else:
                 self.print_cyan("Computing object-wise leakage regression")
+                with self.results[ver].temporarily_load_data():
+                    results_obj._dat = self.results[ver].dat_shear
 
-                # Run
-                results_obj.PSF_leakage()
+                    # Run
+                    results_obj.PSF_leakage()
 
         # Gather coefficients
         leakage_coeff = {}
@@ -819,7 +836,7 @@ class CosmologyValidation:
                 R = self.cc[ver]["shear"]["R"]
                 e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
                 e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                w = self.results[ver].dat_shear["w"]
+                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
 
                 axs[0].hist(
                     e1,
@@ -876,11 +893,11 @@ class CosmologyValidation:
             R = self.cc[ver]["shear"]["R"]
             self._c1[ver] = np.average(
                 self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R,
-                weights=self.results[ver].dat_shear["w"],
+                weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
             )
             self._c2[ver] = np.average(
                 self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R,
-                weights=self.results[ver].dat_shear["w"],
+                weights=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
             )
         self.print_done("Finished additive bias calculation.")
 
@@ -1359,7 +1376,7 @@ class CosmologyValidation:
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear["w"],
+                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=self.npatch,
@@ -1403,6 +1420,279 @@ class CosmologyValidation:
             }
 
             return results
+
+class FootprintPlotter:
+    """Class to create footprint plots.
+    
+    Parameters
+    -----------
+    nside_coverage: int, optional
+        basic resolution of map; default is 32
+    nside_map:
+        fine resolution for plotting; default is 2048
+
+    """
+    
+    # Dictionary storing region parameters
+    _regions = {
+        "NGC": {"ra_0": 180, "extend": [120, 270, 20, 70], "vmax": 60},
+        "SGC": {"ra_0": 15, "extend": [-20, 45, 20, 45], "vmax": 60},
+        "fullsky": {"ra_0": 150, "extend": [0, 360, -90, 90], "vmax": 60},
+    }
+    
+    def __init__(self, nside_coverage=32, nside_map=2048):
+        
+        self._nside_coverage = nside_coverage
+        self._nside_map = nside_map
+    
+    def create_hsp_map(self, ra, dec):
+        """Create Hsp Map.
+        
+        Create healsparse map.
+        
+        Parameters
+        ----------
+        ra : numpy.ndarray
+            right ascension values
+        dec : numpy.ndarray
+            declination values
+            
+        Returns
+        -------
+        hsp.HealSparseMap
+            map
+            
+        """
+        # Create empty map
+        hsp_map = hsp.HealSparseMap.make_empty(
+            self._nside_coverage,
+            self._nside_map,
+            dtype=np.float32,
+            sentinel=np.nan
+        )
+
+        # Get pixel list corresponding to coordinates
+        hpix = hp.ang2pix(self._nside_map, ra, dec, nest=True, lonlat=True)
+
+        # Get count of objects per pixel
+        pixel_counts = Counter(hpix)
+
+        # List of unique pixels
+        unique_hpix = np.array(list(pixel_counts.keys()))
+
+        # Number of objects
+        values = np.array(list(pixel_counts.values()), dtype=np.float32)
+
+        # Create maps with numbers per pixel
+        hsp_map[unique_hpix] = values
+    
+        return hsp_map
+    
+    def plot_area(
+        self,
+        hsp_map,
+        ra_0=0,
+        extend=[120, 270, 29, 70],
+        vmax=60,
+        projection=None,
+        outpath=None,
+        title=None,
+    ):
+        """Plot Area.
+        
+        Plot catalogue in an area on the sky.
+        
+        Parameters
+        ----------
+        hsp_map : hsp_HealSparseMap
+            input map
+        ra_0 : float, optional
+            anchor point in R.A.; default is 0
+        extend : list, optional
+            sky region, extend=[ra_low, ra_high, dec_low, dec_high];
+            default is [120, 270, 29, 70]
+        vmax : float, optional
+            maximum pixel value to plot with color; default is 60
+        projection : skyproj.McBrydeSkyproj
+            if ``None`` (default), a new plot is created
+        outpath : str, optional
+            output path, default is ``None``
+        title : str, optional
+            print title if not ``None`` (default)
+            
+        Returns
+        --------
+        skyproj.McBrydeSkyproj
+            projection instance
+        plt.axes.Axes
+            axes instance
+            
+        Raises
+        ------
+        ValueError
+            if no object found in region
+        
+        """
+        if not projection:
+            
+            # Create new figure and axes
+            fig, ax = plt.subplots(figsize=(10, 10))
+
+            # Create new projection
+            projection = skyproj.McBrydeSkyproj(
+                ax=ax,
+                lon_0=ra_0,
+                extent=extend,
+                autorescale=True,
+                vmax=vmax
+            )
+        else:
+            ax = None
+
+        try:
+            _ = projection.draw_hspmap(
+                hsp_map, lon_range=extend[0:2],
+                lat_range=extend[2:]
+            )
+        except ValueError:
+            msg = "No object found in region to draw"
+            print(f"{msg}, continuing...")
+            #raise ValueError(msg)
+            
+        projection.draw_milky_way(width=25, linewidth=1.5, color='black', linestyle='-')
+            
+        if title:
+            plt.title(title, pad=5)
+
+        if outpath:
+            plt.savefig(outpath)
+            
+        return projection, ax
+        
+    def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None):
+        
+        return self.plot_area(
+            hsp_map,
+            region["ra_0"],
+            region["extend"],
+            region["vmax"],
+            projection=projection,
+            outpath=outpath,
+            title=title,
+        )
+
+    def plot_all_regions(self, hsp_map, outbase=None):  
+
+        for region in self._regions:
+            if outbase:
+                outpath = f"{outbase}_{region}.png"
+            else:
+                outpath = None
+            self.plot_region(hsp_map, self._regions[region], outpath=outpath)
+            
+
+    @classmethod            
+    def hp_pixel_centers(cls, nside, nest=False):
+        
+        # Get number of pixels for given nside        
+        npix = hp.nside2npix(nside)
+        
+        # Get pixel indices
+        pix_indices = np.arange(npix)
+    
+        # Get coordinates of pixel centers
+        ra, dec = hp.pix2ang(nside, pix_indices, nest=nest, lonlat=True)
+
+        return ra, dec, npix
+
+    @classmethod
+    def plot_footprint_as_hp(cls, hsp_map, nside, outpath=None, title=None):
+
+        ra, dec, npix = cls.hp_pixel_centers(nside)
+
+        # Create an empty HEALPix map
+        m = np.full(npix, np.nan)  
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        # Plot the HEALPix grid
+        hp.mollview(m, title=title, coord="C", notext=True, rot=(180, 0, 0))
+        
+        # Define the Galactic Plane: l = [0, 360], b = 0°
+        for l0, ls in zip((-5, 0, 5), (":", "-", ":")):
+            l_values = np.linspace(0, 360, 500)  # 500 points along the plane
+            b_values = np.zeros_like(l_values)   # Galactic latitude is 0 (the plane)
+
+            # Convert (l, b) to (λ, β) - Ecliptic coordinates
+            coords = SkyCoord(l=l_values*u.degree, b=b_values*u.degree, frame='galactic')
+            ecl_coords = coords.transform_to('barycentrictrueecliptic')  # Ecliptic frame
+
+            # Extract Ecliptic longitude (λ) and latitude (β)
+            lambda_ecl = ecl_coords.lon.deg  # Ecliptic longitude
+            beta_ecl = ecl_coords.lat.deg    # Ecliptic latitude
+
+            # Convert to HEALPix projection coordinates (colatitude, longitude)
+            theta = np.radians(90 - beta_ecl)  # HEALPix uses colatitude
+            phi = np.radians(lambda_ecl)  # HEALPix uses longitude
+
+            # Create a healpy Mollweide projection in Ecliptic coordinates
+            hp.projplot(theta, phi, linestyle=ls, color='black', linewidth=1)  # Plot the outline
+
+        # Apply mask
+        mask_values = hsp_map.get_values_pos(ra, dec, valid_mask=True, lonlat=True)
+
+        ok = np.where(mask_values == False)[0]
+        #nok = np.where(mask_values == False)[0]
+
+        hp.projscatter(ra[ok], dec[ok], lonlat=True, color="green", s=1, marker=".")        
+        #hp.projscatter(ra[nok], dec[nok], lonlat=True, color="red", s=1, marker=".")
+        
+        plt.tight_layout()
+        
+        if outpath:
+            plt.savefig(outpath)
+            
+        plt.show()
+
+def hsp_map_logical_or(maps, verbose=False):
+    """
+    Hsp Map Logical Or.
+    
+    Logical AND of HealSparseMaps.
+    
+    """
+    if verbose:
+        print("Combine all maps...")
+    
+    # Ensure consistency in coverage and data type
+    nside_coverage = maps[0].nside_coverage
+    nside_sparse = maps[0].nside_sparse
+    dtype = maps[0].dtype
+
+    for m in maps:
+        # MKDEBUG TODO: Change nside if possible
+        if m.nside_coverage != nside_coverage:
+            raise ValueError(
+                f"Coverage nside={m.nside_coverage} does not match {nside_coverage}"
+            )
+        if m.dtype != dtype:
+            raise ValueError(
+                f"Data type {m.dtype} does not match {dtype}"
+            )
+
+    # Create an empty HealSparse map
+    map_comb = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=dtype)
+    for idx, m in enumerate(maps):
+        map_comb |= m
+        
+        if verbose:
+            valid_pixels = map_comb.valid_pixels
+            n_tot = np.sum(valid_pixels)
+            n_true = np.count_nonzero(valid_pixels)
+            n_false = n_tot - n_true
+            print(f"after map {idx}: frac_true={n_true / n_tot:g}, frac_false={n_false / n_tot:g}")
+
+    return map_comb
 
     def calculate_pseudo_cl_eb_cov(self):
         """
@@ -1911,3 +2201,4 @@ class CosmologyValidation:
         plt.legend()
         plt.savefig(out_path)
 # %%
+>>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py
