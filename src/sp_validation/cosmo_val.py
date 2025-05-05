@@ -1161,7 +1161,7 @@ class CosmologyValidation:
             "sep_units": "arcmin",
             "nbins": nbins,
             "var_method": var_method,
-            "cross_patch_weight": "match",
+            "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
         }
 
         with open(catalog_config, "r") as file:
@@ -1883,6 +1883,7 @@ class CosmologyValidation:
             self.print_start("Computing ellipticity histograms:")
 
             fig, axs = plt.subplots(1, 2, figsize=(22, 7))
+            bins = np.linspace(-1.5, 1.5, nbins + 1)
             for ver in self.versions:
                 self.print_magenta(ver)
                 R = self.cc[ver]["shear"]["R"]
@@ -1897,7 +1898,7 @@ class CosmologyValidation:
 
                     axs[0].hist(
                         e1,
-                        bins=nbins,
+                        bins=bins,
                         density=False,
                         histtype="step",
                         weights=w,
@@ -1906,7 +1907,7 @@ class CosmologyValidation:
                     )
                     axs[1].hist(
                         e2,
-                        bins=nbins,
+                        bins=bins,
                         density=False,
                         histtype="step",
                         weights=w,
@@ -1919,6 +1920,37 @@ class CosmologyValidation:
                 axs[idx].set_ylabel("frequency")
                 axs[idx].legend()
                 axs[idx].set_xlim([-1.5, 1.5])
+            cs_plots.savefig(out_path, show=True)
+            self.print_done("Ellipticity histograms saved to " + out_path)
+
+    def plot_weights(self, nbins=200):
+        out_path = os.path.abspath(f"{self.cc['paths']['output']}/weight_hist.png")
+        if os.path.exists(out_path):
+            self.print_done(f"Skipping weight histograms, {out_path} exists")
+        else:
+            self.print_start("Computing weight histograms:")
+
+            bins = np.linspace(0, 1.2, nbins + 1)
+            for ver in self.versions:
+                self.print_magenta(ver)
+                with self.results[ver].temporarily_read_data():
+                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
+
+                    plt.hist(
+                        w,
+                        bins=nbins,
+                        density=False,
+                        histtype="step",
+                        weights=w,
+                        label=ver,
+                        color=self.cc[ver]["colour"],
+                    )
+
+            plt.xlabel(f"$w$")
+            plt.ylabel("frequency")
+            plt.yscale("log")
+            plt.legend()
+            # plt.xlim([-0.01, 1.2])
             cs_plots.savefig(out_path, show=True)
             self.print_done("Ellipticity histograms saved to " + out_path)
 
@@ -1975,102 +2007,126 @@ class CosmologyValidation:
             self.calculate_additive_bias()
         return self._c2
 
-    def calculate_2pcf(self):
-        self.print_start(f"Computing 2PCF")
+    def calculate_2pcf(self, ver, npatch=None, save_fits=False, **treecorr_config):
+        """
+        Calculate ξ± for the given catalog version.
+        The class instance's treecorr_config will be used by default, but any kwargs
+        passed to this function will overwrite the defaults.
+        """
 
-        self._cat_ggs = {}
-        for ver in self.versions:
-            self.print_magenta(ver)
-            gg = self._cat_ggs[ver] = treecorr.GGCorrelation(self.treecorr_config)
+        self.print_magenta(f"Computing {ver} ξ±")
 
-            out_fname = os.path.abspath(f"{self.cc['paths']['output']}/xi_pm_{ver}.txt")
-            if os.path.exists(out_fname):
-                self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
-                gg.read(out_fname)
-            else:
-                # Run TreeCorr
-                with self.results[ver].temporarily_read_data():
-                    e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                    e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
-                    if ver != "DES":
-                        R = self.cc[ver]["shear"]["R"]
-                        g1 = (e1 - self.c1[ver]) / R
-                        g2 = (e2 - self.c2[ver]) / R
-                    else:
-                        R11 = self.cc[ver]["shear"]["R11"]
-                        R22 = self.cc[ver]["shear"]["R22"]
-                        g1 = (e1 - self.c1[ver]) / np.average(
-                            self.results[ver].dat_shear[R11]
-                        )
-                        g2 = (
-                            self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                            - self.c2[ver]
-                        ) / np.average(self.results[ver].dat_shear[R22])
-                    cat_gal = treecorr.Catalog(
-                        ra=self.results[ver].dat_shear["RA"],
-                        dec=self.results[ver].dat_shear["Dec"],
-                        g1=g1,
-                        g2=g2,
-                        w=w,
-                        ra_units=self.treecorr_config["ra_units"],
-                        dec_units=self.treecorr_config["dec_units"],
-                        npatch=self.npatch,
-                    )
-                    gg.process(cat_gal)
-                    gg.write(out_fname)
+        treecorr_config = {
+            **self.treecorr_config,
+            **treecorr_config,
+        }
 
-                    # Save xi_p and xi_m results to fits file
-                    lst = np.arange(1, self.treecorr_config["nbins"] + 1)
-
-                    col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
-                    col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
-                    col3 = fits.Column(name="ANGBIN", format="K", array=lst)
-                    col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
-                    col5 = fits.Column(
-                        name="ANG", format="D", unit="arcmin", array=gg.meanr
-                    )
-                    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-                    xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
-
-                    col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
-                    coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-                    ximinus_hdu = fits.BinTableHDU.from_columns(
-                        coldefs, name="XI_MINUS"
-                    )
-
-                    # append xi_plus header info
-                    xiplus_dict = {
-                        "2PTDATA": "T",
-                        "QUANT1": "G+R",
-                        "QUANT2": "G+R",
-                        "KERNEL_1": "NZ_SOURCE",
-                        "KERNEL_2": "NZ_SOURCE",
-                        "WINDOWS": "SAMPLE",
-                    }
-                    for key in xiplus_dict:
-                        xiplus_hdu.header[key] = xiplus_dict[key]
-                    xiplus_hdu.writeto(
-                        f"{self.cc['paths']['output']}/xi_plus_{ver}.fits",
-                        overwrite=True,
-                    )
-
-                    # append xi_minus header info
-                    ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
-                    for key in ximinus_dict:
-                        ximinus_hdu.header[key] = ximinus_dict[key]
-                    ximinus_hdu.writeto(
-                        f"{self.cc['paths']['output']}/xi_minus_{ver}.fits",
-                        overwrite=True,
-                    )
-
-            self.print_done("Done 2PCF")
-
-    @property
-    def cat_ggs(self):
+        # Create correlation object
         if not hasattr(self, "_cat_ggs"):
-            self.calculate_2pcf()
-        return self._cat_ggs
+            self._cat_ggs = {}
+        gg = treecorr.GGCorrelation(treecorr_config)
+
+        # If the output file already exists, skip the calculation
+        out_fname = os.path.abspath(
+            f"{self.cc['paths']['output']}/{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
+        )
+
+        if os.path.exists(out_fname):
+            self.print_done(f"Skipping 2PCF calculation, {out_fname} exists")
+            gg.read(out_fname)
+
+        else:
+            # Load data and create a catalog
+            with self.results[ver].temporarily_read_data():
+                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
+                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
+                if ver != "DES":
+                    R = self.cc[ver]["shear"]["R"]
+                    g1 = (e1 - self.c1[ver]) / R
+                    g2 = (e2 - self.c2[ver]) / R
+                else:
+                    R11 = self.cc[ver]["shear"]["R11"]
+                    R22 = self.cc[ver]["shear"]["R22"]
+                    g1 = (e1 - self.c1[ver]) / np.average(
+                        self.results[ver].dat_shear[R11]
+                    )
+                    g2 = (
+                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                        - self.c2[ver]
+                    ) / np.average(self.results[ver].dat_shear[R22])
+
+                # Use patch file if it exists
+                patch_file = os.path.abspath(
+                    f"{self.cc['paths']['output']}/{ver}_patches_npatch={npatch}.dat"
+                )
+
+                cat_gal = treecorr.Catalog(
+                    ra=self.results[ver].dat_shear["RA"],
+                    dec=self.results[ver].dat_shear["Dec"],
+                    g1=g1,
+                    g2=g2,
+                    w=w,
+                    ra_units=self.treecorr_config["ra_units"],
+                    dec_units=self.treecorr_config["dec_units"],
+                    npatch=npatch,
+                    patch_centers=patch_file if os.path.exists(patch_file) else None,
+                )
+
+                # If no patch file exists, save the current patches
+                if not os.path.exists(patch_file):
+                    cat_gal.write_patch_centers(patch_file)
+
+            # Process the catalog & write the correlation functions
+            gg.process(cat_gal)
+            gg.write(out_fname, write_patch_results=True, write_cov=True)
+
+            # Save xi_p and xi_m results to fits file
+            if save_fits:
+                lst = np.arange(1, self.treecorr_config["nbins"] + 1)
+
+                col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
+                col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
+                col3 = fits.Column(name="ANGBIN", format="K", array=lst)
+                col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
+                col5 = fits.Column(
+                    name="ANG", format="D", unit="arcmin", array=gg.meanr
+                )
+                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+                xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
+
+                col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
+                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+                ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
+
+                # append xi_plus header info
+                xiplus_dict = {
+                    "2PTDATA": "T",
+                    "QUANT1": "G+R",
+                    "QUANT2": "G+R",
+                    "KERNEL_1": "NZ_SOURCE",
+                    "KERNEL_2": "NZ_SOURCE",
+                    "WINDOWS": "SAMPLE",
+                }
+                for key in xiplus_dict:
+                    xiplus_hdu.header[key] = xiplus_dict[key]
+                xiplus_hdu.writeto(
+                    f"{self.cc['paths']['output']}/xi_plus_{ver}.fits",
+                    overwrite=True,
+                )
+
+                # append xi_minus header info
+                ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
+                for key in ximinus_dict:
+                    ximinus_hdu.header[key] = ximinus_dict[key]
+                ximinus_hdu.writeto(
+                    f"{self.cc['paths']['output']}/xi_minus_{ver}.fits",
+                    overwrite=True,
+                )
+
+        self.print_done("Done 2PCF")
+
+        return gg
 
     def plot_2pcf(self):
         # Plot of n_pairs
@@ -2263,7 +2319,7 @@ class CosmologyValidation:
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear["w"],
+                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]],
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
@@ -2376,117 +2432,71 @@ class CosmologyValidation:
 
     def calculate_pure_eb(
         self,
-        theta_min=0.1,
-        theta_max=250,
+        version,
+        min_sep=0.1,
+        max_sep=250,
         nbins=20,
-        theta_min_int=0.04,
-        theta_max_int=500,
+        min_sep_int=0.04,
+        max_sep_int=500,
         nbins_int=1000,
+        npatch=None,
+        var_method="jackknife",
     ):
-        self.print_start("Computing pure E/B")
+        self.print_start(f"Computing {version} pure E/B")
 
         treecorr_config = {
             **self.treecorr_config,
-            "min_sep": theta_min,
-            "max_sep": theta_max,
+            "min_sep": min_sep,
+            "max_sep": max_sep,
             "nbins": nbins,
         }
 
-        # nbins_int = (nbins - 1) * integration_oversample + 1
         treecorr_config_int = {
             **treecorr_config,
-            "min_sep": theta_min_int,
-            "max_sep": theta_max_int,
+            "min_sep": min_sep_int,
+            "max_sep": max_sep_int,
             "nbins": nbins_int,
         }
 
-        print("Integration correlation function parameters:")
-        print(treecorr_config_int)
+        npatch = npatch or self.npatch
 
-        print("Output correlation function parameters:")
-        print(treecorr_config)
+        gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
+        gg_int = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_int)
 
-        for ver in self.versions:
-            self.print_magenta(ver)
-
-            gg_int = treecorr.GGCorrelation(treecorr_config_int)
-            gg = treecorr.GGCorrelation(treecorr_config)
-
-            out_fname = os.path.abspath(
-                # f"{self.cc['paths']['output']}/xi_for_pure_eb_{ver}.txt"
-                f"{self.cc['paths']['output']}/xi_for_pure_eb_thetamin={theta_min}_thetamax={theta_max}_nbins={nbins}_npatch={self.npatch}_{ver}.txt"
-            )
-            out_fname_int = os.path.abspath(
-                f"{self.cc['paths']['output']}/xi_for_pure_eb_int_thetaminint={theta_min_int}_thetamaxint_{theta_max_int}_nbinsint={nbins_int}_npatchint={self.npatch}_{ver}.txt"
-                # f"{self.cc['paths']['output']}/xi_for_pure_eb_{ver}_int.txt"
-            )
-            if os.path.exists(out_fname) and os.path.exists(out_fname_int):
-                self.print_green(
-                    f"Skipping xi for COSEBIs:\n{out_fname}\n{out_fname_int}\nexist."
-                )
-                gg.read(out_fname)
-                gg_int.read(out_fname_int)
-            else:
-                with self.results[ver].temporarily_read_data():
-                    R = self.cc[ver]["shear"]["R"]
-                    g1 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                        - self.c1[ver]
-                    ) / R
-                    g2 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                        - self.c2[ver]
-                    ) / R
-
-                    cat = treecorr.Catalog(
-                        ra=self.results[ver].dat_shear["RA"],
-                        dec=self.results[ver].dat_shear["Dec"],
-                        g1=g1,
-                        g2=g2,
-                        w=self.results[ver].dat_shear["w"],
-                        ra_units=self.treecorr_config["ra_units"],
-                        dec_units=self.treecorr_config["dec_units"],
-                        npatch=self.npatch,
-                    )
-                    del g1, g2, R
-
-                self.print_cyan("Integration binning")
-                gg_int.process(cat)
-                gg_int.write(out_fname_int, write_patch_results=True, write_cov=True)
-
-                self.print_cyan("Output binning")
-                gg.process(cat)
-                gg.write(out_fname, write_patch_results=True, write_cov=True)
-
-            def pure_EB(corrs):
-                gg, gg_int = corrs
-                return get_pure_EB_modes(
-                    theta=gg.meanr,
-                    xip=gg.xip,
-                    xim=gg.xim,
-                    theta_int=gg_int.meanr,
-                    xip_int=gg_int.xip,
-                    xim_int=gg_int.xim,
-                    tmin=theta_min,
-                    tmax=theta_max,
-                )
-
-            xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = pure_EB([gg, gg_int])
-            cov = treecorr.estimate_multi_cov(
-                [gg, gg_int], "jackknife", func=lambda x: np.hstack(pure_EB(x))
+        def pure_EB(corrs):
+            gg, gg_int = corrs
+            return get_pure_EB_modes(
+                theta=gg.meanr,
+                xip=gg.xip,
+                xim=gg.xim,
+                theta_int=gg_int.meanr,
+                xip_int=gg_int.xip,
+                xim_int=gg_int.xim,
+                tmin=min_sep,
+                tmax=max_sep,
             )
 
-            results = {
-                "xip_E": xip_E,
-                "xim_E": xim_E,
-                "xip_B": xip_B,
-                "xim_B": xim_B,
-                "xip_amb": xip_amb,
-                "xim_amb": xim_amb,
-                "cov": cov,
-            }
+        xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = pure_EB([gg, gg_int])
+        cov = treecorr.estimate_multi_cov(
+            [gg, gg_int],
+            var_method,
+            func=lambda x: np.hstack(pure_EB(x)),
+            cross_patch_weight="match" if var_method == "jackknife" else None,
+        )
 
-            return results
+        results = {
+            "xip_E": xip_E,
+            "xim_E": xim_E,
+            "xip_B": xip_B,
+            "xim_B": xim_B,
+            "xip_amb": xip_amb,
+            "xim_amb": xim_amb,
+            "cov": cov,
+            "gg": gg,
+            "gg_int": gg_int,
+        }
+
+        return results
 
     def calculate_pseudo_cl_eb_cov(self):
         """
