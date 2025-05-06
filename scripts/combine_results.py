@@ -563,6 +563,9 @@ def main(argv=None):
     elif argv[1] == 'v1':
         n_patch = 7
         patches = [f'P{x}' for x in np.arange(n_patch) + 1]
+    elif argv[1] == 'v1.5':
+        n_patch = 8
+        patches = [f'P{x}' for x in np.arange(n_patch) + 1]
     elif argv[1] == 'test':
         patches = ['P7', 'W3', 'S4']
     elif argv[1] == 'comb':

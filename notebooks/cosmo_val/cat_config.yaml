@@ -89,7 +89,7 @@ SP_v1.3:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.0.3.fits
@@ -136,7 +136,7 @@ SP_v1.4:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.4.0.fits
@@ -183,7 +183,7 @@ SP_v1.4_conv:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.4.0.fits
@@ -230,7 +230,7 @@ SP_v1.4_noalpha:
       e2_col: e2_cor
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.4.0.fits
@@ -278,7 +278,7 @@ SP_v1.4-P3:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P3_v1.4.fits
@@ -322,7 +322,7 @@ SP_v1.4-P1+3:
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P1+3_v1.4.fits
@@ -364,7 +364,7 @@ SP_v1.4-P1+3_wcs:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P1+3_v1.4.fits
@@ -406,7 +406,7 @@ SP_v1.4-P1+3_no_alpha:
       e2_col: e2_cor_2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P1+3_v1.4.fits
@@ -448,7 +448,7 @@ SP_v1.4-P1+3_li_2024:
       e2_col: e2_cor_2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P1+3_v1.4.fits
@@ -488,7 +488,7 @@ SP_v1.4-P1+3+4:
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P1+3+4_v1.4.fits
@@ -530,7 +530,7 @@ SP_v1.4-P1+3+4_wcs:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P1+3+4_v1.4.fits
@@ -572,7 +572,7 @@ SP_v1.4-P1+3+4_no_alpha:
       e2_col: e2_cor
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_P1+3+4_v1.4.fits
@@ -652,20 +652,20 @@ SP_v1.4.1_noleakage:
    shear:
       path: unions_shapepipe_2024_v1.4.1.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      e1_col: e1_noleakage
-      e2_col: e2_noleakage
+      e1_col: e1
+      e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w_iv
       R: 1.0
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_conv_2024_v1.4.1.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -681,7 +681,7 @@ SP_v1.4.1_noleakage:
 
 SP_v1.4.5:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.5
    ls: dashed
    colour: dodgerblue
    marker: d
@@ -692,23 +692,23 @@ SP_v1.4.5:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: v1.4.x/v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_iv
+      w_col: w_iv
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_2024_v1.4.1.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -810,7 +810,7 @@ SP_test:
 
 SP_v1.4.5_leak_corr:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.5
    ls: dashed
    colour: teal
    marker: d
@@ -821,23 +821,23 @@ SP_v1.4.5_leak_corr:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: v1.4.x/v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1_leak_corrected
       e2_col: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_iv
+      w_col: w_iv
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_2024_v1.4.1.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -870,7 +870,7 @@ SP_v1.5.4:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_iv
+      w_col: w_iv
       R: 1.0
    star:
       path: unions_shapepipe_star_2024_v1.5.a.fits
@@ -912,7 +912,7 @@ SP_v1.5.4_leak_corr:
       e2_col: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_iv
+      w_col: w_iv
       R: 1.0
    star:
       path: unions_shapepipe_star_2024_v1.5.a.fits
@@ -1103,7 +1103,7 @@ SP_v1.3_LFmask_4k:
       path: unions_shapepipe_2022_v1.3_mtheli4k.fits
       e1_col: e1
       e2_col: e2
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.0.3_mtheli4k.fits
@@ -1144,7 +1144,7 @@ SP_v1.4-P3_LFmask:
       path: unions_shapepipe_2022_v1.4_mtheli4k.fits
       e1_col: e1
       e2_col: e2
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.4_mtheli4k.fits
@@ -1189,7 +1189,7 @@ SP_v1.3_LFmask_8k:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
       R11: 1.0
       R22: 1.0
@@ -1237,7 +1237,7 @@ SP_v1.3_LFmask_8k_no_alpha:
       e2_col: e2_cor
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
       R11: 1.0
       R22: 1.0
@@ -1285,7 +1285,7 @@ SP_v1.3_LFmask_8k_li_2024:
       e2_col: e2_cor_2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
       R11: 1.0
       R22: 1.0
@@ -1331,7 +1331,7 @@ SP_v1.3_LFmask_8k_SN8:
       path: unions_shapepipe_extended_2022_sn8_v1.3_mtheli8k.fits
       e1_col: e1
       e2_col: e2
-      w: w
+      w_col: w
       R: 1.0
       R11: 1.0
       R22: 1.0
@@ -1378,7 +1378,7 @@ SP_v1.3_LFmask_8k_SN7:
       path: unions_shapepipe_extended_2022_sn7_v1.3_mtheli8k.fits
       e1_col: e1
       e2_col: e2
-      w: w
+      w_col: w
       R: 1.0
       R11: 1.0
       R22: 1.0
@@ -1425,7 +1425,7 @@ SP_v1.3_LFmask_8k_F2:
       path: unions_shapepipe_extended_2022_f2_v1.3_mtheli8k.fits
       e1_col: e1
       e2_col: e2
-      w: w
+      w_col: w
       R: 1.0
       R11: 1.0
       R22: 1.0
@@ -1475,7 +1475,7 @@ SP_v1.4_LFmask_8k:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.4.0_mtheli8k.fits
@@ -1522,7 +1522,7 @@ SP_v1.4_LFmask_8k_noalpha:
       e2_col: e2_cor
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: unions_shapepipe_star_2022_v1.4.0_mtheli8k.fits
@@ -1594,7 +1594,7 @@ SP_axel_v0.0:
       e2_col: g2
       e1_PSF_col: E1_PSF_HSM
       e2_PSF_col: E2_PSF_HSM
-      w: w
+      w_col: w
       R: 1.0
    star:
       path: star_cat.fits
@@ -1674,7 +1674,7 @@ DES:
       e2_col: e2
       e1_PSF_col: e1_psf
       e2_PSF_col: e2_psf
-      w: w
+      w_col: w
       R: 1.0
       R11: R11
       R22: R22
