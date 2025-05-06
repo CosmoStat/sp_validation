@@ -134,7 +134,7 @@ end = timer()
 print(f" {end - start:.1f}s") 
 # -
 
-obj._params["output_path"] = f"{base}_ugriz_empty_{year}_{ver}.hdf5"
+obj._params["output_path"] = f"{base}_empty_ugriz_{year}_{ver}.hdf5"
 obj.write_hdf5_file(combined)
 
 
