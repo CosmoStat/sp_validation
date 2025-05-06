@@ -74,17 +74,17 @@ hdu_no = 1
 
 # Read catalogue
 dat = obj.read_cat(load_into_memory=False, mode="r")
+n_rows = len(dat)
 
 # +
 # Get tile IDs
-tile_IDs_raw = dat["TILE_ID"]
-tile_IDs_raw_list = list(set(tile_IDs_raw))
+#tile_IDs_raw = dat["TILE_ID"]
+#tile_IDs_raw_list = list(set(tile_IDs_raw))
 
 # Transform (back) to 2x3 digits by zero-padding
-tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
+#tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
 # -
 
-from shutil import copyfile
 
 
 def get_dtype_keys(keys,path=None, hdu_no=1):

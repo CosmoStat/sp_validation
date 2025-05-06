@@ -47,8 +47,7 @@ obj._params["output_path"] = f"{base}_ugriz_{year}_{ver}.hdf5"
 obj._params["verbose"] = True
 
 # +
-#path_bands = "../UNIONS5000"
-path_bands = "."
+path_bands = "../UNIONS5000"
 subdir_base = "UNIONS."
 
 path_base = subdir_base
@@ -86,11 +85,10 @@ tile_IDs_raw_list = list(set(tile_IDs_raw))
 tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
 # -
 
-import copy
-
 # +
 dist_sqr = {}
 do_dist_check = False
+do_copy = False
 
 n_rows = len(dat)
 
@@ -102,13 +100,15 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
     src = os.path.join(path_bands, f"{path_base}{tile_ID}", f"{path_base}{tile_ID}{path_suff}")
     dst = os.path.join(path_bands, f".", f"{path_base}{tile_ID}{path_suff}")
     
-    print("  Copy FITS file:", src, end=" ")
-    start = timer()
-    copy.copy(src, dst)
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
-
-    path = dst
+    if do_copy:
+        print("  Copy FITS file:", src, end=" ")
+        start = timer()
+        copy.copy(src, dst)
+        end = timer()                                                           
+        print(f" {end - start:.1f}s") 
+        path = dst
+    else:
+        path = src
         
     print("  Read data from file:", path, end=" ")
     start = timer()
@@ -131,10 +131,10 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
     end = timer()                                                           
     print(f" {end - start:.1f}s") 
     
-    print("  Compute distance check", end=" ")
-    start = timer()
     # Compute coordinate distances as matching check
     if do_dist_check:
+        print("  Compute distance check", end=" ")
+        start = timer()
         dist_sqr[TILE_ID] = sum(
             (dat[indices]["RA"] - dat_mb["ALPHA_J2000"]) ** 2
             + (dat[indices]["Dec"] - dat_mb["DELTA_J2000"]) ** 2
