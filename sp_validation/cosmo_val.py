@@ -2204,5 +2204,3 @@ def hsp_map_logical_or(maps, verbose=False):
         plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
-# %%
->>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py
