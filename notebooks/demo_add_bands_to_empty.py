@@ -12,7 +12,9 @@
 #     name: python3
 # ---
 
-# # Demo notebook to add (u,g,i,z,z2) bands to an r-band catalogue
+# # Demo notebook to add multi-band (u,g,i,z,z2) and photo-z data to r-band + empty multi-band catalogue.
+#
+# (Fill empty columns.)
 
 # %reload_ext autoreload
 # %autoreload 2
@@ -36,7 +38,7 @@ obj = sp_joint.BaseCat()
 
 # +
 # Set parameters
-base = "unions_shapepipe_comprehensive"
+base = "unions_shapepipe_comprehensive_empty"
 year = 2024
 ver = "v1.5.c.P37"
 
@@ -84,17 +86,17 @@ tile_IDs_raw_list = list(set(tile_IDs_raw))
 tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
 # -
 
+from shutil import copyfile
+
 # +
 dist_sqr = {}
 do_dist_check = False
 do_copy = False
 
-n_rows = len(dat)
-
 # Loop over tile IDs
-for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=True):
+for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=False):
 
-    print(idx/len(tile_ID), tile_ID)
+    #print(idx/len(tile_ID), tile_ID)
     
     src = os.path.join(path_bands, f"{path_base}{tile_ID}", f"{path_base}{tile_ID}{path_suff}")
     dst = os.path.join(f".", f"{path_base}{tile_ID}{path_suff}")
@@ -112,52 +114,47 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
     else:
         path = src
  
-    print("  Read data from file:", path, end=" ")
-    start = timer()
+    #print("  Read data from file:", path, end=" ")
+    #start = timer()
     hdu_list = fits.open(path)
     dat_mb = hdu_list[hdu_no].data
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
+    #end = timer()                                                           
+    #print(f" {end - start:.1f}s") 
     
-    print("  Get numbers", end=" ")
-    start = timer()
+    #print("  Get numbers", end=" ")
+    #start = timer()
     numbers = dat_mb[key_num]
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
+    #end = timer()                                                           
+    #print(f" {end - start:.1f}s") 
     
-    print("  Identify matches", end= " ")
-    start = timer()
+    #print("  Identify matches", end= " ")
+    #start = timer()
     # Select indices in dat with current tile ID
     w = dat["TILE_ID"] == tile_IDs_raw_list[idx]
     indices = np.where(w)[0]
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
+    #end = timer()                                                           
+    #print(f" {end - start:.1f}s") 
     
     # Compute coordinate distances as matching check
     if do_dist_check:
-        print("  Compute distance check", end=" ")
-        start = timer()
+        #print("  Compute distance check", end=" ")
+        #start = timer()
         dist_sqr[TILE_ID] = sum(
             (dat[indices]["RA"] - dat_mb["ALPHA_J2000"]) ** 2
             + (dat[indices]["Dec"] - dat_mb["DELTA_J2000"]) ** 2
         ) / len(dat_mb)
-        end = timer()                                                           
-        print(f" {end - start:.1f}s") 
+        #end = timer()                                                           
+        #print(f" {end - start:.1f}s") 
 
-    print(  "  Copy mb data to combined array", end=" ")
-    start = timer()
+    #print(  "  Copy mb data to combined array", end=" ")
+    #start = timer()
     # Copy multi-band values to combined array
     for key in keys:
         combined[indices][key] = dat_mb[key]
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
+    #end = timer()                                                           
+    #print(f" {end - start:.1f}s") 
 
     hdu_list.close()
-    
-    if idx == 5:
-        break
-
-
 # -
 
 dist_sqr
