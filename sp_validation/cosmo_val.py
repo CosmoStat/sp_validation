@@ -5,10 +5,13 @@ from contextlib import contextmanager
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
-import re
-
+import pymaster as nmt
+import healpy as hp
 import treecorr
 from . import utils_cosmo_val
+import camb
+import re
+
 import yaml
 from astropy.io import fits
 from astropy import units as u
@@ -34,7 +37,7 @@ from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 import matplotlib.scale as mscale
 
-mscale.register_scale(utils.SquareRootScale)
+mscale.register_scale(utils_cosmo_val.SquareRootScale)
 
 
 # %%
@@ -54,7 +57,7 @@ class CosmologyValidation:
         nbins=20,
         var_method="jackknife",
         npatch=20,
-        quantile=0.683,
+        quantile=0.1587,
         theta_min_plot=0.08,
         theta_max_plot=250,
         ylim_alpha=[-0.005, 0.05],
@@ -118,13 +121,13 @@ class CosmologyValidation:
     def color_reset(self):
         print(colorama.Fore.BLACK, end="")
 
-    def print_blue(self, msg):
-        print(colorama.Fore.BLUE + msg)
+    def print_blue(self, msg, end="\n"):
+        print(colorama.Fore.BLUE + msg, end=end)
         self.color_reset()
 
-    def print_start(self, msg):
+    def print_start(self, msg, end="\n"):
         print()
-        self.print_blue(msg)
+        self.print_blue(msg, end=end)
 
     def print_done(self, msg):
         self.print_blue(msg)
@@ -155,6 +158,7 @@ class CosmologyValidation:
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
         params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w"]
         params_in["R11"] = None if ver != "DES" else self.cc[ver]["shear"]["R11"]
         params_in["R22"] = None if ver != "DES" else self.cc[ver]["shear"]["R22"]
 
@@ -218,9 +222,9 @@ class CosmologyValidation:
             @contextmanager
             def temporarily_load_data(results):
                 try:
-                    self.print_start(f"Loading catalog for {ver}")
+                    self.print_start(f"Loading catalog for {ver}...", end="")
                     results.read_data()
-                    self.print_done(f"Catalog loaded for {ver}")
+                    self.print_done(f"done")
                     yield
                 finally:
                     self.print_done(f"Freeing {ver} from memory")
@@ -723,19 +727,18 @@ class CosmologyValidation:
             results_obj.update_params()
             results_obj.prepare_output()
 
-            # Skip read_data() and copy catalogue from scale leakage instance instead
+            with self.results[ver].temporarily_load_data():
+                results_obj._dat = self.results[ver].dat_shear
 
-            out_base = results_obj.get_out_base(mix, order)
-            out_path = f"{out_base}.pkl"
-            if os.path.exists(out_path):
-                self.print_green(
-                    f"Skipping object-wise leakage, file {out_path} exists"
-                )
-                results_obj.par_best_fit = leakage.read_from_file(out_path)
-            else:
-                self.print_cyan("Computing object-wise leakage regression")
-                with self.results[ver].temporarily_load_data():
-                    results_obj._dat = self.results[ver].dat_shear
+                out_base = results_obj.get_out_base(mix, order)
+                out_path = f"{out_base}.pkl"
+                if os.path.exists(out_path):
+                    self.print_green(
+                        f"Skipping object-wise leakage, file {out_path} exists"
+                    )
+                    results_obj.par_best_fit = leakage.read_from_file(out_path)
+                else:
+                    self.print_cyan("Computing object-wise leakage regression")
 
                     # Run
                     results_obj.PSF_leakage()
@@ -832,38 +835,39 @@ class CosmologyValidation:
 
             fig, axs = plt.subplots(1, 2, figsize=(22, 7))
             for ver in self.versions:
-                self.print_magenta(ver)
-                R = self.cc[ver]["shear"]["R"]
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                with self.results[ver].temporarily_load_data():
+                    self.print_magenta(ver)
+                    R = self.cc[ver]["shear"]["R"]
+                    e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
+                    e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
+                    w = self.results[ver].dat_shear["w_col"]
 
-                axs[0].hist(
-                    e1,
-                    bins=nbins,
-                    density=False,
-                    histtype="step",
-                    weights=w,
-                    label=ver,
-                    color=self.cc[ver]["colour"],
-                )
-                axs[1].hist(
-                    e2,
-                    bins=nbins,
-                    density=False,
-                    histtype="step",
-                    weights=w,
-                    label=ver,
-                    color=self.cc[ver]["colour"],
-                )
+                    axs[0].hist(
+                        e1,
+                        bins=nbins,
+                        density=False,
+                        histtype="step",
+                        weights=w,
+                        label=ver,
+                        color=self.cc[ver]["colour"],
+                    )
+                    axs[1].hist(
+                        e2,
+                        bins=nbins,
+                        density=False,
+                        histtype="step",
+                        weights=w,
+                        label=ver,
+                        color=self.cc[ver]["colour"],
+                    )
 
-            for idx in (0, 1):
-                axs[idx].set_xlabel(f"$e_{idx}$")
-                axs[idx].set_ylabel("frequency")
-                axs[idx].legend()
-                axs[idx].set_xlim([-1.5, 1.5])
-            cs_plots.savefig(out_path)
-            self.print_done("Ellipticity histograms saved to " + out_path)
+                for idx in (0, 1):
+                    axs[idx].set_xlabel(f"$e_{idx}$")
+                    axs[idx].set_ylabel("frequency")
+                    axs[idx].legend()
+                    axs[idx].set_xlim([-1.5, 1.5])
+                cs_plots.savefig(out_path)
+                self.print_done("Ellipticity histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
@@ -1718,7 +1722,7 @@ def hsp_map_logical_or(maps, verbose=False):
                 self._pseudo_cls[ver]['cov'] = fits.open(out_path)
             else:
 
-                params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
@@ -1838,7 +1842,7 @@ def hsp_map_logical_or(maps, verbose=False):
                 cl_shear = fits.getdata(out_path)
                 self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
             else:
-                params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+                params = utils_cosmo_val.get_params_rho_tau(self.cc[ver], survey=ver)
 
                 #Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
