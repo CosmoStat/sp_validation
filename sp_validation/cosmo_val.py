@@ -6,6 +6,7 @@ from functools import partial
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 
 try:
     import pymaster as nmt
@@ -32,6 +33,7 @@ except:
     print("Could not import cosmo_numba, continuing without")
 
 from . import utils_cosmo_val
+import pymaster as nmt
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
@@ -547,6 +549,7 @@ class CosmologyValidation:
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
+
             with self.results[ver].temporarily_load_data():
                 if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
                     self.print_green(

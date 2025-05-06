@@ -12,8 +12,8 @@ from sp_validation.cosmo_val import CosmologyValidation
 
 # %%
 cv = CosmologyValidation(
-    versions=["SP_v1.4.2", "SP_v1.4.5"],
-    data_base_dir="/n17data/mkilbing/astro/data",
+    versions=["SP_v1.4.2"],
+    data_base_dir="/n17data/mkilbing/astro/data/",
     npatch=100,
 )
 

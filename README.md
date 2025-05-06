@@ -11,8 +11,9 @@ Validation of weak-lensing catalogues (galaxy and star shapes and other paramete
 | [![coc](https://img.shields.io/badge/conduct-read-lightgrey)](https://github.com/martin.kilbinger/sp_validation/blob/master/CODE_OF_CONDUCT.md) | [![Updates](https://pyup.io/repos/github/martin.kilbinger/sp_validation/shield.svg)](https://pyup.io/repos/github/martin.kilbinger/sp_validation/) | |
 
 ---
-> Authors: <a href="www.cosmostat.org" target="_blank" style="text-decoration:none; color: #F08080">CosmoStat</a> lab at CEA Paris-Saclay, including:
-  Axel Guinot, Martin Kilbinger, Lucie Baumont, Sacha Guerrini, Fabian Hervas Peters, Samuel Farrens, Emma Ayçoberry.</a>
+> Authors: <a href="www.cosmostat.org" target="_blank" style="text-decoration:none; color: #F08080">CosmoStat</a> lab at CEA Paris-Saclay;
+  Martin Kilbinger, Axel Guinot.
+> Contributors: Emma Ayçoberry, Lucie Baumont, Clara Bonini, Cale Daley, Samuel Farrens, Sacha Guerrini, Fabian Hervas Peters.</a>
 > Email: <a href="mailto:martin.kilbinger@cea.fr" style="text-decoration:none; color: #F08080">martin.kilbinger@cea.fr</a>  
 ---
 
@@ -33,9 +34,17 @@ tasks that can be performed by `sp_validation` are:
   correlation function.
 
 
+## Flow chart
+
+The following flow chart illustrates the steps required to go from ShapePipe output products
+to calibrated and well-selected galaxy catalogues.
+
+![Flow chart](docs/images/flow_chart.png)
+
+
 ## Run shear validation
 
-See the [documentation](docs/source/run_validation.md) for instructions how to set up and run `sp_validation`.
+See the [documentation](docs/source/run_validation.md) for instructions on how to set up and run `sp_validation`.
 
 
 ## Post processing

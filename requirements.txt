@@ -2,7 +2,7 @@ importlib_metadata
 adjustText
 colorama
 emcee
-cs_util==0.1.3
+cs_util==0.1.5
 astropy>=5.0
 healpy
 healsparse
