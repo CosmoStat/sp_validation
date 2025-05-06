@@ -12,8 +12,8 @@ Validation of weak-lensing catalogues (galaxy and star shapes and other paramete
 
 ---
 > Authors: <a href="www.cosmostat.org" target="_blank" style="text-decoration:none; color: #F08080">CosmoStat</a> lab at CEA Paris-Saclay;
-  Martin Kilbinger, Axel Guinot.
-> Contributors: Emma Ayçoberry, Lucie Baumont, Clara Bonini, Cale Daley, Samuel Farrens, Sacha Guerrini, Fabian Hervas Peters.</a>
+  Martin Kilbinger, Axel Guinot.  
+> Contributors: Emma Ayçoberry, Lucie Baumont, Clara Bonini, Cail Daley, Samuel Farrens, Sacha Guerrini, Fabian Hervas Peters.</a>  
 > Email: <a href="mailto:martin.kilbinger@cea.fr" style="text-decoration:none; color: #F08080">martin.kilbinger@cea.fr</a>  
 ---
 
