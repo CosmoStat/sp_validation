@@ -1,35 +1,27 @@
 # %%
 import os
+import re
 import time
+from collections import Counter
 from contextlib import contextmanager
 
 import camb
 import colorama
 import healpy as hp
+import healsparse as hsp
 import matplotlib.pyplot as plt
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
 import numpy as np
 import pymaster as nmt
-import healpy as hp
-import treecorr
-import camb
-import re
-
-import yaml
-from astropy.io import fits
-from astropy import units as u
-from astropy.coordinates import SkyCoord        
-
-import healpy as hp
-import healsparse as hsp
-from collections import Counter
 import skyproj
-
+import treecorr
+import yaml
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.io import fits
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
-
-import pymaster as nmt
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
@@ -1575,17 +1567,15 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
             results = self.results[ver]
-            
+
             fp = FootprintPlotter()
-                
-            for region in fp._regions: 
+
+            for region in fp._regions:
                 out_path = os.path.abspath(
                     f"{self.cc['paths']['output']}/footprint_{ver}_{region}.png"
                 )
             if os.path.exists(out_path):
-                self.print_done(
-                    f"Skipping footprint plot, {out_path} exists"
-                )
+                self.print_done(f"Skipping footprint plot, {out_path} exists")
             else:
                 with self.results[ver].temporarily_read_data():
                     hsp_map = fp.create_hsp_map(
@@ -2510,9 +2500,10 @@ class CosmologyValidation:
 
         return results
 
+
 class FootprintPlotter:
     """Class to create footprint plots.
-    
+
     Parameters
     -----------
     nside_coverage: int, optional
@@ -2521,43 +2512,40 @@ class FootprintPlotter:
         fine resolution for plotting; default is 2048
 
     """
-    
+
     # Dictionary storing region parameters
     _regions = {
         "NGC": {"ra_0": 180, "extend": [120, 270, 20, 70], "vmax": 60},
         "SGC": {"ra_0": 15, "extend": [-20, 45, 20, 45], "vmax": 60},
         "fullsky": {"ra_0": 150, "extend": [0, 360, -90, 90], "vmax": 60},
     }
-    
+
     def __init__(self, nside_coverage=32, nside_map=2048):
-        
+
         self._nside_coverage = nside_coverage
         self._nside_map = nside_map
-    
+
     def create_hsp_map(self, ra, dec):
         """Create Hsp Map.
-        
+
         Create healsparse map.
-        
+
         Parameters
         ----------
         ra : numpy.ndarray
             right ascension values
         dec : numpy.ndarray
             declination values
-            
+
         Returns
         -------
         hsp.HealSparseMap
             map
-            
+
         """
         # Create empty map
         hsp_map = hsp.HealSparseMap.make_empty(
-            self._nside_coverage,
-            self._nside_map,
-            dtype=np.float32,
-            sentinel=np.nan
+            self._nside_coverage, self._nside_map, dtype=np.float32, sentinel=np.nan
         )
 
         # Get pixel list corresponding to coordinates
@@ -2574,9 +2562,9 @@ class FootprintPlotter:
 
         # Create maps with numbers per pixel
         hsp_map[unique_hpix] = values
-    
+
         return hsp_map
-    
+
     def plot_area(
         self,
         hsp_map,
@@ -2588,9 +2576,9 @@ class FootprintPlotter:
         title=None,
     ):
         """Plot Area.
-        
+
         Plot catalogue in an area on the sky.
-        
+
         Parameters
         ----------
         hsp_map : hsp_HealSparseMap
@@ -2608,58 +2596,53 @@ class FootprintPlotter:
             output path, default is ``None``
         title : str, optional
             print title if not ``None`` (default)
-            
+
         Returns
         --------
         skyproj.McBrydeSkyproj
             projection instance
         plt.axes.Axes
             axes instance
-            
+
         Raises
         ------
         ValueError
             if no object found in region
-        
+
         """
         if not projection:
-            
+
             # Create new figure and axes
             fig, ax = plt.subplots(figsize=(10, 10))
 
             # Create new projection
             projection = skyproj.McBrydeSkyproj(
-                ax=ax,
-                lon_0=ra_0,
-                extent=extend,
-                autorescale=True,
-                vmax=vmax
+                ax=ax, lon_0=ra_0, extent=extend, autorescale=True, vmax=vmax
             )
         else:
             ax = None
 
         try:
             _ = projection.draw_hspmap(
-                hsp_map, lon_range=extend[0:2],
-                lat_range=extend[2:]
+                hsp_map, lon_range=extend[0:2], lat_range=extend[2:]
             )
         except ValueError:
             msg = "No object found in region to draw"
             print(f"{msg}, continuing...")
-            #raise ValueError(msg)
-            
-        projection.draw_milky_way(width=25, linewidth=1.5, color='black', linestyle='-')
-            
+            # raise ValueError(msg)
+
+        projection.draw_milky_way(width=25, linewidth=1.5, color="black", linestyle="-")
+
         if title:
             plt.title(title, pad=5)
 
         if outpath:
             plt.savefig(outpath)
-            
+
         return projection, ax
-        
+
     def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None):
-        
+
         return self.plot_area(
             hsp_map,
             region["ra_0"],
@@ -2670,7 +2653,7 @@ class FootprintPlotter:
             title=title,
         )
 
-    def plot_all_regions(self, hsp_map, outbase=None):  
+    def plot_all_regions(self, hsp_map, outbase=None):
 
         for region in self._regions:
             if outbase:
@@ -2678,17 +2661,16 @@ class FootprintPlotter:
             else:
                 outpath = None
             self.plot_region(hsp_map, self._regions[region], outpath=outpath)
-            
 
-    @classmethod            
+    @classmethod
     def hp_pixel_centers(cls, nside, nest=False):
-        
-        # Get number of pixels for given nside        
+
+        # Get number of pixels for given nside
         npix = hp.nside2npix(nside)
-        
+
         # Get pixel indices
         pix_indices = np.arange(npix)
-    
+
         # Get coordinates of pixel centers
         ra, dec = hp.pix2ang(nside, pix_indices, nest=nest, lonlat=True)
 
@@ -2700,59 +2682,66 @@ class FootprintPlotter:
         ra, dec, npix = cls.hp_pixel_centers(nside)
 
         # Create an empty HEALPix map
-        m = np.full(npix, np.nan)  
+        m = np.full(npix, np.nan)
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
         # Plot the HEALPix grid
         hp.mollview(m, title=title, coord="C", notext=True, rot=(180, 0, 0))
-        
+
         # Define the Galactic Plane: l = [0, 360], b = 0°
         for l0, ls in zip((-5, 0, 5), (":", "-", ":")):
             l_values = np.linspace(0, 360, 500)  # 500 points along the plane
-            b_values = np.zeros_like(l_values)   # Galactic latitude is 0 (the plane)
+            b_values = np.zeros_like(l_values)  # Galactic latitude is 0 (the plane)
 
             # Convert (l, b) to (λ, β) - Ecliptic coordinates
-            coords = SkyCoord(l=l_values*u.degree, b=b_values*u.degree, frame='galactic')
-            ecl_coords = coords.transform_to('barycentrictrueecliptic')  # Ecliptic frame
+            coords = SkyCoord(
+                l=l_values * u.degree, b=b_values * u.degree, frame="galactic"
+            )
+            ecl_coords = coords.transform_to(
+                "barycentrictrueecliptic"
+            )  # Ecliptic frame
 
             # Extract Ecliptic longitude (λ) and latitude (β)
             lambda_ecl = ecl_coords.lon.deg  # Ecliptic longitude
-            beta_ecl = ecl_coords.lat.deg    # Ecliptic latitude
+            beta_ecl = ecl_coords.lat.deg  # Ecliptic latitude
 
             # Convert to HEALPix projection coordinates (colatitude, longitude)
             theta = np.radians(90 - beta_ecl)  # HEALPix uses colatitude
             phi = np.radians(lambda_ecl)  # HEALPix uses longitude
 
             # Create a healpy Mollweide projection in Ecliptic coordinates
-            hp.projplot(theta, phi, linestyle=ls, color='black', linewidth=1)  # Plot the outline
+            hp.projplot(
+                theta, phi, linestyle=ls, color="black", linewidth=1
+            )  # Plot the outline
 
         # Apply mask
         mask_values = hsp_map.get_values_pos(ra, dec, valid_mask=True, lonlat=True)
 
         ok = np.where(mask_values == False)[0]
-        #nok = np.where(mask_values == False)[0]
+        # nok = np.where(mask_values == False)[0]
 
-        hp.projscatter(ra[ok], dec[ok], lonlat=True, color="green", s=1, marker=".")        
-        #hp.projscatter(ra[nok], dec[nok], lonlat=True, color="red", s=1, marker=".")
-        
+        hp.projscatter(ra[ok], dec[ok], lonlat=True, color="green", s=1, marker=".")
+        # hp.projscatter(ra[nok], dec[nok], lonlat=True, color="red", s=1, marker=".")
+
         plt.tight_layout()
-        
+
         if outpath:
             plt.savefig(outpath)
-            
+
         plt.show()
+
 
 def hsp_map_logical_or(maps, verbose=False):
     """
     Hsp Map Logical Or.
-    
+
     Logical AND of HealSparseMaps.
-    
+
     """
     if verbose:
         print("Combine all maps...")
-    
+
     # Ensure consistency in coverage and data type
     nside_coverage = maps[0].nside_coverage
     nside_sparse = maps[0].nside_sparse
@@ -2765,21 +2754,21 @@ def hsp_map_logical_or(maps, verbose=False):
                 f"Coverage nside={m.nside_coverage} does not match {nside_coverage}"
             )
         if m.dtype != dtype:
-            raise ValueError(
-                f"Data type {m.dtype} does not match {dtype}"
-            )
+            raise ValueError(f"Data type {m.dtype} does not match {dtype}")
 
     # Create an empty HealSparse map
     map_comb = hsp.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype=dtype)
     for idx, m in enumerate(maps):
         map_comb |= m
-        
+
         if verbose:
             valid_pixels = map_comb.valid_pixels
             n_tot = np.sum(valid_pixels)
             n_true = np.count_nonzero(valid_pixels)
             n_false = n_tot - n_true
-            print(f"after map {idx}: frac_true={n_true / n_tot:g}, frac_false={n_false / n_tot:g}")
+            print(
+                f"after map {idx}: frac_true={n_true / n_tot:g}, frac_false={n_false / n_tot:g}"
+            )
 
     return map_comb
 
@@ -3405,7 +3394,3 @@ def hsp_map_logical_or(maps, verbose=False):
         plt.suptitle("Pseudo-Cl BB (Gaussian covariance)")
         plt.legend()
         plt.savefig(out_path)
-
-
-# %%
->>>>>>> upstream/develop:notebooks/cosmo_val/cosmo_val.py
