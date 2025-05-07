@@ -9,12 +9,18 @@
 
 """
 
+from collections import Counter
+
+import healpy as hp
+import healsparse as hsp
 import matplotlib.pylab as plt
 import numpy as np
+import skyproj
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 from cs_util import plots
 from lenspack.geometry.projections.gnom import radec2xy
 
-from sp_validation import basic, io, util
 from sp_validation.plot_style import *
 
 

@@ -1,19 +1,14 @@
 # %%
 import os
-from collections import Counter
 
 import camb
 import colorama
 import healpy as hp
-import healsparse as hsp
 import matplotlib.pyplot as plt
 import numpy as np
 import pymaster as nmt
-import skyproj
 import treecorr
 import yaml
-from astropy import units as u
-from astropy.coordinates import SkyCoord
 from astropy.cosmology import Planck18
 from astropy.io import fits
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
@@ -24,6 +19,7 @@ from shear_psf_leakage import run_object, run_scale
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
+from .plots import FootprintPlotter
 from .rho_tau import get_params_rho_tau, get_rho_tau_w_cov, get_samples
 
 
