@@ -614,7 +614,7 @@ SP_v1.4.2:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_iv
+      w_col: w_iv
       R: 1.0
    star:
       path: unions_shapepipe_star_2024_v1.4.a.fits
@@ -741,7 +741,7 @@ SP_v1.4.5_glass_mock:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
@@ -784,7 +784,7 @@ SP_test:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_iv
+      w_col: w_iv
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
