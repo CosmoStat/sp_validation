@@ -143,7 +143,7 @@ class CosmologyValidation:
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
         params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
-        params_in["w_col"] = self.cc[ver]["shear"]["w"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
         params_in["R11"] = None if ver != "DES" else self.cc[ver]["shear"]["R11"]
         params_in["R22"] = None if ver != "DES" else self.cc[ver]["shear"]["R22"]
 
@@ -813,7 +813,7 @@ class CosmologyValidation:
                     e2 = (
                         self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
                     )
-                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
+                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
 
                     axs[0].hist(
                         e1,
@@ -853,7 +853,7 @@ class CosmologyValidation:
             for ver in self.versions:
                 self.print_magenta(ver)
                 with self.results[ver].temporarily_read_data():
-                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
+                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
 
                     plt.hist(
                         w,
@@ -901,7 +901,7 @@ class CosmologyValidation:
             self.print_magenta(ver)
             R = self.cc[ver]["shear"]["R"]
             e1_col, e2_col, w_col = [
-                self.cc[ver]["shear"][k] for k in ["e1_col", "e2_col", "w"]
+                self.cc[ver]["shear"][k] for k in ["e1_col", "e2_col", "w_col"]
             ]
             with self.results[ver].temporarily_read_data():
                 self._c1[ver] = np.average(
@@ -959,7 +959,7 @@ class CosmologyValidation:
             with self.results[ver].temporarily_read_data():
                 e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
                 e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]]
+                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
                 if ver != "DES":
                     R = self.cc[ver]["shear"]["R"]
                     g1 = (e1 - self.c1[ver]) / R
@@ -1238,7 +1238,7 @@ class CosmologyValidation:
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w"]],
+                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
