@@ -38,13 +38,14 @@ obj = sp_joint.BaseCat()
 
 # +
 # Set parameters
-base = "unions_shapepipe_comprehensive_empty"
+base = "unions_shapepipe_comprehensive_empty_ugriz"
 year = 2024
 ver = "v1.5.c.P37"
 
 obj._params = {}
 
 obj._params["input_path"] = f"{base}_{year}_{ver}.hdf5"
+obj._params["output_path"] = obj._params["input_path"].replace("_empty", "")
 obj._params["verbose"] = True
 
 # +
@@ -150,16 +151,15 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
     #start = timer()
     # Copy multi-band values to combined array
     for key in keys:
-        combined[indices][key] = dat_mb[key]
+        dat[indices][key] = dat_mb[key]
     #end = timer()                                                           
     #print(f" {end - start:.1f}s") 
 
     hdu_list.close()
 # -
 
-dist_sqr
 
-obj.write_hdf5_file(combined)
+obj.write_hdf5_file(dat)
 
 # Close input HDF5 catalogue file
 obj.close_hd5()
