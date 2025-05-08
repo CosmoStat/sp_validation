@@ -92,10 +92,6 @@ if trace_mem:
 # Get bit-coded masks
 masks = obj.get_masks(dat=dat)
 
-if trace_mem:
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-
 # Add mask bits as new columns
 dat_new = obj.append_masks(dat, masks)
 
@@ -108,10 +104,3 @@ obj.write_hdf5_file(dat, dat_new)
 
 # Close input HDF5 catalogue file
 obj.close_hd5()
-
-if trace_mem:
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-    tracemalloc.stop()
-
-

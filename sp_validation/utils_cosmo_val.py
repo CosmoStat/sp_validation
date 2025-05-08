@@ -93,7 +93,7 @@ def get_params_rho_tau(cat, survey="other"):
     params["dec_units"] = "deg"
    
 
-    params["w_col"] = cat['shear']["w"]
+    params["w_col"] = cat['shear']["w_col"]
     params["e1_col"] = cat['shear']["e1_col"]
     params["e2_col"] = cat['shear']["e2_col"]
     params["R11"] = cat['shear'].get("R11")
