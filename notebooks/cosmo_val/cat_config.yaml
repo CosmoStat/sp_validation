@@ -683,7 +683,7 @@ SP_v1.4.1_noleakage:
 
 SP_v1.4.5:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/v1.4.x/v1.4.5
+   subdir: v1.4.x/v1.4.5
    ls: dashed
    colour: blue
    marker: d
@@ -812,7 +812,7 @@ SP_test:
 
 SP_v1.4.5_leak_corr:
    pipeline: SP
-   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.5
+   subdir: v1.4.x/v1.4.5
    ls: dashed
    colour: midnightblue
    marker: d

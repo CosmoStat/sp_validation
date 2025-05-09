@@ -34,7 +34,7 @@ import sp_validation.cat as cat
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
 
-config = obj.read_config_set_params("config_mask.yaml")
+config = obj.read_config_set_params("config_mask.P37.yaml")
 
 # !pwd
 
@@ -185,7 +185,7 @@ obj._params
 # Write extended data to new HDF5 file
 
 obj_appl = sp_joint.ApplyHspMasks()
-output_path = obj._params["input_path"].replace("1.X.c", "1.X.m")
+output_path = obj._params["input_path"].replace("1.5.c", "1.5.m")
 obj_appl._params["output_path"] = output_path
 obj_appl._params["aux_mask_file_list"] = []
 
