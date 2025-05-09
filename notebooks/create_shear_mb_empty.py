@@ -7,9 +7,9 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
-#     name: python3
+#     name: sp_validation
 # ---
 
 # # Demo notebook to add (u,g,i,z,z2) bands to an r-band catalogue
@@ -21,6 +21,7 @@
 import os
 import numpy as np
 import numpy.lib.recfunctions as rfn
+import h5py
 
 from timeit import default_timer as timer
 import tqdm
@@ -38,7 +39,7 @@ obj = sp_joint.BaseCat()
 # Set parameters
 base = "unions_shapepipe_comprehensive"
 year = 2024
-ver = "v1.5.c.P37"
+ver = "v1.5.c"
 
 obj._params = {}
 
@@ -76,16 +77,6 @@ hdu_no = 1
 dat = obj.read_cat(load_into_memory=False, mode="r")
 n_rows = len(dat)
 
-# +
-# Get tile IDs
-#tile_IDs_raw = dat["TILE_ID"]
-#tile_IDs_raw_list = list(set(tile_IDs_raw))
-
-# Transform (back) to 2x3 digits by zero-padding
-#tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
-# -
-
-
 
 def get_dtype_keys(keys,path=None, hdu_no=1):
     
@@ -114,29 +105,68 @@ path = None
 
 dtype_keys = get_dtype_keys(keys, path=path, hdu_no=hdu_no)
 
+
+# -
+
+def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):                         
+    cleaned_fields = []                                                          
+    for name, dt in dat_dtype.descr + dat_ext_dtype.descr:                       
+        # If dt is a tuple (e.g., ('S7', {'h5py_encoding': 'ascii'}))            
+        if isinstance(dt, tuple):                                                
+            cleaned_fields.append((name, dt[0]))  # keep only the base dtype string
+        else:                                                                    
+            cleaned_fields.append((name, dt))     # use as-is                    
+    return cleaned_fields
+
+
 # +
 # Create empty array with new keys
 # Initialise with -199 to later be able to check for unfilled values
 
-print("  Create new combined array", end=" ")
-start = timer()    
-new_empty = np.full(n_rows, -199, dtype=dtype_keys)
+total_bytes = n_rows * np.dtype(dtype_keys).itemsize
+print("  Create new combined array.", end=" ")
+print(f"Expected size = {total_bytes / 1_048_576:.2f} MB", end=" ")
+start = timer()
+
+obj._params["output_path"] = f"{base}_empty_ugriz_{year}_{ver}.hdf5"
+dtype_sp = dat.dtype
+dtype_comb = strip_h5py_metadata_dtype(dtype_sp, dtype_keys)
+with h5py.File(obj._params["output_path"], "w") as f:
+
+    # Create new dataset
+    dset_comb = f.create_dataset(
+        "dat_comb",
+        shape=(n_rows,),
+        dtype=dtype_comb,
+    )
+
+    # Copy old data field-by-field
+    for name in dtype_sp.names:
+        dset_comb[name] = dat[name]
+
+    # Fill new fields with default value (-199)
+    for name, _ in dtype_keys:
+        dset_comb[name] = -199
+
+#new_empty = np.full(n_rows, -199, dtype=dtype_keys)
+
 end = timer()                                                           
 print(f" {end - start:.1f}s") 
+
+
 
 # +
 # Merge with original data
 
-print("    Merge empty to original", end=" ")
-start = timer()
-combined = rfn.merge_arrays([dat, new_empty], flatten=True)
-end = timer()                                                           
-print(f" {end - start:.1f}s") 
+#print("    Merge empty to original", end=" ")
+#start = timer()
+#combined = rfn.merge_arrays([dat, new_empty], flatten=True)
+#end = timer()                                                           
+#print(f" {end - start:.1f}s") 
 # -
 
-obj._params["output_path"] = f"{base}_empty_ugriz_{year}_{ver}.hdf5"
-obj.write_hdf5_file(combined)
+# obj.write_hdf5_file(combined)
 
 
 # Close input HDF5 catalogue file
-obj.close_hd5()
+# obj.close_hd5()
