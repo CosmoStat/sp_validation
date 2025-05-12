@@ -709,11 +709,16 @@ class CosmologyValidation:
 
             # Run
             with results_obj.temporarily_read_data():
-                results_obj.PSF_leakage()
+                try:
+                    results_obj.PSF_leakage()
+                except KeyError as e:
+                    print(f"{e}\nExpected key is missing from catalog.")
+                    # remove the results object for this version
+                    self.results_objectwise.pop(ver)
 
         # Gather coefficients
         leakage_coeff = {}
-        for ver in self.versions:
+        for ver in self.results_objectwise:
             leakage_coeff[ver] = {}
             results = self.results[ver]
             results_obj = self.results_objectwise[ver]
@@ -756,7 +761,7 @@ class CosmologyValidation:
         linestyles = ["-", "--", ":"]
         fillstyles = ["full", "none", "left", "right", "bottom", "top"]
 
-        for ver in self.versions:
+        for ver in self.results_objectwise:
             label = ver
             for key, ls, fs in zip(
                 ["alpha_mean", "alpha_1", "alpha_0"], linestyles, fillstyles
@@ -928,21 +933,44 @@ class CosmologyValidation:
 
     def calculate_2pcf(self, ver, npatch=None, save_fits=False, **treecorr_config):
         """
-        Calculate ξ± for the given catalog version.
-        The class instance's treecorr_config will be used by default, but any kwargs
-        passed to this function will overwrite the defaults.
+        Calculate the two-point correlation function (2PCF) ξ± for a given catalog
+        version with TreeCorr.
+
+        By default the class instance's `npatch` and `treecorr_config` entries are used to initialize the TreeCorr Catalog and GGCorrelation objects, but may be overridden by passing keyword arguments.
+
+        Parameters:
+            ver (str): The catalog version to process.
+
+            npatch (int, optional): The number of patches to use for the calculation.
+            Defaults to the instance's `npatch` attribute.
+
+            save_fits (bool, optional): Whether to save the ξ± results to FITS files.
+            Defaults to False.
+
+            **treecorr_config: Additional TreeCorr configuration parameters that will
+            override the instance's default `treecorr_config`. For example, `min_sep=1`.
+
+        Returns:
+            treecorr.GGCorrelation: The TreeCorr GGCorrelation object containing the
+            computed 2PCF results.
+
+        Notes:
+            - If the output file for the given configuration already exists, the
+              calculation is skipped, and the results are loaded from the file.
+            - If a patch file for the given configuration does not exist, it is
+              created during the process.
+            - FITS files for ξ+ and ξ− are saved with additional metadata in their
+              headers if `save_fits` is True.
         """
 
         self.print_magenta(f"Computing {ver} ξ±")
 
+        npatch = npatch or self.npatch
         treecorr_config = {
             **self.treecorr_config,
             **treecorr_config,
         }
 
-        # Create correlation object
-        if not hasattr(self, "_cat_ggs"):
-            self._cat_ggs = {}
         gg = treecorr.GGCorrelation(treecorr_config)
 
         # If the output file already exists, skip the calculation
@@ -1043,6 +1071,11 @@ class CosmologyValidation:
                     overwrite=True,
                 )
 
+        # Add correlation object to class
+        if not hasattr(self, "cat_ggs"):
+            self.cat_ggs = {}
+        self.cat_ggs[ver] = gg
+
         self.print_done("Done 2PCF")
 
         return gg
@@ -1051,6 +1084,7 @@ class CosmologyValidation:
         # Plot of n_pairs
         fig, ax = plt.subplots(ncols=1, nrows=1)
         for ver in self.versions:
+            self.calculate_2pcf(ver)
             plt.plot(
                 self.cat_ggs[ver].meanr,
                 self.cat_ggs[ver].npairs,
@@ -1078,7 +1112,7 @@ class CosmologyValidation:
             )
         plt.xscale("log")
         plt.yscale("log")
-        plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc="upper left")
+        plt.legend()
         plt.ticklabel_format(axis="y")
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
@@ -1100,7 +1134,7 @@ class CosmologyValidation:
             )
         plt.xscale("log")
         plt.yscale("log")
-        plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc="upper left")
+        plt.legend()
         plt.ticklabel_format(axis="y")
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
@@ -1122,7 +1156,7 @@ class CosmologyValidation:
             )
         plt.xscale("log")
         plt.yscale("log")
-        plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc="upper left")
+        plt.legend()
         plt.ticklabel_format(axis="y")
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
@@ -1144,7 +1178,7 @@ class CosmologyValidation:
             )
         plt.xscale("log")
         plt.yscale("log")
-        plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc="upper left")
+        plt.legend()
         plt.ticklabel_format(axis="y")
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
@@ -1183,7 +1217,7 @@ class CosmologyValidation:
 
             plt.xscale("log")
             plt.yscale("log")
-            plt.legend(fontsize=20, bbox_to_anchor=(1.05, 1), loc="upper left")
+            plt.legend()
             plt.ticklabel_format(axis="y")
             plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
             plt.xlim([self.theta_min_plot, self.theta_max_plot])
@@ -1352,22 +1386,71 @@ class CosmologyValidation:
     def calculate_pure_eb(
         self,
         version,
-        min_sep=0.1,
-        max_sep=250,
-        nbins=20,
-        min_sep_int=0.04,
-        max_sep_int=500,
-        nbins_int=1000,
-        npatch=None,
+        min_sep=None,
+        max_sep=None,
+        nbins=None,
+        min_sep_int=0.08,
+        max_sep_int=300,
+        nbins_int=100,
+        npatch=256,
         var_method="jackknife",
     ):
+        """
+        Calculate the pure E/B modes for the given catalog version.
+        The class instance's treecorr_config will be used for the "reporting" binning
+        by default, but any kwargs passed to this function will overwrite the defaults.
+
+        Parameters
+        ----------
+        version : str
+            The catalog version to compute the pure E/B modes for.
+        min_sep : float, optional
+            Minimum separation for the reporting binning. Defaults to the value in
+            self.treecorr_config if not provided.
+        max_sep : float, optional
+            Maximum separation for the reporting binning. Defaults to the value in
+            self.treecorr_config if not provided.
+        nbins : int, optional
+            Number of bins for the reporting binning. Defaults to the value in
+            self.treecorr_config if not provided.
+        min_sep_int : float, optional
+            Minimum separation for the integration binning. Defaults to 0.08.
+        max_sep_int : float, optional
+            Maximum separation for the integration binning. Defaults to 300.
+        nbins_int : int, optional
+            Number of bins for the integration binning. Defaults to 100.
+        npatch : int, optional
+            Number of patches for the jackknife or bootstrap resampling. Defaults to
+            the value in self.npatch if not provided.
+        var_method : str, optional
+            Variance estimation method. Defaults to "jackknife".
+
+        Returns
+        -------
+        dict
+            A dictionary containing the following keys:
+            - "xip_E": Pure E-mode correlation function for xi+.
+            - "xim_E": Pure E-mode correlation function for xi-.
+            - "xip_B": Pure B-mode correlation function for xi+.
+            - "xim_B": Pure B-mode correlation function for xi-.
+            - "xip_amb": Ambiguity mode for xi+.
+            - "xim_amb": Ambiguity mode for xi-.
+            - "cov": Covariance matrix for the pure E/B modes.
+            - "gg": The two-point correlation function object for the reporting binning.
+            - "gg_int": The two-point correlation function object for the integration binning.
+
+        Notes
+        -----
+        - A shared patch file is used for the reporting and integration binning,
+        and is created if it does not exist.
+        """
         self.print_start(f"Computing {version} pure E/B")
 
         treecorr_config = {
             **self.treecorr_config,
-            "min_sep": min_sep,
-            "max_sep": max_sep,
-            "nbins": nbins,
+            "min_sep": min_sep or self.treecorr_config["min_sep"],
+            "max_sep": max_sep or self.treecorr_config["max_sep"],
+            "nbins": nbins or self.treecorr_config["nbins"],
         }
 
         treecorr_config_int = {
@@ -2039,3 +2122,6 @@ class CosmologyValidation:
         plt.suptitle("Pseudo-Cl BB (Gaussian covariance)")
         plt.legend()
         plt.savefig(out_path)
+
+
+# %%
