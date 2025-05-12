@@ -42,7 +42,7 @@ dependencies = [
     "scipy",
     "seaborn",
     "skyproj",
-    "shear_psf_leakage==0.2.1",
+    "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",
