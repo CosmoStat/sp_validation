@@ -38,7 +38,7 @@ import sp_validation.cat as cat
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
 
-config = obj.read_config_set_params("config_mask.yaml")
+config = obj.read_config_set_params("config_mask.P37.yaml")
 
 # !pwd
 

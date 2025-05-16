@@ -18,6 +18,7 @@ from sp_validation import util
 from sp_validation import io
 from sp_validation import basic
 from sp_validation.survey import get_footprint
+from sp_validation import cat as sp_cat
 
 
 def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
@@ -111,7 +112,119 @@ def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
         g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
         
     return g_corr_mc, g_uncorr, w, mask_metacal, c, c_err
+
+
+def create_bins(x, num_bins, type="log", x_min=None, x_max=None):
+    """Create Bins.
+    Create bins for a given array. The bins are logarithmic by default.
+
+    Parameters
+    ----------
+    x : array
+        Array to bin
+    num_bins : int
+        Number of bins
+    type : str, optional
+        Type of binning. Options are 'log' (defaults)
+    x_min : float, optional
+        Minimum value of the bins. If None, the minimum value of x is used.
+    x_max : float, optional
+        Maximum value of the bins. If None, the maximum value of x is used.
+
+    """
+    if type == "log":
+        xmin = x.min() if not x_min else x_min
+        xmax = x.max() if not x_max else x_max
+        return np.logspace(np.log10(xmin), np.log10(xmax), num_bins + 1)
+    else:
+        raise ValueError("Type not supported")     
+
+
+def cut_to_bins(df, key, num_bins, type="log", x_min=None, x_max=None):
+    """Cut To Bins.
     
+    Cut a given array into bins. Create a new column in the DataFrame with the binning.
+    
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame to cut
+    key : str
+        Key to cut
+    num_bins : int
+        Number of bins
+    type : str, optional
+        Type of binning. Options are 'log' (default)
+    x_min : float, optional
+        Minimum value of the bins. If None, the minimum value of x is used.
+    x_max : float, optional
+        Maximum value of the bins. If None, the maximum value of x is used.
+
+    Returns
+    -------
+    numpy.ndarray
+        bin edges
+    """
+    key_cut = f"{key}_{type}_bins"
+    
+    bin_edges = create_bins(df[key], num_bins, type=type, x_min=x_min, x_max=x_max)
+    df[key_cut] = pd.cut(df[key], bin_edges, labels=False)
+    
+    df.loc[np.isnan(df[key_cut]), key_cut] = num_bins - 1
+
+    return bin_edges
+
+
+def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined, mask_metacal, purpose="weights"):
+    
+    cat_gal["e1_uncal"] = g_uncorr[0]
+    cat_gal["e2_uncal"] = g_uncorr[1]
+    cat_gal["R_g11"] = gal_metacal.R11
+    cat_gal["R_g12"] = gal_metacal.R12
+    cat_gal["R_g21"] = gal_metacal.R21
+    cat_gal["R_g22"] = gal_metacal.R22
+
+    cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(
+        dat, "NGMIX_T_NOSHEAR", mask_combined._mask, mask_metacal
+    )
+    cat_gal["NGMIX_Tpsf_NOSHEAR"] = sp_cat.get_col(
+        dat, "NGMIX_Tpsf_NOSHEAR", mask_combined._mask, mask_metacal
+    )
+    cat_gal["size_ratio"] = cat_gal['NGMIX_T_NOSHEAR'] / cat_gal['NGMIX_Tpsf_NOSHEAR']
+
+    cat_gal["snr"] = sp_cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
+
+
+def build_df(cat_gal):
+    """Build DF.
+    
+    Build pandas dataframe.
+    
+    Parameters
+    ----------
+    cat_gal : dict
+        input data
+
+    Returns
+    -------
+    pd.DataFrame
+        collected data
+
+    """
+    #Build a pandas dataframe to perform the binning and the computation of the weights
+    return pd.DataFrame(
+        np.array([
+            np.array(cat_gal['e1_uncal'], dtype=np.float64),
+            np.array(cat_gal['e2_uncal'], dtype=np.float64),
+            np.array(cat_gal['R_g11'], dtype=np.float64),
+            np.array(cat_gal['R_g12'], dtype=np.float64),
+            np.array(cat_gal['R_g21'], dtype=np.float64),
+            np.array(cat_gal['R_g22'], dtype=np.float64),
+            np.array(cat_gal['snr'], dtype=np.float64),
+            np.array(cat_gal["size_ratio"], dtype=np.float64)
+        ]).T, columns=['e1', 'e2', 'R_g11', 'R_g12', 'R_g21', 'R_g22', 'snr', 'size']
+    )
+
 
 def get_w_des(cat_gal, num_bins):
     """
@@ -130,64 +243,23 @@ def get_w_des(cat_gal, num_bins):
     -------
     w : array of float
         DES weights
-    """
-    size_ratio = cat_gal['NGMIX_T_NOSHEAR'] / cat_gal['NGMIX_Tpsf_NOSHEAR']
 
-    #Build a pandas dataframe to perform the binning and the computation of the weights
-    df_gal = pd.DataFrame(
-        np.array([
-            np.array(cat_gal['e1_uncal'], dtype=np.float64),
-            np.array(cat_gal['e2_uncal'], dtype=np.float64),
-            np.array(cat_gal['R_g11'], dtype=np.float64),
-            np.array(cat_gal['R_g12'], dtype=np.float64),
-            np.array(cat_gal['R_g21'], dtype=np.float64),
-            np.array(cat_gal['R_g22'], dtype=np.float64),
-            np.array(cat_gal['snr'], dtype=np.float64),
-            np.array(size_ratio, dtype=np.float64)
-        ]).T, columns=['e1', 'e2', 'R_g11', 'R_g12', 'R_g21', 'R_g22', 'snr', 'size']
-    )
-    
-    del size_ratio
+    """
+    df_gal = build_df(cat_gal)
 
     #Create logarithmic bins in size and SNR
-    bin_edges_snr = np.logspace(
-        np.log10(df_gal['snr'].min()), np.log10(300.), num_bins + 1
-    )
+    cut_to_bins(df_gal, "snr", num_bins, type="log", x_max=300)
+    cut_to_bins(df_gal, "size", num_bins, type="log", x_min=0.5)
 
-    df_gal['snr_log_bins'] = pd.cut(
-        df_gal['snr'], bin_edges_snr, labels=False
-    )
-    df_gal.loc[np.isnan(df_gal['snr_log_bins']), 'snr_log_bins'] = num_bins - 1
-
-    bin_edges_size = np.logspace(
-        np.log10(0.5), 
-        np.log10(df_gal['size'].max()),
-        num_bins + 1
-    )
-    df_gal['size_log_bins'] = pd.cut(df_gal['size'], bin_edges_size, labels=False)
-
-    #Compute shape noise in each bin
-    shape_noise = np.zeros((num_bins, num_bins))
+    #Compute shape noise and the shear response in each bin
 
     for i in range(num_bins):
         for j in range(num_bins):
             bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_log_bins'] == j)
             ngal = np.sum(bin_mask)
-            shape_noise[i, j] = 0.5*(np.sum(df_gal[bin_mask]['e1']**2)/ngal+np.sum(df_gal[bin_mask]['e2']**2)/ngal)
-
-    #Compute the response in each bin
-    response = np.zeros((num_bins, num_bins))
-
-    for i in range(num_bins):
-        for j in range(num_bins):
-            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_log_bins'] == j)
-            response[i, j] = 0.5*(np.average(df_gal[bin_mask]['R_g11'])+np.average(df_gal[bin_mask]['R_g22']))
-
-    #Compute the weights
-    for i in range(num_bins):
-        for j in range(num_bins):
-            bin_mask = (df_gal['size_log_bins'] == i) & (df_gal['snr_log_bins'] == j)
-            df_gal.loc[bin_mask, 'w_des'] = response[i, j]**2/shape_noise[i, j]
+            shape_noise = 0.5*(np.sum(df_gal[bin_mask]['e1']**2)/ngal+np.sum(df_gal[bin_mask]['e2']**2)/ngal)
+            response = 0.5*(np.average(df_gal[bin_mask]['R_g11'])+np.average(df_gal[bin_mask]['R_g22']))
+            df_gal.loc[bin_mask, 'w_des'] = response**2/shape_noise     
         
     return np.array(df_gal['w_des'])
 
@@ -367,6 +439,31 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     alpha_2 += df_gal['alpha_2_corr'].values
 
     return alpha_1, alpha_2
+
+
+def get_response_binned(cat_gal, num_bins):
+    
+    bin_keys = ['snr', 'size']  
+    bin_edges = {}
+
+    df_gal = build_df(cat_gal)
+    
+    #Create logarithmic bins in size and SNR
+    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins, type="log", x_min=0.1, x_max=300)
+    bin_edges["size"] = cut_to_bins(df_gal, "size", num_bins, type="log", x_min=0.5)
+    
+    #Compute the response in each bin
+    response = np.zeros((num_bins, num_bins, 2, 2))
+
+    for i in range(num_bins):
+        for j in range(num_bins):
+            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_log_bins'] == j)
+            if any(bin_mask):
+                for idx in (0, 1):
+                    for jdx in (0, 1):
+                        response[i, j, idx, jdx] = np.mean(df_gal[bin_mask][f"R_g{idx+1}{jdx+1}"])
+
+    return response, bin_edges
 
 
 def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):

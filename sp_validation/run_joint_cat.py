@@ -1286,9 +1286,9 @@ class Mask():
     Parameters
     ----------
     col_name : str
-        column name
+        name of column to use for mask
     label : str
-        label
+        mask label
     kind : str
         operation type, allowed are "equal", "not_equal, ""greater_equal",
         "smaller_equal", "range"
@@ -1322,7 +1322,7 @@ class Mask():
             f"Mask(col_name={self._col_name}, label={self._label}, kind={self._kind},"
             + f" value={self._value})"
         )
-         
+        
     @classmethod    
     def from_list(cls, masks, label="combined", verbose=False):
 
@@ -1439,7 +1439,7 @@ class Mask():
         header.update(header_new)
 
 
-def print_mask_stats(num_obj, masks, masks_combined):
+def print_mask_stats(num_obj, masks, mask_combined):
     """Print Mask Stats.
 
     Print mask statistics.
@@ -1454,7 +1454,6 @@ def print_mask_stats(num_obj, masks, masks_combined):
         my_mask.print_stats(num_obj)
 
     mask_combined.print_stats(num_obj)
-    
 
 
 class ReadCat:
@@ -1536,7 +1535,7 @@ def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=Fal
                 if mask_params["col_name"] in masks_to_apply:
                     use_this_mask = True
             else:
-                    use_this_mask = True
+                    use_this_mask = False
                     
             if use_this_mask:
                 # Ensure 'range' kind has exactly two values
@@ -1574,19 +1573,7 @@ def compute_weights_gatti(
     Compute Gatti et al. (2021) DES-like weights.
     
     """
-    cat_gal["e1_uncal"] = g_uncorr[0]
-    cat_gal["e2_uncal"] = g_uncorr[1]
-    cat_gal["R_g11"] = gal_metacal.R11
-    cat_gal["R_g12"] = gal_metacal.R12
-    cat_gal["R_g21"] = gal_metacal.R21
-    cat_gal["R_g22"] = gal_metacal.R22
-    cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(
-        dat, "NGMIX_T_NOSHEAR", mask_combined._mask, mask_metacal
-    )
-    cat_gal["NGMIX_Tpsf_NOSHEAR"] = sp_cat.get_col(
-        dat, "NGMIX_Tpsf_NOSHEAR", mask_combined._mask, mask_metacal
-    )
-    cat_gal["snr"] = sp_cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
+    fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined, mask_metacal, purpose="weights")
 
     cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
 

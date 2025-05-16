@@ -63,19 +63,8 @@ mask_combined = sp_joint.Mask.from_list(
     verbose=obj._params["verbose"],
 )
 
-# +
 # Output some mask statistics
-
-num_obj = dat.shape[0]
-
-sp_joint.Mask.print_strings(
-    "flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}"
-)
-for my_mask in masks:
-    my_mask.print_stats(num_obj)
-
-mask_combined.print_stats(num_obj)
-# -
+sp_joint.print_mask_stats(dat.shape[0], masks, mask_combined)
 
 if obj._params["sky_regions"]:
 
