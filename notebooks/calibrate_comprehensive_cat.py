@@ -33,7 +33,7 @@ import sp_validation.cat as cat
 obj = sp_joint.CalibrateCat()
 
 # Read configuration file and set parameters
-config = obj.read_config_set_params("config_mask.P37.yaml")
+config = obj.read_config_set_params("config_mask.yaml")
 
 # !pwd
 
