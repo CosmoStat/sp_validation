@@ -367,7 +367,6 @@ print_stats(
 ra = spv_cat.get_col(dd, col_name_ra, m_gal, mask) 
 dec = spv_cat.get_col(dd, col_name_dec, m_gal, mask)
 
-# Wrapped R.A. coordinates
 # Modify R.A. for plots if R.A. = 0 in area
 if wrap_ra != 0:
     ra_wrap = (ra + wrap_ra) % 360 - wrap_ra + 360

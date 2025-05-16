@@ -115,7 +115,7 @@ add_cols_pre_cal = ["TILE_ID", "NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FL
 
 ### Set flag columns as integer format
 add_cols_pre_cal_format = {}
-for key in ("IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
+for key in ("NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
     add_cols_pre_cal_format[key] = "I"
     
 add_cols_pre_cal_format["TILE_ID"] = "A7"
