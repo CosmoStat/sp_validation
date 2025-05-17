@@ -122,6 +122,23 @@ num_bins = 20
 
 R, bin_edges = calibration.get_response_binned(cat_gal, num_bins)
 
+# Write to ascii file
+
+# Save edges
+for key in bin_edges:
+    np.savetxt(f"bin_edges_{key}.txt", bin_edges[key])
+
+# Flatten R to save
+R_flat = R.reshape(-1, 1)
+np.savetxt("R.txt", R_flat)
+
+# To read:
+#for key in bin_edges:
+    #bin_edges[key] = np.loadtxt(f"bin_edges_{key}.txt")
+# R_flat = np.loadtxt("R.txt")
+# R = R_flat.reshape(20, 20, 2, 2)
+
+
 # +
 fig = plt.figure(figsize=(8, 8))
 
