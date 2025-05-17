@@ -10,6 +10,7 @@ import sys
 import os
 
 import numpy as np
+import numexpr as ne
 from scipy import stats
 import yaml
 
@@ -1336,16 +1337,20 @@ class Mask():
         return my_mask
 
     def apply(self, dat):
+        
+        # Get column
+        col_data = dat[self._col_name]
+        
         if self._kind == "equal":
-            self._mask = dat[self._col_name] == self._value
+            self._mask = ne.evaluate("col_data == value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "not_equal":
-            self._mask = dat[self._col_name] != self._value
+            self._mask = ne.evaluate("col_data != value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "greater_equal":
-            self._mask = dat[self._col_name] >= self._value
+            self._mask = ne.evaluate("col_data >= value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "smaller_equal":
-            self._mask = dat[self._col_name] <= self._value
+            self._mask = ne.evaluate("col_data <= value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "range":
-            self._mask = (dat[self._col_name] >= self._value[0]) & (dat[self._col_name] <= self._value[1])
+            self._mask = ne.evaluate("(col_data >= low) & (col_data <= high)", local_dict={"col_data": col_data, "low": self._value[0], "high": self._value[1]})
         else:
             raise ValueError(f"Invalid kind {self._kind}")
 
