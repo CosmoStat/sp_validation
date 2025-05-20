@@ -11,8 +11,11 @@ import treecorr
 import yaml
 from astropy.cosmology import Planck18
 from astropy.io import fits
+from cosmo_numba.B_modes.cosebis import COSEBIS
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from scipy import stats
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage import run_object, run_scale
@@ -1446,11 +1449,16 @@ class CosmologyValidation:
         """
         self.print_start(f"Computing {version} pure E/B")
 
+        npatch = npatch or self.npatch
+        min_sep = min_sep or self.treecorr_config["min_sep"]
+        max_sep = max_sep or self.treecorr_config["max_sep"]
+        nbins = nbins or self.treecorr_config["nbins"]
+
         treecorr_config = {
             **self.treecorr_config,
-            "min_sep": min_sep or self.treecorr_config["min_sep"],
-            "max_sep": max_sep or self.treecorr_config["max_sep"],
-            "nbins": nbins or self.treecorr_config["nbins"],
+            "min_sep": min_sep,
+            "max_sep": max_sep,
+            "nbins": nbins,
         }
 
         treecorr_config_int = {
@@ -1459,8 +1467,6 @@ class CosmologyValidation:
             "max_sep": max_sep_int,
             "nbins": nbins_int,
         }
-
-        npatch = npatch or self.npatch
 
         gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
         gg_int = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_int)
@@ -1499,6 +1505,621 @@ class CosmologyValidation:
         }
 
         return results
+
+    def plot_pure_eb(
+        self,
+        min_sep=None,
+        max_sep=None,
+        nbins=None,
+        min_sep_int=0.08,
+        max_sep_int=300,
+        nbins_int=100,
+        npatch=256,
+        var_method="jackknife",
+        start_p=0,
+        start_m=1,
+        stop_p=None,
+        stop_m=None,
+    ):
+
+        npatch = npatch or self.npatch
+        min_sep = min_sep or self.treecorr_config["min_sep"]
+        max_sep = max_sep or self.treecorr_config["max_sep"]
+        nbins = nbins or self.treecorr_config["nbins"]
+
+        for version in self.versions:
+            out_stub = f"{self.cc['paths']['output']}/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}"
+
+            results = self.calculate_pure_eb(
+                version,
+                min_sep=min_sep,
+                max_sep=max_sep,
+                nbins=nbins,
+                min_sep_int=min_sep_int,
+                max_sep_int=max_sep_int,
+                nbins_int=nbins_int,
+                npatch=npatch,
+                var_method=var_method,
+            )
+
+            # Reporting vs Integration Plot
+            gg, gg_int = results["gg"], results["gg_int"]
+
+            fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(16, 6))
+            axs[0].errorbar(
+                gg_int.meanr,
+                gg_int.meanr * gg_int.xip / 1e-4,
+                fmt="k.",
+                ms=3,
+                alpha=0.3,
+                label=rf"$\xi_{{+}}$, Integration: ${gg_int.min_sep} < \theta < {gg_int.max_sep}$, {gg_int.nbins} bins",
+            )
+            axs[0].errorbar(
+                gg.meanr,
+                gg.meanr * gg.xip / 1e-4,
+                yerr=gg.meanr * np.sqrt(gg.varxip) / 1e-4,
+                ls="",
+                marker=".",
+                c="crimson",
+                ms=6,
+                label=rf"$\xi_{{+}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < {gg.max_sep}$, {gg.nbins} bins",
+            )
+            axs[0].set_ylabel(r"$\theta\xi\times10^{4}$")
+            axs[0].set_title(r"$\xi_{+}$")
+
+            axs[1].errorbar(
+                gg_int.meanr,
+                gg_int.meanr * gg_int.xim / 1e-4,
+                fmt="k.",
+                ms=3,
+                alpha=0.3,
+                label=rf"$\xi_{{-}}$, Integration: ${gg_int.min_sep} < \theta < {gg_int.max_sep}$, {gg_int.nbins} bins",
+            )
+            axs[1].errorbar(
+                gg.meanr,
+                gg.meanr * gg.xim / 1e-4,
+                yerr=gg.meanr * np.sqrt(gg.varxim) / 1e-4,
+                ls="",
+                marker=".",
+                c="crimson",
+                ms=6,
+                label=rf"$\xi_{{-}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < {gg.max_sep}$, {gg.nbins} bins",
+            )
+            axs[1].set_xlabel(r"$\theta$ (arcmin)")
+            axs[1].set_title(r"$\xi_{-}$")
+
+            for ax in axs:
+                ax.axhline(0, ls="--", color="k", alpha=0.5)
+                ax.set_xscale("log")
+                ax.set_xticks([0.1, 1, 10, 100], [r"$0.1$", r"$1$", r"$10$", r"$100$"])
+                ax.set_xlabel(r"$\theta$ (arcmin)")
+                ax.set_ylim(-0.55, 1.9)
+                ax.legend(loc="upper left")
+
+            fig.suptitle(
+                f"{self.versions[0]}: Functions Integration vs. Reporting ({gg.npatch1} patches for cov)"
+            )
+            plt.tight_layout()
+            plt.savefig(
+                out_stub + "_integration_vs_reporting.png", dpi=300, bbox_inches="tight"
+            )
+            plt.close()
+
+            # E/B/Ambiguous ξ Plot
+            def populate_results(
+                results, start_p=0, start_m=0, stop_p=None, stop_m=None
+            ):
+                results["start_p"] = start_p
+                results["start_m"] = start_m
+                stop_p = stop_p if stop_p is not None else results["gg"].nbins - 1
+                stop_m = stop_m if stop_m is not None else results["gg"].nbins - 1
+                results["stop_p"] = stop_p
+                results["stop_m"] = stop_m
+
+                gg, gg_int = results["gg"], results["gg_int"]
+
+                nbins = gg.nbins
+                npatch = gg.npatch1
+
+                starts = {
+                    key: start_p if "xip" in key else start_m
+                    for key in [
+                        "xip_E",
+                        "xim_E",
+                        "xip_B",
+                        "xim_B",
+                        "xip_amb",
+                        "xim_amb",
+                    ]
+                }
+                stops = {
+                    key: stop_p if "xip" in key else stop_m
+                    for key in [
+                        "xip_E",
+                        "xim_E",
+                        "xip_B",
+                        "xim_B",
+                        "xip_amb",
+                        "xim_amb",
+                    ]
+                }
+                nbins_eff = {key: stops[key] - starts[key] for key in starts}
+
+                hartlap_factor = (npatch - nbins - 2) / (npatch - 1)
+                hartlap_factor_eff = {
+                    key: (npatch - nbins_eff[key] - 2) / (npatch - 1)
+                    for key in nbins_eff
+                }
+
+                nbins = results["gg"].nbins
+
+                # Compute and store covariance blocks and stds in results with explicit names
+                for i, key in enumerate(
+                    ["xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb"]
+                ):
+                    cov_block = results["cov"][
+                        nbins * i : nbins * (i + 1), nbins * i : nbins * (i + 1)
+                    ]
+                    std_block = np.sqrt(np.diag(cov_block))
+                    results[f"cov_{key}"] = cov_block
+                    results[f"std_{key}"] = std_block
+
+                chi2s = {
+                    key: results[key][starts[key] : stops[key]]
+                    @ (
+                        hartlap_factor_eff[key]
+                        * np.linalg.inv(
+                            results[f"cov_{key}"][
+                                starts[key] : stops[key], starts[key] : stops[key]
+                            ]
+                        )
+                    )
+                    @ results[key][starts[key] : stops[key]]
+                    for key in ["xip_E", "xim_E", "xip_B", "xim_B"]
+                }
+                # Store chi2s in results
+                for key in chi2s:
+                    results[f"{key}_chi2"] = chi2s[key]
+
+                xip_B_pte, xim_B_pte = [
+                    stats.chi2.sf(chi2s[key], nbins_eff[key])
+                    for key in ["xip_B", "xim_B"]
+                ]
+                # Store PTEs in results
+                results["xip_B_pte"] = xip_B_pte
+                results["xim_B_pte"] = xim_B_pte
+
+            stop_p = stop_p or results["gg"].nbins - 2
+            stop_m = stop_m or results["gg"].nbins - 1
+
+            populate_results(results, start_p, start_m, stop_p, stop_m)
+
+            fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(16, 6))
+            axs[0].errorbar(
+                gg.meanr,
+                gg.meanr * gg.xip / 1e-4,
+                yerr=gg.meanr * np.sqrt(gg.varxip) / 1e-4,
+                fmt="k.",
+                label=r"$\xi_{+}=\xi_{+}^{E}+\xi_{+}^{B}+\xi_{+}^{\mathrm{amb}}$",
+            )
+            axs[0].errorbar(
+                gg.meanr,
+                gg.meanr * results["xip_E"] / 1e-4,
+                yerr=gg.meanr * results["std_xip_E"] / 1e-4,
+                color="g",
+                ls="",
+                marker=".",
+                alpha=0.25,
+                label=rf"$\xi_{{+}}^{{E}}, \sqrt{{\chi_0^2}}={np.round(np.sqrt(results.get('xip_E_chi2', 0)),1)}$",
+            )
+            axs[0].errorbar(
+                gg.meanr,
+                gg.meanr * results["xip_B"] / 1e-4,
+                yerr=gg.meanr * results["std_xip_B"] / 1e-4,
+                color="r",
+                ls="",
+                marker=".",
+                label=rf"$\xi_{{+}}^{{B}}, {{\rm PTE}}={np.round(results['xip_B_pte'],4)}$",
+            )
+            axs[0].errorbar(
+                gg.meanr,
+                gg.meanr * results["xip_amb"] / 1e-4,
+                yerr=gg.meanr * results["std_xip_amb"] / 1e-4,
+                marker=".",
+                alpha=0.25,
+                ls="",
+                color="purple",
+                label=r"$\xi_{+}^{\mathrm{amb}}$",
+            )
+
+            axs[0].set_ylabel(r"$\theta\xi\times10^{4}$")
+            axs[0].set_title(r"$\xi_{+}$")
+
+            axs[1].errorbar(
+                gg.meanr,
+                gg.meanr * gg.xim / 1e-4,
+                yerr=gg.meanr * np.sqrt(gg.varxim) / 1e-4,
+                fmt="k.",
+                label=r"$\xi_{-}=\xi_{-}^{E}-\xi_{-}^{B}+\xi_{-}^{\mathrm{amb}}$",
+            )
+            axs[1].errorbar(
+                gg.meanr,
+                gg.meanr * results["xim_E"] / 1e-4,
+                yerr=gg.meanr * results["std_xim_E"] / 1e-4,
+                color="g",
+                ls="",
+                marker=".",
+                alpha=0.25,
+                label=rf"$\xi_{{-}}^{{E}}, \sqrt{{\chi_0^2}}={np.round(np.sqrt(results['xim_E_chi2']),1)}$",
+            )
+            axs[1].errorbar(
+                gg.meanr,
+                gg.meanr * results["xim_B"] / 1e-4,
+                yerr=gg.meanr * results["std_xim_B"] / 1e-4,
+                color="r",
+                ls="",
+                marker=".",
+                label=rf"$\xi_{{-}}^{{B}}, {{\rm PTE}}={np.round(results['xim_B_pte'],4)}$",
+            )
+            axs[1].errorbar(
+                gg.meanr,
+                gg.meanr * results["xim_amb"] / 1e-4,
+                yerr=gg.meanr * results["std_xim_amb"] / 1e-4,
+                marker=".",
+                ls="",
+                alpha=0.25,
+                color="purple",
+                label=r"$\xi_{-}^{\mathrm{amb}}$",
+            )
+
+            axs[1].set_title(r"$\xi_{-}$")
+
+            for ax, pm in zip(axs, "pm"):
+                ax.set_ylim(-0.55, 1.9)
+                ax.axhline(0, ls="--", color="k", alpha=0.5)
+                ax.set_xscale("log")
+                ax.set_xticks([0.1, 1, 10, 100], [r"$0.1$", r"$1$", r"$10$", r"$100$"])
+                ax.set_xlabel(r"$\theta$ (arcmin)")
+                ax.set_xlim(0.05, 300)
+                ax.axvspan(
+                    0, gg.left_edges[results[f"start_{pm}"]], color="gray", alpha=0.1
+                )
+                ax.axvspan(
+                    gg.right_edges[results[f"stop_{pm}"]], 1000, color="gray", alpha=0.1
+                )
+                ax.legend(loc="upper left")
+
+            fig.suptitle(f"Pure E/B Correlation Functions: {version}")
+            plt.savefig(out_stub + "_xis.png", dpi=300, bbox_inches="tight")
+            plt.close()
+
+            # PTE as a function of lower scale cut plot
+            def calculate_ptes(results, start_p=0, start_m=0):
+                gg, gg_int = results["gg"], results["gg_int"]
+                nbins, npatch = gg.nbins, gg.npatch1
+
+                ptes_p, ptes_m = [], []
+                for ptes, key, start, stop in zip(
+                    [ptes_p, ptes_m],
+                    ["xip_B", "xim_B"],
+                    [start_p, start_m],
+                    [results["stop_p"], results["stop_m"]],
+                ):
+                    for start_i in range(start, stop):
+                        nbins_eff = stop - start_i
+                        hartlap_factor = (npatch - nbins_eff - 2) / (npatch - 1)
+
+                        chi2 = (
+                            results[key][start_i:stop]
+                            @ (
+                                hartlap_factor
+                                * np.linalg.inv(
+                                    results[f"cov_{key}"][start_i:stop, start_i:stop]
+                                )
+                            )
+                            @ results[key][start_i:stop]
+                        )
+
+                        pte = stats.chi2.sf(chi2, nbins_eff)
+                        ptes.append(pte)
+                return ptes_p, ptes_m
+
+            ptes_p, ptes_m = calculate_ptes(results, start_p, start_m)
+
+            plt.figure(figsize=(8, 6))
+            plt.plot(
+                gg.meanr[0 : results["stop_p"]],
+                ptes_p,
+                label=r"$\xi_{B+}$",
+                marker=".",
+                ls="",
+            )
+            plt.plot(
+                gg.meanr[1 : results["stop_m"]],
+                ptes_m,
+                c="crimson",
+                label=r"$\xi_{B-}$",
+                marker=".",
+                ls="",
+            )
+
+            plt.axhspan(-0.05, 0.05, color="k", alpha=0.5)
+            plt.axhspan(0.95, 1.05, color="k", alpha=0.5)
+            plt.axhline(0, ls=":", c="k", alpha=0.3)
+            plt.axhline(1, ls=":", c="k", alpha=0.3)
+
+            plt.xscale("log")
+            # plt.yscale("log")
+            plt.ylim(-0.04, 1.04)
+            plt.xlabel(r"$\theta$ (arcmin)")
+            plt.ylabel(r"PTE")
+            plt.legend()
+            plt.title("B-mode PTEs as a function of lower scale cut")
+            plt.savefig(out_stub + "_ptes.png", dpi=300, bbox_inches="tight")
+
+            # Covariance Plot
+            fig, ax = plt.subplots(figsize=(9, 9))
+            im = ax.matshow(
+                correlation_from_covariance(results["cov"]), cmap="coolwarm"
+            )
+
+            for ticks in (plt.xticks, plt.yticks):
+                ticks(
+                    np.arange(nbins / 2, nbins * 6, nbins),
+                    [
+                        r"$\xi_+^{E}$",
+                        r"$\xi_-^{E}$",
+                        r"$\xi_+^{B}$",
+                        r"$\xi_-^{B}$",
+                        r"$\xi_+^{\rm amb}$",
+                        r"$\xi_-^{\rm amb}$",
+                    ],
+                )
+                ticks(np.arange(0, nbins * 6 + 1, 20), minor=True)
+            ax.tick_params(axis="both", which="major", length=0)
+
+            im.set_clim(-1, 1)
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            plt.colorbar(im, cax=cax)
+            ax.set_title(f"Pure E/B {var_method} correlation matrix")
+            plt.savefig(out_stub + "_covariance.png", dpi=300, bbox_inches="tight")
+
+    def calculate_cosebis(
+        self,
+        version,
+        min_sep=None,
+        max_sep=None,
+        nbins=None,
+        npatch=256,
+        var_method="jackknife",
+        nmodes=10,
+        scale_cuts=None,
+    ):
+        """
+        Calculate COSEBIs from a GGCorrelation object given scale cuts.
+
+        Parameters
+        ----------
+        version : str
+            The catalog version to compute the pure E/B modes for.
+        min_sep : float, optional
+            Minimum separation for the reporting binning. Defaults to the value in
+            self.treecorr_config if not provided.
+        max_sep : float, optional
+            Maximum separation for the reporting binning. Defaults to the value in
+            self.treecorr_config if not provided.
+        nbins : int, optional
+            Number of bins for the reporting binning. Defaults to the value in
+            self.treecorr_config if not provided.
+        min_sep_int : float, optional
+            Minimum separation for the integration binning. Defaults to 0.08.
+        max_sep_int : float, optional
+            Maximum separation for the integration binning. Defaults to 300.
+        nbins_int : int, optional
+            Number of bins for the integration binning. Defaults to 100.
+        npatch : int, optional
+            Number of patches for the jackknife or bootstrap resampling. Defaults to
+            the value in self.npatch if not provided.
+        var_method : str, optional
+            Variance estimation method. Defaults to "jackknife".
+        nmodes : int, optional
+            Number of COSEBIs modes to compute. Defaults to 10.
+        lower_scale_cut : float
+            The minimum angular separation to include (in arcmin).
+        upper_scale_cut : float
+            The maximum angular separation to include (in arcmin).
+
+        Returns
+        -------
+        TODO
+
+        """
+        self.print_start(f"Computing {version} COSEBIs")
+
+        npatch = npatch or self.npatch
+        min_sep = min_sep or self.treecorr_config["min_sep"]
+        max_sep = max_sep or self.treecorr_config["max_sep"]
+        nbins = nbins or self.treecorr_config["nbins"]
+
+        treecorr_config = {
+            **self.treecorr_config,
+            "min_sep": min_sep,
+            "max_sep": max_sep,
+            "nbins": nbins,
+        }
+
+        gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
+
+        dtheta = gg.right_edges - gg.left_edges
+        scale_cuts = scale_cuts or (gg.min_sep, gg.max_sep)
+
+        if np.isscalar(scale_cuts[0]):
+            scale_cuts = [scale_cuts]
+
+        results = {}
+        for scale_cut in scale_cuts:
+            if len(scale_cut) != 2:
+                raise ValueError(
+                    "scale_cuts must be a list of tuples with two elements"
+                )
+
+            # ξ and covariance indices given scale cuts
+            inds = (gg.left_edges >= scale_cut[0]) & (gg.right_edges <= scale_cut[1])
+            inds = np.asarray(inds).nonzero()[0]
+            cov_inds = np.concatenate([inds, inds + len(gg.meanr)])
+
+            cosebis = COSEBIS(
+                theta_min=gg.left_edges[inds][0],
+                theta_max=gg.right_edges[inds][-1],
+                N_max=nmodes,
+            )
+
+            C_E, C_B = cosebis.cosebis_from_xipm(
+                gg.meanr[inds], dtheta[inds], gg.xip[inds], gg.xim[inds]
+            )
+
+            cov_EB = cosebis.cosebis_covariance_from_xipm_covariance(
+                gg.meanr[inds], dtheta[inds], gg.cov[cov_inds[:, None], cov_inds]
+            )
+
+            cov_E = cov_EB[: len(C_E), : len(C_E)]
+            cov_B = cov_EB[len(C_E) :, len(C_E) :]
+
+            # Use the full covariance matrix instead of just the diagonals
+            E_snr = np.sqrt(np.dot(C_E, np.linalg.solve(cov_E, C_E)))
+            B_pte = stats.chi2.sf(np.dot(C_B, np.linalg.solve(cov_B, C_B)), len(C_B))
+            B0_pte = stats.chi2.sf(C_B[0] ** 2 / cov_B[0, 0], 1)
+
+            results[scale_cut] = {
+                "inds": inds,
+                "cosebis": cosebis,
+                "theta": gg.meanr[inds],
+                "modes": np.arange(len(C_E)),
+                "E": C_E,
+                "B": C_B,
+                "cov_EB": cov_EB,
+                "cov_E": cov_E,
+                "cov_B": cov_B,
+                "E_snr": E_snr,
+                "B0_pte": B0_pte,
+                "B_pte": B_pte,
+            }
+
+        return results
+
+    def plot_cosebis(
+        self,
+        min_sep=None,
+        max_sep=None,
+        nbins=None,
+        npatch=256,
+        var_method="jackknife",
+        nmodes=10,
+        scale_cuts=None,
+        fiducial_scale_cut=None,
+    ):
+        if np.isscalar(scale_cuts[0]):
+            scale_cuts = [scale_cuts]
+
+        fiducial_scale_cut = fiducial_scale_cut or scale_cuts[0]
+
+        for version in self.versions:
+            out_stub = f"{self.cc['paths']['output']}/{version}_cosebis_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_varmethod={var_method}_nmodes={nmodes}_scalecut={fiducial_scale_cut}"
+
+            results = self.calculate_cosebis(
+                version,
+                min_sep=min_sep,
+                max_sep=max_sep,
+                nbins=nbins,
+                npatch=npatch,
+                var_method=var_method,
+                nmodes=nmodes,
+                scale_cuts=scale_cuts,
+            )
+            results_fiducial = results[fiducial_scale_cut]
+
+            plt.figure(figsize=(9, 9))
+            plt.errorbar(
+                results_fiducial["modes"],
+                results_fiducial["E"],
+                yerr=np.sqrt(np.diag(results_fiducial["cov_E"])),
+                label=rf"COSEBIs E-modes; $\sqrt{{\chi_0^2}}$ = {results_fiducial['E_snr']:.2f}",
+            )
+            plt.errorbar(
+                results_fiducial["modes"],
+                results_fiducial["B"],
+                yerr=np.sqrt(np.diag(results_fiducial["cov_B"])),
+                c="crimson",
+                label=rf"COSEBIs B-modes; PTE $B_0$ = {results_fiducial['B0_pte']:.2f}, $B_{{\rm all}}$ = {results_fiducial['B_pte']:.2f}",
+            )
+
+            plt.axhline(0, ls="--", color="k")
+            plt.legend()
+            plt.xlabel(r"$n$ (mode)")
+            plt.ylabel(r"$E_n,B_n$")
+            plt.title(f"{version} COSEBIs E/B-modes, {fiducial_scale_cut} scale cut")
+            plt.savefig(out_stub + "_cosebis.png", dpi=300, bbox_inches="tight")
+
+            fig, ax = plt.subplots(figsize=(9, 9))
+            im = ax.imshow(results_fiducial["cov_EB"], cmap="coolwarm")
+
+            nmodes = len(results_fiducial["E"])
+            for ticks in (plt.xticks, plt.yticks):
+                ticks(
+                    np.arange(nmodes / 2, nmodes * 2, nmodes),
+                    [r"$E_n$", r"$B_n$"],
+                )
+                ticks(np.arange(0, nmodes * 2 + 1, nmodes), minor=True)
+
+            clim = np.max(np.abs(results_fiducial["cov_EB"]))
+            im.set_clim(-clim, clim)
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            plt.colorbar(im, cax=cax)
+            ax.set_title(f"{version} COSEBIs E/B {var_method} correlation matrix")
+            plt.savefig(out_stub + "_covariance.png", dpi=300, bbox_inches="tight")
+
+            # PTE as a function of scale cut plot
+            B_ptes = [results[scale_cut]["B_pte"] for scale_cut in scale_cuts]
+            B0_ptes = [results[scale_cut]["B0_pte"] for scale_cut in scale_cuts]
+
+            plt.figure(figsize=(8, 6))
+            plt.plot(
+                np.arange(len(B_ptes)),
+                B_ptes,
+                c="crimson",
+                label=r"$B_{\rm all}$",
+                marker=".",
+                ls="",
+            )
+            plt.plot(
+                np.arange(len(B0_ptes)),
+                B0_ptes,
+                c="crimson",
+                label=r"$B_{0}$",
+                marker="x",
+                ls="",
+            )
+
+            plt.axhspan(-0.05, 0.05, color="k", alpha=0.5)
+            plt.axhspan(0.95, 1.05, color="k", alpha=0.5)
+            plt.axhline(0, ls=":", c="k", alpha=0.3)
+            plt.axhline(1, ls=":", c="k", alpha=0.3)
+
+            plt.xticks(
+                np.arange(len(B0_ptes)),
+                [f"({scale_cut[0]}, {scale_cut[1]})" for scale_cut in scale_cuts],
+                rotation=25,
+            )
+
+            # plt.yscale("log")
+            plt.ylim(-0.04, 1.04)
+            plt.xlabel(r"$\theta$ (arcmin)")
+            plt.ylabel(r"PTE")
+            plt.legend()
+            plt.title(f"{version} COSEBIs B-mode PTEs as a function of scale cut")
+            plt.savefig(out_stub + "_ptes.png", dpi=300, bbox_inches="tight")
 
     def calculate_pseudo_cl_eb_cov(self):
         """
@@ -2124,4 +2745,9 @@ class CosmologyValidation:
         plt.savefig(out_path)
 
 
-# %%
+def correlation_from_covariance(covariance):
+    v = np.sqrt(np.diag(covariance))
+    outer_v = np.outer(v, v)
+    correlation = covariance / outer_v
+    correlation[covariance == 0] = 0
+    return correlation
