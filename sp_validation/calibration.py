@@ -13,12 +13,16 @@ import pandas as pd
 
 from astropy.io import fits
 import statsmodels.api as sm
+import tqdm
 
 from sp_validation import util
 from sp_validation import io
 from sp_validation import basic
 from sp_validation.survey import get_footprint
 from sp_validation import cat as sp_cat
+
+from shear_psf_leakage import leakage
+from shear_psf_leakage import run_object
 
 
 def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
@@ -193,6 +197,20 @@ def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined, mask_metaca
     cat_gal["size_ratio"] = cat_gal['NGMIX_T_NOSHEAR'] / cat_gal['NGMIX_Tpsf_NOSHEAR']
 
     cat_gal["snr"] = sp_cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
+    
+    if purpose == "weights":
+        pass
+    elif purpose == "leakage":
+        cat_gal["w"] = sp_cat.get_col(
+            dat, "w_iv", mask_combined._mask, mask_metacal
+        )
+        for idx in (1, 2):
+            cat_gal[f"e{idx}_PSF"] = sp_cat.get_col(
+                dat, f"e{idx}_PSF", mask_combined._mask, mask_metacal
+            )
+        cat_gal["fwhm_PSF"] = sp_cat.get_col(
+            dat, "fwhm_PSF", mask_combined._mask, mask_metacal
+        )
 
 
 def build_df(cat_gal):
@@ -212,19 +230,12 @@ def build_df(cat_gal):
 
     """
     #Build a pandas dataframe to perform the binning and the computation of the weights
-    return pd.DataFrame(
-        np.array([
-            np.array(cat_gal['e1_uncal'], dtype=np.float64),
-            np.array(cat_gal['e2_uncal'], dtype=np.float64),
-            np.array(cat_gal['R_g11'], dtype=np.float64),
-            np.array(cat_gal['R_g12'], dtype=np.float64),
-            np.array(cat_gal['R_g21'], dtype=np.float64),
-            np.array(cat_gal['R_g22'], dtype=np.float64),
-            np.array(cat_gal['snr'], dtype=np.float64),
-            np.array(cat_gal["size_ratio"], dtype=np.float64)
-        ]).T, columns=['e1', 'e2', 'R_g11', 'R_g12', 'R_g21', 'R_g22', 'snr', 'size']
-    )
-
+    arr = np.array([
+        np.array(cat_gal[key], dtype=np.float64)
+        for key in cat_gal
+    ]).T
+    return pd.DataFrame(arr, columns=cat_gal.keys())
+    
 
 def get_w_des(cat_gal, num_bins):
     """
@@ -249,15 +260,15 @@ def get_w_des(cat_gal, num_bins):
 
     #Create logarithmic bins in size and SNR
     cut_to_bins(df_gal, "snr", num_bins, type="log", x_max=300)
-    cut_to_bins(df_gal, "size", num_bins, type="log", x_min=0.5)
+    cut_to_bins(df_gal, "size_ratio", num_bins, type="log", x_min=0.5)
 
     #Compute shape noise and the shear response in each bin
 
     for i in range(num_bins):
         for j in range(num_bins):
-            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_log_bins'] == j)
+            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_ratio_log_bins'] == j)
             ngal = np.sum(bin_mask)
-            shape_noise = 0.5*(np.sum(df_gal[bin_mask]['e1']**2)/ngal+np.sum(df_gal[bin_mask]['e2']**2)/ngal)
+            shape_noise = 0.5*(np.sum(df_gal[bin_mask]['e1_uncal']**2)/ngal+np.sum(df_gal[bin_mask]['e2_uncal']**2)/ngal)
             response = 0.5*(np.average(df_gal[bin_mask]['R_g11'])+np.average(df_gal[bin_mask]['R_g22']))
             df_gal.loc[bin_mask, 'w_des'] = response**2/shape_noise     
         
@@ -441,29 +452,63 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     return alpha_1, alpha_2
 
 
-def get_response_binned(cat_gal, num_bins):
+def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response", "number", "leakage"], verbose=True):
     
-    bin_keys = ['snr', 'size']  
-    bin_edges = {}
+    if num_bins_y is None:
+        num_bins_y = num_bins_x
+        
+    bin_keys = ['snr', 'size_ratio']  
 
+    # Create input dataframe
     df_gal = build_df(cat_gal)
     
-    #Create logarithmic bins in size and SNR
-    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins, type="log", x_min=0.1, x_max=300)
-    bin_edges["size"] = cut_to_bins(df_gal, "size", num_bins, type="log", x_min=0.5)
+    # Create logarithmic bins in size and SNR
+    bin_edges = {}
+    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins_x, type="log", x_min=3, x_max=300)
+    bin_edges["size_ratio"] = cut_to_bins(df_gal, "size_ratio", num_bins_y, type="log", x_min=0.3, x_max=20)
     
-    #Compute the response in each bin
-    response = np.zeros((num_bins, num_bins, 2, 2))
-
-    for i in range(num_bins):
-        for j in range(num_bins):
-            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_log_bins'] == j)
+    # Initialize output dict
+    quantities = {}
+    for key in which:
+        if key == "response":
+            quantities["response"] = np.zeros((num_bins_x, num_bins_y, 2, 2))
+        elif key == "leakage":
+            obj = run_object.LeakageObject()
+            obj._params["e1_col"] = "e1_uncal"
+            obj._params["e2_col"] = "e2_uncal"
+            obj._params["size_PSF_col"] = "fwhm_PSF"
+            obj._params["verbose"] = False
+            obj._params["no_stats_file"] = True
+            obj._params["output_dir"] = ""
+            obj.prepare_output()
+            quantities[key] = np.zeros((num_bins_x, num_bins_y, 2, 2))
+        else:
+            quantities[key] = np.zeros((num_bins_x, num_bins_y))
+        
+    # Loop over bins
+    for i in tqdm.tqdm(range(num_bins_x), position=0, disable=not verbose):
+        for j in tqdm.tqdm(range(num_bins_y), position=1, leave=False):
+            
+            # Get indices for bin (i, j)
+            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_ratio_log_bins'] == j)
             if any(bin_mask):
-                for idx in (0, 1):
-                    for jdx in (0, 1):
-                        response[i, j, idx, jdx] = np.mean(df_gal[bin_mask][f"R_g{idx+1}{jdx+1}"])
+                
+                # Compute quantity
+                for key in which:
+                    if key == "response":
+                        for idx in (0, 1):
+                            for jdx in (0, 1):
+                                quantities["response"][i, j, idx, jdx] = np.mean(df_gal[bin_mask][f"R_g{idx+1}{jdx+1}"])
+                    elif key == "number":
+                        quantities["number"][i,j] = np.sum(bin_mask)
+                    elif key == "leakage":
+                        obj._dat = df_gal[bin_mask]
+                        obj.PSF_leakage(do_plots=False)
+                        for idx in (0, 1):
+                            for jdx in (0, 1):
+                                quantities["leakage"][i, j, idx, jdx] = obj.par_best_fit[f"a{idx+1}{jdx+1}"].value
 
-    return response, bin_edges
+    return quantities, bin_edges
 
 
 def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
