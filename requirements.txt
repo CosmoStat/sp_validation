@@ -15,6 +15,7 @@ lenspack
 joblib
 jupyter
 jupytext==1.15.1
+pyarrow
 pymaster
 regions
 reproject
