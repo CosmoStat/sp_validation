@@ -13,9 +13,12 @@
 # ---
 
 # # Leakage of minimal catalogue
+#
+# Run with Python 3.11 in sp_validation apptainer.
 
 # %reload_ext autoreload
 # %autoreload 2
+# %matplotlib inline
 
 # +
 import numpy as np
@@ -32,6 +35,8 @@ from sp_validation import calibration
 # -
 
 
+# %pwd
+
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
 
@@ -41,6 +46,27 @@ obj._params
 
 # Get data. Set load_into_memory to False for very large files
 dat, _ = obj.read_cat(load_into_memory=False)
+
+# +
+# Use only some columns in dat for efficiency
+
+use_all_columns = True
+
+if not use_all_columns:
+    
+    required_columns = set()
+    for section, mask_list in config_data.items():
+        for mask_params in mask_list:
+            required_columns.add(mask_params["col_name"])
+
+    #user_columns = ["NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR", "NGMIX_FLUX_NOSHEAR", "NGMIX_FLUX_ERR_NOSHEAR"]      
+    #required_columns.update(user_columns)
+
+    print(f"{len(dat.dtype.names)} -> {len(required_columns)}")
+
+    # Unsolved error here
+    #dat = {col: obj._hd5file['data'][col][:] for col in required_columns if col in obj._hd5file['data']}
+# -
 
 applied_masks = obj._hd5file["applied_masks"]
 
@@ -80,10 +106,6 @@ mask_combined = sp_joint.Mask.from_list(
 sp_joint.print_mask_stats(dat.shape[0], masks, mask_combined)
 
 # +
-# For testing!!
-#mask_combined._mask[10000:] = False
-
-# +
 # Call metacal
 
 cm = config["metacal"]
@@ -105,58 +127,93 @@ gal_metacal = metacal(
 # Get metacal outputs; here mask is needed
 g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(gal_metacal)
 
+# +
 # Apply masks to data
-datm = dat[mask_combined._mask][mask_metacal]
-
-dx = len(datm) - len(gal_metacal.R11)
-print(dx, len(datm))
+#datm = dat[mask_combined._mask][mask_metacal]
 
 # +
 cat_gal = {}
 
-calibration.fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined, mask_metacal)
-
-# +
-
-num_bins = 20
-
-R, bin_edges = calibration.get_response_binned(cat_gal, num_bins)
-
-# Write to ascii file
-
-# Save edges
-for key in bin_edges:
-    np.savetxt(f"bin_edges_{key}.txt", bin_edges[key])
-
-# Flatten R to save
-R_flat = R.reshape(-1, 1)
-np.savetxt("R.txt", R_flat)
-
-# To read:
-#for key in bin_edges:
-    #bin_edges[key] = np.loadtxt(f"bin_edges_{key}.txt")
-# R_flat = np.loadtxt("R.txt")
-# R = R_flat.reshape(20, 20, 2, 2)
-
-
-# +
-fig = plt.figure(figsize=(8, 8))
-
-extent = [bin_edges["snr"][0], bin_edges["snr"][-1], bin_edges["size"][0], bin_edges["size"][-1]]
-
-for idx in (0, 1):
-    for jdx in (0, 1):
-        ax = plt.subplot2grid((2, 2), (idx, jdx))
-        
-        plt.imshow(R[:,:,idx,jdx], vmin=-1, vmax=1, origin="lower", extent=extent, aspect="auto")
-        plt.xscale('log')
-        plt.yscale("log")
-        plt.title(f"$R_{{{idx+1}{jdx+1}}}$")
-        plt.xlabel("SNR")
-        plt.ylabel(r"$r / r_{\rm psf}$")
-
-        plt.colorbar()        
-plt.tight_layout()
+calibration.fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined._mask, mask_metacal, purpose="leakage")
 # -
 
-cs_plots.savefig("R_binned.png")
+df = calibration.build_df(cat_gal)
+
+# +
+
+num_bins_x = 4
+num_bins_y = 4
+
+quantities, bin_edges = calibration.get_quantities_binned(cat_gal, num_bins_x, num_bins_y)
+
+
+# +
+def plot_binned_one(ax, quantity, bin_edges_x, bin_edges_y, vmin=None, vmax=None, title=None, xlabel=None, ylabel=None):
+    
+    # Note: transpose R slice to match (y, x) shape required by pcolormesh
+    pcm = ax.pcolormesh(bin_edges_x, bin_edges_y, quantity, vmin=vmin, vmax=vmax, shading="auto")
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_title(title)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    ax.colorbar(pcm, ax=ax)
+    
+
+def plot_binned(quantities, key, bin_edges_x, bin_edges_y, title_base, vmin=None, vmax=None, xlabel=None, ylabel=None):
+                
+    len_shape = len(quantities[key].shape)
+    
+    fig_size = 2 * len_shape
+    fig = plt.figure(figsize=(fig_size, fig_size))
+    
+    if len_shape == 2:
+
+        ax = plt.subplot2grid((1, 1), (0, 0))
+        plot_binned_one(ax, quantities[key].T, bin_edges_x, bin_edges_y, vmin=vmin, vmax=vmax, title=title_base, xlabel=xlabel, ylabel=ylabel)
+ 
+    elif len_shape == 4:
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                ax = plt.subplot2grid((2, 2), (idx, jdx))
+        
+                if vmin is not None and vmax is not None:
+                    if idx == jdx:
+                        my_vmin = vmin["diag"]
+                        my_vmax = vmax["diag"]
+                    else:
+                        my_vmin = vmin["offdiag"]
+                        my_vmax = vmax["offdiag"]
+                else:
+                    my_vmin = None
+                    my_vmax = None
+                
+                plot_binned_one(ax, quantities[key][:,:, idx, jdx].T, bin_edges_x, bin_edges_y, vmin=my_vmin, vmax=my_vmax, title=f"${title_base}_{{{idx+1}{jdx+1}}}$", xlabel=xlabel, ylabel=ylabel)
+
+
+    plt.tight_layout()
+    plt.show()
+    cs_plots.savefig(f"{key}_binned.png")
+
+# +
+vmin = {"diag": -0.2, "offdiag": -0.2}
+vmax =  {"diag": 1.2, "offdiag": 0.2}
+
+plot_binned(quantities, "response", bin_edges["snr"], bin_edges["size_ratio"], "R", vmin=vmin, vmax=vmax, xlabel="SNR", ylabel=r"$r / r_{\rm psf}$")
+# -
+
+plot_binned(quantities, "number", bin_edges["snr"], bin_edges["size_ratio"], "R", vmin=1, vmax=np.nanmax(quantities["number"]), xlabel="SNR", ylabel=r"$r / r_{\rm psf}$")
+
+# +
+vmin = {"diag": -0.2, "offdiag": -0.2}
+vmax = {"diag": 0.2, "offdiag": 0.2}
+
+plot_binned(quantities, "leakage", bin_edges["snr"], bin_edges["size_ratio"], r"\alpha", vmin=vmin, vmax=vmax, xlabel="SNR", ylabel=r"$r / r_{\rm psf}$")
+# -
+
+# %pwd
+
+

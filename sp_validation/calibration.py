@@ -179,7 +179,7 @@ def cut_to_bins(df, key, num_bins, type="log", x_min=None, x_max=None):
     return bin_edges
 
 
-def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined, mask_metacal, purpose="weights"):
+def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask1, mask2, purpose="weights"):
     
     cat_gal["e1_uncal"] = g_uncorr[0]
     cat_gal["e2_uncal"] = g_uncorr[1]
@@ -188,28 +188,31 @@ def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined, mask_metaca
     cat_gal["R_g21"] = gal_metacal.R21
     cat_gal["R_g22"] = gal_metacal.R22
 
-    cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(
-        dat, "NGMIX_T_NOSHEAR", mask_combined._mask, mask_metacal
+    cat_gal["NGMIX_T_NOSHEAR"] = (
+        sp_cat.get_col(dat, "NGMIX_T_NOSHEAR", mask1, mask2)
     )
-    cat_gal["NGMIX_Tpsf_NOSHEAR"] = sp_cat.get_col(
-        dat, "NGMIX_Tpsf_NOSHEAR", mask_combined._mask, mask_metacal
+    cat_gal["NGMIX_Tpsf_NOSHEAR"] = (
+        sp_cat.get_col(dat, "NGMIX_Tpsf_NOSHEAR", mask1, mask2)
     )
-    cat_gal["size_ratio"] = cat_gal['NGMIX_T_NOSHEAR'] / cat_gal['NGMIX_Tpsf_NOSHEAR']
+    cat_gal["size_ratio"] = (
+        cat_gal['NGMIX_T_NOSHEAR'] / cat_gal['NGMIX_Tpsf_NOSHEAR']
+    )
 
-    cat_gal["snr"] = sp_cat.get_snr("ngmix", dat, mask_combined._mask, mask_metacal)
+    cat_gal["snr"] = (
+        sp_cat.get_col(dat, "NGMIX_FLUX_NOSHEAR", mask1, mask2)
+        / sp_cat.get_col(dat, "NGMIX_FLUX_ERR_NOSHEAR", mask1, mask2)
+    )
     
     if purpose == "weights":
         pass
     elif purpose == "leakage":
-        cat_gal["w"] = sp_cat.get_col(
-            dat, "w_iv", mask_combined._mask, mask_metacal
-        )
+        cat_gal["w"] = sp_cat.get_col(dat, "w_iv", mask1, mask2)
         for idx in (1, 2):
-            cat_gal[f"e{idx}_PSF"] = sp_cat.get_col(
-                dat, f"e{idx}_PSF", mask_combined._mask, mask_metacal
+            cat_gal[f"e{idx}_PSF"] = (
+                sp_cat.get_col(dat, f"e{idx}_PSF", mask1, mask2)
             )
-        cat_gal["fwhm_PSF"] = sp_cat.get_col(
-            dat, "fwhm_PSF", mask_combined._mask, mask_metacal
+        cat_gal["fwhm_PSF"] = (
+            sp_cat.get_col(dat, "fwhm_PSF", mask1, mask2)
         )
 
 
@@ -485,6 +488,10 @@ def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response
         else:
             quantities[key] = np.zeros((num_bins_x, num_bins_y))
         
+        
+    # Iniitialize parameter for minimizations
+    params = leakage.init_parameters()
+
     # Loop over bins
     for i in tqdm.tqdm(range(num_bins_x), position=0, disable=not verbose):
         for j in tqdm.tqdm(range(num_bins_y), position=1, leave=False):
@@ -503,7 +510,7 @@ def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response
                         quantities["number"][i,j] = np.sum(bin_mask)
                     elif key == "leakage":
                         obj._dat = df_gal[bin_mask]
-                        obj.PSF_leakage(do_plots=False)
+                        obj.PSF_leakage(params=params, do_plots=False)
                         for idx in (0, 1):
                             for jdx in (0, 1):
                                 quantities["leakage"][i, j, idx, jdx] = obj.par_best_fit[f"a{idx+1}{jdx+1}"].value

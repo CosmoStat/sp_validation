@@ -807,6 +807,30 @@ def read_hdf5_file(
     return data_comb
 
 
+def get_maked_col(dat, col, mask):
+    """Get Masked Col.
+
+    Retrieve a specific column from the data with a mask.
+
+    Parameters
+    ----------
+    dat: dict
+        Input data
+    col: str
+        Key of the column to be returned
+    mask: array-like
+        Boolean mask used for selection
+
+    Returns
+    -------
+    array-like
+        Requested column from the data, filtered by the mask.
+
+    """
+    
+    return dat[col][mask]
+
+
 def get_col(dat, col, m_sel=None, m_flg=None):
     """Get Col.
 
@@ -830,6 +854,10 @@ def get_col(dat, col, m_sel=None, m_flg=None):
     array-like
         Requested column from the data, optionally filtered by the selection and flag masks.
 
+    See Also
+    --------
+        get_maked_col : More efficient if masks have been combined beforehand.
+
     Raises
     ------
     ValueError
@@ -840,9 +868,11 @@ def get_col(dat, col, m_sel=None, m_flg=None):
         raise ValueError("Specify both or none of selection and flag masks")
 
     if m_sel is None and m_flg is None:
-        return dat[col]
+        return dat[col][:]
     else:
         return dat[col][m_sel][m_flg]
+        # The following does not work
+        #return get_maked_col(dat, col, mask_combined)
 
 
 def get_snr(sh, dat, m_sel, m_flg):

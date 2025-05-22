@@ -1578,7 +1578,7 @@ def compute_weights_gatti(
     Compute Gatti et al. (2021) DES-like weights.
     
     """
-    fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined, mask_metacal, purpose="weights")
+    fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined._mask, mask_metacal, purpose="weights")
 
     cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
 
