@@ -35,7 +35,7 @@ tasks that can be performed by `sp_validation` are:
 
 ## Container Installation (Recommended)
 
-The easiest way to install ShapePipe is via a container. Docker images are automatically built and pushed to the [Github Container Registry (GHCR)](ghcr.io/cosmostat/shapepipe) for each release. This images can be installed and run on most systems (including clusters) with just a few lines of code.
+The easiest way to install sp_validation is via a container. Docker images are automatically built and pushed to the [Github Container Registry (GHCR)](ghcr.io/cosmostat/sp_validation) for each release. This image can be installed and run on most systems (including clusters) with just a few lines of code.
 
 We recommend running the image with **Apptainer** (formerly Singularity) which is installed on most HPC clusters. To simply run the image, use the following command:
 
@@ -53,7 +53,7 @@ python -c "import sp_validation"
 You can also run the image with **Docker**:
 
 ```bash
-docker run --rm -it ghcr.io/cosmostat/shapepipe:pyproject_docker python -c "import sp_validation"  
+docker run --rm -it ghcr.io/cosmostat/sp_validation:pyproject_docker python -c "import sp_validation"  
 ```
 
 We do not currently build images for Apple Silicon/amr64; however the amd64 images should work on these systems, albeit with reduced performance.
