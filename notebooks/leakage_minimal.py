@@ -160,7 +160,7 @@ def plot_binned_one(ax, quantity, bin_edges_x, bin_edges_y, vmin=None, vmax=None
         ax.set_xlabel(xlabel)
     if ylabel:
         ax.set_ylabel(ylabel)
-    ax.colorbar(pcm, ax=ax)
+    plt.colorbar(pcm, ax=ax)
     
 
 def plot_binned(quantities, key, bin_edges_x, bin_edges_y, title_base, vmin=None, vmax=None, xlabel=None, ylabel=None):
@@ -195,7 +195,6 @@ def plot_binned(quantities, key, bin_edges_x, bin_edges_y, title_base, vmin=None
 
 
     plt.tight_layout()
-    plt.show()
     cs_plots.savefig(f"{key}_binned.png")
 
 # +
