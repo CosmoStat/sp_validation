@@ -69,7 +69,6 @@ class BaseCat(object):
         # Load YAML configuration file.
         with open(fpath, "r") as f:
             config = yaml.safe_load(f)
-    
         # Read general parameters from configuration and remove
         if "params" in config:
             params = config.pop("params")

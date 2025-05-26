@@ -456,7 +456,10 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
 
 
 def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response", "number", "leakage"], verbose=True):
-    
+
+    if verbose:
+        print("Compute binned quantities")
+
     if num_bins_y is None:
         num_bins_y = num_bins_x
         
@@ -493,8 +496,8 @@ def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response
     params = leakage.init_parameters()
 
     # Loop over bins
-    for i in tqdm.tqdm(range(num_bins_x), position=0, disable=not verbose):
-        for j in tqdm.tqdm(range(num_bins_y), position=1, leave=False):
+    for i in tqdm.tqdm(range(num_bins_x), position=0, disable=not verbose, desc="bins_x"):
+        for j in tqdm.tqdm(range(num_bins_y), position=1, leave=False, desc="bins_y"):
             
             # Get indices for bin (i, j)
             bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_ratio_log_bins'] == j)
