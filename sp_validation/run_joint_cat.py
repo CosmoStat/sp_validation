@@ -3,7 +3,7 @@
 This module implements classes to create, mask, and calibrate joint
 comprehensive catalogues.
 
-:Authors: Martin Kilbinger
+:Author: Martin Kilbinger
 """
 
 import sys
@@ -65,7 +65,21 @@ class BaseCat(object):
         logging.log_command(args)
         
     def read_config_set_params(self, fpath):
+        """Read Config Set Params.
         
+        Read configuration file and sets class parameters.
+        
+        Parameters
+        ----------
+        fpath : str
+            inpput file path
+            
+        Returns
+        -------
+        dict
+            configuration
+
+        """
         # Load YAML configuration file.
         with open(fpath, "r") as f:
             config = yaml.safe_load(f)
@@ -978,7 +992,22 @@ class ApplyHspMasks(BaseCat):
         return new_data
 
     def write_hdf5_file(self, dat, dat_new=None, masks=None):
+        """Write HDF5 File.
+        
+        Save data to a hdf5 file on disk.
+        
+        Parameters
+        ----------
+        dat : h5py dataset
+            input dataset
+        dat_new : h5py dataset, optional
+            second dataset; unused if ``None``
+        masks : list, optional
+            masks, to be added to header information
 
+        Returns
+        -------
+        """
         with h5py.File(self._params["output_path"], "w") as f:
 
             self.write_hdf5_header(f)
@@ -1146,54 +1175,78 @@ class CalibrateCat(BaseCat):
         """
 
 def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
-        """Sky Plots.
+    """Sky Plots.
         
-        Plot sky regions with different masks.
+    Plot sky regions with different masks.
+    
+    Parameters
+    ----------
+    masks : list
+        masks to be applied
+    labels : dict
+        labels for masks
+    zoom_ra : list
+        min and max R.A. for zoom-in plot
+    zoom_dec : list
+        min and max Dec. for zoom-in plot
+    
+    """
+    ra = dat["RA"][:]
+    dec = dat["Dec"][:]
         
-        """
-        ra = dat["RA"][:]
-        dec = dat["Dec"][:]
-        
-        zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
-        zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
-        zoom = zoom_ra & zoom_dec
+    zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
+    zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
+    zoom = zoom_ra & zoom_dec
 
-        # No mask        
-        plot_area_mask(ra, dec, zoom)
+    # No mask        
+    plot_area_mask(ra, dec, zoom)
         
-        # SExtractor and SP flags
-        m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
-        plot_area_mask(ra, dec, zoom, mask=m_flags)
+    # SExtractor and SP flags
+    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
+    plot_area_mask(ra, dec, zoom, mask=m_flags)
         
-        # Overlap regions
-        m_over = masks[labels["overlap"]]._mask & m_flags
-        plot_area_mask(ra, dec, zoom, mask=m_over)
+    # Overlap regions
+    m_over = masks[labels["overlap"]]._mask & m_flags
+    plot_area_mask(ra, dec, zoom, mask=m_over)
         
-        # Coverage mask
-        m_point = masks[labels["npoint3"]]._mask & m_over
-        plot_area_mask(ra, dec, zoom, mask=m_point)
+    # Coverage mask
+    m_point = masks[labels["npoint3"]]._mask & m_over
+    plot_area_mask(ra, dec, zoom, mask=m_point)
 
-        # Maximask
-        m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
-        plot_area_mask(ra, dec, zoom, mask=m_maxi)
+    # Maximask
+    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
+    plot_area_mask(ra, dec, zoom, mask=m_maxi)
         
-        m_comb = mask_combined._mask
-        plot_area_mask(ra, dec, zoom, mask=m_comb)
+    m_comb = mask_combined._mask
+    plot_area_mask(ra, dec, zoom, mask=m_comb)
         
-        m_man = m_maxi & masks[labels["8_Manual"]]._mask
-        plot_area_mask(ra, dec, zoom, mask=m_man)
+    m_man = m_maxi & masks[labels["8_Manual"]]._mask
+    plot_area_mask(ra, dec, zoom, mask=m_man)
         
-        m_halos = (
-            m_maxi
-            & masks[labels['1_Faint_star_halos']]._mask
-            & masks[labels['2_Bright_star_halos']]._mask
-        )
-        plot_area_mask(ra, dec, zoom, mask=m_halos)
+    m_halos = (
+        m_maxi
+        & masks[labels['1_Faint_star_halos']]._mask
+        & masks[labels['2_Bright_star_halos']]._mask
+    )
+    plot_area_mask(ra, dec, zoom, mask=m_halos)
         
 
 
 def plot_area_mask(ra, dec, zoom, mask=None):
-
+    """Plot Area Mask.
+    
+    Create sky plot of objects.
+    
+    Parameters
+    ----------
+    ra : list
+        R.A. coordinates
+    dec : list
+        Dec. coordinates
+    zoom : TBD
+    mask: TBD, optional
+    
+    """
     if mask is None:
         mask == np.ones_like(ra)
 
@@ -1203,6 +1256,7 @@ def plot_area_mask(ra, dec, zoom, mask=None):
     for idx in (0, 1):
         axes[idx].set_xlabel("R.A. [deg]")
         axes[idx].set_ylabel("Dec [deg]")
+
 
 def confusion_matrix(mask, confidence_level=0.9):
 
