@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
-from cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val import CosmologyValidation
 
 # %%
 cv = CosmologyValidation(

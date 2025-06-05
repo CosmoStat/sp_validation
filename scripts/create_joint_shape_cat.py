@@ -407,7 +407,7 @@ def main(argv=None):
     survey = 'unions'
     pipeline = 'shapepipe'
     year = 2024
-    version = '1.4.1'
+    version = '1.4.a'
 
     additive_bias = 'from_extended'
     shear_response = 'from_extended'
@@ -546,6 +546,7 @@ def main(argv=None):
         R_select=R_select,
         c=c,
         c_err=c_err,
+        w_type="des",
         add_cols=add_col_data,
         add_cols_format=add_col_format, 
     )

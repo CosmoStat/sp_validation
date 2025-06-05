@@ -2,7 +2,7 @@ importlib_metadata
 adjustText
 colorama
 emcee
-cs_util==0.1.2
+cs_util==0.1.5
 astropy>=5.0
 healpy
 healsparse
@@ -21,9 +21,12 @@ shear_psf_leakage==0.2.0
 scipy
 seaborn
 setuptools==65.5.1
+skyproj
 statsmodels
 treecorr
 tqdm
 uncertainties
+clmm
 pyccl
 opencv-python-headless
+#git+https://github.com/aguinot/cosmo-numba.git@main

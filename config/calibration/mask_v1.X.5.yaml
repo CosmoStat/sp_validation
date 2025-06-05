@@ -1,10 +1,10 @@
 # Config file for masking and calibration.
-# Standard cuts, type v1.X.2.
+# Standard cuts without halo masks, type v1.X.5.
 
 # General parameters (can also given on command line)
 params:
   input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
-  cmatrices: False
+  cmatrices: True
   sky_regions: False
   verbose: True
 
@@ -59,17 +59,6 @@ dat:
 
 ## Using columns in 'dat_ext' group (post-processing flags)
 dat_ext:
-  # Faint star halos
-  - col_name: 1_Faint_star_halos
-    label: "Faint star halos"
-    kind: equal
-    value: False
-
-  # Bright star halos
-  - col_name: 2_Bright_star_halos
-    label: "Bright star halos"
-    kind: equal
-    value: False
 
   # Stars
   - col_name: 4_Stars

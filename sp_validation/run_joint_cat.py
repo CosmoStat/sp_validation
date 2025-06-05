@@ -77,7 +77,7 @@ class BaseCat(object):
                 
         return config
 
-    def read_cat(self, load_into_memory=False, mode="r"):
+    def read_cat(self, load_into_memory=False, mode="r", hdu=1):
         """Read Cat.
 
         Read input catalogue, either FITS or HDF5.
@@ -89,6 +89,8 @@ class BaseCat(object):
             default is ``False``
         mode: bool, optional
             HDF5 read mode, default is "r"
+        hdu: int, optional
+            HDU number (for FITS file); default is 1
 
         Returns
         -------
@@ -605,6 +607,21 @@ class JointCat(BaseCat):
 class ApplyHspMasks(BaseCat):
     """Apply Hsp Masks."""
 
+    # Labels of bit-coded structural masks
+    _labels_struct = {
+        1: "Faint_star_halos",
+        2: "Bright_star_halos",
+        4: "Stars",
+        8: "Manual",
+        16: "u",
+        32: "g",
+        64: "r",
+        128: "i",
+        256: "z",
+        512: "Tile_RA_DEC_cut",
+        1024: "Maximask",
+    }
+
     def __init__(self):
         # Set default parameters
         self.params_default()
@@ -626,22 +643,7 @@ class ApplyHspMasks(BaseCat):
             label
 
         """
-        # Labels of bit-coded structural masks
-        labels_struct = {
-            1: "Faint_star_halos",
-            2: "Bright_star_halos",
-            4: "Stars",
-            8: "Manual",
-            16: "u",
-            32: "g",
-            64: "r",
-            128: "i",
-            256: "z",
-            512: "Tile_RA_DEC_cut",
-            1024: "Maximask",
-        }
-
-        return labels_struct[bit]
+        return cls._labels_struct[bit]
 
     @classmethod
     def get_mask_col_name(cls, bit):
@@ -746,25 +748,6 @@ class ApplyHspMasks(BaseCat):
         if "verbose" not in self._params:
             self._params["verbose"] = False
 
-    def read_hsp_mask(self, path):
-        """Read Hsp Mask.
-
-        Parameters
-        ----------
-        path : str
-            Path to the mask file.
-
-        Returns
-        -------
-        np.ndarray
-            Mask
-        """
-
-        if self._params["verbose"]:
-            print(f"Reading healsparse mask file {path}...")
-
-        return hsp.HealSparseMap.read(path)
-
     def reverse_bit_list(self):
         """Reverse Bit List.
 
@@ -809,6 +792,51 @@ class ApplyHspMasks(BaseCat):
                 + f"nside{self._params['nside']}_n{bit}.hsp"
             )
         return paths
+    
+    def get_mask(self, path):
+        """Get Mask.
+        
+        Read from file and return healsparse mask.
+        
+        Parameters
+        ----------
+        path: str
+            input path
+        
+        Returns
+        -------
+        hsp.HealSparseMap
+            mask
+    
+        """
+        if self._params["verbose"]:
+            print(f"Reading mask file {path}...")
+        return hsp.HealSparseMap.read(path)
+
+    def apply_mask(self, ra, dec, hsp_mask, label):
+        """Apply Mask.
+
+        Apply mask to input coordinates.
+
+        Parameters
+        ----------
+        hsp_mask : hsp.HealSparseMap
+            input mask
+        ra : numpy.ndarray
+            input right ascension
+        dec : numpy.ndarray
+            input declination
+
+        Returns
+        -------
+        numpy.ndarray
+            mask values
+
+        """
+        if self._params["verbose"]:
+            print(f"Applying mask {label}...")
+
+        return hsp_mask.get_values_pos(ra, dec, lonlat=True)
 
     def get_masks(self, dat=None):
         """Get Masks.
@@ -842,23 +870,16 @@ class ApplyHspMasks(BaseCat):
 
         # Read healsparse files and apply masks to coordinate
         for bit in paths:
-            if self._params["verbose"]:
-                print(f"Reading mask for bit {bit}...")
-            hsp_mask = hsp.HealSparseMap.read(paths[bit])
+            hsp_mask = self.get_mask(paths[bit])
 
             label = self.get_mask_col_name(bit)
-
-            if self._params["verbose"]:
-                print(f"Computing mask bit={bit}...")
-            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = self.apply_mask(ra, dec, hsp_mask, label)
 
         # Read auxiliary mask files"
         for idx, path in enumerate(self._params["aux_mask_file_list"]):
+            hsp_mask = self.get_mask(path)
             label = self._params["aux_mask_label_list"][idx]
-            if self._params["verbose"]:
-                print(f"Reading aux mask for label {label}...")
-            hsp_mask = hsp.HealSparseMap.read(path)
-            masks[label] = hsp_mask.get_values_pos(ra, dec, lonlat=True)
+            masks[label] = self.apply_mask(ra, dec, hsp_mask, label)
 
         return masks
 
@@ -1194,8 +1215,9 @@ class Mask():
         self._value = value
         self._kind = kind
         self._num_ok = None
+        self._verbose = verbose
 
-        if verbose:
+        if self._verbose:
             print("Initialising mask:", self)
 
         if dat is not None:
@@ -1229,7 +1251,27 @@ class Mask():
             self._mask = (dat[self._col_name] >= self._value[0]) & (dat[self._col_name] <= self._value[1])
         else:
             raise ValueError(f"Invalid kind {self._kind}")
-        
+
+    def to_bool(self, hsp_mask):
+
+        if self._verbose:
+            print("to_bool: get valid pixels")
+        valid_pixels = hsp_mask.valid_pixels
+
+        # Abuse of col_name
+        self._col_name = valid_pixels
+
+        if self._verbose:
+            print("to_bool: apply mask")
+        self.apply(hsp_mask)
+        mask_bool = hsp.HealSparseMap.make_empty(
+            hsp_mask.nside_coverage,
+            hsp_mask.nside_sparse,
+            dtype="bool",
+        )
+        mask_bool[valid_pixels] = self._mask
+        return mask_bool
+ 
     @classmethod
     def print_strings(cls, coln, lab, num, fnum):
         print(f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}")
