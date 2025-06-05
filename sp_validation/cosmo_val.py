@@ -6,12 +6,17 @@ from functools import partial
 import colorama
 import matplotlib.pyplot as plt
 import numpy as np
+import pymaster as nmt
+import healpy as hp
+import treecorr
+from . import utils_cosmo_val
+import camb
 import re
 
-try:
-    import pymaster as nmt
-except:
-    print("Could not import pymaster, continuing without")
+import yaml
+from astropy.io import fits
+from astropy import units as u
+from astropy.coordinates import SkyCoord        
 
 import healpy as hp
 import healsparse as hsp
@@ -871,8 +876,7 @@ class CosmologyValidation:
                     R = self.cc[ver]["shear"]["R"]
                     e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]] / R
                     e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]] / R
-                    w_key = self.cc[ver]["shear"]["w_col"]
-                    w = self.results[ver].dat_shear[w_key]
+                    w = self.results[ver].dat_shear["w_col"]
 
                     axs[0].hist(
                         e1,
@@ -2239,4 +2243,7 @@ def hsp_map_logical_or(maps, verbose=False):
         plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
+<<<<<<< HEAD
 # %%
+=======
+>>>>>>> upstream/develop
