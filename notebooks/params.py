@@ -65,7 +65,6 @@ star_cat_path = f'{data_dir}/full_starcat-0000000.fits'
 hdu_star_cat = 1
 
 ### External mask; optional, set to `None` if not required
-#mask_external_path = f'{data_dir}/../LensFitMisc/CFIS3500_THELI_{name}_tiles.reg'
 mask_external_path = None
 
 ## Output paths
@@ -118,9 +117,11 @@ add_cols_pre_cal = ["TILE_ID", "NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FL
 add_cols_pre_cal_format = {}
 for key in ("NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
     add_cols_pre_cal_format[key] = "I"
+    
 add_cols_pre_cal_format["TILE_ID"] = "A7"
+add_cols_pre_cal_format["NUMBER"] = "J"
 
-# Crete key names for metacal information
+# Create key names for metacal information
 prefix = "NGMIX"
 suffixes = ["1M", "1P", "2M", "2P", "NOSHEAR"]
 centers = ["FLAGS", "ELL", "FLUX", "FLUX_ERR", "T", "T_ERR", "Tpsf"]
@@ -132,8 +133,6 @@ for suffix in suffixes:
     add_cols_pre_cal_format[f"FLAGS_{suffix}"] = "I"
 
 
-#add_cols_pre_cal_descr = ["ShapePipe pipeline flags", "SExtractor flags"]
-
 # Catalog parameters
 
 ## Star matching threshold [deg]
@@ -144,7 +143,12 @@ thresh = 0.0002
 ## If < 2000 the jackknife mean fluctuates a lot. 
 n_jack = 0
 
+
 ## Galaxy selection
+
+# Flag to output selected and calibrated galaxy catalogue (<= SP v1.4.1).       
+# If False, only output comprehensive catalogue.                                
+do_selection_calibration = False 
 
 ## Magnitude limits
 gal_mag_bright = 15

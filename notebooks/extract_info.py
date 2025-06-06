@@ -36,10 +36,12 @@ from astropy.io import fits
 
 from cs_util import canfar
 from sp_validation.io import *
-from sp_validation.cat import *
+#from sp_validation.cat import *
+from sp_validation import cat as spv_cat
 from sp_validation.survey import *
 from sp_validation.galaxy import *
 from sp_validation.calibration import *
+from sp_validation.basic import *
 
 # ## 1. Set-up
 
@@ -63,7 +65,7 @@ if extension == ".fits":
     dd = np.load(galaxy_cat_path, mmap_mode=mmap_mode)
 else:
     print("Loading galaxy .hdf5 file...")
-    dd = read_hdf5_file(galaxy_cat_path, name, stats_file, param_path=param_list_path)
+    dd = spv_cat.read_hdf5_file(galaxy_cat_path, name, stats_file, param_path=param_list_path)
 
 n_obj = len(dd)
 print_stats(f'Read {n_obj} objects from file {galaxy_cat_path}', stats_file, verbose=verbose)
@@ -78,8 +80,8 @@ key_PSF_size = f'{key_base}_T_PSFo_NOSHEAR'
 size_to_fwhm = T_to_fwhm
 
 print_stats('Galaxies:', stats_file, verbose=verbose)
-n_tot = print_some_quantities(dd, stats_file, verbose=verbose)
-print_mean_ellipticity(
+n_tot = spv_cat.print_some_quantities(dd, stats_file, verbose=verbose)
+spv_cat.print_mean_ellipticity(
     dd,
     f'{key_base}_ELL_NOSHEAR',
     2, 
@@ -105,8 +107,8 @@ if star_cat_path:
 
 if star_cat_path:
     print_stats('Stars:', stats_file, verbose=verbose)
-    n_tot = print_some_quantities(d_star, stats_file, verbose=verbose)
-    print_mean_ellipticity(
+    n_tot = spv_cat.print_some_quantities(d_star, stats_file, verbose=verbose)
+    spv_cat.print_mean_ellipticity(
         d_star, 
         ['E1_PSF_HSM', 'E2_PSF_HSM'],
         1,
@@ -126,7 +128,7 @@ if star_cat_path:
 # #### Match to all objects
 
 if star_cat_path:
-    ind_star, mask_area_tiles, n_star_tot = check_matching(
+    ind_star, mask_area_tiles, n_star_tot = spv_cat.check_matching(
         d_star,
         dd,
         ['RA', 'DEC'],
@@ -149,7 +151,7 @@ m_star = (
     & (dd['NGMIX_ELL_PSFo_NOSHEAR'][:,0][ind_star] != -10)
 )
 
-ra_star, dec_star, g_star_psf = match_subsample(
+ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
     dd,
     ind_star,
     m_star,
@@ -163,21 +165,98 @@ ra_star, dec_star, g_star_psf = match_subsample(
 
 #### Refine: Match to SPREAD_CLASS samples
 if "SPREAD_CLASS" in dd.dtype.names:
-    match_spread_class(dd, ind_star, m_star, stats_file, len(ra_star), verbose=verbose)
+    spv_cat.match_spread_class(dd, ind_star, m_star, stats_file, len(ra_star), verbose=verbose)
 else:
     print_stats("No SPREAD_CLASS in input, skipping star-gal matching", stats_file, verbose=verbose)
 
 # ## Check for objects with invalid PSF
 
-check_invalid(
+spv_cat.check_invalid(
     dd,
     [key_PSF_ell, f'{key_base}_ELL_NOSHEAR'],
     [0, 0],
     [-10, -10],
     stats_file,
-    name=['PSF', 'galaxy ellipticity'],
+    name=['`PSF', 'galaxy ellipticity'],
     verbose=verbose
 )
+
+# +
+# Flag for duplicate objects in tile boundaries
+
+cut_overlap = classification_galaxy_overlap_ra_dec(
+    dd,
+    ra_key=col_name_ra,
+    dec_key=col_name_dec,
+)
+
+n_ok = sum(cut_overlap)
+print_stats(f"Non-overlapping objects: {n_ok:10d}, {n_ok/n_obj:10.2%}", stats_file, verbose=verbose)
+
+# -
+
+# Get coordinates for all objects
+ra_all = spv_cat.get_col(dd, col_name_ra)
+dec_all = spv_cat.get_col(dd, col_name_dec)
+
+# ### Write comprehensive shape catalogue (all objects, no cuts)
+
+# +
+# Add additional columns without cuts nor mask applied
+
+ext_cols_pre_cal = {}
+
+# Standard additional columns
+if add_cols:
+    for key in add_cols:
+        ext_cols_pre_cal[key] = dd[key]
+
+# Pre-calibration columns
+if add_cols_pre_cal:
+    for key in add_cols_pre_cal:
+        ext_cols_pre_cal[key] = dd[key]
+
+# Flag to cut duplicate objects in overlapping region with neighbouring tiles
+ext_cols_pre_cal["overlap"] = cut_overlap
+add_cols_pre_cal_format["overlap"] = "I"
+
+# Additional columns {e1, e2, size}_PSF
+ext_cols_pre_cal['e1_PSF'] = dd[key_PSF_ell][:,0]
+ext_cols_pre_cal['e2_PSF'] = dd[key_PSF_ell][:,1]
+ext_cols_pre_cal['fwhm_PSF'] = size_to_fwhm(dd[key_PSF_size])
+
+_, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None, col_2d=True)
+
+mag = spv_cat.get_col(dd, "MAG_AUTO", None, None)
+snr = spv_cat.get_snr(shape, dd, None, None)
+g1_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 0]
+g2_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 1]
+    
+# Comprehensive catalogue without cuts nor mask applied
+if verbose:
+    print("Writing comprehensive catalogue...")
+
+spv_cat.write_shape_catalog(
+    f'{output_shape_cat_base}_comprehensive_{shape}.fits',
+    ra_all,
+    dec_all,
+    iv_w,
+    mag=mag,
+    snr=snr,
+    g1_uncal=g1_uncal,
+    g2_uncal=g2_uncal,
+    add_cols=ext_cols_pre_cal,
+    add_cols_format=add_cols_pre_cal_format,
+ )
+# -
+
+if not do_selection_calibration:
+    if verbose:
+        print("No selection and calibration; exiting here")
+    sys.exit(0)
+else:
+    if verbose:
+        print("Continuing with selection and calibration")
 
 # ## 4. Select galaxies
 
@@ -191,15 +270,6 @@ check_invalid(
 #     to avoid potential errors with empty data)
 
 # +
-cut_overlap = classification_galaxy_overlap_ra_dec(
-    dd,
-    ra_key=col_name_ra,
-    dec_key=col_name_dec,
-)
-
-n_ok = sum(cut_overlap)
-print_stats(f"Non-overlapping objects: {n_ok:10d}, {n_ok/n_obj:10.2%}", stats_file, verbose=verbose)
-
 cut_common = classification_galaxy_base(
     dd,
     cut_overlap,
@@ -239,13 +309,11 @@ from cs_util.plots import plot_histograms
 # -
 
 from sp_validation.survey import *
-from sp_validation.basic import *
 from sp_validation.util import *
 from sp_validation.basic import *
 from sp_validation.plots import *
 from sp_validation.plot_style import *
 from sp_validation.calibration import *
-from sp_validation import cat as spv_cat
 
 # ## metacalibration for galaxies
 
@@ -297,13 +365,13 @@ print_stats(
     
 # coordinates
 ra = spv_cat.get_col(dd, col_name_ra, m_gal, mask) 
-    
+dec = spv_cat.get_col(dd, col_name_dec, m_gal, mask)
+
 # Modify R.A. for plots if R.A. = 0 in area
 if wrap_ra != 0:
     ra_wrap = (ra + wrap_ra) % 360 - wrap_ra + 360
 else:
     ra_wrap = ra
-dec = spv_cat.get_col(dd, col_name_dec, m_gal, mask)
 
 ra_mean = np.mean(ra_wrap)
 dec_mean = np.mean(dec)
@@ -360,15 +428,6 @@ print_stats(
     stats_file,
     verbose=verbose
 )
-# -
-
-# Get coordinates for all objects
-ra_all = spv_cat.get_col(dd, col_name_ra)
-if wrap_ra:
-    ra_wrap_all = (ra_all + wrap_ra) % 360 - wrap_ra + 360
-else:
-    ra_wrap_all = ra_all
-dec_all = spv_cat.get_col(dd, col_name_dec)
 
 # +
 # Number density
@@ -877,7 +936,7 @@ R_shear_ind = gal_metacal.R_shear
 
 # ### Write basic shape catalogue
 
-write_shape_catalog(
+spv_cat.write_shape_catalog(
     f'{output_shape_cat_base}_{shape}.fits',
     ra,
     dec,
@@ -916,7 +975,7 @@ if mask_external_path:
     ext_cols['mask_extern'] = m_extern
 
 # Extended catalogue with SNR, individual R matrices, ext_cols
-write_shape_catalog(
+spv_cat.write_shape_catalog(
     f'{output_shape_cat_base}_extended_{shape}.fits',
     ra,
     dec,
@@ -936,54 +995,6 @@ write_shape_catalog(
     c=c,
     c_err=c_err,
     add_cols=ext_cols,
- )
-# -
-
-# ### Write comprehensive shape catalogue (all objects, no cuts)
-
-# +
-# Add additional columns without cuts nor mask applied
-
-ext_cols_pre_cal = {}
-
-# Standard additional columns
-if add_cols:
-    for key in add_cols:
-        ext_cols_pre_cal[key] = dd[key]
-
-# Pre-calibration columns
-if add_cols_pre_cal:
-    for key in add_cols_pre_cal:
-        ext_cols_pre_cal[key] = dd[key]
-
-# Flag to cut duplicate objects in overlapping region with neighbouring tiles
-ext_cols_pre_cal["overlap"] = cut_overlap
-add_cols_pre_cal_format["overlap"] = "I"
-
-# Additional columns {e1, e2, size}_PSF
-ext_cols_pre_cal['e1_PSF'] = dd[key_PSF_ell][:,0]
-ext_cols_pre_cal['e2_PSF'] = dd[key_PSF_ell][:,1]
-ext_cols_pre_cal['fwhm_PSF'] = size_to_fwhm(dd[key_PSF_size])
-
-_, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None, col_2d=True)
-
-mag = get_col(dd, "MAG_AUTO", None, None)
-snr = get_snr(shape, dd, None, None)
-g1_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 0]
-g2_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 1]
-    
-# Comprehensive catalogue without cuts nor mask applied
-write_shape_catalog(
-    f'{output_shape_cat_base}_comprehensive_{shape}.fits',
-    ra_all,
-    dec_all,
-    iv_w,
-    mag=mag,
-    snr=snr,
-    g1_uncal=g1_uncal,
-    g2_uncal=g2_uncal,
-    add_cols=ext_cols_pre_cal,
-    add_cols_format=add_cols_pre_cal_format,
  )
 # -
 

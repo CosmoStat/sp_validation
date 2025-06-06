@@ -125,10 +125,10 @@ class metacal:
         p2 = {}
         ns = {}
 
+        masked_data = data[mask]
         if self._prefix == 'NGMIX':
             m1, p1, m2, p2, ns = self._read_data_ngmix(
-                data,
-                mask,
+                masked_data,
                 m1,
                 p1,
                 m2,
@@ -137,8 +137,7 @@ class metacal:
             )
         elif self._prefix == 'GALSIM':
             m1, p1, m2, p2, ns = self._read_data_galsim(
-                data,
-                mask,
+                masked_data,
                 m1,
                 p1,
                 m2,
@@ -152,11 +151,13 @@ class metacal:
         self.p2 = p2
         self.ns = ns
 
-    def _read_data_ngmix(self, data, mask, m1, p1, m2, p2, ns):
+    def _read_data_ngmix(self, masked_data, m1, p1, m2, p2, ns):
         """Read Data Ngmix.
 
         Read data from ngmix catalogue.
+        
         """
+        
         for name_shear, dict_tmp in zip(
             ['1M', '1P', '2M', '2P', 'NOSHEAR'],
             [m1, p1, m2, p2, ns]
@@ -166,40 +167,40 @@ class metacal:
                 print('Extracting {}'.format(name_shear))
 
             dict_tmp['flag'] = (
-                data[f'{self._prefix}_FLAGS_{name_shear}'][mask]
+                masked_data[f'{self._prefix}_FLAGS_{name_shear}']
             )
 
             if self._col_2d:
                 # Ellipticity in one 2D column
                 for comp in (0, 1):
                     dict_tmp[f"g{comp+1}"] = (
-                        data[f"{self._prefix}_ELL_{name_shear}"][:, comp][mask]
+                        masked_data[f"{self._prefix}_ELL_{name_shear}"][:, comp]
                     )
             else:
                 # Ellipcitiy in two different columns
                 for comp in (0, 1):
                     dict_tmp[f"g{comp+1}"] = (
-                        data[f"{self._prefix}_ELL_{name_shear}_{comp}"][mask]
+                        masked_data[f"{self._prefix}_ELL_{name_shear}_{comp}"]
                     )
 
             for key in ("flux", "flux_err", "T", "T_err"):
                 dict_tmp[key] = (
-                    data[f'{self._prefix}_{key.upper()}_{name_shear}'][mask]
+                    masked_data[f'{self._prefix}_{key.upper()}_{name_shear}']
                 )
 
             dict_tmp['Tpsf'] = (
-                data[f'{self._prefix}_Tpsf_{name_shear}'][mask]
+                masked_data[f'{self._prefix}_Tpsf_{name_shear}']
             )
 
         ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
-            data,
+            masked_data,
             self._sigma_eps,
             self._prefix,
-            mask=mask,
+            mask=None,
             col_2d=self._col_2d,
         )
 
-        self._n_input = len(data)
+        self._n_input = len(masked_data)
         self._n_after_gal_mask = len(dict_tmp['flag'])
         if self._verbose:
             print(f"Number of objects on metacal input = {self._n_input}")
@@ -257,10 +258,11 @@ class metacal:
 
         return C11, C22, iv_w
 
-    def _read_data_galsim(self, data, mask, m1, p1, m2, p2, ns):
+    def _read_data_galsim(self, masked_data, m1, p1, m2, p2, ns):
         """Read Data Galsim.
 
         Read data from galsim catalogue.
+
         """
         prefix_mom = 'GALSIM_GAL'
 
@@ -273,25 +275,25 @@ class metacal:
                 print('Extracting {}'.format(name_shear))
 
             dict_tmp['flag'] = (
-                data[f'{self._prefix}_FLAGS_{name_shear.upper()}'][mask]
+                masked_data[f'{self._prefix}_FLAGS_{name_shear.upper()}']
             )
-            dict_tmp['g1'] = data[
+            dict_tmp['g1'] = masked_data[
                 f'{prefix_mom}_ELL_UNCORR_{name_shear.upper()}'
-            ][:, 0][mask]
-            dict_tmp['g2'] = data[
+            ][:, 0]
+            dict_tmp['g2'] = masked_data[
                 f'{prefix_mom}_ELL_UNCORR_{name_shear.upper()}'
-            ][:, 1][mask]
+            ][:, 1]
 
             dict_tmp['T'] = (
-                data[f'{prefix_mom}_SIGMA_{name_shear.upper()}'][mask]
+                masked_data[f'{prefix_mom}_SIGMA_{name_shear.upper()}']
             )
             dict_tmp['Tpsf'] = (
-                data[f'{self._prefix}_PSF_SIGMA_{name_shear.upper()}'][mask]
+                masked_data[f'{self._prefix}_PSF_SIGMA_{name_shear.upper()}']
             )
 
-        self.snr_sextractor = data['SNR_WIN'][mask]
-        ns['C11'] = data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 0][mask]
-        ns['C22'] = data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 1][mask]
+        self.snr_sextractor = masked_data['SNR_WIN']
+        ns['C11'] = masked_data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 0]
+        ns['C22'] = masked_data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 1]
         ns['w'] = (
             1. / (2 * self._sigma_eps ** 2 + dict_tmp['C11'] + dict_tmp['C22'])
         )

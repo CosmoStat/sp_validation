@@ -7,12 +7,12 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
 #     name: python3
 # ---
 
-# # Calibrate comprehensive catalogue
+# # Calibrate minimal catalogue
 
 # %reload_ext autoreload
 # %autoreload 2
@@ -26,36 +26,42 @@ import matplotlib.pylab as plt
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
 from sp_validation.basic import metacal
-from sp_validation import calibration
 import sp_validation.cat as cat
 
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
 
 # Read configuration file and set parameters
-config = obj.read_config_set_params("config_mask.yaml")
+config = obj.read_config_set_params("config_minimal.yaml")
+
+print(obj._params)
 
 # !pwd
 
-# +
 # Get data. Set load_into_memory to False for very large files
+dat, _ = obj.read_cat(load_into_memory=False)
 
+if True:
+    n_max = 1_000_000
+    print(f"MKDEBUG testing only first {n_max} objects")
+    dat = dat[:n_max]
 
-dat, dat_ext = obj.read_cat(load_into_memory=False)
-# -
-
-n_test = -1
-#n_test = 100000
-if n_test > 0:
-    print(f"MKDEBUG testing only first {n_test} objects")
-    dat = dat[:n_test]
-    dat_ext = dat_ext[:n_test]
 
 # ## Masking
 
-# ### Pre-processing ShapePipe flags
+masks_to_apply = [
+    "FLAGS",
+    "4_Stars",
+    "64_r",
+    "1024_Maximask",
+    "N_EPOCH",
+    "mag",
+    "NGMIX_MOM_FAIL",
+    "NGMIX_ELL_PSFo_NOSHEAR_0",
+    "NGMIX_ELL_PSFo_NOSHEAR_1",
+]
 
-masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext)
+masks, labels = sp_joint.get_masks_from_config(config, dat, dat, masks_to_apply=masks_to_apply, verbose=obj._params["verbose"])
 
 mask_combined = sp_joint.Mask.from_list(
     masks,
@@ -63,8 +69,19 @@ mask_combined = sp_joint.Mask.from_list(
     verbose=obj._params["verbose"],
 )
 
+# +
 # Output some mask statistics
-sp_joint.print_mask_stats(dat.shape[0], masks, mask_combined)
+
+num_obj = dat.shape[0]
+
+sp_joint.Mask.print_strings(
+    "flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}"
+)
+for my_mask in masks:
+    my_mask.print_stats(num_obj)
+
+mask_combined.print_stats(num_obj)
+# -
 
 if obj._params["sky_regions"]:
 
@@ -73,6 +90,8 @@ if obj._params["sky_regions"]:
     zoom_dec = [55, 60]
 
     sp_joint.sky_plots(dat, masks, labels, zoom_ra, zoom_dec)
+
+# ### PSF leakage
 
 # ### Calibration
 
@@ -95,7 +114,7 @@ gal_metacal = metacal(
 )
 # -
 
-g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(gal_metacal)
+g_corr_mc, g_uncorr, w, nask)metacal, c, c_err = get_calibrated_m_c(gal_metacal
 
 num_ok = len(g_corr_mc[0])
 sp_joint.Mask.print_strings(
@@ -107,7 +126,7 @@ sp_joint.Mask.print_strings(
 
 cat_gal = {}
 
-sp_joint.compute_weights_gatti(
+w_des = sp_joint.compute_weights_gatti(
     cat_gal,
     g_uncorr,
     gal_metacal,
@@ -127,7 +146,7 @@ alpha_1, alpha_2 = sp_joint.compute_PSF_leakage(
     mask_combined,
     mask_metacal,
     num_bins=20,    
-)
+}
 # -
 
 # Compute leakage-corrected ellipticities
@@ -200,7 +219,7 @@ cat.write_shape_catalog(
     output_shape_cat_path,
     ra,
     dec,
-    cat_gal["w_des"],
+    w_des,
     mag=mag,
     snr=cat_gal["snr"],
     g=g_corr_mc,
@@ -221,79 +240,6 @@ with open("masks.txt", "w") as f_out:
     for my_mask in masks:
         my_mask.print_summary(f_out)
 
-from scipy import stats
-
 #
-
-all_masks = masks[:-3]
-
-# +
-if not obj._params["cmatrices"]:
-    print("Skipping cmatric calculations")
-    sys.exit(0)
-
-r_val, r_cl = sp_joint.correlation_matrix(all_masks)
-
-# +
-
-n = len(all_masks)
-keys = [my_mask._label for my_mask in all_masks]
-
-plt.imshow(r_val, cmap="coolwarm", vmin=-1, vmax=1)
-plt.xticks(np.arange(n), keys)
-plt.yticks(np.arange(n), keys)
-plt.xticks(rotation=90)
-plt.colorbar()
-plt.savefig("correlation_matrix.png")
-
-# -
-
-
-n_key = len(all_masks)
-cms = np.zeros((n_key, n_key, 2, 2))
-for idx in range(n_key):
-    for jdx in range(n_key):
-
-        if idx == jdx:
-            continue
-
-        print(idx, jdx)
-        res = sp_joint.confusion_matrix(masks[idx]._mask, masks[jdx]._mask)
-        cms[idx][jdx] = res["cmn"]
-
-# +
-import seaborn as sns
-
-fig = plt.figure(figsize=(30, 30))
-axes = np.empty((n_key, n_key), dtype=object)
-for idx in range(n_key):
-    for jdx in range(n_key):
-        if idx == jdx:
-            continue
-        axes[idx][jdx] = plt.subplot2grid((n_key, n_key), (idx, jdx), fig=fig)
-
-matrix_elements = ["True", "False"]
-
-for idx in range(n_key):
-    for jdx in range(n_key):
-
-        if idx == jdx:
-            continue
-
-        ax = axes[idx, jdx]
-        sns.heatmap(
-            cms[idx][jdx],
-            annot=True,
-            fmt=".2f",
-            xticklabels=matrix_elements,
-            yticklabels=matrix_elements,
-            ax=ax,
-        )
-        ax.set_ylabel(masks[idx]._label)
-        ax.set_xlabel(masks[jdx]._label)
-
-plt.show(block=False)
-plt.savefig("confusion_matrix.png")
-# -
 
 obj.close_hd5()
