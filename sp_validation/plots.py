@@ -314,6 +314,21 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
     return vlim
 
 
+def plot_lines(lines):
+    
+    if lines is None:
+        return
+    
+    for key in lines:
+        for value in lines[key]:
+            if key == "x":
+                plt.axvline(x=value, color="red")
+            elif key == "y":
+                plt.axhline(y=value, color="red")
+            else:
+                raise ValueError(f"line of type {key} invalid")
+
+
 def plot_binned_one(ax, quantity, bin_edges_x, bin_edges_y, vmin=None, vmax=None, title=None, xlabel=None, ylabel=None):
     
     # Note: transpose R slice to match (y, x) shape required by pcolormesh
@@ -329,7 +344,19 @@ def plot_binned_one(ax, quantity, bin_edges_x, bin_edges_y, vmin=None, vmax=None
     plt.colorbar(pcm, ax=ax)
     
 
-def plot_binned(quantities, key, bin_edges_x, bin_edges_y, title_base, vmin=None, vmax=None, xlabel=None, ylabel=None):
+def plot_binned(
+    quantities,
+    key,
+    bin_edges_x,
+    bin_edges_y,
+    title=None,
+    vmin=None,
+    vmax=None,
+    xlabel=None,
+    ylabel=None,
+    lines=None,
+    close_fig=True,
+):
                 
     len_shape = len(quantities[key].shape)
     
@@ -339,7 +366,18 @@ def plot_binned(quantities, key, bin_edges_x, bin_edges_y, title_base, vmin=None
     if len_shape == 2:
 
         ax = plt.subplot2grid((1, 1), (0, 0))
-        plot_binned_one(ax, quantities[key].T, bin_edges_x, bin_edges_y, vmin=vmin, vmax=vmax, title=title_base, xlabel=xlabel, ylabel=ylabel)
+        plot_binned_one(
+            ax,
+            quantities[key].T,
+            bin_edges_x,
+            bin_edges_y,
+            vmin=vmin,
+            vmax=vmax,
+            title=f"${title}$",
+            xlabel=xlabel,
+            ylabel=ylabel
+        )
+        plot_lines(lines)
  
     elif len_shape == 4:
         for idx in (0, 1):
@@ -357,8 +395,19 @@ def plot_binned(quantities, key, bin_edges_x, bin_edges_y, title_base, vmin=None
                     my_vmin = None
                     my_vmax = None
                 
-                plot_binned_one(ax, quantities[key][:,:, idx, jdx].T, bin_edges_x, bin_edges_y, vmin=my_vmin, vmax=my_vmax, title=f"${title_base}_{{{idx+1}{jdx+1}}}$", xlabel=xlabel, ylabel=ylabel)
+                plot_binned_one(
+                    ax,
+                    quantities[key][:,:, idx, jdx].T,
+                    bin_edges_x,
+                    bin_edges_y,
+                    vmin=my_vmin,
+                    vmax=my_vmax,
+                    title=f"${title}_{{{idx+1}{jdx+1}}}$",
+                    xlabel=xlabel,
+                    ylabel=ylabel
+                )
+                plot_lines(lines)
 
 
     plt.tight_layout()
-    plots.savefig(f"{key}_binned.png")
+    plots.savefig(f"{key}_binned.png", close_fig=close_fig)
