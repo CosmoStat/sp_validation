@@ -3,7 +3,6 @@ configfile: "config/config.yaml"
 
 def find_cosmosis_inputs():
     chain = config["chain"]
-    print("hi")
     for ini_dir in config["ini_dirs"]:
         ini_file = Path(ini_dir) / f"cosmosis_pipeline_{chain}.ini"
         if os.path.exists(ini_file):
@@ -13,22 +12,24 @@ def find_cosmosis_inputs():
     )
 
 
-rule get_bestfit_theory:
+rule get_bestfit_model:
     input:
         inference_ini=find_cosmosis_inputs(),
     output:
         bestfit_values_ini=f"results/{config['chain']}/bestfit_values.ini",
         cosmosis_ini=f"results/{config['chain']}/cosmosis.ini",
-        data_vector=f"results/{config['chain']}/bestfit_theory.txt",
+        xi_shear=f"results/{config['chain']}/bestfit_xi_shear.txt",
+        xi_sys=f"results/{config['chain']}/bestfit_xi_sys.txt",
     params:
         bestfit_dir=f"results/{config['chain']}",
     script:
-        "scripts/get_bestfit_theory.py"
+        "scripts/get_bestfit_model.py"
 
 
 rule paper_plots:
     input:
-        theory_data_vector=f"/n17data/cdaley/unions/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/results/{config['chain']}/bestfit_theory.txt",
+        bestfit_xi_shear=f"results/{config['chain']}/bestfit_xi_shear.txt",
+        bestfit_xi_sys=f"results/{config['chain']}/bestfit_xi_sys.txt",
         xi_reporting="/n17data/cdaley/unions/sp_validation/notebooks/cosmo_val/output/{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt".format(
             **config
         ),
@@ -36,16 +37,13 @@ rule paper_plots:
             **config
         ),
     output:
-        int_vs_rep="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_integration_vs_reporting.png".format(
+        xis="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_with_bestfit_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_xis.pdf".format(
             **config
         ),
-        xis="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_xis.png".format(
+        ptes="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_ptes.pdf".format(
             **config
         ),
-        ptes="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_ptes.png".format(
-            **config
-        ),
-        cov="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_cov.png".format(
+        cov="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_cov.pdf".format(
             **config
         ),
     params:

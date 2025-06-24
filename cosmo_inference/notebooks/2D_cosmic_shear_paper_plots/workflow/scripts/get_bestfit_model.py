@@ -159,14 +159,17 @@ xi_sys_plus, xi_sys_minus = [
     )(theta_out)
     for var in ["xi_plus", "xi_minus"]
 ]
-if inference_config["2pt_like"]["add_xi_sys"] == "T":
-    xi_plus += xi_sys_plus
-    xi_minus += xi_sys_minus
 # %%
 np.savetxt(
-    snakemake.output.data_vector,
+    snakemake.output.xi_shear,
     np.column_stack([theta_out, xi_plus, xi_minus]),
     header="theta xi_plus xi_minus",
+    fmt="%g",
+)
+np.savetxt(
+    snakemake.output.xi_sys,
+    np.column_stack([theta_out, xi_sys_plus, xi_sys_minus]),
+    header="theta xi_sys_plus xi_sys_minus",
     fmt="%g",
 )
 # %%
