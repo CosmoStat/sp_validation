@@ -47,7 +47,7 @@ obj._params["input_path"] = f"{base}_{year}_{ver}.hdf5"
 obj._params["verbose"] = True
 
 # +
-path_bands = "../UNIONS5000"
+path_bands = "./UNIONS5000"
 subdir_base = "UNIONS."
 
 path_base = subdir_base
@@ -145,7 +145,7 @@ with h5py.File(obj._params["output_path"], "w") as f:
         dset_comb[name] = dat[name]
 
     # Fill new fields with default value (-199)
-    for name, _ in dtype_keys:
+    for name in dtype_keys.names:
         dset_comb[name] = -199
 
 #new_empty = np.full(n_rows, -199, dtype=dtype_keys)

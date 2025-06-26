@@ -40,7 +40,7 @@ obj = sp_joint.BaseCat()
 # Set parameters
 base = "unions_shapepipe_comprehensive_empty_ugriz"
 year = 2024
-ver = "v1.5.c.P37"
+ver = "v1.5.c"
 
 obj._params = {}
 
@@ -49,10 +49,9 @@ obj._params["output_path"] = obj._params["input_path"].replace("_empty", "")
 obj._params["verbose"] = True
 
 # +
-path_bands = "../UNIONS5000"
-subdir_base = "UNIONS."
+path_bands = "./UNIONS5000"
 
-path_base = subdir_base
+path_base = "UNIONS."
 path_suff = "_SP_ugriz_photoz_ext.cat"
 
 # NUMBER key in photo-z catalogue
@@ -76,7 +75,7 @@ hdu_no = 1
 # -
 
 # Read catalogue
-dat = obj.read_cat(load_into_memory=False, mode="r")
+dat = obj.read_cat(load_into_memory=False, mode="r", name="dat_comb")
 
 # +
 # Get tile IDs
@@ -92,28 +91,13 @@ from shutil import copyfile
 # +
 dist_sqr = {}
 do_dist_check = False
-do_copy = False
 
 # Loop over tile IDs
 for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=False):
 
     #print(idx/len(tile_ID), tile_ID)
     
-    src = os.path.join(path_bands, f"{path_base}{tile_ID}", f"{path_base}{tile_ID}{path_suff}")
-    dst = os.path.join(f".", f"{path_base}{tile_ID}{path_suff}")
-    
-    if do_copy:
-        if not os.path.exists(src):
-            print("  Copy FITS file:", src, end=" ")
-            start = timer()
-            copyfile(src, dst)
-            end = timer()                                                           
-            print(f" {end - start:.1f}s")
-        else:
-            print("  FITS file already exists:", src)
-        path = dst
-    else:
-        path = src
+    path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
  
     #print("  Read data from file:", path, end=" ")
     #start = timer()
