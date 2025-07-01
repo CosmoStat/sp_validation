@@ -86,7 +86,20 @@ tile_IDs_raw_list = list(set(tile_IDs_raw))
 tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
 # -
 
-from shutil import copyfile
+missing_IDs = []
+print("Check for missing mb catalogue files...")
+for tile_ID in tqdm.tqdm(tile_IDs, total=len(tile_IDs)):
+    path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
+    if not os.path.exists(path):
+        missing_IDs.append(tile_ID)
+
+n_missing = len(missing_IDs)
+print(f"{n_missing} missing multi-band catalogue files, saving to file")
+if n_missing > 0:
+    with open("missing_IDs.txt", "w") as f:
+        for tile_ID in missing_IDs:
+            path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
+            print(f"{path_base}{tile_ID}{path_suff}", file=f)
 
 # +
 dist_sqr = {}
@@ -95,49 +108,30 @@ do_dist_check = False
 # Loop over tile IDs
 for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=False):
 
-    #print(idx/len(tile_ID), tile_ID)
-    
     path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
+
+    if not os.path.exists(path):
+        continue
  
-    #print("  Read data from file:", path, end=" ")
-    #start = timer()
     hdu_list = fits.open(path)
     dat_mb = hdu_list[hdu_no].data
-    #end = timer()                                                           
-    #print(f" {end - start:.1f}s") 
     
-    #print("  Get numbers", end=" ")
-    #start = timer()
     numbers = dat_mb[key_num]
-    #end = timer()                                                           
-    #print(f" {end - start:.1f}s") 
     
-    #print("  Identify matches", end= " ")
-    #start = timer()
     # Select indices in dat with current tile ID
     w = dat["TILE_ID"] == tile_IDs_raw_list[idx]
     indices = np.where(w)[0]
-    #end = timer()                                                           
-    #print(f" {end - start:.1f}s") 
     
     # Compute coordinate distances as matching check
     if do_dist_check:
-        #print("  Compute distance check", end=" ")
-        #start = timer()
         dist_sqr[TILE_ID] = sum(
             (dat[indices]["RA"] - dat_mb["ALPHA_J2000"]) ** 2
             + (dat[indices]["Dec"] - dat_mb["DELTA_J2000"]) ** 2
         ) / len(dat_mb)
-        #end = timer()                                                           
-        #print(f" {end - start:.1f}s") 
 
-    #print(  "  Copy mb data to combined array", end=" ")
-    #start = timer()
     # Copy multi-band values to combined array
     for key in keys:
         dat[indices][key] = dat_mb[key]
-    #end = timer()                                                           
-    #print(f" {end - start:.1f}s") 
 
     hdu_list.close()
 # -
