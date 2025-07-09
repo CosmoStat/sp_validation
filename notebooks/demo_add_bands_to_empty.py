@@ -23,6 +23,8 @@
 import os
 import numpy as np
 import numpy.lib.recfunctions as rfn
+from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from timeit import default_timer as timer
 import tqdm
@@ -30,6 +32,7 @@ import healsparse as hsp
 from astropy.io import fits
 
 from sp_validation import run_joint_cat as sp_joint
+
 # -
 
 # Create instance of object
@@ -54,24 +57,32 @@ path_bands = "./UNIONS5000"
 path_base = "UNIONS."
 path_suff = "_SP_ugriz_photoz_ext.cat"
 
-# NUMBER key in photo-z catalogue
-key_num = "SeqNr"
 
 keys_mag = [f"MAG_GAAP_0p7_{band}" for band in ("u", "g", "r", "i", "z", "z2")]
 
-keys = ["Z_B", "Z_B_MIN", "Z_B_MAX", "T_B"] + keys_mag
+keys = [
+    "Z_B",
+    "Z_B_MIN",
+    "Z_B_MAX",
+    "T_B",
+] + keys_mag
 
 hdu_no = 1
+
+do_missing_check = False
+
+parallel = False
+n_cpu = 48
 # -
 
 # ## Run
 
 # +
 # Check parameter validity
-#obj.check_params()
+# obj.check_params()
 
 # Update parameters (here: strings to list)
-#obj.update_params()
+# obj.update_params()
 # -
 
 # Read catalogue
@@ -86,56 +97,101 @@ tile_IDs_raw_list = list(set(tile_IDs_raw))
 tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
 # -
 
-missing_IDs = []
-print("Check for missing mb catalogue files...")
-for tile_ID in tqdm.tqdm(tile_IDs, total=len(tile_IDs)):
-    path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
-    if not os.path.exists(path):
-        missing_IDs.append(tile_ID)
+if do_missing_check:
+    missing_IDs = []
+    print("Check for missing mb catalogue files...")
+    for tile_ID in tqdm.tqdm(tile_IDs, total=len(tile_IDs)):
+        path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
+        if not os.path.exists(path):
+            missing_IDs.append(tile_ID)
 
-n_missing = len(missing_IDs)
-print(f"{n_missing} missing multi-band catalogue files, saving to file")
-if n_missing > 0:
-    with open("missing_IDs.txt", "w") as f:
-        for tile_ID in missing_IDs:
+    n_missing = len(missing_IDs)
+    print(f"{n_missing} missing multi-band catalogue files, saving to file")
+    if n_missing > 0:
+        with open("missing_IDs.txt", "w") as f:
+            for tile_ID in missing_IDs:
+                path = os.path.join(
+                    path_bands, f"{path_base}{tile_ID}{path_suff}"
+                )
+                print(f"{path_base}{tile_ID}{path_suff}", file=f)
+
+
+# Build TILE_ID -> list of indices mapping once
+tile_to_indices = defaultdict(list)
+for i, tile_id in enumerate(dat["TILE_ID"]):
+    tile_to_indices[tile_id].append(i)
+
+# Optionally convert lists to arrays
+for k in tile_to_indices:
+    tile_to_indices[k] = np.array(tile_to_indices[k])
+
+
+def fill_one_tile(path, keys):
+
+    try:
+        with fits.open(path, memmap=True) as hdu_list:
+            dat_mb = hdu_list[hdu_no].data
+            result = {key: dat_mb[key] for key in keys}
+
+            return result
+
+    except Exception as e:
+        print(f"Error processing {path}: {e}")
+        return None
+
+
+if parallel:
+
+    # Parallel processing
+    with ProcessPoolExecutor(max_workers=n_cpu) as executor:
+        futures = {}
+        for idx, tile_ID in enumerate(tile_IDs):
+
             path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
-            print(f"{path_base}{tile_ID}{path_suff}", file=f)
+            if not os.path.exists(path):
+                continue
 
-# +
-dist_sqr = {}
-do_dist_check = False
+            tile_key = tile_IDs_raw_list[idx]
+            indices = tile_to_indices.get(tile_key, None)
+            if indices is None:
+                continue
 
-# Loop over tile IDs
-for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=False):
+            futures[
+                executor.submit(
+                    fill_one_tile,
+                    path,
+                    keys,
+                )
+            ] = (tile_key, indices)
 
-    path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
+        # As results complete, update dat
+        for future in tqdm.tqdm(as_completed(futures), total=len(futures)):
+            tile_key, indices = futures[future]
+            result = future.result()
+            if result is None:
+                continue
 
-    if not os.path.exists(path):
-        continue
- 
-    hdu_list = fits.open(path)
-    dat_mb = hdu_list[hdu_no].data
-    
-    numbers = dat_mb[key_num]
-    
-    # Select indices in dat with current tile ID
-    w = dat["TILE_ID"] == tile_IDs_raw_list[idx]
-    indices = np.where(w)[0]
-    
-    # Compute coordinate distances as matching check
-    if do_dist_check:
-        dist_sqr[TILE_ID] = sum(
-            (dat[indices]["RA"] - dat_mb["ALPHA_J2000"]) ** 2
-            + (dat[indices]["Dec"] - dat_mb["DELTA_J2000"]) ** 2
-        ) / len(dat_mb)
+            for key in keys:
+                dat[indices][key] = result[key]
 
-    # Copy multi-band values to combined array
-    for key in keys:
-        dat[indices][key] = dat_mb[key]
+else:
 
-    hdu_list.close()
-# -
+    # Loop over tile IDs
+    for idx, tile_ID in tqdm.tqdm(
+        enumerate(tile_IDs), total=len(tile_IDs), disable=False
+    ):
 
+        path = os.path.join(path_bands, f"{path_base}{tile_ID}{path_suff}")
+        if not os.path.exists(path):
+            continue
+
+        indices = tile_to_indices.get(tile_IDs_raw_list[idx], None)
+        if indices is None:
+            continue
+
+        result = fill_one_tile(path, keys)
+        for key in keys:
+            dat[indices][key] = result[key]
 
 obj.write_hdf5_file(dat)
 

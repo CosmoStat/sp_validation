@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - lmfit
-  - python==3.9
+  - python==3.11.11
   - pip>=21
   - pyccl==2.5.1
   - treecorr
