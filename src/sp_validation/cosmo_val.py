@@ -351,7 +351,9 @@ class CosmologyValidation:
         self._xi_psf_sys = {}
         for ver in self.versions:
             params = self.set_params_rho_tau(
-                self.results[ver]._params, self.cc[ver]["psf"], survey=ver
+                self.results[ver]._params,
+                self.cc[ver]["psf"],
+                survey=ver,
             )
 
             npatch = {"sim": 300, "jk": params["patch_number"]}.get(

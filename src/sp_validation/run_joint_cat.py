@@ -3,13 +3,14 @@
 This module implements classes to create, mask, and calibrate joint
 comprehensive catalogues.
 
-:Authors: Martin Kilbinger
+:Author: Martin Kilbinger
 """
 
 import sys
 import os
 
 import numpy as np
+import numexpr as ne
 from scipy import stats
 import yaml
 
@@ -31,6 +32,8 @@ from cs_util import cat
 from cs_util import args as cs_args
 
 from . import util
+from . import calibration
+from . import cat as sp_cat
 
 
 class BaseCat(object):
@@ -41,7 +44,7 @@ class BaseCat(object):
     """
 
     def __init__(self):
-        self.params_default()
+        pass
 
     def set_params_from_command_line(self, args):
         """Set Params From Command Line.
@@ -62,11 +65,24 @@ class BaseCat(object):
         logging.log_command(args)
         
     def read_config_set_params(self, fpath):
+        """Read Config Set Params.
         
+        Read configuration file and sets class parameters.
+        
+        Parameters
+        ----------
+        fpath : str
+            inpput file path
+            
+        Returns
+        -------
+        dict
+            configuration
+
+        """
         # Load YAML configuration file.
-        with open("config_mask.yaml", "r") as f:
+        with open(fpath, "r") as f:
             config = yaml.safe_load(f)
-    
         # Read general parameters from configuration and remove
         if "params" in config:
             params = config.pop("params")
@@ -152,6 +168,30 @@ class BaseCat(object):
         hd5file.attrs["softver"] = software_version
         hd5file.attrs["date"] = date
 
+    def get_header(self, path=None):
+        """Get Header.
+
+        Return header of hd5 file.
+
+        Parameters
+        ----------
+        path : str, optional
+            input path; if not ``None`` (default) use `output_path` of
+            self._params dict
+
+        Returns
+        -------
+        dict
+            header
+
+        """
+        if path is None:
+            path = self._params["output_path"]
+            
+        with h5py.File(path, "r") as f:
+            header = dict(f.attrs)
+        return header
+
     def write_hdf5_file(self, dat, output_path=None):
         """Write HDF5 File.
 
@@ -164,8 +204,6 @@ class BaseCat(object):
         output_path : str, optional
             output file path; when ``None`` (default) use
             self._params['output_path']
-        patches : list, optional
-            input patches, list of str, default is ``None``
 
         """
         if output_path is None:
@@ -240,6 +278,7 @@ class JointCat(BaseCat):
             "pipeline": "shapepipe",
             "hdu": 1,
             "reduce_mem": False,
+            "verbose": False,
         }
         self._short_options = {
             "patches": "-p",
@@ -391,12 +430,19 @@ class JointCat(BaseCat):
             output dtype
 
         """
+        # Specify columns for which original (high-precision) format
+        # needs to be kept and not reduced to lower precision
         cols_keep_dtype = [
             "RA",
             "Dec",
             "FLAGS",
             "IMAFLAGS_ISO",
+            "NUMBER",
         ]
+        if dtype_in.kind == "U":
+            # Transform unicode to string of equal length
+            return np.dtype(f"S{dtype_in.itemsize // 4}")
+
         if self._params["reduce_mem"] == False:
             return dtype_in
         elif name not in cols_keep_dtype:
@@ -429,7 +475,6 @@ class JointCat(BaseCat):
             combined structure data, (n_col x n_obj) array
 
         """
-
         # Create dtypes from input column names and types.
         # Reduce memory if flag set.
         # Transform multi-D columns into 1D columns
@@ -462,7 +507,7 @@ class JointCat(BaseCat):
 
         return dat_all
 
-    def write_hdf5_file(self, dat, patches):
+    def write_hdf5_file(self, dat_all, patches):
         """Write HDF5 File.
 
         Write data to HDF5 file.
@@ -485,10 +530,8 @@ class JointCat(BaseCat):
 
             self.write_hdf5_header(f)
 
-            dset = f.create_dataset("data", data=dat)
-            dset[:] = dat
-
-        # super().write_hdf5_file(dat, output_path=output_path)
+            dset = f.create_dataset("data", data=dat_all)
+            dset[:] = dat_all
 
     def write_hdf5_header(self, hd5file, patches=None):
         """Write HDF5 Header.
@@ -620,6 +663,7 @@ class ApplyHspMasks(BaseCat):
         256: "z",
         512: "Tile_RA_DEC_cut",
         1024: "Maximask",
+        2048: "z2",
     }
 
     def __init__(self):
@@ -679,6 +723,7 @@ class ApplyHspMasks(BaseCat):
             "bits": 1,
             "aux_mask_files": None,
             "aux_mask_labels": None,
+            "verbose": False,
         }
         self._short_options = {
             "input_path": "-i",
@@ -946,8 +991,23 @@ class ApplyHspMasks(BaseCat):
 
         return new_data
 
-    def write_hdf5_file(self, dat, dat_new):
+    def write_hdf5_file(self, dat, dat_new=None, masks=None):
+        """Write HDF5 File.
+        
+        Save data to a hdf5 file on disk.
+        
+        Parameters
+        ----------
+        dat : h5py dataset
+            input dataset
+        dat_new : h5py dataset, optional
+            second dataset; unused if ``None``
+        masks : list, optional
+            masks, to be added to header information
 
+        Returns
+        -------
+        """
         with h5py.File(self._params["output_path"], "w") as f:
 
             self.write_hdf5_header(f)
@@ -955,12 +1015,13 @@ class ApplyHspMasks(BaseCat):
             dset = f.create_dataset(
                 "data", shape=dat.shape, dtype=dat.dtype, chunks=True
             )
-            dset_new = f.create_dataset(
-                "data_ext",
-                shape=dat_new.shape,
-                dtype=dat_new.dtype,
-                chunks=True,
-            )
+            if dat_new is not None:
+                dset_new = f.create_dataset(
+                    "data_ext",
+                    shape=dat_new.shape,
+                    dtype=dat_new.dtype,
+                    chunks=True,
+                )
 
             chunk_size = 10000
             nrow = dat.shape[0]
@@ -968,7 +1029,19 @@ class ApplyHspMasks(BaseCat):
             for i in range(0, nrow, chunk_size):
                 end = min(i + chunk_size, nrow)
                 dset[i:end] = dat[i:end]  # Write chunk to dataset
-                dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
+                if dat_new is not None:
+                    dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
+                    
+            if masks is not None:
+                # Adding mask descriptions to header
+                dtype = np.dtype([("expr", "S20"), ("desc", "S20")])
+                descr_arr = np.zeros(len(masks), dtype=dtype)
+                for idx, mask in enumerate(masks):
+                    descr_arr[idx] = (
+                        (mask._descr.encode("utf-8"), mask._label.encode("utf-8"))
+                    )
+                f.create_dataset("applied_masks", data=descr_arr)
+                
 
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
@@ -993,9 +1066,10 @@ class ApplyHspMasks(BaseCat):
             hd5file.attrs[f"hsp_path_{bit}"] = paths[bit]
 
         # Auxiliary mask file paths
-        for idx, path in enumerate(self._params["aux_mask_file_list"]):
-            label = self._params["aux_mask_label_list"][idx]
-            hd5file.attrs[f"hsp_path_{label}"] = path
+        if "aux_mask_file_list" in self._params:
+            for idx, path in enumerate(self._params["aux_mask_file_list"]):
+                label = self._params["aux_mask_label_list"][idx]
+                hd5file.attrs[f"hsp_path_{label}"] = path
 
 
 class CalibrateCat(BaseCat):
@@ -1018,6 +1092,7 @@ class CalibrateCat(BaseCat):
         self._params = {
             "input_path": None,
             "cmatrices": False,
+            "verbose": False,
         }
         self._short_options = {
             "input_path": "-i",
@@ -1047,7 +1122,7 @@ class CalibrateCat(BaseCat):
         list
             Catalogue data
         list_ext
-            Extended catalogue data
+            Extended catalogue data if exists in input file
 
         """
         fpath = self._params["input_path"]
@@ -1059,7 +1134,10 @@ class CalibrateCat(BaseCat):
         self._hd5file = h5py.File(fpath, "r")
         try:
             dat = self._hd5file["data"]
-            dat_ext = self._hd5file["data_ext"]
+            if "data_ext" in self._hd5file:
+                dat_ext = self._hd5file["data_ext"]
+            else:
+                dat_ext = None
         except:
             print(f"Error while reading file {fpath}")
             raise
@@ -1071,7 +1149,10 @@ class CalibrateCat(BaseCat):
             )
 
         if load_into_memory:
-            return dat[()], dat_ext[()]
+            if dat_ext:
+                return dat[()], dat_ext[()]
+            else:
+                return dat[()]
         else:
             return dat, dat_ext
         
@@ -1094,54 +1175,78 @@ class CalibrateCat(BaseCat):
         """
 
 def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
-        """Sky Plots.
+    """Sky Plots.
         
-        Plot sky regions with different masks.
+    Plot sky regions with different masks.
+    
+    Parameters
+    ----------
+    masks : list
+        masks to be applied
+    labels : dict
+        labels for masks
+    zoom_ra : list
+        min and max R.A. for zoom-in plot
+    zoom_dec : list
+        min and max Dec. for zoom-in plot
+    
+    """
+    ra = dat["RA"][:]
+    dec = dat["Dec"][:]
         
-        """
-        ra = dat["RA"][:]
-        dec = dat["Dec"][:]
-        
-        zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
-        zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
-        zoom = zoom_ra & zoom_dec
+    zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
+    zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
+    zoom = zoom_ra & zoom_dec
 
-        # No mask        
-        plot_area_mask(ra, dec, zoom)
+    # No mask        
+    plot_area_mask(ra, dec, zoom)
         
-        # SExtractor and SP flags
-        m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
-        plot_area_mask(ra, dec, zoom, mask=m_flags)
+    # SExtractor and SP flags
+    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
+    plot_area_mask(ra, dec, zoom, mask=m_flags)
         
-        # Overlap regions
-        m_over = masks[labels["overlap"]]._mask & m_flags
-        plot_area_mask(ra, dec, zoom, mask=m_over)
+    # Overlap regions
+    m_over = masks[labels["overlap"]]._mask & m_flags
+    plot_area_mask(ra, dec, zoom, mask=m_over)
         
-        # Coverage mask
-        m_point = masks[labels["npoint3"]]._mask & m_over
-        plot_area_mask(ra, dec, zoom, mask=m_point)
+    # Coverage mask
+    m_point = masks[labels["npoint3"]]._mask & m_over
+    plot_area_mask(ra, dec, zoom, mask=m_point)
 
-        # Maximask
-        m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
-        plot_area_mask(ra, dec, zoom, mask=m_maxi)
+    # Maximask
+    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
+    plot_area_mask(ra, dec, zoom, mask=m_maxi)
         
-        m_comb = mask_combined._mask
-        plot_area_mask(ra, dec, zoom, mask=m_comb)
+    m_comb = mask_combined._mask
+    plot_area_mask(ra, dec, zoom, mask=m_comb)
         
-        m_man = m_maxi & masks[labels["8_Manual"]]._mask
-        plot_area_mask(ra, dec, zoom, mask=m_man)
+    m_man = m_maxi & masks[labels["8_Manual"]]._mask
+    plot_area_mask(ra, dec, zoom, mask=m_man)
         
-        m_halos = (
-            m_maxi
-            & masks[labels['1_Faint_star_halos']]._mask
-            & masks[labels['2_Bright_star_halos']]._mask
-        )
-        plot_area_mask(ra, dec, zoom, mask=m_halos)
+    m_halos = (
+        m_maxi
+        & masks[labels['1_Faint_star_halos']]._mask
+        & masks[labels['2_Bright_star_halos']]._mask
+    )
+    plot_area_mask(ra, dec, zoom, mask=m_halos)
         
 
 
 def plot_area_mask(ra, dec, zoom, mask=None):
-
+    """Plot Area Mask.
+    
+    Create sky plot of objects.
+    
+    Parameters
+    ----------
+    ra : list
+        R.A. coordinates
+    dec : list
+        Dec. coordinates
+    zoom : TBD
+    mask: TBD, optional
+    
+    """
     if mask is None:
         mask == np.ones_like(ra)
 
@@ -1151,6 +1256,7 @@ def plot_area_mask(ra, dec, zoom, mask=None):
     for idx in (0, 1):
         axes[idx].set_xlabel("R.A. [deg]")
         axes[idx].set_ylabel("Dec [deg]")
+
 
 def confusion_matrix(mask, confidence_level=0.9):
 
@@ -1171,19 +1277,60 @@ def confusion_matrix(mask, confidence_level=0.9):
     return r_val, r_cl
 
 
-def correlation_matrix(mask):
+def correlation_matrix(masks, confidence_level=0.9):
 
-    n_tot = len(mask)
-    n_key = len
+    n_key = len(masks)
+    print(n_key)
 
     cm = np.empty((n_key, n_key))
-    r = np_like(cm)
+    r_val = np.zeros_like(cm)
+    r_cl = np.empty((n_key, n_key, 2))
 
-    for idx, key1 in enumerate(mask):
-        for jdx, key2 in enumerate(mask):
-            r[idx][jdx] = stats.pearsonr(mask[key1], mask[key2])
+    for idx, mask_idx in enumerate(masks):
+        for jdx, mask_jdx in enumerate(masks):
+            res = stats.pearsonr(mask_idx._mask, mask_jdx._mask)
+            r_val[idx][jdx] = res.statistic
+            r_cl[idx][jdx] = res.confidence_interval(
+                confidence_level=confidence_level
+            )
 
-    return r
+    return r_val, r_cl
+
+
+def confusion_matrix(prediction, observation):
+
+    result = {}
+
+    pred_pos = sum(prediction)
+    result["true_pos"] = sum(prediction & observation)
+    result["true_neg"] = sum(
+        np.logical_not(prediction) & np.logical_not(observation)
+    )
+    result["false_neg"] = sum(prediction & np.logical_not(observation))
+    result["false_pos"] = sum(np.logical_not(prediction) & observation)
+    result["false_pos_rate"] = result["false_pos"] / (
+        result["false_pos"] + result["true_neg"]
+    )
+    result["false_neg_rate"] = result["false_neg"] / (
+        result["false_neg"] + result["true_pos"]
+    )
+    result["sensitivity"] = result["true_pos"] / (
+        result["true_pos"] + result["false_neg"]
+    )
+    result["specificity"] = result["true_neg"] / (
+        result["true_neg"] + result["false_pos"]
+    )
+
+    cm = np.zeros((2, 2))
+    cm[0][0] = result["true_pos"]
+    cm[1][1] = result["true_neg"]
+    cm[0][1] = result["false_neg"]
+    cm[1][0] = result["false_pos"]
+    cmn = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+    result["cmn"] = cmn
+
+    return result
+
 
 class Mask():
     """Mask.
@@ -1193,9 +1340,9 @@ class Mask():
     Parameters
     ----------
     col_name : str
-        column name
+        name of column to use for mask
     label : str
-        label
+        mask label
     kind : str
         operation type, allowed are "equal", "not_equal, ""greater_equal",
         "smaller_equal", "range"
@@ -1229,9 +1376,13 @@ class Mask():
             f"Mask(col_name={self._col_name}, label={self._label}, kind={self._kind},"
             + f" value={self._value})"
         )
-         
+        
     @classmethod    
-    def from_list(cls, masks, label="combined"):
+    def from_list(cls, masks, label="combined", verbose=False):
+
+        if verbose:
+            print(f"Combining {len(masks)} masks")
+        
         my_mask = cls(label, label, kind="combined", value=None)
 
         my_mask._mask = np.logical_and.reduce([m._mask for m in masks])
@@ -1239,16 +1390,20 @@ class Mask():
         return my_mask
 
     def apply(self, dat):
+        
+        # Get column
+        col_data = dat[self._col_name]
+        
         if self._kind == "equal":
-            self._mask = dat[self._col_name] == self._value
+            self._mask = ne.evaluate("col_data == value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "not_equal":
-            self._mask = dat[self._col_name] != self._value
+            self._mask = ne.evaluate("col_data != value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "greater_equal":
-            self._mask = dat[self._col_name] >= self._value
+            self._mask = ne.evaluate("col_data >= value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "smaller_equal":
-            self._mask = dat[self._col_name] <= self._value
+            self._mask = ne.evaluate("col_data <= value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "range":
-            self._mask = (dat[self._col_name] >= self._value[0]) & (dat[self._col_name] <= self._value[1])
+            self._mask = ne.evaluate("(col_data >= low) & (col_data <= high)", local_dict={"col_data": col_data, "low": self._value[0], "high": self._value[1]})
         else:
             raise ValueError(f"Invalid kind {self._kind}")
 
@@ -1273,17 +1428,21 @@ class Mask():
         return mask_bool
  
     @classmethod
-    def print_strings(cls, coln, lab, num, fnum):
-        print(f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}")
+    def print_strings(cls, coln, lab, num, fnum, f_out=None):
+        msg = f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}"
+        print(msg)
+        if f_out:
+            print(msg, file=f_out)
+
         
-    def print_stats(self, num_obj):
+    def print_stats(self, num_obj, f_out=None):
         if self._num_ok is None:
             self._num_ok = sum(self._mask)
 
         si = f"{self._num_ok:10d}"
         sf = f"{self._num_ok/num_obj:10.2%}"
-        self.print_strings(self._col_name, self._label, si, sf)
-    
+        self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
+
     def get_sign(self):
         
         sign = None
@@ -1307,19 +1466,53 @@ class Mask():
             
         if self._kind == "range":
             print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)
-            
+
+    def create_descr(self):
+        """Create Descr.
+
+        Create description of mask for later use in output file header.
+
+        Returns
+        -------
+        str
+            description
+
+        """
+        sign = self.get_sign()
+        if sign is not None:
+            descr = f"{sign}{self._value}"
+        if self._kind == "range":
+            descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+        self._descr = descr
+    
+        # Create description for FITS header
     def add_summary_to_FITS_header(self, header):
 
         header_new = fits.Header()
+        
+        self.create_descr()
 
-        sign = self.get_sign()
-        if sign is not None:
-            expr = f"{sign}{self._value}"
-        if self._kind == "range":
-            expr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
-        header_new[self._col_name] = (expr, self._label)
+        header_new[self._col_name] = (self._descr, self._label)
         
         header.update(header_new)
+
+
+def print_mask_stats(num_obj, masks, mask_combined):
+    """Print Mask Stats.
+
+    Print mask statistics.
+
+    Parameters
+    ----------
+    num_obj
+    
+    """
+    Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
+    for my_mask in masks:
+        my_mask.print_stats(num_obj)
+
+    mask_combined.print_stats(num_obj)
+
 
 class ReadCat:
 
@@ -1335,6 +1528,7 @@ class ReadCat:
         self._params = {
             "input": "input_cat.hdf5",
             "n_row": None,
+            "verbose": False,
         }
         self.short_options = {
             "input": "-i",
@@ -1348,6 +1542,133 @@ class ReadCat:
     def run(self):
 
         pass
+    
+    
+def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=False):
+    """Get Masks From Config.
+    
+    Return mask information from yaml config structure.
+    
+    Parameters
+    ----------
+    config : dict
+        config information
+    dat : numpy.ndarray
+        input data
+    det_ext : numpy.ndarray
+        input extended data
+    masks_to_apply: list, optional
+        masks to apply exclusively; if `None` (default), use all masks
+    verbose : bool, optional
+        verbose output if ``True``; default is ``False``
+        
+    Returns
+    -------
+    list
+        list of masks
+    dict
+        list of indices for given mask column name (label)
+        
+    """
+    # List to store all mask objects
+    masks = []
+
+    # Dict to associate labels with index in mask list
+    labels = {}
+    
+     # Loop over mask sections from config file
+    config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
+    idx = 0
+    for section, mask_list in config_data.items():
+
+        # Set data source
+        dat_source = dat if section == "dat" else dat_ext
+
+        # Loop over mask information in this section
+        for mask_params in mask_list:
+            value = mask_params["value"]
+
+            use_this_mask = False            
+            if masks_to_apply is not None:
+                if mask_params["col_name"] in masks_to_apply:
+                    use_this_mask = True
+            else:
+                    use_this_mask = False
+                    
+            if use_this_mask:
+                # Ensure 'range' kind has exactly two values
+                if mask_params["kind"] == "range" and (
+                    not isinstance(value, list) or len(value) != 2
+                ):
+                    raise ValueError(
+                        f"Range kind requires a list of two values, got {value}"
+                    )
+
+                # Create mask instance and append to list
+                my_mask = Mask(**mask_params, dat=dat_source, verbose=verbose)
+                masks.append(my_mask)
+                labels[my_mask._col_name] = idx
+                idx += 1
+            else:
+                if verbose:
+                    print(f"Skipping mask {mask_params['col_name']}")
+                continue
+            
+    return masks, labels
+
+
+def compute_weights_gatti(
+    cat_gal,
+    g_uncorr,
+    gal_metacal,
+    dat,
+    mask_combined,
+    mask_metacal,
+    num_bins=20,
+):
+    """Compute Weights Gatti.
+    
+    Compute Gatti et al. (2021) DES-like weights.
+    
+    """
+    fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined._mask, mask_metacal, purpose="weights")
+
+    cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
+
+
+def compute_PSF_leakage(
+    cat_gal,
+    g_corr_mc,
+    dat,
+    mask_combined,
+    mask_metacal,
+    num_bins=20,
+):
+    """Compute PSF Leakage.
+    
+    """
+    cat_gal["e1"] = g_corr_mc[0]
+    cat_gal["e2"] = g_corr_mc[1]
+    cat_gal["e1_PSF"] = sp_cat.get_col(
+        dat, "e1_PSF", mask_combined._mask, mask_metacal
+    )
+    cat_gal["e2_PSF"] = sp_cat.get_col(
+        dat, "e2_PSF", mask_combined._mask, mask_metacal
+    )
+
+    weight_type = "des"
+    key = f"w_{weight_type}"
+    if key not in cat_gal:
+        raise KeyError("Key '{key}' not found in cat_gal")
+
+    try:
+        alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(
+            cat_gal, num_bins, weight_type
+        )
+    except:
+        alpha_1, alpha_2 = -99, -99
+
+    return alpha_1, alpha_2
 
 
 def run_joint_comprehensive_cat(*args):

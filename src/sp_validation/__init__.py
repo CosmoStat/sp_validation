@@ -1,43 +1,5 @@
-# -*- coding: utf-8 -*-
+from .version import __version__
 
-"""sp_validation PACKAGE.
-
-Validation of weak-lensing catalogues (galaxy and star shapes and other
-parameters) produced by ShapePipe
-
-References
-----------
-This package makes use of the following third-party packages:
-
-- `Matplotlib <https://matplotlib.org/>`_ :cite:`Hunter:2007`
-- `Numpy <https://numpy.org/>`_ :cite:`Harris:2020`
-
-.. warning::
-
-    `WPS410 <https://wemake-python-stylegui.de/en/latest/pages/usage/violation
-    s/best_practices.html#wemake_python_styleguide.violations.best_practices.W
-    rongModuleMetadataViolation>`_ and `WPS412 <https://wemake-python-stylegui.
-    de/en/latest/pages/usage/violations/best_practices.html#wemake_python_style
-    guide.violations.best_practices.InitModuleHasLogicViolation>`_ errors are
-    supressed in this module to allow the defintion of a package
-    ``__version__``, which is standard for most Python packages.
-
-"""
-
-from warnings import warn
-
-
-try:
-    from importlib_metadata import version
-    _version = version('sp_validation')
-except Exception:  # pragma: no cover
-    _version = 'Unkown'
-    warn(
-        'Could not extract package metadata. Make sure the package is '
-        + 'correctly installed.',
-    )
-
-__version__ = _version
 __all__ = [
     'util',
     'io',
@@ -53,4 +15,15 @@ __all__ = [
     'survey',
 ]
 
-from . import *
+# Explicit imports to avoid circular issues
+from . import util
+from . import io
+from . import basic
+from . import galaxy
+from . import cosmology
+from . import calibration
+from . import cat
+from . import plot_style
+from . import plots
+from . import run_joint_cat
+from . import survey
