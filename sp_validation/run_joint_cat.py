@@ -1156,14 +1156,21 @@ class CalibrateCat(BaseCat):
         else:
             return dat, dat_ext
         
-    def add_params_to_FITS_header(self, header):
+    def add_params_to_FITS_header(self, header, cm=None):
 
         header_new = fits.Header()
 
+        # General information
         keys = ["input_path"]
         descriptions = ["input comprehensive catalogue"]
         for key, descr in zip(keys, descriptions):
             header_new[key] = (key, descr)
+            
+        # Metacal parameters
+        if cm is not None:
+            for idx, (descr, value) in enumerate(cm.items()):
+                key = f"mc_par_{idx}"
+                header_new[key] = (descr, value)             
         
         header.update(header_new)
         
@@ -1544,7 +1551,13 @@ class ReadCat:
         pass
     
     
-def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=False):
+def get_masks_from_config(
+    config,
+    dat,
+    dat_ext,
+    masks_to_apply=None,
+    verbose=False
+):
     """Get Masks From Config.
     
     Return mask information from yaml config structure.
@@ -1577,7 +1590,9 @@ def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=Fal
     labels = {}
     
      # Loop over mask sections from config file
-    config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
+    config_data = {
+        key: config[key] for key in ["dat", "dat_ext"] if key in config
+    }
     idx = 0
     for section, mask_list in config_data.items():
 
@@ -1593,7 +1608,7 @@ def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=Fal
                 if mask_params["col_name"] in masks_to_apply:
                     use_this_mask = True
             else:
-                    use_this_mask = False
+                use_this_mask = True
                     
             if use_this_mask:
                 # Ensure 'range' kind has exactly two values
@@ -1631,7 +1646,15 @@ def compute_weights_gatti(
     Compute Gatti et al. (2021) DES-like weights.
     
     """
-    fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined._mask, mask_metacal, purpose="weights")
+    calibration.fill_cat_gal(
+        cat_gal,
+        dat,
+        g_uncorr,
+        gal_metacal,
+        mask_combined._mask,
+        mask_metacal,
+        purpose="weights"
+    )
 
     cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
 

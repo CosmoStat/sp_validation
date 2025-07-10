@@ -44,8 +44,6 @@ class metacal:
         masking type, one in 'gal', 'gal_mom', 'star'
     step : float, optional, default=0.01
         step h in finite differences
-    stat_operator : optional, default=np.mean
-        summary statistic for response matrices
     prefix : string, optional, default='NGMIX'
         to specify columns in input catalogue
     snr_min : float, optional, default=10
@@ -57,6 +55,9 @@ class metacal:
     rel_size_max : float, optional, default=3.0
         relative size maximum
     size_corr_ell : bool, optional, default=True
+    global_R_weight : str, optional,
+        weight column name for global response matrix; default is ``None``
+        (unweighted mean)
     sigma_eps : float, optional
         ellipticity dispersion (one component) for computation
         of weights; default is 0.34
@@ -74,13 +75,13 @@ class metacal:
         mask,
         masking_type='gal',
         step=0.01,
-        stat_operator=np.mean,
         prefix='NGMIX',
         snr_min=10,
         snr_max=500,
         rel_size_min=0.5,
         rel_size_max=3.0,
         size_corr_ell=True,
+        global_R_weight=None,
         sigma_eps=0.34,
         col_2d=True,
         verbose=False,
@@ -88,7 +89,6 @@ class metacal:
 
         self._masking_type = masking_type
         self._step = step
-        self._stat_operator = stat_operator
 
         # Cuts
         self._snr_min = snr_min
@@ -103,6 +103,8 @@ class metacal:
                 + f'rel_size_max={rel_size_max}, '
                 + f'size_corr_ell={size_corr_ell}'
             )
+            
+        self._global_R_weight = global_R_weight
 
         self._sigma_eps = sigma_eps
         self._col_2d = col_2d
@@ -204,7 +206,10 @@ class metacal:
         self._n_after_gal_mask = len(dict_tmp['flag'])
         if self._verbose:
             print(f"Number of objects on metacal input = {self._n_input}")
-            print(f"Number of objects after galaxy selection masking = {self._n_after_gal_mask}")
+            print(
+                "Number of objects after galaxy selection masking ="
+                + f" {self._n_after_gal_mask}"
+            )
         
         return m1, p1, m2, p2, ns
 
@@ -503,20 +508,20 @@ class metacal:
         h2 = 2 * self._step
 
         self.R11_s = (
-            self._stat_operator(self.ns['g1'][ma_p1])
-            - self._stat_operator(self.ns['g1'][ma_m1])
+            np.mean(self.ns['g1'][ma_p1])
+            - np.mean(self.ns['g1'][ma_m1])
         ) / h2
         self.R22_s = sign * (
-            self._stat_operator(self.ns['g2'][ma_p2])
-            - self._stat_operator(self.ns['g2'][ma_m2])
+            np.mean(self.ns['g2'][ma_p2])
+            - np.mean(self.ns['g2'][ma_m2])
         ) / h2
         self.R12_s = (
-            self._stat_operator(self.ns['g1'][ma_p2])
-            - self._stat_operator(self.ns['g1'][ma_m2])
+            np.mean(self.ns['g1'][ma_p2])
+            - np.mean(self.ns['g1'][ma_m2])
         ) / h2
         self.R21_s = (
-            self._stat_operator(self.ns['g2'][ma_p1])
-            - self._stat_operator(self.ns['g2'][ma_m1])
+            np.mean(self.ns['g2'][ma_p1])
+            - np.mean(self.ns['g2'][ma_m1])
         ) / h2
 
         self.R_selection = np.array([
@@ -530,8 +535,16 @@ class metacal:
         ...
 
         """
-        R_ws = self._stat_operator(self.R_shear, 2)
-        self.R = R_ws + self.R_selection
+        if self._global_R_weight is None or self._global_R_weight == "None":
+            print("Computing unweighted response")
+            self.R_shear_global = np.mean(self.R_shear, axis=2)
+        else:
+            print("Computing response weighted by", self._global_R_weight)
+            # Get weights of masked no-shear objects
+            weights = self.ns[self._global_R_weight][self.mask_dict['ns']]
+            self.R_shear_global = np.average(self.R_shear, axis=2, weights=weights)
+
+        self.R = self.R_shear_global + self.R_selection
 
     def _return():
         """Add docstring.

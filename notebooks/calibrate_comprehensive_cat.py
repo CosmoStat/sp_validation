@@ -38,8 +38,8 @@ config = obj.read_config_set_params("config_mask.yaml")
 dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 # %%
-#n_test = -1
-n_test = 100000
+n_test = -1
+#n_test = 100000
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
@@ -234,7 +234,7 @@ cat.write_shape_catalog(
     g1_uncal=g_uncorr[0],
     g2_uncal=g_uncorr[1],
     R=gal_metacal.R,
-    R_shear=R_shear,
+    R_shear=gal_metacal.R_shear_global,
     R_select=gal_metacal.R_selection,
     c=c,
     c_err=c_err,
