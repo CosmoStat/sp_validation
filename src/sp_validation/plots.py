@@ -308,6 +308,97 @@ def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
     return vlim
 
 
+def plot_binned_one(
+    ax,
+    quantity,
+    bin_edges_x,
+    bin_edges_y,
+    vmin=None,
+    vmax=None,
+    title=None,
+    xlabel=None,
+    ylabel=None,
+):
+
+    # Note: transpose R slice to match (y, x) shape required by pcolormesh
+    pcm = ax.pcolormesh(
+        bin_edges_x, bin_edges_y, quantity, vmin=vmin, vmax=vmax, shading="auto"
+    )
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_title(title)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    plt.colorbar(pcm, ax=ax)
+
+
+def plot_binned(
+    quantities,
+    key,
+    bin_edges_x,
+    bin_edges_y,
+    title_base,
+    vmin=None,
+    vmax=None,
+    xlabel=None,
+    ylabel=None,
+):
+
+    len_shape = len(quantities[key].shape)
+
+    fig_size = 2 * len_shape
+    fig = plt.figure(figsize=(fig_size, fig_size))
+
+    if len_shape == 2:
+
+        ax = plt.subplot2grid((1, 1), (0, 0))
+        plot_binned_one(
+            ax,
+            quantities[key].T,
+            bin_edges_x,
+            bin_edges_y,
+            vmin=vmin,
+            vmax=vmax,
+            title=title_base,
+            xlabel=xlabel,
+            ylabel=ylabel,
+        )
+
+    elif len_shape == 4:
+        for idx in (0, 1):
+            for jdx in (0, 1):
+                ax = plt.subplot2grid((2, 2), (idx, jdx))
+
+                if vmin is not None and vmax is not None:
+                    if idx == jdx:
+                        my_vmin = vmin["diag"]
+                        my_vmax = vmax["diag"]
+                    else:
+                        my_vmin = vmin["offdiag"]
+                        my_vmax = vmax["offdiag"]
+                else:
+                    my_vmin = None
+                    my_vmax = None
+
+                plot_binned_one(
+                    ax,
+                    quantities[key][:, :, idx, jdx].T,
+                    bin_edges_x,
+                    bin_edges_y,
+                    vmin=my_vmin,
+                    vmax=my_vmax,
+                    title=f"${title_base}_{{{idx+1}{jdx+1}}}$",
+                    xlabel=xlabel,
+                    ylabel=ylabel,
+                )
+
+    plt.tight_layout()
+    plots.savefig(f"{key}_binned.png")
+
+
 class FootprintPlotter:
     """Class to create footprint plots.
 
