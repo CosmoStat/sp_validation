@@ -249,13 +249,15 @@ with open("masks.txt", "w") as f_out:
         my_mask.print_summary(f_out)
 
 # %%
-from scipy import stats
-
-all_masks = masks[:-3]
 
 if not obj._params["cmatrices"]:
     print("Skipping cmatric calculations")
     sys.exit(0)
+
+# %%
+from scipy import stats
+
+all_masks = masks[:-3]
 
 r_val, r_cl = sp_joint.correlation_matrix(all_masks)
 

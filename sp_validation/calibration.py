@@ -266,8 +266,8 @@ def get_w_des(cat_gal, num_bins):
     df_gal = build_df(cat_gal)
 
     #Create logarithmic bins in size and SNR
-    cut_to_bins(df_gal, "snr", num_bins, type="log", x_max=300)
-    cut_to_bins(df_gal, "size_ratio", num_bins, type="log", x_min=0.5)
+    cut_to_bins(df_gal, "snr", num_bins, type="log")
+    cut_to_bins(df_gal, "size_ratio", num_bins, type="log")
 
     #Compute shape noise and the shear response in each bin
 

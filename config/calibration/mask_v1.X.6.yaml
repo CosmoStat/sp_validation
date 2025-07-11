@@ -4,7 +4,7 @@
 # General parameters (can also given on command line)
 params:
   input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
-  cmatrices: True
+  cmatrices: False
   sky_regions: False
   verbose: True
 
@@ -97,7 +97,7 @@ metacal:
 
   # Signal-to-noise range
   gal_snr_min: 10
-  gal_snr_max: 1000
+  gal_snr_max: 500
 
   # Relative-size (hlr / hlr_psf) range
   gal_rel_size_min: 0.707
