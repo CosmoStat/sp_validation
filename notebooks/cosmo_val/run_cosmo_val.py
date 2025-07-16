@@ -8,9 +8,9 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import matplotlib.pyplot as plt
-import numpy as np
-from sp_validation.cosmo_val import CosmologyValidation
+import matplotlib.pyplot as plt  # noqa: E402, F401
+import numpy as np  # noqa: E402, F401
+from sp_validation.cosmo_val import CosmologyValidation  # noqa: E402
 
 # enable inline plotting for interactive sessions
 # (must be done *after* importing package that sets agg backend)
