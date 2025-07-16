@@ -16,9 +16,8 @@ from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import stats
-from shear_psf_leakage import leakage
+from shear_psf_leakage import leakage, run_object, run_scale
 from shear_psf_leakage import plots as psfleak_plots
-from shear_psf_leakage import run_object, run_scale
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
@@ -1172,7 +1171,6 @@ class CosmologyValidation:
                 color=self.cc[ver]["colour"],
             )
         plt.xscale("log")
-        plt.yscale("log")
         plt.legend()
         plt.ticklabel_format(axis="y")
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
@@ -1195,7 +1193,6 @@ class CosmologyValidation:
                 color=self.cc[ver]["colour"],
             )
         plt.xscale("log")
-        plt.yscale("log")
         plt.legend()
         plt.ticklabel_format(axis="y")
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
