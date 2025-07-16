@@ -1204,47 +1204,51 @@ class CosmologyValidation:
         self.print_done(f"xi_minus_theta plot saved to {out_path}")
 
         # Plot of xi_+ with and without xi_psf_sys
-        for idx, ver in enumerate(self.versions):
-            fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-            plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                self.cat_ggs[ver].xip,
-                yerr=np.sqrt(self.cat_ggs[ver].varxim),
-                label=r"$\xi_+$",
-                ls="solid",
-                color="green",
-            )
-            plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                self.xi_psf_sys[ver]["mean"],
-                yerr=np.sqrt(self.xi_psf_sys[ver]["var"]),
-                label=r"$\xi^{\rm psf}_{+, {\rm sys}}$",
-                ls="dotted",
-                color="red",
-            )
-            plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                self.cat_ggs[ver].xip + self.xi_psf_sys[ver]["mean"],
-                yerr=np.sqrt(self.cat_ggs[ver].varxip + self.xi_psf_sys[ver]["var"]),
-                label=r"$\xi_+ + \xi^{\rm psf}_{+, {\rm sys}}$",
-                ls="dashdot",
-                color="magenta",
-            )
+        # but skip if xi_psf_sys is not calculated since that takes forever
+        if hasattr(self, "_xi_psf_sys"):
+            for idx, ver in enumerate(self.versions):
+                fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+                plt.errorbar(
+                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                    self.cat_ggs[ver].xip,
+                    yerr=np.sqrt(self.cat_ggs[ver].varxim),
+                    label=r"$\xi_+$",
+                    ls="solid",
+                    color="green",
+                )
+                plt.errorbar(
+                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                    self.xi_psf_sys[ver]["mean"],
+                    yerr=np.sqrt(self.xi_psf_sys[ver]["var"]),
+                    label=r"$\xi^{\rm psf}_{+, {\rm sys}}$",
+                    ls="dotted",
+                    color="red",
+                )
+                plt.errorbar(
+                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                    self.cat_ggs[ver].xip + self.xi_psf_sys[ver]["mean"],
+                    yerr=np.sqrt(
+                        self.cat_ggs[ver].varxip + self.xi_psf_sys[ver]["var"]
+                    ),
+                    label=r"$\xi_+ + \xi^{\rm psf}_{+, {\rm sys}}$",
+                    ls="dashdot",
+                    color="magenta",
+                )
 
-            plt.xscale("log")
-            plt.yscale("log")
-            plt.legend()
-            plt.ticklabel_format(axis="y")
-            plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-            plt.xlim([self.theta_min_plot, self.theta_max_plot])
-            plt.ylim(1e-8, 5e-4)
-            plt.ylabel(r"$\xi_+(\theta)$")
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/xi_p_xi_psf_sys_{ver}.png"
-            )
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
+                plt.xscale("log")
+                plt.yscale("log")
+                plt.legend()
+                plt.ticklabel_format(axis="y")
+                plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
+                plt.xlim([self.theta_min_plot, self.theta_max_plot])
+                plt.ylim(1e-8, 5e-4)
+                plt.ylabel(r"$\xi_+(\theta)$")
+                out_path = os.path.abspath(
+                    f"{self.cc['paths']['output']}/xi_p_xi_psf_sys_{ver}.png"
+                )
+                cs_plots.savefig(out_path, close_fig=False)
+                cs_plots.show()
+                self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
 
     def calculate_aperture_mass_dispersion(
         self, theta_min=0.3, theta_max=200, nbins=500, nbins_map=15, npatch=25
