@@ -1,0 +1,60 @@
+configfile: "config/config.yaml"
+
+
+def find_cosmosis_inputs():
+    chain = config["chain"]
+    for ini_dir in config["ini_dirs"]:
+        ini_file = Path(ini_dir) / f"cosmosis_pipeline_{chain}.ini"
+        if os.path.exists(ini_file):
+            return ini_file
+    raise FileNotFoundError(
+        f"Cosmosis input file not found for chain {chain} in specified directories."
+    )
+
+
+rule get_bestfit_model:
+    input:
+        inference_ini=find_cosmosis_inputs(),
+    output:
+        bestfit_values_ini=f"results/{config['chain']}/bestfit_values.ini",
+        cosmosis_ini=f"results/{config['chain']}/cosmosis.ini",
+        xi_shear=f"results/{config['chain']}/bestfit_xi_shear.txt",
+        xi_sys=f"results/{config['chain']}/bestfit_xi_sys.txt",
+    params:
+        bestfit_dir=f"results/{config['chain']}",
+    script:
+        "scripts/get_bestfit_model.py"
+
+
+rule paper_plots:
+    input:
+        bestfit_xi_shear=f"results/{config['chain']}/bestfit_xi_shear.txt",
+        bestfit_xi_sys=f"results/{config['chain']}/bestfit_xi_sys.txt",
+        xi_reporting="/n17data/cdaley/unions/sp_validation/notebooks/cosmo_val/output/{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt".format(
+            **config
+        ),
+        xi_integration="/n17data/cdaley/unions/sp_validation/notebooks/cosmo_val/output/{version}_xi_minsep={min_sep_int}_maxsep={max_sep_int}_nbins={nbins_int}_npatch={npatch}.txt".format(
+            **config
+        ),
+    output:
+        xis="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_with_bestfit_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_xis.pdf".format(
+            **config
+        ),
+        ptes="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_ptes.pdf".format(
+            **config
+        ),
+        cov="/n17data/cdaley/unions/pure_eb/results/paper_plots/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_cov.pdf".format(
+            **config
+        ),
+    params:
+        version=config["version"],
+        min_sep=lambda params: float(config["min_sep"]),
+        max_sep=lambda params: int(config["max_sep"]),
+        nbins=lambda params: int(config["nbins"]),
+        min_sep_int=lambda params: float(config["min_sep_int"]),
+        max_sep_int=lambda params: int(config["max_sep_int"]),
+        nbins_int=lambda params: int(config["nbins_int"]),
+        npatch=lambda params: int(config["npatch"]),
+    threads: 1
+    script:
+        "paper_plots.py"

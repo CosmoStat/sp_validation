@@ -4,6 +4,7 @@ __all__ = [
     'util',
     'io',
     'basic',
+    'cosmo_val',
     'galaxy',
     'cosmology',
     'calibration',
