@@ -978,11 +978,20 @@ class CosmologyValidation:
 
         self.print_magenta(f"Computing {ver} ξ±")
 
-        npatch = npatch or self.npatch
         treecorr_config = {
             **self.treecorr_config,
             **treecorr_config,
         }
+
+        npatch = npatch or self.npatch
+        var_method = treecorr_config["var_method"]
+        if npatch == 0 and var_method != "shot":
+            print(
+                f"Zero patches specified, but var_method is set to {var_method}. "
+                "Switching to 'shot' variance method; try setting npatch > nbins"
+                " to use e.g. jackknife variance."
+            )
+            treecorr_config["var_method"] = "shot"
 
         gg = treecorr.GGCorrelation(treecorr_config)
 
@@ -1636,7 +1645,7 @@ class CosmologyValidation:
                 results["stop_p"] = stop_p
                 results["stop_m"] = stop_m
 
-                gg, gg_int = results["gg"], results["gg_int"]
+                gg = results["gg"]
 
                 nbins = gg.nbins
                 npatch = gg.npatch1
@@ -1665,7 +1674,6 @@ class CosmologyValidation:
                 }
                 nbins_eff = {key: stops[key] - starts[key] for key in starts}
 
-                hartlap_factor = (npatch - nbins - 2) / (npatch - 1)
                 hartlap_factor_eff = {
                     key: (npatch - nbins_eff[key] - 2) / (npatch - 1)
                     for key in nbins_eff
