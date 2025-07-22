@@ -980,7 +980,7 @@ class CosmologyValidation:
         treecorr_config = {
             **self.treecorr_config,
             **treecorr_config,
-            "var_method": "jackknife" if npatch > 1 else "shot",
+            "var_method": "jackknife" if int(npatch) > 1 else "shot",
         }
 
         gg = treecorr.GGCorrelation(treecorr_config)
