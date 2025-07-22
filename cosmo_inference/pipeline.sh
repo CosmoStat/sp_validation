@@ -44,6 +44,14 @@ do
         
         out_file="data/${root}/cosmosis_${root}.fits";
         
+        # Create the folder if it does not exist
+        if [ ! -d "data/$root" ]; then
+            mkdir -p "data/$root"
+            echo "Directory 'data/$root' created."
+        else
+            echo "Directory 'data/$root' already exists."
+        fi
+        
         #LG: add check if xi_plus/xi_minus fits file exists
         python scripts/cosmosis_fitting.py $root $output_folder $covmat $nz_file $out_file $rhotau_stats;
         

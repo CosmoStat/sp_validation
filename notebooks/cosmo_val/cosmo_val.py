@@ -52,6 +52,7 @@ class CosmologyValidation:
         power=1/2,
         n_ell_bins=32,
         pol_factor=True,
+        cell_method='map',
         nrandom_cell=10
     ):
 
@@ -77,6 +78,9 @@ class CosmologyValidation:
         self.n_ell_bins = n_ell_bins
         self.pol_factor = pol_factor
         self.nrandom_cell = nrandom_cell
+        self.cell_method = cell_method
+
+        assert self.cell_method in ["map", "catalog"], "cell_method must be 'map' or 'catalog'"
 
         self.treecorr_config = {
             "ra_units": "degrees",
@@ -1547,73 +1551,94 @@ class CosmologyValidation:
                 self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
                 cl_shear = fits.getdata(out_path)
                 self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+            elif self.cell_method == 'map':
+                self.calculate_pseudo_cl_map(ver, nside, out_path)
+            elif self.cell_method == 'catalog':
+                self.calculate_pseudo_cl_catalog(ver, out_path)
             else:
-                params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
-
-                #Load data and create shear and noise maps
-                cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-                w = cat_gal[params['w_col']]
-                self.print_cyan("Creating maps and computing Cl's...")
-                n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
-                mask = n_gal_map != 0
-
-                shear_map_e1 = np.zeros(hp.nside2npix(nside))
-                shear_map_e2 = np.zeros(hp.nside2npix(nside))
-
-                e1 = cat_gal[params['e1_col']]
-                e2 = cat_gal[params['e2_col']]
-
-                del cat_gal
-                
-                shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1*w)
-                shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2*w)
-                shear_map_e1[mask] /= n_gal_map[mask]
-                shear_map_e2[mask] /= n_gal_map[mask]
-
-                shear_map = shear_map_e1 + 1j*shear_map_e2
-
-                del shear_map_e1, shear_map_e2
-
-                ell_eff, cl_shear, wsp = self.get_pseudo_cls(shear_map)
-
-                cl_noise = np.zeros((4, self.n_ell_bins))
-                
-                for i in range(self.nrandom_cell):
-
-                    noise_map_e1 = np.zeros(hp.nside2npix(nside))
-                    noise_map_e2 = np.zeros(hp.nside2npix(nside))
-
-                    e1_rot, e2_rot = self.apply_random_rotation(e1, e2)
-
-                    
-                    noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
-                    noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
-
-                    noise_map_e1[mask] /= n_gal_map[mask]
-                    noise_map_e2[mask] /= n_gal_map[mask]
-
-                    noise_map = noise_map_e1 + 1j*noise_map_e2
-                    del noise_map_e1, noise_map_e2
-
-                    _, cl_noise_, _ = self.get_pseudo_cls(noise_map, wsp)
-                    cl_noise += cl_noise_
-                
-                cl_noise /= self.nrandom_cell
-                del e1, e2, e1_rot, e2_rot, w
-                del n_gal_map              
-
-                #This is a problem because the measurement depends on the seed. To be fixed.
-                #cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
-                cl_shear = cl_shear - cl_noise
-
-                self.print_cyan("Saving pseudo-Cl's...")
-                self.save_pseudo_cl(ell_eff, cl_shear, out_path)
-
-                cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+                raise ValueError(f"Unknown cell method: {self.cell_method}")
 
         self.print_done("Done pseudo-Cl's")
+
+    def calculate_pseudo_cl_map(self, ver, nside, out_path):
+        params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+
+        #Load data and create shear and noise maps
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+        w = cat_gal[params['w_col']]
+        self.print_cyan("Creating maps and computing Cl's...")
+        n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
+        mask = n_gal_map != 0
+
+        shear_map_e1 = np.zeros(hp.nside2npix(nside))
+        shear_map_e2 = np.zeros(hp.nside2npix(nside))
+
+        e1 = cat_gal[params['e1_col']]
+        e2 = cat_gal[params['e2_col']]
+
+        del cat_gal
+        
+        shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1*w)
+        shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2*w)
+        shear_map_e1[mask] /= n_gal_map[mask]
+        shear_map_e2[mask] /= n_gal_map[mask]
+
+        shear_map = shear_map_e1 + 1j*shear_map_e2
+
+        del shear_map_e1, shear_map_e2
+
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map)
+
+        cl_noise = np.zeros((4, self.n_ell_bins))
+        
+        for i in range(self.nrandom_cell):
+
+            noise_map_e1 = np.zeros(hp.nside2npix(nside))
+            noise_map_e2 = np.zeros(hp.nside2npix(nside))
+
+            e1_rot, e2_rot = self.apply_random_rotation(e1, e2)
+
+            
+            noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
+            noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
+
+            noise_map_e1[mask] /= n_gal_map[mask]
+            noise_map_e2[mask] /= n_gal_map[mask]
+
+            noise_map = noise_map_e1 + 1j*noise_map_e2
+            del noise_map_e1, noise_map_e2
+
+            _, cl_noise_, _ = self.get_pseudo_cls(noise_map, wsp)
+            cl_noise += cl_noise_
+        
+        cl_noise /= self.nrandom_cell
+        del e1, e2, e1_rot, e2_rot, w
+        del n_gal_map              
+
+        #This is a problem because the measurement depends on the seed. To be fixed.
+        #cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
+        cl_shear = cl_shear - cl_noise
+
+        self.print_cyan("Saving pseudo-Cl's...")
+        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+
+        cl_shear = fits.getdata(out_path)
+        self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+
+    def calculate_pseudo_cl_catalog(self, ver, out_path):
+        params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+
+        #Load data and create shear and noise maps
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
+
+        self.print_cyan("Saving pseudo-Cl's...")
+        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+
+        cl_shear = fits.getdata(out_path)
+        self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
 
     def get_fiducial(self, lmax, redshift_distr):
         """
@@ -1689,7 +1714,7 @@ class CosmologyValidation:
 
         return cl_noise, f, wsp
     
-    def get_pseudo_cls(self, map, wsp=None):
+    def get_pseudo_cls_map(self, map, wsp=None):
         """
         Compute the pseudo-cl for a given map.
         """
@@ -1720,6 +1745,52 @@ class CosmologyValidation:
         factor = -1 if self.pol_factor else 1
 
         f_all = nmt.NmtField(mask=(map!=0), maps=[map.real, factor*map.imag], lmax=b_lmax)
+        
+        if wsp is None:
+            wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+        
+        cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
+        cl_all = wsp.decouple_cell(cl_coupled)
+
+        return ell_eff, cl_all, wsp
+
+    def get_pseudo_cls_catalog(self, catalog, params, wsp=None):
+        """
+        Compute the pseudo-cl for a given catalog.
+        """
+
+        lmin = 8
+        lmax = 2*self.nside
+        b_lmax = lmax - 1
+
+        if self.binning == 'linear':
+            step = 10
+            b = nmt.NmtBin.from_nside_linear(self.nside, step)
+        elif self.binning == 'powspace':
+            ells = np.arange(lmin, lmax+1)
+
+            start = np.power(lmin, self.power)
+            end = np.power(lmax, self.power)
+            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
+
+            #Get bandpowers
+            bpws = np.digitize(ells.astype(float), bins_ell) - 1
+            bpws[0] = 0
+            bpws[-1] = self.n_ell_bins-1
+
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+
+        ell_eff = b.get_effective_ells()
+
+        factor = -1 if self.pol_factor else 1
+
+        f_all = nmt.NmtFieldCatalog(positions=[catalog[params['ra_col']], catalog[params['dec_col']]],
+                        weights=catalog[params['w_col']],
+                        field=[catalog[params['e1_col']], factor*catalog[params['e2_col']]],
+                        lmax=b_lmax,
+                        lmax_mask=b_lmax,
+                        spin=2,
+                        lonlat=True)
         
         if wsp is None:
             wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)

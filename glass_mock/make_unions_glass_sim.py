@@ -33,7 +33,7 @@ def get_parser():
     parser.add_argument("-sg", "--sigmae", help="Set sigma of intrinsic ellipticity", type=float, default=0.3093694972219397)
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
     parser.add_argument("-nz", "--pathnz", help="Path to the n(z) file", type=str, default='/n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt')
-    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/n09data/guerrini/glass_mock/mask_v1.4.5_nside4096.fits')
+    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits')
     return parser
 
 def downgrade_mask(mask, nside):
