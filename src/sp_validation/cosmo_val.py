@@ -11,8 +11,6 @@ import treecorr
 import yaml
 from astropy.cosmology import Planck18
 from astropy.io import fits
-from cosmo_numba.B_modes.cosebis import COSEBIS
-from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import stats
@@ -978,20 +976,12 @@ class CosmologyValidation:
 
         self.print_magenta(f"Computing {ver} ξ±")
 
+        npatch = npatch or self.npatch
         treecorr_config = {
             **self.treecorr_config,
             **treecorr_config,
+            "var_method": "jackknife" if npatch > 1 else "shot",
         }
-
-        npatch = npatch or self.npatch
-        var_method = treecorr_config["var_method"]
-        if npatch == 0 and var_method != "shot":
-            print(
-                f"Zero patches specified, but var_method is set to {var_method}. "
-                "Switching to 'shot' variance method; try setting npatch > nbins"
-                " to use e.g. jackknife variance."
-            )
-            treecorr_config["var_method"] = "shot"
 
         gg = treecorr.GGCorrelation(treecorr_config)
 
@@ -1426,6 +1416,7 @@ class CosmologyValidation:
         nbins_int=100,
         npatch=256,
         var_method="jackknife",
+        cov_path_int=None,
     ):
         """
         Calculate the pure E/B modes for the given catalog version.
@@ -1456,6 +1447,12 @@ class CosmologyValidation:
             the value in self.npatch if not provided.
         var_method : str, optional
             Variance estimation method. Defaults to "jackknife".
+        cov_path_fmt : str, optional
+            Path to the covariance matrix for the reporting binning. Replaces the
+            treecorr covariance matrix if provided, meaning that var_method has no
+            effect on the results although it is still passed to
+            CosmologyValidation.calculate_2pcf.
+
 
         Returns
         -------
@@ -1476,6 +1473,8 @@ class CosmologyValidation:
         - A shared patch file is used for the reporting and integration binning,
         and is created if it does not exist.
         """
+        from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+
         self.print_start(f"Computing {version} pure E/B")
 
         npatch = npatch or self.npatch
@@ -1963,6 +1962,8 @@ class CosmologyValidation:
         TODO
 
         """
+        from cosmo_numba.B_modes.cosebis import COSEBIS
+
         self.print_start(f"Computing {version} COSEBIs")
 
         npatch = npatch or self.npatch
@@ -2047,6 +2048,7 @@ class CosmologyValidation:
         scale_cuts=None,
         fiducial_scale_cut=None,
     ):
+
         if np.isscalar(scale_cuts[0]):
             scale_cuts = [scale_cuts]
 
