@@ -12,7 +12,10 @@
 #     name: python3
 # ---
 
-# # Test to apply hsp masks
+# # Demo notebook to apply hsp masks
+#
+# Read healsparse mask files, compute mask values for input catalogue, and add those
+# values as new columns.
 
 # %reload_ext autoreload
 # %autoreload 2
@@ -27,7 +30,7 @@ from sp_validation import run_joint_cat as sp_joint
 
 # +
 # Trace and print used memory if True
-trace_mem = True
+trace_mem = False
 
 if trace_mem:
     tracemalloc.start()
@@ -48,17 +51,22 @@ bit_list = [1, 2, 4, 8, 64, 1024]
 bits = 0
 for b in bit_list:
     bits = bits | b
+print(bits)
 
 # +
 # Set parameters
-obj._params["input_path"] = "unions_shapepipe_comprehensive_2024_v1.4.2.hdf5"
-obj._params["output_path"] = "unions_shapepipe_comprehensive_struc_2024_v1.4.2.hdf5"
-obj._params["mask_dir"] = f"{os.environ['HOME']}/v1.4.x/masks"
+base = "unions_shapepipe_comprehensive"
+year = 2024
+ver = "v1.5.c"
+
+obj._params["input_path"] = f"{base}_{year}_{ver}.hdf5"
+obj._params["output_path"] = f"{base}_struc_{year}_{ver}.hdf5"
+obj._params["mask_dir"] = "/n17data/UNIONS/WL/masks"
 obj._params["nside"] = 131072
 obj._params["file_base"] = "mask_r_"
 obj._params["bits"] = bits
 
-obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage.hsp"
+obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_v1.5.x.hsp"
 obj._params["aux_mask_labels"] = "npoint3"
 obj._params["verbose"] = True
 # -
@@ -87,10 +95,6 @@ if trace_mem:
 # Get bit-coded masks
 masks = obj.get_masks(dat=dat)
 
-if trace_mem:
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-
 # Add mask bits as new columns
 dat_new = obj.append_masks(dat, masks)
 
@@ -103,8 +107,3 @@ obj.write_hdf5_file(dat, dat_new)
 
 # Close input HDF5 catalogue file
 obj.close_hd5()
-
-if trace_mem:
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-    tracemalloc.stop()

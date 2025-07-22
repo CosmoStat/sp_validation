@@ -145,7 +145,7 @@ notebooks/validation*.py
 notebooks/main_set_up.py
 notebooks/analyse_shear_cat/tutorial_UNIONS_SP_v1.0.py
 
-notebooks/cosmo_val/output
+notebooks/cosmo_val/output*
 notebooks/cosmo_val/cosmo_val.ipynb
 notebooks/cosmo_val/match_LF_SP.ipynb
 
@@ -163,3 +163,10 @@ notebooks/test_apply_hsp_masks.ipynb
 notebooks/calibrate_comprehensive_cat.ipynb
 notebooks/demo_apply_hsp_masks.py
 notebooks/demo_apply_hsp_masks.ipynb
+notebooks/plot_footprints.ipynb
+notebooks/demo_comprehensive_to_minimal_cat.ipynb
+notebooks/demo_create_footprint_mask.ipynb
+notebooks/demo_check_footprint.ipynb
+notebooks/demo_calibrate_minimal_cat.ipynb
+notebooks/leakage_minimal.ipynb
+notebooks/demo_add_bands.ipynb
