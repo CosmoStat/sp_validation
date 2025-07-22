@@ -6,6 +6,7 @@ RUN apt-get update -y --quiet --fix-missing && \
     apt-get install -y --quiet \
         libgsl-dev \
         htop \
+        npm \
         tmux
 
 RUN pip install --no-cache-dir \ 
