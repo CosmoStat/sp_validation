@@ -11,8 +11,6 @@ import treecorr
 import yaml
 from astropy.cosmology import Planck18
 from astropy.io import fits
-from cosmo_numba.B_modes.cosebis import COSEBIS
-from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import stats
@@ -274,7 +272,7 @@ class CosmologyValidation:
         )
 
         self.print_done(
-            f"Rho stats plot saved to "
+            "Rho stats plot saved to "
             + f"{os.path.abspath(self.rho_stat_handler.catalogs._output)}/{savefig}",
         )
 
@@ -294,7 +292,7 @@ class CosmologyValidation:
         )
 
         self.print_done(
-            f"Tau stats plot saved to "
+            "Tau stats plot saved to "
             + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
         )
 
@@ -489,7 +487,6 @@ class CosmologyValidation:
         self.print_start("Plotting footprints:")
         for ver in self.versions:
             self.print_magenta(ver)
-            results = self.results[ver]
 
             fp = FootprintPlotter()
 
@@ -766,7 +763,7 @@ class CosmologyValidation:
             self.calculate_objectwise_leakage()
 
         self.print_start("Plotting object-wise leakage:")
-        fig = cs_plots.figure(figsize=(15, 15))
+        cs_plots.figure(figsize=(15, 15))
 
         linestyles = ["-", "--", ":"]
         fillstyles = ["full", "none", "left", "right", "bottom", "top"]
@@ -866,7 +863,7 @@ class CosmologyValidation:
         else:
             self.print_start("Computing weight histograms:")
 
-            bins = np.linspace(0, 1.2, nbins + 1)
+            fig, ax = plt.subplots(1, 1, figsize=(10, 7))
             for ver in self.versions:
                 self.print_magenta(ver)
                 with self.results[ver].temporarily_read_data():
@@ -882,14 +879,14 @@ class CosmologyValidation:
                         color=self.cc[ver]["colour"],
                     )
 
-            plt.xlabel(f"$w$")
+            plt.xlabel("$w$")
             plt.ylabel("frequency")
             plt.yscale("log")
             plt.legend()
             # plt.xlim([-0.01, 1.2])
             cs_plots.savefig(out_path, close_fig=False)
             cs_plots.show()
-            self.print_done("Ellipticity histograms saved to " + out_path)
+            self.print_done("Weight histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
@@ -978,20 +975,12 @@ class CosmologyValidation:
 
         self.print_magenta(f"Computing {ver} ξ±")
 
+        npatch = npatch or self.npatch
         treecorr_config = {
             **self.treecorr_config,
             **treecorr_config,
+            "var_method": "jackknife" if int(npatch) > 1 else "shot",
         }
-
-        npatch = npatch or self.npatch
-        var_method = treecorr_config["var_method"]
-        if npatch == 0 and var_method != "shot":
-            print(
-                f"Zero patches specified, but var_method is set to {var_method}. "
-                "Switching to 'shot' variance method; try setting npatch > nbins"
-                " to use e.g. jackknife variance."
-            )
-            treecorr_config["var_method"] = "shot"
 
         gg = treecorr.GGCorrelation(treecorr_config)
 
@@ -1426,6 +1415,7 @@ class CosmologyValidation:
         nbins_int=100,
         npatch=256,
         var_method="jackknife",
+        cov_path_int=None,
     ):
         """
         Calculate the pure E/B modes for the given catalog version.
@@ -1456,6 +1446,12 @@ class CosmologyValidation:
             the value in self.npatch if not provided.
         var_method : str, optional
             Variance estimation method. Defaults to "jackknife".
+        cov_path_fmt : str, optional
+            Path to the covariance matrix for the reporting binning. Replaces the
+            treecorr covariance matrix if provided, meaning that var_method has no
+            effect on the results although it is still passed to
+            CosmologyValidation.calculate_2pcf.
+
 
         Returns
         -------
@@ -1476,6 +1472,8 @@ class CosmologyValidation:
         - A shared patch file is used for the reporting and integration binning,
         and is created if it does not exist.
         """
+        from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+
         self.print_start(f"Computing {version} pure E/B")
 
         npatch = npatch or self.npatch
@@ -1823,8 +1821,7 @@ class CosmologyValidation:
 
             # PTE as a function of lower scale cut plot
             def calculate_ptes(results, start_p=0, start_m=0):
-                gg, gg_int = results["gg"], results["gg_int"]
-                nbins, npatch = gg.nbins, gg.npatch1
+                npatch = gg.npatch1
 
                 ptes_p, ptes_m = [], []
                 for ptes, key, start, stop in zip(
@@ -1963,6 +1960,8 @@ class CosmologyValidation:
         TODO
 
         """
+        from cosmo_numba.B_modes.cosebis import COSEBIS
+
         self.print_start(f"Computing {version} COSEBIs")
 
         npatch = npatch or self.npatch
@@ -2047,6 +2046,7 @@ class CosmologyValidation:
         scale_cuts=None,
         fiducial_scale_cut=None,
     ):
+
         if np.isscalar(scale_cuts[0]):
             scale_cuts = [scale_cuts]
 
@@ -2164,7 +2164,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if not ver in self._pseudo_cls.keys():
+            if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
             out_path = os.path.abspath(
