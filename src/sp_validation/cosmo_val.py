@@ -272,7 +272,7 @@ class CosmologyValidation:
         )
 
         self.print_done(
-            f"Rho stats plot saved to "
+            "Rho stats plot saved to "
             + f"{os.path.abspath(self.rho_stat_handler.catalogs._output)}/{savefig}",
         )
 
@@ -292,7 +292,7 @@ class CosmologyValidation:
         )
 
         self.print_done(
-            f"Tau stats plot saved to "
+            "Tau stats plot saved to "
             + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
         )
 
@@ -487,7 +487,6 @@ class CosmologyValidation:
         self.print_start("Plotting footprints:")
         for ver in self.versions:
             self.print_magenta(ver)
-            results = self.results[ver]
 
             fp = FootprintPlotter()
 
@@ -764,7 +763,7 @@ class CosmologyValidation:
             self.calculate_objectwise_leakage()
 
         self.print_start("Plotting object-wise leakage:")
-        fig = cs_plots.figure(figsize=(15, 15))
+        cs_plots.figure(figsize=(15, 15))
 
         linestyles = ["-", "--", ":"]
         fillstyles = ["full", "none", "left", "right", "bottom", "top"]
@@ -864,7 +863,7 @@ class CosmologyValidation:
         else:
             self.print_start("Computing weight histograms:")
 
-            bins = np.linspace(0, 1.2, nbins + 1)
+            fig, ax = plt.subplots(1, 1, figsize=(10, 7))
             for ver in self.versions:
                 self.print_magenta(ver)
                 with self.results[ver].temporarily_read_data():
@@ -880,14 +879,14 @@ class CosmologyValidation:
                         color=self.cc[ver]["colour"],
                     )
 
-            plt.xlabel(f"$w$")
+            plt.xlabel("$w$")
             plt.ylabel("frequency")
             plt.yscale("log")
             plt.legend()
             # plt.xlim([-0.01, 1.2])
             cs_plots.savefig(out_path, close_fig=False)
             cs_plots.show()
-            self.print_done("Ellipticity histograms saved to " + out_path)
+            self.print_done("Weight histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
@@ -1822,8 +1821,7 @@ class CosmologyValidation:
 
             # PTE as a function of lower scale cut plot
             def calculate_ptes(results, start_p=0, start_m=0):
-                gg, gg_int = results["gg"], results["gg_int"]
-                nbins, npatch = gg.nbins, gg.npatch1
+                npatch = gg.npatch1
 
                 ptes_p, ptes_m = [], []
                 for ptes, key, start, stop in zip(
@@ -2166,7 +2164,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if not ver in self._pseudo_cls.keys():
+            if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
             out_path = os.path.abspath(
