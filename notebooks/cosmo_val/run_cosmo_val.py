@@ -21,7 +21,12 @@ if ipython is not None:
 cv = CosmologyValidation(
     versions=["SP_v1.4.5"],
     data_base_dir="/n17data/mkilbing/astro/data",
-    npatch=100,
+    npatch=1,
+    theta_min=1,
+    theta_max=250,
+    nbins=20,
+    theta_min_plot=1,
+    theta_max_plot=250,
     ylim_alpha=[-0.01, 0.05],
 )
 
@@ -56,41 +61,41 @@ cv.plot_separation()
 cv.plot_2pcf()
 
 # %%
-cv.plot_aperture_mass_dispersion()
+# cv.plot_aperture_mass_dispersion()
 
-# %%
-cv.plot_pure_eb(
-    min_sep_int=0.08,
-    max_sep_int=300,
-    nbins_int=100,
-    npatch=256,
-    var_method="jackknife",
-)
+# # %%
+# cv.plot_pure_eb(
+#     min_sep_int=0.08,
+#     max_sep_int=300,
+#     nbins_int=100,
+#     npatch=256,
+#     var_method="jackknife",
+# )
 
-# %%
-cv.plot_cosebis(
-    min_sep=0.9,
-    max_sep=250,
-    nbins=2000,
-    npatch=128,
-    var_method="jackknife",
-    nmodes=5,
-    scale_cuts=[
-        (1, 250),
-        (2, 250),
-        (3, 250),
-        (4, 250),
-        (5, 250),
-        (6, 250),
-        (7, 250),
-        (8, 250),
-        (9, 250),
-        (10, 250),
-        (15, 250),
-        (20, 250),
-    ],
-    fiducial_scale_cut=(10, 250),
-)
+# # %%
+# cv.plot_cosebis(
+#     min_sep=0.9,
+#     max_sep=250,
+#     nbins=2000,
+#     npatch=128,
+#     var_method="jackknife",
+#     nmodes=5,
+#     scale_cuts=[
+#         (1, 250),
+#         (2, 250),
+#         (3, 250),
+#         (4, 250),
+#         (5, 250),
+#         (6, 250),
+#         (7, 250),
+#         (8, 250),
+#         (9, 250),
+#         (10, 250),
+#         (15, 250),
+#         (20, 250),
+#     ],
+#     fiducial_scale_cut=(10, 250),
+# )
 
 # %%
 cv.plot_pseudo_cl()
