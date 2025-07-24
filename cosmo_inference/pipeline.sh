@@ -27,11 +27,9 @@ do
         python notebooks/cosmo_val/cosmo_val.py
         ;;
     'c') 
-        read -p 'ROOT: ' root;
-        read -p 'NZ FILE:' nz_file;
-        read -p 'PATH COSMOCOV: ' cosmocov;
-        echo "Calculating covariance matrices with CosmoCov";
-        python scripts/cosmocov_process.py $root $nz_file $cosmocov
+        read -p 'COVARIANCE FILE: ' covmat_file;
+        echo "Processing covariance matrix";
+        python scripts/cosmocov_process.py $covmat_file
         ;;
     'i')
         read -p 'ROOT: ' root;
