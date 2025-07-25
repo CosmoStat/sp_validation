@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import linalg as LA
 import sys
+from pathlib import Path
 
 def get_cov(filename):
 
@@ -27,9 +28,15 @@ def get_cov(filename):
 
 if __name__ == '__main__':
 	
-	covfile = sys.argv[1]
+	if len(sys.argv) != 3:
+		print("Usage: python cosmocov_process.py <input_file> <output_stub>")
+		sys.exit(1)
 	
-	c_g, c_ng, ndata = get_cov(covfile)	
+	covfile = sys.argv[1]
+	output_base = sys.argv[2]
+	
+	c_g, c_ng, ndata = get_cov(covfile)
+	
 	cov = c_ng+c_g
 	cov_g = c_g
 
@@ -45,11 +52,11 @@ if __name__ == '__main__':
 	for i in range(ndata):
 		pp_var.append(cov[i][i])
 
-	np.savetxt(covfile+'.txt',cov)
-	print("covmat saved as %s" %covfile+'.txt')
+	np.savetxt(str(output_base)+'.txt',cov)
+	print("covmat saved as %s" %(str(output_base)+'.txt'))
     
-	np.savetxt(covfile+'_g.txt',cov_g)
-	print("Gaussian covmat saved as %s" %covfile+'_g.txt')
+	np.savetxt(str(output_base)+'_g.txt',cov_g)
+	print("Gaussian covmat saved as %s" %(str(output_base)+'_g.txt'))
 
 	cmap = 'seismic'
 
@@ -60,7 +67,7 @@ if __name__ == '__main__':
 
 	print("Plotting correlation matrix ...")
 
-	plot_path = covfile+'_plot.pdf'
+	plot_path = str(output_base)+'_plot.pdf'
 	fig = plt.figure()
 	ax = fig.add_subplot(1, 1, 1) 
 	extent = (0, ndata, ndata, 0)
