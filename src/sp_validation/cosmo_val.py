@@ -1,7 +1,6 @@
 # %%
 import os
 
-import camb
 import colorama
 import healpy as hp
 import matplotlib.pyplot as plt
@@ -9,7 +8,6 @@ import numpy as np
 import pymaster as nmt
 import treecorr
 import yaml
-from astropy.cosmology import Planck18
 from astropy.io import fits
 from cs_util import plots as cs_plots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -19,6 +17,7 @@ from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
+from .cosmology import get_cosmo, get_theo_c_ell
 from .plots import FootprintPlotter
 from .rho_tau import get_params_rho_tau, get_rho_tau_w_cov, get_samples
 
@@ -50,6 +49,8 @@ class CosmologyValidation:
         n_ell_bins=32,
         pol_factor=True,
         nrandom_cell=10,
+        cosmo_params=None,
+        z_dist=None,
     ):
 
         self.versions = versions
@@ -74,6 +75,17 @@ class CosmologyValidation:
         self.n_ell_bins = n_ell_bins
         self.pol_factor = pol_factor
         self.nrandom_cell = nrandom_cell
+
+        # For theory calculations
+        self.cosmo_params = cosmo_params
+        self.z_dist = z_dist
+
+        # Create cosmology object using new functionality
+        if cosmo_params is not None:
+            self.cosmo = get_cosmo(**cosmo_params)
+        else:
+            # Use Planck 2018 defaults
+            self.cosmo = get_cosmo()
 
         self.treecorr_config = {
             "ra_units": "degrees",
@@ -1068,7 +1080,7 @@ class CosmologyValidation:
             }
             for key in xiplus_dict:
                 xiplus_hdu.header[key] = xiplus_dict[key]
-            
+
             # Use same naming format as txt output
             fits_base = out_fname.replace('.txt', '').replace('_xi_', '_')
             xiplus_hdu.writeto(
@@ -1515,12 +1527,18 @@ class CosmologyValidation:
             )
 
         xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = pure_EB([gg, gg_int])
-        cov = treecorr.estimate_multi_cov(
-            [gg, gg_int],
-            var_method,
-            func=lambda x: np.hstack(pure_EB(x)),
-            cross_patch_weight="match" if var_method == "jackknife" else None,
-        )
+
+        if cov_path_int is not None:
+            # Load cosmocov covariance from file
+            cov = np.loadtxt(cov_path_int)
+        else:
+            # Use existing treecorr covariance estimation
+            cov = treecorr.estimate_multi_cov(
+                [gg, gg_int],
+                var_method,
+                func=lambda x: np.hstack(pure_EB(x)),
+                cross_patch_weight="match" if var_method == "jackknife" else None,
+            )
 
         results = {
             "xip_E": xip_E,
@@ -2189,7 +2207,17 @@ class CosmologyValidation:
                     self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
                 )
                 pw = hp.pixwin(nside, lmax=lmax)
-                fiducial_cl = self.get_fiducial(lmax, path_redshift_distr) * pw**2
+
+                # Load redshift distribution and calculate theory C_ell
+                z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
+                ell = np.arange(1, lmax + 1)
+                fiducial_cl = get_theo_c_ell(
+                    ell=ell,
+                    z=z,
+                    nz=dndz,
+                    backend="camb",
+                    cosmo=self.cosmo,
+                ) * pw**2
 
                 self.print_cyan("Getting a sample of the fiducial Cl's with noise")
 
@@ -2400,56 +2428,6 @@ class CosmologyValidation:
 
         self.print_done("Done pseudo-Cl's")
 
-    def get_fiducial(self, lmax, redshift_distr):
-        """
-        Get the power spectrum at Planck18 cosmology using CAMB.
-        """
-        planck = Planck18
-
-        h = planck.H0.value / 100
-        Om = planck.Om0
-        Ob = planck.Ob0
-        Oc = Om - Ob
-        ns = 0.965
-        As = 2.1e-9
-        m_nu = 0.06
-        w = -1
-
-        pars = camb.set_params(
-            H0=100 * h,
-            omch2=Oc * h**2,
-            ombh2=Ob * h**2,
-            ns=ns,
-            mnu=m_nu,
-            w=w,
-            As=As,
-            WantTransfer=True,
-            NonLinear=camb.model.NonLinear_both,
-        )
-        Onu = pars.omeganu
-        Oc = Om - Ob - Onu
-        pars = camb.set_params(
-            H0=100 * h,
-            omch2=Oc * h**2,
-            ombh2=Ob * h**2,
-            ns=ns,
-            mnu=m_nu,
-            w=w,
-            As=As,
-            WantTransfer=True,
-            NonLinear=camb.model.NonLinear_both,
-        )
-
-        z, dndz = np.loadtxt(redshift_distr, unpack=True)
-
-        # getthe expected cl's from CAMB
-        pars.min_l = 1
-        pars.set_for_lmax(lmax)
-        pars.SourceWindows = [
-            camb.sources.SplinedSourceWindow(z=z, W=dndz, source_type="lensing")
-        ]
-        theory_cls = camb.get_results(pars).get_source_cls_dict(lmax=lmax, raw_cl=True)
-        return theory_cls["W1xW1"]
 
     def get_n_gal_map(self, params, nside, cat_gal):
         """
@@ -2623,7 +2601,7 @@ class CosmologyValidation:
                 capsize=2,
             )
 
-        ax[0].set_ylabel("$\ell C_\ell$")
+        ax[0].set_ylabel(r"$\ell C_\ell$")
 
         ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
         ax[0].set_xscale("squareroot")
@@ -2645,8 +2623,8 @@ class CosmologyValidation:
                 color=self.cc[ver]["colour"],
             )
 
-        ax[1].set_xlabel("$\ell$")
-        ax[1].set_ylabel("$C_\ell$")
+        ax[1].set_xlabel(r"$\ell$")
+        ax[1].set_ylabel(r"$C_\ell$")
 
         ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
         ax[1].set_xscale("squareroot")
@@ -2680,7 +2658,7 @@ class CosmologyValidation:
             )
 
         ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel("$\ell C_\ell$")
+        ax[0].set_ylabel(r"$\ell C_\ell$")
 
         ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
         ax[0].set_xscale("squareroot")
@@ -2702,8 +2680,8 @@ class CosmologyValidation:
                 color=self.cc[ver]["colour"],
             )
 
-        ax[1].set_xlabel("$\ell$")
-        ax[1].set_ylabel("$C_\ell$")
+        ax[1].set_xlabel(r"$\ell$")
+        ax[1].set_ylabel(r"$C_\ell$")
 
         ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
         ax[1].set_xscale("squareroot")
@@ -2737,7 +2715,7 @@ class CosmologyValidation:
             )
 
         ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel("$\ell C_\ell$")
+        ax[0].set_ylabel(r"$\ell C_\ell$")
 
         ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
         ax[0].set_xscale("squareroot")
@@ -2759,8 +2737,8 @@ class CosmologyValidation:
                 color=self.cc[ver]["colour"],
             )
 
-        ax[1].set_xlabel("$\ell$")
-        ax[1].set_ylabel("$C_\ell$")
+        ax[1].set_xlabel(r"$\ell$")
+        ax[1].set_ylabel(r"$C_\ell$")
 
         ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
         ax[1].set_xscale("squareroot")
