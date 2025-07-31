@@ -206,15 +206,15 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
         )
 
         if cov_rho:
-            if not os.path.exists(outdir + "/cov_rho_" + version + ".npy"):
-                only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-                rho_stat_handler.compute_rho_stats(
-                    version,
-                    out_base,
-                    save_cov=True,
-                    func=only_p,
-                    var_method="jackknife",
-                )
+            save_cov = not os.path.exists(outdir + "/cov_rho_" + version + ".npy")
+            only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
+            rho_stat_handler.compute_rho_stats(
+                version,
+                out_base,
+                save_cov=save_cov,
+                func=only_p,
+                var_method="jackknife",
+            )
         else:
             rho_stat_handler.compute_rho_stats(version, out_base, var_method=None)
 
