@@ -531,7 +531,8 @@ class CosmologyValidation:
             with self.results[ver].temporarily_read_data():
                 if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
                     self.print_green(
-                        f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
+                        f"Skipping computation, reading {output_path_ab} and "
+                        f"{output_path_aa} instead"
                     )
 
                     results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
@@ -958,7 +959,11 @@ class CosmologyValidation:
         Calculate the two-point correlation function (2PCF) ξ± for a given catalog
         version with TreeCorr.
 
-        By default the class instance's `npatch` and `treecorr_config` entries are used to initialize the TreeCorr Catalog and GGCorrelation objects, but may be overridden by passing keyword arguments.
+        By default the class instance's `npatch` and `treecorr_config` entries are
+        used to
+        initialize the TreeCorr Catalog and GGCorrelation objects, but may be
+        overridden
+        by passing keyword arguments.
 
         Parameters:
             ver (str): The catalog version to process.
@@ -1051,7 +1056,8 @@ class CosmologyValidation:
             gg.process(cat_gal)
             gg.write(out_fname, write_patch_results=True, write_cov=True)
 
-        # Save xi_p and xi_m results to fits file (moved outside so it runs even if txt exists)
+        # Save xi_p and xi_m results to fits file
+        # (moved outside so it runs even if txt exists)
         if save_fits:
             lst = np.arange(1, treecorr_config["nbins"] + 1)
 
@@ -1480,7 +1486,8 @@ class CosmologyValidation:
             - "xim_amb": Ambiguity mode for xi-.
             - "cov": Covariance matrix for the pure E/B modes.
             - "gg": The two-point correlation function object for the reporting binning.
-            - "gg_int": The two-point correlation function object for the integration binning.
+            - "gg_int": The two-point correlation function object for the
+              integration binning.
 
         Notes
         -----
@@ -1576,7 +1583,11 @@ class CosmologyValidation:
         nbins = nbins or self.treecorr_config["nbins"]
 
         for version in self.versions:
-            out_stub = f"{self.cc['paths']['output']}/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}"
+            out_stub = (
+                f"{self.cc['paths']['output']}/{version}_eb_minsep={min_sep}_"
+                f"maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_"
+                f"maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}"
+            )
 
             results = self.calculate_pure_eb(
                 version,
@@ -1600,7 +1611,10 @@ class CosmologyValidation:
                 fmt="k.",
                 ms=3,
                 alpha=0.3,
-                label=rf"$\xi_{{+}}$, Integration: ${gg_int.min_sep} < \theta < {gg_int.max_sep}$, {gg_int.nbins} bins",
+                label=(
+                    rf"$\xi_{{+}}$, Integration: ${gg_int.min_sep} < \theta < "
+                    rf"{gg_int.max_sep}$, {gg_int.nbins} bins"
+                ),
             )
             axs[0].errorbar(
                 gg.meanr,
@@ -1610,7 +1624,10 @@ class CosmologyValidation:
                 marker=".",
                 c="crimson",
                 ms=6,
-                label=rf"$\xi_{{+}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < {gg.max_sep}$, {gg.nbins} bins",
+                label=(
+                    rf"$\xi_{{+}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < "
+                    rf"{gg.max_sep}$, {gg.nbins} bins"
+                ),
             )
             axs[0].set_ylabel(r"$\theta\xi\times10^{4}$")
             axs[0].set_title(r"$\xi_{+}$")
@@ -1621,7 +1638,10 @@ class CosmologyValidation:
                 fmt="k.",
                 ms=3,
                 alpha=0.3,
-                label=rf"$\xi_{{-}}$, Integration: ${gg_int.min_sep} < \theta < {gg_int.max_sep}$, {gg_int.nbins} bins",
+                label=(
+                    rf"$\xi_{{-}}$, Integration: ${gg_int.min_sep} < \theta < "
+                    rf"{gg_int.max_sep}$, {gg_int.nbins} bins"
+                ),
             )
             axs[1].errorbar(
                 gg.meanr,
@@ -1631,7 +1651,10 @@ class CosmologyValidation:
                 marker=".",
                 c="crimson",
                 ms=6,
-                label=rf"$\xi_{{-}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < {gg.max_sep}$, {gg.nbins} bins",
+                label=(
+                    rf"$\xi_{{-}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < "
+                    rf"{gg.max_sep}$, {gg.nbins} bins"
+                ),
             )
             axs[1].set_xlabel(r"$\theta$ (arcmin)")
             axs[1].set_title(r"$\xi_{-}$")
@@ -1645,7 +1668,8 @@ class CosmologyValidation:
                 ax.legend(loc="upper left")
 
             fig.suptitle(
-                f"{self.versions[0]}: Functions Integration vs. Reporting ({gg.npatch1} patches for cov)"
+                f"{self.versions[0]}: Functions Integration vs. Reporting "
+                f"({gg.npatch1} patches for cov)"
             )
             plt.tight_layout()
             plt.savefig(
@@ -1700,7 +1724,8 @@ class CosmologyValidation:
 
                 nbins = results["gg"].nbins
 
-                # Compute and store covariance blocks and stds in results with explicit names
+                # Compute and store covariance blocks and stds in results
+                # with explicit names
                 for i, key in enumerate(
                     ["xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb"]
                 ):
@@ -1757,7 +1782,10 @@ class CosmologyValidation:
                 ls="",
                 marker=".",
                 alpha=0.25,
-                label=rf"$\xi_{{+}}^{{E}}, \sqrt{{\chi_0^2}}={np.round(np.sqrt(results.get('xip_E_chi2', 0)),1)}$",
+                label=(
+                    rf"$\xi_{{+}}^{{E}}, \sqrt{{\chi_0^2}}="
+                    rf"{np.round(np.sqrt(results.get('xip_E_chi2', 0)),1)}$"
+                ),
             )
             axs[0].errorbar(
                 gg.meanr,
@@ -1766,7 +1794,10 @@ class CosmologyValidation:
                 color="r",
                 ls="",
                 marker=".",
-                label=rf"$\xi_{{+}}^{{B}}, {{\rm PTE}}={np.round(results['xip_B_pte'],4)}$",
+                label=(
+                    rf"$\xi_{{+}}^{{B}}, {{\rm PTE}}="
+                    rf"{np.round(results['xip_B_pte'],4)}$"
+                ),
             )
             axs[0].errorbar(
                 gg.meanr,
@@ -1797,7 +1828,10 @@ class CosmologyValidation:
                 ls="",
                 marker=".",
                 alpha=0.25,
-                label=rf"$\xi_{{-}}^{{E}}, \sqrt{{\chi_0^2}}={np.round(np.sqrt(results['xim_E_chi2']),1)}$",
+                label=(
+                    rf"$\xi_{{-}}^{{E}}, \sqrt{{\chi_0^2}}="
+                    rf"{np.round(np.sqrt(results['xim_E_chi2']),1)}$"
+                ),
             )
             axs[1].errorbar(
                 gg.meanr,
@@ -1806,7 +1840,10 @@ class CosmologyValidation:
                 color="r",
                 ls="",
                 marker=".",
-                label=rf"$\xi_{{-}}^{{B}}, {{\rm PTE}}={np.round(results['xim_B_pte'],4)}$",
+                label=(
+                    rf"$\xi_{{-}}^{{B}}, {{\rm PTE}}="
+                    rf"{np.round(results['xim_B_pte'],4)}$"
+                ),
             )
             axs[1].errorbar(
                 gg.meanr,
@@ -2074,7 +2111,11 @@ class CosmologyValidation:
         fiducial_scale_cut = fiducial_scale_cut or scale_cuts[0]
 
         for version in self.versions:
-            out_stub = f"{self.cc['paths']['output']}/{version}_cosebis_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_varmethod={var_method}_nmodes={nmodes}_scalecut={fiducial_scale_cut}"
+            out_stub = (
+                f"{self.cc['paths']['output']}/{version}_cosebis_minsep={min_sep}_"
+                f"maxsep={max_sep}_nbins={nbins}_npatch={npatch}_varmethod={var_method}_"
+                f"nmodes={nmodes}_scalecut={fiducial_scale_cut}"
+            )
 
             results = self.calculate_cosebis(
                 version,
@@ -2093,14 +2134,20 @@ class CosmologyValidation:
                 results_fiducial["modes"],
                 results_fiducial["E"],
                 yerr=np.sqrt(np.diag(results_fiducial["cov_E"])),
-                label=rf"COSEBIs E-modes; $\sqrt{{\chi_0^2}}$ = {results_fiducial['E_snr']:.2f}",
+                label=(
+                    rf"COSEBIs E-modes; $\sqrt{{\chi_0^2}}$ = "
+                    rf"{results_fiducial['E_snr']:.2f}"
+                ),
             )
             plt.errorbar(
                 results_fiducial["modes"],
                 results_fiducial["B"],
                 yerr=np.sqrt(np.diag(results_fiducial["cov_B"])),
                 c="crimson",
-                label=rf"COSEBIs B-modes; PTE $B_0$ = {results_fiducial['B0_pte']:.2f}, $B_{{\rm all}}$ = {results_fiducial['B_pte']:.2f}",
+                label=(
+                    rf"COSEBIs B-modes; PTE $B_0$ = {results_fiducial['B0_pte']:.2f}, "
+                    rf"$B_{{\rm all}}$ = {results_fiducial['B_pte']:.2f}"
+                ),
             )
 
             plt.axhline(0, ls="--", color="k")
@@ -2416,7 +2463,8 @@ class CosmologyValidation:
                 del e1, e2, e1_rot, e2_rot, w
                 del n_gal_map
 
-                # This is a problem because the measurement depends on the seed. To be fixed.
+                # This is a problem because the measurement depends on the seed.
+                # To be fixed.
                 # cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
                 cl_shear = cl_shear - cl_noise
 
