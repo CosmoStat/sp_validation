@@ -47,7 +47,7 @@ do
         out_file="data/${cosmosis_root}/cosmosis_${cosmosis_root}.fits";
         
         #LG: add check if xi_plus/xi_minus fits file exists
-        python scripts/cosmosis_fitting.py $xi_root $tau_root $utput_folder $covmat $nz_file $out_file $rhotau_stats;
+        python scripts/cosmosis_fitting.py $xi_root $tau_root $output_folder $covmat $nz_file $out_file $rhotau_stats;
         
         if [ "${rhotau_stats}" == "y" ]; then
           cp cosmosis_config/cosmosis_pipeline_A_psf.ini cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
