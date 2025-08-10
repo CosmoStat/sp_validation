@@ -12,8 +12,9 @@ from astropy.io import fits
 from cs_util import plots as cs_plots
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import stats
-from shear_psf_leakage import leakage, run_object, run_scale
+from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
+from shear_psf_leakage import run_object, run_scale
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
@@ -52,7 +53,6 @@ class CosmologyValidation:
         cosmo_params=None,
         z_dist=None,
     ):
-
         self.versions = versions
         self.data_base_dir = data_base_dir
         self.rho_tau_method = rho_tau_method
@@ -102,7 +102,6 @@ class CosmologyValidation:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
         for ver in ["nz", *versions]:
-
             if ver not in cc:
                 raise KeyError(
                     f"Version string {ver} not found in config file{catalog_config}"
@@ -150,7 +149,7 @@ class CosmologyValidation:
         params_in["dndz_path"] = (
             f"{self.cc['nz']['dndz']['path']}_{self.cc[ver]['pipeline']}_{self.cc['nz']['dndz']['blind']}.txt"
         )
-        params_in["output_dir"] = f'{self.cc["paths"]["output"]}/leakage_{ver}'
+        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
 
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
@@ -177,7 +176,7 @@ class CosmologyValidation:
 
         # Set parameters
         params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
-        params_in["output_dir"] = f'{self.cc["paths"]["output"]}/leakage_{ver}'
+        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
 
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
@@ -201,10 +200,8 @@ class CosmologyValidation:
         return params_in
 
     def init_results(self, objectwise=False):
-
         results = {}
         for ver in self.versions:
-
             # Set parameters depending on the type of leakage
             if objectwise:
                 results[ver] = run_object.LeakageObject()
@@ -231,7 +228,6 @@ class CosmologyValidation:
         return self._results_objectwise
 
     def calculate_rho_tau_stats(self):
-
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -268,7 +264,6 @@ class CosmologyValidation:
         return [self.cc[ver]["colour"] for ver in self.versions]
 
     def plot_rho_stats(self, abs=False):
-
         filenames = [f"rho_stats_{ver}.fits" for ver in self.versions]
 
         savefig = "rho_stats.png"
@@ -445,7 +440,6 @@ class CosmologyValidation:
             self.colors,
             self.rho_tau_fits["flat_sample_list"],
         ):
-
             ls = self.cc[ver]["ls"]
             theta = self.psf_fitter.rho_stat_handler.rho_stats["theta"]
             xi_psf_sys = self.xi_psf_sys[ver]
@@ -524,7 +518,7 @@ class CosmologyValidation:
             results = self.results[ver]
 
             output_base_path = os.path.abspath(
-                f'{self.cc["paths"]["output"]}/leakage_{ver}/xi_for_leak_scale'
+                f"{self.cc['paths']['output']}/leakage_{ver}/xi_for_leak_scale"
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
@@ -572,7 +566,6 @@ class CosmologyValidation:
                 markers.append(self.cc[ver]["marker"])
 
         if len(theta) > 0:
-
             # Log x
             out_path = os.path.abspath(
                 f"{self.cc['paths']['output']}/alpha_leak_log.png"
@@ -1065,9 +1058,7 @@ class CosmologyValidation:
             col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
             col3 = fits.Column(name="ANGBIN", format="K", array=lst)
             col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
-            col5 = fits.Column(
-                name="ANG", format="D", unit="arcmin", array=gg.meanr
-            )
+            col5 = fits.Column(name="ANG", format="D", unit="arcmin", array=gg.meanr)
             coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
             xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
 
@@ -1088,7 +1079,7 @@ class CosmologyValidation:
                 xiplus_hdu.header[key] = xiplus_dict[key]
 
             # Use same naming format as txt output
-            fits_base = out_fname.replace('.txt', '').replace('_xi_', '_')
+            fits_base = out_fname.replace(".txt", "").replace("_xi_", "_")
             xiplus_hdu.writeto(
                 f"{fits_base.replace(ver, f'xi_plus_{ver}')}.fits",
                 overwrite=True,
@@ -1437,6 +1428,9 @@ class CosmologyValidation:
         npatch=256,
         var_method="jackknife",
         cov_path_int=None,
+        cov_path_rep=None,
+        cosmo_cov=None,
+        n_samples=1000,
     ):
         """
         Calculate the pure E/B modes for the given catalog version.
@@ -1467,12 +1461,22 @@ class CosmologyValidation:
             the value in self.npatch if not provided.
         var_method : str, optional
             Variance estimation method. Defaults to "jackknife".
-        cov_path_fmt : str, optional
+        cov_path_int : str, optional
             Path to the covariance matrix for the reporting binning. Replaces the
             treecorr covariance matrix if provided, meaning that var_method has no
             effect on the results although it is still passed to
             CosmologyValidation.calculate_2pcf.
-
+        cov_path_rep : str, optional
+            Path to the covariance matrix for the reporting binning scales. When both
+            cov_path_rep and cov_path_int are provided, enables semi-analytical
+            covariance propagation through the E/B transformation.
+        cosmo_cov : pyccl.Cosmology, optional
+            Cosmology object to use for theoretical xi+/xi- predictions in the
+            semi-analytical covariance calculation. Defaults to self.cosmo if not
+            provided.
+        n_samples : int, optional
+            Number of Monte Carlo samples for semi-analytical covariance propagation.
+            Defaults to 1000.
 
         Returns
         -------
@@ -1488,6 +1492,8 @@ class CosmologyValidation:
             - "gg": The two-point correlation function object for the reporting binning.
             - "gg_int": The two-point correlation function object for the
               integration binning.
+            - "eb_samples": (only when using semi-analytical covariance) Semi-analytic
+              EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)
 
         Notes
         -----
@@ -1535,9 +1541,21 @@ class CosmologyValidation:
 
         xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = pure_EB([gg, gg_int])
 
-        if cov_path_int is not None:
-            # Load cosmocov covariance from file
-            cov = np.loadtxt(cov_path_int)
+        if cov_path_rep is not None and cov_path_int is not None:
+            # Use semi-analytical covariance propagation
+            cov, eb_samples = self.calculate_pure_eb_cov_semianalytic(
+                cov_path_rep=cov_path_rep,
+                cov_path_int=cov_path_int,
+                cosmo=cosmo_cov,
+                n_samples=n_samples,
+                min_sep=min_sep,
+                max_sep=max_sep,
+                nbins=nbins,
+                min_sep_int=min_sep_int,
+                max_sep_int=max_sep_int,
+                nbins_int=nbins_int,
+                return_samples=True,
+            )
         else:
             # Use existing treecorr covariance estimation
             cov = treecorr.estimate_multi_cov(
@@ -1559,7 +1577,236 @@ class CosmologyValidation:
             "gg_int": gg_int,
         }
 
+        # Add eb_samples to results when using semi-analytical covariance
+        if cov_path_rep is not None and cov_path_int is not None:
+            results["eb_samples"] = eb_samples
+
         return results
+
+    def calculate_pure_eb_cov_semianalytic(
+        self,
+        cov_path_rep,
+        cov_path_int,
+        cosmo=None,
+        n_samples=1000,
+        min_sep=None,
+        max_sep=None,
+        nbins=None,
+        min_sep_int=0.08,
+        max_sep_int=300,
+        nbins_int=100,
+        return_samples=False,
+    ):
+        """
+        Calculate semi-analytical covariance matrix for pure E/B modes.
+
+        This method uses analytical covariance matrices for xi+/xi- correlation
+        functions and propagates them through the pure E/B transformation by
+        Monte Carlo sampling to obtain E/B mode covariances.
+        Uses consistent sampling approach: samples only the integration covariance
+        and bins each realization to reporting scale, maintaining physical consistency
+        between scales and eliminating NaN issues from independent sampling.
+
+        Parameters
+        ----------
+        cov_path_rep : str
+            Path to covariance matrix for reporting scales (xi+/xi- format).
+        cov_path_int : str
+            Path to covariance matrix for integration scales (xi+/xi- format).
+        cosmo : ccl.Cosmology, optional
+            Cosmology object for theoretical predictions. If None, uses self.cosmo.
+        n_samples : int, optional
+            Number of Monte Carlo samples for covariance propagation. Default 1000.
+        min_sep : float, optional
+            Minimum separation for reporting binning. Defaults to self.treecorr_config.
+        max_sep : float, optional
+            Maximum separation for reporting binning. Defaults to self.treecorr_config.
+        nbins : int, optional
+            Number of bins for reporting binning. Defaults to self.treecorr_config.
+        min_sep_int : float, optional
+            Minimum separation for integration binning. Default 0.08.
+        max_sep_int : float, optional
+            Maximum separation for integration binning. Default 300.
+        nbins_int : int, optional
+            Number of bins for integration binning. Default 100.
+        return_samples : bool, optional
+            Whether to return the EB samples along with covariance. Default False.
+
+        Returns
+        -------
+        numpy.ndarray or tuple
+            If return_samples=False: Semi-analytical covariance matrix for pure
+            E/B modes.
+            Shape: (6*nbins, 6*nbins) containing covariance for:
+            [xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb]
+            If return_samples=True: (cov_eb, eb_samples) where:
+            - cov_eb: Semi-analytical covariance matrix (same as above)
+            - eb_samples: Monte Carlo samples used to compute covariance.
+              Shape: (n_samples, 6*nbins)
+        """
+        import numpy as np
+        from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+
+        from sp_validation.cosmology import get_theo_xi
+
+        def bin_integration_to_reporting(
+            theta_int, xi_int, theta_rep, min_sep_rep, max_sep_rep, nbins_rep
+        ):
+            """
+            Bin fine integration scale to coarse reporting scale using TreeCorr's
+            logarithmic binning.
+            Parameters
+            ----------
+            theta_int : array_like
+                Integration scale angular separations
+            xi_int : array_like
+                Integration scale correlation function values
+            theta_rep : array_like
+                Reporting scale angular separations (bin centers)
+            min_sep_rep : float
+                Minimum separation for reporting binning
+            max_sep_rep : float
+                Maximum separation for reporting binning
+            nbins_rep : int
+                Number of reporting bins
+            Returns
+            -------
+            array_like
+                Binned correlation function values at reporting scale
+            """
+            xi_rep = np.zeros(nbins_rep)
+
+            # Calculate bin edges in log space (TreeCorr's approach)
+            log_min = np.log10(min_sep_rep)
+            log_max = np.log10(max_sep_rep)
+            bin_size = (log_max - log_min) / nbins_rep
+
+            for i in range(nbins_rep):
+                # Get bin edges in log space, then convert to linear
+                log_left = log_min + i * bin_size
+                log_right = log_min + (i + 1) * bin_size
+                left_edge = 10**log_left
+                right_edge = 10**log_right
+
+                # Find integration points within this reporting bin
+                mask = (theta_int >= left_edge) & (theta_int < right_edge)
+
+                if np.any(mask):
+                    # Average integration values within this bin
+                    xi_rep[i] = np.mean(xi_int[mask])
+                else:
+                    # Handle edge case: interpolate to bin center
+                    xi_rep[i] = np.interp(theta_rep[i], theta_int, xi_int)
+
+            return xi_rep
+
+        self.print_start("Computing semi-analytical pure E/B covariance")
+
+        # Set up binning parameters
+        min_sep = min_sep or self.treecorr_config["min_sep"]
+        max_sep = max_sep or self.treecorr_config["max_sep"]
+        nbins = nbins or self.treecorr_config["nbins"]
+        cosmo = cosmo or self.cosmo
+
+        # Load covariance matrices
+        self.print_start("Loading covariance matrices")
+        # Note: cov_rep is not used in consistent sampling approach
+        # cov_rep = np.loadtxt(cov_path_rep)
+        cov_int = np.loadtxt(cov_path_int)
+
+        # Set up angular separation arrays
+        theta_rep = np.logspace(np.log10(min_sep), np.log10(max_sep), nbins)
+        theta_int = np.logspace(np.log10(min_sep_int), np.log10(max_sep_int), nbins_int)
+
+        # Get redshift distribution for theoretical predictions
+        if hasattr(self, "z_dist") and self.z_dist is not None:
+            z = self.z_dist["z"]
+            nz = self.z_dist["nz"]
+        else:
+            # Create simple redshift distribution for theoretical calculations
+            z = np.linspace(0.1, 1.5, 100)
+            nz = np.exp(-(((z - 0.7) / 0.3) ** 2))
+            nz = nz / np.trapz(nz, z)
+
+        self.print_start("Generating theoretical xi+/xi- predictions")
+        # Generate theoretical xi+/xi- for both scales
+        xip_theo_rep, xim_theo_rep = get_theo_xi(
+            theta=theta_rep, z=z, nz=nz, backend="ccl", cosmo=cosmo
+        )
+        xip_theo_int, xim_theo_int = get_theo_xi(
+            theta=theta_int, z=z, nz=nz, backend="ccl", cosmo=cosmo
+        )
+
+        # Create theoretical mean vectors (concatenate xi+ and xi-)
+        # Note: mean_rep is not used in consistent sampling approach
+        # mean_rep = np.concatenate([xip_theo_rep, xim_theo_rep])
+        mean_int = np.concatenate([xip_theo_int, xim_theo_int])
+
+        self.print_start(
+            f"Drawing {n_samples} samples from integration covariance "
+            "(consistent sampling)"
+        )
+        # Use consistent sampling: only sample integration scale, then bin to
+        # reporting scale
+        # This eliminates the artificial decorrelation between scales that
+        # caused NaN issues
+        samples_int = np.random.multivariate_normal(mean_int, cov_int, size=n_samples)
+
+        # Initialize arrays to store E/B mode samples
+        eb_samples = []
+
+        self.print_start(f"Applying pure E/B transformation to {n_samples} samples")
+
+        # Define pure E/B transformation function
+        def pure_EB(xip_rep, xim_rep, xip_int, xim_int):
+            return get_pure_EB_modes(
+                theta=theta_rep,
+                xip=xip_rep,
+                xim=xim_rep,
+                theta_int=theta_int,
+                xip_int=xip_int,
+                xim_int=xim_int,
+                tmin=min_sep,
+                tmax=max_sep,
+            )
+
+        # Apply pure E/B transformation to each sample
+        for i in range(n_samples):
+            if i % 100 == 0:
+                self.print_start(f"Processing sample {i + 1}/{n_samples}")
+
+            # Extract xi+/xi- for this sample from integration scale
+            n_int = len(theta_int)
+
+            xip_int_sample = samples_int[i, :n_int]
+            xim_int_sample = samples_int[i, n_int:]
+
+            # Bin integration sample to reporting scale (consistent sampling)
+            xip_rep_sample = bin_integration_to_reporting(
+                theta_int, xip_int_sample, theta_rep, min_sep, max_sep, nbins
+            )
+            xim_rep_sample = bin_integration_to_reporting(
+                theta_int, xim_int_sample, theta_rep, min_sep, max_sep, nbins
+            )
+
+            # Apply pure E/B transformation
+            xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = pure_EB(
+                xip_rep_sample, xim_rep_sample, xip_int_sample, xim_int_sample
+            )
+
+            # Concatenate all E/B modes for this sample
+            eb_sample = np.concatenate([xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb])
+            eb_samples.append(eb_sample)
+
+        # Convert to numpy array and compute sample covariance matrix
+        eb_samples = np.array(eb_samples)
+        cov_eb = np.cov(eb_samples.T)
+
+        self.print_start("Semi-analytical E/B covariance calculation complete")
+        if return_samples:
+            return cov_eb, eb_samples
+        else:
+            return cov_eb
 
     def plot_pure_eb(
         self,
@@ -1571,12 +1818,12 @@ class CosmologyValidation:
         nbins_int=100,
         npatch=256,
         var_method="jackknife",
+        cov_path_int=None,
         start_p=0,
         start_m=1,
         stop_p=None,
         stop_m=None,
     ):
-
         npatch = npatch or self.npatch
         min_sep = min_sep or self.treecorr_config["min_sep"]
         max_sep = max_sep or self.treecorr_config["max_sep"]
@@ -1599,6 +1846,7 @@ class CosmologyValidation:
                 nbins_int=nbins_int,
                 npatch=npatch,
                 var_method=var_method,
+                cov_path_int=cov_path_int,
             )
 
             # Reporting vs Integration Plot
@@ -1784,7 +2032,7 @@ class CosmologyValidation:
                 alpha=0.25,
                 label=(
                     rf"$\xi_{{+}}^{{E}}, \sqrt{{\chi_0^2}}="
-                    rf"{np.round(np.sqrt(results.get('xip_E_chi2', 0)),1)}$"
+                    rf"{np.round(np.sqrt(results.get('xip_E_chi2', 0)), 1)}$"
                 ),
             )
             axs[0].errorbar(
@@ -1796,7 +2044,7 @@ class CosmologyValidation:
                 marker=".",
                 label=(
                     rf"$\xi_{{+}}^{{B}}, {{\rm PTE}}="
-                    rf"{np.round(results['xip_B_pte'],4)}$"
+                    rf"{np.round(results['xip_B_pte'], 4)}$"
                 ),
             )
             axs[0].errorbar(
@@ -1830,7 +2078,7 @@ class CosmologyValidation:
                 alpha=0.25,
                 label=(
                     rf"$\xi_{{-}}^{{E}}, \sqrt{{\chi_0^2}}="
-                    rf"{np.round(np.sqrt(results['xim_E_chi2']),1)}$"
+                    rf"{np.round(np.sqrt(results['xim_E_chi2']), 1)}$"
                 ),
             )
             axs[1].errorbar(
@@ -1842,7 +2090,7 @@ class CosmologyValidation:
                 marker=".",
                 label=(
                     rf"$\xi_{{-}}^{{B}}, {{\rm PTE}}="
-                    rf"{np.round(results['xim_B_pte'],4)}$"
+                    rf"{np.round(results['xim_B_pte'], 4)}$"
                 ),
             )
             axs[1].errorbar(
@@ -2104,7 +2352,6 @@ class CosmologyValidation:
         scale_cuts=None,
         fiducial_scale_cut=None,
     ):
-
         if np.isscalar(scale_cuts[0]):
             scale_cuts = [scale_cuts]
 
@@ -2244,7 +2491,6 @@ class CosmologyValidation:
                 )
                 self._pseudo_cls[ver]["cov"] = fits.open(out_path)
             else:
-
                 params = get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
@@ -2258,13 +2504,16 @@ class CosmologyValidation:
                 # Load redshift distribution and calculate theory C_ell
                 z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
                 ell = np.arange(1, lmax + 1)
-                fiducial_cl = get_theo_c_ell(
-                    ell=ell,
-                    z=z,
-                    nz=dndz,
-                    backend="camb",
-                    cosmo=self.cosmo,
-                ) * pw**2
+                fiducial_cl = (
+                    get_theo_c_ell(
+                        ell=ell,
+                        z=z,
+                        nz=dndz,
+                        backend="camb",
+                        cosmo=self.cosmo,
+                    )
+                    * pw**2
+                )
 
                 self.print_cyan("Getting a sample of the fiducial Cl's with noise")
 
@@ -2441,7 +2690,6 @@ class CosmologyValidation:
                 cl_noise = np.zeros((4, self.n_ell_bins))
 
                 for i in range(self.nrandom_cell):
-
                     noise_map_e1 = np.zeros(hp.nside2npix(nside))
                     noise_map_e2 = np.zeros(hp.nside2npix(nside))
 
@@ -2476,7 +2724,6 @@ class CosmologyValidation:
 
         self.print_done("Done pseudo-Cl's")
 
-
     def get_n_gal_map(self, params, nside, cat_gal):
         """
         Compute the galaxy number density map.
@@ -2499,7 +2746,6 @@ class CosmologyValidation:
     def get_gaussian_real(
         self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
     ):
-
         e1_rot, e2_rot = self.apply_random_rotation(
             cat_gal[params["e1_col"]], cat_gal[params["e2_col"]]
         )
