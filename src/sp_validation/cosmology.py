@@ -434,10 +434,11 @@ def get_theo_xi(
     Omega_b=None,
     sig8=None,
     ns=None,
-    ell_min=0,
+    ell_min=10,
     ell_max=20000,
     n_ell=500,
     backend="ccl",
+    cosmo=None,
     **cosmo_kwargs,
 ):
     """Calculate theoretical xi+/xi- using individual parameters.
@@ -479,10 +480,11 @@ def get_theo_xi(
     # Create ell array for C_ell calculation
     ell = np.geomspace(ell_min, ell_max, n_ell)
 
-    # Create cosmology object
-    cosmo = get_cosmo(
-        Omega_m=Omega_m, Omega_b=Omega_b, h=h, sig8=sig8, ns=ns, **cosmo_kwargs
-    )
+    # Use provided cosmology object or create one from individual parameters
+    if cosmo is None:
+        cosmo = get_cosmo(
+            Omega_m=Omega_m, Omega_b=Omega_b, h=h, sig8=sig8, ns=ns, **cosmo_kwargs
+        )
 
     # Calculate C_ell
     cl = get_theo_c_ell(ell, z, nz, backend=backend, cosmo=cosmo)
