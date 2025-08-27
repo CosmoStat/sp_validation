@@ -19,8 +19,10 @@ if ipython is not None:
 
 # %%
 cv = CosmologyValidation(
-    versions=["SP_v1.4.6", "SP_v1.4.5.A", "SP_v1.4.5"],
+    versions=["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.7_leak_corr"],
     data_base_dir="/n17data/mkilbing/astro/data/",
+    theta_min=1.0,
+    theta_max=250.0,
     npatch=100,
     nrandom_cell=100,
     cell_method="catalog"
@@ -57,10 +59,17 @@ cv.plot_weights()
 cv.plot_separation()
 
 # %%
-#cv.plot_2pcf()
+cv.npatch = 1
+cv.treecorr_config["var_method"] = "shot"
+cv.plot_2pcf()
+cv.treecorr_config["var_method"] = "jackknife"
+cv.npatch = 100
 
 # %%
 #cv.plot_aperture_mass_dispersion()
+
+# %%
+cv.plot_pseudo_cl()
 
 # %%
 cv.plot_pure_eb(
@@ -96,5 +105,3 @@ cv.plot_cosebis(
     fiducial_scale_cut=(10, 250),
 )
 
-# %%
-cv.plot_pseudo_cl()

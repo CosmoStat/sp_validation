@@ -1063,7 +1063,7 @@ class CosmologyValidation:
                 col3 = fits.Column(name="ANGBIN", format="K", array=lst)
                 col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
                 col5 = fits.Column(
-                    name="ANG", format="D", unit="arcmin", array=gg.meanr
+                    name="ANG", format="D", unit="arcmin", array=gg.rnom
                 )
                 coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
                 xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
@@ -2177,7 +2177,7 @@ class CosmologyValidation:
                 self._pseudo_cls[ver]['cov'] = fits.open(out_path)
             else:
 
-                params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+                params = get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
@@ -2306,7 +2306,7 @@ class CosmologyValidation:
         self.print_done("Done pseudo-Cl's")
 
     def calculate_pseudo_cl_map(self, ver, nside, out_path):
-        params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+        params = get_params_rho_tau(self.cc[ver], survey=ver)
 
         #Load data and create shear and noise maps
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
@@ -2372,7 +2372,7 @@ class CosmologyValidation:
         self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
 
     def calculate_pseudo_cl_catalog(self, ver, out_path):
-        params = utils.get_params_rho_tau(self.cc[ver], survey=ver)
+        params = get_params_rho_tau(self.cc[ver], survey=ver)
 
         #Load data and create shear and noise maps
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
