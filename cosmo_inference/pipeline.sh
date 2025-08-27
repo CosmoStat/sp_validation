@@ -37,6 +37,7 @@ do
         read -p 'ROOT: ' root;
         read -p 'COSMO_VAL OUTPUT FOLDER: ' output_folder;
         read -p 'NZ FILE:' nz_file;
+        read -p 'OUTPUT MCMC CHAIN FOLDER: ' data;
         read -p 'USE PSEUDO_CELL? (y/n): ' pseudo_cell;
 
         if [ "${pseudo_cell}" == "y" ]; then
@@ -58,7 +59,6 @@ do
           read -p 'USE RHO/TAU_STATS? (y/n): ' rhotau_stats;
           echo $rhotau_stats
           read -p 'COV_XI MAT TXT FILE:' covmat;
-          read -p 'OUTPUT MCMC CHAIN FOLDER: ' data;
           
           out_file="data/${root}/cosmosis_${root}.fits";
           

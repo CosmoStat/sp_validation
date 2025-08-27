@@ -64,9 +64,9 @@ def tau_to_fits(filename):
     return tau_0_p_hdu, tau_2_p_hdu
 
 def pseudo_cl_to_fits(filename):
-    pseudo_cl = fits.open(filename)
-    cl_ee = pseudo_cl["EE"].data
-    ell = pseudo_cl["ELL"].data
+    pseudo_cl = fits.getdata(filename)
+    cl_ee = pseudo_cl["EE"]
+    ell = pseudo_cl["ELL"]
 
     nbins = len(ell)
     lst = np.arange(1, nbins+1)
@@ -83,7 +83,7 @@ def pseudo_cl_to_fits(filename):
     pseudo_cl_dict = {
         '2PTDATA': 'T',
         'QUANT1' : 'GEF',
-        'QUANT2' : 'P+R',
+        'QUANT2' : 'GEF',
         'KERNEL_1': 'NZ_SOURCE',
         'KERNEL_2': 'NZ_SOURCE',
         'WINDOWS': 'SAMPLE'
@@ -96,7 +96,7 @@ def pseudo_cl_to_fits(filename):
 
 def cov_pseudo_cl_to_fits(filename):
     cov_pseudo_cl = fits.open(filename)
-    cov_ee = cov_pseudo_cl["COVAR_EE_EE"]._data
+    cov_ee = cov_pseudo_cl["COVAR_EE_EE"].data
 
     cov_hdu = fits.ImageHDU(cov_ee)
     cov_dict = {
