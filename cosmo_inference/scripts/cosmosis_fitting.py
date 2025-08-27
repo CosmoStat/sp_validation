@@ -63,7 +63,53 @@ def tau_to_fits(filename):
 
     return tau_0_p_hdu, tau_2_p_hdu
 
+def pseudo_cl_to_fits(filename):
+    pseudo_cl = fits.open(filename)
+    cl_ee = pseudo_cl["EE"].data
+    ell = pseudo_cl["ELL"].data
 
+    nbins = len(ell)
+    lst = np.arange(1, nbins+1)
+
+    #Create fits HDU for tau_0_+
+    col1 = fits.Column(name ='BIN1', format ='K', array = np.ones(len(lst)))
+    col2 = fits.Column(name ='BIN2', format ='K', array = np.ones(len(lst)))
+    col3 = fits.Column(name ='ANGBIN', format ='K', array = lst)
+    col4 = fits.Column(name = 'VALUE', format = 'D', array = cl_ee)
+    col5 = fits.Column(name = 'ANG', format = 'D', array = ell)
+    coldefs = fits.ColDefs([col1,col2,col3,col4,col5])
+    pseudo_cl_hdu = fits.BinTableHDU.from_columns(coldefs,name ='CELL_EE')
+
+    pseudo_cl_dict = {
+        '2PTDATA': 'T',
+        'QUANT1' : 'GEF',
+        'QUANT2' : 'P+R',
+        'KERNEL_1': 'NZ_SOURCE',
+        'KERNEL_2': 'NZ_SOURCE',
+        'WINDOWS': 'SAMPLE'
+    }
+
+    for key in pseudo_cl_dict:
+        pseudo_cl_hdu.header[key] = pseudo_cl_dict[key]
+
+    return pseudo_cl_hdu
+
+def cov_pseudo_cl_to_fits(filename):
+    cov_pseudo_cl = fits.open(filename)
+    cov_ee = cov_pseudo_cl["COVAR_EE_EE"]._data
+
+    cov_hdu = fits.ImageHDU(cov_ee)
+    cov_dict = {
+        'COVDATA': 'True',
+        'EXTNAME': 'COVMAT',
+        'NAME_0': 'CELL_EE',
+        'STRT_0': 0,
+    }
+
+    for key in cov_dict:
+        cov_hdu.header[key] = cov_dict[key]
+
+    return cov_hdu
 
 #transforms text file of CosmoCov data into covmat HDU extension
 def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
@@ -164,35 +210,52 @@ if __name__ == "__main__":
 #outputs nothing, but writes a new FITS file with appropriate extensions
     root = sys.argv[1]
     output_folder = sys.argv[2]
-    
-    two_pt_file_xip = output_folder+'/xi_plus_'+root+'.fits'
-    two_pt_file_xim = output_folder+'/xi_minus_'+root+'.fits'
-    cov_xi_file = sys.argv[3]        #in cosmocov combined txt format
-    nz_file = sys.argv[4]         #in cosmocov format
-    rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+root+'.fits'
+    nz_file = sys.argv[3]
     out_file = sys.argv[5]
-    use_tau_stats = sys.argv[6]
-    use_tau_stats = True if use_tau_stats == 'y' else False
-    tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+root+'.fits' if use_tau_stats else None
-    cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+root+'_th.npy' if use_tau_stats else None
 
-    
-    #create the required FITS extensions
-    print("Creating 2PT fits extension...\n")
-    if not (os.path.exists(two_pt_file_xip) and os.path.exists(two_pt_file_xim)):
-        raise FileNotFoundError("2pt files not found. Please run cosmo_val.py first.")
-    xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim)
-    if not os.path.exists(tau_stats_file):
-        raise Warning("Tau stats file not found. Please run cosmo_val.py first. Creating the FITS file without rho and tau statistics.")
-        use_tau_stats= False
-        cov_tau_file = None
-    if use_tau_stats:
-        print('Creating rho stats fits extension...\n')
-        rho_hdu = rho_to_fits(rho_stats_file)
-        print("Creating tau fits extensions...\n")
-        tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(tau_stats_file)
-    print("Creating CovMat fits extension...\n")
-    cov_hdu = covdat_to_fits(cov_xi_file, cov_tau_file)
+    use_pseudo_cell = sys.argv[4]
+    use_pseudo_cell = True if use_pseudo_cell == 'y' else False
+
+    if use_pseudo_cell:
+        pseudo_cl_file = output_folder+'/pseudo_cl_'+root+'.fits'
+        pseudo_cl_cov_file = output_folder+'/pseudo_cl_cov_'+root+'.fits'
+
+        print("Creating 2PT fits extension...\n")
+        if not os.path.exists(pseudo_cl_file):
+            raise FileNotFoundError("Pseudo-Cl file not found. Please run cosmo_val.py first.")
+        pseudo_cl_hdu = pseudo_cl_to_fits(pseudo_cl_file)
+        print("Creating CovMat fits extension...\n")
+        cov_hdu = cov_pseudo_cl_to_fits(pseudo_cl_cov_file)
+
+    else:
+        two_pt_file_xip = output_folder+'/xi_plus_'+root+'.fits'
+        two_pt_file_xim = output_folder+'/xi_minus_'+root+'.fits'
+        cov_xi_file = sys.argv[6]        #in cosmocov combined txt format
+                #in cosmocov format
+        rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+root+'.fits'
+        
+        use_tau_stats = sys.argv[7]
+        use_tau_stats = True if use_tau_stats == 'y' else False
+        tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+root+'.fits' if use_tau_stats else None
+        cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+root+'_th.npy' if use_tau_stats else None
+
+        
+        #create the required FITS extensions
+        print("Creating 2PT fits extension...\n")
+        if not (os.path.exists(two_pt_file_xip) and os.path.exists(two_pt_file_xim)):
+            raise FileNotFoundError("2pt files not found. Please run cosmo_val.py first.")
+        xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim)
+        if not os.path.exists(tau_stats_file):
+            raise Warning("Tau stats file not found. Please run cosmo_val.py first. Creating the FITS file without rho and tau statistics.")
+            use_tau_stats= False
+            cov_tau_file = None
+        if use_tau_stats:
+            print('Creating rho stats fits extension...\n')
+            rho_hdu = rho_to_fits(rho_stats_file)
+            print("Creating tau fits extensions...\n")
+            tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(tau_stats_file)
+        print("Creating CovMat fits extension...\n")
+        cov_hdu = covdat_to_fits(cov_xi_file, cov_tau_file)
     print("Creating n(z) fits extension...\n")
     nz_hdu = nz_to_fits(nz_file)
     
@@ -209,10 +272,13 @@ if __name__ == "__main__":
     
     #create final FITS HDU
     print("Writing out combined FITS file...\n")
-    if use_tau_stats:
-        hdu_list = [pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu, tau_0_p_hdu, tau_2_p_hdu, rho_hdu]
+    if use_pseudo_cell:
+        hdu_list = [pri_hdu, cov_hdu, nz_hdu, pseudo_cl_hdu]
     else:
-        hdu_list = [pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu]
+        if use_tau_stats:
+            hdu_list = [pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu, tau_0_p_hdu, tau_2_p_hdu, rho_hdu]
+        else:
+            hdu_list = [pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu]
     hdul = fits.HDUList(hdu_list)
     hdul.writeto(out_file,overwrite=True)
     print("FITS file written out to %s" %out_file)
