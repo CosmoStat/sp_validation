@@ -49,18 +49,8 @@ def _ccl_to_camb(cosmo):
     }
 
     # Handle normalization: prefer As, but convert sigma8 to As if needed
-    As_val = None
-    sigma8_val = None
-
-    try:
-        As_val = cosmo["A_s"]
-    except KeyError:
-        pass
-
-    try:
-        sigma8_val = cosmo["sigma8"]
-    except KeyError:
-        pass
+    As_val = cosmo.get("A_s")
+    sigma8_val = cosmo.get("sigma8")
 
     if As_val is not None and not np.isnan(As_val):
         # Use As directly
@@ -103,15 +93,9 @@ def _ccl_to_camb(cosmo):
         pass
 
     # Add dark energy parameters if they exist
-    try:
-        camb_params["w"] = cosmo["w0"]
-    except KeyError:
-        pass
-
-    try:
-        camb_params["wa"] = cosmo["wa"]
-    except KeyError:
-        pass
+    for camb_key, cosmo_key in [("w", "w0"), ("wa", "wa")]:
+        if cosmo_key in cosmo:
+            camb_params[camb_key] = cosmo[cosmo_key]
 
     return camb_params
 
@@ -236,17 +220,16 @@ def get_cosmo(
     Cosmology
         pyccl cosmology object
     """
-    # Check for Cosmocov parameters
-    if cosmocov_params is not None:
-        if camb_params is not None:
-            raise ValueError(
-                "Cannot provide both cosmocov_params and camb_params. "
-                "Choose one format."
-            )
-        else:
-            print("Using CosmoCov parameters to create CCL cosmology.")
-            ccl_params = _cosmocov_to_ccl(cosmocov_params)
+    # Check for parameter format conflicts
+    if cosmocov_params is not None and camb_params is not None:
+        raise ValueError(
+            "Cannot provide both cosmocov_params and camb_params. Choose one format."
+        )
 
+    # Convert parameters to CCL format
+    if cosmocov_params is not None:
+        print("Using CosmoCov parameters to create CCL cosmology.")
+        ccl_params = _cosmocov_to_ccl(cosmocov_params)
     elif camb_params is not None:
         print("Using CAMB parameters to create CCL cosmology.")
         ccl_params = _camb_to_ccl(camb_params)
@@ -278,13 +261,11 @@ def get_cosmo(
         "wa": ccl_params.get("wa", wa or planck_defaults["wa"]),
     }
 
-    cos = ccl.Cosmology(
+    return ccl.Cosmology(
         **combined_params,
         transfer_function=transfer_function,
         matter_power_spectrum=matter_power_spectrum,
     )
-
-    return cos
 
 
 def get_theo_c_ell(
@@ -480,7 +461,7 @@ def get_theo_xi(
     # Create ell array for C_ell calculation
     ell = np.geomspace(ell_min, ell_max, n_ell)
 
-    # Use provided cosmology object or create one from individual parameters
+    # Use provided cosmology or create from parameters
     if cosmo is None:
         cosmo = get_cosmo(
             Omega_m=Omega_m, Omega_b=Omega_b, h=h, sig8=sig8, ns=ns, **cosmo_kwargs
@@ -518,9 +499,8 @@ def stack_mm3(
     xx, yy = radec2xy(mean_ra, mean_dec, ra, dec)
     xx_clust, yy_clust = radec2xy(mean_ra, mean_dec, cluster_ra, cluster_dec)
 
-    # From Z to comobile
-    h = 0.7
-    cosmo = cosmology.FlatLambdaCDM(H0=h * 100.0, Om0=0.3)
+    # Hardcoded cosmology for angular diameter distance calculation
+    cosmo = cosmology.FlatLambdaCDM(H0=70.0, Om0=0.3)
 
     if tree is None:
         tree = cKDTree(np.array([xx, yy]).T)
@@ -541,6 +521,7 @@ def stack_mm3(
 
         ra_centered = (xx[ind_gal] - ra_c) / R_max_ang
         dec_centered = (yy[ind_gal] - dec_c) / R_max_ang
+
         if k == 0:
             all_ra = ra_centered
             all_dec = dec_centered
@@ -612,7 +593,7 @@ def gamma_T_tc(ra_pos, dec_pos, ra_cat, dec_cat, e1_cat, e2_cat, w_cat=None):
         dec_units="degrees",
     )
 
-    TreeCorrConfig = {
+    config = {
         "ra_units": "degrees",
         "dec_units": "degrees",
         "max_sep": 60,
@@ -621,7 +602,7 @@ def gamma_T_tc(ra_pos, dec_pos, ra_cat, dec_cat, e1_cat, e2_cat, w_cat=None):
         "nbins": 30,
     }
 
-    ng = treecorr.NGCorrelation(TreeCorrConfig)
+    ng = treecorr.NGCorrelation(config)
 
     ng.process(cat_pos, cat_gal)
 
@@ -667,7 +648,7 @@ def xi_gal_gal_tc(
         dec_units="degrees",
     )
 
-    TreeCorrConfig = {
+    config = {
         "ra_units": "degrees",
         "dec_units": "degrees",
         "sep_units": "arcminutes",
@@ -676,7 +657,7 @@ def xi_gal_gal_tc(
         "nbins": n_theta,
     }
 
-    ng = treecorr.GGCorrelation(TreeCorrConfig)
+    ng = treecorr.GGCorrelation(config)
 
     ng.process(cat_gal, cat_star)
 
@@ -714,18 +695,23 @@ def get_clusters(
     canfar.download(f"{vos_dir}/{cluster_cat_name}", out_path, verbose=verbose)
 
     cluster_cat = fits.getdata(out_path)
-    m_good_cluster = (cluster_cat["MSZ"] != 0) & (cluster_cat["COSMO"] == True)
+    m_good_cluster = (cluster_cat["MSZ"] != 0) & cluster_cat["COSMO"]
 
     m_cluster_foot = get_footprint(
         field_name,
         cluster_cat["RA"][m_good_cluster],
         cluster_cat["DEC"][m_good_cluster],
     )
+
+    # Apply both cuts at once
+    final_mask = m_good_cluster.copy()
+    final_mask[m_good_cluster] = m_cluster_foot
+
     cluster_cut = {
-        "ra": cluster_cat["RA"][m_good_cluster][m_cluster_foot],
-        "dec": cluster_cat["DEC"][m_good_cluster][m_cluster_foot],
-        "z": cluster_cat["REDSHIFT"][m_good_cluster][m_cluster_foot],
-        "M": cluster_cat["MSZ"][m_good_cluster][m_cluster_foot] * 1e14,
+        "ra": cluster_cat["RA"][final_mask],
+        "dec": cluster_cat["DEC"][final_mask],
+        "z": cluster_cat["REDSHIFT"][final_mask],
+        "M": cluster_cat["MSZ"][final_mask] * 1e14,
     }
 
     return cluster_cut
