@@ -18,11 +18,28 @@ def treecorr_to_fits(filename1, filename2):
     return xiplus_hdu[1], ximinus_hdu[1]
 
 
-def tau_to_fits(filename):
-
+def tau_to_fits(filename, theta=None):
+    """
+    Convert tau statistics to CosmoSIS FITS format.
+    
+    Parameters:
+    filename : str
+        Path to tau statistics FITS file
+    theta : array-like, optional
+        Angular separation values to use. If provided, overrides the theta values
+        from the tau statistics file. This is useful for forcing consistency with
+        xi correlation function angular separations.
+    """
     tau_stats = fits.getdata(filename)
 
-    ang = tau_stats["theta"]
+    # Use provided theta if given, otherwise use tau's original theta values
+    if theta is not None:
+        ang = theta
+        print(f"Using provided theta values for tau statistics (forcing consistency)")
+    else:
+        ang = tau_stats["theta"]
+        print(f"Using original tau theta values")
+    
     nbins = len(ang)
     lst = np.arange(1, nbins + 1)
 
@@ -162,10 +179,33 @@ def nz_to_fits(filename):
     return nz_hdu
 
 
-def rho_to_fits(filename):
-    rho_stat_hdu = fits.open(filename)
-    rho_stat_hdu[1].name = "RHO_STATS"
-    return rho_stat_hdu[1]
+def rho_to_fits(filename, theta=None):
+    """
+    Convert rho statistics to CosmoSIS FITS format.
+    
+    Parameters:
+    filename : str
+        Path to rho statistics FITS file
+    theta : array-like, optional
+        Angular separation values to use. If provided, replaces the theta values
+        in the rho statistics file. This is useful for forcing consistency with
+        xi correlation function angular separations.
+    """
+    rho_stat_hdul = fits.open(filename)
+    rho_stat_hdu = rho_stat_hdul[1].copy()  # Create a copy to avoid modifying the original
+    rho_stat_hdu.name = "RHO_STATS"
+    
+    # Force rho to use provided theta if given
+    if theta is not None:
+        print(f"Forcing rho statistics to use provided theta values (forcing consistency)")
+        # Update the theta column in the data
+        rho_stat_hdu.data = rho_stat_hdu.data.copy()  # Make data writable
+        rho_stat_hdu.data['theta'] = theta
+    else:
+        print(f"Using original rho theta values")
+    
+    rho_stat_hdul.close()  # Close the original file
+    return rho_stat_hdu
 
 
 if __name__ == "__main__":
@@ -230,6 +270,10 @@ if __name__ == "__main__":
             f"2pt files not found. Expected files:\n{two_pt_file_xip}\n{two_pt_file_xim}\nPlease run cosmo_val.py first to generate these files."
         )
     xip_hdu, xim_hdu = treecorr_to_fits(str(two_pt_file_xip), str(two_pt_file_xim))
+    
+    # Extract xi meanr for consistency enforcement
+    xi_theta = xip_hdu.data['ANG']  # xi uses 'ANG' column for meanr
+    
     if tau_stats_file is None or not tau_stats_file.exists():
         print(f"Tau stats file not found: {tau_stats_file}")
         print(
@@ -238,10 +282,46 @@ if __name__ == "__main__":
         use_tau_stats = False
         cov_tau_file = None
     if use_tau_stats:
+        # Load original theta values for validation
+        tau_stats = fits.getdata(str(tau_stats_file))
+        rho_stats = fits.getdata(str(rho_stats_file))
+        tau_theta = tau_stats['theta']
+        rho_theta = rho_stats['theta']
+        
+        # Validate theta consistency and report differences
+        print("=" * 60)
+        print("MEANR CONSISTENCY CHECK")
+        print("=" * 60)
+        
+        # Calculate relative differences
+        tau_diff = np.abs((tau_theta - xi_theta) / xi_theta) * 100
+        rho_diff = np.abs((rho_theta - xi_theta) / xi_theta) * 100
+        
+        print(f"Xi theta range: {xi_theta.min():.6f} - {xi_theta.max():.6f} arcmin")
+        print(f"Tau theta range: {tau_theta.min():.6f} - {tau_theta.max():.6f} arcmin")
+        print(f"Rho theta range: {rho_theta.min():.6f} - {rho_theta.max():.6f} arcmin")
+        print()
+        print(f"Max tau-xi relative difference: {tau_diff.max():.3f}%")
+        print(f"Mean tau-xi relative difference: {tau_diff.mean():.3f}%")
+        print(f"Max rho-xi relative difference: {rho_diff.max():.3f}%")
+        print(f"Mean rho-xi relative difference: {rho_diff.mean():.3f}%")
+        
+        # Check for excessive differences
+        max_allowed_diff = 5.0  # 5% threshold
+        if tau_diff.max() > max_allowed_diff:
+            raise ValueError(f"Tau-xi meanr difference exceeds {max_allowed_diff}%: {tau_diff.max():.3f}%")
+        if rho_diff.max() > max_allowed_diff:
+            raise ValueError(f"Rho-xi meanr difference exceeds {max_allowed_diff}%: {rho_diff.max():.3f}%")
+        
+        print(f"✓ All differences below {max_allowed_diff}% threshold")
+        print("✓ Forcing rho and tau to use xi meanr values for consistency")
+        print("=" * 60)
+        print()
+        
         print("Creating rho stats fits extension...\n")
-        rho_hdu = rho_to_fits(str(rho_stats_file))
+        rho_hdu = rho_to_fits(str(rho_stats_file), theta=xi_theta)
         print("Creating tau fits extensions...\n")
-        tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(str(tau_stats_file))
+        tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(str(tau_stats_file), theta=xi_theta)
     print("Creating CovMat fits extension...\n")
     cov_hdu = covdat_to_fits(cov_xi_file, str(cov_tau_file) if cov_tau_file else None)
     print("Creating n(z) fits extension...\n")
