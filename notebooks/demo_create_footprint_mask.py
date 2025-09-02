@@ -66,7 +66,7 @@ for section, mask_list in config_data.items():
         if mask_params["col_name"] in all_masks_bits:
             bits = bits | all_masks_bits[mask_params["col_name"]]
             
-        # Check auxillary masks
+        # Check auxiliary masks
         if "npoint3" == mask_params["col_name"]:
             auxiliary_masks.append(f"{obj._params['mask_dir']}/coverage.hsp")
             auxiliary_labels.append("npoint3")
