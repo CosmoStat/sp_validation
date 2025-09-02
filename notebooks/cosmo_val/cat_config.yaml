@@ -687,10 +687,10 @@ SP_v1.4.5:
    marker: d
    getdist_colour: 0.0, 0.5, 1.0
    cov_th:
-      A: 2420.2651014497287 #deg^2
-      n_e: 7.040818382014773 #arcmin-2
+      A: 2782 #deg^2
+      n_e: 7.18 #arcmin-2
       n_psf: 0.752316232272063 #arcmin-2
-      sigma_e: 0.30961528707207325
+      sigma_e: 0.4370966656902571
    shear:
       path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
@@ -698,7 +698,7 @@ SP_v1.4.5:
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w_col: w_iv
+      w_col: w_des
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
@@ -946,10 +946,10 @@ SP_v1.4.5_glass_mock:
    marker: d
    getdist_colour: 0.0, 0.5, 1.0
    cov_th:
-      A: 2420.2651014497287 #deg^2
-      n_e: 7.040818382014773 #arcmin-2
+      A: 2782 #deg^2
+      n_e: 7.18 #arcmin-2
       n_psf: 0.752316232272063 #arcmin-2
-      sigma_e: 0.30961528707207325
+      sigma_e: 0.4370966656902571
    shear:
       path: unions_v1.4.5_glass_mock.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
@@ -1032,10 +1032,10 @@ SP_v1.4.5_leak_corr:
    marker: d
    getdist_colour: 0.0, 0.5, 1.0
    cov_th:
-      A: 2420.2651014497287 #deg^2
-      n_e: 7.040818382014773 #arcmin-2
+      A: 2782 #deg^2
+      n_e: 7.18 #arcmin-2
       n_psf: 0.752316232272063 #arcmin-2
-      sigma_e: 0.30961528707207325
+      sigma_e: 0.4370966656902571
    shear:
       path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
