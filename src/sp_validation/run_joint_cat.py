@@ -1238,7 +1238,6 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     plot_area_mask(ra, dec, zoom, mask=m_halos)
         
 
-
 def plot_area_mask(ra, dec, zoom, mask=None):
     """Plot Area Mask.
     
