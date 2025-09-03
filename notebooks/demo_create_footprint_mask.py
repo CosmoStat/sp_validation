@@ -39,7 +39,7 @@ obj = sp_joint.ApplyHspMasks()
 
 # Set parameters
 obj._params["mask_dir"] = f"{os.environ['HOME']}/masks"
-obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage.hsp"
+obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_v1.4.x.hsp"
 obj._params["aux_mask_labels"] = "npoint3"
 obj._params["verbose"] = True
 
@@ -68,7 +68,7 @@ for section, mask_list in config_data.items():
             
         # Check auxiliary masks
         if "npoint3" == mask_params["col_name"]:
-            auxiliary_masks.append(f"{obj._params['mask_dir']}/coverage.hsp")
+            auxiliary_masks.append(obj._params["aux_mask_files"])
             auxiliary_labels.append("npoint3")
 
 # Update bits for following function call
