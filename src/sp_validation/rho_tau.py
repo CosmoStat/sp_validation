@@ -343,40 +343,89 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
         )
 
         return rho_stat_handler, tau_stat_handler
+    
+    params = get_params_rho_tau(config[version], survey=version)
+
+    rho_stat_handler = RhoStat(
+        output=outdir, treecorr_config=treecorr_config, verbose=False
+    )
+
+    out_base = f"rho_stats_{version}.fits"
+
+    rho_stat_handler.catalogs.set_params(params, outdir)
+
+    mask = version != "DES"
+    square_size = params["square_size"]
+
+    tau_stat_handler = TauStat(
+        catalogs=rho_stat_handler.catalogs,
+        output=outdir,
+        treecorr_config=treecorr_config,
+        verbose=True,
+    )
+
+    out_base = f"tau_stats_{version}.fits"
+
+    tau_stat_handler.catalogs.set_params(params, outdir)
 
     for i in range(ncov):
 
         if not (
             os.path.exists(outdir + "/cov_tau_" + version + str(i) + ".npy")
             and os.path.exists(outdir + "/cov_rho_" + version + str(i) + ".npy")
-        ):
-
-            params = get_params_rho_tau(config[version], survey=version)
-
-            rho_stat_handler = RhoStat(
-                output=outdir, treecorr_config=treecorr_config, verbose=False
-            )
-
-            out_base = f"rho_stats_{version}.fits"
-            out_path = f"{outdir}/{out_base}"
+        ):   
 
             print(
                 f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}"
             )
 
-            rho_stat_handler.catalogs.set_params(params, outdir)
+            if (
+                f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict.keys()
+            ):
+                
+                # Build catalogues
+                rho_stat_handler.build_cat_to_compute_rho(
+                    config[version]["psf"]["path"],
+                    catalog_id=version + str(i),
+                    square_size=square_size,
+                    mask=False,
+                    hdu=config[version]["psf"]["hdu"],
+                )
 
-            mask = version != "DES"
-            square_size = params["square_size"]
+                tau_stat_handler.catalogs.catalogs_dict = rho_stat_handler.catalogs.catalogs_dict
 
-            # Build catalogues
-            rho_stat_handler.build_cat_to_compute_rho(
-                config[version]["psf"]["path"],
-                catalog_id=version + str(i),
-                square_size=square_size,
-                mask=mask,
-                hdu=config[version]["psf"]["hdu"],
-            )
+                # Build the catalog of galaxies. PSF was computed above
+                tau_stat_handler.build_cat_to_compute_tau(
+                    config[version]["shear"]["path"],
+                    cat_type="gal",
+                    catalog_id=version + str(i),
+                    square_size=square_size,
+                    mask=False,
+                )
+
+            else:
+                print(
+                    f"Computing the patch centers for patch {i+1}/{ncov}"
+                )
+
+                npatch = rho_stat_handler.catalogs._params["patch_number"]
+                field = rho_stat_handler.catalogs.catalogs_dict[f"psf_{version}{i}"].getNField(max_top=int.bit_length(npatch)-1, coords='spherical')
+                patch, centers = field.run_kmeans(npatch)
+
+                #Update the patch centers of the catalogs
+                for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
+                    cat._centers = centers
+                    field = cat.getNField(max_top=int.bit_length(npatch)-1, coords='spherical')
+                    field.kmeans_assign_patches(centers)
+                    cat._patch = patch
+                    
+                cat = tau_stat_handler.catalogs.catalogs_dict["gal_" + version + str(i)]
+                cat._centers = centers
+                field = cat.getNField(max_top=int.bit_length(npatch)-1, coords='spherical')
+                field.kmeans_assign_patches(centers)
+                cat._patch = patch
+
+            out_base = f"rho_stats_{version}.fits"
 
             # Compute and save rho stats
             only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
@@ -388,43 +437,7 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
                 var_method="jackknife",
             )
 
-            tau_stat_handler = TauStat(
-                catalogs=rho_stat_handler.catalogs,
-                output=outdir,
-                treecorr_config=treecorr_config,
-                verbose=True,
-            )
-
             out_base = f"tau_stats_{version}.fits"
-            out_path = f"{outdir}/{out_base}"
-
-            tau_stat_handler.catalogs.set_params(params, outdir)
-
-            mask = version != "DES"
-
-            square_size = params["square_size"]
-
-            # Build the different catalogs if necessary
-            if (
-                f"psf_{version}{i}"
-                not in tau_stat_handler.catalogs.catalogs_dict.keys()
-            ):
-                tau_stat_handler.build_cat_to_compute_tau(
-                    config[version]["psf"]["path"],
-                    cat_type="psf",
-                    catalog_id=version,
-                    square_size=square_size,
-                    mask=mask,
-                )
-
-            # Build the catalog of galaxies. PSF was computed above
-            tau_stat_handler.build_cat_to_compute_tau(
-                config[version]["shear"]["path"],
-                cat_type="gal",
-                catalog_id=version + str(i),
-                square_size=square_size,
-                mask=mask,
-            )
 
             # function to extract the tau_+
             only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
@@ -436,16 +449,21 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
                 var_method="jackknife",
             )
 
-            if (i + 1) != ncov:
-                del rho_stat_handler, tau_stat_handler
+            #Update the keys in the dictionaries
+            rho_stat_handler.catalogs.catalogs_dict[f"psf_{version}{i+1}"] = rho_stat_handler.catalogs.catalogs_dict.pop(f"psf_{version}{i}")
+            rho_stat_handler.catalogs.catalogs_dict[f"psf_error_{version}{i+1}"] = rho_stat_handler.catalogs.catalogs_dict.pop(f"psf_error_{version}{i}")
+            rho_stat_handler.catalogs.catalogs_dict[f"psf_size_error_{version}{i+1}"] = rho_stat_handler.catalogs.catalogs_dict.pop(f"psf_size_error_{version}{i}")
+            tau_stat_handler.catalogs.catalogs_dict[f"gal_{version}{i+1}"] = tau_stat_handler.catalogs.catalogs_dict.pop(f"gal_{version}{i}")
 
-    cov_tau_loc = np.zeros((60, 60))
-    cov_rho_loc = np.zeros((120, 120))
+    cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{version}0.npy"))
+    cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{version}0.npy"))
     for i in range(ncov):
         cov_tau_loc += np.load(outdir + f"/cov_tau_{version}{i}.npy")
         cov_rho_loc += np.load(outdir + f"/cov_rho_{version}{i}.npy")
         os.remove(outdir + f"/cov_tau_{version}{i}.npy")
         os.remove(outdir + f"/cov_rho_{version}{i}.npy")
+        os.remove(outdir + f"/tau_stats_{version}{i}.fits")
+        os.remove(outdir + f"/rho_stats_{version}{i}.fits")
 
     cov_tau = cov_tau_loc / ncov
     cov_rho = cov_rho_loc / ncov
