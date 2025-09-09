@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -38,9 +38,9 @@ obj = sp_joint.BaseCat()
 
 # +
 # Set parameters
-base = "unions_shapepipe_comprehensive_empty_ugriz"
+base = "unions_shapepipe_comprehensive_struc_empty_ugriz"
 year = 2024
-ver = "v1.5.c.P37"
+ver = "v1.5.c"
 
 obj._params = {}
 
@@ -49,7 +49,7 @@ obj._params["output_path"] = obj._params["input_path"].replace("_empty", "")
 obj._params["verbose"] = True
 
 # +
-path_bands = "../UNIONS5000"
+path_bands = "./UNIONS5000"
 subdir_base = "UNIONS."
 
 path_base = subdir_base
@@ -58,9 +58,23 @@ path_suff = "_SP_ugriz_photoz_ext.cat"
 # NUMBER key in photo-z catalogue
 key_num = "SeqNr"
 
-keys_mag = [f"MAG_GAAP_0p7_{band}" for band in ("u", "g", "r", "i", "z", "z2")]
+bands = ("u", "g", "r", "i", "z", "z2")
+base_keys = ["MAGERR_GAAP", "FLUX_GAAP", "FLUXERR_GAAP", "FLAG_GAAP", "MAG_LIM"]
+keys_mag = [f"MAG_GAAP_0p7_{band}" for band in bands]
+for base_key in base_keys:
+    keys_mag.extend([f"_{base_key}_{band}" for band in bands])
 
-keys = ["Z_B", "Z_B_MIN", "Z_B_MAX", "T_B"] + keys_mag
+keys = [
+    "EXTINCTION",
+    "MP_NAME",
+    "Z_B",
+    "Z_B_MIN",
+    "Z_B_MAX"
+    "T_B",
+    "ODDS",
+] + keys_mag
+
+print(f"Using {len(keys)} columns from PhotoPipe")
 
 hdu_no = 1
 # -
