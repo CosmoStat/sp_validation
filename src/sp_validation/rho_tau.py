@@ -462,8 +462,6 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
         cov_rho_loc += np.load(outdir + f"/cov_rho_{version}{i}.npy")
         os.remove(outdir + f"/cov_tau_{version}{i}.npy")
         os.remove(outdir + f"/cov_rho_{version}{i}.npy")
-        os.remove(outdir + f"/tau_stats_{version}{i}.fits")
-        os.remove(outdir + f"/rho_stats_{version}{i}.fits")
 
     cov_tau = cov_tau_loc / ncov
     cov_rho = cov_rho_loc / ncov
