@@ -8,6 +8,7 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")                             
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("load_ext", "log_cell_time")
+    ipython.run_line_magic("matplotlib", "inline")
 
 # %%
 import sys
@@ -18,6 +19,8 @@ import matplotlib.pylab as plt
 import healpy as hp
 import healsparse as hsp
 
+from cs_util import plots as cs_plots
+
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
 from sp_validation.basic import metacal
@@ -25,7 +28,7 @@ from sp_validation import calibration
 import sp_validation.cat as cat
 
 # %%
-# Initialize calibration class instance
+# Initialize calibration class instance (for config and data)
 obj = sp_joint.CalibrateCat()
 
 # %%
@@ -35,27 +38,58 @@ config = obj.read_config_set_params("config_mask.yaml")
 # %%
 # Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
+
 # %%
+n_tot = -1
+#n_tot = 10_000_000
+if n_tot > 0:
+    print(f"MKDEBUG: Only using {n_tot} objects for testing")
+    dat = dat[:n_tot]
+    dat_ext = dat_ext[:n_tot]
+else:
+    print(f"Using all {len(dat)} objects")
+
+# %%
+# Additional parameters
 key_ra = "RA"
 key_dec = "Dec"
+
+nside_min = 512
+nside_max = 16384
+
 
 # %%
 # Create healsparse mask instance
 hsp_obj = sp_joint.ApplyHspMasks()
 
-# %% Mask directory
+# %% Mask directory and aux mask file(s)
 hsp_obj._params["mask_dir"] = f"{os.environ['HOME']}/masks"
+hsp_obj._params["aux_mask_files"] = f"{hsp_obj._params['mask_dir']}/mask_r_nside131072_npoint.hsp" 
+hsp_obj._params["aux_mask_labels"] = "npoint3"                                       
+hsp_obj._params["verbose"] = True 
+
 # %%
 # Masks to use
 
 # Bits
-hsp_obj._params["bits"] = 64
+hsp_obj._params["bits"] = 1+2+4+8+64+1024
+
+# Index of base mask (e.g., coverage mask)
+label_base_mask = "npoint3"
+#label_base_mask = ""
 
 # Names
 masks_to_apply = [
+    "npoint3",
+    "1_Faint_star_halos",
+    "2_Bright_star_halos",
+    "4_Stars",
+    "8_Manual",
     "64_r",
+    "1024_Maximask",
 ]
 
+# Load and initialise masks
 masks, labels = sp_joint.get_masks_from_config(
     config,
     dat,
@@ -65,81 +99,29 @@ masks, labels = sp_joint.get_masks_from_config(
 )
 
 # %%
-def get_areas(hsp_obj, masks):
-    
-    areas_deg2 = []
+# if base mask: apply to all other masks
+if label_base_mask != "":
 
+    print(f"Applying base mask {label_base_mask} to all other masks:")
 
-    # Path to mask file(s)
-    paths = hsp_obj.get_paths_bit_masks()
+    # Find base mask
+    for mask in masks:
+        if mask._col_name == label_base_mask:
+            base_mask = mask._mask
+            break
 
-    for key, mask in zip(paths, masks):
-        print(f"Reading hsp mask file {paths[key]}...")
-        hsp_mask = hsp.HealSparseMap.read(paths[key])
+    # Mask all others
+    for mask in masks:
+        if mask._col_name != label_base_mask:
+            mask._mask = mask._mask & base_mask
+            print(mask._col_name, "#True = ", sum(mask._mask), f"({100*sum(mask._mask)/len(mask._mask):.2f}%)") 
+else:
+    print("No base mask applied.")
 
-        print(f"sentinel = {hsp_mask.sentinel}")
-
-        # Pixel area
-        pix_area_deg2 = hp.nside2pixarea(hsp_mask.nside_sparse, degrees=True)
-
-        # Check total area
-        Npix = hp.nside2npix(hsp_mask.nside_sparse)
-        A_tot_deg2 = Npix * pix_area_deg2
-        print(f"Total area: {A_tot_deg2:.3f} deg^2")
-
-        nside_frac = hsp_mask.nside_coverage * 2
-
-        fracdet = hsp_mask.fracdet_map(nside_frac)
-        vals = fracdet.get_values_pix(fracdet.valid_pixels).astype(float)
-        pix_area_deg2_frac = hp.nside2pixarea(nside_frac, degrees=True)
-        area_unmasked_deg2 = vals.sum() * pix_area_deg2_frac
-        area_footprint_deg2 = (vals > 0).sum() * pix_area_deg2_frac
-        print(f"Unmasked ≈ {area_unmasked_deg2:.1f} deg²")
-        print(f"Footprint ≈ {area_footprint_deg2:.1f} deg²")
-
-        cov_mask = hsp_mask.coverage_mask
-        npop_pix = np.count_nonzero(cov_mask)
-        area_deg2 = npop_pix * pix_area_deg2
-        print(f"{mask._col_name}: Area of coverage: {area_deg2:.3f} deg^2")
-
-        # Get valid (active) pixels and convert to array
-        vals = hsp_mask.get_values_pix(hsp_mask.valid_pixels)
-        n_valid = len(vals)
-        area_deg2 = n_valid * pix_area_deg2
-        print(f"{mask._col_name}: Area of valid pixels: {area_deg2:.3f} deg^2")
-
-
-        # TODO: Use class Mask evaluation and config file entries
-        #if mask._value == True:
-            #n_unmasked = int(np.count_nonzero(vals))
-        #elif mask._value == False:
-            #n_unmasked = int(np.count_nonzero(vals == False))
-        #else:
-            #print("Not implemented yet:", mask._value)
-
-
-        # Testing
-        for value in (True, False):
-            n_unmasked = int(np.count_nonzero(vals == value))
-
-            # Footprint area
-            area_deg2 = n_unmasked * pix_area_deg2
-
-            print(f"{mask._col_name}: Area with value={value}: {area_deg2:.3f} deg^2")
-
-        areas_deg2.append(area_deg2)
-        
-    return areas_deg2
-
-# %%
-areas_deg2 = get_areas(hsp_obj, masks)
-# %%
 # Bin data
-for mask in masks:
-    mask.apply(dat_ext)
-    
 
 # %%
+# TODO: to cs_util
 def get_binned_area(ra, dec, nside=512):
     
     # Pixel list of input data
@@ -153,20 +135,134 @@ def get_binned_area(ra, dec, nside=512):
 
     # Footprint area
     area_deg2 = Nocc * pix_area_deg2
-    
 
     return area_deg2
 
+# Create array of nsides between min and max with powers of two
+nsides = np.array([2**i for i in range(int(np.log2(nside_min)), int(np.log2(nside_max))+1)])
+
 # %%
+areas_binned_deg2 = {}
 for mask in masks:
-    print("Mask:", mask._col_name)
-    ra = dat[key_ra][mask._mask]
-    dec = dat[key_dec][mask._mask]
+
+    print(f"Mask: {mask._col_name}")
+    areas_binned_deg2[mask._col_name] = {}
+ 
+    # Apply mask to positions
+    m = mask._mask
+
+    ra = dat[key_ra][m]
+    dec = dat[key_dec][m]
     
-    for nside in [256, 512, 1024]:
-       
-        area_binned_deg2 = get_binned_area(ra, dec, nside=nside)
-        print(f"binned area (nside={nside}) ≈ {area_binned_deg2:.3f} deg^2")
+    for nside in nsides:
+
+            area_binned_deg2 = get_binned_area(ra, dec, nside=nside)
+            print(f"binned area (nside={nside}) ≈ {area_binned_deg2:.3f} deg^2")
+            areas_binned_deg2[mask._col_name][nside] = area_binned_deg2
+
 # %%
-print(areas_deg2)
+markers = ['o', 's', '^', 'v', 'D', 'x', '*']
+fig, ax = plt.subplots(figsize=(8,8))
+plt.xticks(nsides, nsides)
+for idx, mask in enumerate(masks):
+    label = mask._col_name
+    area_dict = areas_binned_deg2[label]
+    nsides = np.array(list(area_dict.keys()))
+    dx = cs_plots.dx(idx, len(masks))
+    areas = np.array(list(area_dict.values()))
+    ax.plot(nsides * dx, areas, marker=markers[idx], label=label)
+plt.legend()
+plt.xlabel("nside")
+plt.ylabel("binned area [deg²]")
+_ = plt.setp(ax.get_xticklabels(), rotation=90, ha="right", rotation_mode="anchor")
+cs_plots.savefig("binned_areas.png")
+
+
+# %%
+def get_hsp_areas(hsp_obj, masks):
+
+    areas_deg2 = {}
+
+    # Path to mask file(s)
+    paths = hsp_obj.get_paths_bit_masks()
+
+    # Fix: iterate correctly over paths and masks
+    for mask, (key, path) in zip(masks, paths.items()):
+        print(f"Reading hsp mask file {path}...")
+        hsp_mask = hsp.HealSparseMap.read(path)
+
+        # Sparse pixel area
+        pix_area_deg2 = hp.nside2pixarea(hsp_mask.nside_sparse, degrees=True)
+
+        # Coverage pixel area
+        cov_pix_area_deg2 = hp.nside2pixarea(hsp_mask.nside_coverage, degrees=True)
+
+        # Get footprint
+        cov_mask = hsp_mask.coverage_mask
+        npop_pix = np.count_nonzero(cov_mask)
+        area_coverage_deg2 = npop_pix * cov_pix_area_deg2
+        print(f"{mask._col_name}: Area of coverage: {area_coverage_deg2:.3f} deg^2")
+
+        area_deg2 = hsp_mask.get_valid_area(degrees=True)
+        print(f"{mask._col_name}: Valid area {area_deg2:.3f} deg^2")
+
+        # Calculate fractional area using coverage map
+            
+        # Get coverage pixels and their values
+        coverage_pixels = np.where(cov_mask)[0]
+        if len(coverage_pixels) <= 0:
+            raise ValueError(f"No coverage found for {mask._col_name}")
+
+        areas_deg2[mask._col_name] = (area_coverage_deg2, area_deg2)
+
+    return areas_deg2
+
+# %%
+# Previous function
+#areas_deg2 = get_hsp_areas(hsp_obj, masks)
+
+# %%
+# With coverage
+area_wcov_deg2 = {}
+if True:
+    coverage = hsp.HealSparseMap.read(hsp_obj._params["aux_mask_files"])
+    area_coverage = coverage.get_valid_area(degrees=True)
+
+    paths = hsp_obj.get_paths_bit_masks()
+    for bit, path in paths.items():
+        print(bit, path)
+        hsp_mask = hsp.HealSparseMap.read(path)
+        hsp_mask_wcov = coverage & (~hsp_mask)
+        
+        key = hsp_obj.get_mask_col_name(bit)
+        area_wcov_deg2[key] = hsp_mask_wcov.get_valid_area(degrees=True)
+
+# %%
+area_wcov_deg2["npoint3"] = area_coverage
+# %%
+area_wcov_deg2
+# %%
+markers = ['o', 's', '^', 'v', 'D', 'x', '*']
+ls = ['dashed', 'dotted', 'dashdot', 'solid', (0, (3, 1, 1, 1)), (0, (5, 10)), (0, (1, 10))]
+fig, ax = plt.subplots(figsize=(8,8))
+plt.xticks(nsides, nsides)
+for idx, mask in enumerate(masks):
+    label = mask._col_name
+    area_dict = areas_binned_deg2[label]
+    nsides = np.array(list(area_dict.keys()))
+    dx = cs_plots.dx(idx, len(masks))
+    areas = np.array(list(area_dict.values()))
+    ax.plot(nsides * dx, areas, marker=markers[idx], label=label, linestyle=ls[idx])
+    ax.hlines(
+        area_wcov_deg2[label],
+        nsides[0]*0.8,
+        nsides[-1]*1.1,
+        colors='C'+str(idx),
+        linestyles=ls[idx],
+    )
+plt.legend()
+plt.xlabel("nside")
+plt.ylabel("binned area [deg²]")
+_ = plt.setp(ax.get_xticklabels(), rotation=90, ha="right", rotation_mode="anchor")
+cs_plots.savefig("binned_hsp_areas.png")
 # %%

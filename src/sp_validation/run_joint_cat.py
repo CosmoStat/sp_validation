@@ -1600,7 +1600,6 @@ def get_masks_from_config(
 
         # Loop over mask information in this section
         for mask_params in mask_list:
-            value = mask_params["value"]
 
             use_this_mask = False            
             if masks_to_apply is not None:
@@ -1611,6 +1610,7 @@ def get_masks_from_config(
                     
             if use_this_mask:
                 # Ensure 'range' kind has exactly two values
+                value = mask_params["value"]
                 if mask_params["kind"] == "range" and (
                     not isinstance(value, list) or len(value) != 2
                 ):
