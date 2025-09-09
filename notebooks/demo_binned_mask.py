@@ -40,17 +40,6 @@ config = obj.read_config_set_params("config_mask.yaml")
 # %%
 # Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
-
-# %%
-n_tot = -1
-#n_tot = 10_000_000
-if n_tot > 0:
-    print(f"MKDEBUG: Only using {n_tot} objects for testing")
-    dat = dat[:n_tot]
-    dat_ext = dat_ext[:n_tot]
-else:
-    print(f"Using all {len(dat)} objects")
-
 # %%
 # Additional parameters
 key_ra = "RA"
@@ -58,7 +47,6 @@ key_dec = "Dec"
 
 nside_min = 512
 nside_max = 16384
-
 
 # %%
 # Create healsparse mask instance
@@ -189,10 +177,11 @@ def save_areas(areas_deg2, filename):
 # Get area of hsp masks
 area_wcov_deg2 = {}
 if True:
-    # Coverage = read aux file mask
-    coverage = hsp.HealSparseMap.read(hsp_obj._params["aux_mask_files"])
-    area_coverage = coverage.get_valid_area(degrees=True)
-    area_wcov_deg2["npoint3"] = area_coverage
+    if label_base_mask != "":
+        # Coverage = read aux file mask
+        coverage = hsp.HealSparseMap.read(hsp_obj._params["aux_mask_files"])
+        area_coverage = coverage.get_valid_area(degrees=True)
+        area_wcov_deg2["npoint3"] = area_coverage
 
     # Loop over other, bit-coded masks
     paths = hsp_obj.get_paths_bit_masks()
@@ -200,9 +189,12 @@ if True:
         print(bit, path)
         hsp_mask = hsp.HealSparseMap.read(path)
         
-        # Apply coverage mask
-        hsp_mask_wcov = coverage & (~hsp_mask)
-        
+        if label_base_mask != "":
+            # Apply coverage mask
+            hsp_mask_wcov = coverage & (~hsp_mask)
+        else:
+            hsp_mask_wcov = ~hsp_mask
+
         key = hsp_obj.get_mask_col_name(bit)
         area_wcov_deg2[key] = hsp_mask_wcov.get_valid_area(degrees=True)
 
@@ -233,7 +225,9 @@ _ = plt.setp(ax.get_xticklabels(), rotation=90, ha="right", rotation_mode="ancho
 # %%
 cs_plots.savefig("binned_hsp_areas.png")
 # %%
+# Add hsp values to dict of binned catalogue with new "hsp" key
 for key in areas_deg2:
     areas_deg2[key]["hsp"] = area_wcov_deg2[key]
 # %%
+# Write to disk
 save_areas(areas_deg2, "areas.txt")
