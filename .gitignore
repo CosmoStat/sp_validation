@@ -170,3 +170,5 @@ notebooks/leakage_minimal.ipynb
 notebooks/mask_fits2hsparse.ipynb
 notebooks/mask_fits2hsparse_test.ipynb
 notebooks/create_shear_mb_empty.ipynb
+notebooks/demo_add_bands.ipynb
+notebooks/demo_add_bands_to_empty.ipynb
