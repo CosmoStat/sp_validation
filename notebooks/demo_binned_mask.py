@@ -8,6 +8,8 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")                             
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("load_ext", "log_cell_time")
+# %%
+if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # %%
@@ -142,11 +144,11 @@ def get_binned_area(ra, dec, nside=512):
 nsides = np.array([2**i for i in range(int(np.log2(nside_min)), int(np.log2(nside_max))+1)])
 
 # %%
-areas_binned_deg2 = {}
+areas_deg2 = {}
 for mask in masks:
 
     print(f"Mask: {mask._col_name}")
-    areas_binned_deg2[mask._col_name] = {}
+    areas_deg2[mask._col_name] = {}
  
     # Apply mask to positions
     m = mask._mask
@@ -156,99 +158,63 @@ for mask in masks:
     
     for nside in nsides:
 
-            area_binned_deg2 = get_binned_area(ra, dec, nside=nside)
-            print(f"binned area (nside={nside}) ≈ {area_binned_deg2:.3f} deg^2")
-            areas_binned_deg2[mask._col_name][nside] = area_binned_deg2
+            area_deg2 = get_binned_area(ra, dec, nside=nside)
+            print(f"binned area (nside={nside}) ≈ {area_deg2:.3f} deg^2")
+            areas_deg2[mask._col_name][nside] = area_deg2
 
 # %%
-markers = ['o', 's', '^', 'v', 'D', 'x', '*']
-fig, ax = plt.subplots(figsize=(8,8))
-plt.xticks(nsides, nsides)
-for idx, mask in enumerate(masks):
-    label = mask._col_name
-    area_dict = areas_binned_deg2[label]
-    nsides = np.array(list(area_dict.keys()))
-    dx = cs_plots.dx(idx, len(masks))
-    areas = np.array(list(area_dict.values()))
-    ax.plot(nsides * dx, areas, marker=markers[idx], label=label)
-plt.legend()
-plt.xlabel("nside")
-plt.ylabel("binned area [deg²]")
-_ = plt.setp(ax.get_xticklabels(), rotation=90, ha="right", rotation_mode="anchor")
-cs_plots.savefig("binned_areas.png")
+def save_areas(areas_deg2, filename):
+    """Save areas to a ASCII file.
 
-
-# %%
-def get_hsp_areas(hsp_obj, masks):
-
-    areas_deg2 = {}
-
-    # Path to mask file(s)
-    paths = hsp_obj.get_paths_bit_masks()
-
-    # Fix: iterate correctly over paths and masks
-    for mask, (key, path) in zip(masks, paths.items()):
-        print(f"Reading hsp mask file {path}...")
-        hsp_mask = hsp.HealSparseMap.read(path)
-
-        # Sparse pixel area
-        pix_area_deg2 = hp.nside2pixarea(hsp_mask.nside_sparse, degrees=True)
-
-        # Coverage pixel area
-        cov_pix_area_deg2 = hp.nside2pixarea(hsp_mask.nside_coverage, degrees=True)
-
-        # Get footprint
-        cov_mask = hsp_mask.coverage_mask
-        npop_pix = np.count_nonzero(cov_mask)
-        area_coverage_deg2 = npop_pix * cov_pix_area_deg2
-        print(f"{mask._col_name}: Area of coverage: {area_coverage_deg2:.3f} deg^2")
-
-        area_deg2 = hsp_mask.get_valid_area(degrees=True)
-        print(f"{mask._col_name}: Valid area {area_deg2:.3f} deg^2")
-
-        # Calculate fractional area using coverage map
-            
-        # Get coverage pixels and their values
-        coverage_pixels = np.where(cov_mask)[0]
-        if len(coverage_pixels) <= 0:
-            raise ValueError(f"No coverage found for {mask._col_name}")
-
-        areas_deg2[mask._col_name] = (area_coverage_deg2, area_deg2)
-
-    return areas_deg2
+    Parameters
+    ----------
+    areas_deg2 : dict
+        Dictionary with mask names as keys and another dictionary as values.
+        The inner dictionary has nsides as keys and areas in deg² as values.
+    filename : str
+        Output filename.
+    """
+    with open(filename, 'w') as f:
+        # Write header
+        f.write("# Mask_name nside area_deg2\n")
+        for mask_name, area_dict in areas_deg2.items():
+            for nside, area in area_dict.items():
+                f.write(f"{mask_name} {nside} {area:.6f}\n")
+ 
+    print(f"Wrote areas to {filename}")
 
 # %%
-# Previous function
-#areas_deg2 = get_hsp_areas(hsp_obj, masks)
 
 # %%
-# With coverage
+# Get area of hsp masks
 area_wcov_deg2 = {}
 if True:
+    # Coverage = read aux file mask
     coverage = hsp.HealSparseMap.read(hsp_obj._params["aux_mask_files"])
     area_coverage = coverage.get_valid_area(degrees=True)
+    area_wcov_deg2["npoint3"] = area_coverage
 
+    # Loop over other, bit-coded masks
     paths = hsp_obj.get_paths_bit_masks()
     for bit, path in paths.items():
         print(bit, path)
         hsp_mask = hsp.HealSparseMap.read(path)
+        
+        # Apply coverage mask
         hsp_mask_wcov = coverage & (~hsp_mask)
         
         key = hsp_obj.get_mask_col_name(bit)
         area_wcov_deg2[key] = hsp_mask_wcov.get_valid_area(degrees=True)
 
 # %%
-area_wcov_deg2["npoint3"] = area_coverage
-# %%
-area_wcov_deg2
-# %%
+# Plot areas
 markers = ['o', 's', '^', 'v', 'D', 'x', '*']
 ls = ['dashed', 'dotted', 'dashdot', 'solid', (0, (3, 1, 1, 1)), (0, (5, 10)), (0, (1, 10))]
 fig, ax = plt.subplots(figsize=(8,8))
 plt.xticks(nsides, nsides)
 for idx, mask in enumerate(masks):
     label = mask._col_name
-    area_dict = areas_binned_deg2[label]
+    area_dict = areas_deg2[label]
     nsides = np.array(list(area_dict.keys()))
     dx = cs_plots.dx(idx, len(masks))
     areas = np.array(list(area_dict.values()))
@@ -264,5 +230,10 @@ plt.legend()
 plt.xlabel("nside")
 plt.ylabel("binned area [deg²]")
 _ = plt.setp(ax.get_xticklabels(), rotation=90, ha="right", rotation_mode="anchor")
+# %%
 cs_plots.savefig("binned_hsp_areas.png")
 # %%
+for key in areas_deg2:
+    areas_deg2[key]["hsp"] = area_wcov_deg2[key]
+# %%
+save_areas(areas_deg2, "areas.txt")
