@@ -5,6 +5,7 @@ import camb
 import colorama
 import healpy as hp
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pymaster as nmt
 import treecorr
@@ -1262,6 +1263,65 @@ class CosmologyValidation:
                 cs_plots.savefig(out_path, close_fig=False)
                 cs_plots.show()
                 self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
+
+    def plot_ratio_xi_sys_xi(self, threshold=0.1, offset=0.02):
+
+        fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
+
+
+        for idx, ver in enumerate(self.versions):
+            xi_psf_sys = self.xi_psf_sys[ver]
+            gg = self.cat_ggs[ver]
+
+            ratio = xi_psf_sys["mean"] / gg.xip
+            ratio_err = np.sqrt(
+                (np.sqrt(xi_psf_sys["var"]) / gg.xip) ** 2
+                + (xi_psf_sys["mean"] * np.sqrt(gg.varxip) / gg.xip**2) ** 2
+            )
+
+            theta = gg.meanr
+            jittered_theta = theta * (1+idx*offset)
+
+            plt.errorbar(
+                jittered_theta,
+                ratio,
+                yerr=ratio_err,
+                label=ver,
+                ls=self.cc[ver]["ls"],
+                color=self.cc[ver]["colour"],
+                fmt=self.cc[ver].get("marker", None),
+                capsize=5
+            )
+
+        plt.fill_between(
+            [self.theta_min_plot, self.theta_max_plot],
+            - threshold,
+            + threshold,
+            color="black",
+            alpha=0.1,
+            label=f"{threshold:.0%} threshold",
+        )
+        plt.plot(
+            [self.theta_min_plot, self.theta_max_plot],
+            [threshold, threshold],
+            ls="dashed",
+            color="black")
+        plt.plot(
+            [self.theta_min_plot, self.theta_max_plot],
+            [-threshold, -threshold],
+            ls="dashed",
+            color="black")
+        plt.xscale("log")
+        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
+        plt.ylabel(r"$\xi^{\rm psf}_{+, {\rm sys}} / \xi_+$")
+        plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+        plt.legend()
+        plt.title("Ratio of PSF systematics to cosmic shear signal")
+        out_path = os.path.abspath(f"{self.cc['paths']['output']}/ratio_xi_sys_xi.png")
+        cs_plots.savefig(out_path, close_fig=False)
+        cs_plots.show()
+        print(f"Ratio of xi_psf_sys to xi plot saved to {out_path}")
+
 
     def calculate_aperture_mass_dispersion(
         self, theta_min=0.3, theta_max=200, nbins=500, nbins_map=15, npatch=25

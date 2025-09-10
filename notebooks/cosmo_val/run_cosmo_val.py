@@ -23,6 +23,8 @@ cv = CosmologyValidation(
     data_base_dir="/n17data/mkilbing/astro/data/",
     theta_min=1.0,
     theta_max=250.0,
+    theta_min_plot=0.8,
+    theta_max_plot=260.0,
     npatch=100,
     nrandom_cell=100,
     cell_method="catalog"
@@ -64,6 +66,9 @@ cv.treecorr_config["var_method"] = "shot"
 cv.plot_2pcf()
 cv.treecorr_config["var_method"] = "jackknife"
 cv.npatch = 100
+
+# %%
+cv.plot_ratio_xi_sys_xi(offset=0.1)
 
 # %%
 #cv.plot_aperture_mass_dispersion()
