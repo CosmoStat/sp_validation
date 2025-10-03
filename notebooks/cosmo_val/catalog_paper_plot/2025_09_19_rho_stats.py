@@ -14,7 +14,7 @@ plt.style.use(
 
 plt.rcParams["text.usetex"] = True
 
-sns.set_palette("husl")
+sns.set_palette("colorblind")
 
 #Matplotlib inline if in jupyter
 if ipython is not None:
@@ -25,7 +25,7 @@ base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stat
 # %%
 version = "SP_v1.4.5_leak_corr"
 label = "SP v1.4"
-color = "C4"
+color = "C1"
 
 rho_stats = fits.getdata(f"{base_dir}/rho_stats_{version}.fits")
 cov_rho = np.load(f"{base_dir}/cov_rho_{version}.npy")
@@ -63,9 +63,9 @@ for i in range(6):
 
     axs[i].set_xscale('log')
     axs[i].set_yscale('log')
-    axs[i].set_ylabel(rf"$|\rho_{i}(\theta)|$")
+    axs[i].set_ylabel(rf"$|\rho_{i}(\vartheta)|$")
     if i in [3, 4, 5]:
-        axs[i].set_xlabel(r"$\theta$ [arcmin]")
+        axs[i].set_xlabel(r"$\vartheta$ [arcmin]")
     axs[i].set_title(titles[i])
     axs[i].set_xlim(0.9, 300)
 

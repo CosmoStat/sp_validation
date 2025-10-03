@@ -14,7 +14,7 @@ plt.style.use(
 
 plt.rcParams["text.usetex"] = True
 
-sns.set_palette("husl")
+sns.set_palette("colorblind")
 
 #Matplotlib inline if in jupyter
 if ipython is not None:
@@ -28,10 +28,12 @@ colors = ["C0", "C4"]
 
 tau_stats = []
 cov_taus = []
+samples = []
 
 for ver in versions:
     tau_stats.append(fits.getdata(f"{base_dir}/tau_stats_{ver}.fits"))
     cov_taus.append(np.load(f"{base_dir}/cov_tau_{ver}_th.npy"))
+    samples.append(np.load(f"{base_dir}/samples_{ver}.npy"))
 
 num_bins = tau_stats[0]['theta'].shape[0]
 
@@ -48,9 +50,9 @@ titles = [
 ]
 
 y_labels = [
-    r"$\tau_0(\theta)$",
-    r"$\theta \, \tau_1(\theta)$",
-    r"$\theta \, \tau_2(\theta)$",
+    r"$\tau_0(\vartheta)$",
+    r"$\vartheta \, \tau_1(\vartheta)$",
+    r"$\vartheta \, \tau_2(\vartheta)$",
 ]
 
 dict_index_tau = {
@@ -82,7 +84,7 @@ for i in range(3):
             capsize=2,
         )
     axs[i].set_xscale('log')
-    axs[i].set_xlabel(r"$\theta$ [arcmin]")
+    axs[i].set_xlabel(r"$\vartheta$ [arcmin]")
     axs[i].set_ylabel(y_labels[i])
     axs[i].axhline(0, color='gray', linestyle='--', linewidth=1)
 
