@@ -43,12 +43,13 @@ ver = "v1.5.c.P37"
 obj._params = {}
 
 obj._params["input_path"] = f"{base}_{year}_{ver}.hdf5"
+obj._params["output_path"] = f"{base}_ugriz_{year}_{ver}.hdf5"
 obj._params["verbose"] = True
 
 # +
 path_bands = "../UNIONS5000"
-subdir_base = "UNIONS."
 
+subdir_base = "UNIONS."
 path_base = subdir_base
 path_suff = "_SP_ugriz_photoz_ext.cat"
 
@@ -143,6 +144,26 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
         ) / len(dat_mb)
         end = timer()                                                           
         print(f" {end - start:.1f}s") 
+    
+    if idx == 0:
+        print("  Create new combined array", end=" ")
+        start = timer()    
+        # Get dtype from multiband keys
+        dtype_keys = np.dtype([dt for dt in dat_mb.dtype.descr if dt[0] in keys])
+
+        # Create structured array from multi-band columns
+        
+        # Create new empty array with rows as original data and new multi-band columns
+        new_empty = np.zeros(n_rows, dtype=dtype_keys)
+        end = timer()                                                           
+        print(f" {end - start:.1f}s") 
+    
+        print("    Merge empty to original", end=" ")
+        start = timer()
+        # Combine with original data (slow)
+        combined = rfn.merge_arrays([dat, new_empty], flatten=True)
+        end = timer()                                                           
+        print(f" {end - start:.1f}s") 
 
     print(  "  Copy mb data to combined array", end=" ")
     start = timer()
@@ -153,14 +174,8 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
     print(f" {end - start:.1f}s") 
 
     hdu_list.close()
-    
-    if idx == 5:
-        break
-
 
 # -
-
-dist_sqr
 
 obj.write_hdf5_file(combined)
 

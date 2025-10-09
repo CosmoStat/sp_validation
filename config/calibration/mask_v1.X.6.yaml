@@ -1,0 +1,110 @@
+# Config file for masking and calibration.
+# Standard cuts without halo masks, type v1.X.6.
+
+# General parameters (can also given on command line)
+params:
+  input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
+  cmatrices: False
+  sky_regions: False
+  verbose: True
+
+# Masks
+## Using columns in 'dat' group (ShapePipe flags)
+dat:
+  # SExtractor flags
+  - col_name: FLAGS
+    label: SE FLAGS
+    kind: equal
+    value: 0
+
+  # Duplicate objects
+  - col_name: overlap
+    label: tile overlap
+    kind: equal
+    value: True
+
+  # ShapePipe flags
+  - col_name: IMAFLAGS_ISO
+    label: SP mask
+    kind: equal
+    value: 0
+
+  # Number of epochs
+  - col_name: N_EPOCH
+    label: r"$n_{\rm epoch}$"
+    kind: greater_equal
+    value: 2
+
+  # Magnitude range
+  - col_name: mag
+    label: mag range
+    kind: range
+    value: [15, 30]
+
+  # ngmix flags
+  - col_name: NGMIX_MOM_FAIL
+    label: "ngmix moments failure"
+    kind: equal
+    value: 0
+
+  # invalid PSF ellipticities
+  - col_name: NGMIX_ELL_PSFo_NOSHEAR_0
+    label: "bad PSF ellipticity comp 1"
+    kind: not_equal
+    value: -10
+  - col_name: NGMIX_ELL_PSFo_NOSHEAR_1
+    label: "bad PSF ellipticity comp 2"
+    kind: not_equal
+    value: -10
+
+## Using columns in 'dat_ext' group (post-processing flags)
+dat_ext:
+
+  # Stars
+  - col_name: 4_Stars
+    label: "Stars"
+    kind: equal
+    value: False
+
+  # Manual mask
+  - col_name: 8_Manual
+    label: "manual mask"
+    kind: equal
+    value: False
+
+  # r-band footprint
+  - col_name: 64_r
+    label: "r-band imaging"
+    kind: equal
+    value: False
+
+  # Maximask
+  - col_name: 1024_Maximask
+    label: "maximask"
+    kind: equal
+    value: False
+
+  # Rough pointing coverage
+  - col_name: npoint3
+    label: r"$n_{\rm pointing}$"
+    kind: greater_equal
+    value: 3
+
+# Metacal parameters
+metacal:
+  # Ellipticity dispersion
+  sigma_eps_prior: 0.34
+
+  # Signal-to-noise range
+  gal_snr_min: 10
+  gal_snr_max: 500
+
+  # Relative-size (hlr / hlr_psf) range
+  gal_rel_size_min: 0.707
+  gal_rel_size_max: 3
+
+  # Correct relative size for ellipticity?
+  gal_size_corr_ell: False
+
+  # Weight for global response matrix, None for unweighted mean
+  global_R_weight: w
