@@ -28,7 +28,8 @@ from shear_psf_leakage import run_object
 def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
     """Get Calibrated Quantities.
 
-    Return catalogue quantities for objects calibrated for multiplicative bias.
+    Return catalogue quantities for objects calibrated for multiplicative
+    bias.
 
     Parameters
     ----------
@@ -97,7 +98,9 @@ def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
 
     """
     # Get m-calibrated quantities
-    g_corr, g_uncorr, w, mask_metacal = get_calibrated_quantities(gal_metacal)
+    g_corr, g_uncorr, w, mask_metacal = get_calibrated_quantities(
+        gal_metacal
+    )
 
     # Additive bias
     c = np.zeros(2)
@@ -106,7 +109,8 @@ def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
     for comp in (0, 1):
         c[comp] = np.mean(g_uncorr[comp])
 
-        # MKDEBUG TODO: Use std of mean instead, which is consistent with jackknife
+        # MKDEBUG TODO: Use std of mean instead,
+        # which is consistent with jackknife
         c_err[comp] = np.std(g_uncorr[comp])
 
     # Shear estimate corrected for additive bias
@@ -262,18 +266,29 @@ def get_w_des(cat_gal, num_bins):
     df_gal = build_df(cat_gal)
 
     #Create logarithmic bins in size and SNR
-    cut_to_bins(df_gal, "snr", num_bins, type="log", x_max=300)
-    cut_to_bins(df_gal, "size_ratio", num_bins, type="log", x_min=0.5)
+    cut_to_bins(df_gal, "snr", num_bins, type="log")
+    cut_to_bins(df_gal, "size_ratio", num_bins, type="log")
 
     #Compute shape noise and the shear response in each bin
 
     for i in range(num_bins):
         for j in range(num_bins):
-            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_ratio_log_bins'] == j)
+            bin_mask = (
+                (df_gal['snr_log_bins'] == i)
+                & (df_gal['size_ratio_log_bins'] == j)
+            )
             ngal = np.sum(bin_mask)
-            shape_noise = 0.5*(np.sum(df_gal[bin_mask]['e1_uncal']**2)/ngal+np.sum(df_gal[bin_mask]['e2_uncal']**2)/ngal)
-            response = 0.5*(np.average(df_gal[bin_mask]['R_g11'])+np.average(df_gal[bin_mask]['R_g22']))
-            df_gal.loc[bin_mask, 'w_des'] = response**2/shape_noise     
+            if ngal == 0:
+                print(f"Zero galaxies in snr/size_ratio bin ({i},{j})")
+            shape_noise = 0.5 * (
+                np.sum(df_gal[bin_mask]['e1_uncal'] ** 2) / ngal
+                + np.sum(df_gal[bin_mask]['e2_uncal'] ** 2) / ngal
+            )
+            response = 0.5 * (
+                np.average(df_gal[bin_mask]['R_g11'])
+                + np.average(df_gal[bin_mask]['R_g22'])
+            )
+            df_gal.loc[bin_mask, 'w_des'] = response ** 2 / shape_noise     
         
     return np.array(df_gal['w_des'])
 
@@ -281,7 +296,8 @@ def get_w_des(cat_gal, num_bins):
 def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     """
     Compute the leakage per object (Li et al. 2024)
-    Return an array of leakage coefficients obtained by binning in SNR and size.
+    Return an array of leakage coefficients obtained by binning in
+    SNR and size.
 
     Parameters
     ----------
@@ -293,13 +309,18 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
     Returns
     -------
     alpha_1 : np.array
-        Array containing the correction coefficient for the PSF leakage per object for the first component.
+        Array containing the correction coefficient for the PSF leakage
+        per object for the first component.
     alpha_2 : np.array
-        Array containing the correction coefficient for the PSF leakage per object for the second component.
+        Array containing the correction coefficient for the PSF leakage
+        per object for the second component.
     """
     assert weight_type in ['des', 'iv'], "weight_type must be either 'des' or 'iv'"
-    #Compute the size ratio
-    size_ratio = cat_gal['NGMIX_Tpsf_NOSHEAR']/(cat_gal['NGMIX_T_NOSHEAR']+cat_gal['NGMIX_Tpsf_NOSHEAR'])
+    # Compute the size ratio
+    size_ratio = (
+        cat_gal['NGMIX_Tpsf_NOSHEAR']
+        / (cat_gal['NGMIX_T_NOSHEAR'] + cat_gal['NGMIX_Tpsf_NOSHEAR'])
+    )
 
     df_gal = pd.DataFrame(np.array([
         np.array(cat_gal['e1'], dtype=np.float64),
@@ -327,7 +348,12 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
         mask_binr = df_gal['bin_R'].values == ibin_r
 
         #bin in snr
-        df_gal.loc[mask_binr, 'bin_snr'] = pd.qcut(df_gal.loc[mask_binr, 'snr'], n_bins_snr, labels=False, retbins=False)
+        df_gal.loc[mask_binr, 'bin_snr'] = pd.qcut(
+            df_gal.loc[mask_binr, 'snr'],
+            n_bins_snr,
+            labels=False,
+            retbins=False
+        )
 
     #group by bin
     df_gal_grouped = df_gal.groupby(['bin_R', 'bin_snr'])

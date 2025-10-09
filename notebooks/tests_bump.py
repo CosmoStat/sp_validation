@@ -1,5 +1,5 @@
 # %%
-# Compute binned quantities, see plot_binned_quantities.py
+# Tests
 
 # %%                                                                             
 from IPython import get_ipython                                                  
@@ -11,9 +11,9 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")                             
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("load_ext", "log_cell_time")
+    ipython.run_line_magic("matplotlib", "inline")
 
 # %%
-import os
 import numpy as np
 import pandas as pd
 
@@ -22,14 +22,14 @@ import matplotlib.pyplot as plt
 from cs_util import plots as cs_plots
 
 from sp_validation import run_joint_cat as sp_joint
-from sp_validation import cat as sp_cat
+from sp_validation import cat as cat
 from sp_validation.basic import metacal
 from sp_validation import calibration
 from sp_validation import io
 from sp_validation import plots as sp_plots
 
 # %%
-print("pwd:", os.getcwd())
+os.getcwd()
 
 # %%
 # Initialize calibration class instance
@@ -42,8 +42,8 @@ config = obj.read_config_set_params("config_minimal.yaml")
 dat, _ = obj.read_cat(load_into_memory=False)
 
 # %%
-n_test = -1
-#n_test = 1_000_000
+#n_test = -1
+n_test = 1_000_000
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
@@ -68,8 +68,6 @@ if not use_all_columns:
     #dat = {col: obj._hd5file['data'][col][:] for col in required_columns if col in obj._hd5file['data']}
 
 # %%
-# Look for masks that were already applied to data if this 
-# information is in header
 if "applied_masks" in obj._hd5file:
     applied_masks = obj._hd5file["applied_masks"]
     applied_masks["desc"]
@@ -84,7 +82,6 @@ masks_to_apply = [
     "npoint3",
 ]
 
-# %%
 # Check that mask has not already been applied
 for mask in masks_to_apply:
     if applied_masks and mask in applied_masks["desc"]:
@@ -121,29 +118,102 @@ gal_metacal = metacal(
     rel_size_max=cm["gal_rel_size_max"],
     size_corr_ell=cm["gal_size_corr_ell"],
     sigma_eps=cm["sigma_eps_prior"],
+    global_R_weight=cm["global_R_weight"],
     col_2d=False,
     verbose=True,
 )
 
+# %%
+
 # Get metacal outputs; here mask is needed
-g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(gal_metacal)
+g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = (
+    calibration.get_calibrated_m_c(gal_metacal)
+)
 
 # %%
+# Compute DES weights
+
 cat_gal = {}
 
-calibration.fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined._mask, mask_metacal, purpose="leakage")
-
-
-df = calibration.build_df(cat_gal)
+sp_joint.compute_weights_gatti(
+    cat_gal,
+    g_uncorr,
+    gal_metacal,
+    dat,
+    mask_combined,
+    mask_metacal,
+    num_bins=20,
+)
 
 # %%
-num_bins_x = 15
-num_bins_y = 15
+# Correct for PSF leakage
 
-s
-quantities, bin_edges = calibration.get_quantities_binned(cat_gal, num_bins_x, num_bins_y, which=which)
+alpha_1, alpha_2 = sp_joint.compute_PSF_leakage(
+    cat_gal,
+    g_corr_mc,
+    dat,
+    mask_combined,
+    mask_metacal,
+    num_bins=20,    
+)
 
-# Save binned matrices to files
-for key in quantities:
-    io.write_binned_quantity(quantities[key], key, bin_edges)
+# Compute leakage-corrected ellipticities
+e1_leak_corrected = g_corr_mc[0] - alpha_1 * cat_gal["e1_PSF"]
+e2_leak_corrected = g_corr_mc[1] - alpha_2 * cat_gal["e2_PSF"]
+
+# %%
+# Get some memory back
+for mask in masks:
+    del mask
+    
+    
+# %%
+ra = cat.get_col(dat, "RA", mask_combined._mask, mask_metacal)
+dec = cat.get_col(dat, "Dec", mask_combined._mask, mask_metacal)
+
+    
+# %%
+# Correlation function
+import treecorr
+# %%
+minsep = 1
+maxsep = 50
+nbins = 10
+npatch = 20
+n_cpu = 24
+config = {
+    "ra_units": "deg",
+    "dec_units": "deg",
+    "min_sep": minsep,
+    "max_sep": maxsep,
+    "nbins": nbins,
+    "num_threads": n_cpu,
+    "sep_units": "arcmin",
+    "var_method": "jackknife",
+    "bin_type": "Log",
+}
+gg = treecorr.GGCorrelation(config, var_method='jackknife')
+
+# %%
+catalog = treecorr.Catalog(                                                         
+    ra=ra,                                               
+    dec=dec,                                                    
+    g1=e1_leak_corrected,                                                              
+    g2=e2_leak_corrected,                                                       
+    w=cat_gal["w_des"],                                                           
+    ra_units="deg",                                        
+    dec_units="deg",
+    npatch=npatch,                                
+)
+
+# %%
+gg.process(catalog, catalog, num_threads=n_cpu)
+# %%
+x = gg.rnom
+y = x * gg.xip
+dy = x * np.sqrt(gg.varxip)
+plt.errorbar(x, y, yerr=dy, marker="o", linestyle="")
+plt.xlabel(r"$\theta$ [arcmin]")
+plt.ylabel(r"$\theta \xi_+(\theta)$ [arcmin]")
+plt.show()
 # %%

@@ -1,0 +1,19 @@
+version: SP_v1.4.5
+plot_style: config/paper.mplstyle
+
+ini_dirs:
+  - /n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/cosmosis_config/pipeline/
+  - /home/guerrini/sp_validation/cosmo_inference/cosmosis_config/
+
+
+# chain: SP_v1.4.5_C_sc_10_150_new_ia
+chain: SP_v1.4.5_A_sc_10_60
+
+npatch: 256
+min_sep: 0.1
+max_sep: 250
+nbins: 20
+
+min_sep_int: 0.08
+max_sep_int: 300
+nbins_int: 100

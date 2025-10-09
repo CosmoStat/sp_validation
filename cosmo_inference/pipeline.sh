@@ -27,14 +27,15 @@ do
         python notebooks/cosmo_val/cosmo_val.py
         ;;
     'c') 
-        read -p 'ROOT: ' root;
-        read -p 'NZ FILE:' nz_file;
-        read -p 'PATH COSMOCOV: ' cosmocov;
-        echo "Calculating covariance matrices with CosmoCov";
-        python scripts/cosmocov_process.py $root $nz_file $cosmocov
+        read -p 'COVARIANCE FILE: ' covmat_file;
+        read -p 'OUTPUT STUB (without extension): ' output_stub;
+        echo "Processing covariance matrix";
+        python scripts/cosmocov_process.py $covmat_file $output_stub
         ;;
     'i')
-        read -p 'ROOT: ' root;
+        read -p 'XI ROOT: ' xi_root;
+        read -p 'TAU ROOT: ' tau_root;
+        read -p 'COSMOSIS ROOT: ' cosmosis_root;
         read -p 'COSMO_VAL OUTPUT FOLDER: ' output_folder;
         read -p 'NZ FILE:' nz_file;
         read -p 'USE RHO/TAU_STATS? (y/n): ' rhotau_stats;
@@ -42,36 +43,37 @@ do
         read -p 'COV_XI MAT TXT FILE:' covmat;
         read -p 'OUTPUT MCMC CHAIN FOLDER: ' data;
         
-        out_file="data/${root}/cosmosis_${root}.fits";
+        # Use cosmosis_root for output file naming
+        out_file="data/${cosmosis_root}/cosmosis_${cosmosis_root}.fits";
         
         #LG: add check if xi_plus/xi_minus fits file exists
-        python scripts/cosmosis_fitting.py $root $output_folder $covmat $nz_file $out_file $rhotau_stats;
+        python scripts/cosmosis_fitting.py $xi_root $tau_root $output_folder $covmat $nz_file $out_file $rhotau_stats;
         
         if [ "${rhotau_stats}" == "y" ]; then
-          cp cosmosis_config/cosmosis_pipeline_A_psf.ini cosmosis_config/cosmosis_pipeline_${root}.ini;
+          cp cosmosis_config/cosmosis_pipeline_A_psf.ini cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
         else
-          cp cosmosis_config/cosmosis_pipeline_A_ia.ini cosmosis_config/cosmosis_pipeline_${root}.ini;
+          cp cosmosis_config/cosmosis_pipeline_A_ia.ini cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
         fi
 
-        sed -i "/^\[DEFAULT\]/a\SCRATCH = ${data}" cosmosis_config/cosmosis_pipeline_${root}.ini;
-        sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${root}.ini;
-        sed -i "/^\[output\]/a\filename = %(SCRATCH)s/${root}/samples_${root}.txt" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        sed -i "/^\[DEFAULT\]/a\SCRATCH = ${data}" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+        sed -i "/^\[DEFAULT\]/a\FITS_FILE = ${out_file}" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+        sed -i "/^\[output\]/a\filename = %(SCRATCH)s/${cosmosis_root}/samples_${cosmosis_root}.txt" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
         if [ "${rhotau_stats}" == "y" ]; then
-          sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_psf.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
-          sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors_psf.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
-          sed -i "/^\[2pt_like]/a\file = %(COSMOSIS_DIR)s/likelihood/2pt/2pt_like_xi_sys.py" cosmosis_config/cosmosis_pipeline_${root}.ini;
-          sed -i "/^\[2pt_like]/a\data_sets=XI_PLUS XI_MINUS TAU_0_PLUS TAU_2_PLUS" cosmosis_config/cosmosis_pipeline_${root}.ini;
-          sed -i "/^\[2pt_like]/a\add_xi_sys=T" cosmosis_config/cosmosis_pipeline_${root}.ini;
+          sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_psf.ini" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+          sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors_psf.ini" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+          sed -i "/^\[2pt_like]/a\file = %(COSMOSIS_DIR)s/likelihood/2pt/2pt_like_xi_sys.py" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+          sed -i "/^\[2pt_like]/a\data_sets=XI_PLUS XI_MINUS TAU_0_PLUS TAU_2_PLUS" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+          sed -i "/^\[2pt_like]/a\add_xi_sys=T" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
         else
-          sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_ia.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
-          sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors.ini" cosmosis_config/cosmosis_pipeline_${root}.ini;
-          sed -i "/^\[2pt_like]/a\file = %(COSMOSIS_DIR)s/likelihood/2pt/2pt_like.py" cosmosis_config/cosmosis_pipeline_${root}.ini;
-          sed -i "/^\[2pt_like]/a\data_sets=XI_PLUS XI_MINUS" cosmosis_config/cosmosis_pipeline_${root}.ini;
+          sed -i "/^\[pipeline\]/a\values = cosmosis_config/values_ia.ini" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+          sed -i "/^\[pipeline\]/a\priors = cosmosis_config/priors.ini" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+          sed -i "/^\[2pt_like]/a\file = %(COSMOSIS_DIR)s/likelihood/2pt/2pt_like.py" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
+          sed -i "/^\[2pt_like]/a\data_sets=XI_PLUS XI_MINUS" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
         fi
-        sed -i "/^\[polychord\]/a\polychord_outfile_root = ${root}" cosmosis_config/cosmosis_pipeline_${root}.ini;
+        sed -i "/^\[polychord\]/a\polychord_outfile_root = ${cosmosis_root}" cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini;
         
-        echo "Prepared CosmoSIS configuration file in cosmosis_config/cosmosis_pipeline_${root}.ini";
-        echo "You can now run the inference with the command: cosmosis cosmosis_config/cosmosis_pipeline_${root}.ini"
+        echo "Prepared CosmoSIS configuration file in cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini";
+        echo "You can now run the inference with the command: cosmosis cosmosis_config/cosmosis_pipeline_${cosmosis_root}.ini"
         ;;
     'm')
         # LG: also convert this into a script to directly output contour plots

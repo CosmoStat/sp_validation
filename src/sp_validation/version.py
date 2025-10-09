@@ -26,13 +26,13 @@ This package makes use of the following third-party packages:
 
 from warnings import warn
 
-
 try:
     from importlib_metadata import version
-    __version__ = version('sp_validation')
+
+    __version__ = version("sp_validation")
 except Exception:  # pragma: no cover
-    __version__ = 'Unkown'
+    __version__ = "Unkown"
     warn(
-        'Could not extract package metadata. Make sure the package is '
-        + 'correctly installed.',
+        "Could not extract package metadata. Make sure the package is "
+        + "correctly installed.",
     )
