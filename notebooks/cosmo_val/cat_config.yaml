@@ -1043,7 +1043,7 @@ SP_v1.4.5_leak_corr:
       e2_col: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w_col: w_iv
+      w_col: w_des
       R: 1.0
       redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
    star:
