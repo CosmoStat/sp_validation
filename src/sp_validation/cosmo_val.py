@@ -1021,10 +1021,9 @@ class CosmologyValidation:
                     g1 = (e1 - self.c1[ver]) / np.average(
                         self.results[ver].dat_shear[R11]
                     )
-                    g2 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                        - self.c2[ver]
-                    ) / np.average(self.results[ver].dat_shear[R22])
+                    g2 = (e2 - self.c2[ver]) / np.average(
+                        self.results[ver].dat_shear[R22]
+                    )
 
                 # Use patch file if it exists
                 patch_file = os.path.abspath(
