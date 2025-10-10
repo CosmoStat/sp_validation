@@ -22,6 +22,7 @@ import healpy as hp
 import healsparse as hsp
 
 from cs_util import plots as cs_plots
+from cs_util import cat as cs_cat
 
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
@@ -108,25 +109,8 @@ if label_base_mask != "":
 else:
     print("No base mask applied.")
 
-# Bin data
-
 # %%
-# TODO: to cs_util
-def get_binned_area(ra, dec, nside=512):
-    
-    # Pixel list of input data
-    ipix = hp.ang2pix(nside, ra, dec, lonlat=True)
-    
-    # Number of occupied pixels
-    Nocc  = np.unique(ipix).size
-    
-    # Pixel area
-    pix_area_deg2 = hp.nside2pixarea(nside, degrees=True)
-
-    # Footprint area
-    area_deg2 = Nocc * pix_area_deg2
-
-    return area_deg2
+# Bin data
 
 # Create array of nsides between min and max with powers of two
 nsides = np.array([2**i for i in range(int(np.log2(nside_min)), int(np.log2(nside_max))+1)])
@@ -146,7 +130,7 @@ for mask in masks:
     
     for nside in nsides:
 
-            area_deg2 = get_binned_area(ra, dec, nside=nside)
+            area_deg2 = cs_cat.get_binned_area(ra, dec, nside=nside)
             print(f"binned area (nside={nside}) ≈ {area_deg2:.3f} deg^2")
             areas_deg2[mask._col_name][nside] = area_deg2
 
