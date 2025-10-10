@@ -83,6 +83,7 @@ for i in range(3):
             color=colors[j],
             capsize=2,
         )
+    axs[i].set_xlim(1.0, 250.0)
     axs[i].set_xscale('log')
     axs[i].set_xlabel(r"$\vartheta$ [arcmin]")
     axs[i].set_ylabel(y_labels[i])

@@ -1,5 +1,6 @@
 # %%
 import os
+import configparser
 
 import camb
 import colorama
@@ -48,12 +49,14 @@ class CosmologyValidation:
         ylim_alpha=[-0.005, 0.05],
         ylim_xi_sys_ratio=[-0.02, 0.5],
         nside=1024,
+        nside_mask = 2**12,
         binning="powspace",
         power=1 / 2,
         n_ell_bins=32,
         pol_factor=True,
         cell_method='map',
         nrandom_cell=10,
+        path_onecovariance=None
     ):
 
         self.versions = versions
@@ -79,6 +82,8 @@ class CosmologyValidation:
         self.pol_factor = pol_factor
         self.nrandom_cell = nrandom_cell
         self.cell_method = cell_method
+        self.nside_mask = nside_mask
+        self.path_onecovariance = path_onecovariance
 
         assert self.cell_method in ["map", "catalog"], "cell_method must be 'map' or 'catalog'"
 
@@ -261,6 +266,90 @@ class CosmologyValidation:
     @property
     def colors(self):
         return [self.cc[ver]["colour"] for ver in self.versions]
+    
+    @property
+    def area(self):
+        if not hasattr(self, "_area"):
+            self.calculate_area_from_binned_catalog()
+        return self._area
+    
+    @property
+    def n_eff_gal(self):
+        if not hasattr(self, "_n_eff_gal"):
+            self.calculate_n_eff_gal()
+        return self._n_eff_gal
+
+    @property
+    def ellipticity_dispersion(self):
+        if not hasattr(self, "_ellipticity_dispersion"):
+            self.calculate_ellipticity_dispersion()
+        return self._ellipticity_dispersion
+
+    @property
+    def pseudo_cls(self):
+        if not hasattr(self, "_pseudo_cls"):
+            self.calculate_pseudo_cl()
+            self.calculate_pseudo_cl_eb_cov()
+        return self._pseudo_cls
+    
+    @property
+    def pseudo_cls_onecov(self):
+        if not hasattr(self, "_pseudo_cls_onecov"):
+            self.calculate_pseudo_cl_onecovariance()
+        return self._pseudo_cls_onecov
+    
+    def calculate_area_from_binned_catalog(self):
+        self.print_start("Calculating area from binned catalog")
+        area = {}
+        print(f"nside_mask = {self.nside_mask}")
+        for ver in self.versions:
+            self.print_magenta(ver)
+            with self.results[ver].temporarily_read_data():
+                ra = self.results[ver].dat_shear["RA"]
+                dec = self.results[ver].dat_shear["Dec"]
+                hsp_map = hp.ang2pix(
+                    self.nside_mask,
+                    np.radians(90 - dec),
+                    np.radians(ra),
+                    lonlat=False,
+                )
+                mask = np.bincount(hsp_map, minlength=hp.nside2npix(self.nside_mask)) > 0
+
+                area[ver] = np.sum(mask) * hp.nside2pixarea(self.nside_mask, degrees=True)
+                print(f"Area = {area[ver]:.2f} deg^2")
+
+        self._area = area
+        self.print_done("Area calculation finished")
+
+    def calculate_n_eff_gal(self):
+        self.print_start("Calculating effective number of galaxy")
+        n_eff_gal = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+            with self.results[ver].temporarily_read_data():
+                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
+                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                n_eff_gal[ver] = 1/(self.area[ver]*60*60)* np.sum(w)**2/np.sum(w**2)
+                print(f"n_eff_gal = {n_eff_gal[ver]:.2f} gal./arcmin^-2")
+            
+        self._n_eff_gal = n_eff_gal
+        self.print_done("Effective number of galaxy calculation finished")
+
+    def calculate_ellipticity_dispersion(self):
+        self.print_start("Calculating ellipticity dispersion")
+        ellipticity_dispersion = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+            with self.results[ver].temporarily_read_data():
+                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
+                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                ellipticity_dispersion[ver] = np.sqrt(
+                    0.5*(np.average(e1**2, weights=w**2) + np.average(e2**2, weights=w**2))
+                )
+                print(f"Ellipticity dispersion = {ellipticity_dispersion[ver]:.4f}")
+        self._ellipticity_dispersion = ellipticity_dispersion
 
     def plot_rho_stats(self, abs=False):
 
@@ -317,8 +406,8 @@ class CosmologyValidation:
         else:
             params["patch_number"] = 150
 
-        params["ra_col"] = params_psf["ra_col"]
-        params["dec_col"] = params_psf["dec_col"]
+        params["ra_PSF_col"] = params_psf["ra_col"]
+        params["dec_PSF_col"] = params_psf["dec_col"]
         params["e1_PSF_col"] = params_psf["e1_PSF_col"]
         params["e2_PSF_col"] = params_psf["e2_PSF_col"]
         params["e1_star_col"] = params_psf["e1_star_col"]
@@ -2333,6 +2422,148 @@ class CosmologyValidation:
                 self._pseudo_cls[ver]['cov'] = hdu
 
         self.print_done("Done Pseudo-Cl covariance")
+
+    def calculate_pseudo_cl_onecovariance(self):
+        """
+        Compute the pseudo-Cl covariance using OneCovariance.
+        """
+        self.print_start("Computing Pseudo-Cl covariance with OneCovariance")
+
+        if self.path_onecovariance is None:
+            raise ValueError("path_onecovariance must be provided to use OneCovariance")
+        
+        if not os.path.exists(self.path_onecovariance):
+            raise ValueError(f"OneCovariance path {self.path_onecovariance} does not exist")
+        
+        template_config = os.path.join(self.path_onecovariance, "config_files", "config_3x2pt_pure_Cell_UNIONS.ini")
+        if not os.path.exists(template_config):
+            raise ValueError(f"Template config file {template_config} does not exist")
+
+        self._pseudo_cls_onecov = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            out_dir = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_onecov_{ver}/")
+            os.makedirs(out_dir, exist_ok=True)
+
+            if os.path.exists(os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")):
+                self.print_done(f"Skipping OneCovariance calculation, {out_dir} exists")
+                self._load_onecovariance_cov(out_dir, ver)
+            else:
+
+                mask_path = self.cc[ver]['shear']['mask']
+                redshift_distr_path = os.path.join(self.data_base_dir, self.cc[ver]['shear']['redshift_distr'])
+
+                config_path = os.path.join(out_dir, f"config_onecov_{ver}.ini")
+
+                self.print_cyan(f"Modifying OneCovariance config file and saving it to {config_path}")
+                self._modify_onecov_config(template_config, config_path, out_dir, mask_path, redshift_distr_path, ver)
+
+                self.print_cyan("Running OneCovariance...")
+                cmd = f"python {os.path.join(self.path_onecovariance, 'covariance.py')} {config_path}"
+                self.print_cyan(f"Command: {cmd}")
+                ret = os.system(cmd)
+                if ret != 0:
+                    raise RuntimeError(f"OneCovariance command failed with return code {ret}")
+                self.print_cyan("OneCovariance completed successfully.")
+                self._load_onecovariance_cov(out_dir, ver)
+            
+        self.print_done("Done Pseudo-Cl covariance with OneCovariance")
+
+    def _modify_onecov_config(self, template_config, config_path, out_dir, mask_path, redshift_distr_path, ver):
+        """
+        Modify OneCovariance configuration file with correct mask, redshift distribution, 
+        and ellipticity dispersion parameters.
+        
+        Parameters
+        ----------
+        template_config : str
+            Path to the template configuration file
+        config_path : str
+            Path where the modified configuration will be saved
+        mask_path : str
+            Path to the mask file
+        redshift_distr_path : str
+            Path to the redshift distribution file
+        """
+        config = configparser.ConfigParser()        
+        # Load the template configuration
+        config.read(template_config)
+        
+        # Update mask path
+        mask_base = os.path.basename(os.path.abspath(mask_path))
+        mask_folder = os.path.dirname(os.path.abspath(mask_path))
+        config['survey specs']['mask_directory'] = mask_folder
+        config['survey specs']['mask_file_lensing'] = mask_base
+        config['survey specs']['survey_area_lensing_in_deg2'] = str(self.area[ver])
+        config['survey specs']['ellipticity_dispersion'] = str(self.ellipticity_dispersion[ver])
+        config['survey specs']['n_eff_lensing'] = str(self.n_eff_gal[ver])
+
+        # Update redshift distribution path
+        redshift_distr_base = os.path.basename(os.path.abspath(redshift_distr_path))
+        redshift_distr_folder = os.path.dirname(os.path.abspath(redshift_distr_path))
+        config['redshift']['z_directory'] = redshift_distr_folder
+        config['redshift']['zlens_file'] = redshift_distr_base
+
+        #Update output directory
+        config['output settings']['directory'] = out_dir
+        
+        # Save the modified configuration
+        with open(config_path, 'w') as f:
+            config.write(f)
+
+    def get_cov_from_onecov(self, cov_one_cov, gaussian=True):
+        n_bins = np.sqrt(cov_one_cov.shape[0]).astype(int)
+        cov = np.zeros((n_bins, n_bins))
+
+        index_value = 10 if gaussian else 9
+        for i in range(n_bins):
+            for j in range(n_bins):
+                cov[i, j] = cov_one_cov[i * n_bins + j, index_value]
+        
+        return cov
+
+    def _load_onecovariance_cov(self, out_dir, ver):
+        self.print_cyan(f"Loading OneCovariance results from {out_dir}")
+        cov_one_cov = np.genfromtxt(os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat"))
+        gaussian_one_cov = self.get_cov_from_onecov(cov_one_cov, gaussian=True)
+        all_one_cov = self.get_cov_from_onecov(cov_one_cov, gaussian=False)
+
+        self._pseudo_cls_onecov[ver] = {
+            'gaussian_cov': gaussian_one_cov,
+            'all_cov': all_one_cov
+        }
+
+    def calculate_pseudo_cl_g_ng_cov(self, gaussian_part="iNKA"):
+        assert gaussian_part in ["iNKA", "OneCovariance"], "gaussian_part must be 'iNKA' or 'OneCovariance'"
+        self.print_start(f"Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part")
+    
+        self._pseudo_cls_cov_g_ng = {}
+
+        for ver in self.versions:
+            self.print_magenta(ver)
+            out_file = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_g_ng_{gaussian_part}_{ver}.fits")
+            if os.path.exists(out_file):
+                self.print_done(f"Skipping Gaussian and Non-Gaussian covariance calculation, {out_file} exists")
+                cov_hdu = fits.open(out_file)
+                self._pseudo_cls_cov_g_ng[ver] = cov_hdu
+                continue
+            if gaussian_part == "iNKA":
+                gaussian_cov = self.pseudo_cls[ver]['cov']['COVAR_EE_EE'].data
+                non_gaussian_cov = self.pseudo_cls_onecov[ver]['all_cov'] - self.pseudo_cls_onecov[ver]['gaussian_cov']
+                full_cov = gaussian_cov + non_gaussian_cov
+            elif gaussian_part == "OneCovariance":
+                full_cov = self.pseudo_cls_onecov[ver]['all_cov']
+            else:
+                raise ValueError(f"Unknown gaussian_part: {gaussian_part}")
+            self.print_cyan("Saving Gaussian and Non-Gaussian covariance...")
+            hdu = fits.HDUList()
+            hdu.append(fits.ImageHDU(gaussian_cov, name="COVAR_GAUSSIAN"))
+            hdu.append(fits.ImageHDU(non_gaussian_cov, name="COVAR_NON_GAUSSIAN"))
+            hdu.append(fits.ImageHDU(full_cov, name="COVAR_FULL"))
+            hdu.writeto(out_file, overwrite=True)
+            self._pseudo_cls_cov_g_ng[ver] = hdu
+        self.print_done(f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part")                
 
     def calculate_pseudo_cl(self):
         """

@@ -85,8 +85,8 @@ def get_params_rho_tau(cat, survey="other"):
         print("SP_v1.4, jackknife patch number =120")
     else:
         params["patch_number"] = 150
-    params["ra_col"] = cat["psf"]["ra_col"]
-    params["dec_col"] = cat["psf"]["dec_col"]
+    params["ra_PSF_col"] = cat["psf"]["ra_col"]
+    params["dec_PSF_col"] = cat["psf"]["dec_col"]
     params["e1_PSF_col"] = cat["psf"]["e1_PSF_col"]
     params["e2_PSF_col"] = cat["psf"]["e2_PSF_col"]
     params["e1_star_col"] = cat["psf"]["e1_star_col"]
@@ -100,6 +100,8 @@ def get_params_rho_tau(cat, survey="other"):
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
 
+    params["ra_col"] = cat["shear"].get("ra_col", "RA")
+    params["dec_col"] = cat["shear"].get("dec_col", "Dec")
     params["w_col"] = cat["shear"]["w_col"]
     params["e1_col"] = cat["shear"]["e1_col"]
     params["e2_col"] = cat["shear"]["e2_col"]
