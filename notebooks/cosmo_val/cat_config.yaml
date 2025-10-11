@@ -2,14 +2,16 @@ paths:
    output: ./output
 
 nz:
-   subdir: CFIS/v1.0/nz
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/nz
+
    dndz:
       path: dndz
       blind: A
 
 SP_test:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: dashed
    colour: black
    marker: d
@@ -28,7 +30,7 @@ SP_test:
       e2_PSF_col: e2_PSF
       w_col: w_iv
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
       path: unions_shapepipe_star_2024_v1.4.1.fits
       ra_col: RA
@@ -52,7 +54,8 @@ SP_test:
 
 SP_v1.0:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: solid
    colour: blue
    marker: o
@@ -87,7 +90,8 @@ SP_v1.0:
 
 SP_v1.1:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: dashed
    colour: b
    marker: s
@@ -120,7 +124,8 @@ SP_v1.1:
 
 SP_v1.3:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: solid
    colour: green
    marker: p
@@ -158,7 +163,8 @@ SP_v1.3:
 
 SP_v1.4:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: solid
    colour: brown
    marker: d
@@ -205,7 +211,8 @@ SP_v1.4:
 
 SP_v1.4_conv:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: solid
    colour: black
    marker: d
@@ -252,7 +259,8 @@ SP_v1.4_conv:
 
 SP_v1.4_noalpha:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: solid
    colour: brown
    marker: d
@@ -300,7 +308,8 @@ SP_v1.4_noalpha:
 
 SP_v1.4-P3:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P3
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P3
+
    ls: dashed
    colour: brown
    marker: d
@@ -346,7 +355,8 @@ SP_v1.4-P3:
 
 SP_v1.4-P1+3:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P1+3
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3
+
    ls: dashed
    colour: brown
    marker: d
@@ -390,7 +400,8 @@ SP_v1.4-P1+3:
 
 SP_v1.4-P1+3_wcs:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P1+3
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3
+
    ls: dashed
    colour: brown
    marker: d
@@ -432,7 +443,8 @@ SP_v1.4-P1+3_wcs:
 
 SP_v1.4-P1+3_no_alpha:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P1+3
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3
+
    ls: dashed
    colour: black
    marker: d
@@ -474,7 +486,8 @@ SP_v1.4-P1+3_no_alpha:
 
 SP_v1.4-P1+3_li_2024:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P1+3
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3
+
    ls: dashed
    colour: gold
    marker: d
@@ -516,7 +529,8 @@ SP_v1.4-P1+3_li_2024:
 
 SP_v1.4-P1+3+4:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P1+3+4
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3+4
+
    ls: dashed
    colour: brown
    marker: d
@@ -556,7 +570,8 @@ SP_v1.4-P1+3+4:
 
 SP_v1.4-P1+3+4_wcs:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P1+3+4
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3+4
+
    ls: dashed
    colour: black
    marker: d
@@ -598,7 +613,8 @@ SP_v1.4-P1+3+4_wcs:
 
 SP_v1.4-P1+3+4_no_alpha:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/P1+3+4
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe/P1+3+4
+
    ls: dashed
    colour: black
    marker: d
@@ -640,7 +656,8 @@ SP_v1.4-P1+3+4_no_alpha:
 
 SP_v1.4.2:
    pipeline: SP
-   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.2
+   subdir: /n17data/mkilbing/astro/data/UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.2
+
    ls: dashed
    colour: black
    marker: d
@@ -682,7 +699,8 @@ SP_v1.4.2:
 
 SP_v1.4.1_noleakage:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/ShapePipe
+
    ls: dashed
    colour: black
    marker: d
@@ -702,13 +720,13 @@ SP_v1.4.1_noleakage:
       w_col: w_iv
       R: 1.0
    star:
-      path: unions_shapepipe_star_2024_v1.4.a.fits
+      path: unions_shapepipe_star_2024_v1.4.1.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: unions_shapepipe_psf_2024_v1.4.a.fits
+      path: unions_shapepipe_psf_2024_v1.4.1.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -724,7 +742,8 @@ SP_v1.4.1_noleakage:
 
 SP_v1.4.5:
    pipeline: SP
-   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.5
+   subdir: /n17data/UNIONS/WL/v1.4.x
+
    ls: dashed
    colour: dodgerblue
    marker: d
@@ -735,15 +754,17 @@ SP_v1.4.5:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.4370966656902571
    shear:
-      path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
+      path: v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
+      e1_col_corrected: e1_leak_corrected
+      e2_col_corrected: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
       path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
@@ -767,7 +788,8 @@ SP_v1.4.5:
 
 SP_v1.4.5_glass_mock:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe
+   subdir: /n17data/UNIONS/WL/v1.4.x
+
    ls: dashed
    colour: crimson
    marker: d
@@ -778,7 +800,7 @@ SP_v1.4.5_glass_mock:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.4370966656902571
    shear:
-      path: unions_v1.4.5_glass_mock.fits
+      path: /n09data/guerrini/glass_mock/results/unions_glass_sim_00000_4096.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
@@ -786,50 +808,7 @@ SP_v1.4.5_glass_mock:
       e2_PSF_col: e2_PSF
       w_col: w
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
-   star:
-      path: unions_shapepipe_star_2024_v1.4.1.fits
-      ra_col: RA
-      dec_col: Dec
-      e1_col: e1
-      e2_col: e2
-   psf:
-      path: unions_shapepipe_psf_2024_v1.4.1.fits
-      hdu: 1
-      ra_col: RA
-      dec_col: Dec
-      e1_PSF_col: E1_PSF_HSM
-      e2_PSF_col: E2_PSF_HSM
-      e1_star_col: E1_STAR_HSM
-      e2_star_col: E2_STAR_HSM
-      PSF_size: SIGMA_PSF_HSM
-      star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
-      square_size: True
-   
-SP_v1.4.5_leak_corr:
-   pipeline: SP
-   subdir: UNIONS/v1.x/ShapePipe/v1.4.x/v1.4.5
-   ls: dashed
-   colour: teal
-   marker: d
-   getdist_colour: 0.0, 0.5, 1.0
-   cov_th:
-      A: 2782 #deg^2
-      n_e: 7.18 #arcmin-2
-      n_psf: 0.752316232272063 #arcmin-2
-      sigma_e: 0.4370966656902571
-   shear:
-      path: unions_shapepipe_cut_struc_2024_v1.4.5.fits
-      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      e1_col: e1_leak_corrected
-      e2_col: e2_leak_corrected
-      e1_PSF_col: e1_PSF
-      e2_PSF_col: e2_PSF
-      w_col: w_des
-      R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
       path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
@@ -853,7 +832,8 @@ SP_v1.4.5_leak_corr:
 
 SP_v1.4.5_bright:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/murray/unions_cats
+
    ls: dashed
    colour: mediumblue
    marker: d
@@ -864,23 +844,23 @@ SP_v1.4.5_bright:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: ../../../../../../murray/unions_cats/unions_shapepipe_cut_struc_2024_v1.4.5_bright.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.5_bright.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_des
+      w_col: w_des
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: v1.4.x/v1.4.5/unions_shapepipe_star_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: v1.4.x/v1.4.5/unions_shapepipe_psf_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -896,7 +876,8 @@ SP_v1.4.5_bright:
 
 SP_v1.4.5_faint:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/murray/unions_cats
+
    ls: dashed
    colour: forestgreen
    marker: d
@@ -907,23 +888,23 @@ SP_v1.4.5_faint:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: ../../../../../../murray/unions_cats/unions_shapepipe_cut_struc_2024_v1.4.5_faint.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.5_faint.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_des
+      w_col: w_des
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: v1.4.x/v1.4.5/unions_shapepipe_star_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: v1.4.x/v1.4.5/unions_shapepipe_psf_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -939,7 +920,8 @@ SP_v1.4.5_faint:
 
 SP_v1.4.5_intermediate:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/murray/unions_cats
+
    ls: dashed
    colour: orange
    marker: d
@@ -950,23 +932,23 @@ SP_v1.4.5_intermediate:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: ../../../../../../murray/unions_cats/unions_shapepipe_cut_struc_2024_v1.4.5_intermediate.fits
+      path: unions_shapepipe_cut_struc_2024_v1.4.5_intermediate.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w_des
+      w_col: w_des
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: v1.4.x/v1.4.5/unions_shapepipe_star_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: v1.4.x/v1.4.5/unions_shapepipe_psf_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -982,7 +964,8 @@ SP_v1.4.5_intermediate:
 
 SP_v1.4.5.A:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/guinot/CFIS_3500_cat/catalogues_SPv1_v1.4.5
+
    ls: dashed
    colour: red
    marker: d
@@ -993,23 +976,23 @@ SP_v1.4.5.A:
       n_psf: 0.752316232272063 #arcmin-2
       sigma_e: 0.30961528707207325
    shear:
-      path: ../../../../../../guinot/CFIS_3500_cat/catalogues_SPv1_v1.4.5/shapepipe_SPv1.fits
+      path: shapepipe_SPv1.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: g1
       e2_col: g2
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
-      w: w
+      w_col: w
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: unions_shapepipe_star_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -1025,7 +1008,8 @@ SP_v1.4.5.A:
 
 SP_v1.4.6:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/UNIONS/WL/v1.4.x
+
    ls: dashed
    colour: green
    marker: d
@@ -1036,15 +1020,17 @@ SP_v1.4.6:
       n_psf: null # TBD
       sigma_e: null # TBD
    shear:
-      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
+      e1_col_corrected: e1_leak_corrected
+      e2_col_corrected: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
       path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
@@ -1052,7 +1038,7 @@ SP_v1.4.6:
       e1_col: e1
       e2_col: e2
    psf:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -1066,52 +1052,10 @@ SP_v1.4.6:
       star_flag: "FLAG_STAR_HSM"
       square_size: True
 
-SP_v1.4.6_leak_corr:
+SP_v1.4.7:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
-   ls: dashed
-   colour: green
-   marker: d
-   getdist_colour: 0.0, 0.5, 1.0
-   cov_th:
-      A: 2420.2651014497287 #deg^2 - shouldn't change with size cuts
-      n_e: null # TBD
-      n_psf: null # TBD
-      sigma_e: null # TBD
-   shear:
-      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
-      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      e1_col: e1_leak_corrected
-      e2_col: e2_leak_corrected
-      e1_PSF_col: e1_PSF
-      e2_PSF_col: e2_PSF
-      w_col: w_des
-      R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
-   star:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
-      ra_col: RA
-      dec_col: Dec
-      e1_col: e1
-      e2_col: e2
-   psf:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
-      hdu: 1
-      ra_col: RA
-      dec_col: Dec
-      e1_PSF_col: E1_PSF_HSM
-      e2_PSF_col: E2_PSF_HSM
-      e1_star_col: E1_STAR_HSM
-      e2_star_col: E2_STAR_HSM
-      PSF_size: SIGMA_PSF_HSM
-      star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
-      square_size: True
+   subdir: /n17data/UNIONS/WL/v1.4.x
 
-SP_v1.4.7_leak_corr:
-   pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
    ls: dashed
    colour: darkorchid
    marker: d
@@ -1122,23 +1066,25 @@ SP_v1.4.7_leak_corr:
       n_psf: null # TBD
       sigma_e: null # TBD
    shear:
-      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
+      path: v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      e1_col: e1_leak_corrected
-      e2_col: e2_leak_corrected
+      e1_col: e1
+      e2_col: e2
+      e1_col_corrected: e1_leak_corrected
+      e2_col_corrected: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -1152,9 +1098,10 @@ SP_v1.4.7_leak_corr:
       star_flag: "FLAG_STAR_HSM"
       square_size: True
 
-SP_v1.4.8_leak_corr:
+SP_v1.4.8:
    pipeline: SP
-   subdir: CFIS/v1.0/ShapePipe/
+   subdir: /n17data/UNIONS/WL/v1.4.x
+
    ls: dashed
    colour: darkorchid
    marker: d
@@ -1165,23 +1112,25 @@ SP_v1.4.8_leak_corr:
       n_psf: null # TBD
       sigma_e: null # TBD
    shear:
-      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
+      path: v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      e1_col: e1_leak_corrected
-      e2_col: e2_leak_corrected
+      e1_col: e1
+      e2_col: e2
+      e1_col_corrected: e1_leak_corrected
+      e2_col_corrected: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
-      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+      redshift_distr: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
    star:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+      path: unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
       e2_col: e2
    psf:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
       ra_col: RA
       dec_col: Dec
@@ -1197,7 +1146,8 @@ SP_v1.4.8_leak_corr:
 
 SP_v1.5.4:
    pipeline: SP
-   subdir: ../../../UNIONS/WL/v1.5.x
+   subdir: /n17data/UNIONS/WL/v1.5.x
+
    ls: dashed
    colour: green
    marker: d
@@ -1212,48 +1162,6 @@ SP_v1.5.4:
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       e1_col: e1
       e2_col: e2
-      e1_PSF_col: e1_PSF
-      e2_PSF_col: e2_PSF
-      w_col: w_iv
-      R: 1.0
-   star:
-      path: unions_shapepipe_star_2024_v1.5.a.fits
-      ra_col: RA
-      dec_col: Dec
-      e1_col: e1
-      e2_col: e2
-   psf:
-      path: unions_shapepipe_psf_2024_v1.5.a.fits
-      hdu: 1
-      ra_col: RA
-      dec_col: Dec
-      e1_PSF_col: E1_PSF_HSM
-      e2_PSF_col: E2_PSF_HSM
-      e1_star_col: E1_STAR_HSM
-      e2_star_col: E2_STAR_HSM
-      PSF_size: SIGMA_PSF_HSM
-      star_size: SIGMA_STAR_HSM
-      PSF_flag: "FLAG_PSF_HSM"
-      star_flag: "FLAG_STAR_HSM"
-      square_size: True
-
-SP_v1.5.4_leak_corr:
-   pipeline: SP
-   subdir: ../../../UNIONS/WL/v1.5.x
-   ls: dashed
-   colour: darkgreen
-   marker: d
-   getdist_colour: 0.0, 0.5, 1.0
-   cov_th:
-      A: 2420.2651014497287 #deg^2
-      n_e: 7.040818382014773 #arcmin-2
-      n_psf: 0.752316232272063 #arcmin-2
-      sigma_e: 0.30961528707207325
-   shear:
-      path: v1.5.4/unions_shapepipe_cut_struc_2024_v1.5.4.fits
-      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      e1_col: e1_leak_corrected
-      e2_col: e2_leak_corrected
       e1_PSF_col: e1_PSF
       e2_PSF_col: e2_PSF
       w_col: w_iv
@@ -1281,7 +1189,8 @@ SP_v1.5.4_leak_corr:
 
 LF_v1.0:
    pipeline: LF
-   subdir: CFIS/v1.0/Lensfit
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/Lensfit
+
    ls: solid
    colour: r
    marker: "8"
@@ -1301,7 +1210,8 @@ LF_v1.0:
 
 LF_v2.0:
    pipeline: LF
-   subdir: CFIS/v2.0/Lensfit
+   subdir: /n17data/mkilbing/astro/data/CFIS/v2.0/Lensfit
+
    ls: dashed
    colour: r
    marker: p
@@ -1319,7 +1229,8 @@ LF_v2.0:
 
 SP_matched_LF_v1.0:
    pipeline: SP
-   subdir: CFIS/v1.0/matched_LF_SP
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/matched_LF_SP
+
    ls: dotted
    colour: magenta
    marker: v
@@ -1352,7 +1263,8 @@ SP_matched_LF_v1.0:
 
 LF_matched_SP_v1.0:
    pipeline: LF
-   subdir: CFIS/v1.0/matched_LF_SP
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/matched_LF_SP
+
    ls: dashdot
    colour: magenta
    marker: ^
@@ -1372,7 +1284,8 @@ LF_matched_SP_v1.0:
 
 SP_v1.0_LFmask_4k:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dashdot
    colour: blue
    marker: h
@@ -1404,7 +1317,8 @@ SP_v1.0_LFmask_4k:
 
 SP_v1.0_LFmask_8k:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dotted
    colour: blue
    marker: h
@@ -1438,7 +1352,8 @@ SP_v1.0_LFmask_8k:
 
 SP_v1.3_LFmask_4k:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dashdot
    colour: green
    marker: h
@@ -1470,7 +1385,8 @@ SP_v1.3_LFmask_4k:
 
 SP_v1.4-P3_LFmask:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask/P3
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask/P3
+
    ls: dashdot
    colour: black
    marker: h
@@ -1513,7 +1429,8 @@ SP_v1.4-P3_LFmask:
 
 SP_v1.3_LFmask_8k:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dotted
    colour: green
    marker: h
@@ -1561,7 +1478,8 @@ SP_v1.3_LFmask_8k:
 
 SP_v1.3_LFmask_8k_no_alpha:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dotted
    colour: blueviolet
    marker: h
@@ -1609,7 +1527,8 @@ SP_v1.3_LFmask_8k_no_alpha:
 
 SP_v1.3_LFmask_8k_li_2024:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dotted
    colour: deepskyblue
    marker: h
@@ -1657,7 +1576,8 @@ SP_v1.3_LFmask_8k_li_2024:
 
 SP_v1.3_LFmask_8k_SN8:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dotted
    colour: darkgreen
    marker: h
@@ -1704,7 +1624,8 @@ SP_v1.3_LFmask_8k_SN8:
 
 SP_v1.3_LFmask_8k_SN7:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dotted
    colour: purple
    marker: h
@@ -1751,7 +1672,8 @@ SP_v1.3_LFmask_8k_SN7:
 
 SP_v1.3_LFmask_8k_F2:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: dotted
    colour: lawngreen
    marker: h
@@ -1798,7 +1720,8 @@ SP_v1.3_LFmask_8k_F2:
 
 SP_v1.4_LFmask_8k:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: solid
    colour: black
    marker: d
@@ -1845,7 +1768,8 @@ SP_v1.4_LFmask_8k:
 
 SP_v1.4_LFmask_8k_noalpha:
    pipeline: SP
-   subdir: CFIS/v1.0/SP_LFmask
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
+
    ls: solid
    colour: brown
    marker: d
@@ -1892,7 +1816,8 @@ SP_v1.4_LFmask_8k_noalpha:
 
 SP_matched_MP_v1.0:
    pipeline: SP
-   subdir: CFIS/v1.0/matched_SP_MP
+   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/matched_SP_MP
+
    ls: dashdot
    colour: lightblue
    marker: D
@@ -1918,7 +1843,8 @@ SP_matched_LF_fp_v1.0:
       
 SP_axel_v0.0:
    pipeline: SP
-   subdir: CFIS/v0.0
+   subdir: /n17data/mkilbing/astro/data/CFIS/v0.0
+
    ls: dotted
    colour: cyan
    marker: >
@@ -1963,7 +1889,8 @@ SP_axel_v0.0:
    
 SP_v0.1.1:
    pipeline: SP
-   subdir: CFIS/v0.0
+   subdir: /n17data/mkilbing/astro/data/CFIS/v0.0
+
    ls: dashdot
    colour: cyan
    marker: v
@@ -1997,7 +1924,8 @@ SP_v0.1.1:
 
 DES:
    pipeline: SP
-   subdir: DES
+   subdir: /n17data/mkilbing/astro/data/DES
+
    ls: solid
    colour: orange
    marker: "*"

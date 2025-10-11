@@ -1,5 +1,7 @@
 # %%
+import copy
 import os
+from pathlib import Path
 
 import colorama
 import healpy as hp
@@ -25,7 +27,6 @@ class CosmologyValidation:
     def __init__(
         self,
         versions,
-        data_base_dir,
         catalog_config="./cat_config.yaml",
         output_dir=None,
         rho_tau_method="lsq",
@@ -49,10 +50,8 @@ class CosmologyValidation:
         pol_factor=True,
         nrandom_cell=10,
         cosmo_params=None,
-        redshift_file=None
+        redshift_file=None,
     ):
-        self.versions = versions
-        self.data_base_dir = data_base_dir
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
@@ -99,15 +98,54 @@ class CosmologyValidation:
         with open(catalog_config, "r") as file:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
-        for ver in ["nz", *versions]:
-            if ver not in cc:
-                raise KeyError(
-                    f"Version string {ver} not found in config file{catalog_config}"
-                )
-            version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
+        def resolve_paths_for_version(ver):
+            """Resolve relative paths for a version using its subdir."""
+            subdir = Path(cc[ver]["subdir"])
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
-                    cc[ver][key]["path"] = f"{version_base}/{cc[ver][key]['path']}"
+                    path = Path(cc[ver][key]["path"])
+                    cc[ver][key]["path"] = (
+                        str(path) if path.is_absolute() else str(subdir / path)
+                    )
+
+        resolve_paths_for_version("nz")
+        processed = {"nz"}
+        final_versions = []
+
+        for ver in versions:
+            if ver.endswith("_leak_corr"):
+                base_ver = ver.replace("_leak_corr", "")
+                target = base_ver
+                if base_ver not in cc:
+                    raise KeyError(
+                        f"Base version {base_ver} not found for {ver} in config file "
+                        f"{catalog_config}"
+                    )
+                if "e1_col_corrected" not in cc[base_ver]["shear"]:
+                    raise ValueError(
+                        f"{base_ver} does not have e1_col_corrected/e2_col_corrected "
+                        f"fields; cannot create {ver}"
+                    )
+            else:
+                target = ver
+                if ver not in cc:
+                    raise KeyError(
+                        f"Version string {ver} not found in config file "
+                        f"{catalog_config}"
+                    )
+
+            if target not in processed:
+                resolve_paths_for_version(target)
+                processed.add(target)
+
+            if ver.endswith("_leak_corr"):
+                cc[ver] = copy.deepcopy(cc[base_ver])
+                cc[ver]["shear"]["e1_col"] = cc[base_ver]["shear"]["e1_col_corrected"]
+                cc[ver]["shear"]["e2_col"] = cc[base_ver]["shear"]["e2_col_corrected"]
+
+            final_versions.append(ver)
+
+        self.versions = final_versions
 
         # Override output directory if provided
         if output_dir is not None:
@@ -1927,7 +1965,6 @@ class CosmologyValidation:
             plot_cosebis_covariance_matrix,
             plot_cosebis_modes,
             plot_cosebis_scale_cut_heatmap,
-            scale_cut_to_bins,
         )
 
         # Use instance defaults if not specified
@@ -1937,8 +1974,8 @@ class CosmologyValidation:
 
         # Determine variance method based on whether theoretical covariance is used
         var_method = "analytic" if cov_path is not None else "jackknife"
-        
-        # Create output filename with integration parameters to match Snakemake expectations
+
+        # Create output filename with integration parameters to match Snakemake
         out_stub = (
             f"{output_dir}/{version}_cosebis_minsep={min_sep_int}_"
             f"maxsep={max_sep_int}_nbins={nbins_int}_npatch={npatch}_"
@@ -1976,7 +2013,9 @@ class CosmologyValidation:
             # Multiple scale cuts: use fiducial_scale_cut if provided, otherwise use
             # full range
             if fiducial_scale_cut is not None:
-                plot_results = results[find_conservative_scale_cut_key(results, fiducial_scale_cut)]
+                plot_results = results[
+                    find_conservative_scale_cut_key(results, fiducial_scale_cut)
+                ]
             else:
                 # Use full range result (largest scale cut)
                 max_range_key = max(results.keys(), key=lambda x: x[1] - x[0])
@@ -2010,7 +2049,9 @@ class CosmologyValidation:
                 "max_sep": max_sep or self.treecorr_config["max_sep"],
                 "nbins": nbins or self.treecorr_config["nbins"],
             }
-            gg_temp = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_temp)
+            gg_temp = self.calculate_2pcf(
+                version, npatch=npatch, **treecorr_config_temp
+            )
 
             plot_cosebis_scale_cut_heatmap(
                 results,
@@ -2053,9 +2094,10 @@ class CosmologyValidation:
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
                 lmax = 2 * self.nside
-                path_redshift_distr = (
-                    self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
-                )
+                redshift_path = Path(self.cc[ver]["shear"]["redshift_distr"])
+                if not redshift_path.is_absolute():
+                    redshift_path = Path(self.cc[ver]["subdir"]) / redshift_path
+                path_redshift_distr = str(redshift_path)
                 pw = hp.pixwin(nside, lmax=lmax)
 
                 # Load redshift distribution and calculate theory C_ell

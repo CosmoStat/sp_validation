@@ -19,11 +19,11 @@ if ipython is not None:
 
 # %%
 cv = CosmologyValidation(
-    versions=["SP_v1.4.5"],
+    versions=["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.7_leak_corr"],
     data_base_dir="/n17data/mkilbing/astro/data",
-    npatch=1,
-    theta_min=1,
-    theta_max=250,
+    npatch=256,
+    theta_min=1.0,
+    theta_max=250.0,
     nbins=20,
     theta_min_plot=1,
     theta_max_plot=250,
