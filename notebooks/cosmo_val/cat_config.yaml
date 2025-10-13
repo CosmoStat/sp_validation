@@ -788,6 +788,7 @@ SP_v1.4.8:
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
+      mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
       redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.8/nz_SP_v1.4.8_A.txt
    star:
       path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
@@ -1003,6 +1004,7 @@ SP_v1.4.6_leak_corr:
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
+      mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
       redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
    star:
       path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
@@ -1089,6 +1091,7 @@ SP_v1.4.8_leak_corr:
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
+      mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
       redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.8/nz_SP_v1.4.8_A.txt
    star:
       path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
@@ -1391,6 +1394,7 @@ SP_v1.4.5_leak_corr:
       e2_PSF_col: e2_PSF
       w_col: w_des
       R: 1.0
+      mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
       redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.5/nz_SP_v1.4.5_A.txt
    star:
       path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits

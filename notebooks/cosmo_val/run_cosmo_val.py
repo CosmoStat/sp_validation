@@ -19,7 +19,7 @@ if ipython is not None:
 
 # %%
 cv = CosmologyValidation(
-    versions=["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.7_leak_corr"],
+    versions=["SP_v1.4.5", "SP_v1.4.6", "SP_v1.4.8", "SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"],
     data_base_dir="/n17data/mkilbing/astro/data/",
     theta_min=1.0,
     theta_max=250.0,
@@ -27,8 +27,13 @@ cv = CosmologyValidation(
     theta_max_plot=260.0,
     npatch=100,
     nrandom_cell=100,
-    cell_method="catalog"
+    cell_method="catalog",
+    nside_mask=8192,
+    path_onecovariance="/home/guerrini/OneCovariance/"
 )
+
+# %%
+cv.calculate_pseudo_cl_g_ng_cov()
 
 # %%
 cv.plot_footprints()

@@ -96,7 +96,7 @@ def pseudo_cl_to_fits(filename):
 
 def cov_pseudo_cl_to_fits(filename):
     cov_pseudo_cl = fits.open(filename)
-    cov_ee = cov_pseudo_cl["COVAR_EE_EE"].data
+    cov_ee = cov_pseudo_cl["FULL_COV"].data
 
     cov_hdu = fits.ImageHDU(cov_ee)
     cov_dict = {
@@ -218,7 +218,7 @@ if __name__ == "__main__":
 
     if use_pseudo_cell:
         pseudo_cl_file = output_folder+'/pseudo_cl_'+root+'.fits'
-        pseudo_cl_cov_file = output_folder+'/pseudo_cl_cov_'+root+'.fits'
+        pseudo_cl_cov_file = output_folder+'/pseudo_cl_cov_g_ng_iNKA_'+root+'.fits' #Hardcode the use of iNKA covariance matrix here but could be generalised.
 
         print("Creating 2PT fits extension...\n")
         if not os.path.exists(pseudo_cl_file):
