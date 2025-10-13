@@ -96,7 +96,7 @@ def pseudo_cl_to_fits(filename):
 
 def cov_pseudo_cl_to_fits(filename):
     cov_pseudo_cl = fits.open(filename)
-    cov_ee = cov_pseudo_cl["FULL_COV"].data
+    cov_ee = cov_pseudo_cl["COVAR_FULL"].data
 
     cov_hdu = fits.ImageHDU(cov_ee)
     cov_dict = {
