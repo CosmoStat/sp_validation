@@ -17,22 +17,6 @@ CATALOG_CONFIG = (
     Path(__file__).resolve().parents[3] / "notebooks" / "cosmo_val" / "cat_config.yaml"
 )
 
-EXPECTED_MISSING = {
-    "SP_v1.0": {"shear", "psf"},
-    "SP_v1.1": {"shear", "psf"},
-    "SP_v1.4": {"shear", "star", "psf"},
-    "SP_v1.4_conv": {"shear", "star", "psf"},
-    "SP_v1.4_noalpha": {"shear", "star", "psf"},
-    "SP_v1.4-P1+3": {"shear", "star", "psf"},
-    "SP_v1.4-P1+3_wcs": {"shear", "star", "psf"},
-    "SP_v1.4-P1+3_no_alpha": {"shear", "star", "psf"},
-    "SP_v1.4-P1+3_li_2024": {"shear", "star", "psf"},
-    "SP_v1.4-P1+3+4": {"shear", "star", "psf"},
-    "SP_v1.4-P1+3+4_wcs": {"shear", "star", "psf"},
-    "SP_v1.4-P1+3+4_no_alpha": {"shear", "star", "psf"},
-    "SP_matched_MP_v1.0": {"shear"},
-}
-
 
 def _resolve(base: Path, candidate: str) -> Path:
     """Return an absolute path given a base directory and a candidate string."""
@@ -75,23 +59,7 @@ def test_catalog_files_exist():
             if not resolved_path.is_file():
                 missing[name].add(block_name)
 
-    unexpected = {
-        name: blocks - EXPECTED_MISSING.get(name, set())
-        for name, blocks in missing.items()
-        if blocks - EXPECTED_MISSING.get(name, set())
-    }
-    assert not unexpected, (
-        "Unexpected missing catalog files detected: "
-        f"{ {name: sorted(blocks) for name, blocks in unexpected.items()} }"
-    )
-
-    resolved = {
-        name: expected - missing.get(name, set())
-        for name, expected in EXPECTED_MISSING.items()
-        if expected - missing.get(name, set())
-    }
-    assert not resolved, (
-        "Previously missing catalog files are now available; "
-        f"update EXPECTED_MISSING to reflect this change: "
-        f"{ {name: sorted(blocks) for name, blocks in resolved.items()} }"
+    assert not missing, (
+        "Catalog configuration references missing files: "
+        f"{ {name: sorted(blocks) for name, blocks in missing.items()} }"
     )
