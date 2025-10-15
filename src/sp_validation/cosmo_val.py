@@ -24,6 +24,92 @@ from .rho_tau import get_params_rho_tau, get_rho_tau_w_cov, get_samples
 
 # %%
 class CosmologyValidation:
+    """Framework for cosmic shear validation and systematics analysis.
+
+    Handles two-point correlation function measurements, PSF systematics (rho/tau),
+    pseudo-C_ell analysis, and covariance estimation for weak lensing surveys.
+    Supports multiple catalog versions with automatic leakage-corrected variants.
+
+    Parameters
+    ----------
+    versions : list of str
+        Catalog version identifiers to analyze. Appending '_leak_corr' to a base
+        version creates a virtual catalog using leakage-corrected ellipticity columns
+        (e1_col_corrected/e2_col_corrected) from the base version configuration.
+    catalog_config : str, default './cat_config.yaml'
+        Path to catalog configuration YAML defining survey metadata, file paths,
+        and analysis settings for each version.
+    output_dir : str, optional
+        Override for output directory. If None, uses catalog config's paths.output.
+    rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
+        Fitting method for PSF leakage systematics parameters.
+    cov_estimate_method : {'th', 'jk'}, default 'th'
+        Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife.
+    compute_cov_rho : bool, default True
+        Whether to compute covariance for rho statistics during PSF analysis.
+    n_cov : int, default 100
+        Number of realizations for covariance estimation when using theory method.
+    theta_min : float, default 0.1
+        Minimum angular separation in arcminutes for correlation function binning.
+    theta_max : float, default 250
+        Maximum angular separation in arcminutes for correlation function binning.
+    nbins : int, default 20
+        Number of angular bins for TreeCorr real-space correlation functions.
+    var_method : {'jackknife', 'sample', 'bootstrap', 'marked_bootstrap'}, default 'jackknife'
+        TreeCorr variance estimation method.
+    npatch : int, default 20
+        Number of spatial patches for jackknife variance estimation.
+    quantile : float, default 0.1587
+        Quantile for uncertainty bands in plots (default: 1-sigma ≈ 0.159).
+    theta_min_plot : float, default 0.08
+        Minimum angular scale for plotting (may differ from analysis cut).
+    theta_max_plot : float, default 250
+        Maximum angular scale for plotting.
+    ylim_alpha : list of float, default [-0.005, 0.05]
+        Y-axis limits for alpha systematic parameter plots.
+    ylim_xi_sys_ratio : list of float, default [-0.02, 0.5]
+        Y-axis limits for xi systematics ratio plots.
+    nside : int, default 1024
+        HEALPix resolution for pseudo-C_ell analysis and area computation.
+    binning : {'powspace', 'linspace', 'logspace'}, default 'powspace'
+        Ell binning scheme for pseudo-C_ell (powspace = ell^power spacing).
+    power : float, default 0.5
+        Exponent for power-law binning when binning='powspace'.
+    n_ell_bins : int, default 32
+        Number of ell bins for pseudo-C_ell analysis.
+    pol_factor : bool, default True
+        Apply polarization correction factor in pseudo-C_ell calculations.
+    nrandom_cell : int, default 10
+        Number of random realizations for C_ell error estimation.
+    cosmo_params : dict, optional
+        Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
+    redshift_file : str, optional
+        Path to n(z) file for theory calculations. Format: columns of (z, n(z)).
+
+    Attributes
+    ----------
+    versions : list of str
+        Validated catalog versions after processing _leak_corr variants.
+    cc : dict
+        Loaded catalog configuration with resolved absolute paths.
+    catalog_config_path : Path
+        Resolved path to the catalog configuration file.
+    treecorr_config : dict
+        Configuration dictionary passed to TreeCorr correlation objects.
+    cosmo : pyccl.Cosmology
+        Cosmology object for theory predictions.
+    z_dist : ndarray or None
+        Redshift distribution loaded from redshift_file if provided.
+
+    Notes
+    -----
+    - Path resolution: Relative paths in catalog config are resolved using each
+      version's 'subdir' field as the base directory.
+    - Virtual _leak_corr versions: These create deep copies of the base version
+      config, swapping e1_col/e2_col with e1_col_corrected/e2_col_corrected.
+    - TreeCorr cross_patch_weight: Automatically set to 'match' for jackknife,
+      'simple' otherwise, following TreeCorr best practices.
+    """
     def __init__(
         self,
         versions,
