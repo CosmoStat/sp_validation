@@ -83,8 +83,6 @@ class CosmologyValidation:
         Number of random realizations for C_ell error estimation.
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
-    redshift_file : str, optional
-        Path to n(z) file for theory calculations. Format: columns of (z, n(z)).
 
     Attributes
     ----------
@@ -98,8 +96,6 @@ class CosmologyValidation:
         Configuration dictionary passed to TreeCorr correlation objects.
     cosmo : pyccl.Cosmology
         Cosmology object for theory predictions.
-    z_dist : ndarray or None
-        Redshift distribution loaded from redshift_file if provided.
 
     Notes
     -----
@@ -136,7 +132,6 @@ class CosmologyValidation:
         pol_factor=True,
         nrandom_cell=10,
         cosmo_params=None,
-        redshift_file=None,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -167,8 +162,6 @@ class CosmologyValidation:
             # Use Planck 2018 defaults
             self.cosmo = get_cosmo()
 
-        # load redshift distribution from file if provided
-        self.z_dist = np.loadtxt(redshift_file) if redshift_file is not None else None
 
         self.treecorr_config = {
             "ra_units": "degrees",
@@ -240,6 +233,24 @@ class CosmologyValidation:
 
         if not os.path.exists(cc["paths"]["output"]):
             os.mkdir(cc["paths"]["output"])
+
+    def get_redshift(self, version):
+        """Load redshift distribution for a catalog version.
+
+        Parameters
+        ----------
+        version : str
+            Catalog version identifier
+
+        Returns
+        -------
+        z : ndarray
+            Redshift values
+        nz : ndarray
+            n(z) probability density
+        """
+        redshift_path = self.cc[version]["shear"]["redshift_path"]
+        return np.loadtxt(redshift_path, unpack=True)
 
     def compute_survey_stats(
         self,
@@ -1684,7 +1695,6 @@ class CosmologyValidation:
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
-        redshift_file=None,
         n_samples=1000,
     ):
         """
@@ -1782,18 +1792,8 @@ class CosmologyValidation:
 
         # Get redshift distribution if using analytic covariance
         if cov_path_int is not None:
-            if redshift_file is None:
-                try:
-                    print("Inheriting redshift distribution from self.z_dist")
-                    z_dist = self.z_dist
-                except AttributeError:
-                    raise ValueError(
-                        "redshift distribution must be provided either to this function"
-                        " or to the CosmologyValidation class upon creation "
-                        "if using an analytic covariance."
-                    )
-            else:
-                z_dist = np.loadtxt(redshift_file)
+            z, nz = self.get_redshift(version)
+            z_dist = np.column_stack([z, nz])
         else:
             z_dist = None
 
@@ -1826,7 +1826,6 @@ class CosmologyValidation:
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
-        redshift_file=None,
         n_samples=1000,
         results=None,
         **kwargs
@@ -1864,8 +1863,6 @@ class CosmologyValidation:
             Path to integration covariance matrix for semi-analytical calculation
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology for theoretical predictions in semi-analytical covariance
-        redshift_file : str, optional
-            Path to redshift distribution file for semi-analytical covariance
         n_samples : int
             Number of Monte Carlo samples for semi-analytical covariance (default: 1000)
         results : dict or list, optional
@@ -1953,7 +1950,6 @@ class CosmologyValidation:
                     var_method=var_method,
                     cov_path_int=cov_path_int,
                     cosmo_cov=cosmo_cov,
-                    redshift_file=redshift_file,
                     n_samples=n_samples,
                 )
 
@@ -2310,14 +2306,10 @@ class CosmologyValidation:
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
                 lmax = 2 * self.nside
-                redshift_path = Path(self.cc[ver]["shear"]["redshift_distr"])
-                if not redshift_path.is_absolute():
-                    redshift_path = Path(self.cc[ver]["subdir"]) / redshift_path
-                path_redshift_distr = str(redshift_path)
+                z, dndz = self.get_redshift(ver)
                 pw = hp.pixwin(nside, lmax=lmax)
 
                 # Load redshift distribution and calculate theory C_ell
-                z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
                 ell = np.arange(1, lmax + 1)
                 fiducial_cl = (
                     get_theo_c_ell(
