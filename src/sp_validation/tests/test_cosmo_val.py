@@ -11,6 +11,7 @@ handling leak-corrected ellipticity columns.
 import os
 
 import pytest
+import yaml
 
 from sp_validation.cosmo_val import CosmologyValidation
 
@@ -41,6 +42,57 @@ class TestCosmologyValidation:
             "theta_max": 250.0,
             "nbins": 20,
         }
+
+    @staticmethod
+    def _make_seed_config(tmp_path, shear_filename):
+        """Create a minimal catalog config for seed variant testing."""
+        base_version = "TestCatalog"
+        base_dir = tmp_path / "catalog"
+        base_dir.mkdir()
+        (base_dir / shear_filename).touch()
+
+        star_filename = "star_seed_1234.fits"
+        (base_dir / star_filename).touch()
+
+        nz_dir = tmp_path / "nz"
+        nz_dir.mkdir()
+        (nz_dir / "dndz.txt").write_text("0.1 1.0\n")
+
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        config_path = tmp_path / "seed_config.yaml"
+        config_data = {
+            "nz": {
+                "subdir": str(nz_dir),
+                "dndz": {"blind": "A", "path": "dndz.txt"},
+            },
+            "paths": {"output": str(output_dir)},
+            base_version: {
+                "subdir": str(base_dir),
+                "pipeline": "SP",
+                "shear": {
+                    "path": shear_filename,
+                    "w_col": "w",
+                    "e1_col": "e1",
+                    "e2_col": "e2",
+                    "e1_col_corrected": "e1_corr",
+                    "e2_col_corrected": "e2_corr",
+                },
+                "star": {"path": star_filename},
+            },
+        }
+        config_path.write_text(yaml.dump(config_data, sort_keys=False))
+
+        params = {
+            "catalog_config": str(config_path),
+            "output_dir": str(output_dir),
+            "npatch": 1,
+            "theta_min": 1.0,
+            "theta_max": 250.0,
+            "nbins": 20,
+        }
+        return params, base_version
 
     @pytest.mark.parametrize(
         "version,e1_col,e2_col",
@@ -125,3 +177,42 @@ class TestCosmologyValidation:
         # Verify the values are numeric
         assert isinstance(cv.c1[version_leak_corr], float)
         assert isinstance(cv.c2[version_leak_corr], float)
+
+    def test_seed_variant_updates_shear_path(self, tmp_path):
+        """Seeded versions should materialize a seed-specific shear path."""
+        params, base_version = self._make_seed_config(
+            tmp_path, shear_filename="shear_seed_1234.fits"
+        )
+        seed_version = f"{base_version}_seed007"
+
+        cv = CosmologyValidation(versions=[seed_version], **params)
+
+        assert cv.versions == [seed_version]
+        assert seed_version in cv.cc
+        assert cv.cc[seed_version]["shear"]["path"].endswith("shear_seed_007.fits")
+
+    def test_seed_leak_corr_materializes_seed_first(self, tmp_path):
+        """_seed<N>_leak_corr should clone the seed variant before leak fixes."""
+        params, base_version = self._make_seed_config(
+            tmp_path, shear_filename="shear_seed_1234.fits"
+        )
+        leak_version = f"{base_version}_seed007_leak_corr"
+        seed_version = f"{base_version}_seed007"
+
+        cv = CosmologyValidation(versions=[leak_version], **params)
+
+        assert cv.versions == [leak_version]
+        assert seed_version in cv.cc
+        assert cv.cc[seed_version]["shear"]["path"].endswith("shear_seed_007.fits")
+        assert cv.cc[leak_version]["shear"]["e1_col"] == "e1_corr"
+        assert cv.cc[leak_version]["shear"]["e2_col"] == "e2_corr"
+
+    def test_seed_variant_without_token_errors(self, tmp_path):
+        """Missing seed token in shear path should raise a descriptive error."""
+        params, base_version = self._make_seed_config(
+            tmp_path, shear_filename="shear_base.fits"
+        )
+        seed_version = f"{base_version}_seed123"
+
+        with pytest.raises(ValueError, match="seed"):
+            CosmologyValidation(versions=[seed_version], **params)

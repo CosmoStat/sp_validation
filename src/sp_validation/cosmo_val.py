@@ -1,6 +1,7 @@
 # %%
 import copy
 import os
+import re
 from pathlib import Path
 
 import colorama
@@ -106,6 +107,34 @@ class CosmologyValidation:
     - TreeCorr cross_patch_weight: Automatically set to 'match' for jackknife,
       'simple' otherwise, following TreeCorr best practices.
     """
+
+    _SEED_SUFFIX_RE = re.compile(r"^(?P<base>.+)_seed(?P<seed>\d+)$")
+    _SEED_TOKEN_RE = re.compile(r"seed(?P<sep>[_-]?)(?P<digits>\d+)")
+
+    @classmethod
+    def _split_seed_variant(cls, version):
+        """Return the base version and seed label if version encodes a seed."""
+        match = cls._SEED_SUFFIX_RE.match(version)
+        if match is None:
+            return None, None
+        return match.group("base"), match.group("seed")
+
+    @classmethod
+    def _apply_seed_token(cls, path, seed_value, version, base_version, catalog_config):
+        """Replace the final seed token in the path with the requested seed value."""
+        matches = list(cls._SEED_TOKEN_RE.finditer(path))
+        if not matches:
+            raise ValueError(
+                f"Cannot materialize '{version}': shear path '{path}' for base version "
+                f"'{base_version}' does not contain a 'seed<digits>' token. "
+                f"Update {catalog_config} or drop the seed suffix."
+            )
+        match = matches[-1]
+        sep = match.group("sep") or ""
+        replacement = f"seed{sep}{seed_value}"
+        start, end = match.span()
+        return f"{path[:start]}{replacement}{path[end:]}"
+
     def __init__(
         self,
         versions,
@@ -191,38 +220,58 @@ class CosmologyValidation:
         resolve_paths_for_version("nz")
         processed = {"nz"}
         final_versions = []
+        leak_suffix = "_leak_corr"
 
-        for ver in versions:
-            if ver.endswith("_leak_corr"):
-                base_ver = ver.replace("_leak_corr", "")
-                target = base_ver
-                if base_ver not in cc:
-                    raise KeyError(
-                        f"Base version {base_ver} not found for {ver} in config file "
-                        f"{catalog_config}"
-                    )
-                if "e1_col_corrected" not in cc[base_ver]["shear"]:
+        def ensure_version_exists(ver):
+            if ver in processed:
+                return
+
+            if ver in cc:
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            seed_base, seed_label = self._split_seed_variant(ver)
+
+            if ver.endswith(leak_suffix):
+                base_ver = ver[: -len(leak_suffix)]
+                ensure_version_exists(base_ver)
+                shear_cfg = cc[base_ver]["shear"]
+                if "e1_col_corrected" not in shear_cfg or "e2_col_corrected" not in shear_cfg:
                     raise ValueError(
                         f"{base_ver} does not have e1_col_corrected/e2_col_corrected "
                         f"fields; cannot create {ver}"
                     )
-            else:
-                target = ver
                 if ver not in cc:
-                    raise KeyError(
-                        f"Version string {ver} not found in config file "
-                        f"{catalog_config}"
+                    cc[ver] = copy.deepcopy(cc[base_ver])
+                    cc[ver]["shear"]["e1_col"] = shear_cfg["e1_col_corrected"]
+                    cc[ver]["shear"]["e2_col"] = shear_cfg["e2_col_corrected"]
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            if seed_base is not None:
+                ensure_version_exists(seed_base)
+                if ver not in cc:
+                    cc[ver] = copy.deepcopy(cc[seed_base])
+                    seed_path = self._apply_seed_token(
+                        cc[seed_base]["shear"]["path"],
+                        seed_label,
+                        ver,
+                        seed_base,
+                        catalog_config,
                     )
+                    cc[ver]["shear"]["path"] = seed_path
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
 
-            if target not in processed:
-                resolve_paths_for_version(target)
-                processed.add(target)
+            raise KeyError(
+                f"Version string {ver} not found in config file {catalog_config}"
+            )
 
-            if ver.endswith("_leak_corr"):
-                cc[ver] = copy.deepcopy(cc[base_ver])
-                cc[ver]["shear"]["e1_col"] = cc[base_ver]["shear"]["e1_col_corrected"]
-                cc[ver]["shear"]["e2_col"] = cc[base_ver]["shear"]["e2_col_corrected"]
-
+        for ver in versions:
+            ensure_version_exists(ver)
             final_versions.append(ver)
 
         self.versions = final_versions
