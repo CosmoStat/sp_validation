@@ -1,7 +1,6 @@
 # %%
 import copy
 import os
-import re
 from pathlib import Path
 
 import colorama
@@ -108,32 +107,73 @@ class CosmologyValidation:
       'simple' otherwise, following TreeCorr best practices.
     """
 
-    _SEED_SUFFIX_RE = re.compile(r"^(?P<base>.+)_seed(?P<seed>\d+)$")
-    _SEED_TOKEN_RE = re.compile(r"seed(?P<sep>[_-]?)(?P<digits>\d+)")
-
-    @classmethod
-    def _split_seed_variant(cls, version):
+    @staticmethod
+    def _split_seed_variant(version):
         """Return the base version and seed label if version encodes a seed."""
-        match = cls._SEED_SUFFIX_RE.match(version)
-        if match is None:
+        if "_seed" not in version:
             return None, None
-        return match.group("base"), match.group("seed")
+        base, seed_label = version.rsplit("_seed", 1)
+        if not base or not seed_label.isdigit():
+            return None, None
+        return base, seed_label
 
-    @classmethod
-    def _apply_seed_token(cls, path, seed_value, version, base_version, catalog_config):
-        """Replace the final seed token in the path with the requested seed value."""
-        matches = list(cls._SEED_TOKEN_RE.finditer(path))
-        if not matches:
+    @staticmethod
+    def _materialize_seed_path(
+        base_cfg, seed_label, version, base_version, catalog_config
+    ):
+        """Render the seed-specific shear path using Python string formatting."""
+        shear_cfg = base_cfg["shear"]
+        template = shear_cfg.get("path_template")
+
+        try:
+            seed_value = int(seed_label)
+        except ValueError as error:
+            raise ValueError(
+                f"Seed suffix for '{version}' is not numeric; cannot materialize path."
+            ) from error
+
+        format_context = {"seed": seed_value, "seed_label": seed_label}
+
+        if template:
+            try:
+                return template.format(**format_context)
+            except KeyError as error:
+                raise KeyError(
+                    f"Missing placeholder '{error.args[0]}' in path_template for "
+                    f"'{base_version}' while materializing '{version}'. Update "
+                    f"{catalog_config}."
+                ) from error
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid format specification in path_template for '{base_version}' "
+                    f"while materializing '{version}'."
+                ) from error
+
+        path = shear_cfg.get("path", "")
+        token_start = path.rfind("seed")
+        if token_start == -1:
+            raise ValueError(
+                f"Cannot materialize '{version}': '{base_version}' lacks a shear "
+                f"path_template and its shear path '{path}' does not contain a 'seed' "
+                f"token. Update {catalog_config}."
+            )
+        cursor = token_start + 4  # len("seed")
+        if cursor < len(path) and not path[cursor].isdigit():
+            cursor += 1
+        digit_start = cursor
+        while cursor < len(path) and path[cursor].isdigit():
+            cursor += 1
+        digit_end = cursor
+        digits = path[digit_start:digit_end]
+        if not digits:
             raise ValueError(
                 f"Cannot materialize '{version}': shear path '{path}' for base version "
-                f"'{base_version}' does not contain a 'seed<digits>' token. "
-                f"Update {catalog_config} or drop the seed suffix."
+                f"'{base_version}' lacks digits after the seed token. Update "
+                f"{catalog_config}."
             )
-        match = matches[-1]
-        sep = match.group("sep") or ""
-        replacement = f"seed{sep}{seed_value}"
-        start, end = match.span()
-        return f"{path[:start]}{replacement}{path[end:]}"
+
+        template = f"{path[:digit_start]}{{seed_label}}{path[digit_end:]}"
+        return template.format(**format_context)
 
     def __init__(
         self,
@@ -254,8 +294,8 @@ class CosmologyValidation:
                 ensure_version_exists(seed_base)
                 if ver not in cc:
                     cc[ver] = copy.deepcopy(cc[seed_base])
-                    seed_path = self._apply_seed_token(
-                        cc[seed_base]["shear"]["path"],
+                    seed_path = self._materialize_seed_path(
+                        cc[seed_base],
                         seed_label,
                         ver,
                         seed_base,

@@ -1057,6 +1057,7 @@ SP_v1.4.5_glass_mock:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n09data/guerrini/glass_mock/results/unions_glass_sim_00000_4096.fits
+    path_template: /n09data/guerrini/glass_mock/results/unions_glass_sim_{seed:05d}_4096.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w
     e1_col: e1
@@ -1100,7 +1101,8 @@ SP_v1.4.6_glass_mock:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: /n09data/guerrini/glass_mock_v1.4.6/results/unions_glass_sim_00000_4096.fits
+    path: /n09data/guerrini/glass_mock_v1.4.6/results/unions_glass_sim_00001_4096.fits
+    path_template: /n09data/guerrini/glass_mock_v1.4.6/results/unions_glass_sim_{seed:05d}_4096.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w
     e1_col: e1
