@@ -100,6 +100,7 @@ class TestCosmologyValidation:
             ("SP_v1.4.5", "e1", "e2"),
             ("SP_v1.4.6", "e1", "e2"),
             ("SP_v1.4.5_glass_mock", "e1", "e2"),
+            ("SP_v1.4.6_glass_mock", "e1", "e2"),
             ("SP_v1.4.5_bright", "e1", "e2"),
             ("SP_v1.4.5_faint", "e1", "e2"),
             ("SP_v1.4.5_intermediate", "e1", "e2"),
@@ -216,3 +217,24 @@ class TestCosmologyValidation:
 
         with pytest.raises(ValueError, match="seed"):
             CosmologyValidation(versions=[seed_version], **params)
+
+    def test_v1_4_6_glass_mock_seed_variant(self, base_config):
+        """Test that v1.4.6 glass mock seed variant loads with correct path."""
+        seed = 9
+        seed_version = f"SP_v1.4.6_glass_mock_seed{seed}"
+
+        cv = CosmologyValidation(
+            versions=[seed_version],
+            **base_config,
+        )
+
+        # Verify version was created
+        assert cv.versions == [seed_version]
+        assert seed_version in cv.cc
+
+        # Verify seed was substituted in shear path
+        expected_filename = f"unions_glass_sim_{seed:05d}_4096.fits"
+        assert expected_filename in cv.cc[seed_version]["shear"]["path"]
+
+        # Verify path points to v1.4.6 glass mock directory
+        assert "glass_mock_v1.4.6" in cv.cc[seed_version]["shear"]["path"]
