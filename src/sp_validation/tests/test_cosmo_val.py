@@ -238,3 +238,19 @@ class TestCosmologyValidation:
 
         # Verify path points to v1.4.6 glass mock directory
         assert "glass_mock_v1.4.6" in cv.cc[seed_version]["shear"]["path"]
+
+    def test_v1_4_6_glass_mock_default_seed(self, base_config):
+        """Test that glass mock without seed suffix uses the default seed_00001."""
+        cv = CosmologyValidation(
+            versions=["SP_v1.4.6_glass_mock"],
+            **base_config,
+        )
+
+        # Verify version loads without seed suffix
+        assert cv.versions == ["SP_v1.4.6_glass_mock"]
+        assert "SP_v1.4.6_glass_mock" in cv.cc
+
+        # Verify it uses the default path (seed_00001 for v1.4.6)
+        path = cv.cc["SP_v1.4.6_glass_mock"]["shear"]["path"]
+        assert "unions_glass_sim_00001_4096.fits" in path
+        assert "glass_mock_v1.4.6" in path
