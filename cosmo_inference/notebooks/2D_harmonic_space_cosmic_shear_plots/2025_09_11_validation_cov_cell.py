@@ -32,8 +32,8 @@ if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # %%
-path_cov_namaster = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.5_leak_corr.fits"
-path_glass_sims_output = "/n09data/guerrini/glass_mock/results/"
+path_cov_namaster = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.6_leak_corr.fits"
+path_glass_sims_output = "/n09data/guerrini/glass_mock_v1.4.6/results/"
 
 cov_namaster = fits.open(path_cov_namaster)
 
@@ -83,7 +83,7 @@ def get_cov_from_one_cov(cov_one_cov, gaussian=True):
     return cov
 
 # %%
-cov_one_cov = np.genfromtxt("/home/guerrini/OneCovariance/output/covariance_list_3x2pt_pure_Cell.dat")
+cov_one_cov = np.genfromtxt("/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6_leak_corr/covariance_list_3x2pt_pure_Cell.dat")
 
 gaussian_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=True)
 all_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=False)
