@@ -29,9 +29,9 @@ if ipython is not None:
 base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/"
 
 # %%
-versions = ["SP_v1.4.8", "SP_v1.4.8_leak_corr"]
-labels = ["SP v1.4.5", "SP v1.4.5 w/ leakage corr."]
-colors = ["C0", "C4"]
+versions = ["SP_v1.4.5", "SP_v1.4.5_leak_corr", "SP_v1.4.6", "SP_v1.4.6_leak_corr", "SP_v1.4.8", "SP_v1.4.8_leak_corr"]
+labels = ["SP v1.4.5", "SP v1.4.5 w/ leakage corr.", "SP v1.4.6", "SP v1.4.6 w/ leakage corr.", "SP v1.4.8", "SP v1.4.8 w/ leakage corr."]
+colors = [f"C{i}" for i in range(len(versions))]
 
 tau_stats = []
 cov_taus = []
@@ -106,7 +106,7 @@ tau_stats_handler = TauStat(
 psf_fitter = PSFErrorFit(rho_stats_handler, tau_stats_handler, base_dir)
 
 # %%
-markers = ['o', 'h']
+markers = ['o', 'h', 'x', 's', 'D', '^']
 
 plt.figure()
 
@@ -144,14 +144,14 @@ for idx, (ver, color, marker, sample) in enumerate(zip(versions, colors, markers
         capsize=5
     )
 
-threshold = 0.05
+threshold = 0.10
 plt.fill_between(
     [theta_min, theta_max],
     -threshold,
     threshold,
     color='black',
     alpha=0.1,
-    label=r"$5\%$ threshold"
+    label=fr"${threshold*100}\%$ threshold"
 )
 plt.plot(
     [theta_min, theta_max],
