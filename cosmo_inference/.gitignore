@@ -3,3 +3,4 @@ plots/
 data/
 *.png
 *.pdf
+*.sh
