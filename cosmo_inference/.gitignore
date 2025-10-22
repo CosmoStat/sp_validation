@@ -1,3 +1,5 @@
 plots/
 .ipynb_checkpoints/
 data/
+*.png
+*.pdf
