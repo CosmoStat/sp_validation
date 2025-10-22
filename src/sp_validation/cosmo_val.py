@@ -270,7 +270,7 @@ class CosmologyValidation:
     @property
     def area(self):
         if not hasattr(self, "_area"):
-            self.calculate_area_from_binned_catalog()
+            self.calculate_area()
         return self._area
     
     @property
@@ -297,29 +297,43 @@ class CosmologyValidation:
         if not hasattr(self, "_pseudo_cls_onecov"):
             self.calculate_pseudo_cl_onecovariance()
         return self._pseudo_cls_onecov
-    
-    def calculate_area_from_binned_catalog(self):
-        self.print_start("Calculating area from binned catalog")
+
+    def calculate_area(self):
+        self.print_start("Calculating area")
         area = {}
-        print(f"nside_mask = {self.nside_mask}")
         for ver in self.versions:
             self.print_magenta(ver)
-            with self.results[ver].temporarily_read_data():
-                ra = self.results[ver].dat_shear["RA"]
-                dec = self.results[ver].dat_shear["Dec"]
-                hsp_map = hp.ang2pix(
-                    self.nside_mask,
-                    np.radians(90 - dec),
-                    np.radians(ra),
-                    lonlat=False,
-                )
-                mask = np.bincount(hsp_map, minlength=hp.nside2npix(self.nside_mask)) > 0
 
-                area[ver] = np.sum(mask) * hp.nside2pixarea(self.nside_mask, degrees=True)
-                print(f"Area = {area[ver]:.2f} deg^2")
+            if not hasattr(self.cc[ver]['shear'], 'mask'):
+                print("Mask not found in config file, calculating area from binned catalog")
+                area[ver] = self.calculate_area_from_binned_catalog(ver)
+            else:
+                mask = hp.read_map(self.cc[ver]['shear']['mask'], verbose=False)
+                nside_mask = hp.get_nside(mask)
+                print(f"nside_mask = {nside_mask}")
+                area[ver] = np.sum(mask) * hp.nside2pixarea(nside_mask, degrees=True)
+            print(f"Area = {area[ver]:.2f} deg^2")
 
         self._area = area
         self.print_done("Area calculation finished")
+    
+    def calculate_area_from_binned_catalog(self, ver):
+        print(f"nside_mask = {self.nside_mask}")
+        with self.results[ver].temporarily_read_data():
+            ra = self.results[ver].dat_shear["RA"]
+            dec = self.results[ver].dat_shear["Dec"]
+            hsp_map = hp.ang2pix(
+            self.nside_mask,
+                np.radians(90 - dec),
+                np.radians(ra),
+                lonlat=False,
+            )
+            mask = np.bincount(hsp_map, minlength=hp.nside2npix(self.nside_mask)) > 0
+
+            area = np.sum(mask) * hp.nside2pixarea(self.nside_mask, degrees=True)
+            print(f"Area = {area:.2f} deg^2")
+
+        return area
 
     def calculate_n_eff_gal(self):
         self.print_start("Calculating effective number of galaxy")
@@ -328,8 +342,6 @@ class CosmologyValidation:
             self.print_magenta(ver)
             with self.results[ver].temporarily_read_data():
                 w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
                 n_eff_gal[ver] = 1/(self.area[ver]*60*60)* np.sum(w)**2/np.sum(w**2)
                 print(f"n_eff_gal = {n_eff_gal[ver]:.2f} gal./arcmin^-2")
             
