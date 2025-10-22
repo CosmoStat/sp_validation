@@ -17,12 +17,13 @@ classifiers = [
 dependencies = [
     "adjustText",
     "astropy>=5.0",
+    "camb",
     "clmm",
     "colorama",
     "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
     "cs_util>=0.1.5",
     "emcee",
-    "getdist @  git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
+    "getdist @ git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
     "h5py",
     "healpy",
     "healsparse",
@@ -58,8 +59,8 @@ Homepage = "https://github.com/CosmoStat/sp_validation"
 test = [
     "pytest",
     "pytest-cov",
-    "pytest-pycodestyle",
-    "pytest-pydocstyle"
+    "pytest-pydocstyle",
+    "ruff"
 ]
 docs = [
     "jupyter==1.0.0",
@@ -77,17 +78,32 @@ develop = ["sp_validation[test,docs]"]
 testpaths = ["sp_validation"]
 addopts = [
     "--verbose",
-    "--pycodestyle",
     "--pydocstyle",
     "--cov=sp_validation",
     "--cov-report=term",
     "--cov-report=xml",
     "--junitxml=pytest.xml"
 ]
+markers = [
+    "fast: marks tests as fast (deselect with '-m \"not fast\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+]
 
-[pycodestyle]
-ignore = ["W503", "E712"]
+[tool.ruff]
+line-length = 88
+target-version = "py38"
 
-[pydocstyle]
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+]
+ignore = [
+    "E712",  # comparison to True should be 'if cond is True:' or 'if cond:'
+]
+
+[tool.pydocstyle]
 convention = "numpy"
 add-ignore = ["D105", "D107"]

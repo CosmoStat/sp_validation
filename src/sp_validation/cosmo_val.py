@@ -2,7 +2,6 @@
 import os
 import configparser
 
-import camb
 import colorama
 import healpy as hp
 import matplotlib.pyplot as plt
@@ -11,18 +10,14 @@ import numpy as np
 import pymaster as nmt
 import treecorr
 import yaml
-from astropy.cosmology import Planck18
 from astropy.io import fits
-from cosmo_numba.B_modes.cosebis import COSEBIS
-from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from cs_util import plots as cs_plots
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from scipy import stats
 from shear_psf_leakage import leakage, run_object, run_scale
 from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
+from .cosmology import get_cosmo, get_theo_c_ell
 from .plots import FootprintPlotter
 from .rho_tau import get_params_rho_tau, get_rho_tau_w_cov, get_samples
 
@@ -34,6 +29,7 @@ class CosmologyValidation:
         versions,
         data_base_dir,
         catalog_config="./cat_config.yaml",
+        output_dir=None,
         rho_tau_method="lsq",
         cov_estimate_method="th",
         compute_cov_rho=True,
@@ -57,8 +53,9 @@ class CosmologyValidation:
         cell_method='map',
         nrandom_cell=10,
         path_onecovariance=None
+        cosmo_params=None,
+        redshift_file=None
     ):
-
         self.versions = versions
         self.data_base_dir = data_base_dir
         self.rho_tau_method = rho_tau_method
@@ -87,6 +84,17 @@ class CosmologyValidation:
 
         assert self.cell_method in ["map", "catalog"], "cell_method must be 'map' or 'catalog'"
 
+        # For theory calculations:
+        # Create cosmology object using new functionality
+        if cosmo_params is not None:
+            self.cosmo = get_cosmo(**cosmo_params)
+        else:
+            # Use Planck 2018 defaults
+            self.cosmo = get_cosmo()
+
+        # load redshift distribution from file if provided
+        self.z_dist = np.loadtxt(redshift_file) if redshift_file is not None else None
+
         self.treecorr_config = {
             "ra_units": "degrees",
             "dec_units": "degrees",
@@ -102,7 +110,6 @@ class CosmologyValidation:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
         for ver in ["nz", *versions]:
-
             if ver not in cc:
                 raise KeyError(
                     f"Version string {ver} not found in config file{catalog_config}"
@@ -111,6 +118,10 @@ class CosmologyValidation:
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
                     cc[ver][key]["path"] = f"{version_base}/{cc[ver][key]['path']}"
+
+        # Override output directory if provided
+        if output_dir is not None:
+            cc["paths"]["output"] = output_dir
 
         if not os.path.exists(cc["paths"]["output"]):
             os.mkdir(cc["paths"]["output"])
@@ -150,7 +161,7 @@ class CosmologyValidation:
         params_in["dndz_path"] = (
             f"{self.cc['nz']['dndz']['path']}_{self.cc[ver]['pipeline']}_{self.cc['nz']['dndz']['blind']}.txt"
         )
-        params_in["output_dir"] = f'{self.cc["paths"]["output"]}/leakage_{ver}'
+        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
 
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
@@ -177,7 +188,7 @@ class CosmologyValidation:
 
         # Set parameters
         params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
-        params_in["output_dir"] = f'{self.cc["paths"]["output"]}/leakage_{ver}'
+        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
 
         # Note: for SP these are calibrated shear estimates
         params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
@@ -201,10 +212,8 @@ class CosmologyValidation:
         return params_in
 
     def init_results(self, objectwise=False):
-
         results = {}
         for ver in self.versions:
-
             # Set parameters depending on the type of leakage
             if objectwise:
                 results[ver] = run_object.LeakageObject()
@@ -231,7 +240,6 @@ class CosmologyValidation:
         return self._results_objectwise
 
     def calculate_rho_tau_stats(self):
-
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -364,7 +372,6 @@ class CosmologyValidation:
         self._ellipticity_dispersion = ellipticity_dispersion
 
     def plot_rho_stats(self, abs=False):
-
         filenames = [f"rho_stats_{ver}.fits" for ver in self.versions]
 
         savefig = "rho_stats.png"
@@ -380,7 +387,7 @@ class CosmologyValidation:
         )
 
         self.print_done(
-            f"Rho stats plot saved to "
+            "Rho stats plot saved to "
             + f"{os.path.abspath(self.rho_stat_handler.catalogs._output)}/{savefig}",
         )
 
@@ -400,7 +407,7 @@ class CosmologyValidation:
         )
 
         self.print_done(
-            f"Tau stats plot saved to "
+            "Tau stats plot saved to "
             + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
         )
 
@@ -541,7 +548,6 @@ class CosmologyValidation:
             self.colors,
             self.rho_tau_fits["flat_sample_list"],
         ):
-
             ls = self.cc[ver]["ls"]
             theta = self.psf_fitter.rho_stat_handler.rho_stats["theta"]
             xi_psf_sys = self.xi_psf_sys[ver]
@@ -595,7 +601,6 @@ class CosmologyValidation:
         self.print_start("Plotting footprints:")
         for ver in self.versions:
             self.print_magenta(ver)
-            results = self.results[ver]
 
             fp = FootprintPlotter()
 
@@ -621,14 +626,15 @@ class CosmologyValidation:
             results = self.results[ver]
 
             output_base_path = os.path.abspath(
-                f'{self.cc["paths"]["output"]}/leakage_{ver}/xi_for_leak_scale'
+                f"{self.cc['paths']['output']}/leakage_{ver}/xi_for_leak_scale"
             )
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
             with self.results[ver].temporarily_read_data():
                 if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
                     self.print_green(
-                        f"Skipping computation, reading {output_path_ab} and {output_path_aa} instead"
+                        f"Skipping computation, reading {output_path_ab} and "
+                        f"{output_path_aa} instead"
                     )
 
                     results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
@@ -668,7 +674,6 @@ class CosmologyValidation:
                 markers.append(self.cc[ver]["marker"])
 
         if len(theta) > 0:
-
             # Log x
             out_path = os.path.abspath(
                 f"{self.cc['paths']['output']}/alpha_leak_log.png"
@@ -872,7 +877,7 @@ class CosmologyValidation:
             self.calculate_objectwise_leakage()
 
         self.print_start("Plotting object-wise leakage:")
-        fig = cs_plots.figure(figsize=(15, 15))
+        cs_plots.figure(figsize=(15, 15))
 
         linestyles = ["-", "--", ":"]
         fillstyles = ["full", "none", "left", "right", "bottom", "top"]
@@ -972,7 +977,7 @@ class CosmologyValidation:
         else:
             self.print_start("Computing weight histograms:")
 
-            bins = np.linspace(0, 1.2, nbins + 1)
+            fig, ax = plt.subplots(1, 1, figsize=(10, 7))
             for ver in self.versions:
                 self.print_magenta(ver)
                 with self.results[ver].temporarily_read_data():
@@ -988,14 +993,14 @@ class CosmologyValidation:
                         color=self.cc[ver]["colour"],
                     )
 
-            plt.xlabel(f"$w$")
+            plt.xlabel("$w$")
             plt.ylabel("frequency")
             plt.yscale("log")
             plt.legend()
             # plt.xlim([-0.01, 1.2])
             cs_plots.savefig(out_path, close_fig=False)
             cs_plots.show()
-            self.print_done("Ellipticity histograms saved to " + out_path)
+            self.print_done("Weight histograms saved to " + out_path)
 
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
@@ -1055,7 +1060,11 @@ class CosmologyValidation:
         Calculate the two-point correlation function (2PCF) ξ± for a given catalog
         version with TreeCorr.
 
-        By default the class instance's `npatch` and `treecorr_config` entries are used to initialize the TreeCorr Catalog and GGCorrelation objects, but may be overridden by passing keyword arguments.
+        By default the class instance's `npatch` and `treecorr_config` entries are
+        used to
+        initialize the TreeCorr Catalog and GGCorrelation objects, but may be
+        overridden
+        by passing keyword arguments.
 
         Parameters:
             ver (str): The catalog version to process.
@@ -1084,20 +1093,12 @@ class CosmologyValidation:
 
         self.print_magenta(f"Computing {ver} ξ±")
 
+        npatch = npatch or self.npatch
         treecorr_config = {
             **self.treecorr_config,
             **treecorr_config,
+            "var_method": "jackknife" if int(npatch) > 1 else "shot",
         }
-
-        npatch = npatch or self.npatch
-        var_method = treecorr_config["var_method"]
-        if npatch == 0 and var_method != "shot":
-            print(
-                f"Zero patches specified, but var_method is set to {var_method}. "
-                "Switching to 'shot' variance method; try setting npatch > nbins"
-                " to use e.g. jackknife variance."
-            )
-            treecorr_config["var_method"] = "shot"
 
         gg = treecorr.GGCorrelation(treecorr_config)
 
@@ -1126,10 +1127,9 @@ class CosmologyValidation:
                     g1 = (e1 - self.c1[ver]) / np.average(
                         self.results[ver].dat_shear[R11]
                     )
-                    g2 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                        - self.c2[ver]
-                    ) / np.average(self.results[ver].dat_shear[R22])
+                    g2 = (e2 - self.c2[ver]) / np.average(
+                        self.results[ver].dat_shear[R22]
+                    )
 
                 # Use patch file if it exists
                 patch_file = os.path.abspath(
@@ -1156,9 +1156,34 @@ class CosmologyValidation:
             gg.process(cat_gal)
             gg.write(out_fname, write_patch_results=True, write_cov=True)
 
-            # Save xi_p and xi_m results to fits file
-            if save_fits:
-                lst = np.arange(1, self.treecorr_config["nbins"] + 1)
+        # Save xi_p and xi_m results to fits file
+        # (moved outside so it runs even if txt exists)
+        if save_fits:
+            lst = np.arange(1, treecorr_config["nbins"] + 1)
+
+            col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
+            col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
+            col3 = fits.Column(name="ANGBIN", format="K", array=lst)
+            col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
+            col5 = fits.Column(name="ANG", format="D", unit="arcmin", array=gg.meanr)
+            coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+            xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
+
+            col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
+            coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+            ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
+
+            # append xi_plus header info
+            xiplus_dict = {
+                "2PTDATA": "T",
+                "QUANT1": "G+R",
+                "QUANT2": "G+R",
+                "KERNEL_1": "NZ_SOURCE",
+                "KERNEL_2": "NZ_SOURCE",
+                "WINDOWS": "SAMPLE",
+            }
+            for key in xiplus_dict:
+                xiplus_hdu.header[key] = xiplus_dict[key]
 
                 col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
                 col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
@@ -1185,19 +1210,21 @@ class CosmologyValidation:
                 }
                 for key in xiplus_dict:
                     xiplus_hdu.header[key] = xiplus_dict[key]
-                xiplus_hdu.writeto(
-                    f"{self.cc['paths']['output']}/xi_plus_{ver}.fits",
-                    overwrite=True,
-                )
+            # Use same naming format as txt output
+            fits_base = out_fname.replace(".txt", "").replace("_xi_", "_")
+            xiplus_hdu.writeto(
+                f"{fits_base.replace(ver, f'xi_plus_{ver}')}.fits",
+                overwrite=True,
+            )
 
-                # append xi_minus header info
-                ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
-                for key in ximinus_dict:
-                    ximinus_hdu.header[key] = ximinus_dict[key]
-                ximinus_hdu.writeto(
-                    f"{self.cc['paths']['output']}/xi_minus_{ver}.fits",
-                    overwrite=True,
-                )
+            # append xi_minus header info
+            ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
+            for key in ximinus_dict:
+                ximinus_hdu.header[key] = ximinus_dict[key]
+            ximinus_hdu.writeto(
+                f"{fits_base.replace(ver, f'xi_minus_{ver}')}.fits",
+                overwrite=True,
+            )
 
         # Add correlation object to class
         if not hasattr(self, "cat_ggs"):
@@ -1591,6 +1618,10 @@ class CosmologyValidation:
         nbins_int=100,
         npatch=256,
         var_method="jackknife",
+        cov_path_int=None,
+        cosmo_cov=None,
+        redshift_file=None,
+        n_samples=1000,
     ):
         """
         Calculate the pure E/B modes for the given catalog version.
@@ -1621,6 +1652,18 @@ class CosmologyValidation:
             the value in self.npatch if not provided.
         var_method : str, optional
             Variance estimation method. Defaults to "jackknife".
+        cov_path_int : str, optional
+            Path to the covariance matrix for the reporting binning. Replaces the
+            treecorr covariance matrix if provided, meaning that var_method has no
+            effect on the results although it is still passed to
+            CosmologyValidation.calculate_2pcf.
+        cosmo_cov : pyccl.Cosmology, optional
+            Cosmology object to use for theoretical xi+/xi- predictions in the
+            semi-analytical covariance calculation. Defaults to self.cosmo if not
+            provided.
+        n_samples : int, optional
+            Number of Monte Carlo samples for semi-analytical covariance propagation.
+            Defaults to 1000.
 
         Returns
         -------
@@ -1634,20 +1677,27 @@ class CosmologyValidation:
             - "xim_amb": Ambiguity mode for xi-.
             - "cov": Covariance matrix for the pure E/B modes.
             - "gg": The two-point correlation function object for the reporting binning.
-            - "gg_int": The two-point correlation function object for the integration binning.
+            - "gg_int": The two-point correlation function object for the
+              integration binning.
+            - "eb_samples": (only when using semi-analytical covariance) Semi-analytic
+              EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)
 
         Notes
         -----
         - A shared patch file is used for the reporting and integration binning,
         and is created if it does not exist.
         """
+        from .b_modes import calculate_pure_eb_correlation
+
         self.print_start(f"Computing {version} pure E/B")
 
+        # Set up parameters with defaults
         npatch = npatch or self.npatch
         min_sep = min_sep or self.treecorr_config["min_sep"]
         max_sep = max_sep or self.treecorr_config["max_sep"]
         nbins = nbins or self.treecorr_config["nbins"]
 
+        # Create TreeCorr configurations
         treecorr_config = {
             **self.treecorr_config,
             "min_sep": min_sep,
@@ -1662,657 +1712,504 @@ class CosmologyValidation:
             "nbins": nbins_int,
         }
 
+        # Calculate correlation functions
         gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
         gg_int = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_int)
 
-        def pure_EB(corrs):
-            gg, gg_int = corrs
-            return get_pure_EB_modes(
-                theta=gg.meanr,
-                xip=gg.xip,
-                xim=gg.xim,
-                theta_int=gg_int.meanr,
-                xip_int=gg_int.xip,
-                xim_int=gg_int.xim,
-                tmin=min_sep,
-                tmax=max_sep,
-            )
+        # Get redshift distribution if using analytic covariance
+        if cov_path_int is not None:
+            if redshift_file is None:
+                try:
+                    print("Inheriting redshift distribution from self.z_dist")
+                    z_dist = self.z_dist
+                except AttributeError:
+                    raise ValueError(
+                        "redshift distribution must be provided either to this function"
+                        " or to the CosmologyValidation class upon creation "
+                        "if using an analytic covariance."
+                    )
+            else:
+                z_dist = np.loadtxt(redshift_file)
+        else:
+            z_dist = None
 
-        xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = pure_EB([gg, gg_int])
-        cov = treecorr.estimate_multi_cov(
-            [gg, gg_int],
-            var_method,
-            func=lambda x: np.hstack(pure_EB(x)),
-            cross_patch_weight="match" if var_method == "jackknife" else None,
+        # Delegate to b_modes module
+        results = calculate_pure_eb_correlation(
+            gg=gg,
+            gg_int=gg_int,
+            var_method=var_method,
+            cov_path_int=cov_path_int,
+            cosmo_cov=cosmo_cov,
+            n_samples=n_samples,
+            z_dist=z_dist
         )
-
-        results = {
-            "xip_E": xip_E,
-            "xim_E": xim_E,
-            "xip_B": xip_B,
-            "xim_B": xim_B,
-            "xip_amb": xip_amb,
-            "xim_amb": xim_amb,
-            "cov": cov,
-            "gg": gg,
-            "gg_int": gg_int,
-        }
 
         return results
 
     def plot_pure_eb(
         self,
+        versions=None,
+        output_dir=None,
+        fiducial_xip_scale_cut=None,
+        fiducial_xim_scale_cut=None,
         min_sep=None,
         max_sep=None,
         nbins=None,
         min_sep_int=0.08,
         max_sep_int=300,
         nbins_int=100,
-        npatch=256,
+        npatch=None,
         var_method="jackknife",
-        start_p=0,
-        start_m=1,
-        stop_p=None,
-        stop_m=None,
+        cov_path_int=None,
+        cosmo_cov=None,
+        redshift_file=None,
+        n_samples=1000,
+        results=None,
+        **kwargs
     ):
+        """
+        Generate comprehensive pure E/B mode analysis plots.
 
+        Creates four types of plots for each version:
+        1. Integration vs Reporting comparison
+        2. E/B/Ambiguous correlation functions
+        3. 2D PTE heatmaps
+        4. Covariance matrix visualization
+
+        Parameters
+        ----------
+        versions : list, optional
+            List of catalog versions to process. Uses self.versions if None.
+        output_dir : str, optional
+            Output directory for plots. Uses configured output path if None.
+        fiducial_xip_scale_cut : tuple, optional
+            (min_scale, max_scale) for xi+ fiducial analysis, shown as gray regions
+        fiducial_xim_scale_cut : tuple, optional
+            (min_scale, max_scale) for xi- fiducial analysis, shown as gray regions
+        min_sep, max_sep, nbins : float, float, int, optional
+            Binning parameters for reporting scale. Uses treecorr_config if None.
+        min_sep_int, max_sep_int, nbins_int : float, float, int
+            Binning parameters for integration scale
+            (default: 0.08-300 arcmin, 100 bins)
+        npatch : int, optional
+            Number of patches for jackknife covariance. Uses self.npatch if None.
+        var_method : str
+            Variance method ("jackknife" or "semi-analytic").
+            Automatically set to "semi-analytic" when cov_path_int is provided.
+        cov_path_int : str, optional
+            Path to integration covariance matrix for semi-analytical calculation
+        cosmo_cov : pyccl.Cosmology, optional
+            Cosmology for theoretical predictions in semi-analytical covariance
+        redshift_file : str, optional
+            Path to redshift distribution file for semi-analytical covariance
+        n_samples : int
+            Number of Monte Carlo samples for semi-analytical covariance (default: 1000)
+        results : dict or list, optional
+            Precalculated results to avoid recomputation. Can be a single results dict
+            for one version, or a list of results dicts for multiple versions.
+            If None (default), results will be calculated using calculate_pure_eb.
+        **kwargs : dict
+            Additional arguments passed to calculate_eb_statistics
+
+        Notes
+        -----
+        This function orchestrates the full E/B mode analysis workflow:
+        - Uses instance configuration as defaults for unspecified parameters
+        - Automatically switches to analytical variance when theoretical
+          covariance provided
+        - Generates standardized output file naming based on all analysis
+          parameters
+        - Delegates individual plot generation to specialized functions in
+          b_modes module
+        """
+        from .b_modes import (
+            calculate_eb_statistics,
+            plot_eb_covariance_matrix,
+            plot_integration_vs_reporting,
+            plot_pte_2d_heatmaps,
+            plot_pure_eb_correlations,
+        )
+
+        # Use instance defaults for unspecified parameters
+        versions = versions or self.versions
+        output_dir = output_dir or self.cc['paths']['output']
         npatch = npatch or self.npatch
+
+        # Override var_method to analytic when cov_path_int is provided
+        if cov_path_int is not None:
+            var_method = "semi-analytic"
+
+        # Use treecorr_config defaults for reporting scale binning
         min_sep = min_sep or self.treecorr_config["min_sep"]
         max_sep = max_sep or self.treecorr_config["max_sep"]
         nbins = nbins or self.treecorr_config["nbins"]
 
-        for version in self.versions:
-            out_stub = f"{self.cc['paths']['output']}/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}"
-
-            results = self.calculate_pure_eb(
-                version,
-                min_sep=min_sep,
-                max_sep=max_sep,
-                nbins=nbins,
-                min_sep_int=min_sep_int,
-                max_sep_int=max_sep_int,
-                nbins_int=nbins_int,
-                npatch=npatch,
-                var_method=var_method,
-            )
-
-            # Reporting vs Integration Plot
-            gg, gg_int = results["gg"], results["gg_int"]
-
-            fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(16, 6))
-            axs[0].errorbar(
-                gg_int.meanr,
-                gg_int.meanr * gg_int.xip / 1e-4,
-                fmt="k.",
-                ms=3,
-                alpha=0.3,
-                label=rf"$\xi_{{+}}$, Integration: ${gg_int.min_sep} < \theta < {gg_int.max_sep}$, {gg_int.nbins} bins",
-            )
-            axs[0].errorbar(
-                gg.meanr,
-                gg.meanr * gg.xip / 1e-4,
-                yerr=gg.meanr * np.sqrt(gg.varxip) / 1e-4,
-                ls="",
-                marker=".",
-                c="crimson",
-                ms=6,
-                label=rf"$\xi_{{+}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < {gg.max_sep}$, {gg.nbins} bins",
-            )
-            axs[0].set_ylabel(r"$\theta\xi\times10^{4}$")
-            axs[0].set_title(r"$\xi_{+}$")
-
-            axs[1].errorbar(
-                gg_int.meanr,
-                gg_int.meanr * gg_int.xim / 1e-4,
-                fmt="k.",
-                ms=3,
-                alpha=0.3,
-                label=rf"$\xi_{{-}}$, Integration: ${gg_int.min_sep} < \theta < {gg_int.max_sep}$, {gg_int.nbins} bins",
-            )
-            axs[1].errorbar(
-                gg.meanr,
-                gg.meanr * gg.xim / 1e-4,
-                yerr=gg.meanr * np.sqrt(gg.varxim) / 1e-4,
-                ls="",
-                marker=".",
-                c="crimson",
-                ms=6,
-                label=rf"$\xi_{{-}}$, Reporting: \ \ \ ${gg.min_sep} < \theta < {gg.max_sep}$, {gg.nbins} bins",
-            )
-            axs[1].set_xlabel(r"$\theta$ (arcmin)")
-            axs[1].set_title(r"$\xi_{-}$")
-
-            for ax in axs:
-                ax.axhline(0, ls="--", color="k", alpha=0.5)
-                ax.set_xscale("log")
-                ax.set_xticks([0.1, 1, 10, 100], [r"$0.1$", r"$1$", r"$10$", r"$100$"])
-                ax.set_xlabel(r"$\theta$ (arcmin)")
-                ax.set_ylim(-0.55, 1.9)
-                ax.legend(loc="upper left")
-
-            fig.suptitle(
-                f"{self.versions[0]}: Functions Integration vs. Reporting ({gg.npatch1} patches for cov)"
-            )
-            plt.tight_layout()
-            plt.savefig(
-                out_stub + "_integration_vs_reporting.png", dpi=300, bbox_inches="tight"
-            )
-            plt.close()
-
-            # E/B/Ambiguous ξ Plot
-            def populate_results(
-                results, start_p=0, start_m=0, stop_p=None, stop_m=None
-            ):
-                results["start_p"] = start_p
-                results["start_m"] = start_m
-                stop_p = stop_p if stop_p is not None else results["gg"].nbins - 1
-                stop_m = stop_m if stop_m is not None else results["gg"].nbins - 1
-                results["stop_p"] = stop_p
-                results["stop_m"] = stop_m
-
-                gg = results["gg"]
-
-                nbins = gg.nbins
-                npatch = gg.npatch1
-
-                starts = {
-                    key: start_p if "xip" in key else start_m
-                    for key in [
-                        "xip_E",
-                        "xim_E",
-                        "xip_B",
-                        "xim_B",
-                        "xip_amb",
-                        "xim_amb",
-                    ]
-                }
-                stops = {
-                    key: stop_p if "xip" in key else stop_m
-                    for key in [
-                        "xip_E",
-                        "xim_E",
-                        "xip_B",
-                        "xim_B",
-                        "xip_amb",
-                        "xim_amb",
-                    ]
-                }
-                nbins_eff = {key: stops[key] - starts[key] for key in starts}
-
-                hartlap_factor_eff = {
-                    key: (npatch - nbins_eff[key] - 2) / (npatch - 1)
-                    for key in nbins_eff
-                }
-
-                nbins = results["gg"].nbins
-
-                # Compute and store covariance blocks and stds in results with explicit names
-                for i, key in enumerate(
-                    ["xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb"]
-                ):
-                    cov_block = results["cov"][
-                        nbins * i : nbins * (i + 1), nbins * i : nbins * (i + 1)
-                    ]
-                    std_block = np.sqrt(np.diag(cov_block))
-                    results[f"cov_{key}"] = cov_block
-                    results[f"std_{key}"] = std_block
-
-                chi2s = {
-                    key: results[key][starts[key] : stops[key]]
-                    @ (
-                        hartlap_factor_eff[key]
-                        * np.linalg.inv(
-                            results[f"cov_{key}"][
-                                starts[key] : stops[key], starts[key] : stops[key]
-                            ]
-                        )
+        # Handle results parameter - convert to list format for consistent processing
+        if results is not None:
+            if isinstance(results, dict):
+                # Single results dict provided - should match single version
+                if len(versions) != 1:
+                    raise ValueError(
+                        "Single results dict provided but multiple versions specified. "
+                        "Provide results list matching versions length."
                     )
-                    @ results[key][starts[key] : stops[key]]
-                    for key in ["xip_E", "xim_E", "xip_B", "xim_B"]
-                }
-                # Store chi2s in results
-                for key in chi2s:
-                    results[f"{key}_chi2"] = chi2s[key]
+                results_list = [results]
+            elif isinstance(results, list):
+                # List of results provided
+                if len(results) != len(versions):
+                    raise ValueError(
+                        f"Results list length ({len(results)}) does not match versions "
+                        f"length ({len(versions)})"
+                    )
+                results_list = results
+            else:
+                raise TypeError("Results must be dict, list, or None")
+        else:
+            results_list = [None] * len(versions)
 
-                xip_B_pte, xim_B_pte = [
-                    stats.chi2.sf(chi2s[key], nbins_eff[key])
-                    for key in ["xip_B", "xim_B"]
-                ]
-                # Store PTEs in results
-                results["xip_B_pte"] = xip_B_pte
-                results["xim_B_pte"] = xim_B_pte
-
-            stop_p = stop_p or results["gg"].nbins - 2
-            stop_m = stop_m or results["gg"].nbins - 1
-
-            populate_results(results, start_p, start_m, stop_p, stop_m)
-
-            fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(16, 6))
-            axs[0].errorbar(
-                gg.meanr,
-                gg.meanr * gg.xip / 1e-4,
-                yerr=gg.meanr * np.sqrt(gg.varxip) / 1e-4,
-                fmt="k.",
-                label=r"$\xi_{+}=\xi_{+}^{E}+\xi_{+}^{B}+\xi_{+}^{\mathrm{amb}}$",
-            )
-            axs[0].errorbar(
-                gg.meanr,
-                gg.meanr * results["xip_E"] / 1e-4,
-                yerr=gg.meanr * results["std_xip_E"] / 1e-4,
-                color="g",
-                ls="",
-                marker=".",
-                alpha=0.25,
-                label=rf"$\xi_{{+}}^{{E}}, \sqrt{{\chi_0^2}}={np.round(np.sqrt(results.get('xip_E_chi2', 0)),1)}$",
-            )
-            axs[0].errorbar(
-                gg.meanr,
-                gg.meanr * results["xip_B"] / 1e-4,
-                yerr=gg.meanr * results["std_xip_B"] / 1e-4,
-                color="r",
-                ls="",
-                marker=".",
-                label=rf"$\xi_{{+}}^{{B}}, {{\rm PTE}}={np.round(results['xip_B_pte'],4)}$",
-            )
-            axs[0].errorbar(
-                gg.meanr,
-                gg.meanr * results["xip_amb"] / 1e-4,
-                yerr=gg.meanr * results["std_xip_amb"] / 1e-4,
-                marker=".",
-                alpha=0.25,
-                ls="",
-                color="purple",
-                label=r"$\xi_{+}^{\mathrm{amb}}$",
+        for idx, version in enumerate(versions):
+            # Generate standardized output filename stub
+            out_stub = (
+                f"{output_dir}/{version}_eb_minsep={min_sep}_"
+                f"maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_"
+                f"maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_"
+                f"varmethod={var_method}"
             )
 
-            axs[0].set_ylabel(r"$\theta\xi\times10^{4}$")
-            axs[0].set_title(r"$\xi_{+}$")
-
-            axs[1].errorbar(
-                gg.meanr,
-                gg.meanr * gg.xim / 1e-4,
-                yerr=gg.meanr * np.sqrt(gg.varxim) / 1e-4,
-                fmt="k.",
-                label=r"$\xi_{-}=\xi_{-}^{E}-\xi_{-}^{B}+\xi_{-}^{\mathrm{amb}}$",
-            )
-            axs[1].errorbar(
-                gg.meanr,
-                gg.meanr * results["xim_E"] / 1e-4,
-                yerr=gg.meanr * results["std_xim_E"] / 1e-4,
-                color="g",
-                ls="",
-                marker=".",
-                alpha=0.25,
-                label=rf"$\xi_{{-}}^{{E}}, \sqrt{{\chi_0^2}}={np.round(np.sqrt(results['xim_E_chi2']),1)}$",
-            )
-            axs[1].errorbar(
-                gg.meanr,
-                gg.meanr * results["xim_B"] / 1e-4,
-                yerr=gg.meanr * results["std_xim_B"] / 1e-4,
-                color="r",
-                ls="",
-                marker=".",
-                label=rf"$\xi_{{-}}^{{B}}, {{\rm PTE}}={np.round(results['xim_B_pte'],4)}$",
-            )
-            axs[1].errorbar(
-                gg.meanr,
-                gg.meanr * results["xim_amb"] / 1e-4,
-                yerr=gg.meanr * results["std_xim_amb"] / 1e-4,
-                marker=".",
-                ls="",
-                alpha=0.25,
-                color="purple",
-                label=r"$\xi_{-}^{\mathrm{amb}}$",
-            )
-
-            axs[1].set_title(r"$\xi_{-}$")
-
-            for ax, pm in zip(axs, "pm"):
-                ax.set_ylim(-0.55, 1.9)
-                ax.axhline(0, ls="--", color="k", alpha=0.5)
-                ax.set_xscale("log")
-                ax.set_xticks([0.1, 1, 10, 100], [r"$0.1$", r"$1$", r"$10$", r"$100$"])
-                ax.set_xlabel(r"$\theta$ (arcmin)")
-                ax.set_xlim(0.05, 300)
-                ax.axvspan(
-                    0, gg.left_edges[results[f"start_{pm}"]], color="gray", alpha=0.1
+            # Get or calculate results for this version
+            version_results = results_list[idx] or self.calculate_pure_eb(
+                    version,
+                    min_sep=min_sep,
+                    max_sep=max_sep,
+                    nbins=nbins,
+                    min_sep_int=min_sep_int,
+                    max_sep_int=max_sep_int,
+                    nbins_int=nbins_int,
+                    npatch=npatch,
+                    var_method=var_method,
+                    cov_path_int=cov_path_int,
+                    cosmo_cov=cosmo_cov,
+                    redshift_file=redshift_file,
+                    n_samples=n_samples,
                 )
-                ax.axvspan(
-                    gg.right_edges[results[f"stop_{pm}"]], 1000, color="gray", alpha=0.1
-                )
-                ax.legend(loc="upper left")
 
-            fig.suptitle(f"Pure E/B Correlation Functions: {version}")
-            plt.savefig(out_stub + "_xis.png", dpi=300, bbox_inches="tight")
-            plt.close()
-
-            # PTE as a function of lower scale cut plot
-            def calculate_ptes(results, start_p=0, start_m=0):
-                gg, gg_int = results["gg"], results["gg_int"]
-                nbins, npatch = gg.nbins, gg.npatch1
-
-                ptes_p, ptes_m = [], []
-                for ptes, key, start, stop in zip(
-                    [ptes_p, ptes_m],
-                    ["xip_B", "xim_B"],
-                    [start_p, start_m],
-                    [results["stop_p"], results["stop_m"]],
-                ):
-                    for start_i in range(start, stop):
-                        nbins_eff = stop - start_i
-                        hartlap_factor = (npatch - nbins_eff - 2) / (npatch - 1)
-
-                        chi2 = (
-                            results[key][start_i:stop]
-                            @ (
-                                hartlap_factor
-                                * np.linalg.inv(
-                                    results[f"cov_{key}"][start_i:stop, start_i:stop]
-                                )
-                            )
-                            @ results[key][start_i:stop]
-                        )
-
-                        pte = stats.chi2.sf(chi2, nbins_eff)
-                        ptes.append(pte)
-                return ptes_p, ptes_m
-
-            ptes_p, ptes_m = calculate_ptes(results, start_p, start_m)
-
-            plt.figure(figsize=(8, 6))
-            plt.plot(
-                gg.meanr[0 : results["stop_p"]],
-                ptes_p,
-                label=r"$\xi_{B+}$",
-                marker=".",
-                ls="",
-            )
-            plt.plot(
-                gg.meanr[1 : results["stop_m"]],
-                ptes_m,
-                c="crimson",
-                label=r"$\xi_{B-}$",
-                marker=".",
-                ls="",
+            # Calculate E/B statistics for all bin combinations (only if not provided)
+            version_results = calculate_eb_statistics(
+                version_results,
+                cov_path_int=cov_path_int,
+                n_samples=n_samples,
+                **kwargs
             )
 
-            plt.axhspan(-0.05, 0.05, color="k", alpha=0.5)
-            plt.axhspan(0.95, 1.05, color="k", alpha=0.5)
-            plt.axhline(0, ls=":", c="k", alpha=0.3)
-            plt.axhline(1, ls=":", c="k", alpha=0.3)
+            # Generate all plots using specialized plotting functions
+            gg, gg_int = version_results["gg"], version_results["gg_int"]
 
-            plt.xscale("log")
-            # plt.yscale("log")
-            plt.ylim(-0.04, 1.04)
-            plt.xlabel(r"$\theta$ (arcmin)")
-            plt.ylabel(r"PTE")
-            plt.legend()
-            plt.title("B-mode PTEs as a function of lower scale cut")
-            plt.savefig(out_stub + "_ptes.png", dpi=300, bbox_inches="tight")
-
-            # Covariance Plot
-            fig, ax = plt.subplots(figsize=(9, 9))
-            im = ax.matshow(
-                correlation_from_covariance(results["cov"]), cmap="coolwarm"
+            # Integration vs Reporting comparison plot
+            plot_integration_vs_reporting(
+                gg, gg_int,
+                out_stub + "_integration_vs_reporting.png",
+                version
             )
 
-            for ticks in (plt.xticks, plt.yticks):
-                ticks(
-                    np.arange(nbins / 2, nbins * 6, nbins),
-                    [
-                        r"$\xi_+^{E}$",
-                        r"$\xi_-^{E}$",
-                        r"$\xi_+^{B}$",
-                        r"$\xi_-^{B}$",
-                        r"$\xi_+^{\rm amb}$",
-                        r"$\xi_-^{\rm amb}$",
-                    ],
-                )
-                ticks(np.arange(0, nbins * 6 + 1, 20), minor=True)
-            ax.tick_params(axis="both", which="major", length=0)
+            # E/B/Ambiguous correlation functions plot
+            plot_pure_eb_correlations(
+                version_results,
+                out_stub + "_xis.png",
+                version,
+                fiducial_xip_scale_cut=fiducial_xip_scale_cut,
+                fiducial_xim_scale_cut=fiducial_xim_scale_cut
+            )
 
-            im.set_clim(-1, 1)
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.1)
-            plt.colorbar(im, cax=cax)
-            ax.set_title(f"Pure E/B {var_method} correlation matrix")
-            plt.savefig(out_stub + "_covariance.png", dpi=300, bbox_inches="tight")
+            # 2D PTE heatmaps plot
+            plot_pte_2d_heatmaps(
+                version_results,
+                version,
+                out_stub + "_ptes.png",
+                fiducial_xip_scale_cut=fiducial_xip_scale_cut,
+                fiducial_xim_scale_cut=fiducial_xim_scale_cut
+            )
+
+            # Covariance matrix plot
+            plot_eb_covariance_matrix(
+                version_results["cov"],
+                var_method,
+                out_stub + "_covariance.png",
+                version
+            )
 
     def calculate_cosebis(
         self,
         version,
+        min_sep_int=0.5,
+        max_sep_int=500,
+        nbins_int=1000,
+        npatch=None,
+        nmodes=10,
+        cov_path=None,
+        evaluate_all_scale_cuts=False,
         min_sep=None,
         max_sep=None,
         nbins=None,
-        npatch=256,
-        var_method="jackknife",
-        nmodes=10,
-        scale_cuts=None,
     ):
         """
-        Calculate COSEBIs from a GGCorrelation object given scale cuts.
+        Calculate COSEBIs from a finely-binned correlation function.
+
+        COSEBIs fundamentally require fine binning for accurate transformations.
+        This function computes a single, finely-binned correlation function using
+        integration binning parameters and can evaluate either a single scale cut
+        (full range) or multiple scale cuts systematically.
 
         Parameters
         ----------
         version : str
-            The catalog version to compute the pure E/B modes for.
-        min_sep : float, optional
-            Minimum separation for the reporting binning. Defaults to the value in
-            self.treecorr_config if not provided.
-        max_sep : float, optional
-            Maximum separation for the reporting binning. Defaults to the value in
-            self.treecorr_config if not provided.
-        nbins : int, optional
-            Number of bins for the reporting binning. Defaults to the value in
-            self.treecorr_config if not provided.
+            The catalog version to compute the COSEBIs for.
         min_sep_int : float, optional
-            Minimum separation for the integration binning. Defaults to 0.08.
+            Minimum separation for integration binning (fine binning for COSEBIs).
+            Defaults to 0.5 arcmin.
         max_sep_int : float, optional
-            Maximum separation for the integration binning. Defaults to 300.
+            Maximum separation for integration binning (fine binning for COSEBIs).
+            Defaults to 500 arcmin.
         nbins_int : int, optional
-            Number of bins for the integration binning. Defaults to 100.
+            Number of bins for integration binning (fine binning for COSEBIs).
+            Defaults to 1000.
         npatch : int, optional
-            Number of patches for the jackknife or bootstrap resampling. Defaults to
-            the value in self.npatch if not provided.
-        var_method : str, optional
-            Variance estimation method. Defaults to "jackknife".
+            Number of patches for the jackknife resampling. Defaults to self.npatch.
         nmodes : int, optional
             Number of COSEBIs modes to compute. Defaults to 10.
-        lower_scale_cut : float
-            The minimum angular separation to include (in arcmin).
-        upper_scale_cut : float
-            The maximum angular separation to include (in arcmin).
+        cov_path : str, optional
+            Path to theoretical covariance matrix. When provided, enables analytic
+            covariance calculation.
+        evaluate_all_scale_cuts : bool, optional
+            If True, evaluates COSEBIs for all possible scale cut combinations
+            using the reporting binning parameters. If False, uses the full
+            integration range as a single scale cut. Defaults to False.
+        min_sep : float, optional
+            Minimum separation for reporting binning (only used when
+            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["min_sep"].
+        max_sep : float, optional
+            Maximum separation for reporting binning (only used when
+            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["max_sep"].
+        nbins : int, optional
+            Number of bins for reporting binning (only used when
+            evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["nbins"].
 
         Returns
         -------
-        TODO
+        dict
+            When evaluate_all_scale_cuts=False: Dictionary containing COSEBIs results
+            with E/B modes, covariances, and statistics for the full range.
+            When evaluate_all_scale_cuts=True: Dictionary with scale cut tuples as
+            keys and results dictionaries as values, containing results for all
+            possible scale cut combinations.
 
+        Notes
+        -----
         """
+        from .b_modes import calculate_cosebis
+
         self.print_start(f"Computing {version} COSEBIs")
 
+        # Set up parameters with defaults
         npatch = npatch or self.npatch
-        min_sep = min_sep or self.treecorr_config["min_sep"]
-        max_sep = max_sep or self.treecorr_config["max_sep"]
-        nbins = nbins or self.treecorr_config["nbins"]
 
+        # Always use integration binning for COSEBIs calculation (fine binning)
         treecorr_config = {
             **self.treecorr_config,
-            "min_sep": min_sep,
-            "max_sep": max_sep,
-            "nbins": nbins,
+            "min_sep": min_sep_int,
+            "max_sep": max_sep_int,
+            "nbins": nbins_int,
         }
 
+        # Calculate single fine-binned correlation function for COSEBIs
+        print(
+            f"Computing fine-binned 2PCF with {nbins_int} bins from {min_sep_int} to "
+            f"{max_sep_int} arcmin"
+        )
         gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
 
-        dtheta = gg.right_edges - gg.left_edges
-        scale_cuts = scale_cuts or (gg.min_sep, gg.max_sep)
+        if evaluate_all_scale_cuts:
+            # Use reporting binning parameters or inherit from class config
+            min_sep = min_sep or self.treecorr_config["min_sep"]
+            max_sep = max_sep or self.treecorr_config["max_sep"]
+            nbins = nbins or self.treecorr_config["nbins"]
 
-        if np.isscalar(scale_cuts[0]):
-            scale_cuts = [scale_cuts]
+            # Generate scale cuts using np.geomspace (no TreeCorr needed)
+            bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
+            scale_cuts = [
+                (bin_edges[start], bin_edges[stop])
+                for start in range(nbins)
+                for stop in range(start+1, nbins+1)
+            ]
 
-        results = {}
-        for scale_cut in scale_cuts:
-            if len(scale_cut) != 2:
-                raise ValueError(
-                    "scale_cuts must be a list of tuples with two elements"
-                )
+            print(f"Evaluating {len(scale_cuts)} scale cut combinations")
 
-            # ξ and covariance indices given scale cuts
-            inds = (gg.left_edges >= scale_cut[0]) & (gg.right_edges <= scale_cut[1])
-            inds = np.asarray(inds).nonzero()[0]
-            cov_inds = np.concatenate([inds, inds + len(gg.meanr)])
-
-            cosebis = COSEBIS(
-                theta_min=gg.left_edges[inds][0],
-                theta_max=gg.right_edges[inds][-1],
-                N_max=nmodes,
+            # Call b_modes function with scale cuts list
+            results = calculate_cosebis(
+                gg=gg, nmodes=nmodes, scale_cuts=scale_cuts, cov_path=cov_path
             )
-
-            C_E, C_B = cosebis.cosebis_from_xipm(
-                gg.meanr[inds], dtheta[inds], gg.xip[inds], gg.xim[inds]
+        else:
+            # Single scale cut behavior: use full range
+            results = calculate_cosebis(
+                gg=gg, nmodes=nmodes, scale_cuts=None, cov_path=cov_path
             )
-
-            cov_EB = cosebis.cosebis_covariance_from_xipm_covariance(
-                gg.meanr[inds], dtheta[inds], gg.cov[cov_inds[:, None], cov_inds]
-            )
-
-            cov_E = cov_EB[: len(C_E), : len(C_E)]
-            cov_B = cov_EB[len(C_E) :, len(C_E) :]
-
-            # Use the full covariance matrix instead of just the diagonals
-            E_snr = np.sqrt(np.dot(C_E, np.linalg.solve(cov_E, C_E)))
-            B_pte = stats.chi2.sf(np.dot(C_B, np.linalg.solve(cov_B, C_B)), len(C_B))
-            B0_pte = stats.chi2.sf(C_B[0] ** 2 / cov_B[0, 0], 1)
-
-            results[scale_cut] = {
-                "inds": inds,
-                "cosebis": cosebis,
-                "theta": gg.meanr[inds],
-                "modes": np.arange(len(C_E)),
-                "E": C_E,
-                "B": C_B,
-                "cov_EB": cov_EB,
-                "cov_E": cov_E,
-                "cov_B": cov_B,
-                "E_snr": E_snr,
-                "B0_pte": B0_pte,
-                "B_pte": B_pte,
-            }
+            # Extract single results dict from scale_cuts dictionary
+            results = list(results.values())[0]
 
         return results
 
     def plot_cosebis(
         self,
-        min_sep=None,
-        max_sep=None,
-        nbins=None,
-        npatch=256,
-        var_method="jackknife",
-        nmodes=10,
-        scale_cuts=None,
-        fiducial_scale_cut=None,
+        version=None,
+        output_dir=None,
+        min_sep_int=0.5, max_sep_int=500, nbins_int=1000,  # Integration binning
+        npatch=None, nmodes=10, cov_path=None,
+        evaluate_all_scale_cuts=False,                     # New parameter
+        min_sep=None, max_sep=None, nbins=None,           # Reporting binning
+        fiducial_scale_cut=None,                          # For plotting reference
+        results=None,
     ):
-        if np.isscalar(scale_cuts[0]):
-            scale_cuts = [scale_cuts]
+        """
+        Generate comprehensive COSEBIs analysis plots for a single version.
 
-        fiducial_scale_cut = fiducial_scale_cut or scale_cuts[0]
+        Creates two types of plots:
+        1. COSEBIs E/B mode correlation functions
+        2. COSEBIs covariance matrix
 
-        for version in self.versions:
-            out_stub = f"{self.cc['paths']['output']}/{version}_cosebis_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_varmethod={var_method}_nmodes={nmodes}_scalecut={fiducial_scale_cut}"
+        Parameters
+        ----------
+        version : str, optional
+            Version string to process. Defaults to first version in self.versions.
+        output_dir : str, optional
+            Output directory for plots. Defaults to self.cc['paths']['output'].
+        min_sep_int, max_sep_int, nbins_int : float, float, int
+            Integration binning parameters for correlation function
+            (default: 0.5, 500, 1000)
+        npatch : int, optional
+            Number of patches for jackknife covariance. Defaults to instance value.
+        nmodes : int
+            Number of COSEBIs modes to compute (default: 10)
+        cov_path : str, optional
+            Path to theoretical covariance matrix. When provided, analytic
+            covariance is used.
+        evaluate_all_scale_cuts : bool
+            Whether to evaluate all scale cuts (default: False)
+        min_sep, max_sep, nbins : float, float, int, optional
+            Reporting binning parameters. Only used when evaluate_all_scale_cuts=True.
+        fiducial_scale_cut : tuple, optional
+            (min_scale, max_scale) reference scale cut for plotting when
+            evaluate_all_scale_cuts=True
+        results : dict, optional
+            Precalculated results to avoid recomputation. If None (default),
+            results will be calculated using calculate_cosebis.
 
+        Notes
+        -----
+        This function orchestrates the full COSEBIs analysis workflow:
+        - Uses instance configuration as defaults for unspecified parameters
+        - Calculates COSEBIs for the version using the updated parameter interface
+        - Generates mode plots and covariance visualization
+        - Output files are named with analysis parameters for reproducibility
+        - When evaluate_all_scale_cuts=True, results contain multiple scale cuts;
+          fiducial_scale_cut determines which one is used for plotting
+        """
+        from .b_modes import (
+            find_conservative_scale_cut_key,
+            plot_cosebis_covariance_matrix,
+            plot_cosebis_modes,
+            plot_cosebis_scale_cut_heatmap,
+            scale_cut_to_bins,
+        )
+
+        # Use instance defaults if not specified
+        version = version or self.versions[0]
+        output_dir = output_dir or self.cc['paths']['output']
+        npatch = npatch or self.treecorr_config.get('npatch', 256)
+
+        # Determine variance method based on whether theoretical covariance is used
+        var_method = "analytic" if cov_path is not None else "jackknife"
+        
+        # Create output filename with integration parameters to match Snakemake expectations
+        out_stub = (
+            f"{output_dir}/{version}_cosebis_minsep={min_sep_int}_"
+            f"maxsep={max_sep_int}_nbins={nbins_int}_npatch={npatch}_"
+            f"varmethod={var_method}_nmodes={nmodes}"
+        )
+
+        # Add scale cut info if provided
+        if fiducial_scale_cut is not None:
+            out_stub += f"_scalecut={fiducial_scale_cut[0]}-{fiducial_scale_cut[1]}"
+
+        # if evaluate_all_scale_cuts:
+        #     out_stub += f"_allcuts_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
+
+        # Get or calculate results for this version
+        if results is None:
+            # Calculate COSEBIs using instance method
             results = self.calculate_cosebis(
                 version,
+                min_sep_int=min_sep_int,
+                max_sep_int=max_sep_int,
+                nbins_int=nbins_int,
+                npatch=npatch,
+                nmodes=nmodes,
+                cov_path=cov_path,
+                evaluate_all_scale_cuts=evaluate_all_scale_cuts,
                 min_sep=min_sep,
                 max_sep=max_sep,
                 nbins=nbins,
-                npatch=npatch,
-                var_method=var_method,
-                nmodes=nmodes,
-                scale_cuts=scale_cuts,
-            )
-            results_fiducial = results[fiducial_scale_cut]
-
-            plt.figure(figsize=(9, 9))
-            plt.errorbar(
-                results_fiducial["modes"],
-                results_fiducial["E"],
-                yerr=np.sqrt(np.diag(results_fiducial["cov_E"])),
-                label=rf"COSEBIs E-modes; $\sqrt{{\chi_0^2}}$ = {results_fiducial['E_snr']:.2f}",
-            )
-            plt.errorbar(
-                results_fiducial["modes"],
-                results_fiducial["B"],
-                yerr=np.sqrt(np.diag(results_fiducial["cov_B"])),
-                c="crimson",
-                label=rf"COSEBIs B-modes; PTE $B_0$ = {results_fiducial['B0_pte']:.2f}, $B_{{\rm all}}$ = {results_fiducial['B_pte']:.2f}",
             )
 
-            plt.axhline(0, ls="--", color="k")
-            plt.legend()
-            plt.xlabel(r"$n$ (mode)")
-            plt.ylabel(r"$E_n,B_n$")
-            plt.title(f"{version} COSEBIs E/B-modes, {fiducial_scale_cut} scale cut")
-            plt.savefig(out_stub + "_cosebis.png", dpi=300, bbox_inches="tight")
+        # Generate plots using specialized plotting functions
+        # Extract single result for plotting if multiple scale cuts were evaluated
+        if (isinstance(results, dict) and
+            all(isinstance(k, tuple) for k in results.keys())):
+            # Multiple scale cuts: use fiducial_scale_cut if provided, otherwise use
+            # full range
+            if fiducial_scale_cut is not None:
+                plot_results = results[find_conservative_scale_cut_key(results, fiducial_scale_cut)]
+            else:
+                # Use full range result (largest scale cut)
+                max_range_key = max(results.keys(), key=lambda x: x[1] - x[0])
+                plot_results = results[max_range_key]
+        else:
+            # Single result
+            plot_results = results
 
-            fig, ax = plt.subplots(figsize=(9, 9))
-            im = ax.imshow(results_fiducial["cov_EB"], cmap="coolwarm")
+        plot_cosebis_modes(
+            plot_results,
+            version,
+            out_stub + "_cosebis.png",
+            fiducial_scale_cut=fiducial_scale_cut
+        )
 
-            nmodes = len(results_fiducial["E"])
-            for ticks in (plt.xticks, plt.yticks):
-                ticks(
-                    np.arange(nmodes / 2, nmodes * 2, nmodes),
-                    [r"$E_n$", r"$B_n$"],
-                )
-                ticks(np.arange(0, nmodes * 2 + 1, nmodes), minor=True)
+        plot_cosebis_covariance_matrix(
+            plot_results,
+            version,
+            var_method,
+            out_stub + "_covariance.png"
+        )
 
-            clim = np.max(np.abs(results_fiducial["cov_EB"]))
-            im.set_clim(-clim, clim)
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="5%", pad=0.1)
-            plt.colorbar(im, cax=cax)
-            ax.set_title(f"{version} COSEBIs E/B {var_method} correlation matrix")
-            plt.savefig(out_stub + "_covariance.png", dpi=300, bbox_inches="tight")
+        # Generate scale cut heatmap if we have multiple scale cuts
+        if (isinstance(results, dict) and
+            all(isinstance(k, tuple) for k in results.keys()) and
+            len(results) > 1):
+            # Create temporary gg object with correct binning for mapping
+            treecorr_config_temp = {
+                **self.treecorr_config,
+                "min_sep": min_sep or self.treecorr_config["min_sep"],
+                "max_sep": max_sep or self.treecorr_config["max_sep"],
+                "nbins": nbins or self.treecorr_config["nbins"],
+            }
+            gg_temp = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_temp)
 
-            # PTE as a function of scale cut plot
-            B_ptes = [results[scale_cut]["B_pte"] for scale_cut in scale_cuts]
-            B0_ptes = [results[scale_cut]["B0_pte"] for scale_cut in scale_cuts]
-
-            plt.figure(figsize=(8, 6))
-            plt.plot(
-                np.arange(len(B_ptes)),
-                B_ptes,
-                c="crimson",
-                label=r"$B_{\rm all}$",
-                marker=".",
-                ls="",
-            )
-            plt.plot(
-                np.arange(len(B0_ptes)),
-                B0_ptes,
-                c="crimson",
-                label=r"$B_{0}$",
-                marker="x",
-                ls="",
-            )
-
-            plt.axhspan(-0.05, 0.05, color="k", alpha=0.5)
-            plt.axhspan(0.95, 1.05, color="k", alpha=0.5)
-            plt.axhline(0, ls=":", c="k", alpha=0.3)
-            plt.axhline(1, ls=":", c="k", alpha=0.3)
-
-            plt.xticks(
-                np.arange(len(B0_ptes)),
-                [f"({scale_cut[0]}, {scale_cut[1]})" for scale_cut in scale_cuts],
-                rotation=25,
+            plot_cosebis_scale_cut_heatmap(
+                results,
+                gg_temp,
+                version,
+                out_stub + "_scalecut_ptes.png",
+                fiducial_scale_cut=fiducial_scale_cut
             )
 
-            # plt.yscale("log")
-            plt.ylim(-0.04, 1.04)
-            plt.xlabel(r"$\theta$ (arcmin)")
-            plt.ylabel(r"PTE")
-            plt.legend()
-            plt.title(f"{version} COSEBIs B-mode PTEs as a function of scale cut")
-            plt.savefig(out_stub + "_ptes.png", dpi=300, bbox_inches="tight")
 
     def calculate_pseudo_cl_eb_cov(self):
         """
@@ -2329,7 +2226,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if not ver in self._pseudo_cls.keys():
+            if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
             out_path = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_{ver}.fits")
@@ -2337,7 +2234,6 @@ class CosmologyValidation:
                 self.print_done(f"Skipping Pseudo-Cl covariance calculation, {out_path} exists")
                 self._pseudo_cls[ver]['cov'] = fits.open(out_path)
             else:
-
                 params = get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
@@ -2345,7 +2241,20 @@ class CosmologyValidation:
                 lmax = 2*self.nside
                 path_redshift_distr = self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
                 pw = hp.pixwin(nside, lmax=lmax)
-                fiducial_cl = self.get_fiducial(lmax, path_redshift_distr)*pw**2
+
+                # Load redshift distribution and calculate theory C_ell
+                z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
+                ell = np.arange(1, lmax + 1)
+                fiducial_cl = (
+                    get_theo_c_ell(
+                        ell=ell,
+                        z=z,
+                        nz=dndz,
+                        backend="camb",
+                        cosmo=self.cosmo,
+                    )
+                    * pw**2
+                )
 
                 self.print_cyan("Getting a sample of the fiducial Cl's with noise")
 
@@ -2688,37 +2597,6 @@ class CosmologyValidation:
         cl_shear = fits.getdata(out_path)
         self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
 
-    def get_fiducial(self, lmax, redshift_distr):
-        """
-        Get the power spectrum at Planck18 cosmology using CAMB.
-        """
-        planck = Planck18
-
-        h = planck.H0.value/100
-        Om = planck.Om0
-        Ob = planck.Ob0
-        Oc = Om - Ob
-        ns = 0.965
-        As = 2.1e-9
-        m_nu = 0.06
-        w = -1
-        
-        pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
-        Onu = pars.omeganu
-        Oc = Om - Ob - Onu
-        pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
-
-        z, dndz = np.loadtxt(redshift_distr, unpack=True)
-
-        #getthe expected cl's from CAMB
-        pars.min_l = 1
-        pars.set_for_lmax(lmax)
-        pars.SourceWindows = [
-            camb.sources.SplinedSourceWindow(z=z, W=dndz, source_type='lensing')
-        ]
-        theory_cls = camb.get_results(pars).get_source_cls_dict(lmax=lmax, raw_cl=True)
-        return theory_cls['W1xW1']
-
     def get_n_gal_map(self, params, nside, cat_gal):
         """
         Compute the galaxy number density map.
@@ -2736,9 +2614,12 @@ class CosmologyValidation:
         n_gal[unique_pix] = np.bincount(idx_rep, weights=w)
         return n_gal, unique_pix, idx, idx_rep
 
-    def get_gaussian_real(self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep):
-
-        e1_rot, e2_rot = self.apply_random_rotation(cat_gal[params['e1_col']], cat_gal[params['e2_col']])
+    def get_gaussian_real(
+        self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
+    ):
+        e1_rot, e2_rot = self.apply_random_rotation(
+            cat_gal[params["e1_col"]], cat_gal[params["e2_col"]]
+        )
         noise_map_e1 = np.zeros(hp.nside2npix(nside))
         noise_map_e2 = np.zeros(hp.nside2npix(nside))
 
@@ -2915,7 +2796,7 @@ class CosmologyValidation:
             cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
             ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"], capsize=2)
 
-        ax[0].set_ylabel('$\ell C_\ell$')
+        ax[0].set_ylabel(r"$\ell C_\ell$")
 
         ax[0].set_xlim(ell.min()-10, ell.max()+100)
         ax[0].set_xscale('squareroot')
@@ -2930,8 +2811,8 @@ class CosmologyValidation:
             cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
             ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"])
 
-        ax[1].set_xlabel('$\ell$')
-        ax[1].set_ylabel('$C_\ell$')
+        ax[1].set_xlabel(r"$\ell$")
+        ax[1].set_ylabel(r"$C_\ell$")
 
         ax[1].set_xlim(ell.min()-10, ell.max()+100)
         ax[1].set_xscale('squareroot')
@@ -2956,8 +2837,8 @@ class CosmologyValidation:
             cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
             ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"], capsize=2)
 
-        ax[0].axhline(0, color='black', linestyle='--')
-        ax[0].set_ylabel('$\ell C_\ell$')
+        ax[0].axhline(0, color="black", linestyle="--")
+        ax[0].set_ylabel(r"$\ell C_\ell$")
 
         ax[0].set_xlim(ell.min()-10, ell.max()+100)
         ax[0].set_xscale('squareroot')
@@ -2972,8 +2853,8 @@ class CosmologyValidation:
             cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
             ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"])
 
-        ax[1].set_xlabel('$\ell$')
-        ax[1].set_ylabel('$C_\ell$')
+        ax[1].set_xlabel(r"$\ell$")
+        ax[1].set_ylabel(r"$C_\ell$")
 
         ax[1].set_xlim(ell.min()-10, ell.max()+100)
         ax[1].set_xscale('squareroot')
@@ -2998,8 +2879,8 @@ class CosmologyValidation:
             cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
             ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"], capsize=2)
 
-        ax[0].axhline(0, color='black', linestyle='--')
-        ax[0].set_ylabel('$\ell C_\ell$')
+        ax[0].axhline(0, color="black", linestyle="--")
+        ax[0].set_ylabel(r"$\ell C_\ell$")
 
         ax[0].set_xlim(ell.min()-10, ell.max()+100)
         ax[0].set_xscale('squareroot')
@@ -3014,8 +2895,8 @@ class CosmologyValidation:
             cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
             ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"])
 
-        ax[1].set_xlabel('$\ell$')
-        ax[1].set_ylabel('$C_\ell$')
+        ax[1].set_xlabel(r"$\ell$")
+        ax[1].set_ylabel(r"$C_\ell$")
 
         ax[1].set_xlim(ell.min()-10, ell.max()+100)
         ax[1].set_xscale('squareroot')
@@ -3029,11 +2910,3 @@ class CosmologyValidation:
         plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
-
-
-def correlation_from_covariance(covariance):
-    v = np.sqrt(np.diag(covariance))
-    outer_v = np.outer(v, v)
-    correlation = covariance / outer_v
-    correlation[covariance == 0] = 0
-    return correlation

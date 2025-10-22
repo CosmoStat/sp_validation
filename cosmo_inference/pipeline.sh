@@ -27,14 +27,15 @@ do
         python notebooks/cosmo_val/cosmo_val.py
         ;;
     'c') 
-        read -p 'ROOT: ' root;
-        read -p 'NZ FILE:' nz_file;
-        read -p 'PATH COSMOCOV: ' cosmocov;
-        echo "Calculating covariance matrices with CosmoCov";
-        python scripts/cosmocov_process.py $root $nz_file $cosmocov
+        read -p 'COVARIANCE FILE: ' covmat_file;
+        read -p 'OUTPUT STUB (without extension): ' output_stub;
+        echo "Processing covariance matrix";
+        python scripts/cosmocov_process.py $covmat_file $output_stub
         ;;
     'i')
-        read -p 'ROOT: ' root;
+        read -p 'XI ROOT: ' xi_root;
+        read -p 'TAU ROOT: ' tau_root;
+        read -p 'COSMOSIS ROOT: ' cosmosis_root;
         read -p 'COSMO_VAL OUTPUT FOLDER: ' output_folder;
         read -p 'NZ FILE:' nz_file;
         read -p 'OUTPUT MCMC CHAIN FOLDER: ' data;
