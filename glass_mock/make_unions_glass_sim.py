@@ -6,6 +6,9 @@ import healpy as hp
 import os
 from cosmology import Cosmology
 import time
+from astropy.cosmology import Planck18
+
+from tqdm import tqdm
 
 #GLASS modules
 import glass
@@ -26,14 +29,14 @@ def get_parser():
     parser.add_argument("-s", "--seed", help="Random seed", type=int, default=42)
     parser.add_argument("-N", "--number", help="Mock Number", type=int, default=0)
     parser.add_argument("-n", "--nside", help="Nside for the simulation. Nside=Lmax", type=int, default=32)
-    parser.add_argument("-ne", "--neff", help="Effective number of galaxies per arcmin^2", type=float, default=7.127619407438543)
+    parser.add_argument("-ne", "--neff", help="Effective number of galaxies per arcmin^2", type=float, default=6.0905)
     parser.add_argument("-p", "--path", help="Output path to save the mocks", type=str, default='./')
     parser.add_argument("-c", "--cls", help="Pre-compute and saves the matter shell cls", action="store_true")
     parser.add_argument("-t", "--test", help="Test run", action="store_true")
-    parser.add_argument("-sg", "--sigmae", help="Set sigma of intrinsic ellipticity", type=float, default=0.3093694972219397)
+    parser.add_argument("-sg", "--sigmae", help="Set sigma of intrinsic ellipticity", type=float, default=0.2684)
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
-    parser.add_argument("-nz", "--pathnz", help="Path to the n(z) file", type=str, default='/n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt')
-    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits')
+    parser.add_argument("-nz", "--pathnz", help="Path to the n(z) file", type=str, default='/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt')
+    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits')
     return parser
 
 def downgrade_mask(mask, nside):
@@ -58,12 +61,17 @@ class Sky:
         #set the constants
         self.nbins = 1 #number of shells
         #constant bias
-        self.bz = 1.2,
+        self.bz = 1.2
         self.phz_sigma_0 = 0.03
         #sets up the simulation parameters
-        self.h = 0.7
-        self.Oc = 0.25
-        self.Ob = 0.05
+        planck = Planck18
+
+        self.h = planck.H0.value/100
+        self.Om = planck.Om0
+        self.Ob = planck.Ob0
+        self.Oc = self.Om - self.Ob
+        self.ns = 0.965
+        self.As = 2.1e-9
         self.dx = 200.0
         self.zmax = 3.0
         #get variables from parser
@@ -105,7 +113,11 @@ class Sky:
             os.makedirs(self.root)
             print("A new directory" + str(self.root)+"is created!")
 
-        self.pars = camb.set_params(H0=100*self.h, omch2=self.Oc*self.h**2, ombh2=self.Ob*self.h**2,
+        self.pars = camb.set_params(H0=100*self.h, omch2=self.Oc*self.h**2, ombh2=self.Ob*self.h**2, As=self.As, ns=self.ns,
+                                    NonLinear=camb.model.NonLinear_both, WantTransfer=True)
+        Onu = self.pars.omeganu
+        self.Oc = self.Om - self.Ob - Onu
+        self.pars = camb.set_params(H0=100*self.h, omch2=self.Oc*self.h**2, ombh2=self.Ob*self.h**2, As=self.As, ns=self.ns,
                                     NonLinear=camb.model.NonLinear_both, WantTransfer=True)
         
         params_dict = vars(self.pars)
@@ -166,12 +178,12 @@ class Sky:
             np.save(f'{self.root}/cls_test{self.test}.npy')
         else:
             try:
-                cls = np.load(f'{self.root}/cls_test{self.test}.npy')
+                cls = np.load(f'{self.root}/cls{self.test}.npy')
             except FileNotFoundError:
                 print(f"[!] The cls file for lmax={self.lmax} does not exist.")
                 print(f"[!] Running the matter density cls calculation ...")
                 cls = glass.ext.camb.matter_cls(self.pars, self.lmax, shells)
-                np.save(f'{self.root}/cls_test{self.test}.npy', cls)
+                np.save(f'{self.root}/cls{self.test}.npy', cls)
                 print(f"[!] Done.")
 
         #Set up lognormal fields for simulations
@@ -216,7 +228,7 @@ class Sky:
         gamm1_bar = np.zeros(hp.nside2npix(self.nside))
         gamm2_bar = np.zeros(hp.nside2npix(self.nside)) """
         print("Generating shell ", end='')
-        for i, delta_i in enumerate(matter):
+        for i, delta_i in tqdm(enumerate(matter)):
             #compute the lensing maps
             convergence.add_window(delta_i, shells[i])
             kappa_i = convergence.kappa
@@ -294,7 +306,7 @@ class Sky:
             s = camb.sources.SplinedSourceWindow(z=z, W=bin_nz[i], source_type='lensing')
             sources.append(s)
         self.pars.SourceWindows = sources
-        self.pars.InitPower.set_params(As=2e-9, ns=0.965)
+        self.pars.InitPower.set_params(As=2.1e-9, ns=0.965)
         results = camb.get_results(self.pars)
         cl_camb = results.get_source_cls_dict(lmax=lmax, raw_cl=True)
 
