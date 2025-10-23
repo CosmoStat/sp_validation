@@ -340,8 +340,8 @@ if __name__ == "__main__":
         use_tau_stats = sys.argv[7]
         use_tau_stats = True if use_tau_stats == 'y' else False
         rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+tau_root+'.fits' if use_tau_stats else None
-        tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+tau_root+'.fits' if use_tau_stats else None
-        cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+tau_root+'_th.npy' if use_tau_stats else None
+        tau_stats_file = output_folder +'/rho_tau_stats/tau_stats_'+tau_root+'.fits' if use_tau_stats else None
+        cov_tau_file = output_folder + '/rho_tau_stats/cov_tau_'+tau_root+'_th.npy' if use_tau_stats else None
 
         
         #create the required FITS extensions
