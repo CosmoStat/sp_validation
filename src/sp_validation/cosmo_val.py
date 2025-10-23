@@ -52,7 +52,7 @@ class CosmologyValidation:
         pol_factor=True,
         cell_method='map',
         nrandom_cell=10,
-        path_onecovariance=None
+        path_onecovariance=None,
         cosmo_params=None,
         redshift_file=None
     ):
