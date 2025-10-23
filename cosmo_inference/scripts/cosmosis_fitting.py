@@ -260,7 +260,31 @@ if __name__ == "__main__":
 #into 1 fits file to be read by CosmoSIS 2pt-likelihood function
 #give file path of each of the 3 components as input, also file path of desired output FITS file
 #outputs nothing, but writes a new FITS file with appropriate extensions
-    root = sys.argv[1]
+
+    # Print all input arguments
+    print("=" * 60)
+    print("COSMOSIS_FITTING.PY - INPUT ARGUMENTS")
+    print("=" * 60)
+    print(f"Script name: {sys.argv[0]}")
+    print(f"Total arguments: {len(sys.argv)}")
+
+    arg_names = [
+        "script_name",
+        "cosmosis_root",
+        "output_folder", 
+        "nz_file",
+        "use_pseudo_cell",
+        "out_file",
+    ]
+
+    for i, arg in enumerate(sys.argv):
+        if i < len(arg_names):
+            print(f"  argv[{i}] ({arg_names[i]}): {arg}")
+    print("=" * 60)
+    print()
+
+
+    cosmosis_root = sys.argv[1]
     output_folder = sys.argv[2]
     nz_file = sys.argv[3]
     out_file = sys.argv[5]
@@ -269,8 +293,22 @@ if __name__ == "__main__":
     use_pseudo_cell = True if use_pseudo_cell == 'y' else False
 
     if use_pseudo_cell:
-        pseudo_cl_file = output_folder+'/pseudo_cl_'+root+'.fits'
-        pseudo_cl_cov_file = output_folder+'/pseudo_cl_cov_g_ng_iNKA_'+root+'.fits' #Hardcode the use of iNKA covariance matrix here but could be generalised.
+        arg_names += ["cl_root", "gaussian_part"]
+
+        for i, argv in enumerate(sys.argv[6:], start=6):
+            if i < len(arg_names):
+                print(f"  argv[{i}] ({arg_names[i]}): {argv}")
+            else:
+                print(f"  argv[{i}] (unexpected): {argv}")
+        print("=" * 60)
+        print()
+
+        cl_root = sys.argv[6]
+        gaussian_part = sys.argv[7]  # "iNKA" or "OneCovariance"
+        assert gaussian_part in ["iNKA", "OneCovariance"], "gaussian_part must be either 'iNKA' or 'OneCovariance'"
+
+        pseudo_cl_file = output_folder+'/pseudo_cl_'+cl_root+'.fits'
+        pseudo_cl_cov_file = output_folder+f'/pseudo_cl_cov_g_ng_{gaussian_part}_{cl_root}.fits' 
 
         print("Creating 2PT fits extension...\n")
         if not os.path.exists(pseudo_cl_file):
@@ -280,16 +318,30 @@ if __name__ == "__main__":
         cov_hdu = cov_pseudo_cl_to_fits(pseudo_cl_cov_file)
 
     else:
-        two_pt_file_xip = output_folder+'/xi_plus_'+root+'.fits'
-        two_pt_file_xim = output_folder+'/xi_minus_'+root+'.fits'
-        cov_xi_file = sys.argv[6]        #in cosmocov combined txt format
+        arg_names += ["xi_root", "rhotau_stats", "tau_root", "covmat"]
+
+        for i, argv in enumerate(sys.argv[6:], start=6):
+            if i < len(arg_names):
+                print(f"  argv[{i}] ({arg_names[i]}): {argv}")
+            else:
+                print(f"  argv[{i}] (unexpected): {argv}")
+        print("=" * 60)
+        print()
+
+        xi_root = sys.argv[6]
+        rhotau_stats = sys.argv[7]
+        tau_root = sys.argv[8]
+        cov_xi_file = sys.argv[9]  #in cosmocov combined txt format
+
+        two_pt_file_xip = output_folder+'/xi_plus_'+xi_root+'.fits'
+        two_pt_file_xim = output_folder+'/xi_minus_'+xi_root+'.fits'    
                 #in cosmocov format
-        rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+root+'.fits'
         
         use_tau_stats = sys.argv[7]
         use_tau_stats = True if use_tau_stats == 'y' else False
-        tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+root+'.fits' if use_tau_stats else None
-        cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+root+'_th.npy' if use_tau_stats else None
+        rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+tau_root+'.fits'
+        tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+tau_root+'.fits' if use_tau_stats else None
+        cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+tau_root+'_th.npy' if use_tau_stats else None
 
         
         #create the required FITS extensions
@@ -297,11 +349,52 @@ if __name__ == "__main__":
         if not (os.path.exists(two_pt_file_xip) and os.path.exists(two_pt_file_xim)):
             raise FileNotFoundError("2pt files not found. Please run cosmo_val.py first.")
         xip_hdu, xim_hdu = treecorr_to_fits(two_pt_file_xip, two_pt_file_xim)
+
+        # Extract xi meanr for consistency enforcement
+        xi_theta = xip_hdu.data['ANG']  # xi uses 'ANG' column for meanr
+
         if not os.path.exists(tau_stats_file):
             raise Warning("Tau stats file not found. Please run cosmo_val.py first. Creating the FITS file without rho and tau statistics.")
             use_tau_stats= False
             cov_tau_file = None
         if use_tau_stats:
+
+            # Load original theta values for validation
+            tau_stats = fits.getdata(str(tau_stats_file))
+            rho_stats = fits.getdata(str(rho_stats_file))
+            tau_theta = tau_stats['theta']
+            rho_theta = rho_stats['theta']
+            
+            # Validate theta consistency and report differences
+            print("=" * 60)
+            print("MEANR CONSISTENCY CHECK")
+            print("=" * 60)
+            
+            # Calculate relative differences
+            tau_diff = np.abs((tau_theta - xi_theta) / xi_theta) * 100
+            rho_diff = np.abs((rho_theta - xi_theta) / xi_theta) * 100
+            
+            print(f"Xi theta range: {xi_theta.min():.6f} - {xi_theta.max():.6f} arcmin")
+            print(f"Tau theta range: {tau_theta.min():.6f} - {tau_theta.max():.6f} arcmin")
+            print(f"Rho theta range: {rho_theta.min():.6f} - {rho_theta.max():.6f} arcmin")
+            print()
+            print(f"Max tau-xi relative difference: {tau_diff.max():.3f}%")
+            print(f"Mean tau-xi relative difference: {tau_diff.mean():.3f}%")
+            print(f"Max rho-xi relative difference: {rho_diff.max():.3f}%")
+            print(f"Mean rho-xi relative difference: {rho_diff.mean():.3f}%")
+            
+            # Check for excessive differences
+            max_allowed_diff = 5.0  # 5% threshold
+            if tau_diff.max() > max_allowed_diff:
+                raise ValueError(f"Tau-xi meanr difference exceeds {max_allowed_diff}%: {tau_diff.max():.3f}%")
+            if rho_diff.max() > max_allowed_diff:
+                raise ValueError(f"Rho-xi meanr difference exceeds {max_allowed_diff}%: {rho_diff.max():.3f}%")
+            
+            print(f"✓ All differences below {max_allowed_diff}% threshold")
+            print("✓ Forcing rho and tau to use xi meanr values for consistency")
+            print("=" * 60)
+            print()
+            
             print('Creating rho stats fits extension...\n')
             rho_hdu = rho_to_fits(rho_stats_file)
             print("Creating tau fits extensions...\n")
