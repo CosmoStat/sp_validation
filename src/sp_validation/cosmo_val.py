@@ -2572,7 +2572,11 @@ class CosmologyValidation:
             cl_noise += cl_noise_
         
         cl_noise /= self.nrandom_cell
-        del e1, e2, e1_rot, e2_rot, w
+        del e1, e2, w
+        try:
+            del e1_rot, e2_rot
+        except NameError: #Continue if the random generation has been skipped.
+            pass
         del n_gal_map              
 
         #This is a problem because the measurement depends on the seed. To be fixed.
