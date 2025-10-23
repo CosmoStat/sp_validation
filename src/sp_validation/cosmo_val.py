@@ -2568,7 +2568,7 @@ class CosmologyValidation:
             noise_map = noise_map_e1 + 1j*noise_map_e2
             del noise_map_e1, noise_map_e2
 
-            _, cl_noise_, _ = self.get_pseudo_cls(noise_map, wsp)
+            _, cl_noise_, _ = self.get_pseudo_cls_map(noise_map, wsp)
             cl_noise += cl_noise_
         
         cl_noise /= self.nrandom_cell
