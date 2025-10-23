@@ -339,7 +339,7 @@ if __name__ == "__main__":
         
         use_tau_stats = sys.argv[7]
         use_tau_stats = True if use_tau_stats == 'y' else False
-        rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+tau_root+'.fits'
+        rho_stats_file = output_folder+'/rho_tau_stats/rho_stats_'+tau_root+'.fits' if use_tau_stats else None
         tau_stats_file = output_folder +'rho_tau_stats/tau_stats_'+tau_root+'.fits' if use_tau_stats else None
         cov_tau_file = output_folder + 'rho_tau_stats/cov_tau_'+tau_root+'_th.npy' if use_tau_stats else None
 
@@ -353,7 +353,7 @@ if __name__ == "__main__":
         # Extract xi meanr for consistency enforcement
         xi_theta = xip_hdu.data['ANG']  # xi uses 'ANG' column for meanr
 
-        if not os.path.exists(tau_stats_file):
+        if use_tau_stats and not os.path.exists(tau_stats_file):
             raise Warning("Tau stats file not found. Please run cosmo_val.py first. Creating the FITS file without rho and tau statistics.")
             use_tau_stats= False
             cov_tau_file = None
