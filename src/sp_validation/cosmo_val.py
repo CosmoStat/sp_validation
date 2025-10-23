@@ -2474,6 +2474,8 @@ class CosmologyValidation:
                 non_gaussian_cov = self.pseudo_cls_onecov[ver]['all_cov'] - self.pseudo_cls_onecov[ver]['gaussian_cov']
                 full_cov = gaussian_cov + non_gaussian_cov
             elif gaussian_part == "OneCovariance":
+                gaussian_cov = self.pseudo_cls_onecov[ver]['gaussian_cov']
+                non_gaussian_cov = self.pseudo_cls_onecov[ver]['all_cov'] - self.pseudo_cls_onecov[ver]['gaussian_cov']
                 full_cov = self.pseudo_cls_onecov[ver]['all_cov']
             else:
                 raise ValueError(f"Unknown gaussian_part: {gaussian_part}")
