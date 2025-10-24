@@ -173,3 +173,5 @@ notebooks/demo_add_bands.ipynb
 
 CLAUDE.md
 AGENTS.md
+cosmo_inference/cosmosis_config/cosmosis_pipeline_S*.ini
+cosmo_inference/cosmosis_config/priors_S*.ini
