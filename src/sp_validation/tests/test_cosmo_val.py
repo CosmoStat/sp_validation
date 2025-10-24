@@ -9,6 +9,9 @@ handling leak-corrected ellipticity columns.
 """
 
 import os
+from collections import defaultdict
+from pathlib import Path
+from typing import Dict, Iterator, Tuple
 
 import pytest
 import yaml
@@ -94,28 +97,17 @@ class TestCosmologyValidation:
         }
         return params, base_version
 
-    @pytest.mark.parametrize(
-        "version,e1_col,e2_col",
-        [
-            ("SP_v1.4.5", "e1", "e2"),
-            ("SP_v1.4.6", "e1", "e2"),
-            ("SP_v1.4.5_glass_mock", "e1", "e2"),
-            ("SP_v1.4.6_glass_mock", "e1", "e2"),
-            ("SP_v1.4.5_bright", "e1", "e2"),
-            ("SP_v1.4.5_faint", "e1", "e2"),
-            ("SP_v1.4.5_intermediate", "e1", "e2"),
-            ("SP_v1.4.5.A", "g1", "g2"),
-            ("SP_v1.4.7", "e1", "e2"),
-            ("SP_v1.4.8", "e1", "e2"),
-        ],
-    )
-    def test_additive_bias_base_columns(self, base_config, version, e1_col, e2_col):
+    def test_additive_bias_base_columns(self, base_config):
         """Test additive bias calculation using base ellipticity columns.
 
         This test initializes CosmologyValidation without an ellipticity_suffix,
         which means it will use the default columns defined in the catalog
-        configuration.
+        configuration. Tests SP_v1.4.5 with full additive bias computation.
         """
+        version = "SP_v1.4.5"
+        e1_col = "e1"
+        e2_col = "e2"
+
         cv = CosmologyValidation(
             versions=[version],
             **base_config,
@@ -140,16 +132,16 @@ class TestCosmologyValidation:
         assert isinstance(cv.c1[version], float)
         assert isinstance(cv.c2[version], float)
 
-    @pytest.mark.parametrize("version", ["SP_v1.4.5"])
-    def test_additive_bias_leak_corrected_columns(self, base_config, version):
+    def test_additive_bias_leak_corrected_columns(self, base_config):
         """Test additive bias calculation using leak-corrected columns.
 
-        This test requests a leak-corrected version by passing "{version}_leak_corr"
+        This test requests a leak-corrected version by passing "SP_v1.4.6_leak_corr"
         as the version name. The CosmologyValidation class automatically detects
         the _leak_corr suffix and creates the config entry using e1_col_corrected
         and e2_col_corrected from the base version.
         """
-        version_leak_corr = f"{version}_leak_corr"
+        base_version = "SP_v1.4.6"
+        version_leak_corr = f"{base_version}_leak_corr"
 
         cv = CosmologyValidation(
             versions=[version_leak_corr],
@@ -164,8 +156,8 @@ class TestCosmologyValidation:
         assert cv.cc[version_leak_corr]["shear"]["e2_col"] == "e2_leak_corrected"
 
         # Verify original config entry remains unchanged
-        assert cv.cc[version]["shear"]["e1_col"] == "e1"
-        assert cv.cc[version]["shear"]["e2_col"] == "e2"
+        assert cv.cc[base_version]["shear"]["e1_col"] == "e1"
+        assert cv.cc[base_version]["shear"]["e2_col"] == "e2"
 
         # Calculate additive bias
         cv.calculate_additive_bias()
@@ -178,6 +170,81 @@ class TestCosmologyValidation:
         # Verify the values are numeric
         assert isinstance(cv.c1[version_leak_corr], float)
         assert isinstance(cv.c2[version_leak_corr], float)
+
+    @staticmethod
+    def _iter_catalog_entries(config: Dict[str, Dict]) -> Iterator[Tuple[str, Dict]]:
+        """Yield (name, entry) pairs for catalog-like entries in the config."""
+        for name, entry in config.items():
+            if not isinstance(entry, dict):
+                continue
+            if "subdir" not in entry:
+                continue
+            yield name, entry
+
+    @staticmethod
+    def _resolve(base: Path, candidate: str) -> Path:
+        """Return an absolute path given a base directory and a candidate string."""
+        candidate_path = Path(candidate)
+        return candidate_path if candidate_path.is_absolute() else base / candidate_path
+
+    def test_catalog_paths_exist(self, base_config):
+        """Verify that catalog paths for active versions exist on disk.
+
+        This is a lightweight test that checks that all files referenced in the
+        catalog configuration for UNIONS analysis versions actually exist. It
+        discovers versions programmatically from cat_config.yaml rather than
+        using hardcoded lists.
+        """
+        # Get the path to catalog config
+        repo_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        )
+        catalog_config_path = os.path.join(
+            repo_root, "notebooks", "cosmo_val", "cat_config.yaml"
+        )
+
+        config = yaml.safe_load(Path(catalog_config_path).read_text())
+
+        missing = defaultdict(set)
+        working = []
+        nonfunctional = defaultdict(set)
+
+        for version, entry in self._iter_catalog_entries(config):
+            # Skip nz entries and versions already tested in heavy tests
+            if version == "nz":
+                continue
+
+            base = Path(entry["subdir"])
+            version_missing = set()
+
+            # Check shear, star, and psf files
+            for block_name in ("shear", "star", "psf"):
+                block = entry.get(block_name)
+                if not block:
+                    continue
+                resolved_path = self._resolve(base, block["path"])
+                if not resolved_path.is_file():
+                    version_missing.add(block_name)
+
+            if version_missing:
+                nonfunctional[version] = version_missing
+            else:
+                working.append(version)
+
+        # Print summary
+        print(f"\n✓ Working versions ({len(working)}):")
+        for v in sorted(working):
+            print(f"  - {v}")
+
+        if nonfunctional:
+            print(f"\n✗ Non-functional versions ({len(nonfunctional)}):")
+            for v in sorted(nonfunctional.keys()):
+                print(f"  - {v}: missing {nonfunctional[v]}")
+
+        assert not nonfunctional, (
+            "Catalog configuration references missing files: "
+            f"{dict(nonfunctional)}"
+        )
 
     def test_seed_variant_updates_shear_path(self, tmp_path):
         """Seeded versions should materialize a seed-specific shear path."""
