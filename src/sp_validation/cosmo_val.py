@@ -21,7 +21,11 @@ from uncertainties import ufloat
 
 from .cosmology import get_cosmo, get_theo_c_ell
 from .plots import FootprintPlotter
-from .rho_tau import get_params_rho_tau, get_rho_tau_w_cov, get_samples
+from .rho_tau import (
+    get_params_rho_tau,
+    get_rho_tau_w_cov,
+    get_samples,
+)
 
 
 # %%
@@ -593,6 +597,17 @@ class CosmologyValidation:
             self._results_objectwise = self.init_results(objectwise=True)
         return self._results_objectwise
 
+    def basename(self, version, treecorr_config=None, npatch=None):
+        cfg = treecorr_config or self.treecorr_config
+        patches = npatch or self.npatch
+        return (
+            f"{version}_minsep={cfg['min_sep']}"
+            f"_maxsep={cfg['max_sep']}"
+            f"_nbins={cfg['nbins']}"
+            f"_npatch={patches}"
+        )
+
+
     def calculate_rho_tau_stats(self):
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
@@ -600,13 +615,16 @@ class CosmologyValidation:
 
         self.print_start("Rho stats")
         for ver in self.versions:
+            base = self.basename(ver)
             rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
                 self.cc,
                 ver,
                 self.treecorr_config,
                 out_dir,
+                base,
                 method=self.cov_estimate_method,
                 cov_rho=self.compute_cov_rho,
+                npatch=self.npatch,
             )
         self.print_done("Rho stats finished")
 
@@ -726,7 +744,9 @@ class CosmologyValidation:
         self._ellipticity_dispersion = ellipticity_dispersion
 
     def plot_rho_stats(self, abs=False):
-        filenames = [f"rho_stats_{ver}.fits" for ver in self.versions]
+        filenames = [
+            f"rho_stats_{self.basename(ver)}.fits" for ver in self.versions
+        ]
 
         savefig = "rho_stats.png"
         self.rho_stat_handler.plot_rho_stats(
@@ -746,7 +766,9 @@ class CosmologyValidation:
         )
 
     def plot_tau_stats(self, plot_tau_m=False):
-        filenames = [f"tau_stats_{ver}.fits" for ver in self.versions]
+        filenames = [
+            f"tau_stats_{self.basename(ver)}.fits" for ver in self.versions
+        ]
 
         savefig = "tau_stats.png"
         self.tau_stat_handler.plot_tau_stats(
@@ -826,9 +848,12 @@ class CosmologyValidation:
                 self.cov_estimate_method, None
             )
 
+            base = self.basename(ver)
+
             flat_samples, result, q = get_samples(
                 self.psf_fitter,
                 ver,
+                base,
                 cov_type=self.cov_estimate_method,
                 apply_debias=npatch,
                 sampler=self.rho_tau_method,
@@ -838,7 +863,7 @@ class CosmologyValidation:
             self.rho_tau_fits["result_list"].append(result)
             self.rho_tau_fits["q_list"].append(q)
 
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
             xi_psf_sys_samples = np.array([]).reshape(0, nbins)
 
@@ -883,7 +908,7 @@ class CosmologyValidation:
             self.colors,
             self.rho_tau_fits["flat_sample_list"],
         ):
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             for i in range(100):
                 self.psf_fitter.plot_xi_psf_sys(
                     flat_sample[-i + 1], ver, color, alpha=0.1
@@ -933,7 +958,7 @@ class CosmologyValidation:
             self.versions,
             self.rho_tau_fits["flat_sample_list"],
         ):
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             for yscale in ("linear", "log"):
                 out_path = os.path.abspath(
                     f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
@@ -2582,10 +2607,16 @@ class CosmologyValidation:
 
                 lmax = 2 * self.nside
                 z, dndz = self.get_redshift(ver)
+                ell = np.arange(1, lmax + 1)
                 pw = hp.pixwin(nside, lmax=lmax)
+                if pw.shape[0] != len(ell) + 1:
+                    raise ValueError(
+                        "Unexpected pixwin length for lmax="
+                        f"{lmax}: got {pw.shape[0]}, expected {len(ell)+1}"
+                    )
+                pw = pw[1:len(ell)+1]
 
                 # Load redshift distribution and calculate theory C_ell
-                ell = np.arange(1, lmax + 1)
                 fiducial_cl = (
                     get_theo_c_ell(
                         ell=ell,
