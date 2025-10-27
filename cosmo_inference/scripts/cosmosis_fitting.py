@@ -409,7 +409,23 @@ def parse_args():
     """Parse command-line arguments for unified data/mock interface."""
     parser = argparse.ArgumentParser(
         description="Prepare CosmoSIS inference FITS files from real or mock data. "
-        "Supports multiple xi input formats (separate files, combined FITS)."
+        "Supports multiple xi input formats (separate files, combined FITS).",
+        epilog="""
+Example for SP v1.4.6_A:
+  python cosmo_inference/scripts/cosmosis_fitting.py \\
+    --cosmosis-root "SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1" \\
+    --data-dir "/n09data/guerrini/output_chains" \\
+    --nz-file "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt" \\
+    --out-file "cosmo_inference/data/SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1/cosmosis_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --xi "notebooks/cosmo_val/output/xi_plus_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+         "notebooks/cosmo_val/output/xi_minus_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --cov-xi "cosmo_inference/data/covariance/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_processed.txt" \\
+    --use-rho-tau \\
+    --rho-stats "notebooks/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --tau-stats "notebooks/cosmo_val/output/rho_tau_stats/tau_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --cov-tau "notebooks/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy"
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
     parser.add_argument(
