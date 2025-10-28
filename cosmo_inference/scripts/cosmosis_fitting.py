@@ -234,7 +234,7 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
         "NAME_0": "XI_PLUS",
         "STRT_0": 0,
         "NAME_1": "XI_MINUS",
-        "STRT_1": int(len(covmat) / 2),
+        "STRT_1": int(len(covmat_xi) / 2),
     }
 
     filename_cov_tau and cov_dict.update({
@@ -518,9 +518,13 @@ if __name__ == "__main__":
 
         print("Loading xi correlation functions...")
         if args.mock:
-            xip_hdu, xim_hdu = treecorr_to_fits(args.xi[0], args.xi[1])
-        else:
+            # Mock mode expects a single combined FITS file
             xip_hdu, xim_hdu = parse_combined_xi_fits(args.xi[0])
+        else:
+            # Data mode expects two TreeCorr files (xi_plus, xi_minus)
+            if len(args.xi) != 2:
+                raise ValueError(f"Data mode requires exactly 2 xi files, got {len(args.xi)}")
+            xip_hdu, xim_hdu = treecorr_to_fits(args.xi[0], args.xi[1])
 
         xi_theta = xip_hdu.data["ANG"]
         print(f"Loaded xi: {len(xip_hdu.data)} bins")

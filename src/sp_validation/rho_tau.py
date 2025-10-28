@@ -597,12 +597,12 @@ def get_samples_emcee(
     psf_fitter.load_rho_stat(f"rho_stats_{base}.fits")
     psf_fitter.load_tau_stat(f"tau_stats_{base}.fits")
 
-    # Check if the path exists
-    sample_file_path = psf_fitter.get_sample_file_path(version)
+    # Check if the path exists (use base for cache key to account for different TreeCorr configs)
+    sample_file_path = psf_fitter.get_sample_file_path(base)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
-        flat_samples = psf_fitter.load_samples(version)
-        mcmc_result, q = psf_fitter.get_mcmc_from_samples(version)
+        flat_samples = psf_fitter.load_samples(base)
+        mcmc_result, q = psf_fitter.get_mcmc_from_samples(base)
         print(mcmc_result)
     # Or run MCMC
     else:
@@ -618,7 +618,7 @@ def get_samples_emcee(
             apply_debias=debias_npatch is not None,
             savefig="mcmc_samples_" + version + ".png",
         )
-        psf_fitter.save_samples(flat_samples, version)
+        psf_fitter.save_samples(flat_samples, base)
     return flat_samples, mcmc_result, q
 
 
@@ -648,11 +648,11 @@ def get_samples_lsq(
     psf_fitter.load_rho_stat(f"rho_stats_{base}.fits")
     psf_fitter.load_tau_stat(f"tau_stats_{base}.fits")
 
-    # Check if the path exists
-    sample_file_path = psf_fitter.get_sample_path(version)
+    # Check if the path exists (use base for cache key to account for different TreeCorr configs)
+    sample_file_path = psf_fitter.get_sample_path(base)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
-        flat_samples = psf_fitter.load_samples(version)
+        flat_samples = psf_fitter.load_samples(base)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
     # Or run MCMC
@@ -666,5 +666,5 @@ def get_samples_lsq(
         flat_samples, mcmc_result, q = psf_fitter.get_least_squares_params_samples(
             npatch=debias_npatch, apply_debias=(debias_npatch is not None)
         )
-        psf_fitter.save_samples(flat_samples, version)
+        psf_fitter.save_samples(flat_samples, base)
     return flat_samples, mcmc_result, q
