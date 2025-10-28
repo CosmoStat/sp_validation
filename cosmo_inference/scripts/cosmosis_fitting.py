@@ -115,6 +115,18 @@ def load_glass_cl(cl_file):
     return ell, cl_ee, cl_bb
 
 
+def load_pseudo_cl_fits(cl_file):
+    """
+    Load pseudo-C_ell data stored in FITS format with columns (ELL, EE, EB, BB).
+    """
+    with fits.open(cl_file) as hdul:
+        data = hdul[1].data
+        ell = np.asarray(data["ELL"], dtype=np.float64)
+        cl_ee = np.asarray(data["EE"], dtype=np.float64)
+        cl_bb = np.asarray(data["BB"], dtype=np.float64)
+    return ell, cl_ee, cl_bb
+
+
 def glass_cl_to_fits(ell, cl_ee, cl_bb):
     """Convert GLASS C_ell arrays to CosmoSIS FITS HDUs for EE and BB."""
     nbins = len(ell)
@@ -545,6 +557,10 @@ if __name__ == "__main__":
                 ell, cl_ee, cl_bb = load_glass_cl(args.cl_file)
                 cl_ee_hdu, cl_bb_hdu = glass_cl_to_fits(ell, cl_ee, cl_bb)
                 print(f"Loaded Cl: {len(ell)} multipoles")
+            elif args.cl_file.endswith(".fits"):
+                ell, cl_ee, cl_bb = load_pseudo_cl_fits(args.cl_file)
+                cl_ee_hdu, cl_bb_hdu = glass_cl_to_fits(ell, cl_ee, cl_bb)
+                print(f"Loaded Cl: {len(ell)} multipoles (FITS pseudo-Cl)")
             else:
                 raise NotImplementedError(f"Cl format not supported: {args.cl_file}")
 
