@@ -14,7 +14,7 @@ plt.rcParams['text.usetex'] = False
 sns.set_palette("husl")
 
 # %%
-path_redshift_distr = "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/data/SP_v1.4.5_A/nz_SP_v1.4.5_A.txt"
+path_redshift_distr = "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt"
 
 z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
 n_z = interp1d(z, dndz, bounds_error=False, fill_value=0)
@@ -114,6 +114,7 @@ plt.xlabel(r'$k$ [h/Mpc^-1]')
 plt.ylabel(r'$\frac{\mathrm{d}C_\ell}{\mathrm{d}\ln k}$ (normalized)')
 plt.yticks([0.])
 plt.legend()
+plt.savefig('./plots/Cl_integrand_vs_k.png', dpi=300)
 plt.show()
 
 
@@ -173,4 +174,8 @@ def get_lmax(k_max, alpha, k_vals, l_low=400, l_high=2048):
     
 # %%
 get_lmax(3, 0.95, k_vals, l_high=4096)
+# %%
+get_lmax(1, 0.95, k_vals, l_high=4096)
+# %%
+get_lmax(5, 0.95, k_vals, l_high=4096)
 # %%

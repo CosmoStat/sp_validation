@@ -13,6 +13,7 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 from matplotlib import scale as mscale
 import matplotlib.ticker as mticker
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
 import healpy as hp
 import pymaster as nmt
@@ -34,12 +35,14 @@ if ipython is not None:
 # %%
 #Import galaxy and star catalogs
 cat_gal = fits.getdata(
-    "/n17data/UNIONS/WL/v1.4.x/v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits"
+    "/n17data/UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits"
 )
 
 cat_star = fits.getdata(
     "/n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits"
 )
+
+glass_root_dir = "/n09data/guerrini/glass_mock_v1.4.6/results/"
 
 # %%
 #Define namaster binning
@@ -127,10 +130,57 @@ cell_cl_corrected = nmt.compute_coupled_cell(f_gal_corrected, f_gal_corrected)
 cell_cl_corrected = wsp.decouple_cell(cell_cl_corrected)
 
 # %%
+# Get covariance of rho_0 and tau_0
+n_sims = 350
+
+rho_0_cls = np.array([]).reshape((0, 32*4))
+tau_0_cls = np.array([]).reshape((0, 32*4))
+for i in range(n_sims):
+    index_sim = str(i+1).zfill(5)
+    rho_0 = np.load(glass_root_dir + f"rho_cl_glass_mock_{index_sim}_4096.npy")[1:].reshape((32*4,))
+    tau_0 = np.load(glass_root_dir + f"tau_cl_glass_mock_{index_sim}_4096.npy")[1:].reshape((32*4,))
+    rho_0_cls = np.vstack((rho_0_cls, rho_0))
+    tau_0_cls = np.vstack((tau_0_cls, tau_0))
+
+cov_rho_0 = np.cov(rho_0_cls.T)
+cov_tau_0 = np.cov(tau_0_cls.T)
+
+# %%
+def cov_to_corr(cov):
+    diag = np.sqrt(np.diag(cov))
+    corr = cov / np.outer(diag, diag)
+    return corr
+
+# %%
+fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10, 3))
+plt.subplots_adjust(wspace=0.3)
+
+im0 = ax0.imshow(cov_to_corr(cov_rho_0), vmin=-1, vmax=1, cmap='coolwarm')
+ax0.set_title(r"Covariance $\rho_0$")
+divider = make_axes_locatable(ax0)
+cax0 = divider.append_axes("right", size="5%", pad=0.1)
+cbar0 = fig.colorbar(im0, cax=cax0)
+
+im1 = ax1.imshow(cov_to_corr(cov_tau_0), vmin=-1, vmax=1, cmap='coolwarm')
+ax1.set_title(r"Covariance $\tau_0$")
+divider = make_axes_locatable(ax1)
+cax1 = divider.append_axes("right", size="5%", pad=0.1)
+cbar1 = fig.colorbar(im1, cax=cax1)
+
+plt.savefig("cov_rho0_tau0.png", dpi=300)
+plt.show()
+
+# %%
+cov_rho_0_ee = cov_rho_0[0:32, 0:32]
+cov_tau_0_ee = cov_tau_0[0:32, 0:32]
+cov_rho_0_bb = cov_rho_0[96:128, 96:128]
+cov_tau_0_bb = cov_tau_0[96:128, 96:128]
+
+# %%
 plt.figure()
 
-plt.plot(ell_eff, ell_eff*rho_cl[0], label=r"$\rho_0$ EE")
-plt.plot(ell_eff, ell_eff*rho_cl[3], label=r"$\rho_0$ BB")
+plt.errorbar(ell_eff, ell_eff*rho_cl[0], yerr=ell_eff*np.sqrt(cov_rho_0_ee.diagonal()), label=r"$\rho_0$ EE", fmt='o', capsize=2)
+plt.errorbar(ell_eff, ell_eff*rho_cl[3], yerr=ell_eff*np.sqrt(cov_rho_0_bb.diagonal()), label=r"$\rho_0$ BB", fmt='o', capsize=2)
 
 plt.xscale('squareroot')
 plt.xticks(np.array([100, 400, 900, 1600]))
@@ -147,10 +197,14 @@ plt.show()
 # %%
 plt.figure()
 
-plt.plot(ell_eff, ell_eff*tau_cl[0], label=r"$\tau_0$ EE")
-plt.plot(ell_eff, ell_eff*tau_cl_corrected[0], label=r"$\tau_0$ corrected EE")
-plt.plot(ell_eff, ell_eff*tau_cl[3], label=r"$\tau_0$ BB")
-plt.plot(ell_eff, ell_eff*tau_cl_corrected[3], label=r"$\tau_0$ corrected BB")
+offset = 2
+
+list_offset = [ell_eff + idx * offset for idx in range(4)]
+
+plt.errorbar(list_offset[0], ell_eff*tau_cl[0], yerr=ell_eff*np.sqrt(cov_tau_0_ee.diagonal()), label=r"$\tau_0$ EE", fmt='o', capsize=2)
+plt.errorbar(list_offset[1], ell_eff*tau_cl_corrected[0], yerr=ell_eff*np.sqrt(cov_tau_0_ee.diagonal()), label=r"$\tau_0$ corrected EE", fmt='o', capsize=2)
+plt.errorbar(list_offset[2], ell_eff*tau_cl[3], yerr=ell_eff*np.sqrt(cov_tau_0_bb.diagonal()), label=r"$\tau_0$ BB", fmt='o', capsize=2)
+plt.errorbar(list_offset[3], ell_eff*tau_cl_corrected[3], yerr=ell_eff*np.sqrt(cov_tau_0_bb.diagonal()), label=r"$\tau_0$ corrected BB", fmt='o', capsize=2)
 
 plt.xscale('squareroot')
 plt.xticks(np.array([100, 400, 900, 1600]))
@@ -168,10 +222,12 @@ plt.show()
 # %%
 plt.figure()
 
-plt.plot(ell_eff, tau_cl[0]/rho_cl[0], label="Uncorrected")
-plt.plot(ell_eff, tau_cl_corrected[0]/rho_cl[0], label="Corrected")
+plt.plot(ell_eff, tau_cl[0]/rho_cl[0], label="Without object-wise leakage correction")
+plt.plot(ell_eff, tau_cl_corrected[0]/rho_cl[0], label="With object-wise leakage correction")
 
 plt.xscale('squareroot')
+
+plt.axhline(0., color='black', linestyle='--', alpha=0.6)
 plt.xticks(np.array([100, 400, 900, 1600]))
 plt.minorticks_on()
 plt.tick_params(axis='x', which='minor', length=2, width=0.8)
@@ -291,18 +347,25 @@ leakage_bias_corrected = tau_cl_corrected[0]**2/rho_cl[0]
 plt.plot(ell_eff, leakage_bias/cell_cl[0], label=r"Uncorrected")
 plt.plot(ell_eff, leakage_bias_corrected/cell_cl_corrected[0], label="Corrected")
 
+threshold = 0.05
+plt.fill_between(ell_eff, -threshold, threshold, color='gray', alpha=0.3, label='5% threshold')
 plt.xscale('squareroot')
+
+plt.axhline(threshold, color='black', linestyle='--', alpha=0.6)
+plt.axhline(-threshold, color='black', linestyle='--', alpha=0.6)
 plt.xticks(np.array([100, 400, 900, 1600]))
 plt.minorticks_on()
 plt.tick_params(axis='x', which='minor', length=2, width=0.8)
 minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
+plt.xlim(ell_eff[0], ell_eff[-1])
 plt.xlabel(r"$\ell$")
 plt.ylabel(r"$C_\ell^{\rm sys} / C_\ell$")
 plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
 plt.legend()
 plt.savefig("leakage_bias_fraction_ee.png", dpi=300)
 plt.show()
+
 # %%
 plt.figure()
 

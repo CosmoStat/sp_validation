@@ -41,7 +41,7 @@ cov_namaster = fits.open(path_cov_namaster)
 # %%
 #Get covariance from GLASS mock
 
-n_sims = 300
+n_sims = 350
 cls_all = np.array([]).reshape((0, 32))
 for i in tqdm(range(n_sims)):
     cls = np.load(f"{path_glass_sims_output}/cl_glass_mock_{str(i+1).zfill(5)}_4096.npy")
@@ -83,12 +83,16 @@ def get_cov_from_one_cov(cov_one_cov, gaussian=True):
     return cov
 
 # %%
+ell_eff = cls[0]
+
+# %%
 cov_one_cov = np.genfromtxt("/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6_leak_corr/covariance_list_3x2pt_pure_Cell.dat")
 
 gaussian_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=True)
 all_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=False)
 
 # %%
+tick_labels = [str(int(ell_eff[i])) for i in [0, 10, 20, 30]]
 fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(10, 3))
 plt.subplots_adjust(wspace=0.3)
 
@@ -97,18 +101,36 @@ ax0.set_title("GLASS mocks")
 divider = make_axes_locatable(ax0)
 cax0 = divider.append_axes("right", size="5%", pad=0.1)
 cbar0 = fig.colorbar(im0, cax=cax0)
+ax0.set_xticks([0, 10, 20, 30])
+ax0.set_yticks([0, 10, 20, 30])
+ax0.set_xticklabels(tick_labels)
+ax0.set_yticklabels(tick_labels)
+ax0.set_xlabel(r"$\ell$")
+ax0.set_ylabel(r"$\ell$")
 
 im1 = ax1.imshow(cov_to_corr(cov_namaster["COVAR_EE_EE"].data), vmin=-1, vmax=1, cmap='coolwarm')
 ax1.set_title("iNKA")
 divider = make_axes_locatable(ax1)
 cax1 = divider.append_axes("right", size="5%", pad=0.1)
 cbar1 = fig.colorbar(im1, cax=cax1)
+ax1.set_xticks([0, 10, 20, 30])
+ax1.set_yticks([0, 10, 20, 30])
+ax1.set_xticklabels(tick_labels)
+ax1.set_yticklabels(tick_labels)
+ax1.set_xlabel(r"$\ell$")
+ax1.set_ylabel(r"$\ell$")
 
 im2 = ax2.imshow(cov_to_corr(gaussian_one_cov), vmin=-1, vmax=1, cmap='coolwarm')
 ax2.set_title("OneCovariance (Gaussian only)")
 divider = make_axes_locatable(ax2)
 cax2 = divider.append_axes("right", size="5%", pad=0.1)
 cbar2 = fig.colorbar(im2, cax=cax2)
+ax2.set_xticks([0, 10, 20, 30])
+ax2.set_yticks([0, 10, 20, 30])
+ax2.set_xticklabels(tick_labels)
+ax2.set_yticklabels(tick_labels)
+ax2.set_xlabel(r"$\ell$")
+ax2.set_ylabel(r"$\ell$")
 
 fig.suptitle("Comparison of correlation matrices for $C_\ell^{EE}$")
 
@@ -119,6 +141,7 @@ plt.show()
 #Plot correlation matrix versus the Gaussian part.
 cov_one_cov_non_gaussian = all_one_cov - gaussian_one_cov
 
+
 fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(10, 3))
 plt.subplots_adjust(wspace=0.3)
 
@@ -127,12 +150,24 @@ ax0.set_title("GLASS mocks")
 divider = make_axes_locatable(ax0)
 cax0 = divider.append_axes("right", size="5%", pad=0.1)
 cbar0 = fig.colorbar(im0, cax=cax0)
+ax0.set_xticks([0, 10, 20, 30])
+ax0.set_yticks([0, 10, 20, 30])
+ax0.set_xticklabels(tick_labels)
+ax0.set_yticklabels(tick_labels)
+ax0.set_xlabel(r"$\ell$")
+ax0.set_ylabel(r"$\ell$")
 
 im1 = ax1.imshow(cov_to_corr(all_one_cov), vmin=-1, vmax=1, cmap='coolwarm')
 ax1.set_title("OneCovariance (All terms)")
 divider = make_axes_locatable(ax1)
 cax1 = divider.append_axes("right", size="5%", pad=0.1)
 cbar1 = fig.colorbar(im1, cax=cax1)
+ax1.set_xticks([0, 10, 20, 30])
+ax1.set_yticks([0, 10, 20, 30])
+ax1.set_xticklabels(tick_labels)
+ax1.set_yticklabels(tick_labels)
+ax1.set_xlabel(r"$\ell$")
+ax1.set_ylabel(r"$\ell$")
 
 diag = np.sqrt(np.diag(all_one_cov))
 non_gaussian_corr = cov_one_cov_non_gaussian / np.outer(diag, diag)
@@ -141,6 +176,12 @@ ax2.set_title("OneCovariance (Non-Gaussian only)")
 divider = make_axes_locatable(ax2)
 cax2 = divider.append_axes("right", size="5%", pad=0.1)
 cbar2 = fig.colorbar(im2, cax=cax2)
+ax2.set_xticks([0, 10, 20, 30])
+ax2.set_yticks([0, 10, 20, 30])
+ax2.set_xticklabels(tick_labels)
+ax2.set_yticklabels(tick_labels)
+ax2.set_xlabel(r"$\ell$")
+ax2.set_ylabel(r"$\ell$")
 
 fig.suptitle("Comparison of correlation matrices for $C_\ell^{EE}$")
 
