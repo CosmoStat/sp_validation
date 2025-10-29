@@ -93,8 +93,8 @@ def parse_combined_xi_fits(filepath):
         xim_vals = xi_data["xim"]
         xi_theta = xi_data["ANG"] if "ANG" in xi_data.names else xi_data["meanr"]
 
-    xip_hdu = _create_2pt_hdu(xip_vals, xi_theta, "XI_PLUS", "P+P", "P+P")
-    xim_hdu = _create_2pt_hdu(xim_vals, xi_theta, "XI_MINUS", "P+P", "P+P")
+    xip_hdu = _create_2pt_hdu(xip_vals, xi_theta, "XI_PLUS", "G+R", "G+R")
+    xim_hdu = _create_2pt_hdu(xim_vals, xi_theta, "XI_MINUS", "G-R", "G-R")
 
     return xip_hdu, xim_hdu
 
@@ -127,8 +127,8 @@ def load_pseudo_cl_fits(cl_file):
     return ell, cl_ee, cl_bb
 
 
-def glass_cl_to_fits(ell, cl_ee, cl_bb):
-    """Convert GLASS C_ell arrays to CosmoSIS FITS HDUs for EE and BB."""
+def cl_to_fits(ell, cl_ee, cl_bb):
+    """Convert C_ell arrays to CosmoSIS FITS HDUs for EE and BB."""
     nbins = len(ell)
     lst = np.arange(1, nbins + 1)
 
@@ -168,6 +168,40 @@ def glass_cl_to_fits(ell, cl_ee, cl_bb):
         cl_bb_hdu.header[key] = value
 
     return cl_ee_hdu, cl_bb_hdu
+
+
+def cov_cl_to_fits(cov_file, nbins):
+    """Convert pseudo-C_ell covariance to a CosmoSIS ImageHDU."""
+    if cov_file.endswith(".fits"):
+        with fits.open(cov_file) as hdul:
+            if "COVAR_EE_EE" in hdul:
+                cov_data = np.asarray(hdul["COVAR_EE_EE"].data, dtype=np.float64)
+            else:
+                cov_data = np.asarray(hdul[0].data, dtype=np.float64)
+    elif cov_file.endswith(".npy"):
+        cov_data = np.load(cov_file)
+    else:
+        raise NotImplementedError(f"Unsupported pseudo-Cl covariance format: {cov_file}")
+
+    if cov_data.shape[0] != cov_data.shape[1]:
+        raise ValueError("Pseudo-Cl covariance matrix must be square")
+    if cov_data.shape[0] != nbins:
+        raise ValueError(
+            "Pseudo-Cl covariance dimension does not match C_ell data length"
+        )
+
+    cov_hdu = fits.ImageHDU(cov_data, name="COVMAT_CELL")
+    cov_dict = {
+        "COVDATA": "True",
+        "EXTNAME": "COVMAT_CELL",
+        "NAME_0": "CELL_EE",
+        "STRT_0": 0,
+    }
+
+    for key, value in cov_dict.items():
+        cov_hdu.header[key] = value
+
+    return cov_hdu
 
 
 def tau_to_fits(filename, theta=None):
@@ -352,10 +386,13 @@ def _generate_ini_file(
     else:
         like_section = (
             "[2pt_like]\nfile = %(COSMOSIS_DIR)s/likelihood/2pt/2pt_like.py"
-            "\ndata_sets=CELL_EE CELL_BB"
+            "\ndata_sets=CELL_EE"
         )
 
+    covmat_line = "covmat_name=COVMAT_CELL" if is_harmonic else "covmat_name=COVMAT"
+
     modifications.append((r"^\[2pt_like\]", like_section))
+    modifications.append((r"^covmat_name=.*", covmat_line))
 
     poly_section = f"[polychord]\npolychord_outfile_root = {args.cosmosis_root}{suffix}"
     modifications.append((r"^\[polychord\]", poly_section))
@@ -382,12 +419,17 @@ def generate_cosmosis_config(args):
     """Generate CosmoSIS INI files (real-space and optional harmonic-space)."""
     if args.use_rho_tau:
         template_base_realspace = "cosmosis_pipeline_A_psf.ini"
-        priors_file = "priors_psf.ini"
         values_file = "values_psf.ini"
     else:
         template_base_realspace = "cosmosis_pipeline_A_ia.ini"
-        priors_file = "priors.ini"
         values_file = "values_ia.ini"
+
+    if args.mock:
+        priors_file = "priors_mock.ini"
+    elif args.use_rho_tau:
+        priors_file = "priors_psf.ini"
+    else:
+        priors_file = "priors.ini"
 
     os.makedirs("cosmosis_config", exist_ok=True)
 
@@ -490,6 +532,12 @@ Example for SP v1.4.6_A:
         help="Path to C_ell data file (.npy, optional for data and mock)",
     )
     parser.add_argument(
+        "--cov-cl",
+        type=str,
+        required=False,
+        help="Path to pseudo-C_ell covariance matrix (required if --cl-file)",
+    )
+    parser.add_argument(
         "--mock", action="store_true", help="Mock data mode"
     )
 
@@ -516,6 +564,8 @@ if __name__ == "__main__":
             print(f"cov_tau: {args.cov_tau}")
         if args.cl_file:
             print(f"cl_file: {args.cl_file}")
+        if args.cov_cl:
+            print(f"cov_cl: {args.cov_cl}")
         print("=" * 60)
         print()
 
@@ -523,6 +573,10 @@ if __name__ == "__main__":
             raise ValueError(
                 "--use-rho-tau requires: --rho-stats, --tau-stats, --cov-tau"
             )
+        if args.cl_file and not args.cov_cl:
+            raise ValueError("--cov-cl is required when --cl-file is provided")
+        if args.cov_cl and not args.cl_file:
+            raise ValueError("--cl-file is required when --cov-cl is provided")
 
         os.makedirs(args.data_dir, exist_ok=True)
         output_dir = os.path.dirname(args.out_file)
@@ -551,18 +605,21 @@ if __name__ == "__main__":
 
         cl_ee_hdu = None
         cl_bb_hdu = None
+        cov_cl_hdu = None
         if args.cl_file:
             print("Loading Cl data...")
             if args.cl_file.endswith(".npy"):
                 ell, cl_ee, cl_bb = load_glass_cl(args.cl_file)
-                cl_ee_hdu, cl_bb_hdu = glass_cl_to_fits(ell, cl_ee, cl_bb)
+                cl_ee_hdu, cl_bb_hdu = cl_to_fits(ell, cl_ee, cl_bb)
                 print(f"Loaded Cl: {len(ell)} multipoles")
             elif args.cl_file.endswith(".fits"):
                 ell, cl_ee, cl_bb = load_pseudo_cl_fits(args.cl_file)
-                cl_ee_hdu, cl_bb_hdu = glass_cl_to_fits(ell, cl_ee, cl_bb)
+                cl_ee_hdu, cl_bb_hdu = cl_to_fits(ell, cl_ee, cl_bb)
                 print(f"Loaded Cl: {len(ell)} multipoles (FITS pseudo-Cl)")
             else:
                 raise NotImplementedError(f"Cl format not supported: {args.cl_file}")
+            cov_cl_hdu = cov_cl_to_fits(args.cov_cl, len(ell))
+            print("Loaded pseudo-Cl covariance")
 
         rho_hdu = None
         tau_0_p_hdu = None
@@ -587,7 +644,10 @@ if __name__ == "__main__":
         pri_hdu = fits.PrimaryHDU(header=pri_hdr)
 
         print("Assembling FITS file...")
-        hdu_list = [pri_hdu, cov_hdu, nz_hdu, xip_hdu, xim_hdu]
+        hdu_list = [pri_hdu, cov_hdu]
+        if cov_cl_hdu is not None:
+            hdu_list.append(cov_cl_hdu)
+        hdu_list.extend([nz_hdu, xip_hdu, xim_hdu])
 
         if args.cl_file:
             hdu_list.extend([cl_ee_hdu, cl_bb_hdu])

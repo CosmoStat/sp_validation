@@ -19,7 +19,7 @@ This will automatically execute all steps:
 3. Prepare CosmoSIS data (FITS) via `cosmosis_fitting.py`
 4. Run CosmoSIS inference
 
-For standalone FITS data preparation, you can also use the Python script directly:
+For standalone FITS data preparation (real-space inputs plus optional pseudo-$C_\ell$ data), you can also use the Python script directly:
 
 ```bash
 python scripts/cosmosis_fitting.py \
@@ -32,13 +32,17 @@ python scripts/cosmosis_fitting.py \
   --use-rho-tau \
   --rho-stats "/path/to/rho_stats.fits" \
   --tau-stats "/path/to/tau_stats.fits" \
-  --cov-tau "/path/to/cov_tau.npy"
+  --cov-tau "/path/to/cov_tau.npy" \
+  --cl-file "/path/to/pseudo_cl.fits" \
+  --cov-cl "/path/to/pseudo_cl_cov.fits"
 ```
 
 You can view all available options with:
 ```bash
 python scripts/cosmosis_fitting.py --help
 ``` 
+
+Ensure the pseudo-$C_\ell$ spectra (`pseudo_cl_*.fits`) and their covariance (`pseudo_cl_cov_*.fits`) produced by `cosmo_val.py` exist for the requested catalog version (or mock seed) before running the standalone command.
 
 
 This is the pipeline used to derive cosmological constraints with cosmic shear data from the UNIONS v1.4 catalogue.
