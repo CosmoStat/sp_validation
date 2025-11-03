@@ -4,6 +4,7 @@ import argparse
 import os
 import re
 import sys
+from pathlib import Path
 
 import numpy as np
 from astropy.io import fits
@@ -335,15 +336,15 @@ def _generate_ini_file(
     is_harmonic=False,
 ):
     """Generate a CosmoSIS INI configuration file from template with modifications."""
-    template_path = f"cosmosis_config/{template_base}"
-    output_path = f"cosmosis_config/cosmosis_pipeline_{args.cosmosis_root}{suffix}.ini"
+    template_path = Path("cosmosis_config") / template_base
+    output_path = Path(args.output_config_dir) / f"cosmosis_pipeline_{args.config_name_base}{suffix}.ini"
 
     with open(template_path, "r") as f:
         config_content = f.read()
 
     modifications = []
 
-    relative_fits_file = f"data/{args.cosmosis_root}/cosmosis_{args.cosmosis_root}.fits"
+    relative_fits_file = args.config_relative_fits
     default_section = (
         f"[DEFAULT]\nSCRATCH = {args.data_dir}\nFITS_FILE = {relative_fits_file}"
     )
@@ -396,6 +397,8 @@ def _generate_ini_file(
             pattern, replacement, config_content, flags=re.MULTILINE
         )
 
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     with open(output_path, "w") as f:
         f.write(config_content)
 
@@ -420,7 +423,7 @@ def generate_cosmosis_config(args):
     else:
         priors_file = "priors.ini"
 
-    os.makedirs("cosmosis_config", exist_ok=True)
+    os.makedirs(args.output_config_dir, exist_ok=True)
 
     _generate_ini_file(
         args,
@@ -454,21 +457,40 @@ def parse_args():
         description="Prepare CosmoSIS inference FITS files from real or mock data. "
         "Supports multiple xi input formats (separate files, combined FITS).",
         epilog="""
-Example for SP v1.4.6_A:
-  python cosmo_inference/scripts/cosmosis_fitting.py \\
-    --cosmosis-root "SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1" \\
-    --data-dir "/n09data/guerrini/output_chains" \\
+Example for SP_v1.4.6_leak_corr (real data):
+  python /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/scripts/cosmosis_fitting.py \\
+    --cosmosis-root "SP_v1.4.6_leak_corr_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1" \\
+    --data-dir "/n09data/guerrini/output_chains/SP_v1.4.6_leak_corr_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1" \\
     --nz-file "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt" \\
-    --out-file "cosmo_inference/data/SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1/cosmosis_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-    --xi "notebooks/cosmo_val/output/xi_plus_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-         "notebooks/cosmo_val/output/xi_minus_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-    --cov-xi "cosmo_inference/data/covariance/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_processed.txt" \\
+    --output-root "/home/guerrini/sp_validation/cosmo_inference" \\
+    --xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/xi_plus_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+         "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/xi_minus_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --cov-xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance/covariance_SP_v1.4.6_leak_corr_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked/covariance_SP_v1.4.6_leak_corr_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked_processed.txt" \\
     --use-rho-tau \\
-    --rho-stats "notebooks/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-    --tau-stats "notebooks/cosmo_val/output/rho_tau_stats/tau_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-    --cov-tau "notebooks/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy"
+    --rho-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --tau-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/tau_stats_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --cov-tau "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy" \\
+    --cl-file "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6_leak_corr.fits" \\
+    --cov-cl "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6_leak_corr.fits"
+
+Example for glass mock v0 (mock data):
+  python /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/scripts/cosmosis_fitting.py \\
+    --mock \\
+    --cosmosis-root "glass_mock_v0_00001" \\
+    --data-dir "/n09data/guerrini/glass_mock_chains/glass_mock_v0_00001" \\
+    --nz-file "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt" \\
+    --output-root "/home/guerrini/sp_validation/cosmo_inference" \\
+    --output-basename "glass_mocks/v0/glass_mock_00001" \\
+    --xi "/n09data/guerrini/glass_mock_v1.4.6/results/xi_glass_mock_00001_4096_nbins=20.fits" \\
+    --cov-xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked_processed.txt" \\
+    --use-rho-tau \\
+    --rho-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --tau-stats "/n17data/cdaley/unions/pure_eb/results/glass_mock_rhotau_samples/00001/tau_stats_sampled.fits" \\
+    --cov-tau "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy" \\
+    --cl-file "/n09data/guerrini/glass_mock_v1.4.6/results/cl_glass_mock_00001_4096.npy" \\
+    --cov-cl "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6.fits"
         """,
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     parser.add_argument(
@@ -479,9 +501,6 @@ Example for SP v1.4.6_A:
     )
     parser.add_argument("--nz-file", type=str, required=True, help="Path to n(z) file")
     parser.add_argument(
-        "--out-file", type=str, required=True, help="Path to output FITS file"
-    )
-    parser.add_argument(
         "--xi",
         nargs="+",
         required=True,
@@ -490,7 +509,6 @@ Example for SP v1.4.6_A:
     parser.add_argument(
         "--cov-xi", type=str, required=True, help="Xi covariance matrix file"
     )
-
     parser.add_argument(
         "--use-rho-tau",
         action="store_true",
@@ -529,6 +547,24 @@ Example for SP v1.4.6_A:
     parser.add_argument(
         "--mock", action="store_true", help="Mock data mode"
     )
+    parser.add_argument(
+        "--output-root",
+        type=str,
+        required=True,
+        help=(
+            "Cosmo inference root directory (e.g., /home/guerrini/sp_validation/cosmo_inference). "
+            "FITS and config files are written under this root."
+        ),
+    )
+    parser.add_argument(
+        "--output-basename",
+        type=str,
+        required=False,
+        help=(
+            "Optional override for the output sub-directory/basename inside --output-root. "
+            "Defaults to --cosmosis-root."
+        ),
+    )
 
     return parser.parse_args()
 
@@ -537,13 +573,31 @@ if __name__ == "__main__":
     args = parse_args()
 
     try:
+        output_basename = args.output_basename or args.cosmosis_root
+        output_root_path = Path(args.output_root).expanduser().resolve()
+        output_basename_path = Path(output_basename)
+        data_dir_root = output_root_path / "data" / output_basename_path
+        config_dir_root = output_root_path / "cosmosis_config"
+        data_dir_root.mkdir(parents=True, exist_ok=True)
+        config_dir_root.mkdir(parents=True, exist_ok=True)
+        out_file_path = data_dir_root / f"cosmosis_{args.cosmosis_root}.fits"
+        args.output_root = str(output_root_path)
+        args.output_config_dir = str(config_dir_root)
+        args.output_basename = str(output_basename_path)
+        args.config_name_base = str(output_basename_path).replace("/", "_")
+        args.config_relative_fits = str(
+            Path("data") / output_basename_path / f"cosmosis_{args.cosmosis_root}.fits"
+        )
+
         print("=" * 60)
         print("COSMOSIS_FITTING.PY")
         print("=" * 60)
         print(f"cosmosis_root: {args.cosmosis_root}")
         print(f"data_dir: {args.data_dir}")
         print(f"nz_file: {args.nz_file}")
-        print(f"out_file: {args.out_file}")
+        print(f"output_root: {args.output_root}")
+        print(f"output_basename: {args.output_basename}")
+        print(f"out_file: {out_file_path}")
         print(f"xi files: {args.xi}")
         print(f"cov_xi: {args.cov_xi}")
         print(f"use_rho_tau: {args.use_rho_tau}")
@@ -568,9 +622,6 @@ if __name__ == "__main__":
             raise ValueError("--cl-file is required when --cov-cl is provided")
 
         os.makedirs(args.data_dir, exist_ok=True)
-        output_dir = os.path.dirname(args.out_file)
-        os.makedirs(output_dir, exist_ok=True)
-
         print("Loading xi correlation functions...")
         if args.mock:
             # Mock mode expects a single combined FITS file
@@ -638,8 +689,8 @@ if __name__ == "__main__":
             hdu_list.extend([tau_0_p_hdu, tau_2_p_hdu, rho_hdu])
 
         hdul = fits.HDUList(hdu_list)
-        hdul.writeto(args.out_file, overwrite=True)
-        print(f"✓ FITS file written to {args.out_file}")
+        hdul.writeto(str(out_file_path), overwrite=True)
+        print(f"✓ FITS file written to {out_file_path}")
         print()
 
         generate_cosmosis_config(args)
