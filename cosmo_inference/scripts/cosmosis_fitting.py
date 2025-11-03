@@ -99,32 +99,28 @@ def parse_combined_xi_fits(filepath):
     return xip_hdu, xim_hdu
 
 
-def load_glass_cl(cl_file):
-    """
-    Load GLASS mock C_ell from .npy file.
-    Expected shape: (5, 32) where row 0=ell, row 1=EE, row 4=BB
-    """
-    cl_block = np.load(cl_file)
-    if cl_block.shape[0] < 5:
-        raise ValueError(f"Unexpected C_ell array shape {cl_block.shape} for {cl_file}")
+def load_pseudo_cl(cl_file):
+    """Load pseudo-C_ell spectra from .npy or FITS formats."""
+    if cl_file.endswith(".npy"):
+        cl_block = np.load(cl_file)
+        if cl_block.shape[0] < 5:
+            raise ValueError(
+                f"Unexpected C_ell array shape {cl_block.shape} for {cl_file}"
+            )
+        ell = np.asarray(cl_block[0], dtype=np.float64)
+        cl_ee = np.asarray(cl_block[1], dtype=np.float64)
+        cl_bb = np.asarray(cl_block[4], dtype=np.float64)
+        return ell, cl_ee, cl_bb
 
-    ell = np.asarray(cl_block[0], dtype=np.float64)
-    cl_ee = np.asarray(cl_block[1], dtype=np.float64)
-    cl_bb = np.asarray(cl_block[4], dtype=np.float64)
+    if cl_file.endswith(".fits"):
+        with fits.open(cl_file) as hdul:
+            data = hdul[1].data
+            ell = np.asarray(data["ELL"], dtype=np.float64)
+            cl_ee = np.asarray(data["EE"], dtype=np.float64)
+            cl_bb = np.asarray(data["BB"], dtype=np.float64)
+        return ell, cl_ee, cl_bb
 
-    return ell, cl_ee, cl_bb
-
-
-def load_pseudo_cl_fits(cl_file):
-    """
-    Load pseudo-C_ell data stored in FITS format with columns (ELL, EE, EB, BB).
-    """
-    with fits.open(cl_file) as hdul:
-        data = hdul[1].data
-        ell = np.asarray(data["ELL"], dtype=np.float64)
-        cl_ee = np.asarray(data["EE"], dtype=np.float64)
-        cl_bb = np.asarray(data["BB"], dtype=np.float64)
-    return ell, cl_ee, cl_bb
+    raise NotImplementedError(f"Cl format not supported: {cl_file}")
 
 
 def cl_to_fits(ell, cl_ee, cl_bb):
@@ -170,14 +166,11 @@ def cl_to_fits(ell, cl_ee, cl_bb):
     return cl_ee_hdu, cl_bb_hdu
 
 
-def cov_cl_to_fits(cov_file, nbins):
+def cov_cl_to_fits(cov_file, cov_hdu="COVAR_FULL"):
     """Convert pseudo-C_ell covariance to a CosmoSIS ImageHDU."""
     if cov_file.endswith(".fits"):
         with fits.open(cov_file) as hdul:
-            if "COVAR_EE_EE" in hdul:
-                cov_data = np.asarray(hdul["COVAR_EE_EE"].data, dtype=np.float64)
-            else:
-                cov_data = np.asarray(hdul[0].data, dtype=np.float64)
+            cov_data = np.asarray(hdul[cov_hdu].data, dtype=np.float64)
     elif cov_file.endswith(".npy"):
         cov_data = np.load(cov_file)
     else:
@@ -185,10 +178,6 @@ def cov_cl_to_fits(cov_file, nbins):
 
     if cov_data.shape[0] != cov_data.shape[1]:
         raise ValueError("Pseudo-Cl covariance matrix must be square")
-    if cov_data.shape[0] != nbins:
-        raise ValueError(
-            "Pseudo-Cl covariance dimension does not match C_ell data length"
-        )
 
     cov_hdu = fits.ImageHDU(cov_data, name="COVMAT_CELL")
     cov_dict = {
@@ -608,17 +597,10 @@ if __name__ == "__main__":
         cov_cl_hdu = None
         if args.cl_file:
             print("Loading Cl data...")
-            if args.cl_file.endswith(".npy"):
-                ell, cl_ee, cl_bb = load_glass_cl(args.cl_file)
-                cl_ee_hdu, cl_bb_hdu = cl_to_fits(ell, cl_ee, cl_bb)
-                print(f"Loaded Cl: {len(ell)} multipoles")
-            elif args.cl_file.endswith(".fits"):
-                ell, cl_ee, cl_bb = load_pseudo_cl_fits(args.cl_file)
-                cl_ee_hdu, cl_bb_hdu = cl_to_fits(ell, cl_ee, cl_bb)
-                print(f"Loaded Cl: {len(ell)} multipoles (FITS pseudo-Cl)")
-            else:
-                raise NotImplementedError(f"Cl format not supported: {args.cl_file}")
-            cov_cl_hdu = cov_cl_to_fits(args.cov_cl, len(ell))
+            ell, cl_ee, cl_bb = load_pseudo_cl(args.cl_file)
+            print(f"Loaded Cl: {len(ell)} multipoles")
+            cl_ee_hdu, cl_bb_hdu = cl_to_fits(ell, cl_ee, cl_bb)
+            cov_cl_hdu = cov_cl_to_fits(args.cov_cl, cov_hdu="COVAR_FULL")
             print("Loaded pseudo-Cl covariance")
 
         rho_hdu = None
