@@ -170,3 +170,6 @@ notebooks/demo_check_footprint.ipynb
 notebooks/demo_calibrate_minimal_cat.ipynb
 notebooks/leakage_minimal.ipynb
 notebooks/demo_add_bands.ipynb
+
+cosmo_inference/cosmosis_config/cosmosis_pipeline_S*.ini
+cosmo_inference/cosmosis_config/priors_S*.ini
