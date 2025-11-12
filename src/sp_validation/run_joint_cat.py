@@ -1181,89 +1181,6 @@ class CalibrateCat(BaseCat):
 
         """
 
-def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
-    """Sky Plots.
-        
-    Plot sky regions with different masks.
-    
-    Parameters
-    ----------
-    masks : list
-        masks to be applied
-    labels : dict
-        labels for masks
-    zoom_ra : list
-        min and max R.A. for zoom-in plot
-    zoom_dec : list
-        min and max Dec. for zoom-in plot
-    
-    """
-    ra = dat["RA"][:]
-    dec = dat["Dec"][:]
-        
-    zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
-    zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
-    zoom = zoom_ra & zoom_dec
-
-    # No mask        
-    plot_area_mask(ra, dec, zoom)
-        
-    # SExtractor and SP flags
-    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
-    plot_area_mask(ra, dec, zoom, mask=m_flags)
-        
-    # Overlap regions
-    m_over = masks[labels["overlap"]]._mask & m_flags
-    plot_area_mask(ra, dec, zoom, mask=m_over)
-        
-    # Coverage mask
-    m_point = masks[labels["npoint3"]]._mask & m_over
-    plot_area_mask(ra, dec, zoom, mask=m_point)
-
-    # Maximask
-    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
-    plot_area_mask(ra, dec, zoom, mask=m_maxi)
-        
-    m_comb = mask_combined._mask
-    plot_area_mask(ra, dec, zoom, mask=m_comb)
-        
-    m_man = m_maxi & masks[labels["8_Manual"]]._mask
-    plot_area_mask(ra, dec, zoom, mask=m_man)
-        
-    m_halos = (
-        m_maxi
-        & masks[labels['1_Faint_star_halos']]._mask
-        & masks[labels['2_Bright_star_halos']]._mask
-    )
-    plot_area_mask(ra, dec, zoom, mask=m_halos)
-        
-
-def plot_area_mask(ra, dec, zoom, mask=None):
-    """Plot Area Mask.
-    
-    Create sky plot of objects.
-    
-    Parameters
-    ----------
-    ra : list
-        R.A. coordinates
-    dec : list
-        Dec. coordinates
-    zoom : TBD
-    mask: TBD, optional
-    
-    """
-    if mask is None:
-        mask == np.ones_like(ra)
-
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30,15))
-    axes[0].hexbin(ra[mask], dec[mask], gridsize=100)
-    axes[1].hexbin(ra[mask & zoom], dec[mask & zoom], gridsize=200)
-    for idx in (0, 1):
-        axes[idx].set_xlabel("R.A. [deg]")
-        axes[idx].set_ylabel("Dec [deg]")
-
-
 def confusion_matrix(mask, confidence_level=0.9):
 
     n_key = len(mask)
@@ -1361,7 +1278,7 @@ class Mask():
 
     """
 
-    def __init__(self, col_name, label, kind="equal", value=0, dat=None, verbose=False):
+    def __init__(self, col_name, label, kind=None, value=0, dat=None, verbose=False):
         
         self._col_name = col_name
         self._label = label
@@ -1439,8 +1356,7 @@ class Mask():
         print(msg)
         if f_out:
             print(msg, file=f_out)
-
-        
+ 
     def print_stats(self, num_obj, f_out=None):
         if self._num_ok is None:
             self._num_ok = sum(self._mask)
@@ -1461,10 +1377,12 @@ class Mask():
         elif self._kind =="smaller_equal":
             sign = "<="
         return sign
-        
-    def print_summary(self, f_out):
-        print(f"[{self._label}]\t\t\t", file=f_out, end="")
-        
+
+    def print_condition(self, f_out):
+
+        if self._value is None:
+            return ""
+
         sign = self.get_sign()
 
         if sign is not None:
@@ -1472,6 +1390,10 @@ class Mask():
             
         if self._kind == "range":
             print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)
+        
+    def print_summary(self, f_out):
+        print(f"[{self._label}]\t\t\t", file=f_out, end="")
+        self.print_condition(f_out)
 
     def create_descr(self):
         """Create Descr.

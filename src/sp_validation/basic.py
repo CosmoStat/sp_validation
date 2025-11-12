@@ -15,8 +15,6 @@ from scipy.interpolate import interp1d
 from scipy.spatial import cKDTree
 from scipy.special import gamma
 
-import matplotlib.pyplot as plt
-
 from tqdm import tqdm
 import operator as op
 import itertools as itools
