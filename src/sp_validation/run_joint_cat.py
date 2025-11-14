@@ -1365,32 +1365,34 @@ class Mask():
         sf = f"{self._num_ok/num_obj:10.2%}"
         self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
 
-    def get_sign(self):
+    def get_sign(self, latex=False):
         
         sign = None
-        if self._kind =="equal":
-            sign = "="
-        elif self._kind =="not_equal":
-            sign = "!="
-        elif self._kind =="greater_equal":
-            sign = ">="
-        elif self._kind =="smaller_equal":
-            sign = "<="
+        if self._kind == "equal":
+            sign = "$=$" if latex else "="
+        elif self._kind == "not_equal":
+            sign = "$\ne$" if latex else "!="
+        elif self._kind in ("greater_equal", "range"):
+            sign = "$\leq$" if latex else ">="
+        elif self._kind == "smaller_equal":
+            sign = "$\geq$" if latex else "<="
         return sign
 
-    def print_condition(self, f_out):
+    def print_condition(self, f_out, latex=False):
 
         if self._value is None:
             return ""
 
-        sign = self.get_sign()
+        sign = self.get_sign(latex=latex)
+        
+        name = self._label if latex else self._col_name
 
         if sign is not None:
-            print(f"{self._col_name} {sign} {self._value}", file=f_out)
-            
+            print(f"{name} {sign} {self._value}", file=f_out)
+
         if self._kind == "range":
-            print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)
-        
+            print(f"{self._value[0]} {sign} {name} {sign} {self._value[1]}", file=f_out)
+
     def print_summary(self, f_out):
         print(f"[{self._label}]\t\t\t", file=f_out, end="")
         self.print_condition(f_out)
