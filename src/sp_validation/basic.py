@@ -359,27 +359,23 @@ class metacal:
             [self.ns, self.m1, self.p1, self.m2, self.p2],
             ['ns', 'm1', 'p1', 'm2', 'p2']
         ):
-            Tr_tmp = data['T']
-            if self._size_corr_ell:
-                Tr_tmp *= (
-                    (1 - (data['g1'] ** 2 + data['g2'] ** 2))
-                    / (1 + (data['g1'] ** 2 + data['g2'] ** 2))
-                )
+            # Add SNR if available from sextractor
             if hasattr(self, 'snr_sextractor'):
-                snr_flux = self.snr_sextractor
-            else:
-                snr_flux = data['flux'] / data['flux_err']
+                data['snr_flux'] = self.snr_sextractor
 
-            mask_tmp = (
-                (data['flag'] == 0)
-                & (Tr_tmp / data['Tpsf'] > self._rel_size_min)
-                & (Tr_tmp / data['Tpsf'] < self._rel_size_max)
-                & (snr_flux > self._snr_min)
-                & (snr_flux < self._snr_max)
+            # Get masks using standalone function
+            # Data dict already has the required keys: g1, g2, T, Tpsf, flag, flux, flux_err
+            masks = get_metacal_masks_separate(
+                data,
+                snr_min=self._snr_min,
+                snr_max=self._snr_max,
+                rel_size_min=self._rel_size_min,
+                rel_size_max=self._rel_size_max,
+                size_corr_ell=self._size_corr_ell,
             )
 
-            # Take care of rotated version
-            ind_masked = np.where(mask_tmp == True)[0]
+            # Extract indices from combined mask
+            ind_masked = np.where(masks['combined'] == True)[0]
 
             self.mask_dict[name] = ind_masked
 
@@ -389,6 +385,7 @@ class metacal:
         ...
 
         """
+        print("Masking of galaxies with moments measurements is deprecated")
         self.mask_dict = {}
         for data, name in zip(
             [self.ns, self.m1, self.p1, self.m2, self.p2],
@@ -560,6 +557,124 @@ class metacal:
             self.R_selection_std,
             self.R_shear_std
         )
+
+
+def get_metacal_masks_separate(
+    data,
+    prefix='NGMIX',
+    snr_min=10,
+    snr_max=500,
+    rel_size_min=0.5,
+    rel_size_max=3.0,
+    size_corr_ell=True,
+    shear_variant='NOSHEAR',
+    col_2d=True,
+):
+    """Get Metacal Masks Separate.
+
+    Get separate masks for metacalibration quality cuts without running
+    full metacal computation.
+
+    Parameters
+    ----------
+    data : array or Table or dict
+        input galaxy catalogue, or dictionary with keys 'T', 'Tpsf',
+        'flag', and either 'flux'/'flux_err' or 'snr_flux'.
+        If size_corr_ell=True, also requires 'g1' and 'g2'.
+    prefix : str, optional, default='NGMIX'
+        column name prefix in catalogue (ignored if data is dict)
+    snr_min : float, optional, default=10
+        signal-to-noise minimum
+    snr_max : float, optional, default=500
+        signal-to-noise maximum
+    rel_size_min : float, optional, default=0.5
+        relative size minimum
+    rel_size_max : float, optional, default=3.0
+        relative size maximum
+    size_corr_ell : bool, optional, default=True
+        if True, correct size for ellipticity
+    shear_variant : str, optional, default='NOSHEAR'
+        shear variant name, e.g. 'NOSHEAR', '1M', '1P', '2M', '2P'
+        (ignored if data is dict)
+    col_2d : bool, optional, default=True
+        if True, ellipticity in one 2D column; if False, in two columns
+        (ignored if data is dict)
+
+    Returns
+    -------
+    dict
+        Dictionary containing separate masks:
+        - 'flag': boolean mask for flag == 0
+        - 'rel_size': boolean mask for relative size cuts
+        - 'snr': boolean mask for SNR cuts
+        - 'combined': boolean mask for all cuts combined
+
+    """
+    # Handle dictionary input (from metacal class)
+    if isinstance(data, dict):
+        T = data['T']
+        Tpsf = data['Tpsf']
+        flag = data['flag']
+        if 'snr_flux' in data:
+            snr_flux = data['snr_flux']
+        else:
+            snr_flux = data['flux'] / data['flux_err']
+
+        # Only extract g1, g2 if needed for size correction
+        if size_corr_ell:
+            g1 = data['g1']
+            g2 = data['g2']
+    else:
+        # Handle catalogue input (raw data)
+        T = data[f'{prefix}_T_{shear_variant}']
+        Tpsf = data[f'{prefix}_Tpsf_{shear_variant}']
+        flag = data[f'{prefix}_FLAGS_{shear_variant}']
+
+        # Get SNR
+        if f'SNR_WIN' in data.dtype.names or (hasattr(data, 'colnames') and 'SNR_WIN' in data.colnames):
+            snr_flux = data['SNR_WIN']
+        else:
+            flux = data[f'{prefix}_FLUX_{shear_variant}']
+            flux_err = data[f'{prefix}_FLUX_ERR_{shear_variant}']
+            snr_flux = flux / flux_err
+
+        # Only extract g1, g2 if needed for size correction
+        if size_corr_ell:
+            if col_2d:
+                g1 = data[f'{prefix}_ELL_{shear_variant}'][:, 0]
+                g2 = data[f'{prefix}_ELL_{shear_variant}'][:, 1]
+            else:
+                g1 = data[f'{prefix}_ELL_{shear_variant}_0']
+                g2 = data[f'{prefix}_ELL_{shear_variant}_1']
+
+    # Apply size correction for ellipticity if requested
+    Tr_tmp = T.copy() if hasattr(T, 'copy') else np.array(T)
+    if size_corr_ell:
+        Tr_tmp *= (
+            (1 - (g1 ** 2 + g2 ** 2))
+            / (1 + (g1 ** 2 + g2 ** 2))
+        )
+
+    # Create separate masks
+    mask_flag = (flag == 0)
+    mask_rel_size = (
+        (Tr_tmp / Tpsf > rel_size_min)
+        & (Tr_tmp / Tpsf < rel_size_max)
+    )
+    mask_snr = (
+        (snr_flux > snr_min)
+        & (snr_flux < snr_max)
+    )
+
+    # Combined mask
+    mask_combined = mask_flag & mask_rel_size & mask_snr
+
+    return {
+        'flag': mask_flag,
+        'rel_size': mask_rel_size,
+        'snr': mask_snr,
+        'combined': mask_combined,
+    }
 
 
 def jackknif_weighted_average2(
