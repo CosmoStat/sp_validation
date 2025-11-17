@@ -418,6 +418,25 @@ mask_tmp = sp_joint.Mask(
 )
 
 # %%
+def get_info_for_metacal_masking(dat, mask, prefix = "NGMIX", name_shear = "NOSHEAR"):
+
+    res = {}
+
+    res["flag"] = dat[mask][f"{prefix}_FLAGS_{name_shear}"]
+
+    for key in ("flux", "flux_err", "T"):
+        res[key] = dat[mask][f"{prefix}_{key.upper()}_{name_shear}"]
+    res["Tpsf"] = dat[mask][f"{prefix}_Tpsf_{name_shear}"]
+    
+    return res
+
+# %%
+if dat is not None:
+    cm = config["metacal"]
+
+
+
+# %%
 # Call metacal if data is available
 if dat is not None:
     cm = config["metacal"]
@@ -545,5 +564,9 @@ if dat is not None:
 # %%
 for mask in masks:
     mask.print_condition(sys.stdout, latex=True)
+
+# %%
+# print number of valid objects and name
+for data in hist_data
 
 # %%
