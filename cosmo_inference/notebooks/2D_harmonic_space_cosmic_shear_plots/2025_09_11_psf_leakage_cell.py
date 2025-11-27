@@ -50,6 +50,8 @@ lmin = 8
 lmax = 2048
 b_lmax = lmax - 1
 
+n_ells = 32
+
 ells = np.arange(lmin, lmax+1)
 
 start = np.power(lmin, 1/2)
@@ -130,6 +132,101 @@ cell_cl_corrected = nmt.compute_coupled_cell(f_gal_corrected, f_gal_corrected)
 cell_cl_corrected = wsp.decouple_cell(cell_cl_corrected)
 
 # %%
+# Compute the covariance for rho_0 and tau_0 with iNKA
+def project_cat_map(cat, e1_col, e2_col, nside=1024, w_col=None):
+    ra = cat['RA']
+    dec = cat['DEC']
+    e1 = cat[e1_col]
+    e2 = cat[e2_col]
+
+    if w_col is None:
+        weights = np.ones_like(ra)
+    else:
+        weights = cat[w_col]
+    theta = np.radians(90.0 - dec)
+    phi = np.radians(ra)
+    pix_indices = hp.ang2pix(nside, theta, phi)
+    unique_pix, idx, idx_rep = np.unique(pix_indices, return_index=True, return_inverse=True)
+    count_map = np.zeros(hp.nside2npix(nside))
+    count_map[unique_pix] = np.bincount(idx_rep, weights=weights)
+
+    e1_map = np.zeros(hp.nside2npix(nside))
+    e2_map = np.zeros(hp.nside2npix(nside))
+    e1_map[unique_pix] = np.bincount(idx_rep, weights=weights * e1) / count_map[unique_pix]
+    e2_map[unique_pix] = np.bincount(idx_rep, weights=weights * e2) / count_map[unique_pix]
+    return count_map, e1_map, e2_map
+
+def get_field_catalog(cat, e1_col, e2_col, nside, w_col=None):
+    count_map, e1_map, e2_map = project_cat_map(cat, e1_col, e2_col, nside=nside, w_col=w_col)
+
+    field = nmt.NmtField(
+        mask=count_map,
+        maps=[e1_map, -e2_map],
+        lmax=b_lmax,
+        lmax_mask=b_lmax,
+    )
+    return field
+
+def get_workspace(field1, field2):
+    wsp = nmt.NmtWorkspace.from_fields(field1, field2, b)
+    return wsp
+
+def get_cell(field1, field2, wsp, unbin=False, coupled=False):
+    cl_coupled = nmt.compute_coupled_cell(field1, field2)
+    if coupled:
+        return cl_coupled
+    cl_decoupled = wsp.decouple_cell(cl_coupled)
+    if unbin:
+        cl_decoupled = b.unbin_cell(cl_decoupled)
+        lowest_ell = b.get_ell_list(0)[0]
+        for i in range(4):
+            cl_decoupled[i, :lowest_ell] = cl_decoupled[i, lowest_ell]
+    return cl_decoupled
+
+def compute_iNKA_covariance(field1, field2, coupled=False):
+        
+    cw = nmt.NmtCovarianceWorkspace.from_fields(field1, field2, field1, field2)
+
+    wsp = get_workspace(field1, field2)
+    if coupled:
+        cl_a1b1 = get_cell(field1, field1, get_workspace(field1, field1), unbin=False, coupled=True) / np.mean(field1.mask**2)
+        cl_a1b2 = get_cell(field1, field2, wsp, unbin=False, coupled=True) / np.mean(field1.mask * field2.mask)
+        cl_a2b2 = get_cell(field2, field2, get_workspace(field2, field2), unbin=False, coupled=True) / np.mean(field2.mask**2)
+    else:
+        cl_a1b1 = get_cell(field1, field1, get_workspace(field1, field1), unbin=True)
+        cl_a1b2 = get_cell(field1, field2, wsp, unbin=True)
+        cl_a2b2 = get_cell(field2, field2, get_workspace(field2, field2), unbin=True)
+
+    cov = nmt.gaussian_covariance(cw, 2, 2, 2, 2,
+                                 cl_a1b1,
+                                 cl_a1b2,
+                                 cl_a1b2,
+                                 cl_a2b2,
+                                 wsp, wb=wsp).reshape([n_ells, 4, n_ells, 4])
+
+    return cov
+    
+
+# %%
+field_psf_map = get_field_catalog(cat_star, 'E1_PSF_HSM', 'E2_PSF_HSM', nside=1024)
+field_gal_map = get_field_catalog(cat_gal, 'e1', 'e2', nside=1024, w_col='w_des')
+field_gal_corrected_map = get_field_catalog(cat_gal, 'e1_leak_corrected', 'e2_leak_corrected', nside=1024, w_col='w_des')
+
+# %%
+cov_rho_0 = compute_iNKA_covariance(field_psf_map, field_psf_map, coupled=True)
+print("Computed cov_rho_0")
+cov_tau_0 = compute_iNKA_covariance(field_gal_map, field_psf_map)
+print("Computed cov_tau_0")
+cov_tau_0_corrected = compute_iNKA_covariance(field_gal_corrected_map, field_psf_map)
+print("Computed cov_tau_0_corrected")
+
+# %%
+#Correct the diagonal of cov_rho
+for i in range(4):
+    for j in range(4):
+        for k in range(32):
+            cov_rho_0[k, i, k, j] = np.abs(cov_rho_0[k, i, k, j])
+# %%
 # Get covariance of rho_0 and tau_0
 n_sims = 350
 
@@ -142,8 +239,8 @@ for i in range(n_sims):
     rho_0_cls = np.vstack((rho_0_cls, rho_0))
     tau_0_cls = np.vstack((tau_0_cls, tau_0))
 
-cov_rho_0 = np.cov(rho_0_cls.T)
-cov_tau_0 = np.cov(tau_0_cls.T)
+cov_rho_0_sim = np.cov(rho_0_cls.T)
+cov_tau_0_sim = np.cov(tau_0_cls.T)
 
 # %%
 def cov_to_corr(cov):
@@ -152,35 +249,36 @@ def cov_to_corr(cov):
     return corr
 
 # %%
-fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10, 3))
+fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(10, 3))
 plt.subplots_adjust(wspace=0.3)
 
-im0 = ax0.imshow(cov_to_corr(cov_rho_0), vmin=-1, vmax=1, cmap='coolwarm')
-ax0.set_title(r"Covariance $\rho_0$")
+im0 = ax0.imshow(cov_to_corr(cov_tau_0[:, 0,:,0]), vmin=-1, vmax=1, cmap='coolwarm')
+ax0.set_title(r"Covariance $\tau_0$ iNKA")
 divider = make_axes_locatable(ax0)
 cax0 = divider.append_axes("right", size="5%", pad=0.1)
 cbar0 = fig.colorbar(im0, cax=cax0)
 
-im1 = ax1.imshow(cov_to_corr(cov_tau_0), vmin=-1, vmax=1, cmap='coolwarm')
+im1 = ax1.imshow(cov_to_corr(cov_tau_0_sim[:32,:32]), vmin=-1, vmax=1, cmap='coolwarm')
 ax1.set_title(r"Covariance $\tau_0$")
 divider = make_axes_locatable(ax1)
 cax1 = divider.append_axes("right", size="5%", pad=0.1)
 cbar1 = fig.colorbar(im1, cax=cax1)
 
+im2 = ax2.imshow(cov_to_corr(cov_rho_0[:, 0,:,0]), vmin=-1, vmax=1, cmap='coolwarm')
+ax2.set_title(r"Covariance $\rho_0$ iNKA")
+divider = make_axes_locatable(ax2)
+cax2 = divider.append_axes("right", size="5%", pad=0.1)
+cbar2 = fig.colorbar(im2, cax=cax2)
+
 plt.savefig("cov_rho0_tau0.png", dpi=300)
 plt.show()
 
 # %%
-cov_rho_0_ee = cov_rho_0[0:32, 0:32]
-cov_tau_0_ee = cov_tau_0[0:32, 0:32]
-cov_rho_0_bb = cov_rho_0[96:128, 96:128]
-cov_tau_0_bb = cov_tau_0[96:128, 96:128]
-
-# %%
 plt.figure()
 
-plt.errorbar(ell_eff, ell_eff*rho_cl[0], yerr=ell_eff*np.sqrt(cov_rho_0_ee.diagonal()), label=r"$\rho_0$ EE", fmt='o', capsize=2)
-plt.errorbar(ell_eff, ell_eff*rho_cl[3], yerr=ell_eff*np.sqrt(cov_rho_0_bb.diagonal()), label=r"$\rho_0$ BB", fmt='o', capsize=2)
+plt.plot(ell_eff, np.sqrt(np.diag(cov_tau_0[:, 0, :, 0])), label="iNKA")
+plt.plot(ell_eff, np.sqrt(np.diag(cov_tau_0_sim[:32, :32])), label="Simulations")
+plt.plot(ell_eff, np.sqrt(np.diag(cov_tau_0_corrected[:, 0, :, 0])), label="iNKA corrected")
 
 plt.xscale('squareroot')
 plt.xticks(np.array([100, 400, 900, 1600]))
@@ -188,6 +286,33 @@ plt.minorticks_on()
 plt.tick_params(axis='x', which='minor', length=2, width=0.8)
 minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
+plt.xlabel(r"$\ell$")
+plt.yscale('log')
+plt.ylabel(r"$\sigma(C_\ell^{\tau_0})$")
+plt.legend()
+
+plt.savefig("./plots/sigma_tau0.png", dpi=300)
+plt.show()
+
+# %%
+cov_rho_0_ee = cov_rho_0[:, 0, :, 0]
+cov_tau_0_ee = cov_tau_0[:, 0, :, 0]
+cov_rho_0_bb = cov_rho_0[:, 3, :, 3]
+cov_tau_0_bb = cov_tau_0[:, 3, :, 3]
+
+# %%
+plt.figure()
+
+plt.errorbar(ell_eff, ell_eff*rho_cl[0], yerr=ell_eff*np.sqrt(np.abs(cov_rho_0_ee.diagonal())), label=r"$\rho_0$ EE", fmt='o', capsize=2)
+plt.errorbar(ell_eff, ell_eff*rho_cl[3], yerr=ell_eff*np.sqrt(np.abs(cov_rho_0_bb.diagonal())), label=r"$\rho_0$ BB", fmt='o', capsize=2)
+
+plt.xscale('squareroot')
+plt.xticks(np.array([100, 400, 900, 1600]))
+plt.minorticks_on()
+plt.tick_params(axis='x', which='minor', length=2, width=0.8)
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+plt.xticks(minor_ticks, minor=True)
+#plt.xlim(100, 2048)
 plt.xlabel(r"$\ell$")
 plt.ylabel(r"$\ell C^{\rho_0}_\ell$")
 plt.legend()
@@ -220,10 +345,40 @@ plt.savefig("tau_0_cl.png", dpi=300)
 plt.show()
 
 # %%
+tau_cl_samples = np.random.multivariate_normal(
+    mean=tau_cl[0],
+    cov=cov_tau_0_ee,
+    size=10000
+)
+tau_cl_corrected_samples = np.random.multivariate_normal(
+    mean=tau_cl_corrected[0],
+    cov=cov_tau_0_ee,
+    size=10000
+)
+
+alpha_ell_samples = tau_cl_samples / rho_cl[0]
+alpha_ell_corrected_samples = tau_cl_corrected_samples / rho_cl[0]
+alpha_ell_mean = np.mean(alpha_ell_samples, axis=0)
+alpha_ell_std = np.std(alpha_ell_samples, axis=0)
+alpha_ell_corrected_mean = np.mean(alpha_ell_corrected_samples, axis=0)
+alpha_ell_corrected_std = np.std(alpha_ell_corrected_samples, axis=0)
+
+# %%
 plt.figure()
 
-plt.plot(ell_eff, tau_cl[0]/rho_cl[0], label="Without object-wise leakage correction")
-plt.plot(ell_eff, tau_cl_corrected[0]/rho_cl[0], label="With object-wise leakage correction")
+offset = 0.3
+
+ell_widths = np.diff(ell_eff)
+ell_widths = np.append(ell_widths, ell_widths[-1])  # repeat last width
+
+list_offset = []
+for i in range(2):
+    jitter_fraction = (i - (2 - 1) / 2) * offset
+    jiterred_ell = ell_eff + jitter_fraction * ell_widths
+    list_offset.append(jiterred_ell)
+
+plt.errorbar(list_offset[0], tau_cl[0]/rho_cl[0], yerr=alpha_ell_std, label="Without object-wise leakage correction", fmt='o', capsize=2)
+plt.errorbar(list_offset[1], tau_cl_corrected[0]/rho_cl[0], yerr=alpha_ell_corrected_std, label="With object-wise leakage correction", fmt='o', capsize=2)
 
 plt.xscale('squareroot')
 
@@ -339,16 +494,25 @@ plt.legend()
 plt.show()
 
 # %%
+leakage_bias_samples = tau_cl_samples**2 / rho_cl[0]
+leakage_bias_corrected_samples = tau_cl_corrected_samples**2 / rho_cl[0]
+
+leakage_bias_mean = np.mean(leakage_bias_samples, axis=0)
+leakage_bias_std = np.std(leakage_bias_samples, axis=0)
+leakage_bias_corrected_mean = np.mean(leakage_bias_corrected_samples, axis=0)
+leakage_bias_corrected_std = np.std(leakage_bias_corrected_samples, axis=0)
+
+# %%
 plt.figure()
 
 leakage_bias = tau_cl[0]**2/rho_cl[0]
 leakage_bias_corrected = tau_cl_corrected[0]**2/rho_cl[0]
 
-plt.plot(ell_eff, leakage_bias/cell_cl[0], label=r"Uncorrected")
-plt.plot(ell_eff, leakage_bias_corrected/cell_cl_corrected[0], label="Corrected")
+plt.errorbar(list_offset[0], leakage_bias/cell_cl[0], yerr=leakage_bias_std/cell_cl[0], label=r"Without object-wise leakage correction", fmt='o', markersize=3, capsize=2)
+plt.errorbar(list_offset[1], leakage_bias_corrected/cell_cl_corrected[0], yerr=leakage_bias_corrected_std/cell_cl_corrected[0], label="With object-wise leakage correction", fmt='o', markersize=3, capsize=2)
 
 threshold = 0.05
-plt.fill_between(ell_eff, -threshold, threshold, color='gray', alpha=0.3, label='5% threshold')
+plt.fill_between(np.arange(7, 2050), -threshold, threshold, color='gray', alpha=0.3, label='5% threshold')
 plt.xscale('squareroot')
 
 plt.axhline(threshold, color='black', linestyle='--', alpha=0.6)
@@ -360,10 +524,52 @@ minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
 plt.xlim(ell_eff[0], ell_eff[-1])
 plt.xlabel(r"$\ell$")
+plt.xlim(7, 2050)
 plt.ylabel(r"$C_\ell^{\rm sys} / C_\ell$")
+plt.ylim(-0.052, 0.152)
 plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-plt.legend()
+plt.legend(loc="upper center")
 plt.savefig("leakage_bias_fraction_ee.png", dpi=300)
+plt.show()
+
+# %%
+tau_samples_bb = np.random.multivariate_normal(
+    mean=tau_cl[3],
+    cov=cov_tau_0_bb,
+    size=10000
+)
+tau_corrected_samples_bb = np.random.multivariate_normal(
+    mean=tau_cl_corrected[3],
+    cov=cov_tau_0_bb,
+    size=10000
+)
+leakage_bias_samples_bb = tau_samples_bb**2 / rho_cl[3]
+leakage_bias_corrected_samples_bb = tau_corrected_samples_bb**2 / rho_cl[3]
+leakage_bias_mean_bb = np.mean(leakage_bias_samples_bb, axis=0)
+leakage_bias_std_bb = np.std(leakage_bias_samples_bb, axis=0)
+leakage_bias_corrected_mean_bb = np.mean(leakage_bias_corrected_samples_bb, axis=0)
+leakage_bias_corrected_std_bb = np.std(leakage_bias_corrected_samples_bb, axis=0)
+
+# %%
+plt.figure()
+
+leakage_bias = tau_cl[3]**2/rho_cl[3]
+leakage_bias_corrected = tau_cl_corrected[3]**2/rho_cl[3]
+
+plt.errorbar(list_offset[0], leakage_bias, yerr=leakage_bias_std_bb, label=r"Without object-wise leakage correction", fmt='o', markersize=3, capsize=2)
+plt.errorbar(list_offset[1], leakage_bias_corrected, yerr=leakage_bias_corrected_std_bb, label="With object-wise leakage correction", fmt='o', markersize=3, capsize=2)
+
+plt.xscale('squareroot')
+plt.xticks(np.array([100, 400, 900, 1600]))
+plt.minorticks_on()
+plt.tick_params(axis='x', which='minor', length=2, width=0.8)
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+plt.xticks(minor_ticks, minor=True)
+plt.xlabel(r"$\ell$")
+plt.ylabel(r"$C_\ell^{\rm sys, BB}$")
+plt.legend()
+plt.savefig("./plots/leakage_bias_bb.png", dpi=300)
+plt.ylim(-0.02e-8, 0.02e-8)
 plt.show()
 
 # %%

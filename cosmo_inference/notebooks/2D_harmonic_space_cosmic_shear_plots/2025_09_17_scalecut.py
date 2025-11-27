@@ -110,7 +110,7 @@ for ell, I_vals in zip(ell_list, I_vals_list):
     print(np.trapz(I_vals, k_vals))
 
 plt.xscale('log')
-plt.xlabel(r'$k$ [h/Mpc^-1]')
+plt.xlabel(r'$k$ [h/Mpc]')
 plt.ylabel(r'$\frac{\mathrm{d}C_\ell}{\mathrm{d}\ln k}$ (normalized)')
 plt.yticks([0.])
 plt.legend()
