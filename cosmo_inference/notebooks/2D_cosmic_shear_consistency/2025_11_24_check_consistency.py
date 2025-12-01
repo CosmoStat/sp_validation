@@ -135,4 +135,146 @@ plt.xlabel(r"$\Delta S_8$ estimated from mocks")
 plt.legend(fontsize=12)
 plt.savefig(f"{output_fig_path}/S8_difference_config_harm.png", dpi=300)
 plt.show()
+
+# %%
+sns.histplot(
+    simulation_output,
+    x="S8_config_mean",
+    y="S8_harm_mean",
+    bins=25,
+    cbar='seismic',
+    cbar_kws={'label': 'Counts'}
+)
+plt.plot(
+    [simulation_output["S8_config_mean"].min(), simulation_output["S8_config_mean"].max()],
+    [simulation_output["S8_config_mean"].min(), simulation_output["S8_config_mean"].max()],
+    color='grey',
+    linestyle='--',
+    alpha=1.0
+)
+plt.axvline(s8_fid, color="black", linestyle="--", label="Fiducial S8")
+plt.xlabel(r"$S_8$ estimated from mocks (Configuration space)")
+plt.ylabel(r"$S_8$ estimated from mocks (Harmonic space)")
+plt.savefig(f"{output_fig_path}/S8_scatter_config_harm.png", dpi=300)
+plt.show()
+
+# %%
+sns.histplot(
+    simulation_output,
+    x="OMEGA_M_config_mean",
+    y="SIGMA_8_config_mean",
+    bins=25,
+    cbar='seismic',
+    cbar_kws={'label': 'Counts'}
+)
+
+plt.axvline(Omega_m_fid, color="black", linestyle="--", label="Fiducial Omega_m")
+plt.axhline(sigma_8_fid, color="black", linestyle="--", label="Fiducial sigma_8")
+plt.xlabel(r"$\Omega_m$ estimated from mocks (Configuration space)")
+plt.ylabel(r"$\sigma_8$ estimated from mocks (Configuration space)")
+plt.savefig(f"{output_fig_path}/Omega_m_sigma_8_scatter_config.png", dpi=300)
+plt.show()
+
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(10, 6), sharex=True, sharey=True)
+
+sns.histplot(
+    simulation_output,
+    x="OMEGA_M_config_mean",
+    y="SIGMA_8_config_mean",
+    bins=25,
+    cmap='mako',
+    cbar=True,
+    ax=axes[0],
+)
+axes[0].axvline(Omega_m_fid, color="black", linestyle="--", label="Fiducial Omega_m")
+axes[0].axhline(sigma_8_fid, color="black", linestyle="--", label="Fiducial sigma_8")
+axes[0].set_xlabel(r"$\Omega_m$ estimated from mocks (Configuration space)")
+axes[0].set_ylabel(r"$\sigma_8$ estimated from mocks (Configuration space)")
+
+sns.histplot(
+    simulation_output,
+    x="OMEGA_M_harm_mean",
+    y="SIGMA_8_harm_mean",
+    bins=25,
+    cmap='mako',
+    cbar=True,
+    ax=axes[1],
+    cbar_kws={'label': 'Counts'}
+)
+axes[1].axvline(Omega_m_fid, color="black", linestyle="--", label="Fiducial Omega_m")
+axes[1].axhline(sigma_8_fid, color="black", linestyle="--", label="Fiducial sigma_8")
+axes[1].set_xlabel(r"$\Omega_m$ estimated from mocks (Harmonic space)")
+axes[1].set_ylabel(r"$\sigma_8$ estimated from mocks (Harmonic space)")
+
+
+plt.tight_layout()
+plt.show()
+
+# %%
+g = sns.JointGrid(data=simulation_output, x="OMEGA_M_config_mean", y="SIGMA_8_config_mean", space=0)
+
+g.plot_joint(
+    sns.histplot,
+    fill=True,
+    bins=25,
+)
+g.plot_marginals(sns.histplot, bins=25)
+
+g.ax_joint.axvline(Omega_m_fid, color="black", linestyle="--", label="Fiducial Omega_m")
+g.ax_joint.axhline(sigma_8_fid, color="black", linestyle="--", label="Fiducial sigma_8")
+
+g.ax_joint.set_xlabel(r"$\Omega_m$ estimated from mocks (Configuration space)")
+g.ax_joint.set_ylabel(r"$\sigma_8$ estimated from mocks (Configuration space)")
+
+plt.savefig(f"{output_fig_path}/Omega_m_sigma_8_joint_config.png", dpi=300)
+plt.show()
+
+# %%
+g = sns.JointGrid(data=simulation_output, x="OMEGA_M_harm_mean", y="SIGMA_8_harm_mean", space=0)
+
+g.plot_joint(
+    sns.histplot,
+    fill=True,
+    bins=25,
+)
+g.plot_marginals(sns.histplot, bins=25)
+
+g.ax_joint.axvline(Omega_m_fid, color="black", linestyle="--", label="Fiducial Omega_m")
+g.ax_joint.axhline(sigma_8_fid, color="black", linestyle="--", label="Fiducial sigma_8")    
+g.ax_joint.set_xlabel(r"$\Omega_m$ estimated from mocks (Harmonic space)")
+g.ax_joint.set_ylabel(r"$\sigma_8$ estimated from mocks (Harmonic space)")
+
+plt.savefig(f"{output_fig_path}/Omega_m_sigma_8_joint_harm.png", dpi=300)
+plt.show()
+
+
+# %%
+g = sns.JointGrid(data=simulation_output, x="S8_config_mean", y="S8_harm_mean", space=0)
+
+g.plot_joint(
+    sns.histplot,
+    fill=True,
+    bins=25,
+)
+g.plot_marginals(sns.histplot, bins=25, kde=True)
+
+g.ax_joint.axvline(s8_fid, color="black", linestyle="--", label="Fiducial S8")
+g.ax_joint.axhline(s8_fid, color="black", linestyle="--", label="Fiducial S8")    
+g.ax_joint.set_xlabel(r"$S_8$ estimated from mocks (Configuration space)")
+g.ax_joint.set_ylabel(r"$S_8$ estimated from mocks (Harmonic space)")
+
+g.ax_joint.plot(
+    [simulation_output["S8_config_mean"].min(), simulation_output["S8_config_mean"].max()],
+    [simulation_output["S8_config_mean"].min(), simulation_output["S8_config_mean"].max()],
+    color='red',
+    linestyle='--',
+    alpha=0.7
+)
+
+plt.savefig(f"{output_fig_path}/S8_joint_config_harm.png", dpi=300)
+plt.show()
+
+# %%
+
 # %%

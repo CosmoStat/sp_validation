@@ -41,7 +41,7 @@ if ipython is not None:
 root_dir = '/n09data/guerrini/glass_mock_chains/'
 
 failed_simulations = [
-    98, 99, 162
+    
 ]
 
 weird_simulations = [
@@ -49,7 +49,7 @@ weird_simulations = [
 ]
 
 roots = [
-    f"glass_mock_v0_{i+1:05d}" for i in range(210)
+    f"glass_mock_v0_{i+1:05d}" for i in range(350)
 ]
 
 # %%
@@ -100,7 +100,7 @@ def write_samples_getdist_format(root_dir, root, chain_type="configuration"):
         path_gd,
         cache=False,
         settings={
-            'ignore_rows': 0.3,
+            'ignore_rows': 0.,
             'smooth_scale_2D': 0.5,
             'smooth_scale_1D': 0.5
         }
@@ -187,10 +187,18 @@ def concatenate_merge_params(name, merged_params, verbose=False):
 # %%
 chain_configuration = []
 chain_harmonic = []
+skip_weird = True
 
 for i, root in enumerate(tqdm(roots)):
     if (i+1) in failed_simulations:
         print(f"Skipping failed simulation {i+1}")
+        print(f"Add a flag 'ERROR' to the chains lists")
+        chain_configuration.append('ERROR')
+        chain_harmonic.append('ERROR')
+        continue
+
+    if skip_weird and (i+1) in weird_simulations:
+        print(f"Skipping weird simulation {i+1}")
         print(f"Add a flag 'ERROR' to the chains lists")
         chain_configuration.append('ERROR')
         chain_harmonic.append('ERROR')
@@ -203,7 +211,7 @@ for i, root in enumerate(tqdm(roots)):
         root_dir + f'/{root}/{root}/getdist_{root}',
         cache=False,
         settings={
-            'ignore_rows': 0.3,
+            'ignore_rows': 0.,
             'smooth_scale_2D': 0.5,
             'smooth_scale_1D': 0.5
         }
@@ -217,7 +225,7 @@ for i, root in enumerate(tqdm(roots)):
         root_dir + f'/{root}/{root}/getdist_{root}_cell',
         cache=False,
         settings={
-            'ignore_rows': 0.3,
+            'ignore_rows': 0.,
             'smooth_scale_2D': 0.5,
             'smooth_scale_1D': 0.5
         }
