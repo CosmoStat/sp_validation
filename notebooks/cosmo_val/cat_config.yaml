@@ -694,6 +694,8 @@ SP_v1.4.5:
    shear:
       path: ../../../../../../sguerrini/unions_shapepipe_cut_struc_2024_v1.4.5_rerun.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
       e1_col: e1
       e2_col: e2
       e1_PSF_col: e1_PSF
@@ -722,6 +724,7 @@ SP_v1.4.5:
       PSF_flag: "FLAG_PSF_HSM"
       star_flag: "FLAG_STAR_HSM"
       square_size: True
+   patch_number: 100
 
 SP_v1.4.6:
    pipeline: SP
@@ -738,6 +741,8 @@ SP_v1.4.6:
    shear:
       path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
       e1_col: e1
       e2_col: e2
       e1_PSF_col: e1_PSF
@@ -766,6 +771,179 @@ SP_v1.4.6:
       PSF_flag: "FLAG_PSF_HSM"
       star_flag: "FLAG_STAR_HSM"
       square_size: True
+   patch_number: 100
+
+SP_v1.4.7:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   ls: dashed
+   colour: darkorchid
+   marker: d
+   getdist_colour: 0.0, 0.5, 1.0
+   cov_th:
+      A: 2420.2651014497287 #deg^2
+      n_e: 7.040818382014773 #arcmin-2
+      n_psf: 0.752316232272063 #arcmin-2
+      sigma_e: 0.30961528707207325
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+      e1_PSF_col: e1_PSF
+      e2_PSF_col: e2_PSF
+      w_col: w_des
+      R: 1.0
+      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+   psf:
+      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      hdu: 1
+      ra_col: RA
+      dec_col: Dec
+      e1_PSF_col: E1_PSF_HSM
+      e2_PSF_col: E2_PSF_HSM
+      e1_star_col: E1_STAR_HSM
+      e2_star_col: E2_STAR_HSM
+      PSF_size: SIGMA_PSF_HSM
+      star_size: SIGMA_STAR_HSM
+      PSF_flag: "FLAG_PSF_HSM"
+      star_flag: "FLAG_STAR_HSM"
+      square_size: True
+   patch_number: 100
+
+SP_v1.4.6_GAIA_bright:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   ls: dashed
+   colour: green
+   marker: s
+   getdist_colour: 0.0, 0.5, 1.0
+   cov_th:
+      A: 2420.2651014497287 #deg^2
+      n_e: 7.040818382014773 #arcmin-2
+      n_psf: 0.752316232272063 #arcmin-2
+      sigma_e: 0.30961528707207325
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+      e1_PSF_col: e1_PSF
+      e2_PSF_col: e2_PSF
+      w_col: w_des
+      R: 1.0
+      mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
+      redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+   psf:
+      path: ../../../GAIA/gaia_stars_g_bright.fits
+      hdu: 1
+      ra_col: RA
+      dec_col: Dec
+      square_size: True
+   patch_number: 100
+
+SP_v1.4.6_GAIA_medium:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   ls: dashed
+   colour: darkgreen
+   marker: o
+   getdist_colour: 0.0, 0.5, 1.0
+   cov_th:
+      A: 2420.2651014497287 #deg^2
+      n_e: 7.040818382014773 #arcmin-2
+      n_psf: 0.752316232272063 #arcmin-2
+      sigma_e: 0.30961528707207325
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+      e1_PSF_col: e1_PSF
+      e2_PSF_col: e2_PSF
+      w_col: w_des
+      R: 1.0
+      mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
+      redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+   psf:
+      path: ../../../GAIA/gaia_stars_g_medium.fits
+      hdu: 1
+      ra_col: RA
+      dec_col: Dec
+      square_size: True
+   patch_number: 100
+
+SP_v1.4.6_GAIA_faint:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   ls: dashed
+   colour: lightgreen
+   marker: d
+   getdist_colour: 0.0, 0.5, 1.0
+   cov_th:
+      A: 2420.2651014497287 #deg^2
+      n_e: 7.040818382014773 #arcmin-2
+      n_psf: 0.752316232272063 #arcmin-2
+      sigma_e: 0.30961528707207325
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+      e1_PSF_col: e1_PSF
+      e2_PSF_col: e2_PSF
+      w_col: w_des
+      R: 1.0
+      mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
+      redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+   psf:
+      path: ../../../GAIA/gaia_stars_g_faint.fits
+      hdu: 1
+      ra_col: RA
+      dec_col: Dec
+      square_size: True
+   patch_number: 100
+
+
+SP_v1.4.7_GAIA_bright:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   ls: dashed
+   colour: darkorchid
+   marker: d
+   getdist_colour: 0.0, 0.5, 1.0
+   cov_th:
+      A: 2420.2651014497287 #deg^2
+      n_e: 7.040818382014773 #arcmin-2
+      n_psf: 0.752316232272063 #arcmin-2
+      sigma_e: 0.30961528707207325
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1
+      e2_col: e2
+      e1_PSF_col: e1_PSF
+      e2_PSF_col: e2_PSF
+      w_col: w_des
+      R: 1.0
+      redshift_distr: CFIS/v1.0/nz/dndz_SP_A.txt
+   psf:
+      path: ../../../GAIA/gaia_stars_g_smaller_16.0.fits
+      hdu: 1
+      ra_col: RA
+      dec_col: dec
+      square_size: True
+   patch_number: 100
 
 SP_v1.4.8:
    pipeline: SP
@@ -782,6 +960,8 @@ SP_v1.4.8:
    shear:
       path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
       e1_col: e1
       e2_col: e2
       e1_PSF_col: e1_PSF
@@ -791,7 +971,7 @@ SP_v1.4.8:
       mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits
       redshift_distr: ../../../sguerrini/UNIONS/WL/nz/v1.4.8/nz_SP_v1.4.8_A.txt
    star:
-      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
+      path: ../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
       ra_col: RA
       dec_col: Dec
       e1_col: e1
@@ -810,6 +990,7 @@ SP_v1.4.8:
       PSF_flag: "FLAG_PSF_HSM"
       star_flag: "FLAG_STAR_HSM"
       square_size: True
+   patch_number: 100
 
 SP_v1.4.5.A:
    pipeline: SP
@@ -998,6 +1179,8 @@ SP_v1.4.6_leak_corr:
    shear:
       path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
       e1_col: e1_leak_corrected
       e2_col: e2_leak_corrected
       e1_PSF_col: e1_PSF
@@ -1026,6 +1209,7 @@ SP_v1.4.6_leak_corr:
       PSF_flag: "FLAG_PSF_HSM"
       star_flag: "FLAG_STAR_HSM"
       square_size: True
+   patch_number: 100
 
 SP_v1.4.7_leak_corr:
    pipeline: SP
@@ -1042,6 +1226,8 @@ SP_v1.4.7_leak_corr:
    shear:
       path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
       e1_col: e1_leak_corrected
       e2_col: e2_leak_corrected
       e1_PSF_col: e1_PSF
@@ -1069,6 +1255,7 @@ SP_v1.4.7_leak_corr:
       PSF_flag: "FLAG_PSF_HSM"
       star_flag: "FLAG_STAR_HSM"
       square_size: True
+   patch_number: 100
 
 SP_v1.4.8_leak_corr:
    pipeline: SP
@@ -1388,6 +1575,8 @@ SP_v1.4.5_leak_corr:
    shear:
       path: ../../../../../../sguerrini/unions_shapepipe_cut_struc_2024_v1.4.5_rerun.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
       e1_col: e1_leak_corrected
       e2_col: e2_leak_corrected
       e1_PSF_col: e1_PSF
@@ -1416,6 +1605,7 @@ SP_v1.4.5_leak_corr:
       PSF_flag: "FLAG_PSF_HSM"
       star_flag: "FLAG_STAR_HSM"
       square_size: True
+   patch_number: 100
 
 SP_v1.5.4:
    pipeline: SP
