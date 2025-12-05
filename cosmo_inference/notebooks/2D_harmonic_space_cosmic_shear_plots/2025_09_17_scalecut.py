@@ -10,7 +10,7 @@ from scipy.interpolate import interp1d
 plt.style.use(
     '/home/guerrini/matplotlib_config/paper.mplstyle'
 )
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 sns.set_palette("husl")
 
 # %%
@@ -110,11 +110,13 @@ for ell, I_vals in zip(ell_list, I_vals_list):
     print(np.trapz(I_vals, k_vals))
 
 plt.xscale('log')
-plt.xlabel(r'$k$ [h/Mpc]')
-plt.ylabel(r'$\frac{\mathrm{d}C_\ell}{\mathrm{d}\ln k}$ (normalized)')
+plt.xlabel(r'$k$ [h/Mpc]', fontsize=12)
+plt.ylabel(r'$\frac{\mathrm{d}C_\ell}{\mathrm{d}\ln k}$ (normalized)', fontsize=12)
 plt.yticks([0.])
-plt.legend()
+plt.legend(fontsize=12)
 plt.savefig('./plots/Cl_integrand_vs_k.png', dpi=300)
+# Save pdf
+plt.savefig('./plots/Cl_integrand_vs_k.pdf')
 plt.show()
 
 

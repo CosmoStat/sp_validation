@@ -22,7 +22,7 @@ from utils import get_chi2_and_pte
 mscale.register_scale(SquareRootScale)
 
 plt.style.use(
-    "/home/guerrini/matplotlib_config/paper.mplstyle"
+    "./matplotlib_config/paper.mplstyle"
 )
 
 plt.rcParams["text.usetex"] = True
@@ -188,7 +188,7 @@ plt.show()
 fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=2, figsize= (8, 6), sharex=True)
 
 version_paper_plot = ["SP_v1.4.6", "SP_v1.4.6_leak_corr"]
-labels = ["W/o leakage correction", "W/ leakage correction"]
+labels = ["W/o leakage correction", "With leakage correction"]
 colors = ["C0", "C1"]
 markers = ["o", "h"]
 offset = 0.2
@@ -241,18 +241,20 @@ ax1.set_xticks(minor_ticks, minor=True)
 ax1.tick_params(axis='x', which='minor', length=2, width=0.8)
 ax1.axhline(0, color='gray', linestyle='--', linewidth=1)
 ax2.axhline(0, color='gray', linestyle='--', linewidth=1)
-ax2.legend() 
+ax2.legend(fontsize=14) 
 
 ax2.set_xlabel(r"Multipole $\ell$")
+ax2.minorticks_on()
 ax1.set_ylabel(r"$\ell \, C_\ell^{EB}$")
 ax2.set_ylabel(r"$\ell \, C_\ell^{BB}$")
 
+ax1.yaxis.get_offset_text().set_fontsize(12)
+ax2.yaxis.get_offset_text().set_fontsize(12)
+
 plt.savefig("./plots/paperplot_data_vectors_eb_bb.png", dpi=300, bbox_inches='tight')
+#Save pdf
+plt.savefig("./plots/paperplot_data_vectors_eb_bb.pdf", bbox_inches='tight')
 plt.show()
 
-# %%
-# Get best-fit model for harmonic space cosmic shear
-
 
 # %%
-# Paper plot of EE data vector with best-fit model

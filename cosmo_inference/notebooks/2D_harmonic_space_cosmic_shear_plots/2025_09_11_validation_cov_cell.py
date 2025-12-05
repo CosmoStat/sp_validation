@@ -24,7 +24,7 @@ from sp_validation.utils_cosmo_val import SquareRootScale
 mscale.register_scale(SquareRootScale)
 
 plt.style.use(
-    '/home/guerrini/matplotlib_config/paper.mplstyle'
+    './matplotlib_config/paper.mplstyle'
 )
 
 sns.set_palette("husl")
@@ -125,6 +125,8 @@ ax2.set_ylabel(r"$\ell$", fontsize=14)
 #fig.suptitle("Comparison of correlation matrices for $C_\ell^{EE}$")
 
 plt.savefig("./plots/corr_matrix_comparison", dpi=300, bbox_inches='tight')
+#Save pdf
+plt.savefig("./plots/corr_matrix_comparison.pdf", bbox_inches='tight')
 plt.show()
 
 # %%
@@ -176,6 +178,8 @@ ax2.set_ylabel(r"$\ell$", fontsize=14)
 #fig.suptitle("Comparison of correlation matrices for $C_\ell^{EE}$")
 
 plt.savefig("./plots/corr_matrix_comparison_non_gaussian", dpi=300, bbox_inches='tight')
+#Save pdf
+plt.savefig("./plots/corr_matrix_comparison_non_gaussian.pdf", bbox_inches='tight')
 plt.show()
 
 # %%
@@ -356,7 +360,7 @@ ax1.set_yticks(minor_ticks, minor=True)
 
 # Set labels and legend
 ax1.set_ylabel(r"$\sigma(C_\ell^{EE})$")
-ax1.legend()
+ax1.legend(fontsize=10)
 
 relative_error_sim = np.sqrt(np.diag(cov_sim))/np.sqrt(np.diag(cov_inka_onecov_ng))
 relative_error_onecov = np.sqrt(np.diag(all_one_cov))/np.sqrt(np.diag(cov_inka_onecov_ng))
@@ -370,10 +374,12 @@ ax2.axhline(0, color='C1', linestyle='-')
 #Set ticks and scales for the y-axis
 ax2.set_yticks([-0.2, -0.1, 0.0, 0.1, 0.2])
 ax2.set_ylim(-0.2, 0.2)
-ax2.set_ylabel(r"$ \hat{\sigma}(C_\ell^{EE}) / \sigma(C_\ell^{EE})$")
+ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
 ax2.set_xlabel(r"$\ell$")
 
 plt.savefig("./plots/paper_plot_errorbar_validation.png", dpi=300, bbox_inches='tight')
+# Save PDF
+plt.savefig("./plots/paper_plot_errorbar_validation.pdf", bbox_inches='tight')
 plt.show()
 
 # %%
@@ -382,7 +388,7 @@ plt.show()
 
 path_gaussian_sims = "/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/"
 
-n_sims = 4000
+n_sims = 10_000
 cls_all_gaussian = np.array([]).reshape((0, 4, 32))
 cls_noise_gaussian = np.array([]).reshape((0, 4, 32))
 
@@ -438,6 +444,59 @@ plt.xlabel(r"$\ell$")
 plt.legend()
 plt.savefig("./plots/errorbar_namaster_vs_gaussian_BB.png", dpi=300)
 plt.show()
+
+# %%
+# Make a paperplot of Gaussian simulations vs NaMaster
+cov_inka_bb = cov_namaster["COVAR_BB_BB"].data
+fig = plt.figure()
+
+gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.0)
+
+ax1 = fig.add_subplot(gs[0])
+ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+ax1.plot(ell, diag_bb, label="Gaussian simulations")
+ax1.plot(ell, np.sqrt(np.diag(cov_inka_bb)), label="iNKA")
+
+#Set ticks and scales for the x-axis
+ax1.set_xscale('squareroot')
+ax1.set_xticks(np.array([100, 400, 900, 1600]))
+ax1.minorticks_on()
+ax1.tick_params(axis='x', which='minor', length=2, width=0.8)
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+ax1.set_xticks(minor_ticks, minor=True)
+
+# Set ticks and scale for the y-axis
+ax1.set_yscale('log')
+ax1.set_yticks([1e-11, 1e-11, 1e-10, 1e-9])
+ax1.tick_params(axis='y', which='minor', length=2, width=0.8)
+minor_ticks = [i * 1e-11 for i in range(1, 10)] + [i * 1e-10 for i in range(1, 10)] + [i * 1e-9 for i in range(1, 8)]
+ax1.set_yticks(minor_ticks, minor=True)
+
+# Set labels and legend
+ax1.set_ylabel(r"$\sigma(C_\ell^{BB})$")
+ax1.legend(fontsize=10)
+
+relative_error_sim = diag_bb/np.sqrt(np.diag(cov_inka_bb))
+
+ax2.plot(ell, relative_error_sim - 1, label="Gaussian simulations")
+ax2.axhline(0, color='C1', linestyle='-')
+
+#Set ticks and scales for the y-axis
+ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
+ax2.set_ylim(-0.1, 0.1)
+ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
+ax2.set_xlabel(r"$\ell$")
+
+plt.savefig("./plots/paper_plot_errorbar_validation_BB.png", dpi=300, bbox_inches='tight')
+# Save PDF
+plt.savefig("./plots/paper_plot_errorbar_validation_BB.pdf", bbox_inches='tight')
+plt.show()
+
+# %%
+# Save gaussian simulation covariance for bb
+cov_gaussian_bb = cov_sim_gaussian[96:, 96:]
+np.save("/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_BB.npy", cov_gaussian_bb)
 
 # %%
 plt.figure()

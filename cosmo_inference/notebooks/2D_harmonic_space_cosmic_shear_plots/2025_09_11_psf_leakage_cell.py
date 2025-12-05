@@ -25,7 +25,7 @@ mscale.register_scale(SquareRootScale)
 plt.style.use(
     '/home/guerrini/matplotlib_config/paper.mplstyle'
 )
-plt.rcParams['text.usetex'] = False
+plt.rcParams['text.usetex'] = True
 
 sns.set_palette("husl")
 
@@ -337,10 +337,13 @@ plt.minorticks_on()
 plt.tick_params(axis='x', which='minor', length=2, width=0.8)
 minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
-plt.xlabel(r"$\ell$")
-plt.ylabel(r"$\ell C^{\tau_0}_\ell$")
-plt.legend()
-plt.savefig("tau_0_cl.png", dpi=300)
+plt.xlabel(r"$\ell$", fontsize=12)
+plt.ylabel(r"$\ell C^{\tau_0}_\ell$", fontsize=12)
+plt.ylim(-1e-6, 1e-6)
+plt.legend(fontsize=12)
+plt.savefig("./plots/tau_0_cl.png", dpi=300)
+#Save pdf
+plt.savefig("./plots/tau_0_cl.pdf")
 
 plt.show()
 
@@ -388,11 +391,13 @@ plt.minorticks_on()
 plt.tick_params(axis='x', which='minor', length=2, width=0.8)
 minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
-plt.xlabel(r"$\ell$")
-plt.ylabel(r"$\alpha_\ell$")
+plt.xlabel(r"$\ell$", fontsize=12)
+plt.ylabel(r"$\alpha_\ell$", fontsize=12)
 plt.ylim(-0.1, 0.1)
-plt.legend()
-plt.savefig("alpha_ell.png", dpi=300)
+plt.legend(fontsize=10)
+plt.savefig("./plots/alpha_ell.png", dpi=300)
+# Save PDF
+plt.savefig("./plots/alpha_ell.pdf")
 plt.show()
 
 # %%
@@ -512,7 +517,7 @@ plt.errorbar(list_offset[0], leakage_bias/cell_cl[0], yerr=leakage_bias_std/cell
 plt.errorbar(list_offset[1], leakage_bias_corrected/cell_cl_corrected[0], yerr=leakage_bias_corrected_std/cell_cl_corrected[0], label="With object-wise leakage correction", fmt='o', markersize=3, capsize=2)
 
 threshold = 0.05
-plt.fill_between(np.arange(7, 2050), -threshold, threshold, color='gray', alpha=0.3, label='5% threshold')
+plt.fill_between(np.arange(7, 2050), -threshold, threshold, color='gray', alpha=0.3, label=r'5\% threshold')
 plt.xscale('squareroot')
 
 plt.axhline(threshold, color='black', linestyle='--', alpha=0.6)
@@ -523,13 +528,15 @@ plt.tick_params(axis='x', which='minor', length=2, width=0.8)
 minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
 plt.xlim(ell_eff[0], ell_eff[-1])
-plt.xlabel(r"$\ell$")
+plt.xlabel(r"$\ell$", fontsize=12)
 plt.xlim(7, 2050)
-plt.ylabel(r"$C_\ell^{\rm sys} / C_\ell$")
+plt.ylabel(r"$C_\ell^{\rm sys} / C_\ell$", fontsize=12)
 plt.ylim(-0.052, 0.152)
 plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-plt.legend(loc="upper center")
-plt.savefig("leakage_bias_fraction_ee.png", dpi=300)
+plt.legend(loc="upper center", fontsize=10)
+plt.savefig("./plots/leakage_bias_fraction_ee.png", dpi=300)
+#Save PDF
+plt.savefig("./plots/leakage_bias_fraction_ee.pdf")
 plt.show()
 
 # %%
