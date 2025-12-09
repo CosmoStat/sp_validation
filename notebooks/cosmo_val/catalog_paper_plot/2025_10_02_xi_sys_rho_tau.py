@@ -15,7 +15,7 @@ from getdist import plots, MCSamples
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 
 plt.style.use(
-    "/home/guerrini/matplotlib_config/paper.mplstyle"
+    "./matplotlib_config/paper.mplstyle"
 )
 
 plt.rcParams["text.usetex"] = True
@@ -29,8 +29,8 @@ if ipython is not None:
 base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/"
 
 # %%
-versions = ["SP_v1.4.5", "SP_v1.4.5_leak_corr", "SP_v1.4.6", "SP_v1.4.6_leak_corr", "SP_v1.4.8", "SP_v1.4.8_leak_corr"]
-labels = ["SP v1.4.5", "SP v1.4.5 w/ leakage corr.", "SP v1.4.6", "SP v1.4.6 w/ leakage corr.", "SP v1.4.8", "SP v1.4.8 w/ leakage corr."]
+versions = ["SP_v1.4.6", "SP_v1.4.6_leak_corr"]
+labels = ["Fiducial sample", "Fiducial sample w/ leakage corr."]
 colors = [f"C{i}" for i in range(len(versions))]
 
 tau_stats = []
@@ -177,7 +177,7 @@ plt.show()
 
 # %%
 versions = ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
-labels = ["SP v1.4.5", "SP v1.4.6", "SP v1.4.8"]
+labels = ["Including small objects", "Fiducial sample", "Additional masking"]
 colors = ["C0", "C1", "C2"]
 
 tau_stats = []
@@ -291,7 +291,7 @@ for idx, (ver, color, marker, sample) in enumerate(zip(versions, colors, markers
         capsize=5
     )
 
-threshold = 0.05
+threshold = 0.10
 plt.fill_between(
     [theta_min, theta_max],
     -threshold,

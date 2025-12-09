@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 plt.style.use(
-    "/home/guerrini/matplotlib_config/paper.mplstyle"
+    "./matplotlib_config/paper.mplstyle"
 )
 
 plt.rcParams["text.usetex"] = True
@@ -23,8 +23,8 @@ if ipython is not None:
 base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/"
 
 # %%
-version = "SP_v1.4.5_leak_corr"
-label = "SP v1.4"
+version = "SP_v1.4.6_leak_corr"
+label = r"Reserved stars \texttt{PSFex} model"
 color = "C1"
 
 rho_stats = fits.getdata(f"{base_dir}/rho_stats_{version}.fits")
@@ -69,16 +69,20 @@ for i in range(6):
     axs[i].set_title(titles[i])
     axs[i].set_xlim(0.9, 300)
 
-axs[4].legend(
+handles, labels = axs[4].get_legend_handles_labels()
+fig.legend(
+    handles, labels,
     loc="upper center",
-    bbox_to_anchor=(0.5, -0.3),  # (x, y) relative to the axes
-    ncol=2,  # number of columns
-    frameon=False
+    bbox_to_anchor=(0.5, 0.05),   # centered under all axes
+    ncol=2,
+    frameon=False,
+    fontsize=16
 )
+
 
 plt.tight_layout()
 
-plt.savefig("./plots/rho_stats.png", dpi=300, bbox_inches='tight')
+plt.savefig("./plots/rho_stats.pdf", bbox_inches='tight')
 plt.show()
 # %%
 rho_stats['theta']
