@@ -127,13 +127,15 @@ plt.show()
 # %%
 sns.histplot(
     simulation_output["S8_config_mean"] - simulation_output["S8_harm_mean"],
-    kde=True,
+    kde=False,
     bins=20,
     label="Difference (Config - Harm)"
 )
 plt.xlabel(r"$\Delta S_8$ estimated from mocks")
 plt.legend(fontsize=12)
 plt.savefig(f"{output_fig_path}/S8_difference_config_harm.png", dpi=300)
+#Save PDF
+plt.savefig(f"{output_fig_path}/S8_difference_config_harm.pdf")
 plt.show()
 
 # %%
@@ -267,12 +269,14 @@ g.ax_joint.set_ylabel(r"$S_8$ estimated from mocks (Harmonic space)")
 g.ax_joint.plot(
     [simulation_output["S8_config_mean"].min(), simulation_output["S8_config_mean"].max()],
     [simulation_output["S8_config_mean"].min(), simulation_output["S8_config_mean"].max()],
-    color='red',
-    linestyle='--',
+    color='royalblue',
+    linestyle='-',
     alpha=0.7
 )
 
 plt.savefig(f"{output_fig_path}/S8_joint_config_harm.png", dpi=300)
+#Save PDF
+plt.savefig(f"{output_fig_path}/S8_joint_config_harm.pdf")
 plt.show()
 
 # %%

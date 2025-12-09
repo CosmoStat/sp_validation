@@ -409,6 +409,7 @@ cov_sim_gaussian = np.cov(cls_all_gaussian.T)
 # %%
 diag_ee = np.sqrt(np.diag(cov_sim_gaussian[:32, :32]))
 diag_bb = np.sqrt(np.diag(cov_sim_gaussian[96:, 96:]))
+diag_eb = np.sqrt(np.diag(cov_sim_gaussian[64:96, 64:96]))
 # %%
 plt.figure()
 
@@ -494,9 +495,118 @@ plt.savefig("./plots/paper_plot_errorbar_validation_BB.pdf", bbox_inches='tight'
 plt.show()
 
 # %%
+# Same plot for EB
+cov_inka_eb = cov_namaster["COVAR_EB_EB"].data
+fig = plt.figure()
+
+gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.0)
+
+ax1 = fig.add_subplot(gs[0])
+ax2 = fig.add_subplot(gs[1], sharex=ax1)
+ax1.plot(ell, diag_eb, label="Gaussian simulations")
+ax1.plot(ell, np.sqrt(np.diag(cov_inka_eb)), label="iNKA")
+
+#Set ticks and scales for the x-axis
+ax1.set_xscale('squareroot')
+ax1.set_xticks(np.array([100, 400, 900, 1600]))
+ax1.minorticks_on()
+ax1.tick_params(axis='x', which='minor', length=2, width=0.8)
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+ax1.set_xticks(minor_ticks, minor=True)
+
+# Set ticks and scale for the y-axis
+ax1.set_yscale('log')
+ax1.set_yticks([1e-11, 1e-10, 1e-9])
+ax1.tick_params(axis='y', which='minor', length=2, width=0.8)
+minor_ticks = [i * 1e-11 for i in range(1, 10)] + [i * 1e-10 for i in range(1, 10)] + [i * 1e-9 for i in range(1, 8)]
+ax1.set_yticks(minor_ticks, minor=True)
+
+# Set labels and legend
+ax1.set_ylabel(r"$\sigma(C_\ell^{EB})$")
+ax1.legend(fontsize=10)
+relative_error_sim = diag_eb/np.sqrt(np.diag(cov_inka_eb))
+ax2.plot(ell, relative_error_sim - 1, label="Gaussian simulations")
+ax2.axhline(0, color='C1', linestyle='-')
+#Set ticks and scales for the y-axis
+ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
+ax2.set_ylim(-0.1, 0.1)
+ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
+ax2.set_xlabel(r"$\ell$")
+
+plt.savefig("./plots/paper_plot_errorbar_validation_EB.png", dpi=300, bbox_inches='tight')
+# Save PDF
+plt.savefig("./plots/paper_plot_errorbar_validation_EB.pdf", bbox_inches='tight')
+plt.show()
+
+# %%
+# Merging both previous plots
+fig = plt.figure()
+
+gs = GridSpec(2, 2, height_ratios=[3, 1], hspace=0.0, width_ratios=[2, 2], wspace=0.0)
+
+ax1 = fig.add_subplot(gs[0, 0])
+ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
+ax3 = fig.add_subplot(gs[0, 1], sharey=ax1)
+ax4 = fig.add_subplot(gs[1, 1], sharex=ax3, sharey=ax2)
+
+ax1.plot(ell, diag_bb, label="Gaussian simulations")
+ax1.plot(ell, np.sqrt(np.diag(cov_inka_bb)), label="iNKA")
+ax1.text(300, 2e-10, "BB power spectrum", fontsize=14)
+ax3.plot(ell, diag_eb, label="Gaussian simulations")
+ax3.plot(ell, np.sqrt(np.diag(cov_inka_eb)), label="iNKA")
+ax3.text(300, 2e-10, "EB power spectrum", fontsize=14)
+
+#Set ticks and scales for the x-axis
+ax1.set_xscale('squareroot')
+ax1.set_xticks(np.array([100, 400, 900, 1600]))
+ax1.minorticks_on()
+ax1.tick_params(axis='x', which='minor', length=2, width=0.8)
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+ax1.set_xticks(minor_ticks, minor=True)
+ax3.set_xscale('squareroot')
+ax3.set_xticks(np.array([100, 400, 900, 1600]))
+ax3.minorticks_on()
+ax3.tick_params(axis='x', which='minor', length=2, width=0.8)
+ax3.set_xticks(minor_ticks, minor=True) 
+
+# Set ticks and scale for the y-axis
+ax1.set_yscale('log')
+ax1.set_yticks([1e-11, 1e-10, 1e-9])
+ax1.tick_params(axis='y', which='minor', length=2, width=0.8)
+minor_ticks = [i * 1e-11 for i in range(1, 10)] + [i * 1e-10 for i in range(1, 10)] + [i * 1e-9 for i in range(1, 8)]
+ax1.set_yticks(minor_ticks, minor=True)
+
+# Set labels and legend
+ax1.set_ylabel(r"$\sigma(C_\ell)$")
+ax3.legend(fontsize=10)
+relative_error_sim_bb = diag_bb/np.sqrt(np.diag(cov_inka_bb))
+relative_error_sim_eb = diag_eb/np.sqrt(np.diag(cov_inka_eb))
+ax2.plot(ell, relative_error_sim_bb - 1, label="Gaussian simulations")
+ax2.axhline(0, color='C1', linestyle='-')
+ax4.plot(ell, relative_error_sim_eb - 1, label="Gaussian simulations")
+ax4.axhline(0, color='C1', linestyle='-')
+#Set ticks and scales for the y-axis
+ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
+ax2.set_ylim(-0.1, 0.1)
+ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
+ax2.set_xlabel(r"$\ell$")
+ax4.set_xlabel(r"$\ell$")
+
+# Remove only right-side y ticks
+ax3.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
+ax4.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
+
+plt.savefig("./plots/paper_plot_errorbar_validation_BB_EB.png", dpi=300, bbox_inches='tight')
+# Save PDF
+plt.savefig("./plots/paper_plot_errorbar_validation_BB_EB.pdf", bbox_inches='tight')
+plt.show()
+
+# %%
 # Save gaussian simulation covariance for bb
 cov_gaussian_bb = cov_sim_gaussian[96:, 96:]
 np.save("/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_BB.npy", cov_gaussian_bb)
+cov_gaussian_eb = cov_sim_gaussian[64:96, 64:96]
+np.save("/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_EB.npy", cov_gaussian_eb)
 
 # %%
 plt.figure()

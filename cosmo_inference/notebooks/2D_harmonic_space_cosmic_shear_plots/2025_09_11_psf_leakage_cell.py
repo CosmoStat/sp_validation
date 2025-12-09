@@ -45,6 +45,11 @@ cat_star = fits.getdata(
 glass_root_dir = "/n09data/guerrini/glass_mock_v1.4.6/results/"
 
 # %%
+def get_shape_noise(e1, e2, w):
+    shape_noise = 0.5 * np.sum(w**2 * (e1**2 + e2**2)) / np.sum(w**2)
+    return np.sqrt(shape_noise)
+
+# %%
 #Define namaster binning
 lmin = 8
 lmax = 2048

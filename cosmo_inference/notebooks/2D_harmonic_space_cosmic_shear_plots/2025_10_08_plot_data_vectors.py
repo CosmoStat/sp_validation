@@ -240,11 +240,17 @@ minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 ax1.set_xticks(minor_ticks, minor=True)
 ax1.tick_params(axis='x', which='minor', length=2, width=0.8)
 ax1.axhline(0, color='gray', linestyle='--', linewidth=1)
+
+ax2.set_xscale("squareroot")
+ax2.set_xticks(np.array([100, 400, 900, 1600]))
+ax2.minorticks_on()
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+ax2.set_xticks(minor_ticks, minor=True)
+ax2.tick_params(axis='x', which='minor', length=2, width=0.8)
 ax2.axhline(0, color='gray', linestyle='--', linewidth=1)
 ax2.legend(fontsize=14) 
 
 ax2.set_xlabel(r"Multipole $\ell$")
-ax2.minorticks_on()
 ax1.set_ylabel(r"$\ell \, C_\ell^{EB}$")
 ax2.set_ylabel(r"$\ell \, C_\ell^{BB}$")
 

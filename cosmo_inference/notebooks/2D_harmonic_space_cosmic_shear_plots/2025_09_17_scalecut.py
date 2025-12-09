@@ -181,3 +181,7 @@ get_lmax(1, 0.95, k_vals, l_high=4096)
 # %%
 get_lmax(5, 0.95, k_vals, l_high=4096)
 # %%
+get_lmax(2.5, 0.95, k_vals, l_high=4096)
+# %%
+get_lmax(2.6, 0.95, k_vals, l_high=4096)
+# %%
