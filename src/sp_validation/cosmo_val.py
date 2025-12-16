@@ -334,8 +334,7 @@ class CosmologyValidation:
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
 
-        if not os.path.exists(cc["paths"]["output"]):
-            os.mkdir(cc["paths"]["output"])
+        os.makedirs(cc["paths"]["output"], exist_ok=True)
 
     def get_redshift(self, version):
         """Load redshift distribution for a catalog version.
