@@ -73,6 +73,8 @@ not_square_size = [
 def _extract_xip(correlations):
     """Return flattened array of xip values from a list of correlations."""
     return np.array([corr.xip for corr in correlations]).flatten()
+
+
 def get_params_rho_tau(cat, survey="other"):
 
     # Set parameters
@@ -206,26 +208,32 @@ def get_rho_tau(
     print("Compute Rho and Tau statistics for the version: ", version)
     start_time = time.time()
 
-    rho_path = Path(outdir) / f"rho_stats_{base}.fits"
+    outdir_path = Path(outdir)
+    rho_path = outdir_path / f"rho_stats_{base}.fits"
+    catalog_id = f"{base}_jk" if cov_rho else base
+    cov_rho_path = (
+        outdir_path / f"cov_rho_{catalog_id}.npy"
+        if cov_rho
+        else None
+    )
 
     rho_stat_handler = RhoStat(
         output=outdir, treecorr_config=treecorr_config, verbose=True
     )
 
-    if rho_path.exists():
-        print(f"Skipping rho statistics computation, file {rho_path} already exists.")
-        rho_stat_handler.load_rho_stats(rho_path.name)
-    else:
+    rho_stats_exists = rho_path.exists()
+    cov_exists = True if not cov_rho else cov_rho_path.exists()
+    need_compute = (not rho_stats_exists) or (not cov_exists)
 
+    if need_compute:
         rho_stat_handler.catalogs.set_params(params, outdir)
 
         mask = version != "DES"
         square_size = params["square_size"]
 
-        # Build catalogues
         rho_stat_handler.build_cat_to_compute_rho(
             config[version]["psf"]["path"],
-            catalog_id=version,
+            catalog_id=catalog_id,
             square_size=square_size,
             mask=mask,
             hdu=(
@@ -235,20 +243,19 @@ def get_rho_tau(
             ),
         )
 
-        if cov_rho:
-            cov_rho_path = Path(outdir) / f"cov_rho_{base}_jk.npy"
-            if not cov_rho_path.exists():
-                rho_stat_handler.compute_rho_stats(
-                    version,
-                    rho_path.name,
-                    save_cov=True,
-                    func=_extract_xip,
-                    var_method="jackknife",
-                )
-        else:
-            rho_stat_handler.compute_rho_stats(version, rho_path.name, var_method=None)
+        rho_stat_handler.compute_rho_stats(
+            catalog_id,
+            rho_path.name,
+            save_cov=cov_rho,
+            func=_extract_xip if cov_rho else None,
+            var_method="jackknife" if cov_rho else None,
+        )
+        rho_stat_handler.load_rho_stats(rho_path.name)
+    else:
+        print(f"Skipping rho statistics computation, file {rho_path} already exists.")
+        rho_stat_handler.load_rho_stats(rho_path.name)
 
-    tau_path = Path(outdir) / f"tau_stats_{base}.fits"
+    tau_path = outdir_path / f"tau_stats_{base}.fits"
 
     tau_stat_handler = TauStat(
         catalogs=rho_stat_handler.catalogs,
