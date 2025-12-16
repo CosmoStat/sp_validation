@@ -1,5 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
+"""Prepare CosmoSIS inputs from UNIONS validation outputs.
+
+The script lives in ``cosmo_inference/scripts``. By default it reads templates
+from ``cosmo_inference/cosmosis_config`` and writes data products beneath
+``cosmo_inference/data`` and ``cosmo_inference/cosmosis_config``. Override
+``--template-dir`` or ``--output-root`` to use alternative locations.
+"""
+
 import argparse
 import os
 import re
@@ -336,7 +344,7 @@ def _generate_ini_file(
     is_harmonic=False,
 ):
     """Generate a CosmoSIS INI configuration file from template with modifications."""
-    template_path = Path("cosmosis_config") / template_base
+    template_path = Path(args.template_dir) / template_base
     output_path = Path(args.output_config_dir) / f"cosmosis_pipeline_{args.config_name_base}{suffix}.ini"
 
     with open(template_path, "r") as f:
@@ -452,7 +460,15 @@ def generate_cosmosis_config(args):
 
 
 def parse_args():
-    """Parse command-line arguments for unified data/mock interface."""
+    """Parse command-line arguments for the CosmoSIS preparation workflow.
+
+    The script detects its home directory (``cosmo_inference``) automatically
+    and uses that as the default anchor for CosmoSIS templates as well as the
+    generated outputs. Override ``--template-dir`` or ``--output-root`` when
+    running from a different checkout or writing to scratch space.
+    """
+    cosmo_inference_root = Path(__file__).resolve().parent.parent
+
     parser = argparse.ArgumentParser(
         description="Prepare CosmoSIS inference FITS files from real or mock data. "
         "Supports multiple xi input formats (separate files, combined FITS).",
@@ -550,10 +566,10 @@ Example for glass mock v0 (mock data):
     parser.add_argument(
         "--output-root",
         type=str,
-        required=True,
+        default=str(cosmo_inference_root),
         help=(
-            "Cosmo inference root directory (e.g., /home/guerrini/sp_validation/cosmo_inference). "
-            "FITS and config files are written under this root."
+            "Base directory for generated outputs (defaults to the cosmo_inference "
+            "folder containing this script)."
         ),
     )
     parser.add_argument(
@@ -563,6 +579,15 @@ Example for glass mock v0 (mock data):
         help=(
             "Optional override for the output sub-directory/basename inside --output-root. "
             "Defaults to --cosmosis-root."
+        ),
+    )
+    parser.add_argument(
+        "--template-dir",
+        type=str,
+        default=str(cosmo_inference_root / "cosmosis_config"),
+        help=(
+            "Directory containing CosmoSIS template INI files (defaults to the "
+            "cosmosis_config folder next to this script)."
         ),
     )
 
@@ -575,6 +600,7 @@ if __name__ == "__main__":
     try:
         output_basename = args.output_basename or args.cosmosis_root
         output_root_path = Path(args.output_root).expanduser().resolve()
+        template_dir_path = Path(args.template_dir).expanduser().resolve()
         output_basename_path = Path(output_basename)
         data_dir_root = output_root_path / "data" / output_basename_path
         config_dir_root = output_root_path / "cosmosis_config"
@@ -584,6 +610,7 @@ if __name__ == "__main__":
         args.output_root = str(output_root_path)
         args.output_config_dir = str(config_dir_root)
         args.output_basename = str(output_basename_path)
+        args.template_dir = str(template_dir_path)
         args.config_name_base = str(output_basename_path).replace("/", "_")
         args.config_relative_fits = str(
             Path("data") / output_basename_path / f"cosmosis_{args.cosmosis_root}.fits"
