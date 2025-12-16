@@ -10,7 +10,7 @@ To run the pipeline, one would need to have installed [CosmoSIS](https://cosmosi
 The inference pipeline is now orchestrated through Python. Run the main Snakemake workflow from the parent directory:
 
 ```bash
-snakemake --profile slurm -j<jobs> inference_fiducial
+snakemake -j<jobs> inference_fiducial
 ```
 
 This will automatically execute all steps:
