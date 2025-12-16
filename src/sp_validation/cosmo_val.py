@@ -1,5 +1,7 @@
 # %%
+import copy
 import os
+from pathlib import Path
 import configparser
 
 import colorama
@@ -19,15 +21,169 @@ from uncertainties import ufloat
 
 from .cosmology import get_cosmo, get_theo_c_ell
 from .plots import FootprintPlotter
-from .rho_tau import get_params_rho_tau, get_rho_tau_w_cov, get_samples
+from .rho_tau import (
+    get_params_rho_tau,
+    get_rho_tau_w_cov,
+    get_samples,
+)
 
 
 # %%
 class CosmologyValidation:
+    """Framework for cosmic shear validation and systematics analysis.
+
+    Handles two-point correlation function measurements, PSF systematics (rho/tau),
+    pseudo-C_ell analysis, and covariance estimation for weak lensing surveys.
+    Supports multiple catalog versions with automatic leakage-corrected variants.
+
+    Parameters
+    ----------
+    versions : list of str
+        Catalog version identifiers to analyze. Appending '_leak_corr' to a base
+        version creates a virtual catalog using leakage-corrected ellipticity columns
+        (e1_col_corrected/e2_col_corrected) from the base version configuration.
+    catalog_config : str, default './cat_config.yaml'
+        Path to catalog configuration YAML defining survey metadata, file paths,
+        and analysis settings for each version.
+    output_dir : str, optional
+        Override for output directory. If None, uses catalog config's paths.output.
+    rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
+        Fitting method for PSF leakage systematics parameters.
+    cov_estimate_method : {'th', 'jk'}, default 'th'
+        Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife.
+    compute_cov_rho : bool, default True
+        Whether to compute covariance for rho statistics during PSF analysis.
+    n_cov : int, default 100
+        Number of realizations for covariance estimation when using theory method.
+    theta_min : float, default 0.1
+        Minimum angular separation in arcminutes for correlation function binning.
+    theta_max : float, default 250
+        Maximum angular separation in arcminutes for correlation function binning.
+    nbins : int, default 20
+        Number of angular bins for TreeCorr real-space correlation functions.
+    var_method : {'jackknife', 'sample', 'bootstrap', 'marked_bootstrap'}, default 'jackknife'
+        TreeCorr variance estimation method.
+    npatch : int, default 20
+        Number of spatial patches for jackknife variance estimation.
+    quantile : float, default 0.1587
+        Quantile for uncertainty bands in plots (default: 1-sigma ≈ 0.159).
+    theta_min_plot : float, default 0.08
+        Minimum angular scale for plotting (may differ from analysis cut).
+    theta_max_plot : float, default 250
+        Maximum angular scale for plotting.
+    ylim_alpha : list of float, default [-0.005, 0.05]
+        Y-axis limits for alpha systematic parameter plots.
+    ylim_xi_sys_ratio : list of float, default [-0.02, 0.5]
+        Y-axis limits for xi systematics ratio plots.
+    nside : int, default 1024
+        HEALPix resolution for pseudo-C_ell analysis and area computation.
+    binning : {'powspace', 'linspace', 'logspace'}, default 'powspace'
+        Ell binning scheme for pseudo-C_ell (powspace = ell^power spacing).
+    power : float, default 0.5
+        Exponent for power-law binning when binning='powspace'.
+    n_ell_bins : int, default 32
+        Number of ell bins for pseudo-C_ell analysis.
+    pol_factor : bool, default True
+        Apply polarization correction factor in pseudo-C_ell calculations.
+    nrandom_cell : int, default 10
+        Number of random realizations for C_ell error estimation.
+    cosmo_params : dict, optional
+        Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
+
+    Attributes
+    ----------
+    versions : list of str
+        Validated catalog versions after processing _leak_corr variants.
+    cc : dict
+        Loaded catalog configuration with resolved absolute paths.
+    catalog_config_path : Path
+        Resolved path to the catalog configuration file.
+    treecorr_config : dict
+        Configuration dictionary passed to TreeCorr correlation objects.
+    cosmo : pyccl.Cosmology
+        Cosmology object for theory predictions.
+
+    Notes
+    -----
+    - Path resolution: Relative paths in catalog config are resolved using each
+      version's 'subdir' field as the base directory.
+    - Virtual _leak_corr versions: These create deep copies of the base version
+      config, swapping e1_col/e2_col with e1_col_corrected/e2_col_corrected.
+    - TreeCorr cross_patch_weight: Automatically set to 'match' for jackknife,
+      'simple' otherwise, following TreeCorr best practices.
+    """
+
+    @staticmethod
+    def _split_seed_variant(version):
+        """Return the base version and seed label if version encodes a seed."""
+        if "_seed" not in version:
+            return None, None
+        base, seed_label = version.rsplit("_seed", 1)
+        if not base or not seed_label.isdigit():
+            return None, None
+        return base, seed_label
+
+    @staticmethod
+    def _materialize_seed_path(
+        base_cfg, seed_label, version, base_version, catalog_config
+    ):
+        """Render the seed-specific shear path using Python string formatting."""
+        shear_cfg = base_cfg["shear"]
+        template = shear_cfg.get("path_template")
+
+        try:
+            seed_value = int(seed_label)
+        except ValueError as error:
+            raise ValueError(
+                f"Seed suffix for '{version}' is not numeric; cannot materialize path."
+            ) from error
+
+        format_context = {"seed": seed_value, "seed_label": seed_label}
+
+        if template:
+            try:
+                return template.format(**format_context)
+            except KeyError as error:
+                raise KeyError(
+                    f"Missing placeholder '{error.args[0]}' in path_template for "
+                    f"'{base_version}' while materializing '{version}'. Update "
+                    f"{catalog_config}."
+                ) from error
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid format specification in path_template for '{base_version}' "
+                    f"while materializing '{version}'."
+                ) from error
+
+        path = shear_cfg.get("path", "")
+        token_start = path.rfind("seed")
+        if token_start == -1:
+            raise ValueError(
+                f"Cannot materialize '{version}': '{base_version}' lacks a shear "
+                f"path_template and its shear path '{path}' does not contain a 'seed' "
+                f"token. Update {catalog_config}."
+            )
+        cursor = token_start + 4  # len("seed")
+        if cursor < len(path) and not path[cursor].isdigit():
+            cursor += 1
+        digit_start = cursor
+        while cursor < len(path) and path[cursor].isdigit():
+            cursor += 1
+        digit_end = cursor
+        digits = path[digit_start:digit_end]
+        if not digits:
+            raise ValueError(
+                f"Cannot materialize '{version}': shear path '{path}' for base version "
+                f"'{base_version}' lacks digits after the seed token. Update "
+                f"{catalog_config}."
+            )
+
+        template = f"{path[:digit_start]}{{seed_label}}{path[digit_end:]}"
+        return template.format(**format_context)
+
     def __init__(
         self,
         versions,
-        data_base_dir,
         catalog_config="./cat_config.yaml",
         output_dir=None,
         rho_tau_method="lsq",
@@ -54,10 +210,7 @@ class CosmologyValidation:
         nrandom_cell=10,
         path_onecovariance=None,
         cosmo_params=None,
-        redshift_file=None
     ):
-        self.versions = versions
-        self.data_base_dir = data_base_dir
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
@@ -92,8 +245,6 @@ class CosmologyValidation:
             # Use Planck 2018 defaults
             self.cosmo = get_cosmo()
 
-        # load redshift distribution from file if provided
-        self.z_dist = np.loadtxt(redshift_file) if redshift_file is not None else None
 
         self.treecorr_config = {
             "ra_units": "degrees",
@@ -106,25 +257,231 @@ class CosmologyValidation:
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
         }
 
-        with open(catalog_config, "r") as file:
+        self.catalog_config_path = Path(catalog_config)
+        with self.catalog_config_path.open("r") as file:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
-        for ver in ["nz", *versions]:
-            if ver not in cc:
-                raise KeyError(
-                    f"Version string {ver} not found in config file{catalog_config}"
-                )
-            version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
+        def resolve_paths_for_version(ver):
+            """Resolve relative paths for a version using its subdir."""
+            subdir = Path(cc[ver]["subdir"])
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
-                    cc[ver][key]["path"] = f"{version_base}/{cc[ver][key]['path']}"
+                    path = Path(cc[ver][key]["path"])
+                    cc[ver][key]["path"] = (
+                        str(path) if path.is_absolute() else str(subdir / path)
+                    )
+
+        resolve_paths_for_version("nz")
+        processed = {"nz"}
+        final_versions = []
+        leak_suffix = "_leak_corr"
+
+        def ensure_version_exists(ver):
+            if ver in processed:
+                return
+
+            if ver in cc:
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            seed_base, seed_label = self._split_seed_variant(ver)
+
+            if ver.endswith(leak_suffix):
+                base_ver = ver[: -len(leak_suffix)]
+                ensure_version_exists(base_ver)
+                shear_cfg = cc[base_ver]["shear"]
+                if "e1_col_corrected" not in shear_cfg or "e2_col_corrected" not in shear_cfg:
+                    raise ValueError(
+                        f"{base_ver} does not have e1_col_corrected/e2_col_corrected "
+                        f"fields; cannot create {ver}"
+                    )
+                if ver not in cc:
+                    cc[ver] = copy.deepcopy(cc[base_ver])
+                    cc[ver]["shear"]["e1_col"] = shear_cfg["e1_col_corrected"]
+                    cc[ver]["shear"]["e2_col"] = shear_cfg["e2_col_corrected"]
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            if seed_base is not None:
+                ensure_version_exists(seed_base)
+                if ver not in cc:
+                    cc[ver] = copy.deepcopy(cc[seed_base])
+                    seed_path = self._materialize_seed_path(
+                        cc[seed_base],
+                        seed_label,
+                        ver,
+                        seed_base,
+                        catalog_config,
+                    )
+                    cc[ver]["shear"]["path"] = seed_path
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            raise KeyError(
+                f"Version string {ver} not found in config file {catalog_config}"
+            )
+
+        for ver in versions:
+            ensure_version_exists(ver)
+            final_versions.append(ver)
+
+        self.versions = final_versions
 
         # Override output directory if provided
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
 
-        if not os.path.exists(cc["paths"]["output"]):
-            os.mkdir(cc["paths"]["output"])
+        os.makedirs(cc["paths"]["output"], exist_ok=True)
+
+    def get_redshift(self, version):
+        """Load redshift distribution for a catalog version.
+
+        Parameters
+        ----------
+        version : str
+            Catalog version identifier
+
+        Returns
+        -------
+        z : ndarray
+            Redshift values
+        nz : ndarray
+            n(z) probability density
+        """
+        redshift_path = self.cc[version]["shear"]["redshift_path"]
+        return np.loadtxt(redshift_path, unpack=True)
+
+    def compute_survey_stats(
+        self,
+        ver,
+        weights_key_override=None,
+        mask_path=None,
+        nside=None,
+        overwrite_config=False,
+    ):
+        """Compute effective survey statistics for a catalog version.
+
+        Parameters
+        ----------
+        ver : str
+            Version string registered in the catalog config.
+        weights_key_override : str, optional
+            Override the weight column key (defaults to the configured `w_col`).
+        mask_path : str, optional
+            Explicit mask path to use when measuring survey area.
+        nside : int, optional
+            If provided, compute survey area from the catalog using this NSIDE when no
+            mask path is available.
+        overwrite_config : bool, optional
+            If True, persist the derived statistics back to the catalog configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - area_deg2: Survey area in square degrees.
+            - n_eff: Effective number density per arcmin^2.
+            - sigma_e: Per-component shape noise.
+            - sum_w: Sum of weights.
+            - sum_w2: Sum of squared weights.
+            - catalog_size: Number of galaxies processed.
+        """
+        if ver not in self.cc:
+            raise KeyError(f"Version {ver} not found in catalog configuration")
+
+        shear_cfg = self.cc[ver]["shear"]
+        cov_th = self.cc[ver].get("cov_th", {})
+
+        if "path" not in shear_cfg:
+            raise KeyError(f"No shear catalog path defined for version {ver}")
+
+        catalog_path = shear_cfg["path"]
+        if not os.path.exists(catalog_path):
+            raise FileNotFoundError(f"Shear catalog not found: {catalog_path}")
+
+        data = fits.getdata(catalog_path, memmap=True)
+        n_rows = len(data)
+
+        e1 = np.asarray(data[shear_cfg["e1_col"]], dtype=float)
+        e2 = np.asarray(data[shear_cfg["e2_col"]], dtype=float)
+
+        weight_column = weights_key_override or shear_cfg["w_col"]
+        if weight_column not in data.columns.names:
+            raise KeyError(f"Weight column '{weight_column}' missing in {catalog_path}")
+
+        w = np.asarray(data[weight_column], dtype=float)
+
+        sum_w = float(np.sum(w))
+        sum_w2 = float(np.sum(w**2))
+        sum_w2_e2 = float(np.sum((w**2) * (e1**2 + e2**2)))
+
+        if mask_path is not None:
+            if not os.path.exists(mask_path):
+                raise FileNotFoundError(f"Mask path not found: {mask_path}")
+            mask_candidate = mask_path
+        else:
+            mask_candidate = self.cc[ver].get("mask")
+            if isinstance(mask_candidate, str) and not os.path.isabs(mask_candidate):
+                mask_candidate = str(Path(self.cc[ver]["subdir"]) / mask_candidate)
+            if mask_candidate is not None and not os.path.exists(mask_candidate):
+                mask_candidate = None
+
+        area_deg2 = None
+        if mask_candidate is not None and os.path.exists(mask_candidate):
+            area_deg2 = self._area_from_mask(mask_candidate)
+        elif cov_th.get("A") is not None:
+            area_deg2 = float(cov_th["A"])
+        elif nside is not None:
+            area_deg2 = self._area_from_catalog(catalog_path, nside)
+        else:
+            raise ValueError(
+                f"Unable to determine survey area for {ver}. Provide mask_path or nside."
+            )
+
+        area_arcmin2 = area_deg2 * 3600.0
+
+        n_eff = (sum_w**2) / (area_arcmin2 * sum_w2) if sum_w2 > 0 else 0.0
+        sigma_e = np.sqrt(sum_w2_e2 / sum_w2) if sum_w2 > 0 else 0.0
+
+        results = {
+            "area_deg2": area_deg2,
+            "n_eff": n_eff,
+            "sigma_e": sigma_e,
+            "sum_w": sum_w,
+            "sum_w2": sum_w2,
+            "catalog_size": n_rows,
+        }
+
+        if overwrite_config:
+            if "cov_th" not in self.cc[ver]:
+                self.cc[ver]["cov_th"] = {}
+            self.cc[ver]["cov_th"]["A"] = float(area_deg2)
+            self.cc[ver]["cov_th"]["n_e"] = float(n_eff)
+            self.cc[ver]["cov_th"]["sigma_e"] = float(sigma_e)
+            self._write_catalog_config()
+
+        return results
+
+    def _area_from_catalog(self, catalog_path, nside):
+        data = fits.getdata(catalog_path, memmap=True)
+        ra = np.asarray(data["RA"], dtype=float)
+        dec = np.asarray(data["Dec"], dtype=float)
+        theta = np.radians(90.0 - dec)
+        phi = np.radians(ra)
+        pix = hp.ang2pix(nside, theta, phi, lonlat=False)
+        unique_pix = np.unique(pix)
+        return float(unique_pix.size * hp.nside2pixarea(nside, degrees=True))
+
+    def _area_from_mask(self, mask_map_path):
+        mask = hp.read_map(mask_map_path, dtype=np.float64)
+        return float(mask.sum() * hp.nside2pixarea(hp.get_nside(mask), degrees=True))
+
+    def _write_catalog_config(self):
+        with self.catalog_config_path.open("w") as file:
+            yaml.dump(self.cc, file, sort_keys=False)
 
     def color_reset(self):
         print(colorama.Fore.BLACK, end="")
@@ -239,6 +596,17 @@ class CosmologyValidation:
             self._results_objectwise = self.init_results(objectwise=True)
         return self._results_objectwise
 
+    def basename(self, version, treecorr_config=None, npatch=None):
+        cfg = treecorr_config or self.treecorr_config
+        patches = npatch or self.npatch
+        return (
+            f"{version}_minsep={cfg['min_sep']}"
+            f"_maxsep={cfg['max_sep']}"
+            f"_nbins={cfg['nbins']}"
+            f"_npatch={patches}"
+        )
+
+
     def calculate_rho_tau_stats(self):
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
@@ -246,13 +614,16 @@ class CosmologyValidation:
 
         self.print_start("Rho stats")
         for ver in self.versions:
+            base = self.basename(ver)
             rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
                 self.cc,
                 ver,
                 self.treecorr_config,
                 out_dir,
+                base,
                 method=self.cov_estimate_method,
                 cov_rho=self.compute_cov_rho,
+                npatch=self.npatch,
             )
         self.print_done("Rho stats finished")
 
@@ -372,7 +743,9 @@ class CosmologyValidation:
         self._ellipticity_dispersion = ellipticity_dispersion
 
     def plot_rho_stats(self, abs=False):
-        filenames = [f"rho_stats_{ver}.fits" for ver in self.versions]
+        filenames = [
+            f"rho_stats_{self.basename(ver)}.fits" for ver in self.versions
+        ]
 
         savefig = "rho_stats.png"
         self.rho_stat_handler.plot_rho_stats(
@@ -392,7 +765,9 @@ class CosmologyValidation:
         )
 
     def plot_tau_stats(self, plot_tau_m=False):
-        filenames = [f"tau_stats_{ver}.fits" for ver in self.versions]
+        filenames = [
+            f"tau_stats_{self.basename(ver)}.fits" for ver in self.versions
+        ]
 
         savefig = "tau_stats.png"
         self.tau_stat_handler.plot_tau_stats(
@@ -472,9 +847,12 @@ class CosmologyValidation:
                 self.cov_estimate_method, None
             )
 
+            base = self.basename(ver)
+
             flat_samples, result, q = get_samples(
                 self.psf_fitter,
                 ver,
+                base,
                 cov_type=self.cov_estimate_method,
                 apply_debias=npatch,
                 sampler=self.rho_tau_method,
@@ -484,7 +862,7 @@ class CosmologyValidation:
             self.rho_tau_fits["result_list"].append(result)
             self.rho_tau_fits["q_list"].append(q)
 
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
             xi_psf_sys_samples = np.array([]).reshape(0, nbins)
 
@@ -529,7 +907,7 @@ class CosmologyValidation:
             self.colors,
             self.rho_tau_fits["flat_sample_list"],
         ):
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             for i in range(100):
                 self.psf_fitter.plot_xi_psf_sys(
                     flat_sample[-i + 1], ver, color, alpha=0.1
@@ -579,7 +957,7 @@ class CosmologyValidation:
             self.versions,
             self.rho_tau_fits["flat_sample_list"],
         ):
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             for yscale in ("linear", "log"):
                 out_path = os.path.abspath(
                     f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
@@ -1620,7 +1998,6 @@ class CosmologyValidation:
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
-        redshift_file=None,
         n_samples=1000,
     ):
         """
@@ -1718,18 +2095,8 @@ class CosmologyValidation:
 
         # Get redshift distribution if using analytic covariance
         if cov_path_int is not None:
-            if redshift_file is None:
-                try:
-                    print("Inheriting redshift distribution from self.z_dist")
-                    z_dist = self.z_dist
-                except AttributeError:
-                    raise ValueError(
-                        "redshift distribution must be provided either to this function"
-                        " or to the CosmologyValidation class upon creation "
-                        "if using an analytic covariance."
-                    )
-            else:
-                z_dist = np.loadtxt(redshift_file)
+            z, nz = self.get_redshift(version)
+            z_dist = np.column_stack([z, nz])
         else:
             z_dist = None
 
@@ -1762,7 +2129,6 @@ class CosmologyValidation:
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
-        redshift_file=None,
         n_samples=1000,
         results=None,
         **kwargs
@@ -1800,8 +2166,6 @@ class CosmologyValidation:
             Path to integration covariance matrix for semi-analytical calculation
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology for theoretical predictions in semi-analytical covariance
-        redshift_file : str, optional
-            Path to redshift distribution file for semi-analytical covariance
         n_samples : int
             Number of Monte Carlo samples for semi-analytical covariance (default: 1000)
         results : dict or list, optional
@@ -1889,7 +2253,6 @@ class CosmologyValidation:
                     var_method=var_method,
                     cov_path_int=cov_path_int,
                     cosmo_cov=cosmo_cov,
-                    redshift_file=redshift_file,
                     n_samples=n_samples,
                 )
 
@@ -2117,7 +2480,6 @@ class CosmologyValidation:
             plot_cosebis_covariance_matrix,
             plot_cosebis_modes,
             plot_cosebis_scale_cut_heatmap,
-            scale_cut_to_bins,
         )
 
         # Use instance defaults if not specified
@@ -2127,8 +2489,8 @@ class CosmologyValidation:
 
         # Determine variance method based on whether theoretical covariance is used
         var_method = "analytic" if cov_path is not None else "jackknife"
-        
-        # Create output filename with integration parameters to match Snakemake expectations
+
+        # Create output filename with integration parameters to match Snakemake
         out_stub = (
             f"{output_dir}/{version}_cosebis_minsep={min_sep_int}_"
             f"maxsep={max_sep_int}_nbins={nbins_int}_npatch={npatch}_"
@@ -2166,7 +2528,9 @@ class CosmologyValidation:
             # Multiple scale cuts: use fiducial_scale_cut if provided, otherwise use
             # full range
             if fiducial_scale_cut is not None:
-                plot_results = results[find_conservative_scale_cut_key(results, fiducial_scale_cut)]
+                plot_results = results[
+                    find_conservative_scale_cut_key(results, fiducial_scale_cut)
+                ]
             else:
                 # Use full range result (largest scale cut)
                 max_range_key = max(results.keys(), key=lambda x: x[1] - x[0])
@@ -2200,7 +2564,9 @@ class CosmologyValidation:
                 "max_sep": max_sep or self.treecorr_config["max_sep"],
                 "nbins": nbins or self.treecorr_config["nbins"],
             }
-            gg_temp = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_temp)
+            gg_temp = self.calculate_2pcf(
+                version, npatch=npatch, **treecorr_config_temp
+            )
 
             plot_cosebis_scale_cut_heatmap(
                 results,
@@ -2238,13 +2604,18 @@ class CosmologyValidation:
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
-                lmax = 2*self.nside
-                path_redshift_distr = self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
+                lmax = 2 * self.nside
+                z, dndz = self.get_redshift(ver)
+                ell = np.arange(1, lmax + 1)
                 pw = hp.pixwin(nside, lmax=lmax)
+                if pw.shape[0] != len(ell) + 1:
+                    raise ValueError(
+                        "Unexpected pixwin length for lmax="
+                        f"{lmax}: got {pw.shape[0]}, expected {len(ell)+1}"
+                    )
+                pw = pw[1:len(ell)+1]
 
                 # Load redshift distribution and calculate theory C_ell
-                z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
-                ell = np.arange(1, lmax + 1)
                 fiducial_cl = (
                     get_theo_c_ell(
                         ell=ell,
