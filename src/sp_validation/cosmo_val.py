@@ -2637,11 +2637,14 @@ class CosmologyValidation:
                 lmax = 2*self.nside
                 b_lmax = lmax - 1
 
-                if self.binning == 'linear':
-                    b = nmt.NmtBin.from_nside_linear(self.nside, self.ell_step)
-                elif self.binning == 'powspace':
-                    ells = np.arange(lmin, lmax+1)
+                ells = np.arange(lmin, lmax+1)
 
+                if self.binning == 'linear':
+                    # Linear bands of width ell_step, respecting actual lmax
+                    bpws = (ells - lmin) // self.ell_step
+                    bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
+                    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+                elif self.binning == 'powspace':
                     start = np.power(lmin, self.power)
                     end = np.power(lmax, self.power)
                     bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
@@ -3032,11 +3035,14 @@ class CosmologyValidation:
         lmax = 2*self.nside
         b_lmax = lmax - 1
 
-        if self.binning == 'linear':
-            b = nmt.NmtBin.from_nside_linear(self.nside, self.ell_step)
-        elif self.binning == 'powspace':
-            ells = np.arange(lmin, lmax+1)
+        ells = np.arange(lmin, lmax+1)
 
+        if self.binning == 'linear':
+            # Linear bands of width ell_step, respecting actual lmax
+            bpws = (ells - lmin) // self.ell_step
+            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        elif self.binning == 'powspace':
             start = np.power(lmin, self.power)
             end = np.power(lmax, self.power)
             bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
@@ -3053,7 +3059,7 @@ class CosmologyValidation:
         factor = -1 if self.pol_factor else 1
 
         f_all = nmt.NmtField(mask=(map!=0), maps=[map.real, factor*map.imag], lmax=b_lmax)
-        
+
         if wsp is None:
             wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
         
@@ -3071,11 +3077,14 @@ class CosmologyValidation:
         lmax = 2*self.nside
         b_lmax = lmax - 1
 
-        if self.binning == 'linear':
-            b = nmt.NmtBin.from_nside_linear(self.nside, self.ell_step)
-        elif self.binning == 'powspace':
-            ells = np.arange(lmin, lmax+1)
+        ells = np.arange(lmin, lmax+1)
 
+        if self.binning == 'linear':
+            # Linear bands of width ell_step, respecting actual lmax
+            bpws = (ells - lmin) // self.ell_step
+            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        elif self.binning == 'powspace':
             start = np.power(lmin, self.power)
             end = np.power(lmax, self.power)
             bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)

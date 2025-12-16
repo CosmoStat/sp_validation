@@ -199,7 +199,7 @@ rule cl_version_comparison:
             f"{CONFIG_DIR}/cl_fiducial.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        cl_fiducial_evidence=f"{CLAIMS_DIR}/cl_fiducial/evidence.json",
+        cl_fiducial_evidence=rules.cl_data_vector.output.evidence,
         pseudo_cl=[
             f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
             for ver in config["versions"]
@@ -231,7 +231,7 @@ rule pure_eb_pte_matrix:
             f"{CONFIG_DIR}/2d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pure_eb_evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
+        pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
         # Pre-computed PTE matrices (from calculate_pure_eb_ptes.py)
         pte_data=f"results/paper_plots/intermediate/{config['fiducial']['version']}_pure_eb_ptes.npz",
     output:
@@ -424,12 +424,13 @@ rule harmonic_config_cosebis_comparison:
     input:
         spec=f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
         config=f"{CONFIG_DIR}/config.yaml",
+        # Finely-binned pseudo-Cls (nellbins=1000, linear Δℓ=16) for accurate COSEBIS conversion
         pseudo_cls=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_{ver}_nellbins=1000.fits"
             for ver in config["versions"]
         ],
         pseudo_cls_cov=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_nellbins=1000.fits"
             for ver in config["versions"]
         ],
         cov_integration=[
@@ -474,9 +475,9 @@ rule xi_cosmology_paper:
     """
     input:
         spec=f"{CONFIG_DIR}/xi_cosmology_paper.md",
-        cosebis_evidence=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
-        pure_eb_evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
-        covariance_evidence=f"{CLAIMS_DIR}/covariance_blind_consistency/evidence.json",
+        cosebis_evidence=rules.cosebis_version_comparison.output.evidence,
+        pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
+        covariance_evidence=rules.covariance_blind_consistency.output.evidence,
     output:
         macros="docs/unions_release/unions_2d_shear_xi/claims_macros.tex",
         evidence=f"{CLAIMS_DIR}/xi_cosmology_paper/evidence.json",
@@ -489,11 +490,11 @@ rule xi_cosmology_paper:
 rule paper_macros:
     """Generate LaTeX macros and tables for B-modes paper (Daley et al.)."""
     input:
-        cosebis_evidence=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
-        pure_eb_evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
+        cosebis_evidence=rules.cosebis_version_comparison.output.evidence,
+        pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
         # PTE composite evidence for table generation
-        config_space_pte=f"{CLAIMS_DIR}/config_space_pte_matrices/evidence.json",
-        harmonic_space_pte=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",
+        config_space_pte=rules.config_space_pte_matrices.output.evidence,
+        harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,
     output:
         bmodes="docs/unions_release/unions_bmodes/claims_macros.tex",
         pte_table_results="docs/unions_release/unions_bmodes/pte_table_results.tex",
@@ -536,17 +537,35 @@ rule all_method_specs:
 rule bmodes_paper_spec:
     """Generate evidence.json for bmodes_paper spec.
 
-    Dependencies parsed from markdown 'Depends on:' line.
+    Dependencies include both evidence files and figure outputs to ensure
+    dashboard regenerates all stale plots.
     """
     input:
         spec=f"{CONFIG_DIR}/bmodes_paper.md",
-        # Explicit upstream evidence (from Depends on: line in spec)
-        pure_eb_covariance=f"{CLAIMS_DIR}/pure_eb_covariance/evidence.json",
-        pure_eb_data_vector=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
-        cosebis_version_comparison=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
-        cl_fiducial=f"{CLAIMS_DIR}/cl_fiducial/evidence.json",
-        config_space_pte=f"{CLAIMS_DIR}/config_space_pte_matrices/evidence.json",
-        harmonic_space_pte=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",
+        # Upstream evidence (using rules.X.output for single source of truth)
+        pure_eb_covariance=rules.pure_eb_covariance.output.evidence,
+        pure_eb_data_vector=rules.pure_eb_data_vector.output.evidence,
+        cosebis_version_comparison=rules.cosebis_version_comparison.output.evidence,
+        cl_fiducial=rules.cl_data_vector.output.evidence,
+        config_space_pte=rules.config_space_pte_matrices.output.evidence,
+        harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,
+        # Figure dependencies from bmodes.smk (ensures dashboard triggers regeneration)
+        plot_eb_xis=expand(
+            "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_varmethod=semi-analytic_xis.png",
+            version=config["versions"],
+            min_sep=config["fiducial"]["min_sep"],
+            max_sep=config["fiducial"]["max_sep"],
+            nbins=config["fiducial"]["nbins"],
+            min_sep_int=config["fiducial"]["min_sep_int"],
+            max_sep_int=config["fiducial"]["max_sep_int"],
+            nbins_int=config["fiducial"]["nbins_int"],
+            npatch=config["fiducial"]["npatch"],
+        ),
+        plot_cosebis_modes=expand(
+            "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/{version}_cosebis_minsep=" + str(config['fiducial']['min_sep_int']) + "_maxsep=" + str(config['fiducial']['max_sep_int']) + "_nbins=" + str(config['fiducial']['nbins_int']) + "_npatch={npatch}_varmethod=analytic_nmodes=" + str(config['fiducial']['nmodes']) + "_scalecut=" + str(config['fiducial']['fiducial_min_scale']) + "-" + str(config['fiducial']['fiducial_max_scale']) + "_cosebis.png",
+            version=config["versions"],
+            npatch=config["fiducial"]["npatch"],
+        ),
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:

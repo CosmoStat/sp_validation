@@ -151,3 +151,56 @@ localrules:
     bmodes_all,
     bmodes_pdf,
     # Note: plot_eb and plot_cosebis removed from localrules - they now run on compute nodes
+
+
+# Output directory for cosmo_val results
+COSMO_VAL_OUTPUT = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output"
+CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
+
+
+rule fine_pseudo_cl:
+    """Generate finely-binned pseudo-Cls for accurate C_ℓ → COSEBIS conversion.
+
+    Uses linear binning with configurable ell_step (default 1 for single-ell bins).
+    """
+    output:
+        pseudo_cl=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{{version}}_ellstep={{ell_step}}.fits",
+        pseudo_cl_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{{version}}_ellstep={{ell_step}}.fits",
+    params:
+        version="{version}",
+        ell_step=lambda w: int(w.ell_step),
+        cat_config=CAT_CONFIG,
+        nside=1024,
+        npatch=1,
+    resources:
+        mem_mb=32000,
+        runtime=120,  # minutes
+    threads: 48
+    script:
+        "../scripts/generate_fine_pseudo_cl.py"
+
+
+rule fine_pseudo_cl_fiducial:
+    """Generate finely-binned pseudo-Cls for fiducial version with ell_step=1."""
+    input:
+        rules.fine_pseudo_cl.output.pseudo_cl.format(
+            version=config["fiducial"]["version"],
+            ell_step=1,
+        ),
+        rules.fine_pseudo_cl.output.pseudo_cl_cov.format(
+            version=config["fiducial"]["version"],
+            ell_step=1,
+        ),
+
+
+rule fine_pseudo_cl_all:
+    """Generate finely-binned pseudo-Cls for all versions."""
+    input:
+        [
+            rules.fine_pseudo_cl.output.pseudo_cl.format(version=ver, ell_step=1)
+            for ver in bmodes_versions()
+        ],
+        [
+            rules.fine_pseudo_cl.output.pseudo_cl_cov.format(version=ver, ell_step=1)
+            for ver in bmodes_versions()
+        ],
