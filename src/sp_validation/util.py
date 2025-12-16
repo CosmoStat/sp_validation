@@ -42,3 +42,8 @@ def millify(n):
     )
 
     return f'{n / 10**(3 * millidx):.0f}{millnames[millidx]}'
+
+
+def print_millified(msg, n):
+
+    print(f"{msg} = {n} = {millify(n)}")
