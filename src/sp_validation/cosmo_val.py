@@ -82,7 +82,9 @@ class CosmologyValidation:
     power : float, default 0.5
         Exponent for power-law binning when binning='powspace'.
     n_ell_bins : int, default 32
-        Number of ell bins for pseudo-C_ell analysis.
+        Number of ell bins for pseudo-C_ell analysis (used with binning='powspace').
+    ell_step : int, default 10
+        Bin width in ell for linear binning (used with binning='linear').
     pol_factor : bool, default True
         Apply polarization correction factor in pseudo-C_ell calculations.
     nrandom_cell : int, default 10
@@ -205,6 +207,7 @@ class CosmologyValidation:
         binning="powspace",
         power=1 / 2,
         n_ell_bins=32,
+        ell_step=10,
         pol_factor=True,
         cell_method='map',
         nrandom_cell=10,
@@ -229,6 +232,7 @@ class CosmologyValidation:
         self.binning = binning
         self.power = power
         self.n_ell_bins = n_ell_bins
+        self.ell_step = ell_step
         self.pol_factor = pol_factor
         self.nrandom_cell = nrandom_cell
         self.cell_method = cell_method
@@ -2634,8 +2638,7 @@ class CosmologyValidation:
                 b_lmax = lmax - 1
 
                 if self.binning == 'linear':
-                    step = 10
-                    b = nmt.NmtBin.from_nside_linear(self.nside, step)
+                    b = nmt.NmtBin.from_nside_linear(self.nside, self.ell_step)
                 elif self.binning == 'powspace':
                     ells = np.arange(lmin, lmax+1)
 
@@ -3030,8 +3033,7 @@ class CosmologyValidation:
         b_lmax = lmax - 1
 
         if self.binning == 'linear':
-            step = 10
-            b = nmt.NmtBin.from_nside_linear(self.nside, step)
+            b = nmt.NmtBin.from_nside_linear(self.nside, self.ell_step)
         elif self.binning == 'powspace':
             ells = np.arange(lmin, lmax+1)
 
@@ -3070,8 +3072,7 @@ class CosmologyValidation:
         b_lmax = lmax - 1
 
         if self.binning == 'linear':
-            step = 10
-            b = nmt.NmtBin.from_nside_linear(self.nside, step)
+            b = nmt.NmtBin.from_nside_linear(self.nside, self.ell_step)
         elif self.binning == 'powspace':
             ells = np.arange(lmin, lmax+1)
 
