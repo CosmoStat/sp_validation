@@ -2926,7 +2926,7 @@ class CosmologyValidation:
 
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map)
 
-        cl_noise = np.zeros((4, self.n_ell_bins))
+        cl_noise = np.zeros_like(cl_shear)
         
         for i in range(self.nrandom_cell):
 
