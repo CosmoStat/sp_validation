@@ -412,11 +412,58 @@ rule harmonic_space_pte_matrices:
         "../scripts/harmonic_space_pte_matrices.py"
 
 
+rule harmonic_config_cosebis_comparison:
+    """Cross-validate COSEBIS from harmonic-space C_ℓ vs configuration-space ξ±.
+
+    Tests consistency between two independent paths to COSEBIS:
+    - Harmonic: pseudo-C_ℓ → T_n(ℓ) integration → E_n, B_n
+    - Config: ξ± → W_n(θ) integration → E_n, B_n
+
+    Agreement validates both pseudo-C_ℓ estimation and COSEBIS machinery.
+    """
+    input:
+        spec=f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
+        config=f"{CONFIG_DIR}/config.yaml",
+        pseudo_cls=[
+            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
+            for ver in config["versions"]
+        ],
+        pseudo_cls_cov=[
+            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}.fits"
+            for ver in config["versions"]
+        ],
+        cov_integration=[
+            _covariance_path(
+                ver,
+                config["fiducial"]["min_sep_int"],
+                config["fiducial"]["max_sep_int"],
+                config["fiducial"]["nbins_int"],
+                blind="A",
+            )
+            for ver in config["versions"]
+        ],
+    output:
+        comparison=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure.png",
+        stats=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/stats.txt",
+    params:
+        versions=config["versions"],
+        nmodes_long=config["cosebis"]["nmodes"],
+        nmodes_short=config["cosebis"]["mode_subsets"][0],
+        theta_min=config["cosebis"]["theta_min"],
+        theta_max=config["cosebis"]["theta_max"],
+        min_sep_int=config["fiducial"]["min_sep_int"],
+        max_sep_int=config["fiducial"]["max_sep_int"],
+        nbins_int=config["fiducial"]["nbins_int"],
+        npatch=config["fiducial"]["npatch"],
+    script:
+        "../scripts/compare_harmonic_config_cosebis.py"
+
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Paper Integration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: xi_cosmology_paper, paper_macros, cl_data_vector, cl_version_comparison, pure_eb_pte_matrix, pure_eb_covariance, pure_eb_version_comparison, cosebis_pte_matrix, config_space_pte_matrices, harmonic_space_pte_matrices
+localrules: xi_cosmology_paper, paper_macros, cl_data_vector, cl_version_comparison, pure_eb_pte_matrix, pure_eb_covariance, pure_eb_version_comparison, cosebis_pte_matrix, config_space_pte_matrices, harmonic_space_pte_matrices, harmonic_config_cosebis_comparison
 
 rule xi_cosmology_paper:
     """Spec for B-mode reporting in configuration-space paper (Goh et al.).
