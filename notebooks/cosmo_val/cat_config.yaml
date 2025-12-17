@@ -992,6 +992,110 @@ SP_v1.4.8:
       square_size: True
    patch_number: 100
 
+# For additive bias only
+SP_v1.4.6_uncal:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1_uncal
+      e2_col: e2_uncal
+      w_col: w_des
+      R: 1.0
+   psf:
+      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      hdu: 1
+   patch_number: 100
+
+SP_v1.4.6_uncal_w_iv:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1_uncal
+      e2_col: e2_uncal
+      w_col: w_iv
+      R: 1.0
+   psf:
+      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      hdu: 1
+   patch_number: 100
+
+SP_v1.4.6_uncal_w_1:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1_uncal
+      e2_col: e2_uncal
+      w_col: one
+      R: 1.0
+   psf:
+      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      hdu: 1
+   patch_number: 100
+
+SP_v1.4.5_uncal:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1_uncal
+      e2_col: e2_uncal
+      w_col: w_des
+      R: 1.0
+   psf:
+      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      hdu: 1
+   patch_number: 100
+
+SP_v1.4.7_uncal:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1_uncal
+      e2_col: e2_uncal
+      w_col: w_des
+      R: 1.0
+   psf:
+      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      hdu: 1
+   patch_number: 100
+
+SP_v1.4.8_uncal:
+   pipeline: SP
+   subdir: CFIS/v1.0/ShapePipe/
+   shear:
+      path: ../../../../../../UNIONS/WL/v1.4.x/v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
+      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+      ra_col: RA
+      dec_col: Dec
+      e1_col: e1_uncal
+      e2_col: e2_uncal
+      w_col: w_des
+      R: 1.0
+   psf:
+      path: ../../../../../../UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
+      hdu: 1
+   patch_number: 100
+
+
 SP_v1.4.5.A:
    pipeline: SP
    subdir: CFIS/v1.0/ShapePipe/
