@@ -318,7 +318,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if not hasattr(self.cc[ver]['shear'], 'mask'):
+            if not ('mask' in self.cc[ver]['shear'].keys()):
                 print("Mask not found in config file, calculating area from binned catalog")
                 area[ver] = self.calculate_area_from_binned_catalog(ver)
             else:
