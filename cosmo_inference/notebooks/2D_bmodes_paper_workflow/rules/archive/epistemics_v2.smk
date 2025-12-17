@@ -424,30 +424,21 @@ rule harmonic_config_cosebis_comparison:
     input:
         spec=f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
         config=f"{CONFIG_DIR}/config.yaml",
-        # Finely-binned pseudo-Cls (nellbins=1000, linear Δℓ=16) for accurate COSEBIS conversion
-        pseudo_cls=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_{ver}_nellbins=1000.fits"
-            for ver in config["versions"]
-        ],
-        pseudo_cls_cov=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_nellbins=1000.fits"
-            for ver in config["versions"]
-        ],
-        cov_integration=[
-            _covariance_path(
-                ver,
-                config["fiducial"]["min_sep_int"],
-                config["fiducial"]["max_sep_int"],
-                config["fiducial"]["nbins_int"],
-                blind="A",
-            )
-            for ver in config["versions"]
-        ],
+        # Finely-binned pseudo-Cls (ellstep=1, single-ell bins) for accurate COSEBIS conversion
+        pseudo_cls=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}_ellstep=1.fits",
+        pseudo_cls_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_ellstep=1.fits",
+        cov_integration=_covariance_path(
+            config["fiducial"]["version"],
+            config["fiducial"]["min_sep_int"],
+            config["fiducial"]["max_sep_int"],
+            config["fiducial"]["nbins_int"],
+            blind="A",
+        ),
     output:
         comparison=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure.png",
         stats=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/stats.txt",
     params:
-        versions=config["versions"],
+        version=config["fiducial"]["version"],
         nmodes_long=config["cosebis"]["nmodes"],
         nmodes_short=config["cosebis"]["mode_subsets"][0],
         theta_min=config["cosebis"]["theta_min"],
@@ -549,23 +540,9 @@ rule bmodes_paper_spec:
         cl_fiducial=rules.cl_data_vector.output.evidence,
         config_space_pte=rules.config_space_pte_matrices.output.evidence,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,
-        # Figure dependencies from bmodes.smk (ensures dashboard triggers regeneration)
-        plot_eb_xis=expand(
-            "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/{version}_eb_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_minsepint={min_sep_int}_maxsepint={max_sep_int}_nbinsint={nbins_int}_npatch={npatch}_varmethod=semi-analytic_xis.png",
-            version=config["versions"],
-            min_sep=config["fiducial"]["min_sep"],
-            max_sep=config["fiducial"]["max_sep"],
-            nbins=config["fiducial"]["nbins"],
-            min_sep_int=config["fiducial"]["min_sep_int"],
-            max_sep_int=config["fiducial"]["max_sep_int"],
-            nbins_int=config["fiducial"]["nbins_int"],
-            npatch=config["fiducial"]["npatch"],
-        ),
-        plot_cosebis_modes=expand(
-            "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/{version}_cosebis_minsep=" + str(config['fiducial']['min_sep_int']) + "_maxsep=" + str(config['fiducial']['max_sep_int']) + "_nbins=" + str(config['fiducial']['nbins_int']) + "_npatch={npatch}_varmethod=analytic_nmodes=" + str(config['fiducial']['nmodes']) + "_scalecut=" + str(config['fiducial']['fiducial_min_scale']) + "-" + str(config['fiducial']['fiducial_max_scale']) + "_cosebis.png",
-            version=config["versions"],
-            npatch=config["fiducial"]["npatch"],
-        ),
+        # Paper figure dependencies (ensures dashboard regenerates version comparison plots)
+        pure_eb_version_comparison=rules.pure_eb_version_comparison.output.evidence,
+        cosebis_bmode_stacked=rules.cosebis_version_comparison.output.paper_stacked,
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:
