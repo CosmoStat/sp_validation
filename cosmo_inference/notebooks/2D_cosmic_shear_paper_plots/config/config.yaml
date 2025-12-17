@@ -1,19 +1,18 @@
-version: SP_v1.4.5
-plot_style: config/paper.mplstyle
+version: SP_v1.4.6
+chain: SP_v1.4.6_leak_corr_C_10_80
 
+# Data paths
+xi_data: /n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/data/xi_pm_SP_v1.4.6.txt
+bestfit_dir: /n09data/guerrini/output_chains/SP_v1.4.6_leak_corr_C_10_80/best_fit/SP_v1.4.6_leak_corr_C_10_80
+pure_eb_data: /n17data/cdaley/unions/pure_eb/results/paper_plots/intermediate/SP_v1.4.6_leak_corr_C_pure_eb_semianalytic.npz
+
+# Scale cuts (arcmin)
+scale_min: 10
+scale_max: 80
+
+# Plot style
+plot_style: /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle
+
+# Legacy config for old rules (if needed)
 ini_dirs:
-  - /n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/cosmosis_config/pipeline/
   - /home/guerrini/sp_validation/cosmo_inference/cosmosis_config/
-
-
-# chain: SP_v1.4.5_C_sc_10_150_new_ia
-chain: SP_v1.4.5_A_sc_10_60
-
-npatch: 256
-min_sep: 0.1
-max_sep: 250
-nbins: 20
-
-min_sep_int: 0.08
-max_sep_int: 300
-nbins_int: 100
