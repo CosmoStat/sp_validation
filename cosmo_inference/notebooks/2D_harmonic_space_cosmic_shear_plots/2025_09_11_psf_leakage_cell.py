@@ -325,11 +325,22 @@ plt.savefig("rho_0_cl.png", dpi=300)
 
 plt.show()
 # %%
-plt.figure()
+# Paper plot tau_0
+plt.figure(figsize=(10, 6))
 
-offset = 2
+offset = 0.15
 
-list_offset = [ell_eff + idx * offset for idx in range(4)]
+ell_widths = np.diff(ell_eff)
+ell_widths = np.append(ell_widths, ell_widths[-1])
+
+list_offset = []
+
+for i in range(4):
+    # Better jittering: symmetric around original ell values
+    jitter_fraction = (i - (4 - 1) / 2) * offset
+    jittered_ell = ell_eff + jitter_fraction * ell_widths
+    list_offset.append(jittered_ell)
+
 
 plt.errorbar(list_offset[0], ell_eff*tau_cl[0], yerr=ell_eff*np.sqrt(cov_tau_0_ee.diagonal()), label=r"$\tau_0$ EE", fmt='o', capsize=2)
 plt.errorbar(list_offset[1], ell_eff*tau_cl_corrected[0], yerr=ell_eff*np.sqrt(cov_tau_0_ee.diagonal()), label=r"$\tau_0$ corrected EE", fmt='o', capsize=2)
@@ -342,10 +353,17 @@ plt.minorticks_on()
 plt.tick_params(axis='x', which='minor', length=2, width=0.8)
 minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
-plt.xlabel(r"$\ell$", fontsize=12)
-plt.ylabel(r"$\ell C^{\tau_0}_\ell$", fontsize=12)
-plt.ylim(-1e-6, 1e-6)
-plt.legend(fontsize=12)
+
+plt.axhline(0, c='k', ls='--', alpha=0.7)
+
+plt.tick_params(axis='both', which='major', labelsize=16)
+
+plt.gca().yaxis.get_offset_text().set_fontsize(16)
+plt.xlabel(r"$\ell$", fontsize=16)
+plt.ylabel(r"$\ell C^{\tau_0}_\ell$", fontsize=16)
+plt.xlim(1, 2048)
+plt.ylim(-5e-7, 5e-7)
+plt.legend(fontsize=16)
 plt.savefig("./plots/tau_0_cl.png", dpi=300)
 #Save pdf
 plt.savefig("./plots/tau_0_cl.pdf")

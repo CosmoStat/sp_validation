@@ -18,6 +18,9 @@ import healpy as hp
 import seaborn as sns
 from astropy.io import fits
 import pandas as pd
+from scipy.stats import norm
+
+from getdist import plots, MCSamples
 
 
 if os.path.exists("/home/guerrini/matplotlib_config/paper.mplstyle"):
@@ -129,6 +132,7 @@ sns.histplot(
     simulation_output["S8_config_mean"] - simulation_output["S8_harm_mean"],
     kde=False,
     bins=20,
+    stat='density',
     label="Difference (Config - Harm)"
 )
 plt.xlabel(r"$\Delta S_8$ estimated from mocks")
@@ -145,7 +149,7 @@ sns.histplot(
     y="S8_harm_mean",
     bins=25,
     cbar='seismic',
-    cbar_kws={'label': 'Counts'}
+    cbar_kws={'label': 'Prob.'},
 )
 plt.plot(
     [simulation_output["S8_config_mean"].min(), simulation_output["S8_config_mean"].max()],
@@ -281,4 +285,108 @@ plt.show()
 
 # %%
 
+# %%
+# Get p-value
+g = plots.get_subplot_plotter(width_inch=7)
+
+root_harmonic = 'SP_v1.4.6_leak_corr_A_lmin=300_lmax=1600_cell'
+root_configuration = 'SP_v1.4.6_leak_corr_A_10_80'
+
+# Load configuration space result
+path_configuration = f"/n09data/guerrini/output_chains/{root_configuration}/getdist_{root_configuration}"
+chain_configuration = g.samples_for_root(
+        path_configuration,
+        cache=False,
+        settings={
+            'ignore_rows': 0.,
+            'smooth_scale_2D': 0.5,
+            'smooth_scale_1D': 0.5
+        }
+)
+margestats = chain_configuration.getMargeStats()
+likestats = chain_configuration.getLikeStats()
+
+param_stats = margestats.parWithName('S_8')
+S8_configuration_analysis = param_stats.mean
+
+# Load harmonic space result
+path_harmonic = f"/n09data/guerrini/output_chains/{root_harmonic}/getdist_{root_harmonic}"
+chain_harmonic = g.samples_for_root(
+        path_harmonic,
+        cache=False,
+        settings={
+            'ignore_rows': 0.,
+            'smooth_scale_2D': 0.5,
+            'smooth_scale_1D': 0.5
+        }
+)
+margestats = chain_harmonic.getMargeStats()
+likestats = chain_harmonic.getLikeStats()
+
+param_stats = margestats.parWithName('S_8')
+S8_harmonic_analysis = param_stats.mean
+
+delta_S8_analysis = S8_configuration_analysis - S8_harmonic_analysis
+print(f"Delta S8 from analysis: {delta_S8_analysis}")
+
+# Select glass mocks without nan values
+selection = ~np.isnan(simulation_output["S8_config_mean"]) & ~np.isnan(simulation_output["S8_harm_mean"])
+delta_S8 = (simulation_output["S8_config_mean"][selection] - simulation_output["S8_harm_mean"][selection]).values
+counts, bin_edges = np.histogram(
+    delta_S8,
+    bins=20,
+    density=True
+)
+
+sns.histplot(
+    delta_S8,
+    kde=False,
+    bins=bin_edges,
+    stat='density',
+    label="Difference (Config - Harm)",
+    color='blue',
+    alpha=0.3
+)
+
+# Compute the p-value
+
+# 1. Get in which bin the delta_S8_analysis falls
+bin_index = np.digitize(delta_S8_analysis, bin_edges)
+
+# 2. Compute the p-value as the integral of the histogram from that bin to the tails
+if delta_S8_analysis < 0:
+    p_value = np.sum(counts[:bin_index]) * (bin_edges[1] - bin_edges[0])
+else:
+    p_value = np.sum(counts[bin_index:]) * (bin_edges[1] - bin_edges[0])
+
+print(f"P-value for delta S8 = {delta_S8_analysis}: {p_value}")
+
+plt.axvline(delta_S8_analysis, color="red", linestyle="--", label="Difference in the analysis")
+
+mantissa, exponent = f"{p_value:.1e}".split("e")
+exponent = int(exponent)
+
+pte_string = rf"${{\rm PTE}} = {mantissa} \times 10^{{{exponent}}}$"
+plt.text(
+    -0.065, 15,
+    pte_string,
+    color='black',
+    fontsize=12,
+)
+
+n_sigma = norm.isf(p_value)
+sign = '-' if delta_S8_analysis < 0 else '+'
+print(f"Number of sigma corresponding to the p-value: {n_sigma}")
+plt.text(
+    -0.065, 13,
+    rf"$N_\sigma = {sign}{n_sigma:.2f}\sigma$",
+    color='black',
+    fontsize=12,
+)
+plt.xlabel(r"$\Delta S_8$ estimated from mocks")
+plt.legend(fontsize=12, framealpha=1.0)
+plt.savefig(f"{output_fig_path}/S8_difference_config_harm.png", dpi=300)
+#Save PDF
+plt.savefig(f"{output_fig_path}/S8_difference_config_harm.pdf")
+plt.show()
 # %%
