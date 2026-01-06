@@ -48,8 +48,12 @@ weird_simulations = [
     82, 97, 123
 ]
 
+weird_simulations_v1 = [
+    16, 97, 120, 123
+]
+
 roots = [
-    f"glass_mock_v0_{i+1:05d}" for i in range(350)
+    f"glass_mock_v1_{i+1:05d}" for i in range(350)
 ]
 
 # %%
@@ -197,7 +201,7 @@ for i, root in enumerate(tqdm(roots)):
         chain_harmonic.append('ERROR')
         continue
 
-    if skip_weird and (i+1) in weird_simulations:
+    if skip_weird and (i+1) in weird_simulations_v1:
         print(f"Skipping weird simulation {i+1}")
         print(f"Add a flag 'ERROR' to the chains lists")
         chain_configuration.append('ERROR')
@@ -280,8 +284,8 @@ for i, root in enumerate(tqdm(roots)):
     output_mocks_harm = np.vstack((output_mocks_harm, param_harm))
     output_mocks_merged = np.vstack((output_mocks_merged, param_merged))
 
-np.savetxt(f"{root_dir}/summary_parameter_constraints_configuration_space.txt", output_mocks_config, fmt='%s', delimiter=';')
-np.savetxt(f"{root_dir}/summary_parameter_constraints_harmonic_space.txt", output_mocks_harm, fmt='%s', delimiter=';')
-np.savetxt(f"{root_dir}/summary_parameter_constraints_merged.txt", output_mocks_merged, fmt='%s', delimiter=';')
+np.savetxt(f"{root_dir}/summary_parameter_constraints_configuration_space_v1.txt", output_mocks_config, fmt='%s', delimiter=';')
+np.savetxt(f"{root_dir}/summary_parameter_constraints_harmonic_space_v1.txt", output_mocks_harm, fmt='%s', delimiter=';')
+np.savetxt(f"{root_dir}/summary_parameter_constraints_merged_v1.txt", output_mocks_merged, fmt='%s', delimiter=';')
 
 # %%

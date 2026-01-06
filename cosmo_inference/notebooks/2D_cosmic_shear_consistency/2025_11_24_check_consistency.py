@@ -1,4 +1,9 @@
 # %%
+# Trick to plot with tex
+import os
+os.environ["LD_LIBRARY_PATH"] = ""
+os.environ["CONDA_PREFIX"] = "/home/guerrini/.conda/envs/sp_validation_3.11"
+
 import IPython
 
 ipython = IPython.get_ipython()
@@ -41,7 +46,7 @@ if not os.path.exists(output_fig_path):
 
 # Load the output of the simulations
 simulation_output = pd.read_csv(
-    "/n09data/guerrini/glass_mock_chains/summary_parameter_constraints_merged.txt", delimiter=";"
+    "/n09data/guerrini/glass_mock_chains/summary_parameter_constraints_merged_v1.txt", delimiter=";"
 )
 
 # %%
@@ -283,7 +288,6 @@ plt.savefig(f"{output_fig_path}/S8_joint_config_harm.png", dpi=300)
 plt.savefig(f"{output_fig_path}/S8_joint_config_harm.pdf")
 plt.show()
 
-# %%
 
 # %%
 # Get p-value

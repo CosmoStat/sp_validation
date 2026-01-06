@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
 
+from getdist import plots, MCSamples
+
 plt.style.use(
     './matplotlib_config/paper.mplstyle'
 )
@@ -29,7 +31,7 @@ root_glass_chains = "/n09data/guerrini/glass_mock_chains"
 
 # %%
 num_sim = 1
-root = f"glass_mock_v0_{str(num_sim).zfill(5)}"
+root = f"glass_mock_v1_{str(num_sim).zfill(5)}"
 path_sim = f"{root_glass_chains}/{root}/{root}/samples_{root}.txt"
 with open(path_sim) as file:
     params = file.readline()[1:].split('\t')
@@ -47,24 +49,47 @@ n_mocks = 350
 chi2_map_configuration = []
 chi2_map_harmonic = []
 for num_sim in tqdm(range(1, n_mocks+1)):
-    root = f"glass_mock_v0_{str(num_sim).zfill(5)}"
+    root = f"glass_mock_v1_{str(num_sim).zfill(5)}"
     path_sim = f"{root_glass_chains}/{root}/{root}/samples_{root}.txt"
     samples = np.loadtxt(path_sim)
-    chi2_map_configuration.append(samples[-1,-4])
+    chi2_map_configuration.append(-2*samples[-1,-3])
 
     path_sim = f"{root_glass_chains}/{root}/{root}/samples_{root}_cell.txt"
     samples = np.loadtxt(path_sim) 
-    chi2_map_harmonic.append(samples[-1, -4])
+    chi2_map_harmonic.append(-2*samples[-1, -3])
 
 # %%
-x = np.linspace(0, 25,  num=1000)
-k = 16
-chi2_stats = stats.chi2.pdf(x, df=k)
+# Get p-value in harmonic space
+g = plots.get_subplot_plotter(width_inch=7)
+
+root_harmonic = 'SP_v1.4.6_leak_corr_A_lmin=300_lmax=1600_cell'
+
+# Load harmonic space result
+path_harmonic = f"/n09data/guerrini/output_chains/{root_harmonic}/samples_{root_harmonic}.txt"
+samples_harmonic_fid = np.loadtxt(path_harmonic)
+chi2_map_harmonic_fid = -2*samples_harmonic_fid[-1, -3]
+
+print(f"chi2_map_harmonic_fid: {chi2_map_harmonic_fid}")
+
 
 plt.figure()
 
-n, bins, _ = plt.hist(chi2_map_harmonic, bins=20, density=True)
-plt.plot(x, chi2_stats, c='k')
+counts, bin_edges = np.histogram(
+    chi2_map_harmonic,
+    bins=20,
+    density=True
+)
+
+sns.histplot(
+    chi2_map_harmonic,
+    kde=False,
+    bins=bin_edges,
+    stat='density',
+    label=r"$\chi^2({\rm MAP})$ GLASS mock",
+    color='blue',
+    alpha=0.3
+)
+#plt.plot(x, chi2_stats, c='k')
 
 plt.xlabel(r'$\chi^2({\rm MAP})$')
 plt.ylabel("Prob.")
@@ -73,9 +98,23 @@ plt.savefig("./plots/chi2_map_harmonic_space.png", dpi=300)
 plt.show()
 
 # %%
+root_configuration = 'SP_v1.4.6_leak_corr_A_10_80'
+
+# Load configuration space result
+path_configuration = f"/n09data/guerrini/output_chains/{root_configuration}/samples_{root_configuration}.txt"
+samples_configuration_fid = np.loadtxt(path_configuration)
+chi2_map_configuration_fid = -2*samples_configuration_fid[-1, -3]
+
+print(f"chi2_map_configuration_fid: {chi2_map_configuration_fid}")
+
 plt.figure()
 
-plt.hist(chi2_map_configuration, bins=20, density=True)
+sns.histplot(
+    chi2_map_configuration,
+    bins=20,
+    kde=False,
+    stat='density'
+)
 
 plt.show()
 # %%
