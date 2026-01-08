@@ -24,7 +24,7 @@ if ipython is not None:
 # %%
 cv = CosmologyValidation(
     versions=["SP_v1.4.6_GAIA_bright", "SP_v1.4.6_GAIA_medium", "SP_v1.4.6_GAIA_faint"],
-    data_base_dir="/n17data/mkilbing/astro/data/",
+    data_base_dir="/",
     catalog_config="./cat_config.yaml",
     output_dir="./output",
     theta_min=1.0,
