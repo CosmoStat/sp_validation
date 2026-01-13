@@ -1,4 +1,10 @@
 # %%
+import os
+
+# Trick to plot with tex
+os.environ["LD_LIBRARY_PATH"] = ""
+os.environ["CONDA_PREFIX"] = "/home/guerrini/.conda/envs/sp_validation_3.11"
+
 import IPython
 
 ipython = IPython.get_ipython()
@@ -250,12 +256,12 @@ ax2.tick_params(axis='x', which='minor', length=2, width=0.8)
 ax2.axhline(0, color='gray', linestyle='--', linewidth=1)
 ax2.legend(fontsize=14) 
 
-ax2.set_xlabel(r"Multipole $\ell$")
-ax1.set_ylabel(r"$\ell \, C_\ell^{EB}$")
-ax2.set_ylabel(r"$\ell \, C_\ell^{BB}$")
+ax2.set_xlabel(r"Multipole $\ell$", fontsize=16)
+ax1.set_ylabel(r"$\ell \, C_\ell^{EB} \times 10^{-7}$", fontsize=16)
+ax2.set_ylabel(r"$\ell \, C_\ell^{BB} \times 10^{-7}$", fontsize=16)
 
-ax1.yaxis.get_offset_text().set_fontsize(12)
-ax2.yaxis.get_offset_text().set_fontsize(12)
+ax1.yaxis.get_offset_text().set_visible(False)
+ax2.yaxis.get_offset_text().set_visible(False)
 
 plt.savefig("./plots/paperplot_data_vectors_eb_bb.png", dpi=300, bbox_inches='tight')
 #Save pdf

@@ -44,9 +44,12 @@ output_fig_path = "./plots"
 if not os.path.exists(output_fig_path):
     os.makedirs(output_fig_path)
 
+chain_version = "v2"
+assert chain_version in ["v0", "v1", "v2"], "The chain run version is not correct."
+
 # Load the output of the simulations
 simulation_output = pd.read_csv(
-    "/n09data/guerrini/glass_mock_chains/summary_parameter_constraints_merged_v1.txt", delimiter=";"
+    f"/n09data/guerrini/glass_mock_chains/summary_parameter_constraints_merged_{chain_version}.txt", delimiter=";"
 )
 
 # %%

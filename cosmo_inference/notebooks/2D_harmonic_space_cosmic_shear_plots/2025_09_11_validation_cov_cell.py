@@ -1,4 +1,10 @@
 # %%
+import os
+
+# Trick to use tex in the plots
+os.environ["LD_LIBRARY_PATH"] = ""
+os.environ["CONDA_PREFIX"] = "/home/guerrini/.conda/envs/sp_validation_3.11"
+
 from IPython import get_ipython
 
 ipython = get_ipython()
@@ -87,7 +93,7 @@ fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(10, 3))
 plt.subplots_adjust(wspace=0.3)
 
 im0 = ax0.imshow(cov_to_corr(cov_sim), vmin=-1, vmax=1, cmap='coolwarm')
-ax0.set_title("GLASS mocks")
+ax0.set_title(r"\texttt{GLASS} mocks")
 divider = make_axes_locatable(ax0)
 cax0 = divider.append_axes("right", size="5%", pad=0.1)
 cbar0 = fig.colorbar(im0, cax=cax0)
@@ -95,8 +101,8 @@ ax0.set_xticks([0, 10, 20, 30])
 ax0.set_yticks([0, 10, 20, 30])
 ax0.set_xticklabels(tick_labels)
 ax0.set_yticklabels(tick_labels)
-ax0.set_xlabel(r"$\ell$", fontsize=14)
-ax0.set_ylabel(r"$\ell$", fontsize=14)
+ax0.set_xlabel(r"Multipole $\ell$", fontsize=18)
+ax0.set_ylabel(r"Multipole $\ell$", fontsize=18)
 
 im1 = ax1.imshow(cov_to_corr(cov_namaster["COVAR_EE_EE"].data), vmin=-1, vmax=1, cmap='coolwarm')
 ax1.set_title("iNKA")
@@ -107,11 +113,11 @@ ax1.set_xticks([0, 10, 20, 30])
 ax1.set_yticks([0, 10, 20, 30])
 ax1.set_xticklabels(tick_labels)
 ax1.set_yticklabels(tick_labels)
-ax1.set_xlabel(r"$\ell$", fontsize=14)
-ax1.set_ylabel(r"$\ell$", fontsize=14)
+ax1.set_xlabel(r"Multipole $\ell$", fontsize=18)
+ax1.set_ylabel(r"Multipole $\ell$", fontsize=18)
 
 im2 = ax2.imshow(cov_to_corr(gaussian_one_cov), vmin=-1, vmax=1, cmap='coolwarm')
-ax2.set_title("OneCovariance (Gaussian only)")
+ax2.set_title(r"\texttt{OneCovariance} (Gaussian only)")
 divider = make_axes_locatable(ax2)
 cax2 = divider.append_axes("right", size="5%", pad=0.1)
 cbar2 = fig.colorbar(im2, cax=cax2)
@@ -119,8 +125,8 @@ ax2.set_xticks([0, 10, 20, 30])
 ax2.set_yticks([0, 10, 20, 30])
 ax2.set_xticklabels(tick_labels)
 ax2.set_yticklabels(tick_labels)
-ax2.set_xlabel(r"$\ell$", fontsize=14)
-ax2.set_ylabel(r"$\ell$", fontsize=14)
+ax2.set_xlabel(r"Multipole $\ell$", fontsize=18)
+ax2.set_ylabel(r"Multipole $\ell$", fontsize=18)
 
 #fig.suptitle("Comparison of correlation matrices for $C_\ell^{EE}$")
 
@@ -138,7 +144,7 @@ fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(10, 3))
 plt.subplots_adjust(wspace=0.3)
 
 im0 = ax0.imshow(cov_to_corr(cov_namaster["COVAR_EE_EE"].data + cov_one_cov_non_gaussian), vmin=-1, vmax=1, cmap='coolwarm')
-ax0.set_title("iNKA + OneCovariance (NG)")
+ax0.set_title(r"iNKA + \texttt{OneCovariance} (NG)")
 divider = make_axes_locatable(ax0)
 cax0 = divider.append_axes("right", size="5%", pad=0.1)
 cbar0 = fig.colorbar(im0, cax=cax0)
@@ -146,11 +152,11 @@ ax0.set_xticks([0, 10, 20, 30])
 ax0.set_yticks([0, 10, 20, 30])
 ax0.set_xticklabels(tick_labels)
 ax0.set_yticklabels(tick_labels)
-ax0.set_xlabel(r"$\ell$", fontsize=14)
-ax0.set_ylabel(r"$\ell$", fontsize=14)
+ax0.set_xlabel(r"Multipole $\ell$", fontsize=18)
+ax0.set_ylabel(r"Multipole $\ell$", fontsize=18)
 
 im1 = ax1.imshow(cov_to_corr(all_one_cov), vmin=-1, vmax=1, cmap='coolwarm')
-ax1.set_title("OneCovariance (All terms)")
+ax1.set_title(r"\texttt{OneCovariance} (All terms)")
 divider = make_axes_locatable(ax1)
 cax1 = divider.append_axes("right", size="5%", pad=0.1)
 cbar1 = fig.colorbar(im1, cax=cax1)
@@ -158,13 +164,13 @@ ax1.set_xticks([0, 10, 20, 30])
 ax1.set_yticks([0, 10, 20, 30])
 ax1.set_xticklabels(tick_labels)
 ax1.set_yticklabels(tick_labels)
-ax1.set_xlabel(r"$\ell$", fontsize=14)
-ax1.set_ylabel(r"$\ell$", fontsize=14)
+ax1.set_xlabel(r"Multipole $\ell$", fontsize=18)
+ax1.set_ylabel(r"Multipole $\ell$", fontsize=18)
 
 diag = np.sqrt(np.diag(all_one_cov))
 non_gaussian_corr = cov_one_cov_non_gaussian / np.outer(diag, diag)
 im2 = ax2.imshow(non_gaussian_corr, cmap='coolwarm')
-ax2.set_title("OneCovariance (Non-Gaussian only)")
+ax2.set_title(r"\texttt{OneCovariance} (Non-Gaussian only)")
 divider = make_axes_locatable(ax2)
 cax2 = divider.append_axes("right", size="5%", pad=0.1)
 cbar2 = fig.colorbar(im2, cax=cax2)
@@ -172,8 +178,8 @@ ax2.set_xticks([0, 10, 20, 30])
 ax2.set_yticks([0, 10, 20, 30])
 ax2.set_xticklabels(tick_labels)
 ax2.set_yticklabels(tick_labels)
-ax2.set_xlabel(r"$\ell$", fontsize=14)
-ax2.set_ylabel(r"$\ell$", fontsize=14)
+ax2.set_xlabel(r"Multipole $\ell$", fontsize=18)
+ax2.set_ylabel(r"Multipole $\ell$", fontsize=18)
 
 #fig.suptitle("Comparison of correlation matrices for $C_\ell^{EE}$")
 
@@ -333,9 +339,9 @@ gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.0)
 ax1 = fig.add_subplot(gs[0])
 ax2 = fig.add_subplot(gs[1], sharex=ax1)
 
-ax1.plot(ell, np.sqrt(np.diag(cov_sim)), label="GLASS mocks")
-ax1.plot(ell, np.sqrt(np.diag(cov_inka_onecov_ng)), label="iNKA + OneCovariance (NG)")
-ax1.plot(ell, np.sqrt(np.diag(all_one_cov)), label="OneCovariance", color='C2')
+ax1.plot(ell, np.sqrt(np.diag(cov_sim)), label=r"\texttt{GLASS} mocks")
+ax1.plot(ell, np.sqrt(np.diag(cov_inka_onecov_ng)), label=r"iNKA + \texttt{OneCovariance} (NG)")
+ax1.plot(ell, np.sqrt(np.diag(all_one_cov)), label=r"\texttt{OneCovariance}", color='C2')
 ax1.plot([], [], label="iNKA (Gaussian only)", color='C4')  # Empty plot for legend
 
 #Plot second diagonal
@@ -375,7 +381,7 @@ ax2.axhline(0, color='C1', linestyle='-')
 ax2.set_yticks([-0.2, -0.1, 0.0, 0.1, 0.2])
 ax2.set_ylim(-0.2, 0.2)
 ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
-ax2.set_xlabel(r"$\ell$")
+ax2.set_xlabel(r"Multipole $\ell$")
 
 plt.savefig("./plots/paper_plot_errorbar_validation.png", dpi=300, bbox_inches='tight')
 # Save PDF
@@ -487,7 +493,7 @@ ax2.axhline(0, color='C1', linestyle='-')
 ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
 ax2.set_ylim(-0.1, 0.1)
 ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
-ax2.set_xlabel(r"$\ell$")
+ax2.set_xlabel(r"Multipole $\ell$")
 
 plt.savefig("./plots/paper_plot_errorbar_validation_BB.png", dpi=300, bbox_inches='tight')
 # Save PDF
@@ -531,7 +537,7 @@ ax2.axhline(0, color='C1', linestyle='-')
 ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
 ax2.set_ylim(-0.1, 0.1)
 ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
-ax2.set_xlabel(r"$\ell$")
+ax2.set_xlabel(r"Multipole $\ell$")
 
 plt.savefig("./plots/paper_plot_errorbar_validation_EB.png", dpi=300, bbox_inches='tight')
 # Save PDF
@@ -589,8 +595,8 @@ ax4.axhline(0, color='C1', linestyle='-')
 ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
 ax2.set_ylim(-0.1, 0.1)
 ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
-ax2.set_xlabel(r"$\ell$")
-ax4.set_xlabel(r"$\ell$")
+ax2.set_xlabel(r"Multipole $\ell$")
+ax4.set_xlabel(r"Multipole $\ell$")
 
 # Remove only right-side y ticks
 ax3.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)

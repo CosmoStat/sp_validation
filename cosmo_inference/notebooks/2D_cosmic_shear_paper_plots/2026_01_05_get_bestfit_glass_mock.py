@@ -45,22 +45,22 @@ assert chain_version in ["v0", "v1", "v2"], "Invalid chain version"
 path_ini_files = f'/home/guerrini/sp_validation/cosmo_inference/cosmosis_config/glass_mocks_{chain_version}/'
 
 # Create the list of mocks
-max_sim = 200
+max_sim = 12
 roots = [f"glass_mock_{chain_version}_{str(i).zfill(5)}" for i in range(1, max_sim + 1)]
-lower_boud_cell_ee = 300.0
-upper_bound_cell_ee = 1600.0
+lower_boud_xi = 12.0
+upper_bound_xi = 83.0
 
-run_best_fit_type = "map" # should be in ["map", "average"]
+run_best_fit_type = "average" # should be in ["map", "average"]
 assert run_best_fit_type in ["map", "average"], "Invalid best fit type"
 
 # %%
 # Retrieve the chains
 for root in roots:
-    with open(root_dir + '{}/{}/samples_{}_cell.txt'.format(root, root, root)) as file:
+    with open(root_dir + '{}/{}/samples_{}.txt'.format(root, root, root)) as file:
         params = file.readline()[1:].split('\t')[:-4]
         file.close()
 
-    with open(root_dir + '{}/{}/getdist_{}_cell.paramnames'.format(root, root, root), "w") as file:
+    with open(root_dir + '{}/{}/getdist_{}.paramnames'.format(root, root, root), "w") as file:
         for i in range(len(params)):
             if len(params[i].split('--')) > 1:
                 file.write(params[i].split('--')[1] + '\n')
@@ -73,15 +73,15 @@ chains=[]
 
 for root in roots:
 
-    samples = np.loadtxt(root_dir + '{}/{}/samples_{}_cell.txt'.format(root,root,root))
+    samples = np.loadtxt(root_dir + '{}/{}/samples_{}.txt'.format(root,root,root))
     print(len(samples))
     if 'nautilus' in root:
         samples = np.column_stack((np.exp(samples[:,-3]),samples[:,-1]-samples[:,-2],samples[:,0:-3]))
     else:
         samples = np.column_stack((samples[:,-1],samples[:,-3],samples[:,0:-4]))
-    np.savetxt(root_dir + '{}/{}/getdist_{}_cell.txt'.format(root,root,root), samples)
+    np.savetxt(root_dir + '{}/{}/getdist_{}.txt'.format(root,root,root), samples)
 
-    chain = g.samples_for_root(root_dir + '{}/{}/getdist_{}_cell'.format(root,root,root),
+    chain = g.samples_for_root(root_dir + '{}/{}/getdist_{}'.format(root,root,root),
                                cache=False,
                                settings={'ignore_rows':0,
                                          'smooth_scale_2D':0.3,
@@ -90,8 +90,8 @@ for root in roots:
     chains.append(chain)
 
 # %%
-name_list = ['OMEGA_M','ombh2','h0','n_s','SIGMA_8','s_8_input', 'logt_agn','a','m1','bias_1']
-label_list = ['\Omega_m', '\omega_b h^2', 'h_0', 'n_s', '\sigma_8', 'S_8', 'log T_{AGN}', 'A_{IA}', 'm_1', '\Delta z_1']
+name_list = ['OMEGA_M','ombh2','h0','n_s','SIGMA_8','s_8_input', 'logt_agn','a','m1','bias_1', 'alpha', 'beta']
+label_list = ['\Omega_m', '\omega_b h^2', 'h_0', 'n_s', '\sigma_8', 'S_8', 'log T_{AGN}', 'A_{IA}', 'm_1', '\Delta z_1', '\\alpha_{PSF}', '\\beta_{PSF}']
 
 for chain in chains:
     param_names = chain.getParamNames()
@@ -218,16 +218,16 @@ for idx, root in enumerate(roots):
     #Modify the ini file to run in test mode at the best fit
     config = configparser.ConfigParser()
     config.optionxform = str  # Preserve case sensitivity of option names
-    config_file_path = path_ini_files+f'/cosmosis_pipeline_glass_mocks_{chain_version}_glass_mock_{str(idx+1).zfill(5)}_cell.ini'
+    config_file_path = path_ini_files+f'/cosmosis_pipeline_glass_mocks_{chain_version}_glass_mock_{str(idx+1).zfill(5)}.ini'
     config.read(config_file_path)
     sampler = config['runtime']['sampler']
     config['runtime']['sampler'] = 'test'
     values = config['pipeline']['values']
     config['pipeline']['values'] = path_ini_files + '/values_empty.ini'
     if run_best_fit_type == "map":
-        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell_map"
+        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_map"
     elif run_best_fit_type == "average":
-        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell"
+        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}"
     else:
         raise ValueError("Invalid run_best_fit_type")
 
@@ -249,7 +249,7 @@ for idx, root in enumerate(roots):
     config['pipeline']['values'] = values
     config['runtime']['sampler'] = sampler
     if run_best_fit_type == "map":
-        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell"
+        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}"
 
     with open(config_file_path, 'w') as configfile:
         config.write(configfile)

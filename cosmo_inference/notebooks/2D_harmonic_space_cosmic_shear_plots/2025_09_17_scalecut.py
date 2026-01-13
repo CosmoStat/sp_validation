@@ -1,4 +1,10 @@
 # %%
+import os
+
+# Trick to plot with tex
+os.environ["LD_LIBRARY_PATH"] = ""
+os.environ["CONDA_PREFIX"] = "/home/guerrini/.conda/envs/sp_validation_3.11"
+
 import numpy as np
 import camb
 import matplotlib.pyplot as plt
@@ -110,8 +116,8 @@ for ell, I_vals in zip(ell_list, I_vals_list):
     print(np.trapz(I_vals, k_vals))
 
 plt.xscale('log')
-plt.xlabel(r'$k$ [h/Mpc]', fontsize=12)
-plt.ylabel(r'$\frac{\mathrm{d}C_\ell}{\mathrm{d}\ln k}$ (normalized)', fontsize=12)
+plt.xlabel(r'$k$ [h/Mpc]', fontsize=16)
+plt.ylabel(r'$\frac{\mathrm{d}C_\ell}{\mathrm{d}\ln k}$ (normalized)', fontsize=16)
 plt.yticks([0.])
 plt.legend(fontsize=12)
 plt.savefig('./plots/Cl_integrand_vs_k.png', dpi=300)

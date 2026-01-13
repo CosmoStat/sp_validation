@@ -1,4 +1,10 @@
 # %%
+import os
+
+# Trick to plot with tex
+os.environ["LD_LIBRARY_PATH"] = ""
+os.environ["CONDA_PREFIX"] = "/home/guerrini/.conda/envs/sp_validation_3.11"
+
 from IPython import get_ipython
 
 ipython = get_ipython()
@@ -358,9 +364,11 @@ plt.axhline(0, c='k', ls='--', alpha=0.7)
 
 plt.tick_params(axis='both', which='major', labelsize=16)
 
-plt.gca().yaxis.get_offset_text().set_fontsize(16)
-plt.xlabel(r"$\ell$", fontsize=16)
-plt.ylabel(r"$\ell C^{\tau_0}_\ell$", fontsize=16)
+plt.gca().yaxis.get_offset_text().set_visible(False)
+
+
+plt.xlabel(r"Multipole $\ell$", fontsize=20)
+plt.ylabel(r"$\ell C^{\tau_0}_\ell \times 10^{-7}$", fontsize=20)
 plt.xlim(1, 2048)
 plt.ylim(-5e-7, 5e-7)
 plt.legend(fontsize=16)
@@ -551,12 +559,12 @@ plt.tick_params(axis='x', which='minor', length=2, width=0.8)
 minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
 plt.xticks(minor_ticks, minor=True)
 plt.xlim(ell_eff[0], ell_eff[-1])
-plt.xlabel(r"$\ell$", fontsize=12)
+plt.xlabel(r"Multipole $\ell$", fontsize=16)
 plt.xlim(7, 2050)
-plt.ylabel(r"$C_\ell^{\rm sys} / C_\ell$", fontsize=12)
+plt.ylabel(r"$C_\ell^{\rm sys} / C_\ell$", fontsize=16)
 plt.ylim(-0.052, 0.152)
 plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-plt.legend(loc="upper center", fontsize=10)
+plt.legend(loc="upper center", fontsize=12)
 plt.savefig("./plots/leakage_bias_fraction_ee.png", dpi=300)
 #Save PDF
 plt.savefig("./plots/leakage_bias_fraction_ee.pdf")

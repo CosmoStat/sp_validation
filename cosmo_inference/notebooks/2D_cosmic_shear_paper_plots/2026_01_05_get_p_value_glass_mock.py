@@ -49,59 +49,71 @@ assert chain_version in ["v0", "v1", "v2"]
 root_glass_dv = f"/home/guerrini/sp_validation/cosmo_inference/data/glass_mocks/{chain_version}/"
 
 # Create the list of mocks
-max_sim = 100
+max_sim = 12
 roots_glass_mock = [f"glass_mock_{chain_version}_{str(i).zfill(5)}" for i in range(1, max_sim + 1)]
 
-lower_bound_cell_ee = 300.0
-upper_bound_cell_ee = 1600.0
+lower_bound_xi_ee = 12.0
+upper_bound_xi_ee = 83.0
 
 # %%
-def get_chi2_glass_mock(root, root_glass_chains, root_glass_dv, lower_bound, upper_bound):
+def get_chi2_glass_mock(root, root_glass_chains, root_glass_dv, lower_bound_xi_plus, upper_bound_xi_plus, lower_bound_xi_minus, upper_bound_xi_minus):
     #Read the theory prediction at best fit
-    ell = np.loadtxt(f"{root_glass_chains}/{root}/best_fit/{root}_cell/shear_cl/ell.txt")
-    shear_cl = np.loadtxt(f"{root_glass_chains}/{root}/best_fit/{root}_cell/shear_cl/bin_1_1.txt")
+    theta = np.loadtxt(f"{root_glass_chains}/{root}/best_fit/{root}/shear_xi_plus/theta.txt")
+    theta_arcmin = theta * 180 * 60 /np.pi
+    shear_xi_plus = np.loadtxt(f"{root_glass_chains}/{root}/best_fit/{root}/shear_xi_plus/bin_1_1.txt")
+    shear_xi_minus = np.loadtxt(f"{root_glass_chains}/{root}/best_fit/{root}/shear_xi_minus/bin_1_1.txt")
+    xi_sys_plus = np.loadtxt(f"{root_glass_chains}/{root}/best_fit/{root}/xi_sys/shear_xi_plus.txt")
+    xi_sys_minus = np.loadtxt(f"{root_glass_chains}/{root}/best_fit/{root}/xi_sys/shear_xi_minus.txt")
 
     #Read the data
     idx = root.replace(f"glass_mock_{chain_version}_", "")
     chain_version_data = "v0" if chain_version in ["v0", "v1"] else "v2"
     data = fits.open(f"{root_glass_dv}/glass_mock_{idx}/cosmosis_glass_mock_{chain_version_data}_{idx}.fits")
 
-    ell_data = data["CELL_EE"].data["ANG"]
-    cell_data = data["CELL_EE"].data["VALUE"]
+    theta_data = data["XI_PLUS"].data["ANG"]
+    xi_plus_data = data["XI_PLUS"].data["VALUE"]
+    xi_minus_data = data["XI_MINUS"].data["VALUE"]
 
     # Load the covariance
     cov = data["COVMAT"].data
-    cov_cell = cov[80:, 80:]
+    cov_xi = cov[0:2*len(xi_plus_data), 0:2*len(xi_plus_data)]
 
     # Interpolate the model
-    interp_cell_ee = interp1d(ell, shear_cl, kind='cubic', fill_value='extrapolate')
+    interp_xi_plus = interp1d(theta_arcmin, shear_xi_plus, kind='cubic', fill_value='extrapolate')
+    interp_xi_minus = interp1d(theta_arcmin, shear_xi_minus, kind='cubic', fill_value='extrapolate')
 
-    cell_model = interp_cell_ee(ell_data)
+    xi_plus_model = interp_xi_plus(theta_data) + xi_sys_plus
+    xi_minus_model = interp_xi_minus(theta_data) + xi_sys_minus
+
+    xi_data = np.concatenate((xi_plus_data, xi_minus_data))
+    xi_model = np.concatenate((xi_plus_model, xi_minus_model))
 
     # Apply scale cuts
-    mask_cell = (ell_data > lower_bound) & (ell_data < upper_bound)
+    mask_xi_plus = (theta_data > lower_bound_xi_plus) & (theta_data < upper_bound_xi_plus)
+    mask_xi_minus = (theta_data > lower_bound_xi_minus) & (theta_data < upper_bound_xi_minus)
+    mask = np.concatenate((mask_xi_plus, mask_xi_minus))
 
-    cell_model = cell_model[mask_cell]
-    cell_data = cell_data[mask_cell]
-    cov_cell = cov_cell[mask_cell][:, mask_cell]
+    xi_data = xi_data[mask]
+    xi_model = xi_model[mask]
+    cov_xi = cov_xi[mask][:, mask]
 
-    cell_chi2 = np.dot((cell_model - cell_data), np.dot(np.linalg.inv(cov_cell), (cell_model - cell_data)))
+    xi_chi2 = np.dot((xi_model - xi_data), np.dot(np.linalg.inv(cov_xi), (xi_model - xi_data)))
 
-    return cell_chi2
+    return xi_chi2
 
 def get_chi2_map_glass_mock(root, root_glass_chains):
-    path_sim = f"{root_glass_chains}/{root}/{root}/samples_{root}_cell.txt"
+    path_sim = f"{root_glass_chains}/{root}/{root}/samples_{root}.txt"
     samples = np.loadtxt(path_sim)
-    cell_chi2_map = samples[-1, -3]
+    xi_chi2_map = samples[-1, -3]
 
-    return -2*cell_chi2_map
+    return -2*xi_chi2_map
 
 # %%
 metrics = {}
 
 for i, root in enumerate(roots_glass_mock):
     metrics[root] = {}
-    metrics[root]["chi2"] = get_chi2_glass_mock(root, root_glass_chains, root_glass_dv, lower_bound_cell_ee, upper_bound_cell_ee)
+    metrics[root]["chi2"] = get_chi2_glass_mock(root, root_glass_chains, root_glass_dv, lower_bound_xi, upper_bound_xi, lower_bound_xi, upper_bound_xi)
     metrics[root]["chi2_map"] = get_chi2_map_glass_mock(root, root_glass_chains)
 
 # %%
@@ -112,26 +124,24 @@ sns.histplot(
     chi2_glass_mocks,
     bins=25,
     kde=False,
-    stat='density',
-    label='Average'
+    stat='density'
 )
 
 sns.histplot(
     chi2_glass_mocks_map,
     bins=25,
     kde=False,
-    stat='density',
-    label='MAP'
+    stat='density'
 )
 
-k = 10
-x = np.linspace(0, 25)
+k = 8
+x = np.linspace(8, 70)
 chi2 = stats.chi2.pdf(x, k)
 
-plt.plot(x, chi2, c='k', label=rf"$n_{{\rm dof}}={k}$")
+plt.plot(x, chi2, c='k')
 
 plt.xlabel(r"$\chi^2$")
-plt.legend()
+
 plt.show()
 # %%
 def plot_glass_mock_fit_root(root, root_glass_chains, root_glass_dv):
@@ -188,7 +198,7 @@ def plot_glass_mock_fit_root(root, root_glass_chains, root_glass_dv):
     return fig
 
 # %%
-fig = plot_glass_mock_fit_root(roots_glass_mock[56], root_glass_chains, root_glass_dv)
+fig = plot_glass_mock_fit_root(roots_glass_mock[10], root_glass_chains, root_glass_dv)
 
 plt.legend()
 
