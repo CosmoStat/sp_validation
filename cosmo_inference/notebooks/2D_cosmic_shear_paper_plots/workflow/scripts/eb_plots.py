@@ -48,7 +48,6 @@ os.chdir("/n17data/cdaley/unions/sp_validation/notebooks/cosmo_val")
 
 cv = CosmologyValidation(
     versions=[config["version"]],
-    data_base_dir="/n17data/mkilbing/astro/data",
 )
 # %%
 eb_results = cv.calculate_pure_eb(version=config["version"], **config["pure_eb"])
