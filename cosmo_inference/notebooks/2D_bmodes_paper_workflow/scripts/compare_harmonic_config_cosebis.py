@@ -38,7 +38,6 @@ sns.set_palette("husl", 3)
 
 COSMO_VAL_DIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val"
 CAT_CONFIG_PATH = f"{COSMO_VAL_DIR}/cat_config.yaml"
-os.chdir(COSMO_VAL_DIR)
 
 
 def _load_snakemake():
@@ -56,6 +55,13 @@ def _load_snakemake():
 
 snakemake = _load_snakemake()
 params = snakemake.params
+
+# Resolve output paths to absolute BEFORE chdir
+_output_comparison = Path(snakemake.output["comparison"]).resolve()
+_output_stats = Path(snakemake.output["stats"]).resolve()
+
+# Now safe to change directory
+os.chdir(COSMO_VAL_DIR)
 
 
 def _version_label(version):
@@ -135,7 +141,7 @@ def _compute_statistics(residual, covariance, nmodes_short):
 
 
 def main():
-    versions = params["versions"]
+    versions = params["version"]  # Can be string or list
     nmodes_long = int(params["nmodes_long"])
     nmodes_short = int(params["nmodes_short"])
     theta_min = float(params["theta_min"])
@@ -146,23 +152,42 @@ def main():
     nbins_int = int(params["nbins_int"])
     npatch = int(params["npatch"])
 
+    # ℓ cuts for harmonic-space COSEBIS (avoid noisy low-ℓ modes)
+    ell_min = float(params.get("ell_min", 50))
+    ell_max = float(params.get("ell_max", 2000))
+
+    # Handle both single version (string) and multiple versions (list)
+    if isinstance(versions, str):
+        versions = [versions]
+
     cv = CosmologyValidation(versions=versions, catalog_config=CAT_CONFIG_PATH)
 
     theta_grid = np.logspace(np.log10(theta_min), np.log10(theta_max), 5000)
 
     datasets = []
-    palette = sns.color_palette("husl", len(versions))
+    palette = sns.color_palette("husl", max(len(versions), 1))
+
+    # Handle both single file and list of files
+    pseudo_cls_list = [snakemake.input.pseudo_cls] if isinstance(snakemake.input.pseudo_cls, str) else snakemake.input.pseudo_cls
+    pseudo_cov_list = [snakemake.input.pseudo_cls_cov] if isinstance(snakemake.input.pseudo_cls_cov, str) else snakemake.input.pseudo_cls_cov
+    cov_int_list = [snakemake.input.cov_integration] if isinstance(snakemake.input.cov_integration, str) else snakemake.input.cov_integration
 
     for idx, (version, color) in enumerate(zip(versions, palette)):
-        pseudo_cl_path = snakemake.input.pseudo_cls[idx]
-        pseudo_cov_path = snakemake.input.pseudo_cls_cov[idx]
-        cov_path_int = snakemake.input.cov_integration[idx]
+        pseudo_cl_path = pseudo_cls_list[idx]
+        pseudo_cov_path = pseudo_cov_list[idx]
+        cov_path_int = cov_int_list[idx]
 
         with fits.open(pseudo_cl_path) as hdul:
             data = hdul["PSEUDO_CELL"].data
-            ell = np.asarray(data["ELL"], dtype=float)
-            cl_ee = np.asarray(data["EE"], dtype=float)
-            cl_bb = np.asarray(data["BB"], dtype=float)
+            ell_full = np.asarray(data["ELL"], dtype=float)
+            cl_ee_full = np.asarray(data["EE"], dtype=float)
+            cl_bb_full = np.asarray(data["BB"], dtype=float)
+
+        # Apply ℓ cuts
+        ell_mask = (ell_full >= ell_min) & (ell_full <= ell_max)
+        ell = ell_full[ell_mask]
+        cl_ee = cl_ee_full[ell_mask]
+        cl_bb = cl_bb_full[ell_mask]
 
         cosebis_cell = COSEBIS(theta_min, theta_max, nmodes_long)
         ce_harm, cb_harm = cosebis_cell.cosebis_from_Cell(
@@ -175,10 +200,26 @@ def main():
 
         T_E, T_B = _build_transforms(cosebis_cell, ell, theta_grid)
 
-        cov_cell = _build_cell_covariance(pseudo_cov_path)
-        transform = np.zeros((2 * nmodes_long, 2 * len(ell)))
-        transform[:nmodes_long, : len(ell)] = T_E
-        transform[nmodes_long:, len(ell) :] = T_B
+        # Apply same ℓ cuts to covariance
+        cov_cell_full = _build_cell_covariance(pseudo_cov_path)
+        n_ell_full = len(ell_full)
+        # Covariance is [EE, BB] block structure
+        ee_mask_2d = np.ix_(ell_mask, ell_mask)
+        bb_mask_2d = np.ix_(ell_mask, ell_mask)
+        cov_ee_ee = cov_cell_full[:n_ell_full, :n_ell_full][ee_mask_2d]
+        cov_ee_bb = cov_cell_full[:n_ell_full, n_ell_full:][np.ix_(ell_mask, ell_mask)]
+        cov_bb_ee = cov_cell_full[n_ell_full:, :n_ell_full][np.ix_(ell_mask, ell_mask)]
+        cov_bb_bb = cov_cell_full[n_ell_full:, n_ell_full:][bb_mask_2d]
+        n_ell = len(ell)
+        cov_cell = np.zeros((2 * n_ell, 2 * n_ell))
+        cov_cell[:n_ell, :n_ell] = cov_ee_ee
+        cov_cell[:n_ell, n_ell:] = cov_ee_bb
+        cov_cell[n_ell:, :n_ell] = cov_bb_ee
+        cov_cell[n_ell:, n_ell:] = cov_bb_bb
+
+        transform = np.zeros((2 * nmodes_long, 2 * n_ell))
+        transform[:nmodes_long, :n_ell] = T_E
+        transform[nmodes_long:, n_ell:] = T_B
         cov_harmonic = transform @ cov_cell @ transform.T
 
         results = cv.calculate_cosebis(
@@ -318,8 +359,8 @@ def main():
                     0.02,
                     0.95,
                     (
-                        f"χ²₆={stats_block['chi2_short']:.2f}, PTE₆={stats_block['pte_short']:.3f}\n"
-                        f"χ²₂₀={stats_block['chi2_long']:.2f}, PTE₂₀={stats_block['pte_long']:.3f}"
+                        rf"$\chi^2_6$={stats_block['chi2_short']:.2f}, PTE$_6$={stats_block['pte_short']:.3f}" "\n"
+                        rf"$\chi^2_{{20}}$={stats_block['chi2_long']:.2f}, PTE$_{{20}}$={stats_block['pte_long']:.3f}"
                     ),
                     transform=ax_main.transAxes,
                     ha="left",
@@ -334,7 +375,7 @@ def main():
     fig.suptitle("COSEBIS harmonic vs configuration-space cross-validation", y=0.96)
     fig.tight_layout(rect=(0, 0, 1, 0.94))
 
-    output_path = Path(snakemake.output["comparison"])
+    output_path = _output_comparison
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=300)
 
@@ -357,7 +398,7 @@ def main():
         )
         stats_lines.append("")
 
-    stats_path = Path(snakemake.output["stats"])
+    stats_path = _output_stats
     stats_path.parent.mkdir(parents=True, exist_ok=True)
     stats_path.write_text("\n".join(stats_lines))
 

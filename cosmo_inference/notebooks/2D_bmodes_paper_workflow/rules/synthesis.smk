@@ -225,7 +225,17 @@ rule serve_claims:
         claims_dir_abs = os.path.join(workflow_root, params.claims_dir)
         print(f"Config: {config_dir_abs}")
         print(f"Claims: {claims_dir_abs}")
-        subprocess.run([sys.executable, script_path,
-                        "--claims-dir", claims_dir_abs,
-                        "--specs-dir", config_dir_abs,
-                        "--port", str(port)], check=True)
+
+        # Run server — catch KeyboardInterrupt so Snakemake doesn't report failure
+        try:
+            result = subprocess.run([sys.executable, script_path,
+                            "--claims-dir", claims_dir_abs,
+                            "--specs-dir", config_dir_abs,
+                            "--port", str(port)])
+            if result.returncode > 0:
+                print(f"Server exited with code {result.returncode}")
+            else:
+                print("Dashboard server stopped")
+        except KeyboardInterrupt:
+            # Ctrl+C is the expected exit path for a server
+            print("\nDashboard server stopped")

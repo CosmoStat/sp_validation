@@ -37,6 +37,8 @@ where `{blind}` is A, B, or C. Each NPZ contains:
 - `xip_amb`, `xim_amb`: Ambiguous components (identical across blinds)
 - `cov_pure_eb`: Full covariance matrix for decomposed modes (blind-specific via MC propagation)
 
+**Report minimum PTE across blinds** — the most conservative value.
+
 ## Plotting Conventions
 
 - Total ξ± shown with filled markers

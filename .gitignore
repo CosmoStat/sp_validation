@@ -184,3 +184,4 @@ cosmo_inference/cosmosis_config/*.ini
 !cosmo_inference/cosmosis_config/cosmosis_pipeline_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.ini
 !cosmo_inference/cosmosis_config/cosmosis_pipeline_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_cell.ini
 !cosmo_inference/cosmosis_config/priors_mock.ini
+notebooks/cosmo_val/results/

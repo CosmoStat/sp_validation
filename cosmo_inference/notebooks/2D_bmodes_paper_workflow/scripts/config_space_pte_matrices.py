@@ -51,10 +51,13 @@ snakemake = _load_snakemake()
 def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
     """Load COSEBIS PTE values from JSON files into matrix.
 
+    Takes minimum PTE across blinds (A, B, C) for each scale cut combination.
+    This is the conservative approach: if any blind shows significance, we report it.
+
     Parameters
     ----------
     pte_files : list of str
-        Paths to all PTE JSON files.
+        Paths to all PTE JSON files (includes all blinds).
     version : str
         Version to filter for.
     nmodes : int
@@ -63,13 +66,14 @@ def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
     Returns
     -------
     pte_matrix : ndarray
-        21x21 PTE matrix (theta indices 0-20).
+        21x21 PTE matrix (theta indices 0-20), minimum across blinds.
     theta_grid : ndarray
         Angular scale grid (21 values).
     """
     theta_grid = np.geomspace(1.0, 250.0, 21)
     n_theta = len(theta_grid)
-    pte_matrix = np.full((n_theta, n_theta), np.nan)
+    # Initialize with inf so np.minimum works correctly
+    pte_matrix = np.full((n_theta, n_theta), np.inf)
 
     for pte_file in pte_files:
         pte_path = Path(pte_file)
@@ -88,12 +92,70 @@ def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
 
         key = f"nmodes_{nmodes}"
         if key in data:
-            pte_matrix[i_min, i_max] = data[key]["pte_B"]
+            pte_val = data[key]["pte_B"]
         elif nmodes == 6:
             # Legacy format fallback
-            pte_matrix[i_min, i_max] = data.get("pte_B", np.nan)
+            pte_val = data.get("pte_B", np.nan)
+        else:
+            continue
+
+        # Take minimum across blinds (conservative)
+        if not np.isnan(pte_val):
+            pte_matrix[i_min, i_max] = np.minimum(pte_matrix[i_min, i_max], pte_val)
+
+    # Replace inf with nan (cells that had no valid data)
+    pte_matrix[np.isinf(pte_matrix)] = np.nan
 
     return pte_matrix, theta_grid
+
+
+def load_pure_eb_pte_matrices(pte_files, version):
+    """Load Pure E/B PTE matrices from per-blind npz files.
+
+    Takes minimum PTE across blinds (A, B, C) for each scale cut combination.
+    This is the conservative approach: if any blind shows significance, we report it.
+
+    Parameters
+    ----------
+    pte_files : list of str
+        Paths to all pure_eb_ptes.npz files (includes all blinds).
+    version : str
+        Version to filter for.
+
+    Returns
+    -------
+    pte_xip_B : ndarray
+        PTE matrix for xi+^B, minimum across blinds.
+    pte_xim_B : ndarray
+        PTE matrix for xi-^B, minimum across blinds.
+    theta : ndarray
+        Angular scale grid.
+    """
+    pte_xip_B = None
+    pte_xim_B = None
+    theta = None
+
+    for pte_file in pte_files:
+        # Filter to this version
+        if version not in pte_file:
+            continue
+
+        data = np.load(pte_file)
+
+        if theta is None:
+            theta = data["theta"]
+            pte_xip_B = np.full_like(data["pte_xip_B"], np.inf)
+            pte_xim_B = np.full_like(data["pte_xim_B"], np.inf)
+
+        # Take minimum across blinds
+        pte_xip_B = np.minimum(pte_xip_B, np.nan_to_num(data["pte_xip_B"], nan=np.inf))
+        pte_xim_B = np.minimum(pte_xim_B, np.nan_to_num(data["pte_xim_B"], nan=np.inf))
+
+    # Replace inf with nan
+    pte_xip_B[np.isinf(pte_xip_B)] = np.nan
+    pte_xim_B[np.isinf(pte_xim_B)] = np.nan
+
+    return pte_xip_B, pte_xim_B, theta
 
 
 def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
@@ -199,13 +261,15 @@ def compute_stats(pte_matrix, fid_start, fid_stop):
     }
 
 
-def extract_full_range_ptes(pure_eb_pte_path, cosebis_pte_files, version):
+def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
     """Extract full-range PTEs from npz and JSON files.
+
+    Takes minimum PTE across blinds for each statistic.
 
     Parameters
     ----------
-    pure_eb_pte_path : str
-        Path to Pure E/B PTE npz file.
+    pure_eb_pte_files : list
+        All Pure E/B PTE npz files (includes all blinds).
     cosebis_pte_files : list
         All COSEBIS PTE JSON files.
     version : str
@@ -214,34 +278,50 @@ def extract_full_range_ptes(pure_eb_pte_path, cosebis_pte_files, version):
     Returns
     -------
     ptes : dict
-        Full-range PTEs for xip, xim, and cosebis.
+        Full-range PTEs for xip, xim, and cosebis (minimum across blinds).
     """
-    pte_data = np.load(pure_eb_pte_path)
-    theta = pte_data["theta"]
-    full_range_idx = (0, len(theta) - 1)
+    # Get full-range PTEs from pure E/B (minimum across blinds)
+    xip_ptes = []
+    xim_ptes = []
+    for pte_file in pure_eb_pte_files:
+        if version not in pte_file:
+            continue
+        pte_data = np.load(pte_file)
+        theta = pte_data["theta"]
+        full_range_idx = (0, len(theta) - 1)
+        xip_pte = pte_data["pte_xip_B"][full_range_idx]
+        xim_pte = pte_data["pte_xim_B"][full_range_idx]
+        if not np.isnan(xip_pte):
+            xip_ptes.append(xip_pte)
+        if not np.isnan(xim_pte):
+            xim_ptes.append(xim_pte)
 
     ptes = {
-        "xip": float(pte_data["pte_xip_B"][full_range_idx]),
-        "xim": float(pte_data["pte_xim_B"][full_range_idx]),
+        "xip": float(min(xip_ptes)) if xip_ptes else float("nan"),
+        "xim": float(min(xim_ptes)) if xim_ptes else float("nan"),
         "cosebis": float("nan"),  # Default if file not found
     }
 
-    # Load COSEBIS full-range PTE (pte_000_020.json for full theta range)
+    # Load COSEBIS full-range PTE (pte_000_020.json for full theta range, min across blinds)
+    cosebis_ptes = []
     for pte_file in cosebis_pte_files:
         if version in str(pte_file) and "pte_000_020" in str(pte_file):
             try:
                 with open(pte_file) as f:
                     data = json.load(f)
-                ptes["cosebis"] = data.get("pte_B", data.get("nmodes_6", {}).get("pte_B"))
-                break
+                pte_val = data.get("pte_B", data.get("nmodes_6", {}).get("pte_B"))
+                if pte_val is not None and not np.isnan(pte_val):
+                    cosebis_ptes.append(pte_val)
             except FileNotFoundError:
-                # File might not exist for all versions (e.g., v1.4.8 with missing intermediate files)
                 continue
+
+    if cosebis_ptes:
+        ptes["cosebis"] = float(min(cosebis_ptes))
 
     return ptes
 
 
-def create_3panel_composite(version, version_to_pte, cosebis_pte_files,
+def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
                             xip_fid, xim_fid, cosebis_fid):
     """Create a 1×3 composite figure for the fiducial version (main text).
 
@@ -249,8 +329,8 @@ def create_3panel_composite(version, version_to_pte, cosebis_pte_files,
     ----------
     version : str
         Catalog version string (fiducial).
-    version_to_pte : dict
-        Map from version to Pure E/B PTE npz file path.
+    pure_eb_pte_files : list
+        All Pure E/B PTE npz files (includes all blinds).
     cosebis_pte_files : list
         All COSEBIS PTE JSON files.
     xip_fid, xim_fid : tuple
@@ -280,11 +360,10 @@ def create_3panel_composite(version, version_to_pte, cosebis_pte_files,
         bottom=0.15, top=0.90
     )
 
-    # Load Pure E/B PTE matrices
-    pte_data = np.load(version_to_pte[version])
-    theta_pure_eb = pte_data["theta"]
-    pte_xip_B = pte_data["pte_xip_B"]
-    pte_xim_B = pte_data["pte_xim_B"]
+    # Load Pure E/B PTE matrices (minimum across blinds)
+    pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
+        pure_eb_pte_files, version
+    )
 
     # Load COSEBIS PTE matrix
     pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
@@ -346,12 +425,12 @@ def create_3panel_composite(version, version_to_pte, cosebis_pte_files,
     }
 
     # Extract full-range PTEs
-    full_range_ptes = extract_full_range_ptes(version_to_pte[version], cosebis_pte_files, version)
+    full_range_ptes = extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version)
 
     return fig, stats, full_range_ptes
 
 
-def create_9panel_composite(versions, version_to_pte, cosebis_pte_files,
+def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
                             xip_fid, xim_fid, cosebis_fid):
     """Create a 3x3 composite figure for all versions (appendix).
 
@@ -359,8 +438,8 @@ def create_9panel_composite(versions, version_to_pte, cosebis_pte_files,
     ----------
     versions : list of str
         Catalog version strings in display order [v1.4.5, v1.4.6, v1.4.8].
-    version_to_pte : dict
-        Map from version to Pure E/B PTE npz file path.
+    pure_eb_pte_files : list
+        All Pure E/B PTE npz files (includes all blinds).
     cosebis_pte_files : list
         All COSEBIS PTE JSON files.
     xip_fid, xim_fid : tuple
@@ -400,11 +479,10 @@ def create_9panel_composite(versions, version_to_pte, cosebis_pte_files,
     }
 
     for row_idx, version in enumerate(versions):
-        # Load Pure E/B PTE matrices
-        pte_data = np.load(version_to_pte[version])
-        theta_pure_eb = pte_data["theta"]
-        pte_xip_B = pte_data["pte_xip_B"]
-        pte_xim_B = pte_data["pte_xim_B"]
+        # Load Pure E/B PTE matrices (minimum across blinds)
+        pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
+            pure_eb_pte_files, version
+        )
 
         # Load COSEBIS PTE matrix
         pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
@@ -476,7 +554,7 @@ def create_9panel_composite(versions, version_to_pte, cosebis_pte_files,
         all_stats[version] = stats
 
         # Extract full-range PTEs
-        full_range_ptes = extract_full_range_ptes(version_to_pte[version], cosebis_pte_files, version)
+        full_range_ptes = extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version)
         all_full_range_ptes[version] = full_range_ptes
 
     # Shared colorbar on rightmost column
@@ -516,21 +594,10 @@ def main():
     pure_eb_pte_files = snakemake.input["pure_eb_pte"]
     if isinstance(pure_eb_pte_files, str):
         pure_eb_pte_files = [pure_eb_pte_files]
+    else:
+        pure_eb_pte_files = list(pure_eb_pte_files)
 
     cosebis_pte_files = list(snakemake.input["cosebis_pte_files"])
-
-    # Map versions to their pure_eb_pte paths
-    version_to_pte = {}
-    for pte_file in pure_eb_pte_files:
-        for ver in versions:
-            if ver in pte_file:
-                version_to_pte[ver] = pte_file
-                break
-
-    # Verify all versions have PTE files
-    for ver in versions:
-        if ver not in version_to_pte:
-            raise ValueError(f"No PTE file found for {ver}")
 
     all_stats = {}
     all_full_range_ptes = {}
@@ -541,7 +608,7 @@ def main():
     try:
         fig_fid, fid_stats, fid_ptes = create_3panel_composite(
             version=fiducial_version,
-            version_to_pte=version_to_pte,
+            pure_eb_pte_files=pure_eb_pte_files,
             cosebis_pte_files=cosebis_pte_files,
             xip_fid=xip_fid,
             xim_fid=xim_fid,
@@ -574,7 +641,7 @@ def main():
     try:
         fig, appendix_stats, appendix_ptes = create_9panel_composite(
             versions=versions,
-            version_to_pte=version_to_pte,
+            pure_eb_pte_files=pure_eb_pte_files,
             cosebis_pte_files=cosebis_pte_files,
             xip_fid=xip_fid,
             xim_fid=xim_fid,

@@ -33,6 +33,12 @@ Compare across catalog versions from `config.versions`:
 - Fiducial: `fiducial.version`
 - All versions tested for consistency
 
+## Blind Handling
+
+COSEBIS B_n data vectors are identical across blinds A, B, C. Covariances vary with blind via n(z)-dependent theoretical predictions.
+
+**Report minimum PTE across blinds** — the most conservative value.
+
 ## Analysis Decisions
 
 - **No Hartlap correction**: Using theoretical (CosmoCov) covariance, not jackknife

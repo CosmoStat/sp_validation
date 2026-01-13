@@ -213,6 +213,7 @@ class CosmologyValidation:
         nrandom_cell=10,
         path_onecovariance=None,
         cosmo_params=None,
+        blind=None,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -238,6 +239,7 @@ class CosmologyValidation:
         self.cell_method = cell_method
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
+        self.blind = blind
 
         assert self.cell_method in ["map", "catalog"], "cell_method must be 'map' or 'catalog'"
 
@@ -354,8 +356,20 @@ class CosmologyValidation:
             Redshift values
         nz : ndarray
             n(z) probability density
+
+        Notes
+        -----
+        If self.blind is set, the redshift path is modified to use the
+        specified blind (A, B, or C) by replacing the blind suffix in the
+        configured path.
         """
+        import re
         redshift_path = self.cc[version]["shear"]["redshift_path"]
+
+        # Override blind if specified
+        if self.blind is not None:
+            redshift_path = re.sub(r'_[ABC]\.txt$', f'_{self.blind}.txt', redshift_path)
+
         return np.loadtxt(redshift_path, unpack=True)
 
     def compute_survey_stats(
@@ -2620,16 +2634,17 @@ class CosmologyValidation:
                 pw = pw[1:len(ell)+1]
 
                 # Load redshift distribution and calculate theory C_ell
-                fiducial_cl = (
-                    get_theo_c_ell(
-                        ell=ell,
-                        z=z,
-                        nz=dndz,
-                        backend="camb",
-                        cosmo=self.cosmo,
-                    )
-                    * pw**2
+                fiducial_cl = get_theo_c_ell(
+                    ell=ell,
+                    z=z,
+                    nz=dndz,
+                    backend="camb",
+                    cosmo=self.cosmo,
                 )
+                # Apply pixel window only for map-based estimation;
+                # catalog-based pseudo-Cl has no pixel window bias (Wolz+ 2025)
+                if self.cell_method == 'map':
+                    fiducial_cl = fiducial_cl * pw**2
 
                 self.print_cyan("Getting a sample of the fiducial Cl's with noise")
 
@@ -2670,12 +2685,15 @@ class CosmologyValidation:
 
                 cw = nmt.NmtCovarianceWorkspace.from_fields(f, f, f, f)
 
+                # Get actual number of ell bins from binning scheme
+                n_ell_actual = b.get_n_bands()
+
                 covar_22_22 = nmt.gaussian_covariance(cw, 2, 2, 2, 2,
                                                         fiducial_cl,
                                                         fiducial_cl,
                                                         fiducial_cl,
                                                         fiducial_cl,
-                                                        wsp, wb=wsp).reshape([self.n_ell_bins, 4, self.n_ell_bins, 4])
+                                                        wsp, wb=wsp).reshape([n_ell_actual, 4, n_ell_actual, 4])
 
                 covar_EE_EE = covar_22_22[:, 0, :, 0]
                 covar_EE_EB = covar_22_22[:, 0, :, 1]

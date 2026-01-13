@@ -42,6 +42,16 @@ def _reporting_cov_path(version, blind):
     return _covariance_path(version, min_sep, max_sep, nbins, blind=blind, gaussian="ng")
 
 
+def _xi_reporting_path(version):
+    """Path to reporting-scale 2PCF file."""
+    return (
+        f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={config['fiducial']['min_sep']}"
+        f"_maxsep={config['fiducial']['max_sep']}"
+        f"_nbins={config['fiducial']['nbins']}"
+        f"_npatch={config['fiducial']['npatch']}.txt"
+    )
+
+
 def _xi_integration_path(version):
     """Path to fine-binned 2PCF integration file."""
     return (
@@ -135,6 +145,89 @@ rule cosebis_data_vector:
 # Pure E/B Claims
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+# Number of parallel chunks for MC covariance estimation
+N_PURE_EB_CHUNKS = 20
+
+
+rule precompute_pure_eb_chunk:
+    """Compute a chunk of MC samples for pure E/B covariance (scatter)."""
+    input:
+        cov_integration=lambda w: _cov_integration_path(w.version, "A"),
+        xi_reporting=lambda w: _xi_reporting_path(w.version),
+        xi_integration=lambda w: _xi_integration_path(w.version),
+    output:
+        "results/paper_plots/intermediate/chunks/{version}_pure_eb_chunk_{chunk_id}.npz",
+    params:
+        version="{version}",
+        chunk_id="{chunk_id}",
+        n_chunks=N_PURE_EB_CHUNKS,
+        min_sep=config["fiducial"]["min_sep"],
+        max_sep=config["fiducial"]["max_sep"],
+        nbins=config["fiducial"]["nbins"],
+        min_sep_int=config["fiducial"]["min_sep_int"],
+        max_sep_int=config["fiducial"]["max_sep_int"],
+        nbins_int=config["fiducial"]["nbins_int"],
+        npatch=config["fiducial"]["npatch"],
+        n_samples=config["covariance"]["n_samples"],
+    resources:
+        mem_mb=8000,
+    script:
+        "../scripts/precompute_pure_eb_chunk.py"
+
+
+rule precompute_pure_eb:
+    """Gather MC sample chunks and compute final pure E/B covariance."""
+    wildcard_constraints:
+        version=r"[^_]+_v[\d.]+_leak_corr",  # e.g. SP_v1.4.6_leak_corr (no blind suffix)
+    input:
+        chunks=expand(
+            "results/paper_plots/intermediate/chunks/{{version}}_pure_eb_chunk_{chunk_id}.npz",
+            chunk_id=range(N_PURE_EB_CHUNKS),
+        ),
+        xi_reporting=lambda w: _xi_reporting_path(w.version),
+        xi_integration=lambda w: _xi_integration_path(w.version),
+    output:
+        "results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
+    params:
+        version="{version}",
+        min_sep=config["fiducial"]["min_sep"],
+        max_sep=config["fiducial"]["max_sep"],
+        nbins=config["fiducial"]["nbins"],
+        min_sep_int=config["fiducial"]["min_sep_int"],
+        max_sep_int=config["fiducial"]["max_sep_int"],
+        nbins_int=config["fiducial"]["nbins_int"],
+        npatch=config["fiducial"]["npatch"],
+    resources:
+        mem_mb=8000,
+        runtime=5,
+    script:
+        "../scripts/gather_pure_eb_chunks.py"
+
+
+rule precompute_pure_eb_blind:
+    """Precompute pure E/B decomposition with per-blind covariance."""
+    input:
+        cov_integration=lambda w: _cov_integration_path(config["fiducial"]["version"], w.blind),
+    output:
+        f"results/paper_plots/intermediate/{config['fiducial']['version']}_{{blind}}_pure_eb_semianalytic.npz",
+    params:
+        version=config["fiducial"]["version"],
+        min_sep=config["fiducial"]["min_sep"],
+        max_sep=config["fiducial"]["max_sep"],
+        nbins=config["fiducial"]["nbins"],
+        min_sep_int=config["fiducial"]["min_sep_int"],
+        max_sep_int=config["fiducial"]["max_sep_int"],
+        nbins_int=config["fiducial"]["nbins_int"],
+        npatch=config["fiducial"]["npatch"],
+        n_samples=config["covariance"]["n_samples"],
+    resources:
+        mem_mb=32000,
+        runtime=60,
+    threads: 48
+    script:
+        "../scripts/precompute_pure_eb_covariance.py"
+
+
 rule pure_eb_data_vector:
     """B-mode null test: Pure E/B data vector at fiducial scale cuts.
 
@@ -213,6 +306,30 @@ rule pure_eb_covariance:
         "../scripts/pure_eb_covariance.py"
 
 
+rule calculate_pure_eb_ptes:
+    """Calculate PTE matrices for Pure E/B mode scale cut robustness.
+
+    Per-blind: Uses blind-specific integration covariance for PTE calculation.
+    The pure_eb_data vectors are identical across blinds; only covariance differs.
+    """
+    input:
+        pure_eb_data="results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
+        cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
+    output:
+        "results/paper_plots/intermediate/{version}_{blind}_pure_eb_ptes.npz",
+    wildcard_constraints:
+        blind=r"[ABC]",
+    params:
+        version="{version}",
+        npatch=config["fiducial"]["npatch"],
+        n_samples=config["covariance"]["n_samples"],
+    resources:
+        mem_mb=16000,
+        runtime=30,
+    script:
+        "../scripts/calculate_pure_eb_ptes.py"
+
+
 rule pure_eb_pte_matrix:
     """PTE heatmap: Pure E/B B-modes across scale cut combinations."""
     input:
@@ -247,7 +364,8 @@ rule cl_data_vector:
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         pseudo_cl=f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}.fits",
-        pseudo_cl_cov=f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}.fits",
+        # Use our covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
+        pseudo_cl_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_nellbins=32.fits",
     output:
         evidence=f"{CLAIMS_DIR}/cl_fiducial/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_fiducial/figure.png",
@@ -270,8 +388,9 @@ rule cl_version_comparison:
             f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
             for ver in config["versions"]
         ],
+        # Use our covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
         pseudo_cl_cov=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_nellbins=32.fits"
             for ver in config["versions"]
         ],
     output:
@@ -300,6 +419,9 @@ rule compute_cosebis_pte:
         i_max=r"\d{3}",
         blind=r"[ABC]",
     threads: 1
+    resources:
+        mem_mb=8000,
+        runtime=30,
     script:
         "../scripts/compute_cosebis_pte_single.py"
 
@@ -354,13 +476,19 @@ rule config_space_pte_matrices:
             f"{CONFIG_DIR}/cosebis.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
+        # Claim dependencies
+        pure_eb_data_vector=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
+        cosebis_data_vector=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
+        # Data inputs
         pure_eb_pte=[
-            f"results/paper_plots/intermediate/{ver}_pure_eb_ptes.npz"
+            f"results/paper_plots/intermediate/{ver}_{blind}_pure_eb_ptes.npz"
             for ver in config["versions"]
+            for blind in BLINDS
         ],
         cosebis_pte_files=[
-            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/A/pte_{i:03d}_{j:03d}.json"
+            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{blind}/pte_{i:03d}_{j:03d}.json"
             for ver in config["versions"]
+            for blind in BLINDS
             for i, j in _pte_scale_cut_pairs()
         ],
     output:
@@ -377,7 +505,9 @@ rule harmonic_space_pte_matrices:
     """Harmonic-space PTE figures for all versions.
 
     Results: Single-panel Cl^BB PTE matrix for fiducial v1.4.6
-    Appendix: 2-panel composite (v1.4.5 | v1.4.8)
+    Appendix: 3-panel composite (v1.4.5, v1.4.6, v1.4.8)
+
+    Uses per-blind covariances and reports minimum PTE across blinds A, B, C.
     """
     input:
         specs=[
@@ -388,9 +518,11 @@ rule harmonic_space_pte_matrices:
             f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
             for ver in config["versions"]
         ],
+        # Per-blind covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
         pseudo_cl_cov=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_blind={blind}_nellbins=32.fits"
             for ver in config["versions"]
+            for blind in BLINDS
         ],
     output:
         evidence=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",
@@ -410,12 +542,14 @@ rule harmonic_config_cosebis_comparison:
     - Config: ξ± → W_n(θ) integration → E_n, B_n
 
     Agreement validates both pseudo-C_ℓ estimation and COSEBIS machinery.
+    Uses blind=A fine-binned pseudo-Cl with KiDS-Legacy cosmology covariance.
     """
     input:
         spec=f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
         config=f"{CONFIG_DIR}/config.yaml",
-        pseudo_cls=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}_ellstep=1.fits",
-        pseudo_cls_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_ellstep=1.fits",
+        # Fine-binned pseudo-Cl for accurate C_ℓ → COSEBIS conversion
+        pseudo_cls=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}_blind=A_ellstep=1.fits",
+        pseudo_cls_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind=A_ellstep=1.fits",
         cov_integration=_covariance_path(
             config["fiducial"]["version"],
             config["fiducial"]["min_sep_int"],
@@ -436,6 +570,9 @@ rule harmonic_config_cosebis_comparison:
         max_sep_int=config["fiducial"]["max_sep_int"],
         nbins_int=config["fiducial"]["nbins_int"],
         npatch=config["fiducial"]["npatch"],
+        # ℓ cuts for harmonic-space (avoid noisy low-ℓ modes in fine binning)
+        ell_min=config["cl"]["ell_min"],
+        ell_max=config["cl"]["ell_max"],
     script:
         "../scripts/compare_harmonic_config_cosebis.py"
 
