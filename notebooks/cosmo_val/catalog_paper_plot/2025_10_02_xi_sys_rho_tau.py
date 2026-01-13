@@ -69,7 +69,7 @@ line_args = [
     {'color': colors[i]} for i in range(len(versions))
 ]
 g.triangle_plot(chains, filled=True, legend_labels=labels, legend_loc="upper right", line_args=line_args, contour_colors=colors, markers=markers)
-g.export("./plots/psf_leakage_params.png")
+g.export("./plots/psf_leakage_params.pdf")
 
 # %%
 #Inference of the xi_sys parameters
@@ -171,7 +171,7 @@ plt.xlabel(r'$\vartheta\ [\mathrm{arcmin}]$')
 plt.ylabel(r'$[\xi_\mathrm{sys}/\xi_+](\vartheta)$')
 plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
 plt.legend()
-plt.savefig('./plots/xi_sys_over_xi_plus.png', dpi=200)
+plt.savefig('./plots/xi_sys_over_xi_plus.pdf')
 
 plt.show()
 
@@ -216,7 +216,7 @@ line_args = [
     {'color': colors[i]} for i in range(len(versions))
 ]
 g.triangle_plot(chains, filled=True, legend_labels=labels, legend_loc="upper right", line_args=line_args, contour_colors=colors, markers=markers)
-g.export("./plots/psf_leakage_params.png")
+g.export("./plots/psf_leakage_params.pdf")
 
 # %%
 #Inference of the xi_sys parameters
@@ -318,7 +318,7 @@ plt.xlabel(r'$\vartheta\ [\mathrm{arcmin}]$')
 plt.ylabel(r'$[\xi_\mathrm{sys}/\xi_+](\vartheta)$')
 plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
 plt.legend()
-plt.savefig('./plots/xi_sys_over_xi_plus_leak_corr.png', dpi=200)
+plt.savefig('./plots/xi_sys_over_xi_plus_leak_corr.pdf')
 
 plt.show()
 
