@@ -57,7 +57,7 @@ print(bits)
 # Set parameters
 base = "unions_shapepipe_comprehensive"
 year = 2024
-ver = "v1.5.c"
+ver = "v1.3.c"
 
 obj._params["input_path"] = f"{base}_{year}_{ver}.hdf5"
 obj._params["output_path"] = f"{base}_struc_{year}_{ver}.hdf5"
@@ -66,7 +66,7 @@ obj._params["nside"] = 131072
 obj._params["file_base"] = "mask_r_"
 obj._params["bits"] = bits
 
-obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_v1.5.x.hsp"
+obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_v1.4.x.hsp"
 obj._params["aux_mask_labels"] = "npoint3"
 obj._params["verbose"] = True
 # -

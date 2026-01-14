@@ -250,6 +250,7 @@ spv_cat.write_shape_catalog(
  )
 # -
 
+do_selection_calibration = False
 if not do_selection_calibration:
     if verbose:
         print("No selection and calibration; exiting here")
