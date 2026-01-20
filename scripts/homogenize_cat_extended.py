@@ -5,7 +5,7 @@ Overwrite the extended catalog to replace the columns e1 and e2 from the extende
 e1 and e2 from the non-extended one. Currently, the calibration of the columns e1 and e2 of the extended catalog
 are calibrated per patch, while the non-extended catalog is calibrated on the whole footprint.
 
-:Authors: Martin Kilbinger, Sacha Guerrini
+:Authors: Sacha Guerrini, Martin Kilbinger
 """
 
 import sys
