@@ -77,15 +77,19 @@ hdu_no = 1
 dat = obj.read_cat(load_into_memory=False, mode="r")
 
 # +
-# Get Tile IDs
+# Get tile IDs
 tile_IDs_raw = dat["TILE_ID"]
 tile_IDs_raw_list = list(set(tile_IDs_raw))
 
 # Transform (back) to 2x3 digits by zero-padding
 tile_IDs = [f"{float(tile_ID):07.3f}" for tile_ID in tile_IDs_raw_list]
+# -
 
 # +
 dist_sqr = {}
+do_dist_check = False
+do_copy = False
+
 n_rows = len(dat)
 
 # Loop over tile IDs
@@ -93,8 +97,22 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
 
     print(idx/len(tile_ID), tile_ID)
     
-    path = os.path.join(path_bands, f"{path_base}{tile_ID}", f"{path_base}{tile_ID}{path_suff}")
+    src = os.path.join(path_bands, f"{path_base}{tile_ID}", f"{path_base}{tile_ID}{path_suff}")
+    dst = os.path.join(f".", f"{path_base}{tile_ID}{path_suff}")
     
+    if do_copy:
+        if not os.path.exists(src):
+            print("  Copy FITS file:", src, end=" ")
+            start = timer()
+            copyfile(src, dst)
+            end = timer()                                                           
+            print(f" {end - start:.1f}s")
+        else:
+            print("  FITS file already exists:", src)
+        path = dst
+    else:
+        path = src
+ 
     print("  Read data from file:", path, end=" ")
     start = timer()
     hdu_list = fits.open(path)
@@ -116,15 +134,16 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
     end = timer()                                                           
     print(f" {end - start:.1f}s") 
     
-    print("  Compute distance check", end=" ")
-    start = timer()
-    # Compute coordinate distances as matching check    
-    dist_sqr["TILE_ID"] = sum(
-        (dat[indices]["RA"] - dat_mb["ALPHA_J2000"]) ** 2
-        + (dat[indices]["Dec"] - dat_mb["DELTA_J2000"]) ** 2
-    ) / len(dat_mb)
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
+    # Compute coordinate distances as matching check
+    if do_dist_check:
+        print("  Compute distance check", end=" ")
+        start = timer()
+        dist_sqr[TILE_ID] = sum(
+            (dat[indices]["RA"] - dat_mb["ALPHA_J2000"]) ** 2
+            + (dat[indices]["Dec"] - dat_mb["DELTA_J2000"]) ** 2
+        ) / len(dat_mb)
+        end = timer()                                                           
+        print(f" {end - start:.1f}s") 
     
     if idx == 0:
         print("  Create new combined array", end=" ")
