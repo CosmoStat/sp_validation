@@ -93,7 +93,7 @@ class BaseCat(object):
                 
         return config
 
-    def read_cat(self, load_into_memory=False, mode="r", hdu=1):
+    def read_cat(self, load_into_memory=False, mode="r", hdu=1, name="data"):
         """Read Cat.
 
         Read input catalogue, either FITS or HDF5.
@@ -107,6 +107,8 @@ class BaseCat(object):
             HDF5 read mode, default is "r"
         hdu: int, optional
             HDU number (for FITS file); default is 1
+        name: str, optional
+            dataset name, default is 'data'
 
         Returns
         -------
@@ -136,7 +138,7 @@ class BaseCat(object):
 
             self._hd5file = h5py.File(fpath, mode)
             try:
-                dat = self._hd5file["data"]
+                dat = self._hd5file[name]
             except:
                 print(f"Error while reading file {fpath}")
                 raise
@@ -1238,7 +1240,6 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     plot_area_mask(ra, dec, zoom, mask=m_halos)
         
 
-
 def plot_area_mask(ra, dec, zoom, mask=None):
     """Plot Area Mask.
     
@@ -1601,7 +1602,6 @@ def get_masks_from_config(
 
         # Loop over mask information in this section
         for mask_params in mask_list:
-            value = mask_params["value"]
 
             use_this_mask = False            
             if masks_to_apply is not None:
@@ -1612,6 +1612,7 @@ def get_masks_from_config(
                     
             if use_this_mask:
                 # Ensure 'range' kind has exactly two values
+                value = mask_params["value"]
                 if mask_params["kind"] == "range" and (
                     not isinstance(value, list) or len(value) != 2
                 ):

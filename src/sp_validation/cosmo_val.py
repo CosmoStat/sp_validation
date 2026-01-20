@@ -1,9 +1,13 @@
 # %%
+import copy
 import os
+from pathlib import Path
+import configparser
 
 import colorama
 import healpy as hp
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import pymaster as nmt
 import treecorr
@@ -17,15 +21,171 @@ from uncertainties import ufloat
 
 from .cosmology import get_cosmo, get_theo_c_ell
 from .plots import FootprintPlotter
-from .rho_tau import get_params_rho_tau, get_rho_tau_w_cov, get_samples
+from .rho_tau import (
+    get_params_rho_tau,
+    get_rho_tau_w_cov,
+    get_samples,
+)
 
 
 # %%
 class CosmologyValidation:
+    """Framework for cosmic shear validation and systematics analysis.
+
+    Handles two-point correlation function measurements, PSF systematics (rho/tau),
+    pseudo-C_ell analysis, and covariance estimation for weak lensing surveys.
+    Supports multiple catalog versions with automatic leakage-corrected variants.
+
+    Parameters
+    ----------
+    versions : list of str
+        Catalog version identifiers to analyze. Appending '_leak_corr' to a base
+        version creates a virtual catalog using leakage-corrected ellipticity columns
+        (e1_col_corrected/e2_col_corrected) from the base version configuration.
+    catalog_config : str, default './cat_config.yaml'
+        Path to catalog configuration YAML defining survey metadata, file paths,
+        and analysis settings for each version.
+    output_dir : str, optional
+        Override for output directory. If None, uses catalog config's paths.output.
+    rho_tau_method : {'lsq', 'mcmc'}, default 'lsq'
+        Fitting method for PSF leakage systematics parameters.
+    cov_estimate_method : {'th', 'jk'}, default 'th'
+        Covariance estimation: 'th' for semi-analytic theory, 'jk' for jackknife.
+    compute_cov_rho : bool, default True
+        Whether to compute covariance for rho statistics during PSF analysis.
+    n_cov : int, default 100
+        Number of realizations for covariance estimation when using theory method.
+    theta_min : float, default 0.1
+        Minimum angular separation in arcminutes for correlation function binning.
+    theta_max : float, default 250
+        Maximum angular separation in arcminutes for correlation function binning.
+    nbins : int, default 20
+        Number of angular bins for TreeCorr real-space correlation functions.
+    var_method : {'jackknife', 'sample', 'bootstrap', 'marked_bootstrap'}, default 'jackknife'
+        TreeCorr variance estimation method.
+    npatch : int, default 20
+        Number of spatial patches for jackknife variance estimation.
+    quantile : float, default 0.1587
+        Quantile for uncertainty bands in plots (default: 1-sigma ≈ 0.159).
+    theta_min_plot : float, default 0.08
+        Minimum angular scale for plotting (may differ from analysis cut).
+    theta_max_plot : float, default 250
+        Maximum angular scale for plotting.
+    ylim_alpha : list of float, default [-0.005, 0.05]
+        Y-axis limits for alpha systematic parameter plots.
+    ylim_xi_sys_ratio : list of float, default [-0.02, 0.5]
+        Y-axis limits for xi systematics ratio plots.
+    nside : int, default 1024
+        HEALPix resolution for pseudo-C_ell analysis and area computation.
+    binning : {'powspace', 'linspace', 'logspace'}, default 'powspace'
+        Ell binning scheme for pseudo-C_ell (powspace = ell^power spacing).
+    power : float, default 0.5
+        Exponent for power-law binning when binning='powspace'.
+    n_ell_bins : int, default 32
+        Number of ell bins for pseudo-C_ell analysis (used with binning='powspace').
+    ell_step : int, default 10
+        Bin width in ell for linear binning (used with binning='linear').
+    pol_factor : bool, default True
+        Apply polarization correction factor in pseudo-C_ell calculations.
+    nrandom_cell : int, default 10
+        Number of random realizations for C_ell error estimation.
+    cosmo_params : dict, optional
+        Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
+
+    Attributes
+    ----------
+    versions : list of str
+        Validated catalog versions after processing _leak_corr variants.
+    cc : dict
+        Loaded catalog configuration with resolved absolute paths.
+    catalog_config_path : Path
+        Resolved path to the catalog configuration file.
+    treecorr_config : dict
+        Configuration dictionary passed to TreeCorr correlation objects.
+    cosmo : pyccl.Cosmology
+        Cosmology object for theory predictions.
+
+    Notes
+    -----
+    - Path resolution: Relative paths in catalog config are resolved using each
+      version's 'subdir' field as the base directory.
+    - Virtual _leak_corr versions: These create deep copies of the base version
+      config, swapping e1_col/e2_col with e1_col_corrected/e2_col_corrected.
+    - TreeCorr cross_patch_weight: Automatically set to 'match' for jackknife,
+      'simple' otherwise, following TreeCorr best practices.
+    """
+
+    @staticmethod
+    def _split_seed_variant(version):
+        """Return the base version and seed label if version encodes a seed."""
+        if "_seed" not in version:
+            return None, None
+        base, seed_label = version.rsplit("_seed", 1)
+        if not base or not seed_label.isdigit():
+            return None, None
+        return base, seed_label
+
+    @staticmethod
+    def _materialize_seed_path(
+        base_cfg, seed_label, version, base_version, catalog_config
+    ):
+        """Render the seed-specific shear path using Python string formatting."""
+        shear_cfg = base_cfg["shear"]
+        template = shear_cfg.get("path_template")
+
+        try:
+            seed_value = int(seed_label)
+        except ValueError as error:
+            raise ValueError(
+                f"Seed suffix for '{version}' is not numeric; cannot materialize path."
+            ) from error
+
+        format_context = {"seed": seed_value, "seed_label": seed_label}
+
+        if template:
+            try:
+                return template.format(**format_context)
+            except KeyError as error:
+                raise KeyError(
+                    f"Missing placeholder '{error.args[0]}' in path_template for "
+                    f"'{base_version}' while materializing '{version}'. Update "
+                    f"{catalog_config}."
+                ) from error
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid format specification in path_template for '{base_version}' "
+                    f"while materializing '{version}'."
+                ) from error
+
+        path = shear_cfg.get("path", "")
+        token_start = path.rfind("seed")
+        if token_start == -1:
+            raise ValueError(
+                f"Cannot materialize '{version}': '{base_version}' lacks a shear "
+                f"path_template and its shear path '{path}' does not contain a 'seed' "
+                f"token. Update {catalog_config}."
+            )
+        cursor = token_start + 4  # len("seed")
+        if cursor < len(path) and not path[cursor].isdigit():
+            cursor += 1
+        digit_start = cursor
+        while cursor < len(path) and path[cursor].isdigit():
+            cursor += 1
+        digit_end = cursor
+        digits = path[digit_start:digit_end]
+        if not digits:
+            raise ValueError(
+                f"Cannot materialize '{version}': shear path '{path}' for base version "
+                f"'{base_version}' lacks digits after the seed token. Update "
+                f"{catalog_config}."
+            )
+
+        template = f"{path[:digit_start]}{{seed_label}}{path[digit_end:]}"
+        return template.format(**format_context)
+
     def __init__(
         self,
         versions,
-        data_base_dir,
         catalog_config="./cat_config.yaml",
         output_dir=None,
         rho_tau_method="lsq",
@@ -43,16 +203,17 @@ class CosmologyValidation:
         ylim_alpha=[-0.005, 0.05],
         ylim_xi_sys_ratio=[-0.02, 0.5],
         nside=1024,
+        nside_mask = 2**12,
         binning="powspace",
         power=1 / 2,
         n_ell_bins=32,
+        ell_step=10,
         pol_factor=True,
+        cell_method='map',
         nrandom_cell=10,
+        path_onecovariance=None,
         cosmo_params=None,
-        redshift_file=None
     ):
-        self.versions = versions
-        self.data_base_dir = data_base_dir
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
         self.compute_cov_rho = compute_cov_rho
@@ -71,8 +232,14 @@ class CosmologyValidation:
         self.binning = binning
         self.power = power
         self.n_ell_bins = n_ell_bins
+        self.ell_step = ell_step
         self.pol_factor = pol_factor
         self.nrandom_cell = nrandom_cell
+        self.cell_method = cell_method
+        self.nside_mask = nside_mask
+        self.path_onecovariance = path_onecovariance
+
+        assert self.cell_method in ["map", "catalog"], "cell_method must be 'map' or 'catalog'"
 
         # For theory calculations:
         # Create cosmology object using new functionality
@@ -82,8 +249,6 @@ class CosmologyValidation:
             # Use Planck 2018 defaults
             self.cosmo = get_cosmo()
 
-        # load redshift distribution from file if provided
-        self.z_dist = np.loadtxt(redshift_file) if redshift_file is not None else None
 
         self.treecorr_config = {
             "ra_units": "degrees",
@@ -96,25 +261,231 @@ class CosmologyValidation:
             "cross_patch_weight": "match" if var_method == "jackknife" else "simple",
         }
 
-        with open(catalog_config, "r") as file:
+        self.catalog_config_path = Path(catalog_config)
+        with self.catalog_config_path.open("r") as file:
             self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
 
-        for ver in ["nz", *versions]:
-            if ver not in cc:
-                raise KeyError(
-                    f"Version string {ver} not found in config file{catalog_config}"
-                )
-            version_base = f"{data_base_dir}/{cc[ver]['subdir']}"
+        def resolve_paths_for_version(ver):
+            """Resolve relative paths for a version using its subdir."""
+            subdir = Path(cc[ver]["subdir"])
             for key in cc[ver]:
                 if "path" in cc[ver][key]:
-                    cc[ver][key]["path"] = f"{version_base}/{cc[ver][key]['path']}"
+                    path = Path(cc[ver][key]["path"])
+                    cc[ver][key]["path"] = (
+                        str(path) if path.is_absolute() else str(subdir / path)
+                    )
+
+        resolve_paths_for_version("nz")
+        processed = {"nz"}
+        final_versions = []
+        leak_suffix = "_leak_corr"
+
+        def ensure_version_exists(ver):
+            if ver in processed:
+                return
+
+            if ver in cc:
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            seed_base, seed_label = self._split_seed_variant(ver)
+
+            if ver.endswith(leak_suffix):
+                base_ver = ver[: -len(leak_suffix)]
+                ensure_version_exists(base_ver)
+                shear_cfg = cc[base_ver]["shear"]
+                if "e1_col_corrected" not in shear_cfg or "e2_col_corrected" not in shear_cfg:
+                    raise ValueError(
+                        f"{base_ver} does not have e1_col_corrected/e2_col_corrected "
+                        f"fields; cannot create {ver}"
+                    )
+                if ver not in cc:
+                    cc[ver] = copy.deepcopy(cc[base_ver])
+                    cc[ver]["shear"]["e1_col"] = shear_cfg["e1_col_corrected"]
+                    cc[ver]["shear"]["e2_col"] = shear_cfg["e2_col_corrected"]
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            if seed_base is not None:
+                ensure_version_exists(seed_base)
+                if ver not in cc:
+                    cc[ver] = copy.deepcopy(cc[seed_base])
+                    seed_path = self._materialize_seed_path(
+                        cc[seed_base],
+                        seed_label,
+                        ver,
+                        seed_base,
+                        catalog_config,
+                    )
+                    cc[ver]["shear"]["path"] = seed_path
+                resolve_paths_for_version(ver)
+                processed.add(ver)
+                return
+
+            raise KeyError(
+                f"Version string {ver} not found in config file {catalog_config}"
+            )
+
+        for ver in versions:
+            ensure_version_exists(ver)
+            final_versions.append(ver)
+
+        self.versions = final_versions
 
         # Override output directory if provided
         if output_dir is not None:
             cc["paths"]["output"] = output_dir
 
-        if not os.path.exists(cc["paths"]["output"]):
-            os.mkdir(cc["paths"]["output"])
+        os.makedirs(cc["paths"]["output"], exist_ok=True)
+
+    def get_redshift(self, version):
+        """Load redshift distribution for a catalog version.
+
+        Parameters
+        ----------
+        version : str
+            Catalog version identifier
+
+        Returns
+        -------
+        z : ndarray
+            Redshift values
+        nz : ndarray
+            n(z) probability density
+        """
+        redshift_path = self.cc[version]["shear"]["redshift_path"]
+        return np.loadtxt(redshift_path, unpack=True)
+
+    def compute_survey_stats(
+        self,
+        ver,
+        weights_key_override=None,
+        mask_path=None,
+        nside=None,
+        overwrite_config=False,
+    ):
+        """Compute effective survey statistics for a catalog version.
+
+        Parameters
+        ----------
+        ver : str
+            Version string registered in the catalog config.
+        weights_key_override : str, optional
+            Override the weight column key (defaults to the configured `w_col`).
+        mask_path : str, optional
+            Explicit mask path to use when measuring survey area.
+        nside : int, optional
+            If provided, compute survey area from the catalog using this NSIDE when no
+            mask path is available.
+        overwrite_config : bool, optional
+            If True, persist the derived statistics back to the catalog configuration.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - area_deg2: Survey area in square degrees.
+            - n_eff: Effective number density per arcmin^2.
+            - sigma_e: Per-component shape noise.
+            - sum_w: Sum of weights.
+            - sum_w2: Sum of squared weights.
+            - catalog_size: Number of galaxies processed.
+        """
+        if ver not in self.cc:
+            raise KeyError(f"Version {ver} not found in catalog configuration")
+
+        shear_cfg = self.cc[ver]["shear"]
+        cov_th = self.cc[ver].get("cov_th", {})
+
+        if "path" not in shear_cfg:
+            raise KeyError(f"No shear catalog path defined for version {ver}")
+
+        catalog_path = shear_cfg["path"]
+        if not os.path.exists(catalog_path):
+            raise FileNotFoundError(f"Shear catalog not found: {catalog_path}")
+
+        data = fits.getdata(catalog_path, memmap=True)
+        n_rows = len(data)
+
+        e1 = np.asarray(data[shear_cfg["e1_col"]], dtype=float)
+        e2 = np.asarray(data[shear_cfg["e2_col"]], dtype=float)
+
+        weight_column = weights_key_override or shear_cfg["w_col"]
+        if weight_column not in data.columns.names:
+            raise KeyError(f"Weight column '{weight_column}' missing in {catalog_path}")
+
+        w = np.asarray(data[weight_column], dtype=float)
+
+        sum_w = float(np.sum(w))
+        sum_w2 = float(np.sum(w**2))
+        sum_w2_e2 = float(np.sum((w**2) * (e1**2 + e2**2)))
+
+        if mask_path is not None:
+            if not os.path.exists(mask_path):
+                raise FileNotFoundError(f"Mask path not found: {mask_path}")
+            mask_candidate = mask_path
+        else:
+            mask_candidate = self.cc[ver].get("mask")
+            if isinstance(mask_candidate, str) and not os.path.isabs(mask_candidate):
+                mask_candidate = str(Path(self.cc[ver]["subdir"]) / mask_candidate)
+            if mask_candidate is not None and not os.path.exists(mask_candidate):
+                mask_candidate = None
+
+        area_deg2 = None
+        if mask_candidate is not None and os.path.exists(mask_candidate):
+            area_deg2 = self._area_from_mask(mask_candidate)
+        elif cov_th.get("A") is not None:
+            area_deg2 = float(cov_th["A"])
+        elif nside is not None:
+            area_deg2 = self._area_from_catalog(catalog_path, nside)
+        else:
+            raise ValueError(
+                f"Unable to determine survey area for {ver}. Provide mask_path or nside."
+            )
+
+        area_arcmin2 = area_deg2 * 3600.0
+
+        n_eff = (sum_w**2) / (area_arcmin2 * sum_w2) if sum_w2 > 0 else 0.0
+        sigma_e = np.sqrt(sum_w2_e2 / sum_w2) if sum_w2 > 0 else 0.0
+
+        results = {
+            "area_deg2": area_deg2,
+            "n_eff": n_eff,
+            "sigma_e": sigma_e,
+            "sum_w": sum_w,
+            "sum_w2": sum_w2,
+            "catalog_size": n_rows,
+        }
+
+        if overwrite_config:
+            if "cov_th" not in self.cc[ver]:
+                self.cc[ver]["cov_th"] = {}
+            self.cc[ver]["cov_th"]["A"] = float(area_deg2)
+            self.cc[ver]["cov_th"]["n_e"] = float(n_eff)
+            self.cc[ver]["cov_th"]["sigma_e"] = float(sigma_e)
+            self._write_catalog_config()
+
+        return results
+
+    def _area_from_catalog(self, catalog_path, nside):
+        data = fits.getdata(catalog_path, memmap=True)
+        ra = np.asarray(data["RA"], dtype=float)
+        dec = np.asarray(data["Dec"], dtype=float)
+        theta = np.radians(90.0 - dec)
+        phi = np.radians(ra)
+        pix = hp.ang2pix(nside, theta, phi, lonlat=False)
+        unique_pix = np.unique(pix)
+        return float(unique_pix.size * hp.nside2pixarea(nside, degrees=True))
+
+    def _area_from_mask(self, mask_map_path):
+        mask = hp.read_map(mask_map_path, dtype=np.float64)
+        return float(mask.sum() * hp.nside2pixarea(hp.get_nside(mask), degrees=True))
+
+    def _write_catalog_config(self):
+        with self.catalog_config_path.open("w") as file:
+            yaml.dump(self.cc, file, sort_keys=False)
 
     def color_reset(self):
         print(colorama.Fore.BLACK, end="")
@@ -229,6 +600,17 @@ class CosmologyValidation:
             self._results_objectwise = self.init_results(objectwise=True)
         return self._results_objectwise
 
+    def basename(self, version, treecorr_config=None, npatch=None):
+        cfg = treecorr_config or self.treecorr_config
+        patches = npatch or self.npatch
+        return (
+            f"{version}_minsep={cfg['min_sep']}"
+            f"_maxsep={cfg['max_sep']}"
+            f"_nbins={cfg['nbins']}"
+            f"_npatch={patches}"
+        )
+
+
     def calculate_rho_tau_stats(self):
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
@@ -236,13 +618,16 @@ class CosmologyValidation:
 
         self.print_start("Rho stats")
         for ver in self.versions:
+            base = self.basename(ver)
             rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
                 self.cc,
                 ver,
                 self.treecorr_config,
                 out_dir,
+                base,
                 method=self.cov_estimate_method,
                 cov_rho=self.compute_cov_rho,
+                npatch=self.npatch,
             )
         self.print_done("Rho stats finished")
 
@@ -264,9 +649,107 @@ class CosmologyValidation:
     @property
     def colors(self):
         return [self.cc[ver]["colour"] for ver in self.versions]
+    
+    @property
+    def area(self):
+        if not hasattr(self, "_area"):
+            self.calculate_area()
+        return self._area
+    
+    @property
+    def n_eff_gal(self):
+        if not hasattr(self, "_n_eff_gal"):
+            self.calculate_n_eff_gal()
+        return self._n_eff_gal
+
+    @property
+    def ellipticity_dispersion(self):
+        if not hasattr(self, "_ellipticity_dispersion"):
+            self.calculate_ellipticity_dispersion()
+        return self._ellipticity_dispersion
+
+    @property
+    def pseudo_cls(self):
+        if not hasattr(self, "_pseudo_cls"):
+            self.calculate_pseudo_cl()
+            self.calculate_pseudo_cl_eb_cov()
+        return self._pseudo_cls
+    
+    @property
+    def pseudo_cls_onecov(self):
+        if not hasattr(self, "_pseudo_cls_onecov"):
+            self.calculate_pseudo_cl_onecovariance()
+        return self._pseudo_cls_onecov
+
+    def calculate_area(self):
+        self.print_start("Calculating area")
+        area = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            if not hasattr(self.cc[ver]['shear'], 'mask'):
+                print("Mask not found in config file, calculating area from binned catalog")
+                area[ver] = self.calculate_area_from_binned_catalog(ver)
+            else:
+                mask = hp.read_map(self.cc[ver]['shear']['mask'], verbose=False)
+                nside_mask = hp.get_nside(mask)
+                print(f"nside_mask = {nside_mask}")
+                area[ver] = np.sum(mask) * hp.nside2pixarea(nside_mask, degrees=True)
+            print(f"Area = {area[ver]:.2f} deg^2")
+
+        self._area = area
+        self.print_done("Area calculation finished")
+    
+    def calculate_area_from_binned_catalog(self, ver):
+        print(f"nside_mask = {self.nside_mask}")
+        with self.results[ver].temporarily_read_data():
+            ra = self.results[ver].dat_shear["RA"]
+            dec = self.results[ver].dat_shear["Dec"]
+            hsp_map = hp.ang2pix(
+            self.nside_mask,
+                np.radians(90 - dec),
+                np.radians(ra),
+                lonlat=False,
+            )
+            mask = np.bincount(hsp_map, minlength=hp.nside2npix(self.nside_mask)) > 0
+
+            area = np.sum(mask) * hp.nside2pixarea(self.nside_mask, degrees=True)
+            print(f"Area = {area:.2f} deg^2")
+
+        return area
+
+    def calculate_n_eff_gal(self):
+        self.print_start("Calculating effective number of galaxy")
+        n_eff_gal = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+            with self.results[ver].temporarily_read_data():
+                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                n_eff_gal[ver] = 1/(self.area[ver]*60*60)* np.sum(w)**2/np.sum(w**2)
+                print(f"n_eff_gal = {n_eff_gal[ver]:.2f} gal./arcmin^-2")
+            
+        self._n_eff_gal = n_eff_gal
+        self.print_done("Effective number of galaxy calculation finished")
+
+    def calculate_ellipticity_dispersion(self):
+        self.print_start("Calculating ellipticity dispersion")
+        ellipticity_dispersion = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+            with self.results[ver].temporarily_read_data():
+                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
+                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
+                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                ellipticity_dispersion[ver] = np.sqrt(
+                    0.5*(np.average(e1**2, weights=w**2) + np.average(e2**2, weights=w**2))
+                )
+                print(f"Ellipticity dispersion = {ellipticity_dispersion[ver]:.4f}")
+        self._ellipticity_dispersion = ellipticity_dispersion
 
     def plot_rho_stats(self, abs=False):
-        filenames = [f"rho_stats_{ver}.fits" for ver in self.versions]
+        filenames = [
+            f"rho_stats_{self.basename(ver)}.fits" for ver in self.versions
+        ]
 
         savefig = "rho_stats.png"
         self.rho_stat_handler.plot_rho_stats(
@@ -286,7 +769,9 @@ class CosmologyValidation:
         )
 
     def plot_tau_stats(self, plot_tau_m=False):
-        filenames = [f"tau_stats_{ver}.fits" for ver in self.versions]
+        filenames = [
+            f"tau_stats_{self.basename(ver)}.fits" for ver in self.versions
+        ]
 
         savefig = "tau_stats.png"
         self.tau_stat_handler.plot_tau_stats(
@@ -319,8 +804,8 @@ class CosmologyValidation:
         else:
             params["patch_number"] = 150
 
-        params["ra_col"] = params_psf["ra_col"]
-        params["dec_col"] = params_psf["dec_col"]
+        params["ra_PSF_col"] = params_psf["ra_col"]
+        params["dec_PSF_col"] = params_psf["dec_col"]
         params["e1_PSF_col"] = params_psf["e1_PSF_col"]
         params["e2_PSF_col"] = params_psf["e2_PSF_col"]
         params["e1_star_col"] = params_psf["e1_star_col"]
@@ -366,9 +851,12 @@ class CosmologyValidation:
                 self.cov_estimate_method, None
             )
 
+            base = self.basename(ver)
+
             flat_samples, result, q = get_samples(
                 self.psf_fitter,
                 ver,
+                base,
                 cov_type=self.cov_estimate_method,
                 apply_debias=npatch,
                 sampler=self.rho_tau_method,
@@ -378,7 +866,7 @@ class CosmologyValidation:
             self.rho_tau_fits["result_list"].append(result)
             self.rho_tau_fits["q_list"].append(q)
 
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
             xi_psf_sys_samples = np.array([]).reshape(0, nbins)
 
@@ -423,7 +911,7 @@ class CosmologyValidation:
             self.colors,
             self.rho_tau_fits["flat_sample_list"],
         ):
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             for i in range(100):
                 self.psf_fitter.plot_xi_psf_sys(
                     flat_sample[-i + 1], ver, color, alpha=0.1
@@ -473,7 +961,7 @@ class CosmologyValidation:
             self.versions,
             self.rho_tau_fits["flat_sample_list"],
         ):
-            self.psf_fitter.load_rho_stat("rho_stats_" + ver + ".fits")
+            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             for yscale in ("linear", "log"):
                 out_path = os.path.abspath(
                     f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
@@ -1079,6 +1567,31 @@ class CosmologyValidation:
             for key in xiplus_dict:
                 xiplus_hdu.header[key] = xiplus_dict[key]
 
+                col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
+                col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
+                col3 = fits.Column(name="ANGBIN", format="K", array=lst)
+                col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
+                col5 = fits.Column(
+                    name="ANG", format="D", unit="arcmin", array=gg.rnom
+                )
+                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+                xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
+
+                col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
+                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
+                ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
+
+                # append xi_plus header info
+                xiplus_dict = {
+                    "2PTDATA": "T",
+                    "QUANT1": "G+R",
+                    "QUANT2": "G+R",
+                    "KERNEL_1": "NZ_SOURCE",
+                    "KERNEL_2": "NZ_SOURCE",
+                    "WINDOWS": "SAMPLE",
+                }
+                for key in xiplus_dict:
+                    xiplus_hdu.header[key] = xiplus_dict[key]
             # Use same naming format as txt output
             fits_base = out_fname.replace(".txt", "").replace("_xi_", "_")
             xiplus_hdu.writeto(
@@ -1261,6 +1774,65 @@ class CosmologyValidation:
                 cs_plots.show()
                 self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
 
+    def plot_ratio_xi_sys_xi(self, threshold=0.1, offset=0.02):
+
+        fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
+
+
+        for idx, ver in enumerate(self.versions):
+            xi_psf_sys = self.xi_psf_sys[ver]
+            gg = self.cat_ggs[ver]
+
+            ratio = xi_psf_sys["mean"] / gg.xip
+            ratio_err = np.sqrt(
+                (np.sqrt(xi_psf_sys["var"]) / gg.xip) ** 2
+                + (xi_psf_sys["mean"] * np.sqrt(gg.varxip) / gg.xip**2) ** 2
+            )
+
+            theta = gg.meanr
+            jittered_theta = theta * (1+idx*offset)
+
+            plt.errorbar(
+                jittered_theta,
+                ratio,
+                yerr=ratio_err,
+                label=ver,
+                ls=self.cc[ver]["ls"],
+                color=self.cc[ver]["colour"],
+                fmt=self.cc[ver].get("marker", None),
+                capsize=5
+            )
+
+        plt.fill_between(
+            [self.theta_min_plot, self.theta_max_plot],
+            - threshold,
+            + threshold,
+            color="black",
+            alpha=0.1,
+            label=f"{threshold:.0%} threshold",
+        )
+        plt.plot(
+            [self.theta_min_plot, self.theta_max_plot],
+            [threshold, threshold],
+            ls="dashed",
+            color="black")
+        plt.plot(
+            [self.theta_min_plot, self.theta_max_plot],
+            [-threshold, -threshold],
+            ls="dashed",
+            color="black")
+        plt.xscale("log")
+        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
+        plt.ylabel(r"$\xi^{\rm psf}_{+, {\rm sys}} / \xi_+$")
+        plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+        plt.legend()
+        plt.title("Ratio of PSF systematics to cosmic shear signal")
+        out_path = os.path.abspath(f"{self.cc['paths']['output']}/ratio_xi_sys_xi.png")
+        cs_plots.savefig(out_path, close_fig=False)
+        cs_plots.show()
+        print(f"Ratio of xi_psf_sys to xi plot saved to {out_path}")
+
+
     def calculate_aperture_mass_dispersion(
         self, theta_min=0.3, theta_max=200, nbins=500, nbins_map=15, npatch=25
     ):
@@ -1430,7 +2002,6 @@ class CosmologyValidation:
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
-        redshift_file=None,
         n_samples=1000,
     ):
         """
@@ -1528,18 +2099,8 @@ class CosmologyValidation:
 
         # Get redshift distribution if using analytic covariance
         if cov_path_int is not None:
-            if redshift_file is None:
-                try:
-                    print("Inheriting redshift distribution from self.z_dist")
-                    z_dist = self.z_dist
-                except AttributeError:
-                    raise ValueError(
-                        "redshift distribution must be provided either to this function"
-                        " or to the CosmologyValidation class upon creation "
-                        "if using an analytic covariance."
-                    )
-            else:
-                z_dist = np.loadtxt(redshift_file)
+            z, nz = self.get_redshift(version)
+            z_dist = np.column_stack([z, nz])
         else:
             z_dist = None
 
@@ -1572,7 +2133,6 @@ class CosmologyValidation:
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
-        redshift_file=None,
         n_samples=1000,
         results=None,
         **kwargs
@@ -1610,8 +2170,6 @@ class CosmologyValidation:
             Path to integration covariance matrix for semi-analytical calculation
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology for theoretical predictions in semi-analytical covariance
-        redshift_file : str, optional
-            Path to redshift distribution file for semi-analytical covariance
         n_samples : int
             Number of Monte Carlo samples for semi-analytical covariance (default: 1000)
         results : dict or list, optional
@@ -1699,7 +2257,6 @@ class CosmologyValidation:
                     var_method=var_method,
                     cov_path_int=cov_path_int,
                     cosmo_cov=cosmo_cov,
-                    redshift_file=redshift_file,
                     n_samples=n_samples,
                 )
 
@@ -1927,7 +2484,6 @@ class CosmologyValidation:
             plot_cosebis_covariance_matrix,
             plot_cosebis_modes,
             plot_cosebis_scale_cut_heatmap,
-            scale_cut_to_bins,
         )
 
         # Use instance defaults if not specified
@@ -1937,8 +2493,8 @@ class CosmologyValidation:
 
         # Determine variance method based on whether theoretical covariance is used
         var_method = "analytic" if cov_path is not None else "jackknife"
-        
-        # Create output filename with integration parameters to match Snakemake expectations
+
+        # Create output filename with integration parameters to match Snakemake
         out_stub = (
             f"{output_dir}/{version}_cosebis_minsep={min_sep_int}_"
             f"maxsep={max_sep_int}_nbins={nbins_int}_npatch={npatch}_"
@@ -1976,7 +2532,9 @@ class CosmologyValidation:
             # Multiple scale cuts: use fiducial_scale_cut if provided, otherwise use
             # full range
             if fiducial_scale_cut is not None:
-                plot_results = results[find_conservative_scale_cut_key(results, fiducial_scale_cut)]
+                plot_results = results[
+                    find_conservative_scale_cut_key(results, fiducial_scale_cut)
+                ]
             else:
                 # Use full range result (largest scale cut)
                 max_range_key = max(results.keys(), key=lambda x: x[1] - x[0])
@@ -2010,7 +2568,9 @@ class CosmologyValidation:
                 "max_sep": max_sep or self.treecorr_config["max_sep"],
                 "nbins": nbins or self.treecorr_config["nbins"],
             }
-            gg_temp = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_temp)
+            gg_temp = self.calculate_2pcf(
+                version, npatch=npatch, **treecorr_config_temp
+            )
 
             plot_cosebis_scale_cut_heatmap(
                 results,
@@ -2039,28 +2599,27 @@ class CosmologyValidation:
             if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/pseudo_cl_cov_{ver}.fits"
-            )
+            out_path = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_{ver}.fits")
             if os.path.exists(out_path):
-                self.print_done(
-                    f"Skipping Pseudo-Cl covariance calculation, {out_path} exists"
-                )
-                self._pseudo_cls[ver]["cov"] = fits.open(out_path)
+                self.print_done(f"Skipping Pseudo-Cl covariance calculation, {out_path} exists")
+                self._pseudo_cls[ver]['cov'] = fits.open(out_path)
             else:
                 params = get_params_rho_tau(self.cc[ver], survey=ver)
 
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
                 lmax = 2 * self.nside
-                path_redshift_distr = (
-                    self.data_base_dir + self.cc[ver]["shear"]["redshift_distr"]
-                )
+                z, dndz = self.get_redshift(ver)
+                ell = np.arange(1, lmax + 1)
                 pw = hp.pixwin(nside, lmax=lmax)
+                if pw.shape[0] != len(ell) + 1:
+                    raise ValueError(
+                        "Unexpected pixwin length for lmax="
+                        f"{lmax}: got {pw.shape[0]}, expected {len(ell)+1}"
+                    )
+                pw = pw[1:len(ell)+1]
 
                 # Load redshift distribution and calculate theory C_ell
-                z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
-                ell = np.arange(1, lmax + 1)
                 fiducial_cl = (
                     get_theo_c_ell(
                         ell=ell,
@@ -2075,74 +2634,48 @@ class CosmologyValidation:
                 self.print_cyan("Getting a sample of the fiducial Cl's with noise")
 
                 lmin = 8
-                lmax = 2 * self.nside
+                lmax = 2*self.nside
                 b_lmax = lmax - 1
 
-                if self.binning == "linear":
-                    step = 10
-                    b = nmt.NmtBin.from_nside_linear(self.nside, step)
-                elif self.binning == "powspace":
-                    ells = np.arange(lmin, lmax + 1)
+                ells = np.arange(lmin, lmax+1)
 
+                if self.binning == 'linear':
+                    # Linear bands of width ell_step, respecting actual lmax
+                    bpws = (ells - lmin) // self.ell_step
+                    bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
+                    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+                elif self.binning == 'powspace':
                     start = np.power(lmin, self.power)
                     end = np.power(lmax, self.power)
-                    bins_ell = np.power(
-                        np.linspace(start, end, self.n_ell_bins + 1), 1 / self.power
-                    )
+                    bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
 
-                    # Get bandpowers
+                    #Get bandpowers
                     bpws = np.digitize(ells.astype(float), bins_ell) - 1
                     bpws[0] = 0
-                    bpws[-1] = self.n_ell_bins - 1
+                    bpws[-1] = self.n_ell_bins-1
 
                     b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
 
-                # Load data and create shear and noise maps
+                #Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-                n_gal, unique_pix, idx, idx_rep = self.get_n_gal_map(
-                    params, nside, cat_gal
-                )
+                n_gal, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
                 mask = n_gal != 0
-
-                cl_noise, f, wsp = self.get_sample(
-                    params,
-                    self.nside,
-                    b_lmax,
-                    b,
-                    cat_gal,
-                    n_gal,
-                    mask,
-                    unique_pix,
-                    idx_rep,
-                )
-
-                fiducial_cl = np.array(
-                    [
-                        fiducial_cl,
-                        0.0 * fiducial_cl,
-                        0.0 * fiducial_cl,
-                        0.0 * fiducial_cl,
-                    ]
-                ) + np.mean(cl_noise, axis=1, keepdims=True)
-
+                
+                cl_noise, f, wsp = self.get_sample(params, self.nside, b_lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep)
+                
+                fiducial_cl = np.array([fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl])+ np.mean(cl_noise, axis=1, keepdims=True)
+                
                 self.print_cyan("Computing the Pseudo-Cl covariance")
 
                 cw = nmt.NmtCovarianceWorkspace.from_fields(f, f, f, f)
 
-                covar_22_22 = nmt.gaussian_covariance(
-                    cw,
-                    2,
-                    2,
-                    2,
-                    2,
-                    fiducial_cl,
-                    fiducial_cl,
-                    fiducial_cl,
-                    fiducial_cl,
-                    wsp,
-                    wb=wsp,
-                ).reshape([self.n_ell_bins, 4, self.n_ell_bins, 4])
+                covar_22_22 = nmt.gaussian_covariance(cw, 2, 2, 2, 2,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        wsp, wb=wsp).reshape([self.n_ell_bins, 4, self.n_ell_bins, 4])
 
                 covar_EE_EE = covar_22_22[:, 0, :, 0]
                 covar_EE_EB = covar_22_22[:, 0, :, 1]
@@ -2184,9 +2717,153 @@ class CosmologyValidation:
 
                 hdu.writeto(out_path, overwrite=True)
 
-                self._pseudo_cls[ver]["cov"] = hdu
+                self._pseudo_cls[ver]['cov'] = hdu
 
         self.print_done("Done Pseudo-Cl covariance")
+
+    def calculate_pseudo_cl_onecovariance(self):
+        """
+        Compute the pseudo-Cl covariance using OneCovariance.
+        """
+        self.print_start("Computing Pseudo-Cl covariance with OneCovariance")
+
+        if self.path_onecovariance is None:
+            raise ValueError("path_onecovariance must be provided to use OneCovariance")
+        
+        if not os.path.exists(self.path_onecovariance):
+            raise ValueError(f"OneCovariance path {self.path_onecovariance} does not exist")
+        
+        template_config = os.path.join(self.path_onecovariance, "config_files", "config_3x2pt_pure_Cell_UNIONS.ini")
+        if not os.path.exists(template_config):
+            raise ValueError(f"Template config file {template_config} does not exist")
+
+        self._pseudo_cls_onecov = {}
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            out_dir = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_onecov_{ver}/")
+            os.makedirs(out_dir, exist_ok=True)
+
+            if os.path.exists(os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")):
+                self.print_done(f"Skipping OneCovariance calculation, {out_dir} exists")
+                self._load_onecovariance_cov(out_dir, ver)
+            else:
+
+                mask_path = self.cc[ver]['shear']['mask']
+                redshift_distr_path = os.path.join(self.data_base_dir, self.cc[ver]['shear']['redshift_distr'])
+
+                config_path = os.path.join(out_dir, f"config_onecov_{ver}.ini")
+
+                self.print_cyan(f"Modifying OneCovariance config file and saving it to {config_path}")
+                self._modify_onecov_config(template_config, config_path, out_dir, mask_path, redshift_distr_path, ver)
+
+                self.print_cyan("Running OneCovariance...")
+                cmd = f"python {os.path.join(self.path_onecovariance, 'covariance.py')} {config_path}"
+                self.print_cyan(f"Command: {cmd}")
+                ret = os.system(cmd)
+                if ret != 0:
+                    raise RuntimeError(f"OneCovariance command failed with return code {ret}")
+                self.print_cyan("OneCovariance completed successfully.")
+                self._load_onecovariance_cov(out_dir, ver)
+            
+        self.print_done("Done Pseudo-Cl covariance with OneCovariance")
+
+    def _modify_onecov_config(self, template_config, config_path, out_dir, mask_path, redshift_distr_path, ver):
+        """
+        Modify OneCovariance configuration file with correct mask, redshift distribution, 
+        and ellipticity dispersion parameters.
+        
+        Parameters
+        ----------
+        template_config : str
+            Path to the template configuration file
+        config_path : str
+            Path where the modified configuration will be saved
+        mask_path : str
+            Path to the mask file
+        redshift_distr_path : str
+            Path to the redshift distribution file
+        """
+        config = configparser.ConfigParser()        
+        # Load the template configuration
+        config.read(template_config)
+        
+        # Update mask path
+        mask_base = os.path.basename(os.path.abspath(mask_path))
+        mask_folder = os.path.dirname(os.path.abspath(mask_path))
+        config['survey specs']['mask_directory'] = mask_folder
+        config['survey specs']['mask_file_lensing'] = mask_base
+        config['survey specs']['survey_area_lensing_in_deg2'] = str(self.area[ver])
+        config['survey specs']['ellipticity_dispersion'] = str(self.ellipticity_dispersion[ver])
+        config['survey specs']['n_eff_lensing'] = str(self.n_eff_gal[ver])
+
+        # Update redshift distribution path
+        redshift_distr_base = os.path.basename(os.path.abspath(redshift_distr_path))
+        redshift_distr_folder = os.path.dirname(os.path.abspath(redshift_distr_path))
+        config['redshift']['z_directory'] = redshift_distr_folder
+        config['redshift']['zlens_file'] = redshift_distr_base
+
+        #Update output directory
+        config['output settings']['directory'] = out_dir
+        
+        # Save the modified configuration
+        with open(config_path, 'w') as f:
+            config.write(f)
+
+    def get_cov_from_onecov(self, cov_one_cov, gaussian=True):
+        n_bins = np.sqrt(cov_one_cov.shape[0]).astype(int)
+        cov = np.zeros((n_bins, n_bins))
+
+        index_value = 10 if gaussian else 9
+        for i in range(n_bins):
+            for j in range(n_bins):
+                cov[i, j] = cov_one_cov[i * n_bins + j, index_value]
+        
+        return cov
+
+    def _load_onecovariance_cov(self, out_dir, ver):
+        self.print_cyan(f"Loading OneCovariance results from {out_dir}")
+        cov_one_cov = np.genfromtxt(os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat"))
+        gaussian_one_cov = self.get_cov_from_onecov(cov_one_cov, gaussian=True)
+        all_one_cov = self.get_cov_from_onecov(cov_one_cov, gaussian=False)
+
+        self._pseudo_cls_onecov[ver] = {
+            'gaussian_cov': gaussian_one_cov,
+            'all_cov': all_one_cov
+        }
+
+    def calculate_pseudo_cl_g_ng_cov(self, gaussian_part="iNKA"):
+        assert gaussian_part in ["iNKA", "OneCovariance"], "gaussian_part must be 'iNKA' or 'OneCovariance'"
+        self.print_start(f"Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part")
+    
+        self._pseudo_cls_cov_g_ng = {}
+
+        for ver in self.versions:
+            self.print_magenta(ver)
+            out_file = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_cov_g_ng_{gaussian_part}_{ver}.fits")
+            if os.path.exists(out_file):
+                self.print_done(f"Skipping Gaussian and Non-Gaussian covariance calculation, {out_file} exists")
+                cov_hdu = fits.open(out_file)
+                self._pseudo_cls_cov_g_ng[ver] = cov_hdu
+                continue
+            if gaussian_part == "iNKA":
+                gaussian_cov = self.pseudo_cls[ver]['cov']['COVAR_EE_EE'].data
+                non_gaussian_cov = self.pseudo_cls_onecov[ver]['all_cov'] - self.pseudo_cls_onecov[ver]['gaussian_cov']
+                full_cov = gaussian_cov + non_gaussian_cov
+            elif gaussian_part == "OneCovariance":
+                gaussian_cov = self.pseudo_cls_onecov[ver]['gaussian_cov']
+                non_gaussian_cov = self.pseudo_cls_onecov[ver]['all_cov'] - self.pseudo_cls_onecov[ver]['gaussian_cov']
+                full_cov = self.pseudo_cls_onecov[ver]['all_cov']
+            else:
+                raise ValueError(f"Unknown gaussian_part: {gaussian_part}")
+            self.print_cyan("Saving Gaussian and Non-Gaussian covariance...")
+            hdu = fits.HDUList()
+            hdu.append(fits.ImageHDU(gaussian_cov, name="COVAR_GAUSSIAN"))
+            hdu.append(fits.ImageHDU(non_gaussian_cov, name="COVAR_NON_GAUSSIAN"))
+            hdu.append(fits.ImageHDU(full_cov, name="COVAR_FULL"))
+            hdu.writeto(out_file, overwrite=True)
+            self._pseudo_cls_cov_g_ng[ver] = hdu
+        self.print_done(f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part")                
 
     def calculate_pseudo_cl(self):
         """
@@ -2205,97 +2882,117 @@ class CosmologyValidation:
 
             self._pseudo_cls[ver] = {}
 
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/pseudo_cl_{ver}.fits"
-            )
+            out_path = os.path.abspath(f"{self.cc['paths']['output']}/pseudo_cl_{ver}.fits")
             if os.path.exists(out_path):
                 self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
                 cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+                self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+            elif self.cell_method == 'map':
+                self.calculate_pseudo_cl_map(ver, nside, out_path)
+            elif self.cell_method == 'catalog':
+                self.calculate_pseudo_cl_catalog(ver, out_path)
             else:
-                params = get_params_rho_tau(self.cc[ver], survey=ver)
-
-                # Load data and create shear and noise maps
-                cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-                w = cat_gal[params["w_col"]]
-                self.print_cyan("Creating maps and computing Cl's...")
-                n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(
-                    params, nside, cat_gal
-                )
-                mask = n_gal_map != 0
-
-                shear_map_e1 = np.zeros(hp.nside2npix(nside))
-                shear_map_e2 = np.zeros(hp.nside2npix(nside))
-
-                e1 = cat_gal[params["e1_col"]]
-                e2 = cat_gal[params["e2_col"]]
-
-                del cat_gal
-
-                shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1 * w)
-                shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2 * w)
-                shear_map_e1[mask] /= n_gal_map[mask]
-                shear_map_e2[mask] /= n_gal_map[mask]
-
-                shear_map = shear_map_e1 + 1j * shear_map_e2
-
-                del shear_map_e1, shear_map_e2
-
-                ell_eff, cl_shear, wsp = self.get_pseudo_cls(shear_map)
-
-                cl_noise = np.zeros((4, self.n_ell_bins))
-
-                for i in range(self.nrandom_cell):
-                    noise_map_e1 = np.zeros(hp.nside2npix(nside))
-                    noise_map_e2 = np.zeros(hp.nside2npix(nside))
-
-                    e1_rot, e2_rot = self.apply_random_rotation(e1, e2)
-
-                    noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot * w)
-                    noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot * w)
-
-                    noise_map_e1[mask] /= n_gal_map[mask]
-                    noise_map_e2[mask] /= n_gal_map[mask]
-
-                    noise_map = noise_map_e1 + 1j * noise_map_e2
-                    del noise_map_e1, noise_map_e2
-
-                    _, cl_noise_, _ = self.get_pseudo_cls(noise_map, wsp)
-                    cl_noise += cl_noise_
-
-                cl_noise /= self.nrandom_cell
-                del e1, e2, e1_rot, e2_rot, w
-                del n_gal_map
-
-                # This is a problem because the measurement depends on the seed.
-                # To be fixed.
-                # cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
-                cl_shear = cl_shear - cl_noise
-
-                self.print_cyan("Saving pseudo-Cl's...")
-                self.save_pseudo_cl(ell_eff, cl_shear, out_path)
-
-                cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+                raise ValueError(f"Unknown cell method: {self.cell_method}")
 
         self.print_done("Done pseudo-Cl's")
+
+    def calculate_pseudo_cl_map(self, ver, nside, out_path):
+        params = get_params_rho_tau(self.cc[ver], survey=ver)
+
+        #Load data and create shear and noise maps
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+        w = cat_gal[params['w_col']]
+        self.print_cyan("Creating maps and computing Cl's...")
+        n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
+        mask = n_gal_map != 0
+
+        shear_map_e1 = np.zeros(hp.nside2npix(nside))
+        shear_map_e2 = np.zeros(hp.nside2npix(nside))
+
+        e1 = cat_gal[params['e1_col']]
+        e2 = cat_gal[params['e2_col']]
+
+        del cat_gal
+        
+        shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1*w)
+        shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2*w)
+        shear_map_e1[mask] /= n_gal_map[mask]
+        shear_map_e2[mask] /= n_gal_map[mask]
+
+        shear_map = shear_map_e1 + 1j*shear_map_e2
+
+        del shear_map_e1, shear_map_e2
+
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map)
+
+        cl_noise = np.zeros_like(cl_shear)
+        
+        for i in range(self.nrandom_cell):
+
+            noise_map_e1 = np.zeros(hp.nside2npix(nside))
+            noise_map_e2 = np.zeros(hp.nside2npix(nside))
+
+            e1_rot, e2_rot = self.apply_random_rotation(e1, e2)
+
+            
+            noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
+            noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
+
+            noise_map_e1[mask] /= n_gal_map[mask]
+            noise_map_e2[mask] /= n_gal_map[mask]
+
+            noise_map = noise_map_e1 + 1j*noise_map_e2
+            del noise_map_e1, noise_map_e2
+
+            _, cl_noise_, _ = self.get_pseudo_cls_map(noise_map, wsp)
+            cl_noise += cl_noise_
+        
+        cl_noise /= self.nrandom_cell
+        del e1, e2, w
+        try:
+            del e1_rot, e2_rot
+        except NameError: #Continue if the random generation has been skipped.
+            pass
+        del n_gal_map              
+
+        #This is a problem because the measurement depends on the seed. To be fixed.
+        #cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
+        cl_shear = cl_shear - cl_noise
+
+        self.print_cyan("Saving pseudo-Cl's...")
+        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+
+        cl_shear = fits.getdata(out_path)
+        self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
+
+    def calculate_pseudo_cl_catalog(self, ver, out_path):
+        params = get_params_rho_tau(self.cc[ver], survey=ver)
+
+        #Load data and create shear and noise maps
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
+
+        self.print_cyan("Saving pseudo-Cl's...")
+        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+
+        cl_shear = fits.getdata(out_path)
+        self._pseudo_cls[ver]['pseudo_cl'] = cl_shear
 
     def get_n_gal_map(self, params, nside, cat_gal):
         """
         Compute the galaxy number density map.
         """
-        ra = cat_gal[params["ra_col"]]
-        dec = cat_gal[params["dec_col"]]
-        w = cat_gal[params["w_col"]]
+        ra = cat_gal[params['ra_col']]
+        dec = cat_gal[params['dec_col']]
+        w = cat_gal[params['w_col']]
 
-        theta = (90.0 - dec) * np.pi / 180.0
-        phi = ra * np.pi / 180.0
+        theta = (90. - dec) * np.pi / 180.
+        phi = ra * np.pi / 180.
         pix = hp.ang2pix(nside, theta, phi)
 
-        unique_pix, idx, idx_rep = np.unique(
-            pix, return_index=True, return_inverse=True
-        )
+        unique_pix, idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
         n_gal = np.zeros(hp.nside2npix(nside))
         n_gal[unique_pix] = np.bincount(idx_rep, weights=w)
         return n_gal, unique_pix, idx, idx_rep
@@ -2309,20 +3006,16 @@ class CosmologyValidation:
         noise_map_e1 = np.zeros(hp.nside2npix(nside))
         noise_map_e2 = np.zeros(hp.nside2npix(nside))
 
-        w = cat_gal[params["w_col"]]
-        noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot * w)
-        noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot * w)
+        w = cat_gal[params['w_col']]
+        noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot*w)
+        noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot*w)
         noise_map_e1[mask] /= n_gal[mask]
         noise_map_e2[mask] /= n_gal[mask]
 
-        return noise_map_e1 + 1j * noise_map_e2
+        return noise_map_e1 + 1j*noise_map_e2
 
-    def get_sample(
-        self, params, nside, lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep
-    ):
-        noise_map = self.get_gaussian_real(
-            params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
-        )
+    def get_sample(self, params, nside, lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep):
+        noise_map = self.get_gaussian_real(params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep)
 
         f = nmt.NmtField(mask=mask, maps=[noise_map.real, noise_map.imag], lmax=lmax)
 
@@ -2332,32 +3025,32 @@ class CosmologyValidation:
         cl_noise = wsp.decouple_cell(cl_noise)
 
         return cl_noise, f, wsp
-
-    def get_pseudo_cls(self, map, wsp=None):
+    
+    def get_pseudo_cls_map(self, map, wsp=None):
         """
         Compute the pseudo-cl for a given map.
         """
 
         lmin = 8
-        lmax = 2 * self.nside
+        lmax = 2*self.nside
         b_lmax = lmax - 1
 
-        if self.binning == "linear":
-            step = 10
-            b = nmt.NmtBin.from_nside_linear(self.nside, step)
-        elif self.binning == "powspace":
-            ells = np.arange(lmin, lmax + 1)
+        ells = np.arange(lmin, lmax+1)
 
+        if self.binning == 'linear':
+            # Linear bands of width ell_step, respecting actual lmax
+            bpws = (ells - lmin) // self.ell_step
+            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        elif self.binning == 'powspace':
             start = np.power(lmin, self.power)
             end = np.power(lmax, self.power)
-            bins_ell = np.power(
-                np.linspace(start, end, self.n_ell_bins + 1), 1 / self.power
-            )
+            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
 
-            # Get bandpowers
+            #Get bandpowers
             bpws = np.digitize(ells.astype(float), bins_ell) - 1
             bpws[0] = 0
-            bpws[-1] = self.n_ell_bins - 1
+            bpws[-1] = self.n_ell_bins-1
 
             b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
 
@@ -2365,13 +3058,59 @@ class CosmologyValidation:
 
         factor = -1 if self.pol_factor else 1
 
-        f_all = nmt.NmtField(
-            mask=(map != 0), maps=[map.real, factor * map.imag], lmax=b_lmax
-        )
+        f_all = nmt.NmtField(mask=(map!=0), maps=[map.real, factor*map.imag], lmax=b_lmax)
 
         if wsp is None:
             wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+        
+        cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
+        cl_all = wsp.decouple_cell(cl_coupled)
 
+        return ell_eff, cl_all, wsp
+
+    def get_pseudo_cls_catalog(self, catalog, params, wsp=None):
+        """
+        Compute the pseudo-cl for a given catalog.
+        """
+
+        lmin = 8
+        lmax = 2*self.nside
+        b_lmax = lmax - 1
+
+        ells = np.arange(lmin, lmax+1)
+
+        if self.binning == 'linear':
+            # Linear bands of width ell_step, respecting actual lmax
+            bpws = (ells - lmin) // self.ell_step
+            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        elif self.binning == 'powspace':
+            start = np.power(lmin, self.power)
+            end = np.power(lmax, self.power)
+            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
+
+            #Get bandpowers
+            bpws = np.digitize(ells.astype(float), bins_ell) - 1
+            bpws[0] = 0
+            bpws[-1] = self.n_ell_bins-1
+
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+
+        ell_eff = b.get_effective_ells()
+
+        factor = -1 if self.pol_factor else 1
+
+        f_all = nmt.NmtFieldCatalog(positions=[catalog[params['ra_col']], catalog[params['dec_col']]],
+                        weights=catalog[params['w_col']],
+                        field=[catalog[params['e1_col']], factor*catalog[params['e2_col']]],
+                        lmax=b_lmax,
+                        lmax_mask=b_lmax,
+                        spin=2,
+                        lonlat=True)
+        
+        if wsp is None:
+            wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+        
         cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
         cl_all = wsp.decouple_cell(cl_coupled)
 
@@ -2396,9 +3135,9 @@ class CosmologyValidation:
             Second component of the rotated ellipticity.
         """
         np.random.seed()
-        rot_angle = np.random.rand(len(e1)) * 2 * np.pi
-        e1_out = e1 * np.cos(rot_angle) + e2 * np.sin(rot_angle)
-        e2_out = -e1 * np.sin(rot_angle) + e2 * np.cos(rot_angle)
+        rot_angle = np.random.rand(len(e1))*2*np.pi
+        e1_out = e1*np.cos(rot_angle) + e2*np.sin(rot_angle)
+        e2_out = -e1*np.sin(rot_angle) + e2*np.cos(rot_angle)
         return e1_out, e2_out
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
@@ -2412,7 +3151,7 @@ class CosmologyValidation:
         out_path : str
             Path to save the pseudo-Cl's to.
         """
-        # Create columns of the fits file
+        #Create columns of the fits file
         col1 = fits.Column(name="ELL", format="D", array=ell_eff)
         col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
         col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
@@ -2435,171 +3174,126 @@ class CosmologyValidation:
         """
         self.print_cyan("Plotting pseudo-Cl's")
 
-        # Plotting EE
+        #Plotting EE
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_ee.png")
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
+            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"], capsize=2)
 
         ax[0].set_ylabel(r"$\ell C_\ell$")
 
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
+        ax[0].set_xlim(ell.min()-10, ell.max()+100)
+        ax[0].set_xscale('squareroot')
         ax[0].set_xticks(np.array([100, 400, 900, 1600]))
         ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
         ax[0].xaxis.set_ticks(minor_ticks, minor=True)
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
-            )
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EE_EE"].data
+            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EE"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EE", color=self.cc[ver]["colour"])
 
         ax[1].set_xlabel(r"$\ell$")
         ax[1].set_ylabel(r"$C_\ell$")
 
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
+        ax[1].set_xlim(ell.min()-10, ell.max()+100)
+        ax[1].set_xscale('squareroot')
+        ax[1].set_yscale('log')
         ax[1].set_xticks(np.array([100, 400, 900, 1600]))
         ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
         ax[1].xaxis.set_ticks(minor_ticks, minor=True)
 
-        plt.suptitle("Pseudo-Cl EE (Gaussian covariance)")
+        plt.suptitle('Pseudo-Cl EE (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
 
-        # Plotting EB
+        #Plotting EB
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_eb.png")
 
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
+            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"], capsize=2)
 
         ax[0].axhline(0, color="black", linestyle="--")
         ax[0].set_ylabel(r"$\ell C_\ell$")
 
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
+        ax[0].set_xlim(ell.min()-10, ell.max()+100)
+        ax[0].set_xscale('squareroot')
         ax[0].set_xticks(np.array([100, 400, 900, 1600]))
         ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
         ax[0].xaxis.set_ticks(minor_ticks, minor=True)
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
-            )
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_EB_EB"].data
+            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["EB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" EB", color=self.cc[ver]["colour"])
 
         ax[1].set_xlabel(r"$\ell$")
         ax[1].set_ylabel(r"$C_\ell$")
 
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
+        ax[1].set_xlim(ell.min()-10, ell.max()+100)
+        ax[1].set_xscale('squareroot')
+        ax[1].set_yscale('log')
         ax[1].set_xticks(np.array([100, 400, 900, 1600]))
         ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
         ax[1].xaxis.set_ticks(minor_ticks, minor=True)
 
-        plt.suptitle("Pseudo-Cl EB (Gaussian covariance)")
+        plt.suptitle('Pseudo-Cl EB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
 
-        # Plotting BB
+        #Plotting BB
         out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_bb.png")
 
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+            ax[0].errorbar(ell, ell*self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=ell*np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"], capsize=2)
 
         ax[0].axhline(0, color="black", linestyle="--")
         ax[0].set_ylabel(r"$\ell C_\ell$")
 
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
+        ax[0].set_xlim(ell.min()-10, ell.max()+100)
+        ax[0].set_xscale('squareroot')
         ax[0].set_xticks(np.array([100, 400, 900, 1600]))
         ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+        ax[0].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
         ax[0].xaxis.set_ticks(minor_ticks, minor=True)
 
         for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-            )
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            cov = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+            ax[1].errorbar(ell, self.pseudo_cls[ver]['pseudo_cl']["BB"], yerr=np.sqrt(np.diag(cov)),  fmt=self.cc[ver]["marker"], label=ver+" BB", color=self.cc[ver]["colour"])
 
         ax[1].set_xlabel(r"$\ell$")
         ax[1].set_ylabel(r"$C_\ell$")
 
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
+        ax[1].set_xlim(ell.min()-10, ell.max()+100)
+        ax[1].set_xscale('squareroot')
+        ax[1].set_yscale('log')
         ax[1].set_xticks(np.array([100, 400, 900, 1600]))
         ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+        ax[1].tick_params(axis='x', which='minor', length=2, width=0.8)
+        minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
         ax[1].xaxis.set_ticks(minor_ticks, minor=True)
 
-        plt.suptitle("Pseudo-Cl BB (Gaussian covariance)")
+        plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)

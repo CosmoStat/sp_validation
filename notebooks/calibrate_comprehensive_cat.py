@@ -16,8 +16,11 @@ if ipython is not None:
 import sys
 import os
 import numpy as np
+import healpy as hp
 from astropy.io import fits
 import matplotlib.pylab as plt
+
+from cs_util import cat as cs_cat
 
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
@@ -146,11 +149,24 @@ for mask in masks:
     del mask
 
 # %%
-# %%
 # Additional quantities
 ra = cat.get_col(dat, "RA", mask_combined._mask, mask_metacal)
 dec = cat.get_col(dat, "Dec", mask_combined._mask, mask_metacal)
 mag = cat.get_col(dat, "mag", mask_combined._mask, mask_metacal)
+
+
+# %%
+# Create hp mask file
+if "binned_mask" in config:
+    cbm = config["binned_mask"]
+    print("Binning data to obtain mask...")
+    area_deg2, pix = cs_cat.get_binned_area(ra, dec, nside=cbm["nside"], return_pix=True)
+    healpix_map = np.full(hp.nside2npix(cbm["nside"]), not cbm["good"])
+    healpix_map[pix] = cbm["good"]
+    print(f"Writing binned mask to file {cbm['output_path']}...")
+    hp.write_map(cbm["output_path"], healpix_map, overwrite=True)
+else:
+    print("No binned mask file on output")
 
 
 # %%
@@ -244,9 +260,11 @@ cat.write_shape_catalog(
 )
 
 # %%
+# Write mask information to ASCII file
 with open("masks.txt", "w") as f_out:
     for my_mask in masks:
         my_mask.print_summary(f_out)
+
 
 # %%
 
