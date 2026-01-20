@@ -1,0 +1,45 @@
+import os
+from pathlib import Path
+
+configfile: "config/config.yaml"
+
+
+rule plot_xi_bestfit:
+    """Plot ξ± data with best-fit theory from fiducial chain."""
+    input:
+        xi_data=config["xi_data"],
+        pure_eb_data=config["pure_eb_data"],
+    output:
+        f"/n17data/cdaley/unions/pure_eb/results/paper_plots/{config['version']}_xi_with_bestfit.pdf",
+    params:
+        bestfit_dir=config["bestfit_dir"],
+    script:
+        "scripts/plot_xi_bestfit.py"
+
+
+# --- Legacy rules (commented out, require old config keys) ---
+# def find_cosmosis_inputs():
+#     chain = config["chain"]
+#     for ini_dir in config["ini_dirs"]:
+#         ini_file = Path(ini_dir) / f"cosmosis_pipeline_{chain}.ini"
+#         if os.path.exists(ini_file):
+#             return ini_file
+#     raise FileNotFoundError(
+#         f"Cosmosis input file not found for chain {chain} in specified directories."
+#     )
+#
+# rule get_bestfit_model:
+#     input:
+#         inference_ini=find_cosmosis_inputs(),
+#     output:
+#         bestfit_values_ini=f"results/{config['chain']}/bestfit_values.ini",
+#         cosmosis_ini=f"results/{config['chain']}/cosmosis.ini",
+#         xi_shear=f"results/{config['chain']}/bestfit_xi_shear.txt",
+#         xi_sys=f"results/{config['chain']}/bestfit_xi_sys.txt",
+#     params:
+#         bestfit_dir=f"results/{config['chain']}",
+#     script:
+#         "scripts/get_bestfit_model.py"
+#
+# rule paper_plots:
+#     ...  # References min_sep, max_sep, nbins, etc. from old config

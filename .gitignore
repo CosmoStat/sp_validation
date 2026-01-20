@@ -145,7 +145,7 @@ notebooks/validation*.py
 notebooks/main_set_up.py
 notebooks/analyse_shear_cat/tutorial_UNIONS_SP_v1.0.py
 
-notebooks/cosmo_val/output
+notebooks/cosmo_val/output*
 notebooks/cosmo_val/cosmo_val.ipynb
 notebooks/cosmo_val/match_LF_SP.ipynb
 
@@ -169,3 +169,18 @@ notebooks/demo_create_footprint_mask.ipynb
 notebooks/demo_check_footprint.ipynb
 notebooks/demo_calibrate_minimal_cat.ipynb
 notebooks/leakage_minimal.ipynb
+notebooks/demo_add_bands.ipynb
+
+CLAUDE.md
+AGENTS.md
+.beads/
+cosmo_inference/cosmosis_config/*.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_A_ia_cell.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_A_ia.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_A_psf.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_A.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_00001_cell.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_00001.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.ini
+!cosmo_inference/cosmosis_config/cosmosis_pipeline_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_cell.ini
+!cosmo_inference/cosmosis_config/priors_mock.ini

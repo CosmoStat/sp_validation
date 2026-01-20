@@ -7,12 +7,15 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: sp_validation
 #     language: python
 #     name: python3
 # ---
 
 # # Demo notebook to apply hsp masks
+#
+# Read healsparse mask files, compute mask values for input catalogue, and add those
+# values as new columns.
 
 # %reload_ext autoreload
 # %autoreload 2
@@ -92,10 +95,6 @@ if trace_mem:
 # Get bit-coded masks
 masks = obj.get_masks(dat=dat)
 
-if trace_mem:
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-
 # Add mask bits as new columns
 dat_new = obj.append_masks(dat, masks)
 
@@ -108,10 +107,3 @@ obj.write_hdf5_file(dat, dat_new)
 
 # Close input HDF5 catalogue file
 obj.close_hd5()
-
-if trace_mem:
-    current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
-    tracemalloc.stop()
-
-

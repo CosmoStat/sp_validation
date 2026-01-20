@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     base_dir = '/home/guerrini/data/'
 
-    versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.4-P1+3', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'DES']
+    versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'DES']
 
     path_config = '/home/guerrini/sp_validation/notebooks/cosmo_val/cat_config.yaml'
     output_dir = '/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/'

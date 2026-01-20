@@ -7,7 +7,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.15.1
 #   kernelspec:
-#     display_name: sp_validation
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -19,11 +19,15 @@
 # %reload_ext autoreload
 # %autoreload 2
 
+# +
 import sys
 import os
+import re
+
 import numpy as np
 from astropy.io import fits
 import matplotlib.pylab as plt
+# -
 
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
@@ -34,14 +38,14 @@ import sp_validation.cat as cat
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
 
-config = obj.read_config_set_params("config_mask.yaml")
+config = obj.read_config_set_params("config_mask.P37.yaml")
 
 # !pwd
 
 # Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
 
-if True:
+if False:
     n_max = 1_000_000
     print(f"MKDEBUG testing only first {n_max} objects")
     dat = dat[:n_max]
@@ -60,11 +64,8 @@ masks_to_apply = [
     "8_Manual",
 ]
 
-# List of masks not to include in minimal catalogue
+# List of masks not to apply and not to copy to minimal catalogue
 masks_not_to_include = [
-    "overlap",
-    "IMAFLAGS_ISO",
-    "8_Manual",
 ]
 # -
 
@@ -120,20 +121,36 @@ with open("masks.txt", "w") as f_out:
 for mask in masks:
     del mask
 
+
+def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):
+    cleaned_fields = []
+    for name, dt in dat_dtype.descr + dat_ext_dtype.descr:
+        # If dt is a tuple (e.g., ('S7', {'h5py_encoding': 'ascii'}))
+        if isinstance(dt, tuple):
+            cleaned_fields.append((name, dt[0]))  # keep only the base dtype string
+        else:
+            cleaned_fields.append((name, dt))     # use as-is
+    return cleaned_fields
+
+
 # +
 # Remove mask columns that were applied earlier
 
 # Columns to keep
 names_to_keep = [name for name in dat.dtype.names + dat_ext.dtype.names if name not in masks_not_to_include]
 
+# Remove metadata from the dtype (in particular, encoding for TILE_ID)
+clean_dtype_descr = strip_h5py_metadata_dtype(dat.dtype, dat_ext.dtype)
+
 new_dtype = [
     (name, dt) for name, dt in
-    dat.dtype.descr + dat_ext.dtype.descr
+    clean_dtype_descr
     if name in names_to_keep
 ]
 
 # Create a new structured array
-new_dat = np.zeros(len(dat[mask_combined._mask]), dtype=new_dtype)  # Initialize empty array with new dtype
+new_dat = np.zeros(len(dat[mask_combined._mask]), dtype=new_dtype
+)
 
 # Copy relevant columns and lines from each source array
 for name in names_to_keep:
@@ -151,23 +168,25 @@ header = fits.Header()
 # Add general config information to FITS header
 obj.add_params_to_FITS_header(header)
 
-# Add mask information to FITS header
+# Create mask description metainfo and add to FITS header
 for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
-# -
-
-obj._params
 
 # +
 # Write extended data to new HDF5 file
 
+# Create ApplyHspMask instance to write the new file
 obj_appl = sp_joint.ApplyHspMasks()
-output_path = obj._params["input_path"].replace("1.X.c", "1.X.m")
+
+# Replace "c" (comprehensive) with "m" (minimal)
+output_path = re.sub(r'1\.[A-Za-z0-9]\.c', '1.X.m', obj._params["input_path"])
 obj_appl._params["output_path"] = output_path
-obj_appl._params["aux_mask_file_list"] = []
+obj_appl._params["aux_mask_file_liast"] = []
 
 print("Saving file to", output_path)
-obj_appl.write_hdf5_file(new_dat)
+
+# Adding masks for metainfo description
+obj_appl.write_hdf5_file(new_dat, masks=masks)
 print("Done")
 # -
 

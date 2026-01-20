@@ -11,8 +11,9 @@ Validation of weak-lensing catalogues (galaxy and star shapes and other paramete
 | [![coc](https://img.shields.io/badge/conduct-read-lightgrey)](https://github.com/martin.kilbinger/sp_validation/blob/master/CODE_OF_CONDUCT.md) | [![Updates](https://pyup.io/repos/github/martin.kilbinger/sp_validation/shield.svg)](https://pyup.io/repos/github/martin.kilbinger/sp_validation/) | |
 
 ---
-> Authors: <a href="www.cosmostat.org" target="_blank" style="text-decoration:none; color: #F08080">CosmoStat</a> lab at CEA Paris-Saclay, including:
-  Axel Guinot, Martin Kilbinger, Lucie Baumont, Sacha Guerrini, Fabian Hervas Peters, Samuel Farrens, Emma Ayçoberry.</a>
+> Authors: <a href="www.cosmostat.org" target="_blank" style="text-decoration:none; color: #F08080">CosmoStat</a> lab at CEA Paris-Saclay;
+  Martin Kilbinger, Axel Guinot.  
+> Contributors: Emma Ayçoberry, Lucie Baumont, Clara Bonini, Cail Daley, Samuel Farrens, Sacha Guerrini, Fabian Hervas Peters.</a>  
 > Email: <a href="mailto:martin.kilbinger@cea.fr" style="text-decoration:none; color: #F08080">martin.kilbinger@cea.fr</a>  
 ---
 
@@ -32,10 +33,44 @@ tasks that can be performed by `sp_validation` are:
   a shear validation run and performes cosmology inference using the two-point
   correlation function.
 
+## Container Installation (Recommended)
+
+The easiest way to install sp_validation is via a container. Docker images are automatically built and pushed to the [Github Container Registry (GHCR)](ghcr.io/cosmostat/sp_validation) for each release. This image can be installed and run on most systems (including clusters) with just a few lines of code.
+
+We recommend running the image with **Apptainer** (formerly Singularity) which is installed on most HPC clusters. To simply run the image, use the following command:
+
+```bash
+# build writeable "sandbox" container in the current directory
+# ./sp_validation will be a directory that functions like a vm
+apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:develop
+
+# open a shell in the container
+apptainer shell --writable sp_validation 
+# and confirm that the installation was successful
+python -c "import sp_validation"
+```
+
+You can also run the image with **Docker**:
+
+```bash
+docker run --rm -it ghcr.io/cosmostat/sp_validation:pyproject_docker python -c "import sp_validation"  
+```
+
+We do not currently build images for Apple Silicon/amr64; however the amd64 images should work on these systems, albeit with reduced performance.
+
+
+
+## Flow chart
+
+The following flow chart illustrates the steps required to go from ShapePipe output products
+to calibrated and well-selected galaxy catalogues.
+
+![Flow chart](docs/images/flow_chart.png)
+
 
 ## Run shear validation
 
-See the [documentation](docs/source/run_validation.md) for instructions how to set up and run `sp_validation`.
+See the [documentation](docs/source/run_validation.md) for instructions on how to set up and run `sp_validation`.
 
 
 ## Post processing
