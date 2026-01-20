@@ -19,11 +19,15 @@
 # %reload_ext autoreload
 # %autoreload 2
 
+# +
 import sys
 import os
+import re
+
 import numpy as np
 from astropy.io import fits
 import matplotlib.pylab as plt
+# -
 
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
@@ -49,6 +53,7 @@ if False:
 
 # ## Masking
 
+# +
 # List of masks to apply
 masks_to_apply = [
     "overlap",
@@ -59,53 +64,26 @@ masks_to_apply = [
     "8_Manual",
 ]
 
-# ### Pre-processing ShapePipe flags
-
-# +
-# List to store all mask objects
-masks = []
-
-# Dict to associate labels with index in mask list
-labels = {}
+# List of masks not to apply and not to copy to minimal catalogue
+masks_not_to_include = [
+]
 # -
 
-# Loop over mask sections from config file
-config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
-idx = 0
-for section, mask_list in config_data.items():
+# ### Pre-processing ShapePipe flags
 
-    # Set data source
-    dat_source = dat if section == "dat" else dat_ext
+masks, labels = sp_joint.get_masks_from_config(
+    config,
+    dat,
+    dat_ext,
+    masks_to_apply=masks_to_apply,
+    verbose=obj._params["verbose"],
+)
 
-    # Loop over mask information in this section
-    for mask_params in mask_list:
-        value = mask_params["value"]
-        
-        if mask_params["col_name"] in masks_to_apply:
-
-            # Ensure 'range' kind has exactly two values
-            if mask_params["kind"] == "range" and (
-                not isinstance(value, list) or len(value) != 2
-            ):
-                raise ValueError(
-                    f"Range kind requires a list of two values, got {value}"
-                )
-
-            # Create mask instance and append to list
-            my_mask = sp_joint.Mask(
-                **mask_params, dat=dat_source, verbose=obj._params["verbose"]
-            )
-            masks.append(my_mask)
-            labels[my_mask._col_name] = idx
-            idx += 1
-        else:
-            if obj._params["verbose"]:
-                print(f"Skipping mask {mask_params['col_name']}")
-            continue
-
-if obj._params["verbose"]:
-    print(f"Combining {len(masks)} masks (check: {len(masks_to_apply)})")
-mask_combined = sp_joint.Mask.from_list(masks, label="combined")
+mask_combined = sp_joint.Mask.from_list(
+    masks,
+    label="combined",
+    verbose=obj._params["verbose"],
+)
 
 if obj._params["sky_regions"]:
 
@@ -143,20 +121,36 @@ with open("masks.txt", "w") as f_out:
 for mask in masks:
     del mask
 
+
+def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):
+    cleaned_fields = []
+    for name, dt in dat_dtype.descr + dat_ext_dtype.descr:
+        # If dt is a tuple (e.g., ('S7', {'h5py_encoding': 'ascii'}))
+        if isinstance(dt, tuple):
+            cleaned_fields.append((name, dt[0]))  # keep only the base dtype string
+        else:
+            cleaned_fields.append((name, dt))     # use as-is
+    return cleaned_fields
+
+
 # +
 # Remove mask columns that were applied earlier
 
 # Columns to keep
-names_to_keep = [name for name in dat.dtype.names + dat_ext.dtype.names if name not in masks_to_apply]
+names_to_keep = [name for name in dat.dtype.names + dat_ext.dtype.names if name not in masks_not_to_include]
+
+# Remove metadata from the dtype (in particular, encoding for TILE_ID)
+clean_dtype_descr = strip_h5py_metadata_dtype(dat.dtype, dat_ext.dtype)
 
 new_dtype = [
     (name, dt) for name, dt in
-    dat.dtype.descr + dat_ext.dtype.descr
+    clean_dtype_descr
     if name in names_to_keep
 ]
 
 # Create a new structured array
-new_dat = np.zeros(len(dat[mask_combined._mask]), dtype=new_dtype)  # Initialize empty array with new dtype
+new_dat = np.zeros(len(dat[mask_combined._mask]), dtype=new_dtype
+)
 
 # Copy relevant columns and lines from each source array
 for name in names_to_keep:
@@ -174,22 +168,26 @@ header = fits.Header()
 # Add general config information to FITS header
 obj.add_params_to_FITS_header(header)
 
-# Add mask information to FITS header
+# Create mask description metainfo and add to FITS header
 for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
-# -
-
-obj._params
 
 # +
 # Write extended data to new HDF5 file
 
+# Create ApplyHspMask instance to write the new file
 obj_appl = sp_joint.ApplyHspMasks()
-output_path = obj._params["input_path"].replace("1.5.c", "1.5.m")
-obj_appl._params["output_path"] = output_path
-obj_appl._params["aux_mask_file_list"] = []
 
-obj_appl.write_hdf5_file(dat, dat_ext)
+# Replace "c" (comprehensive) with "m" (minimal)
+output_path = re.sub(r'1\.[A-Za-z0-9]\.c', '1.X.m', obj._params["input_path"])
+obj_appl._params["output_path"] = output_path
+obj_appl._params["aux_mask_file_liast"] = []
+
+print("Saving file to", output_path)
+
+# Adding masks for metainfo description
+obj_appl.write_hdf5_file(new_dat, masks=masks)
+print("Done")
 # -
 
 from scipy import stats

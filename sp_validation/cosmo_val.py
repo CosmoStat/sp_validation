@@ -2243,7 +2243,3 @@ def hsp_map_logical_or(maps, verbose=False):
         plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
-<<<<<<< HEAD
-# %%
-=======
->>>>>>> upstream/develop
