@@ -164,6 +164,13 @@ notebooks/calibrate_comprehensive_cat.ipynb
 notebooks/demo_apply_hsp_masks.py
 notebooks/demo_apply_hsp_masks.ipynb
 notebooks/plot_footprints.ipynb
+notebooks/demo_calibrate_minimal_cat.ipynb
+notebooks/leakage_minimal.ipynb
+notebooks/mask_fits2hsparse.ipynb
+notebooks/mask_fits2hsparse_test.ipynb
+notebooks/create_shear_mb_empty.ipynb
+notebooks/demo_add_bands.ipynb
+notebooks/demo_add_bands_to_empty.ipynb
 notebooks/demo_comprehensive_to_minimal_cat.ipynb
 notebooks/demo_create_footprint_mask.ipynb
 notebooks/demo_check_footprint.ipynb
