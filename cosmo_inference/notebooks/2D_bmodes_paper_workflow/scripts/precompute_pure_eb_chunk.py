@@ -109,14 +109,17 @@ def main():
         numeric_params["nbins_int"],
     )
 
-    # Get redshift distribution (still need CosmologyValidation for this)
+    # Get redshift distribution for this blind
+    blind = params.get("blind", "A")
     cv = CosmologyValidation(
         versions=[params["version"]],
         catalog_config="/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml",
         output_dir="/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output",
     )
+    cv.blind = blind
     z, nz = cv.get_redshift(params["version"])
     z_dist = np.column_stack([z, nz])
+    print(f"Using n(z) for blind {blind}")
 
     # Build cosmology for theoretical predictions
     cosmo_cov = _build_cosmology(snakemake.config)

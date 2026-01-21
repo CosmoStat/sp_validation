@@ -54,8 +54,26 @@ covariance:
   # Enable semi-analytical covariance propagation
   use_semianalytic: true
   # Number of Monte Carlo samples for covariance propagation (used by pure E/B mode analysis)
-  n_samples: 2000
-  # CosmoCov cosmological parameters (KiDS-Legacy fiducial values)
+  n_samples: 4000
+  # Default cosmology for covariance calculation
+  default_cosmology: kids_legacy
+  # Named cosmologies for CosmoCov
+  cosmologies:
+    kids_legacy:
+      # KiDS-Legacy fiducial (used for main analysis)
+      Omega_m: 0.326
+      sigma_8: 0.786
+      n_s: 0.960
+      h: 0.670
+      Omega_b: 0.050
+    planck18:
+      # Planck 2018 TT,TE,EE+lowE+lensing (from cosmology.py defaults)
+      Omega_m: 0.31111
+      sigma_8: 0.8102
+      n_s: 0.9665
+      h: 0.6766
+      Omega_b: 0.04897
+  # Backward compatibility alias
   cosmology:
     Omega_m: 0.326
     sigma_8: 0.786
@@ -68,9 +86,16 @@ covariance:
     v1.4.7: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.7_nside_8192_norm.txt"
     v1.4.8: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.8_nside_8192_norm.txt"
 
-pseudo_cl_files:
-  SP_v1.4.6: "/automnt/n17data/sguerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6.fits"
-  SP_v1.4.6_leak_corr: "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6_leak_corr.fits"
+# Pseudo-Cl presets for different analyses
+pseudo_cl:
+  presets:
+    fine:      # for COSEBIS (single-ell bins)
+      binning: linear
+      nbins: 2040
+    harmonic:  # for C_ell PTEs
+      binning: powspace
+      nbins: 32
+  power: 0.5  # power for powspace binning (0.5 = sqrt spacing)
 
 # Harmonic-space (C_l) analysis parameters
 cl:

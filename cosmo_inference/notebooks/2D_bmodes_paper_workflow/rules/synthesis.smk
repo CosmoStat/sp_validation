@@ -84,6 +84,9 @@ rule bmodes_paper_spec:
         # Paper figure dependencies (ensures dashboard regenerates version comparison plots)
         pure_eb_version_comparison=rules.pure_eb_version_comparison.output.evidence,
         cosebis_bmode_stacked=rules.cosebis_version_comparison.output.paper_stacked,
+        # Consistency checks
+        bb_covariance_blind=rules.bb_covariance_blind_independence.output.evidence,
+        harmonic_config_cosebis=rules.harmonic_config_cosebis_comparison.output.comparison,
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:
@@ -109,6 +112,8 @@ rule all_claims:
         cl_version_comparison=rules.cl_version_comparison.output,
         config_space_pte=rules.config_space_pte_matrices.output,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output,
+        bb_covariance_blind=rules.bb_covariance_blind_independence.output,
+        harmonic_config_cosebis=rules.harmonic_config_cosebis_comparison.output,
 
 
 rule spec_dependencies:

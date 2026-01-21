@@ -13,7 +13,6 @@ import os
 CONFIG_DIR = "workflow/config"
 CLAIMS_DIR = "results/claims"
 COSMO_VAL_OUTPUT = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output"
-SASHA_COSMO_VAL_OUTPUT = "/home/guerrini/sp_validation/notebooks/cosmo_val/output"
 PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
 
 BLINDS = ["A", "B", "C"]
@@ -146,19 +145,27 @@ rule cosebis_data_vector:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # Number of parallel chunks for MC covariance estimation
-N_PURE_EB_CHUNKS = 20
+N_PURE_EB_CHUNKS = 40
 
 
 rule precompute_pure_eb_chunk:
-    """Compute a chunk of MC samples for pure E/B covariance (scatter)."""
+    """Compute a chunk of MC samples for pure E/B covariance (scatter).
+
+    Unified rule handles both base case (empty blind_suffix) and per-blind case (_A/_B/_C).
+    The blind param extracts the blind letter or defaults to "A" for base case.
+    """
+    wildcard_constraints:
+        version=r"[^_]+_v[\d.]+_leak_corr",  # e.g. SP_v1.4.6_leak_corr
+        blind_suffix=r"|_[ABC]",  # empty OR _A/_B/_C
     input:
-        cov_integration=lambda w: _cov_integration_path(w.version, "A"),
+        cov_integration=lambda w: _cov_integration_path(w.version, w.blind_suffix[1] if w.blind_suffix else "A"),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/chunks/{version}_pure_eb_chunk_{chunk_id}.npz",
+        "results/paper_plots/intermediate/chunks/{version}{blind_suffix}_pure_eb_chunk_{chunk_id}.npz",
     params:
         version="{version}",
+        blind=lambda w: w.blind_suffix[1] if w.blind_suffix else "A",
         chunk_id="{chunk_id}",
         n_chunks=N_PURE_EB_CHUNKS,
         min_sep=config["fiducial"]["min_sep"],
@@ -176,20 +183,33 @@ rule precompute_pure_eb_chunk:
 
 
 rule precompute_pure_eb:
-    """Gather MC sample chunks and compute final pure E/B covariance."""
+    """Gather MC sample chunks and compute final pure E/B covariance.
+
+    Unified rule handles both base case (empty blind_suffix) and per-blind case (_A/_B/_C).
+    For per-blind (B, C), loads data vectors from base file.
+    For base or A, computes data vectors fresh.
+    """
     wildcard_constraints:
-        version=r"[^_]+_v[\d.]+_leak_corr",  # e.g. SP_v1.4.6_leak_corr (no blind suffix)
+        version=r"[^_]+_v[\d.]+_leak_corr",  # e.g. SP_v1.4.6_leak_corr
+        blind_suffix=r"|_[ABC]",  # empty OR _A/_B/_C
     input:
-        chunks=expand(
-            "results/paper_plots/intermediate/chunks/{{version}}_pure_eb_chunk_{chunk_id}.npz",
+        chunks=lambda w: expand(
+            f"results/paper_plots/intermediate/chunks/{{version}}{w.blind_suffix}_pure_eb_chunk_{{chunk_id}}.npz",
+            version=w.version,
             chunk_id=range(N_PURE_EB_CHUNKS),
         ),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
+        # For explicit blinds B/C, we need the base file to get data vectors
+        base_pure_eb=lambda w: (
+            f"results/paper_plots/intermediate/{w.version}_pure_eb_semianalytic.npz"
+            if w.blind_suffix in ["_B", "_C"] else []
+        ),
     output:
-        "results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
+        "results/paper_plots/intermediate/{version}{blind_suffix}_pure_eb_semianalytic.npz",
     params:
         version="{version}",
+        blind=lambda w: w.blind_suffix[1] if w.blind_suffix else "A",
         min_sep=config["fiducial"]["min_sep"],
         max_sep=config["fiducial"]["max_sep"],
         nbins=config["fiducial"]["nbins"],
@@ -202,30 +222,6 @@ rule precompute_pure_eb:
         runtime=5,
     script:
         "../scripts/gather_pure_eb_chunks.py"
-
-
-rule precompute_pure_eb_blind:
-    """Precompute pure E/B decomposition with per-blind covariance."""
-    input:
-        cov_integration=lambda w: _cov_integration_path(config["fiducial"]["version"], w.blind),
-    output:
-        f"results/paper_plots/intermediate/{config['fiducial']['version']}_{{blind}}_pure_eb_semianalytic.npz",
-    params:
-        version=config["fiducial"]["version"],
-        min_sep=config["fiducial"]["min_sep"],
-        max_sep=config["fiducial"]["max_sep"],
-        nbins=config["fiducial"]["nbins"],
-        min_sep_int=config["fiducial"]["min_sep_int"],
-        max_sep_int=config["fiducial"]["max_sep_int"],
-        nbins_int=config["fiducial"]["nbins_int"],
-        npatch=config["fiducial"]["npatch"],
-        n_samples=config["covariance"]["n_samples"],
-    resources:
-        mem_mb=32000,
-        runtime=60,
-    threads: 48
-    script:
-        "../scripts/precompute_pure_eb_covariance.py"
 
 
 rule pure_eb_data_vector:
@@ -363,9 +359,8 @@ rule cl_data_vector:
             f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pseudo_cl=f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}.fits",
-        # Use our covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
-        pseudo_cl_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_nellbins=32.fits",
+        pseudo_cl=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}_blind={config['fiducial']['blind']}_powspace_nbins=32.fits",
+        pseudo_cl_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind={config['fiducial']['blind']}_powspace_nbins=32.fits",
     output:
         evidence=f"{CLAIMS_DIR}/cl_fiducial/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_fiducial/figure.png",
@@ -385,12 +380,11 @@ rule cl_version_comparison:
         config=f"{CONFIG_DIR}/config.yaml",
         cl_fiducial_evidence=rules.cl_data_vector.output.evidence,
         pseudo_cl=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_{ver}_blind={config['fiducial']['blind']}_powspace_nbins=32.fits"
             for ver in config["versions"]
         ],
-        # Use our covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
         pseudo_cl_cov=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_nellbins=32.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_blind={config['fiducial']['blind']}_powspace_nbins=32.fits"
             for ver in config["versions"]
         ],
     output:
@@ -515,12 +509,12 @@ rule harmonic_space_pte_matrices:
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         pseudo_cl=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_{ver}_blind={blind}_powspace_nbins=32.fits"
             for ver in config["versions"]
+            for blind in BLINDS
         ],
-        # Per-blind covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
         pseudo_cl_cov=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_blind={blind}_nellbins=32.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins=32.fits"
             for ver in config["versions"]
             for blind in BLINDS
         ],
@@ -548,8 +542,8 @@ rule harmonic_config_cosebis_comparison:
         spec=f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
         config=f"{CONFIG_DIR}/config.yaml",
         # Fine-binned pseudo-Cl for accurate C_ℓ → COSEBIS conversion
-        pseudo_cls=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}_blind=A_ellstep=1.fits",
-        pseudo_cls_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind=A_ellstep=1.fits",
+        pseudo_cls=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}_blind=A_linear_nbins=2040.fits",
+        pseudo_cls_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind=A_linear_nbins=2040.fits",
         cov_integration=_covariance_path(
             config["fiducial"]["version"],
             config["fiducial"]["min_sep_int"],
@@ -578,7 +572,53 @@ rule harmonic_config_cosebis_comparison:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# BB Covariance Blind Independence
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+rule bb_covariance_blind_independence:
+    """Test BB covariance blind-independence vs EE variation.
+
+    BB covariances should be stable across blinds (null signal → no sample variance).
+    EE covariances should vary (~10%) due to sample variance from cosmological signal.
+
+    Covers all three analysis spaces: Pure E/B, COSEBIS, and harmonic (pseudo-Cl).
+    """
+    input:
+        specs=[
+            f"{CONFIG_DIR}/bb_covariance_blind_independence.md",
+            f"{CONFIG_DIR}/covariance.md",
+            f"{CONFIG_DIR}/pure_eb.md",
+            f"{CONFIG_DIR}/cosebis.md",
+            f"{CONFIG_DIR}/cl.md",
+        ],
+        config=f"{CONFIG_DIR}/config.yaml",
+        # Per-blind MC-propagated pure E/B covariances
+        # Base file (no suffix) uses blind=A, so reuse it for A
+        pure_eb_A=f"results/paper_plots/intermediate/{config['fiducial']['version']}_pure_eb_semianalytic.npz",
+        pure_eb_B=f"results/paper_plots/intermediate/{config['fiducial']['version']}_B_pure_eb_semianalytic.npz",
+        pure_eb_C=f"results/paper_plots/intermediate/{config['fiducial']['version']}_C_pure_eb_semianalytic.npz",
+        # COSEBIS: xi integration file (shared) + per-blind config-space covariances
+        xi_integration=_xi_integration_path(config["fiducial"]["version"]),
+        cov_integration_A=_cov_integration_path(config["fiducial"]["version"], "A"),
+        cov_integration_B=_cov_integration_path(config["fiducial"]["version"], "B"),
+        cov_integration_C=_cov_integration_path(config["fiducial"]["version"], "C"),
+        # Per-blind harmonic covariances
+        harmonic_A=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind=A_nellbins=32.fits",
+        harmonic_B=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind=B_nellbins=32.fits",
+        harmonic_C=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind=C_nellbins=32.fits",
+    params:
+        nmodes=config["fiducial"]["nmodes"],
+        theta_min=config["cosebis"]["theta_min"],
+        theta_max=config["cosebis"]["theta_max"],
+    output:
+        evidence=f"{CLAIMS_DIR}/bb_covariance_blind_independence/evidence.json",
+        figure=f"{CLAIMS_DIR}/bb_covariance_blind_independence/figure.png",
+    script:
+        "../scripts/bb_covariance_blind_independence.py"
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_pte_matrix, pure_eb_covariance, pure_eb_version_comparison, cosebis_pte_matrix, config_space_pte_matrices, harmonic_space_pte_matrices, harmonic_config_cosebis_comparison
+localrules: cl_data_vector, cl_version_comparison, pure_eb_pte_matrix, pure_eb_covariance, pure_eb_version_comparison, cosebis_pte_matrix, config_space_pte_matrices, harmonic_space_pte_matrices, harmonic_config_cosebis_comparison, bb_covariance_blind_independence
