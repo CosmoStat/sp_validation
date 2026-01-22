@@ -462,6 +462,9 @@ rule config_space_pte_matrices:
 
     Main text: 1x3 composite for fiducial version (xi+^B, xi-^B, COSEBIS B_n)
     Appendix: 3x3 composite for all versions (3 rows x 3 statistics)
+
+    Uses blind A covariance as fiducial. BB covariances are theoretically blind-independent;
+    see cosmology_for_covariance.md wiki for investigation details.
     """
     input:
         specs=[
@@ -473,16 +476,14 @@ rule config_space_pte_matrices:
         # Claim dependencies
         pure_eb_data_vector=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
         cosebis_data_vector=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
-        # Data inputs
+        # Data inputs (blind A only - BB covariances are blind-independent)
         pure_eb_pte=[
-            f"results/paper_plots/intermediate/{ver}_{blind}_pure_eb_ptes.npz"
+            f"results/paper_plots/intermediate/{ver}_A_pure_eb_ptes.npz"
             for ver in config["versions"]
-            for blind in BLINDS
         ],
         cosebis_pte_files=[
-            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{blind}/pte_{i:03d}_{j:03d}.json"
+            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/A/pte_{i:03d}_{j:03d}.json"
             for ver in config["versions"]
-            for blind in BLINDS
             for i, j in _pte_scale_cut_pairs()
         ],
     output:
@@ -501,7 +502,7 @@ rule harmonic_space_pte_matrices:
     Results: Single-panel Cl^BB PTE matrix for fiducial v1.4.6
     Appendix: 3-panel composite (v1.4.5, v1.4.6, v1.4.8)
 
-    Uses per-blind covariances and reports minimum PTE across blinds A, B, C.
+    Uses blind A covariance as fiducial (per adopt-blind-a-as-fiducial-bb fiber).
     """
     input:
         specs=[
@@ -509,14 +510,12 @@ rule harmonic_space_pte_matrices:
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         pseudo_cl=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_{ver}_blind={blind}_powspace_nbins=32.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_{ver}_blind=A_powspace_nbins=32.fits"
             for ver in config["versions"]
-            for blind in BLINDS
         ],
         pseudo_cl_cov=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins=32.fits"
+            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_blind=A_powspace_nbins=32.fits"
             for ver in config["versions"]
-            for blind in BLINDS
         ],
     output:
         evidence=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",

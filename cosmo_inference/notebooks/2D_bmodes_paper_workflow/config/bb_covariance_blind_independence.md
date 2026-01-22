@@ -28,12 +28,17 @@ Diagonal ratios relative to blind A for both B-modes and E-modes:
 | Method | BB deviation | EE deviation | Notes |
 |--------|--------------|--------------|-------|
 | COSEBIS (analytic) | <0.01% | ~10% | Analytic propagation |
-| Pure E/B (MC) | ~10-13% | ~10-13% | MC noise dominates |
-| Harmonic (MC) | ~8% | ~10% | MC noise dominates |
+| Pure E/B (MC) | ~10-13% | ~10-13% | MC sampling noise |
+| Harmonic (Knox) | ~8% | ~10% | Real E→B leakage at ℓ < 100 |
+
+**Note on harmonic:** The harmonic covariance is computed analytically via Knox-like formula (NaMaster), NOT via MC sampling. The ~8% variation is **real**, caused by E→B leakage of sample variance on scales ℓ < 100 where mode mixing is strongest. This is within existing scale cuts.
+
+**Implication:** No need to take minimum covariance across blinds for B-mode null tests. Use blind A as fiducial. See [cosmology_for_covariance.md](../../docs/wiki/cosmology_for_covariance.md) for full investigation.
 
 **Pass criteria:**
 1. COSEBIS B_n covariance blind-independent (<0.1%)
 2. E-mode covariances vary ~10% (sample variance from cosmological signal)
+3. Pure E/B BB variation consistent with MC noise (similar magnitude to EE)
 
 ## Config References
 
