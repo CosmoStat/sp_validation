@@ -1388,7 +1388,6 @@ class CosmologyValidation:
             results_obj.prepare_output()
 
             with results_obj.temporarily_read_data():
-                results_obj._dat = results_obj.dat_shear
 
                 if not "cols" in results_obj._params:
                     self.print_green(
