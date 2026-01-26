@@ -372,10 +372,19 @@ class metacal:
             else:
                 snr_flux = data['flux'] / data['flux_err']
 
+            if name == 'ns':
+                # This is a FHP hack, the ns PSF measured in shapepipe is not correct,
+                # fortunately it is the same dilated PSF as the other branches,
+                # thus we can simply use p1
+                print("FHP using p1 PSF for ns in cuts")
+                Tpsf = self.p1['Tpsf']
+            else:
+                Tpsf = data['Tpsf']
+
             mask_tmp = (
                 (data['flag'] == 0)
-                & (Tr_tmp / data['Tpsf'] > self._rel_size_min)
-                & (Tr_tmp / data['Tpsf'] < self._rel_size_max)
+                & (Tr_tmp / Tpsf > self._rel_size_min)
+                & (Tr_tmp / Tpsf < self._rel_size_max)
                 & (snr_flux > self._snr_min)
                 & (snr_flux < self._snr_max)
             )

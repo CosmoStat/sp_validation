@@ -163,6 +163,19 @@ ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
 )
 # -
 
+# MKDEBUG: Moved from end of this script
+
+# ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
+
+spv_cat.write_PSF_cat(                                         
+    f'{output_PSF_cat_base}_{shape}.fits',
+    ra_star,
+    dec_star,
+    g_star_psf[0],
+    g_star_psf[1],
+)
+
+
 #### Refine: Match to SPREAD_CLASS samples
 if "SPREAD_CLASS" in dd.dtype.names:
     spv_cat.match_spread_class(dd, ind_star, m_star, stats_file, len(ra_star), verbose=verbose)
@@ -1008,13 +1021,4 @@ if shape == "":
     dec = dd['DEC'][cut_overlap]
     tile_id = dd['TILE_ID'][cut_overlap]
     write_galaxy_cat(f'{output_shape_cat_base}.fits', ra, dec, tile_id)
-
-# ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
-
-write_PSF_cat(                                         
-    f'{output_PSF_cat_base}_{shape}.fits',
-    ra_star,
-    dec_star,
-    g_star_psf[0],
-    g_star_psf[1],
-) 
+ 
