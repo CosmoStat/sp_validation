@@ -22,6 +22,7 @@
 
 # +
 import os
+import re
 import numpy as np
 import tracemalloc
 import healsparse as hsp
@@ -57,6 +58,10 @@ print(bits)
 # Set parameters
 base = "unions_shapepipe_comprehensive"
 year = 2024
+if ver == "v1.3.c":
+    year = 2022
+else:
+    year = 2024
 ver_maj = "v1.5"
 
 obj._params["input_path"] = f"{base}_{year}_{ver_maj}.c.hdf5"
@@ -68,6 +73,8 @@ obj._params["file_base"] = "mask_r_"
 obj._params["bits"] = bits
 
 obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_{ver_maj}.x.hsp"
+ver_x = re.sub(r"c$", "x", ver)
+obj._params["aux_mask_files"] = f"{obj._params['mask_dir']}/coverage_{ver_x}.hsp"
 obj._params["aux_mask_labels"] = "npoint3"
 obj._params["verbose"] = True
 # -
