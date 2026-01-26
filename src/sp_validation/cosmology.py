@@ -49,8 +49,14 @@ def _ccl_to_camb(cosmo):
     }
 
     # Handle normalization: prefer As, but convert sigma8 to As if needed
-    As_val = cosmo.get("A_s")
-    sigma8_val = cosmo.get("sigma8")
+    As_val = None
+    sigma8_val = None
+    try:
+        As_val = cosmo.get("A_s")
+        sigma8_val = cosmo.get("sigma8")
+    except:
+        As_val = cosmo["A_s"]
+        sigma8_val = cosmo["sigma8"]
 
     if As_val is not None and not np.isnan(As_val):
         # Use As directly
