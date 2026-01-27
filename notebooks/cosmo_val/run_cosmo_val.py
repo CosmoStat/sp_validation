@@ -67,9 +67,6 @@ cv.plot_objectwise_leakage_aux()
 cv.plot_weights()
 
 # %%
-cv.plot_separation()
-
-# %%
 cv.calculate_additive_bias()
 
 # %%
