@@ -7,6 +7,10 @@ import os
 from cosmology import Cosmology
 import time
 from astropy.cosmology import Planck18
+import astropy.units as u
+import astropy.constants as const
+import pyccl as ccl
+import scipy as sp
 
 from tqdm import tqdm
 
@@ -36,7 +40,8 @@ def get_parser():
     parser.add_argument("-sg", "--sigmae", help="Set sigma of intrinsic ellipticity", type=float, default=0.2684)
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
     parser.add_argument("-nz", "--pathnz", help="Path to the n(z) file", type=str, default='/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt')
-    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits')
+    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/n09data/guerrini/glass_mock_v1.4.6/mask_nside4096.fits')
+    parser.add_argument("-ia", "--ia_bias", help="Intrinsic alignment bias for CCL", type=float, default=None)
     return parser
 
 def downgrade_mask(mask, nside):
@@ -87,6 +92,7 @@ class Sky:
         self.path = args.path
         self.path_mask = args.mask
         self.sigma_e = args.sigmae
+        self.ia_bias = args.ia_bias if hasattr(args, 'ia_bias') else None
 
         #sets the random seed
         self.rng = np.random.default_rng(args.seed)
@@ -132,6 +138,7 @@ class Sky:
         print(f"sigma_8: {sigma8}")
         print(f"Omega_m: {self.pars.omegam}")
         print(f"S8: {sigma8*np.sqrt(self.pars.omegam/0.3)}")
+        print(f"ia_bias: {self.ia_bias}")
         print("------------------------------------------------------------------")
         
         #Initialize the variables for the functions
@@ -178,12 +185,13 @@ class Sky:
             np.save(f'{self.root}/cls_test{self.test}.npy')
         else:
             try:
-                cls = np.load(f'{self.root}/cls{self.test}.npy')
+                cls = np.load(f'{self.root}/cls_{self.nside}.npy')
             except FileNotFoundError:
                 print(f"[!] The cls file for lmax={self.lmax} does not exist.")
                 print(f"[!] Running the matter density cls calculation ...")
                 cls = glass.ext.camb.matter_cls(self.pars, self.lmax, shells)
-                np.save(f'{self.root}/cls{self.test}.npy', cls)
+                #cls = self.get_ccl_cls(self.pars, self.lmax, shells, ia_bias=self.ia_bias)
+                np.save(f'{self.root}/cls_{self.nside}.npy', cls)
                 print(f"[!] Done.")
 
         #Set up lognormal fields for simulations
@@ -229,9 +237,13 @@ class Sky:
         gamm2_bar = np.zeros(hp.nside2npix(self.nside)) """
         print("Generating shell ", end='')
         for i, delta_i in tqdm(enumerate(matter)):
+
             #compute the lensing maps
             convergence.add_window(delta_i, shells[i])
             kappa_i = convergence.kappa
+            if self.ia_bias is not None:
+                kappa_ia = self.ia_kappa(delta_i, shells[i])
+                kappa_i += kappa_ia
             gamm1_i, gamm2_i = glass.shear_from_convergence(kappa_i)
 
             """ kappa_bar += ngal[i] * kappa_i
@@ -328,6 +340,115 @@ class Sky:
             fits.close()
         self.camb_cls = dic
         return dic
+
+    def get_ccl_cls(self, pars, lmax, shells, ia_bias = None):
+        h = pars.h
+        omega_c = pars.omegac
+        omega_b = pars.omegab
+        ns = pars.InitPower.ns
+        sigma8 = float(camb.get_results(pars).get_sigma8())
+        cosmo = ccl.Cosmology(
+            h=h,
+            Omega_c=omega_c,
+            Omega_b=omega_b,
+            n_s=ns,
+            sigma8=sigma8,
+            transfer_function='boltzmann_camb'
+        )
+
+        tracers = []
+        for za, wa, _ in shells:
+            ia_bias_ = None
+            if ia_bias is not None:
+                ia_bias_ = (za, np.ones_like(za) * ia_bias)
+            tracer = ccl.WeakLensingTracer(cosmo, dndz=(za, wa), ia_bias=ia_bias_)
+            tracers.append(tracer)
+        
+        n = len(tracers)
+        cls = []
+        ell = np.arange(lmax + 1)
+        for i in range(n):
+            for j in range(i, -1, -1):
+                tracer_i = tracers[i]
+                tracer_j = tracers[j]
+                cl_ij = ccl.angular_cl(cosmo, tracer_i, tracer_j, ell)
+                cls.append(cl_ij)
+        return cls
+    
+    def ia_kappa(self, delta, shell):
+        Om0 = self.Om
+        A_ia = self.ia_bias
+        _, _, z_eff = shell
+        c1 = (5e-14 * (u.Mpc**3.)/(u.solMass))
+        c1_cgs = (c1 * ((1./self.h))**2.).cgs
+        H0 = 100 * self.h * u.km/u.s/u.Mpc
+        H0 = H0.to(u.s**-1)
+        G = const.G * u.m**3/(u.kg * u.s**2)
+        G = G.cgs
+        rho_crit = 3 * H0**2 / (8 * np.pi * G)
+        rho_c1 = (c1_cgs * rho_crit).value
+
+        
+
+        prefactor = - A_ia * rho_c1 * Om0
+        inverse_linear_growth = 1. / self.D_1(z_eff, Om0)
+        return prefactor * inverse_linear_growth * delta
+
+    def E_sq(self, z, om0):
+        """
+        A function giving Hubble's law for flat cosmology
+
+        :param z: redshift value
+        :param om0: matter density
+        :return: A value for the Hubble parameter
+        """
+        return om0 * (1 + z) ** 3 + 1 - om0
+
+
+    def f_integrand(self, z, om0):
+        """
+        A function for the redshift integrand in the intrinsic alignment calculation
+
+        :param z: redshift value
+        :param om0: matter density
+        :return: redshift integrand
+        """
+        return (z + 1) / (self.E_sq(z, om0)) ** 1.5
+
+
+    def D_single(self, z, om0):
+        """
+        Provides the normalised linear growth factor
+
+        :param z: single redshift value
+        :param om0: matter density
+        :return: normalised linear growth factor
+        """
+        first_integral = sp.integrate.quad(self.f_integrand, z, np.inf, args=(om0))[0]
+        second_integral = sp.integrate.quad(self.f_integrand, 0, np.inf, args=(om0))[0]
+
+        return (self.E_sq(z, om0) ** 0.5) * first_integral / second_integral
+
+
+    def D_1(self, z, om0):
+        """
+        Normalised linear growth factor (D_plus)
+
+        :param z: single redshift value or array values
+        :param om0: matter density
+        :return: normalised linear growth factor
+        """
+        
+        if (isinstance(z, float)) or (isinstance(z, int)):
+            D_values = self.D_single(z, om0)
+        else:
+            z = list(z)
+            D_values = [self.D_single(z[i], om0) for i in range(len(z))]
+            D_values = np.array(D_values)
+        
+        return D_values
+
+
     
 if __name__ == "__main__":
     print("Starting the simulation")

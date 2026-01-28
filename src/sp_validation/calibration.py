@@ -496,8 +496,8 @@ def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response
     
     # Create logarithmic bins in size and SNR
     bin_edges = {}
-    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins_x, type="log", x_min=3, x_max=300)
-    bin_edges["size_ratio"] = cut_to_bins(df_gal, "size_ratio", num_bins_y, type="log", x_min=0.3, x_max=20)
+    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins_x, type="log", x_min=3, x_max=700)
+    bin_edges["size_ratio"] = cut_to_bins(df_gal, "size_ratio", num_bins_y, type="log", x_min=0.3, x_max=10)
     
     # Initialize output dict
     quantities = {}

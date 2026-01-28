@@ -364,3 +364,104 @@ localrules:
     covariance_process,
     generate_glass_mock_rhotau_samples,
     covariance_blind_consistency,
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Pseudo-Cl Generation (for COSEBIS cross-validation)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
+
+
+BLINDS = ["A", "B", "C"]
+# Base versions without _leak_corr suffix for n(z) path matching
+BASE_VERSIONS = ["SP_v1.4.5", "SP_v1.4.6", "SP_v1.4.8"]
+
+
+rule fine_pseudo_cl:
+    """Generate finely-binned pseudo-Cls for accurate C_ℓ → COSEBIS conversion.
+
+    Uses linear binning with configurable ell_step (default 1 for single-ell bins).
+    Supports blind parameter (A, B, C) to override n(z) distribution.
+    Uses KiDS-Legacy fiducial cosmology for covariance calculation.
+    """
+    output:
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_ellstep={ell_step}.fits"),
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_ellstep={ell_step}.fits"),
+    wildcard_constraints:
+        blind="[ABC]",
+    params:
+        version="{version}",
+        blind="{blind}",
+        cat_config=CAT_CONFIG,
+        nside=1024,
+        npatch=1,
+        cosmo_params=config["covariance"]["cosmology"],
+        binning="linear",
+        ell_step=lambda w: int(w.ell_step),
+    resources:
+        mem_mb=32000,
+        runtime=120,  # minutes
+    threads: 48
+    script:
+        "../scripts/generate_fine_pseudo_cl.py"
+
+
+rule pseudo_cl_cov:
+    """Generate 32-bin pseudo-Cl covariances for B-mode null tests.
+
+    Uses power-space (sqrt) binning matching Sasha's NaMaster setup.
+    Uses KiDS-Legacy fiducial cosmology for consistency with CosmoCov.
+    Supports blind parameter (A, B, C) to override n(z) distribution.
+    """
+    output:
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_nellbins=32.fits"),
+    wildcard_constraints:
+        blind="[ABC]",
+    params:
+        version="{version}",
+        blind="{blind}",
+        cat_config=CAT_CONFIG,
+        nside=1024,
+        npatch=1,
+        cosmo_params=config["covariance"]["cosmology"],
+        binning="powspace",
+        n_ell_bins=32,
+        power=0.5,
+    resources:
+        mem_mb=16000,
+        runtime=30,  # minutes - faster than fine binning
+    threads: 24
+    script:
+        "../scripts/generate_fine_pseudo_cl.py"
+
+
+PSEUDO_CL_VERSIONS = [
+    "SP_v1.4.5", "SP_v1.4.5_leak_corr",
+    "SP_v1.4.6", "SP_v1.4.6_leak_corr",
+    "SP_v1.4.8", "SP_v1.4.8_leak_corr",
+]
+
+rule pseudo_cl_cov_all:
+    """Generate 32-bin pseudo-Cl covariances for all versions and blinds."""
+    input:
+        expand(
+            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_nellbins=32.fits"),
+            version=PSEUDO_CL_VERSIONS,
+            blind=BLINDS,
+        ),
+
+
+rule fine_pseudo_cl_all:
+    """Generate finely-binned pseudo-Cls for all versions and blinds."""
+    input:
+        expand(
+            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_ellstep=1.fits"),
+            version=config["versions"],
+            blind=BLINDS,
+        ),
+        expand(
+            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_ellstep=1.fits"),
+            version=config["versions"],
+            blind=BLINDS,
+        ),

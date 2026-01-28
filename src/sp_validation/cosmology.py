@@ -49,12 +49,8 @@ def _ccl_to_camb(cosmo):
     }
 
     # Handle normalization: prefer As, but convert sigma8 to As if needed
-    try:
-        As_val = cosmo.get("A_s")
-        sigma8_val = cosmo.get("sigma8")
-    except:
-        As_val = cosmo["A_s"]
-        sigma8_val = cosmo["sigma8"]
+    As_val = cosmo.__getitem__("A_s")
+    sigma8_val = cosmo.__getitem__("sigma8")
 
     if As_val is not None and not np.isnan(As_val):
         # Use As directly
@@ -98,7 +94,7 @@ def _ccl_to_camb(cosmo):
 
     # Add dark energy parameters if they exist
     for camb_key, cosmo_key in [("w", "w0"), ("wa", "wa")]:
-        if cosmo_key in cosmo:
+        if hasattr(cosmo._params, cosmo_key):
             camb_params[camb_key] = cosmo[cosmo_key]
 
     return camb_params
