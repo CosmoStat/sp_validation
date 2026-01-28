@@ -178,16 +178,11 @@ notebooks/demo_calibrate_minimal_cat.ipynb
 notebooks/leakage_minimal.ipynb
 notebooks/demo_add_bands.ipynb
 
+cosmo_inference/cosmosis_config/cosmosis_pipeline_S*.ini
+cosmo_inference/cosmosis_config/priors_S*.ini
+cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mocks_v0*.ini
+cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_0*.ini
+cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_v0*.ini
+
 CLAUDE.md
 AGENTS.md
-.beads/
-cosmo_inference/cosmosis_config/*.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_A_ia_cell.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_A_ia.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_A_psf.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_A.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_00001_cell.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_00001.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.ini
-!cosmo_inference/cosmosis_config/cosmosis_pipeline_SP_v1.4.6_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_cell.ini
-!cosmo_inference/cosmosis_config/priors_mock.ini

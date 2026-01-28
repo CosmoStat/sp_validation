@@ -281,6 +281,7 @@ def main():
     config = snakemake.config
     versions = config["versions"]
     fiducial_version = config["fiducial"]["version"]
+    blinds = ["A", "B", "C"]
 
     # Fiducial ell cuts from config
     fiducial_ell_min = config["cl"]["fiducial_ell_min"]
@@ -302,17 +303,26 @@ def main():
     if isinstance(pseudo_cl_cov_files, str):
         pseudo_cl_cov_files = [pseudo_cl_cov_files]
 
-    # Map versions to their files
+    # Map versions to their data vector files (blind-independent)
     version_to_cl = {}
-    version_to_cov = {}
-    for cl_file, cov_file in zip(pseudo_cl_files, pseudo_cl_cov_files):
+    for cl_file in pseudo_cl_files:
         for ver in versions:
             if ver in cl_file:
                 version_to_cl[ver] = cl_file
-                version_to_cov[ver] = cov_file
                 break
 
-    # Compute PTE matrices for all versions
+    # Map (version, blind) to covariance files
+    version_blind_to_cov = {}
+    for cov_file in pseudo_cl_cov_files:
+        for ver in versions:
+            if ver not in cov_file:
+                continue
+            for blind in blinds:
+                if f"_blind={blind}_" in cov_file:
+                    version_blind_to_cov[(ver, blind)] = cov_file
+                    break
+
+    # Compute PTE matrices for all versions (taking minimum across blinds)
     all_stats = {}
     all_matrices = {}
     all_ells = {}
@@ -324,20 +334,72 @@ def main():
             print(f"  WARNING: No pseudo-Cl file found for {version}, skipping")
             continue
 
-        pte_matrix, ell, stats = compute_pte_matrix(
-            version_to_cl[version],
-            version_to_cov[version],
-            fiducial_ell_min=fiducial_ell_min,
-            fiducial_ell_max=fiducial_ell_max,
-        )
+        # Compute PTE matrix for each blind, then take minimum
+        pte_matrices_per_blind = {}
+        stats_per_blind = {}
+        ell = None
 
-        all_stats[version] = stats
-        all_matrices[version] = pte_matrix
+        for blind in blinds:
+            if (version, blind) not in version_blind_to_cov:
+                print(f"  WARNING: No covariance for {version} blind={blind}, skipping")
+                continue
+
+            pte_matrix, ell, stats = compute_pte_matrix(
+                version_to_cl[version],
+                version_blind_to_cov[(version, blind)],
+                fiducial_ell_min=fiducial_ell_min,
+                fiducial_ell_max=fiducial_ell_max,
+            )
+            pte_matrices_per_blind[blind] = pte_matrix
+            stats_per_blind[blind] = stats
+            print(f"  Blind {blind}: PTE at fiducial = {stats.get('pte_at_fiducial', 'N/A'):.4f}")
+
+        if not pte_matrices_per_blind:
+            print(f"  WARNING: No valid covariances for {version}, skipping")
+            continue
+
+        # Take minimum PTE across blinds for each (ell_min, ell_max) pair
+        combined_matrix = np.full_like(list(pte_matrices_per_blind.values())[0], np.inf)
+        for blind, matrix in pte_matrices_per_blind.items():
+            combined_matrix = np.minimum(combined_matrix, np.nan_to_num(matrix, nan=np.inf))
+        combined_matrix[np.isinf(combined_matrix)] = np.nan
+
+        # Build combined stats with minimum PTE and per-blind PTEs
+        combined_stats = {
+            "n_evaluated": stats_per_blind[blinds[0]]["n_evaluated"],
+            "ell_range": stats_per_blind[blinds[0]]["ell_range"],
+            "n_ell_bins": stats_per_blind[blinds[0]]["n_ell_bins"],
+            "fiducial_ell_range": stats_per_blind[blinds[0]].get("fiducial_ell_range"),
+        }
+
+        # PTE at fiducial: minimum across blinds
+        fiducial_ptes = {
+            blind: stats_per_blind[blind].get("pte_at_fiducial")
+            for blind in blinds if blind in stats_per_blind
+        }
+        valid_fiducial_ptes = [p for p in fiducial_ptes.values() if p is not None]
+        if valid_fiducial_ptes:
+            combined_stats["pte_at_fiducial"] = min(valid_fiducial_ptes)
+            for blind, pte in fiducial_ptes.items():
+                combined_stats[f"pte_at_fiducial_{blind}"] = pte
+
+        # PTE at full range: minimum across blinds
+        full_range_ptes = {
+            blind: stats_per_blind[blind].get("pte_at_full_range")
+            for blind in blinds if blind in stats_per_blind
+        }
+        valid_full_ptes = [p for p in full_range_ptes.values() if p is not None]
+        if valid_full_ptes:
+            combined_stats["pte_at_full_range"] = min(valid_full_ptes)
+            for blind, pte in full_range_ptes.items():
+                combined_stats[f"pte_at_full_range_{blind}"] = pte
+
+        all_stats[version] = combined_stats
+        all_matrices[version] = combined_matrix
         all_ells[version] = ell
 
-        print(f"  PTE at full range: {stats['pte_at_full_range']:.4f}")
-        if "pte_at_fiducial" in stats:
-            print(f"  PTE at fiducial cuts [{fiducial_ell_min}, {fiducial_ell_max}]: {stats['pte_at_fiducial']:.4f}")
+        print(f"  Minimum PTE at fiducial: {combined_stats.get('pte_at_fiducial', 'N/A'):.4f}")
+        print(f"  Minimum PTE at full range: {combined_stats.get('pte_at_full_range', 'N/A'):.4f}")
 
     # Create fiducial single-panel figure
     if fiducial_version in all_matrices:
