@@ -1,5 +1,5 @@
 # %%
-# Plot binned quantites, see leakage_minima.py
+# Compute binned quantities, see plot_binned_quantities.py
 
 # %%                                                                             
 from IPython import get_ipython                                                  
@@ -13,6 +13,7 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "log_cell_time")
 
 # %%
+import os
 import numpy as np
 import pandas as pd
 
@@ -28,7 +29,7 @@ from sp_validation import io
 from sp_validation import plots as sp_plots
 
 # %%
-os.getcwd()
+print("pwd:", os.getcwd())
 
 # %%
 # Initialize calibration class instance
@@ -135,28 +136,14 @@ calibration.fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask_combined._mas
 
 df = calibration.build_df(cat_gal)
 
-# %
+# %%
+num_bins_x = 15
+num_bins_y = 15
 
-num_bins_x = 12
-num_bins_y = 12
-
-quantities, bin_edges = calibration.get_quantities_binned(cat_gal, num_bins_x, num_bins_y)
+s
+quantities, bin_edges = calibration.get_quantities_binned(cat_gal, num_bins_x, num_bins_y, which=which)
 
 # Save binned matrices to files
 for key in quantities:
     io.write_binned_quantity(quantities[key], key, bin_edges)
-
 # %%
-vmin = {"diag": -0.2, "offdiag": -0.2}
-vmax =  {"diag": 1.2, "offdiag": 0.2}
-
-sp_plots.plot_binned(quantities, "response", bin_edges["snr"], bin_edges["size_ratio"], "R", vmin=vmin, vmax=vmax, xlabel="SNR", ylabel=r"$r / r_{\rm psf}$")
-
-# %%
-sp_plots.plot_binned(quantities, "number", bin_edges["snr"], bin_edges["size_ratio"], "R", vmin=1, vmax=np.nanmax(quantities["number"]), xlabel="SNR", ylabel=r"$r / r_{\rm psf}$")
-
-# %%
-vmin = {"diag": -0.2, "offdiag": -0.2}
-vmax = {"diag": 0.2, "offdiag": 0.2}
-
-sp_plots.plot_binned(quantities, "leakage", bin_edges["snr"], bin_edges["size_ratio"], r"\alpha", vmin=vmin, vmax=vmax, xlabel="SNR", ylabel=r"$r / r_{\rm psf}$")
