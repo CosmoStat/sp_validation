@@ -145,16 +145,45 @@ notebooks/validation*.py
 notebooks/main_set_up.py
 notebooks/analyse_shear_cat/tutorial_UNIONS_SP_v1.0.py
 
-notebooks/cosmo_val/output
+notebooks/cosmo_val/output*
 notebooks/cosmo_val/cosmo_val.ipynb
 notebooks/cosmo_val/match_LF_SP.ipynb
 
 notebooks/examples/*.ipynb
 
 cosmo_inference/data/
-cosmo_inference/cosmocov_config/cosmocov_*
-cosmo_inference/cosmosis_config/cosmosis_pipeline_*
-cosmo_inference/cosmosis_config/priors_*
-cosmo_inference/cosmosis_config/values_*
+cosmo_inference/plots/
 
 notebooks/tests/star_response.ipynb
+sp_validation.code-workspace
+notebooks/calibrate_comprehensive_cat.ipynb
+notebooks/calibrate_comprehensive_cat.ipynb
+notebooks/calibrate_comprehensive_cat.ipynb
+notebooks/test_apply_hsp_masks.ipynb
+notebooks/calibrate_comprehensive_cat.ipynb
+notebooks/demo_apply_hsp_masks.py
+notebooks/demo_apply_hsp_masks.ipynb
+notebooks/plot_footprints.ipynb
+notebooks/demo_calibrate_minimal_cat.ipynb
+notebooks/leakage_minimal.ipynb
+notebooks/mask_fits2hsparse.ipynb
+notebooks/mask_fits2hsparse_test.ipynb
+notebooks/create_shear_mb_empty.ipynb
+notebooks/demo_add_bands.ipynb
+notebooks/demo_add_bands_to_empty.ipynb
+notebooks/demo_comprehensive_to_minimal_cat.ipynb
+notebooks/demo_create_footprint_mask.ipynb
+notebooks/demo_check_footprint.ipynb
+notebooks/demo_calibrate_minimal_cat.ipynb
+notebooks/leakage_minimal.ipynb
+notebooks/demo_add_bands.ipynb
+notebooks/demo_add_bands_to_empty.ipynb
+
+cosmo_inference/cosmosis_config/cosmosis_pipeline_S*.ini
+cosmo_inference/cosmosis_config/priors_S*.ini
+cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mocks_v0*.ini
+cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_0*.ini
+cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_v0*.ini
+
+CLAUDE.md
+AGENTS.md

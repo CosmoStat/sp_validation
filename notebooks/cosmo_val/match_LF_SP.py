@@ -130,7 +130,6 @@ _ = plt.ylabel('frequency')
 plt.xlim(1e-3, 5)
 _ = plt.ylim(1e-5, 5e1)
 
-d2d_arcsec = d2d.to('arcsec').value
 plt.hist(d2d_arcsec, bins=500, range=(0, 3), density=True)
 plt.xlabel('distance [arcsec]')
 _ = plt.ylabel('frequency')
