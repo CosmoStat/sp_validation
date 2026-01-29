@@ -1,5 +1,5 @@
 # Config file for masking and calibration.
-# Standard cuts without halo masks, including deblended objects, type v1.X.10
+# Standard cuts without halo masks, including deblended objects, type v1.X.11
 
 # General parameters (can also given on command line)
 params:
@@ -15,7 +15,7 @@ dat:
   - col_name: FLAGS
     label: SE FLAGS
     kind: smaller_equal
-    value: 2
+    value: 3
 
   # Duplicate objects
   - col_name: overlap
