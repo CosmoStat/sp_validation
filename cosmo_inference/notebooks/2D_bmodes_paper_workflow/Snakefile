@@ -53,6 +53,7 @@ rule xi:
     resources:
         mem_mb=30000,
         disk_mb=20000,
+        runtime=120,
     script:
         "scripts/run_2pcf.py"
 

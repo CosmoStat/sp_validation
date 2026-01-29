@@ -14,7 +14,9 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Rectangle
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import seaborn as sns
 from IPython import get_ipython
@@ -148,6 +150,39 @@ def load_pure_eb_pte_matrices(pte_files, version):
     return pte_xip_B, pte_xim_B, theta
 
 
+def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85)):
+    """Create discrete colormap with sharp breaks at significance thresholds.
+
+    Parameters
+    ----------
+    low, high : float
+        PTE thresholds. Solid color below low and above high.
+    gradient_range : tuple
+        Range of vlag colormap to use for the gradient portion.
+        Narrower range = shallower gradient = sharper contrast at boundaries.
+    """
+    vlag = sns.color_palette("vlag", as_cmap=True)
+
+    # Solid regions use colors just outside the gradient range for sharp contrast
+    solid_blue = vlag(0.0)
+    solid_red = vlag(1.0)
+
+    # Build colormap: [0, low] solid blue, [low, high] compressed gradient, [high, 1] solid red
+    n_total = 256
+    n_low = int(low * n_total)
+    n_high = int((1 - high) * n_total)
+    n_mid = n_total - n_low - n_high
+
+    # Gradient samples from compressed range of vlag
+    g_lo, g_hi = gradient_range
+    gradient_colors = [vlag(g_lo + (g_hi - g_lo) * i / (n_mid - 1)) for i in range(n_mid)]
+
+    all_colors = [solid_blue] * n_low + gradient_colors + [solid_red] * n_high
+    cmap = LinearSegmentedColormap.from_list("pte_discrete", all_colors, N=256)
+    cmap.set_bad(color="lightgray")
+    return cmap
+
+
 def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
                    show_xticklabels=True, show_yticklabels=False):
     """Plot a single PTE heatmap panel.
@@ -174,63 +209,52 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     """
     n_theta = len(theta_grid)
 
-    # Colormap
-    vlag_cmap = sns.color_palette("vlag", as_cmap=True).copy()
-    vlag_cmap.set_bad(color="lightgray")
+    # Discrete colormap: solid blue below 0.05, solid red above 0.95, gradient in between
+    pte_cmap = make_pte_colormap()
 
-    # Plot heatmap
+    # Plot heatmap (no contours)
     im = ax.imshow(
         pte_matrix.T,
         origin="lower",
         aspect="equal",
-        cmap=vlag_cmap,
+        cmap=pte_cmap,
         vmin=0,
         vmax=1,
         extent=[0, n_theta, 0, n_theta],
     )
 
-    # Contours at significance levels
-    cs = ax.contour(
-        pte_matrix.T,
-        levels=[0.05, 0.95],
-        colors="black",
-        linewidths=0.6,
-        extent=[0, n_theta, 0, n_theta],
-    )
-    ax.clabel(cs, inline=True, fontsize=6, fmt="%.2f")
-
-    # Fiducial scale cut marker
+    # Fiducial scale cut marker (black square, no hatching)
     ax.add_patch(
         Rectangle(
             (fid_start, fid_stop),
             1, 1,
             fill=False,
             edgecolor="black",
-            linewidth=1.2,
-            hatch="///",
-            alpha=0.8,
+            linewidth=1.5,
         )
     )
 
     # Title
-    ax.set_title(title, fontsize=9)
+    ax.set_title(title)
 
-    # Tick labels - more frequent markers
+    # Tick positioning: x-axis at left edge of bins, y-axis at top edge
     tick_step = 2
     tick_indices = np.arange(0, n_theta, tick_step)
-    tick_labels = [f"{theta_grid[i]:.0f}" for i in tick_indices]
-    tick_positions = tick_indices + 0.5
+    x_tick_labels = [f"{theta_grid[i]:.0f}" for i in tick_indices]
+    y_tick_labels = [f"{theta_grid[min(i + 1, n_theta - 1)]:.0f}" for i in tick_indices]
 
-    ax.set_xticks(tick_positions)
-    ax.set_yticks(tick_positions)
+    # x-axis (lower cut): ticks at left edge of bins
+    ax.set_xticks(tick_indices)
+    # y-axis (upper cut): ticks at top edge of bins
+    ax.set_yticks(tick_indices + 1)
 
     if show_xticklabels:
-        ax.set_xticklabels(tick_labels, fontsize=6)
+        ax.set_xticklabels(x_tick_labels, rotation=45, ha="right", rotation_mode="anchor")
     else:
         ax.set_xticklabels([])
 
     if show_yticklabels:
-        ax.set_yticklabels(tick_labels, fontsize=6)
+        ax.set_yticklabels(y_tick_labels, rotation=45, ha="right", rotation_mode="anchor")
     else:
         ax.set_yticklabels([])
 
@@ -329,16 +353,16 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     full_range_ptes : dict
         Full-range PTEs for this version.
     """
-    # Create figure: 1 row × 4 columns (3 stats + colorbar)
+    # Create figure: 1 row × 3 columns (colorbar attached to rightmost)
     fig_width = 6.5
     fig_height = 2.6
 
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
-        1, 4,
-        width_ratios=[1, 1, 1, 0.04],
+        1, 3,
+        width_ratios=[1, 1, 1],
         wspace=0.03, hspace=0.03,
-        left=0.08, right=0.95,
+        left=0.08, right=0.90,
         bottom=0.15, top=0.90
     )
 
@@ -362,9 +386,9 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     xim_stop = np.argmin(np.abs(theta_pure_eb - xim_fid[1]))
 
     # Create subplot axes
-    ax_xip = fig.add_subplot(gs[0, 0])
-    ax_xim = fig.add_subplot(gs[0, 1])
-    ax_cosebis = fig.add_subplot(gs[0, 2])
+    ax_xip = fig.add_subplot(gs[0])
+    ax_xim = fig.add_subplot(gs[1])
+    ax_cosebis = fig.add_subplot(gs[2])
 
     # Plot panels with titles
     im_xip = plot_pte_panel(
@@ -373,7 +397,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         r"$\xi_+^B$",
         show_xticklabels=True, show_yticklabels=True
     )
-    ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
+    ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
     im_xim = plot_pte_panel(
         ax_xim, pte_xim_B, theta_pure_eb,
@@ -389,15 +413,19 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         show_xticklabels=True, show_yticklabels=False
     )
 
-    # Shared colorbar on rightmost column
-    cax = fig.add_subplot(gs[0, 3])
+    # Colorbar attached to rightmost panel (matches its height)
+    divider = make_axes_locatable(ax_cosebis)
+    cax = divider.append_axes("right", size="5%", pad=0.08)
     cbar = fig.colorbar(im_cosebis, cax=cax)
-    cbar.set_label("PTE", fontsize=8)
-    cbar.ax.tick_params(labelsize=6)
+    cbar.set_label("PTE")
+    cbar.set_ticks([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0])
+    cbar.set_ticklabels(["0", "", "0.25", "0.5", "0.75", "", "1"])
+    # Mark significance thresholds with horizontal lines
+    for thresh in [0.05, 0.95]:
+        cbar.ax.axhline(thresh, color="black", linewidth=0.8)
 
     # Common x-axis label
-    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center", fontsize=9)
+    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]", ha="center")
 
     # Compute statistics
     stats = {
@@ -445,10 +473,10 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
         3, 4,
-        width_ratios=[1, 1, 1, 0.04],
+        width_ratios=[1, 1, 1, 0.08],
         wspace=0.03, hspace=0.08,
-        left=0.10, right=0.95,
-        bottom=0.08, top=0.94
+        left=0.16, right=0.95,
+        bottom=0.12, top=0.90
     )
 
     all_stats = {}
@@ -458,6 +486,9 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         "SP_v1.4.5_leak_corr": "Initial",
         "SP_v1.4.6_leak_corr": "Fiducial",
         "SP_v1.4.8_leak_corr": "Masked",
+        "SP_v1.4.5": "Initial",
+        "SP_v1.4.6": "Fiducial",
+        "SP_v1.4.8": "Masked",
     }
 
     for row_idx, version in enumerate(versions):
@@ -490,9 +521,9 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         show_yticklabels = True
         show_xticklabels = (row_idx == 2)
 
-        # Plot titles: version label on top row panels
+        # Plot titles: statistic names on top row only (version labels on left side)
         version_label = version_labels.get(version, version)
-        xip_title = rf"{version_label}: $\xi_+^B$" if row_idx == 0 else ""
+        xip_title = r"$\xi_+^B$" if row_idx == 0 else ""
         xim_title = r"$\xi_-^B$" if row_idx == 0 else ""
         cosebis_title = r"COSEBIS $B_n$" if row_idx == 0 else ""
 
@@ -504,7 +535,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
             show_xticklabels=show_xticklabels, show_yticklabels=show_yticklabels
         )
         # Add y-axis label to leftmost panel of each row
-        ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
+        ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
         im_xim = plot_pte_panel(
             ax_xim, pte_xim_B, theta_pure_eb,
@@ -520,11 +551,11 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
             show_xticklabels=show_xticklabels, show_yticklabels=False
         )
 
-        # Add version label to the right of each row
+        # Add version label to the left of each row
         version_label = version_labels.get(version, version)
-        ax_cosebis.annotate(
-            version_label, xy=(1.02, 0.5), xycoords="axes fraction",
-            fontsize=8, weight="bold", va="center", ha="left", rotation=-90
+        ax_xip.annotate(
+            version_label, xy=(-0.28, 0.5), xycoords="axes fraction",
+            weight="bold", va="center", ha="right", rotation=90
         )
 
         # Compute statistics
@@ -542,12 +573,15 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     # Shared colorbar on rightmost column
     cax = fig.add_subplot(gs[:, 3])
     cbar = fig.colorbar(im_cosebis, cax=cax)
-    cbar.set_label("PTE", fontsize=8)
-    cbar.ax.tick_params(labelsize=6)
+    cbar.set_label("PTE")
+    cbar.set_ticks([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0])
+    cbar.set_ticklabels(["0", "", "0.25", "0.5", "0.75", "", "1"])
+    # Mark significance thresholds with horizontal lines
+    for thresh in [0.05, 0.95]:
+        cbar.ax.axhline(thresh, color="black", linewidth=0.8)
 
     # Common x-axis label
-    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center", fontsize=9)
+    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]", ha="center")
 
     return fig, all_stats, all_full_range_ptes
 
@@ -617,12 +651,13 @@ def main():
         traceback.print_exc()
         raise
 
-    # Generate 3x3 composite for all versions (appendix)
-    print("\n--- Creating 3x3 composite for all versions ---", flush=True)
+    # Generate 3x3 composite for leak-corrected versions (appendix)
+    leak_corr_versions = [v for v in versions if "leak_corr" in v]
+    print(f"\n--- Creating 3x3 composite for leak-corrected versions: {leak_corr_versions} ---", flush=True)
 
     try:
         fig, appendix_stats, appendix_ptes = create_9panel_composite(
-            versions=versions,
+            versions=leak_corr_versions,
             pure_eb_pte_files=pure_eb_pte_files,
             cosebis_pte_files=cosebis_pte_files,
             xip_fid=xip_fid,
@@ -641,13 +676,48 @@ def main():
 
         plt.close(fig)
 
-        # Update stats with all versions from appendix (overwrites fiducial with same data)
+        # Update stats with all versions from appendix
         all_stats.update(appendix_stats)
         all_full_range_ptes.update(appendix_ptes)
 
     except Exception as e:
         import traceback
         print(f"  ERROR creating appendix composite:", flush=True)
+        traceback.print_exc()
+        raise
+
+    # Generate 3x3 composite for uncorrected versions (second appendix)
+    uncorr_versions = [v for v in versions if "leak_corr" not in v]
+    print(f"\n--- Creating 3x3 composite for uncorrected versions: {uncorr_versions} ---", flush=True)
+
+    try:
+        fig, uncorr_stats, uncorr_ptes = create_9panel_composite(
+            versions=uncorr_versions,
+            pure_eb_pte_files=pure_eb_pte_files,
+            cosebis_pte_files=cosebis_pte_files,
+            xip_fid=xip_fid,
+            xim_fid=xim_fid,
+            cosebis_fid=cosebis_fid,
+        )
+
+        # Save uncorrected appendix figure
+        fig_path = Path(snakemake.output["figure_appendix_uncorrected"])
+        fig.savefig(fig_path, dpi=300, bbox_inches="tight", facecolor="white")
+        print(f"  Saved {fig_path}", flush=True)
+
+        paper_path = Path(snakemake.output["paper_figure_appendix_uncorrected"])
+        shutil.copy2(fig_path, paper_path)
+        print(f"  Copied to {paper_path}", flush=True)
+
+        plt.close(fig)
+
+        # Update stats with uncorrected versions
+        all_stats.update(uncorr_stats)
+        all_full_range_ptes.update(uncorr_ptes)
+
+    except Exception as e:
+        import traceback
+        print(f"  ERROR creating uncorrected appendix composite:", flush=True)
         traceback.print_exc()
         raise
 
@@ -691,6 +761,7 @@ def main():
 
     evidence_data["artifacts"]["figure_fiducial"] = Path(snakemake.output["figure_fiducial"]).name
     evidence_data["artifacts"]["figure_appendix"] = Path(snakemake.output["figure_appendix"]).name
+    evidence_data["artifacts"]["figure_appendix_uncorrected"] = Path(snakemake.output["figure_appendix_uncorrected"]).name
 
     evidence_path = Path(snakemake.output["evidence"])
     with open(evidence_path, "w") as f:

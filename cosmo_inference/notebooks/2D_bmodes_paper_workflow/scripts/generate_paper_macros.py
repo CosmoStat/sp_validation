@@ -184,8 +184,11 @@ def generate_macros(claims_dir: Path, output_paths: list[Path]):
 
         # Generate individual macros for each version
         # Use word-based names to avoid TeX Live 2025 cleveref/siunitx conflict
+        # Filter to leak_corr versions only (paper uses these)
         version_words = {"5": "Five", "6": "Six", "8": "Eight"}
         for ver, ver_data in versions.items():
+            if "leak_corr" not in ver:
+                continue
             short_ver = ver.split("v1.4.")[1].split("_")[0]  # "5", "6", or "8"
             prefix = f"configPte{version_words.get(short_ver, short_ver)}"
 
@@ -224,6 +227,8 @@ def generate_macros(claims_dir: Path, output_paths: list[Path]):
 
         version_words = {"5": "Five", "6": "Six", "8": "Eight"}
         for ver, ver_data in versions.items():
+            if "leak_corr" not in ver:
+                continue
             short_ver = ver.split("v1.4.")[1].split("_")[0]
             prefix = f"clPte{version_words.get(short_ver, short_ver)}"
 

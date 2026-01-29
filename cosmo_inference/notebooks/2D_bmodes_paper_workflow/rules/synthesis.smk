@@ -86,7 +86,6 @@ rule bmodes_paper_spec:
         cosebis_bmode_stacked=rules.cosebis_version_comparison.output.paper_stacked,
         # Consistency checks
         bb_covariance_blind=rules.bb_covariance_blind_independence.output.evidence,
-        harmonic_config_cosebis=rules.harmonic_config_cosebis_comparison.output.comparison,
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:
@@ -113,7 +112,6 @@ rule all_claims:
         config_space_pte=rules.config_space_pte_matrices.output,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output,
         bb_covariance_blind=rules.bb_covariance_blind_independence.output,
-        harmonic_config_cosebis=rules.harmonic_config_cosebis_comparison.output,
 
 
 rule spec_dependencies:
@@ -174,7 +172,7 @@ rule claims_dashboard:
         pure_eb_covariance=rules.pure_eb_covariance.output,
         cl_fiducial=rules.cl_data_vector.output,
         cl_version_comparison=rules.cl_version_comparison.output,
-        # PTE matrix composites (supersede individual pure_eb_pte_matrix and cosebis_pte_matrix)
+        # PTE matrix composites
         config_space_pte=rules.config_space_pte_matrices.output,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output,
         paper_macros=rules.paper_macros.output,

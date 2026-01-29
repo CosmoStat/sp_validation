@@ -112,64 +112,74 @@ def compute_ratios(diag_ref, diag_test):
     }
 
 
-def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, output_path):
-    """Six-panel figure comparing BB vs EE stability across blinds.
+def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, output_path, n_samples=4000):
+    """Four-panel figure comparing BB vs EE stability across blinds.
 
-    Layout: 3x2
+    Layout: 2x2
     - Top row: Pure E/B (xi+, xi-)
-    - Middle row: COSEBIS (B_n vs E_n), Harmonic (C_ell)
-    - Bottom row: Summary bar chart (spans both columns)
-    """
-    fig, axes = plt.subplots(3, 2, figsize=(9, 10))
+    - Bottom row: COSEBIS (B_n vs E_n), Harmonic (C_ell)
 
-    colors = sns.color_palette("colorblind", 2)
-    color_B = colors[0]  # B/A ratio
-    color_C = colors[1]  # C/A ratio
+    Color encoding: E-mode vs B-mode
+    Marker encoding: square = B/A, triangle = C/A (same for both E and B)
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(9, 7))
+
+    # Colors: E-mode vs B-mode
+    color_E = "#E69F00"  # orange for E
+    color_B = "#0072B2"  # blue for B
+
+    # Expected 1σ error on ratio of two MC-estimated quantities
+    # σ(ratio) ≈ √(2/N) for ratio ≈ 1
+    ratio_err = np.sqrt(2.0 / n_samples)
 
     # Helper for ratio panels
-    def setup_ratio_panel(ax, x, ylabel_x, title):
+    def setup_ratio_panel(ax, ylabel_x, title, show_mc_band=False):
         ax.axhline(1.0, color="gray", ls="-", lw=0.8, zorder=0)
-        ax.axhspan(0.98, 1.02, color="teal", alpha=0.15, label=r"$\pm 2\%$")
-        ax.axhspan(0.90, 1.10, color="orange", alpha=0.10, label=r"$\pm 10\%$")
+        if show_mc_band:
+            # Show expected 1σ MC scatter band only
+            ax.axhspan(1 - ratio_err, 1 + ratio_err, color="gray", alpha=0.25,
+                      label=rf"$\pm\sqrt{{2/N}}$ ($N={n_samples}$)")
         ax.set_xscale("log")
         ax.set_xlabel(ylabel_x)
         ax.set_title(title)
 
     # --- Panel 1: xi+^B vs xi+^E ---
     ax = axes[0, 0]
-    setup_ratio_panel(ax, theta, r"$\theta$ [arcmin]", r"$\xi_+$: B-mode vs E-mode stability")
+    setup_ratio_panel(ax, r"$\theta$ [arcmin]", r"$\xi_+$: covariance ratio across blinds", show_mc_band=True)
 
-    # Plot B-mode ratios (should be flat near 1)
-    ax.plot(theta, pure_eb_results["B"]["xip_B"]["ratio"], "o-", color=color_B,
-            label=r"$\xi_+^B$ B/A", markersize=4, alpha=0.9)
-    ax.plot(theta, pure_eb_results["C"]["xip_B"]["ratio"], "o--", color=color_C,
-            label=r"$\xi_+^B$ C/A", markersize=4, alpha=0.9)
+    # B-mode (blue): square for B/A, triangle for C/A
+    ax.errorbar(theta, pure_eb_results["B"]["xip_B"]["ratio"], yerr=ratio_err,
+                fmt="s", color=color_B, label=r"B-mode B/A", markersize=5, alpha=0.8, capsize=0)
+    ax.errorbar(theta * 1.03, pure_eb_results["C"]["xip_B"]["ratio"], yerr=ratio_err,
+                fmt="^", color=color_B, label=r"B-mode C/A", markersize=5, alpha=0.8, capsize=0)
 
-    # Plot E-mode ratios (should deviate more)
-    ax.plot(theta, pure_eb_results["B"]["xip_E"]["ratio"], "s-", color=color_B,
-            label=r"$\xi_+^E$ B/A", markersize=3, alpha=0.4)
-    ax.plot(theta, pure_eb_results["C"]["xip_E"]["ratio"], "s--", color=color_C,
-            label=r"$\xi_+^E$ C/A", markersize=3, alpha=0.4)
+    # E-mode (orange): square for B/A, triangle for C/A
+    ax.plot(theta, pure_eb_results["B"]["xip_E"]["ratio"],
+            "s", color=color_E, label=r"E-mode B/A", markersize=4, alpha=0.6)
+    ax.plot(theta * 1.03, pure_eb_results["C"]["xip_E"]["ratio"],
+            "^", color=color_E, label=r"E-mode C/A", markersize=4, alpha=0.6)
 
     ax.set_ylabel("Diagonal ratio")
     ax.legend(loc="upper right", fontsize=7, ncol=2)
+    ax.set_xlim(1, 300)
     ax.set_ylim(0.85, 1.15)
 
     # --- Panel 2: xi-^B vs xi-^E ---
     ax = axes[0, 1]
-    setup_ratio_panel(ax, theta, r"$\theta$ [arcmin]", r"$\xi_-$: B-mode vs E-mode stability")
+    setup_ratio_panel(ax, r"$\theta$ [arcmin]", r"$\xi_-$: covariance ratio across blinds", show_mc_band=True)
 
-    ax.plot(theta, pure_eb_results["B"]["xim_B"]["ratio"], "o-", color=color_B,
-            label=r"$\xi_-^B$ B/A", markersize=4, alpha=0.9)
-    ax.plot(theta, pure_eb_results["C"]["xim_B"]["ratio"], "o--", color=color_C,
-            label=r"$\xi_-^B$ C/A", markersize=4, alpha=0.9)
+    ax.errorbar(theta, pure_eb_results["B"]["xim_B"]["ratio"], yerr=ratio_err,
+                fmt="s", color=color_B, label=r"B-mode B/A", markersize=5, alpha=0.8, capsize=0)
+    ax.errorbar(theta * 1.03, pure_eb_results["C"]["xim_B"]["ratio"], yerr=ratio_err,
+                fmt="^", color=color_B, label=r"B-mode C/A", markersize=5, alpha=0.8, capsize=0)
 
-    ax.plot(theta, pure_eb_results["B"]["xim_E"]["ratio"], "s-", color=color_B,
-            label=r"$\xi_-^E$ B/A", markersize=3, alpha=0.4)
-    ax.plot(theta, pure_eb_results["C"]["xim_E"]["ratio"], "s--", color=color_C,
-            label=r"$\xi_-^E$ C/A", markersize=3, alpha=0.4)
+    ax.plot(theta, pure_eb_results["B"]["xim_E"]["ratio"],
+            "s", color=color_E, label=r"E-mode B/A", markersize=4, alpha=0.6)
+    ax.plot(theta * 1.03, pure_eb_results["C"]["xim_E"]["ratio"],
+            "^", color=color_E, label=r"E-mode C/A", markersize=4, alpha=0.6)
 
     ax.legend(loc="upper right", fontsize=7, ncol=2)
+    ax.set_xlim(1, 300)
     ax.set_ylim(0.85, 1.15)
 
     # --- Panel 3: COSEBIS B_n vs E_n ---
@@ -177,20 +187,20 @@ def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_resul
     nmodes = cosebis_results["B"]["nmodes"]
     n_arr = np.arange(1, nmodes + 1)
     ax.axhline(1.0, color="gray", ls="-", lw=0.8, zorder=0)
-    ax.axhspan(0.98, 1.02, color="teal", alpha=0.15, label=r"$\pm 2\%$")
-    ax.axhspan(0.90, 1.10, color="orange", alpha=0.10, label=r"$\pm 10\%$")
     ax.set_xlabel(r"Mode $n$")
-    ax.set_title(r"COSEBIS: $B_n$ vs $E_n$ stability")
+    ax.set_title(r"COSEBIS: covariance ratio across blinds")
 
-    ax.plot(n_arr, cosebis_results["B"]["B"]["ratio"], "o-", color=color_B,
-            label=r"$B_n$ B/A", markersize=4, alpha=0.9)
-    ax.plot(n_arr, cosebis_results["C"]["B"]["ratio"], "o--", color=color_C,
-            label=r"$B_n$ C/A", markersize=4, alpha=0.9)
+    # B-mode (blue): square for B/A, triangle for C/A
+    ax.plot(n_arr, cosebis_results["B"]["B"]["ratio"],
+            "s", color=color_B, label=r"B-mode B/A", markersize=5, alpha=0.8)
+    ax.plot(n_arr + 0.15, cosebis_results["C"]["B"]["ratio"],
+            "^", color=color_B, label=r"B-mode C/A", markersize=5, alpha=0.8)
 
-    ax.plot(n_arr, cosebis_results["B"]["E"]["ratio"], "s-", color=color_B,
-            label=r"$E_n$ B/A", markersize=3, alpha=0.4)
-    ax.plot(n_arr, cosebis_results["C"]["E"]["ratio"], "s--", color=color_C,
-            label=r"$E_n$ C/A", markersize=3, alpha=0.4)
+    # E-mode (orange): square for B/A, triangle for C/A
+    ax.plot(n_arr, cosebis_results["B"]["E"]["ratio"],
+            "s", color=color_E, label=r"E-mode B/A", markersize=4, alpha=0.6)
+    ax.plot(n_arr + 0.15, cosebis_results["C"]["E"]["ratio"],
+            "^", color=color_E, label=r"E-mode C/A", markersize=4, alpha=0.6)
 
     ax.set_ylabel("Diagonal ratio")
     ax.legend(loc="upper right", fontsize=7, ncol=2)
@@ -198,69 +208,23 @@ def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_resul
 
     # --- Panel 4: C_ell^BB vs C_ell^EE ---
     ax = axes[1, 1]
-    setup_ratio_panel(ax, ell_eff, r"$\ell$", r"$C_\ell$: BB vs EE stability")
+    setup_ratio_panel(ax, r"$\ell$", r"$C_\ell$: covariance ratio across blinds")
 
-    ax.plot(ell_eff, harmonic_results["B"]["BB"]["ratio"], "o-", color=color_B,
-            label=r"$C_\ell^{BB}$ B/A", markersize=4, alpha=0.9)
-    ax.plot(ell_eff, harmonic_results["C"]["BB"]["ratio"], "o--", color=color_C,
-            label=r"$C_\ell^{BB}$ C/A", markersize=4, alpha=0.9)
+    # B-mode (blue): square for B/A, triangle for C/A
+    ax.plot(ell_eff, harmonic_results["B"]["BB"]["ratio"],
+            "s", color=color_B, label=r"BB B/A", markersize=5, alpha=0.8)
+    ax.plot(ell_eff * 1.03, harmonic_results["C"]["BB"]["ratio"],
+            "^", color=color_B, label=r"BB C/A", markersize=5, alpha=0.8)
 
-    ax.plot(ell_eff, harmonic_results["B"]["EE"]["ratio"], "s-", color=color_B,
-            label=r"$C_\ell^{EE}$ B/A", markersize=3, alpha=0.4)
-    ax.plot(ell_eff, harmonic_results["C"]["EE"]["ratio"], "s--", color=color_C,
-            label=r"$C_\ell^{EE}$ C/A", markersize=3, alpha=0.4)
+    # E-mode (orange): square for B/A, triangle for C/A
+    ax.plot(ell_eff, harmonic_results["B"]["EE"]["ratio"],
+            "s", color=color_E, label=r"EE B/A", markersize=4, alpha=0.6)
+    ax.plot(ell_eff * 1.03, harmonic_results["C"]["EE"]["ratio"],
+            "^", color=color_E, label=r"EE C/A", markersize=4, alpha=0.6)
 
     ax.set_ylabel("Diagonal ratio")
     ax.legend(loc="upper right", fontsize=7, ncol=2)
     ax.set_ylim(0.85, 1.15)
-
-    # --- Panel 5-6: Summary bar chart (spans bottom row) ---
-    # Remove the two bottom axes and replace with one spanning both
-    axes[2, 0].remove()
-    axes[2, 1].remove()
-    ax = fig.add_subplot(3, 1, 3)
-
-    # Collect max deviations (include COSEBIS)
-    bb_devs = [
-        pure_eb_results["B"]["xip_B"]["max_dev"],
-        pure_eb_results["C"]["xip_B"]["max_dev"],
-        pure_eb_results["B"]["xim_B"]["max_dev"],
-        pure_eb_results["C"]["xim_B"]["max_dev"],
-        cosebis_results["B"]["B"]["max_dev"],
-        cosebis_results["C"]["B"]["max_dev"],
-        harmonic_results["B"]["BB"]["max_dev"],
-        harmonic_results["C"]["BB"]["max_dev"],
-    ]
-    ee_devs = [
-        pure_eb_results["B"]["xip_E"]["max_dev"],
-        pure_eb_results["C"]["xip_E"]["max_dev"],
-        pure_eb_results["B"]["xim_E"]["max_dev"],
-        pure_eb_results["C"]["xim_E"]["max_dev"],
-        cosebis_results["B"]["E"]["max_dev"],
-        cosebis_results["C"]["E"]["max_dev"],
-        harmonic_results["B"]["EE"]["max_dev"],
-        harmonic_results["C"]["EE"]["max_dev"],
-    ]
-
-    labels = [r"$\xi_+$ B/A", r"$\xi_+$ C/A", r"$\xi_-$ B/A", r"$\xi_-$ C/A",
-              r"COSEBIS B/A", r"COSEBIS C/A", r"$C_\ell$ B/A", r"$C_\ell$ C/A"]
-    x = np.arange(len(labels))
-    width = 0.35
-
-    ax.bar(x - width/2, np.array(bb_devs) * 100, width, label="B-mode", color="teal", alpha=0.8)
-    ax.bar(x + width/2, np.array(ee_devs) * 100, width, label="E-mode", color="coral", alpha=0.8)
-
-    ax.axhline(2, color="teal", ls="--", lw=1, alpha=0.6)
-    ax.axhline(10, color="orange", ls="--", lw=1, alpha=0.6)
-    ax.text(len(labels) - 0.4, 2.3, "2%", fontsize=8, color="teal")
-    ax.text(len(labels) - 0.4, 10.5, "10%", fontsize=8, color="orange")
-
-    ax.set_ylabel("Max deviation (%)")
-    ax.set_title("Summary: BB vs EE max deviations across all methods")
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=45, ha="right", fontsize=8)
-    ax.legend(loc="upper left", fontsize=8)
-    ax.set_ylim(0, max(max(ee_devs) * 100 * 1.2, 15))
 
     fig.tight_layout()
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
@@ -337,7 +301,8 @@ def main(snakemake):
             )
 
     # Generate figure
-    make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, snakemake.output.figure)
+    n_samples = config["covariance"]["n_samples"]
+    make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, snakemake.output.figure, n_samples=n_samples)
 
     # Compute summary statistics
     bb_max_devs = [

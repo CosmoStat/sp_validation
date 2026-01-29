@@ -1,5 +1,9 @@
-versions: ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
-ellipticity_suffix: "_leak_corrected"
+versions: [
+  "SP_v1.4.5", "SP_v1.4.5_leak_corr",
+  "SP_v1.4.6", "SP_v1.4.6_leak_corr",
+  "SP_v1.4.8", "SP_v1.4.8_leak_corr"
+]
+ellipticity_suffix: "_leak_corrected"  # only used for _leak_corr versions
 
 # grid search parameters
 npatches: [120]
@@ -11,6 +15,9 @@ nbins: [20]
 min_seps_int : [0.1]
 max_seps_int: [500]
 nbins_int: [100, 200, 300, 500]
+
+# Blinds to analyze (A is the default)
+blinds: ["A"]
 
 # fiducial parameters
 fiducial:
@@ -89,12 +96,15 @@ covariance:
 # Pseudo-Cl presets for different analyses
 pseudo_cl:
   presets:
-    fine:      # for COSEBIS (single-ell bins)
+    fine:      # DEPRECATED: MCM deconvolution unstable with partial sky
       binning: linear
       nbins: 2040
-    harmonic:  # for C_ell PTEs
+    harmonic:  # for C_ell PTEs (standard analysis)
       binning: powspace
       nbins: 32
+    cosebis:   # for harmonic→COSEBIS comparison (stable MCM, dense enough for T_n integration)
+      binning: powspace
+      nbins: 100
   power: 0.5  # power for powspace binning (0.5 = sqrt spacing)
 
 # Harmonic-space (C_l) analysis parameters

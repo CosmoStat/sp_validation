@@ -3,9 +3,7 @@
 Shows B-mode signals consistent with zero at fiducial scale cuts.
 Writes evidence.json with PTE values including joint B-mode test.
 
-Multi-blind: Computes PTEs for each blind (A, B, C) using per-blind
-MC-propagated E/B covariances. Reports minimum PTE across blinds as
-the conservative estimate.
+Uses blinds specified in config (default: A).
 """
 
 import json
@@ -15,14 +13,13 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 from scipy import stats
 
 
 plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
 )
-
-BLINDS = ["A", "B", "C"]
 
 
 def _extract_sigma(covariance, block_index, block_size):
@@ -93,7 +90,7 @@ def _compute_per_blind_ptes(xip_B, xim_B, cov_pure_eb_blinds, nbins, mask_xip, m
     xip_B, xim_B : array
         B-mode data vectors (same for all blinds)
     cov_pure_eb_blinds : dict
-        {blind: cov_pure_eb} for blinds A, B, C (MC-propagated)
+        {blind: cov_pure_eb} for each blind (MC-propagated)
     nbins : int
         Number of angular bins
     mask_xip, mask_xim : array
@@ -106,7 +103,7 @@ def _compute_per_blind_ptes(xip_B, xim_B, cov_pure_eb_blinds, nbins, mask_xip, m
     """
     results = {}
 
-    for blind in BLINDS:
+    for blind in cov_pure_eb_blinds:
         # Get the per-blind MC-propagated E/B covariance
         cov_pure_eb = cov_pure_eb_blinds[blind]
 
@@ -160,20 +157,17 @@ def _compute_per_blind_ptes(xip_B, xim_B, cov_pure_eb_blinds, nbins, mask_xip, m
 def main():
     config = snakemake.config
 
+    # Get blinds from config
+    blinds = config["blinds"]
+    default_blind = blinds[0]  # First blind is the default (typically A)
+
     # Get fiducial scale cuts from config
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
     fiducial_xim_scale_cut = tuple(config["fiducial"]["fiducial_xim_scale_cut"])
     version = config["fiducial"]["version"]
 
-    # Load per-blind precomputed data (MC-propagated E/B covariances)
-    datasets = {}
-    cov_pure_eb_blinds = {}
-    for blind in BLINDS:
-        datasets[blind] = np.load(snakemake.input[f"pure_eb_{blind}"])
-        cov_pure_eb_blinds[blind] = datasets[blind]["cov_pure_eb"]
-
-    # Use blind A for data vectors (identical across blinds)
-    dataset = datasets["A"]
+    # Load precomputed pure E/B data (data vectors are identical across blinds)
+    dataset = np.load(snakemake.input.pure_eb)
     theta = dataset["theta"]
     nbins = len(theta)
 
@@ -181,7 +175,7 @@ def main():
     xip_total = dataset["xip_total"]
     xim_total = dataset["xim_total"]
 
-    # Pure mode decompositions (same for all blinds - data vectors)
+    # Pure mode decompositions
     xip_E = dataset["xip_E"]
     xim_E = dataset["xim_E"]
     xip_B = dataset["xip_B"]
@@ -189,10 +183,15 @@ def main():
     xip_amb = dataset["xip_amb"]
     xim_amb = dataset["xim_amb"]
 
+    # Load per-blind MC-propagated E/B covariances
+    cov_pure_eb_blinds = {}
+    for blind in blinds:
+        cov_pure_eb_blinds[blind] = dataset["cov_pure_eb"]
+
     # Load per-blind reporting covariances (for total xi error bars)
     cov_xi_blinds = {}
-    for blind in BLINDS:
-        cov_path = snakemake.input[f"cov_{blind.lower()}"]
+    for i, blind in enumerate(blinds):
+        cov_path = snakemake.input.cov[i]
         cov_xi_blinds[blind] = np.loadtxt(cov_path)
 
     # Apply scale cuts
@@ -205,7 +204,7 @@ def main():
     )
 
     # Identify blind with minimum joint PTE at fiducial scale (most conservative)
-    min_pte_blind = min(BLINDS, key=lambda b: blind_results[b]["fiducial"]["pte_joint_B"])
+    min_pte_blind = min(blinds, key=lambda b: blind_results[b]["fiducial"]["pte_joint_B"])
     pte_xip_B_fid = blind_results[min_pte_blind]["fiducial"]["pte_xip_B"]
     pte_xim_B_fid = blind_results[min_pte_blind]["fiducial"]["pte_xim_B"]
 
@@ -356,8 +355,8 @@ def main():
 
     plt.close(fig)
 
-    # Generate plots for all three blinds (same 1x2 layout)
-    for plot_blind in BLINDS:
+    # Generate plots for all blinds (same 1x2 layout)
+    for plot_blind in blinds:
         cov_pure_eb_blind = cov_pure_eb_blinds[plot_blind]
 
         sigma_xip_total_b = _extract_sigma(cov_xi_blinds[plot_blind], 0, nbins)
@@ -430,13 +429,13 @@ def main():
     spec_paths = snakemake.input["specs"]
 
     # Compute minimum PTEs across blinds
-    pte_xip_B_min_fid = min(blind_results[b]["fiducial"]["pte_xip_B"] for b in BLINDS)
-    pte_xim_B_min_fid = min(blind_results[b]["fiducial"]["pte_xim_B"] for b in BLINDS)
-    pte_joint_B_min_fid = min(blind_results[b]["fiducial"]["pte_joint_B"] for b in BLINDS)
+    pte_xip_B_min_fid = min(blind_results[b]["fiducial"]["pte_xip_B"] for b in blinds)
+    pte_xim_B_min_fid = min(blind_results[b]["fiducial"]["pte_xim_B"] for b in blinds)
+    pte_joint_B_min_fid = min(blind_results[b]["fiducial"]["pte_joint_B"] for b in blinds)
 
-    pte_xip_B_min_full = min(blind_results[b]["full"]["pte_xip_B"] for b in BLINDS)
-    pte_xim_B_min_full = min(blind_results[b]["full"]["pte_xim_B"] for b in BLINDS)
-    pte_joint_B_min_full = min(blind_results[b]["full"]["pte_joint_B"] for b in BLINDS)
+    pte_xip_B_min_full = min(blind_results[b]["full"]["pte_xip_B"] for b in blinds)
+    pte_xim_B_min_full = min(blind_results[b]["full"]["pte_xim_B"] for b in blinds)
+    pte_joint_B_min_full = min(blind_results[b]["full"]["pte_joint_B"] for b in blinds)
 
     # Write evidence.json with per-blind PTEs and minima
     evidence_data = {
@@ -448,9 +447,9 @@ def main():
                 "scale_cut_xip": list(fiducial_xip_scale_cut),
                 "scale_cut_xim": list(fiducial_xim_scale_cut),
                 # Per-blind PTEs
-                **{f"pte_xip_B_{b}": blind_results[b]["fiducial"]["pte_xip_B"] for b in BLINDS},
-                **{f"pte_xim_B_{b}": blind_results[b]["fiducial"]["pte_xim_B"] for b in BLINDS},
-                **{f"pte_joint_{b}": blind_results[b]["fiducial"]["pte_joint_B"] for b in BLINDS},
+                **{f"pte_xip_B_{b}": blind_results[b]["fiducial"]["pte_xip_B"] for b in blinds},
+                **{f"pte_xim_B_{b}": blind_results[b]["fiducial"]["pte_xim_B"] for b in blinds},
+                **{f"pte_joint_{b}": blind_results[b]["fiducial"]["pte_joint_B"] for b in blinds},
                 # Minimum across blinds (conservative)
                 "pte_xip_B_min": pte_xip_B_min_fid,
                 "pte_xim_B_min": pte_xim_B_min_fid,
@@ -462,9 +461,9 @@ def main():
             "full": {
                 "scale_cut_arcmin": [float(theta.min()), float(theta.max())],
                 # Per-blind PTEs
-                **{f"pte_xip_B_{b}": blind_results[b]["full"]["pte_xip_B"] for b in BLINDS},
-                **{f"pte_xim_B_{b}": blind_results[b]["full"]["pte_xim_B"] for b in BLINDS},
-                **{f"pte_joint_{b}": blind_results[b]["full"]["pte_joint_B"] for b in BLINDS},
+                **{f"pte_xip_B_{b}": blind_results[b]["full"]["pte_xip_B"] for b in blinds},
+                **{f"pte_xim_B_{b}": blind_results[b]["full"]["pte_xim_B"] for b in blinds},
+                **{f"pte_joint_{b}": blind_results[b]["full"]["pte_joint_B"] for b in blinds},
                 # Minimum across blinds (conservative)
                 "pte_xip_B_min": pte_xip_B_min_full,
                 "pte_xim_B_min": pte_xim_B_min_full,
@@ -491,9 +490,18 @@ def main():
 
     # Print summary
     print(f"\nPTE Summary (fiducial scale cuts):")
-    print(f"  xi+^B: min={pte_xip_B_min_fid:.3f} (A={blind_results['A']['fiducial']['pte_xip_B']:.3f}, B={blind_results['B']['fiducial']['pte_xip_B']:.3f}, C={blind_results['C']['fiducial']['pte_xip_B']:.3f})")
-    print(f"  xi-^B: min={pte_xim_B_min_fid:.3f} (A={blind_results['A']['fiducial']['pte_xim_B']:.3f}, B={blind_results['B']['fiducial']['pte_xim_B']:.3f}, C={blind_results['C']['fiducial']['pte_xim_B']:.3f})")
-    print(f"  joint: min={pte_joint_B_min_fid:.3f} (A={blind_results['A']['fiducial']['pte_joint_B']:.3f}, B={blind_results['B']['fiducial']['pte_joint_B']:.3f}, C={blind_results['C']['fiducial']['pte_joint_B']:.3f})")
+    blind_pte_strs = ", ".join(
+        f"{b}={blind_results[b]['fiducial']['pte_xip_B']:.3f}" for b in blinds
+    )
+    print(f"  xi+^B: min={pte_xip_B_min_fid:.3f} ({blind_pte_strs})")
+    blind_pte_strs = ", ".join(
+        f"{b}={blind_results[b]['fiducial']['pte_xim_B']:.3f}" for b in blinds
+    )
+    print(f"  xi-^B: min={pte_xim_B_min_fid:.3f} ({blind_pte_strs})")
+    blind_pte_strs = ", ".join(
+        f"{b}={blind_results[b]['fiducial']['pte_joint_B']:.3f}" for b in blinds
+    )
+    print(f"  joint: min={pte_joint_B_min_fid:.3f} ({blind_pte_strs})")
 
 
 if __name__ == "__main__":

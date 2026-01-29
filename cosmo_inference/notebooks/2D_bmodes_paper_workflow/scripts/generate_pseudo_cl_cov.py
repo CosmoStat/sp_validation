@@ -114,7 +114,8 @@ def generate_pseudo_cl_cov(
     src_cov = os.path.join(output_dir, f"pseudo_cl_cov_{version}.fits")
     if os.path.exists(src_cov):
         with fits.open(src_cov) as hdul:
-            cov = hdul["COVARIANCE"].data
+            # CV outputs covariance blocks as COVAR_XX_YY extensions
+            cov = hdul["COVAR_BB_BB"].data
             n_ell = int(len(cov) ** 0.5)
             print(f"Generated covariance matrix: {n_ell}x{n_ell}")
         if src_cov != output_cov:

@@ -34,10 +34,17 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [COSE
 
 ## Outputs
 
-- `figure.png` — Single-panel figure showing $B_n / \sigma_n$ for v1.4.6
+Main figure shows leak_corr version (v1.4.6). Second figure shows uncorrected version for comparison.
+
+- `figure.png` — Single-panel figure showing $B_n / \sigma_n$ for v1.4.6 leak_corr
   - Both scale cuts (fiducial and full) overplotted with different colors
   - Error bars are unity by construction (normalized)
   - Paper figure for main text B-mode validation
+
+- `figure_uncorrected.png` — Single-panel figure showing $B_n / \sigma_n$ for v1.4.6 (uncorrected)
+  - Same layout as main figure
+  - Shows B-modes without leakage correction
+  - Appendix figure for comparison
 
 ## Notes
 
