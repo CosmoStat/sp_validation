@@ -20,6 +20,8 @@ dependencies = [
     "camb",
     "clmm",
     "colorama",
+    "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
+    "cs_util>=0.1.5",
     "emcee",
     "getdist @ git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
     "h5py",
@@ -37,17 +39,18 @@ dependencies = [
     "opencv-python-headless",
     "pyccl",
     "pyarrow",
+    "pymaster",
     "regions",
     "reproject",
     "scipy",
     "seaborn",
+    "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",
     "uncertainties"
 ]
-# "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
 
 [project.urls]
 Homepage = "https://github.com/CosmoStat/sp_validation"
