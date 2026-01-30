@@ -1641,6 +1641,10 @@ def compute_weights_gatti(
     mask_combined,
     mask_metacal,
     num_bins=20,
+    snr_min=5,
+    snr_max=10,
+    size_ratio_min=0.3,
+    size_ratio_max=3,
 ):
     """Compute Weights Gatti.
     
@@ -1657,7 +1661,14 @@ def compute_weights_gatti(
         purpose="weights"
     )
 
-    cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
+    cat_gal["w_des"] = calibration.get_w_des(
+        cat_gal,
+        num_bins,
+        snr_min=snr_min,
+        snr_max=snr_max,
+        size_ratio_min=size_ratio_min,
+        size_ratio_max=size_ratio_max,
+    )
 
 
 def compute_PSF_leakage(
