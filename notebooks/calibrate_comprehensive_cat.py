@@ -125,6 +125,10 @@ sp_joint.compute_weights_gatti(
     mask_combined,
     mask_metacal,
     num_bins=20,
+    snr_min=cm["gal_snr_min"],
+    snr_max=cm["gal_snr_max"],
+    size_ratio_min=cm["size_ratio_min"],
+    size_ratio_max=cm["size_ratio_max"],
 )
 
 # %%
