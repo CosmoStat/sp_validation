@@ -1641,9 +1641,9 @@ def compute_weights_gatti(
     mask_combined,
     mask_metacal,
     num_bins=20,
-    snr_min=5,
-    snr_max=10,
-    size_ratio_min=0.3,
+    snr_min=10,
+    snr_max=500,
+    size_ratio_min=0.707,
     size_ratio_max=3,
 ):
     """Compute Weights Gatti.
