@@ -5,6 +5,7 @@ RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
     apt-get install -y --quiet \
         libgsl-dev \
+        libhealpix-cxx-dev \
         htop \
         npm \
         tmux
