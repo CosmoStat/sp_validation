@@ -4,10 +4,7 @@ FROM ghcr.io/cosmostat/shapepipe:py312
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
     apt-get install -y --quiet \
-        libcfitsio-dev \
-        libfftw3-dev \
         libgsl-dev \
-        libhealpix-cxx-dev \
         htop \
         npm \
         tmux
@@ -18,6 +15,4 @@ RUN pip install --no-cache-dir \
 WORKDIR /sp_validation
 COPY . /sp_validation
 
-# Install sp_validation
-# TODO: pymaster build fails - see fiber fix-pymaster-build-in-sp-ea54063a
 RUN pip install --no-cache-dir -e .
