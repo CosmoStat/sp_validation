@@ -4,7 +4,6 @@ FROM ghcr.io/cosmostat/shapepipe:py312
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
     apt-get install -y --quiet \
-        libgsl-dev \
         htop \
         npm \
         tmux
