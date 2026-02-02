@@ -220,8 +220,8 @@ def create_single_panel(pte_matrix, ell, version_label):
     return fig
 
 
-def create_3panel_composite(matrices, ells, version_labels):
-    """Create 3-panel composite for appendix versions.
+def create_npanel_composite(matrices, ells, panel_labels):
+    """Create N-panel composite for appendix versions.
 
     Parameters
     ----------
@@ -229,7 +229,7 @@ def create_3panel_composite(matrices, ells, version_labels):
         PTE matrices for each version.
     ells : list of ndarray
         Ell arrays for each version.
-    version_labels : list of str
+    panel_labels : list of str
         Labels for each panel.
 
     Returns
@@ -237,37 +237,30 @@ def create_3panel_composite(matrices, ells, version_labels):
     fig : Figure
         The composite figure.
     """
-    fig_width = 10.5
+    n_panels = len(matrices)
+    panel_width = 3.5
+    fig_width = panel_width * n_panels + 0.5  # Extra for colorbar
     fig_height = 2.8
 
     fig = plt.figure(figsize=(fig_width, fig_height))
+    width_ratios = [1] * n_panels + [0.05]
     gs = fig.add_gridspec(
-        1, 4,
-        width_ratios=[1, 1, 1, 0.05],
+        1, n_panels + 1,
+        width_ratios=width_ratios,
         wspace=0.08,
         left=0.06, right=0.95,
         bottom=0.15, top=0.88
     )
 
-    ax0 = fig.add_subplot(gs[0])
-    ax1 = fig.add_subplot(gs[1])
-    ax2 = fig.add_subplot(gs[2])
-    cax = fig.add_subplot(gs[3])
+    axes = [fig.add_subplot(gs[i]) for i in range(n_panels)]
+    cax = fig.add_subplot(gs[n_panels])
 
-    im0 = plot_cl_pte_panel(ax0, matrices[0], ells[0], "",
-                            show_ylabel=True)
-    im1 = plot_cl_pte_panel(ax1, matrices[1], ells[1], "",
-                            show_ylabel=False)
-    im2 = plot_cl_pte_panel(ax2, matrices[2], ells[2], "",
-                            show_ylabel=False)
+    for i, (ax, matrix, ell, label) in enumerate(zip(axes, matrices, ells, panel_labels)):
+        im = plot_cl_pte_panel(ax, matrix, ell, "", show_ylabel=(i == 0))
+        ax.set_title(label, fontsize=9)
 
-    # Add version titles
-    ax0.set_title(version_labels[0], fontsize=9)
-    ax1.set_title(version_labels[1], fontsize=9)
-    ax2.set_title(version_labels[2], fontsize=9)
-
-    # Shared colorbar
-    cbar = fig.colorbar(im2, cax=cax)
+    # Shared colorbar (use last image)
+    cbar = fig.colorbar(im, cax=cax)
     cbar.set_label("PTE", fontsize=8)
     cbar.ax.tick_params(labelsize=7)
 
@@ -277,6 +270,12 @@ def create_3panel_composite(matrices, ells, version_labels):
              va="center", rotation="vertical", fontsize=9)
 
     return fig
+
+
+# Backwards compatibility alias
+def create_3panel_composite(matrices, ells, version_labels):
+    """Create 3-panel composite (legacy wrapper)."""
+    return create_npanel_composite(matrices, ells, version_labels)
 
 
 def main():
@@ -352,12 +351,16 @@ def main():
         print(f"  PTE at fiducial: {stats.get('pte_at_fiducial', 'N/A'):.4f}")
         print(f"  PTE at full range: {stats.get('pte_at_full_range', 'N/A'):.4f}")
 
+    # Get version labels from params
+    version_labels = snakemake.params.version_labels
+
     # Create fiducial single-panel figure
     if fiducial_version in all_matrices:
+        fiducial_label = version_labels.get(fiducial_version, fiducial_version)
         fig_fiducial = create_single_panel(
             all_matrices[fiducial_version],
             all_ells[fiducial_version],
-            "v1.4.6 (fiducial)",
+            f"{fiducial_label} (fiducial)",
         )
 
         fig_path = Path(snakemake.output["figure_fiducial"])
@@ -370,18 +373,14 @@ def main():
 
         plt.close(fig_fiducial)
 
-    # Create appendix 3-panel composite (all versions)
-    if len(versions) >= 3:
-        # Use all three versions (v1.4.5, v1.4.6, v1.4.8)
-        v145 = [v for v in versions if "v1.4.5" in v][0]
-        v146 = [v for v in versions if "v1.4.6" in v][0]
-        v148 = [v for v in versions if "v1.4.8" in v][0]
+    # Create appendix N-panel composite (all versions from config)
+    appendix_versions = [v for v in versions if v in all_matrices]
+    if len(appendix_versions) >= 2:
+        matrices = [all_matrices[v] for v in appendix_versions]
+        ells = [all_ells[v] for v in appendix_versions]
+        labels = [version_labels.get(v, v) for v in appendix_versions]
 
-        matrices = [all_matrices[v145], all_matrices[v146], all_matrices[v148]]
-        ells = [all_ells[v145], all_ells[v146], all_ells[v148]]
-        labels = ["v1.4.5", "v1.4.6", "v1.4.8"]
-
-        fig_appendix = create_3panel_composite(matrices, ells, labels)
+        fig_appendix = create_npanel_composite(matrices, ells, labels)
 
         fig_path = Path(snakemake.output["figure_appendix"])
         fig_appendix.savefig(fig_path, dpi=300, bbox_inches="tight", facecolor="white")

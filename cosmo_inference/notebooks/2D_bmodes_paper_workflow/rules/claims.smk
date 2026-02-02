@@ -427,6 +427,8 @@ rule cosebis_pte_matrix:
             for blind in BLINDS
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
+    params:
+        blinds=BLINDS,
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_pte_matrix/evidence.json",
         figures=expand(
@@ -490,8 +492,8 @@ rule config_space_pte_matrices:
 rule harmonic_space_pte_matrices:
     """Harmonic-space PTE figures for all versions.
 
-    Results: Single-panel Cl^BB PTE matrix for fiducial v1.4.6
-    Appendix: 3-panel composite (v1.4.5, v1.4.6, v1.4.8)
+    Results: Single-panel Cl^BB PTE matrix for fiducial version
+    Appendix: N-panel composite for all versions from config.versions
 
     Uses fiducial blind covariance (blind independence validated in bb_covariance_blind_independence).
     """
@@ -505,6 +507,8 @@ rule harmonic_space_pte_matrices:
             _pseudo_cl_cov_path(ver, blind=config["fiducial"]["blind"])
             for ver in config["versions"]
         ],
+    params:
+        version_labels=VERSION_LABELS,
     output:
         evidence=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",
         figure_fiducial=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/figure_fiducial.png",

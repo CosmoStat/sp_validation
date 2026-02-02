@@ -34,12 +34,12 @@ Block-wise condition numbers for the 120×120 pure E/B covariance (6 blocks of 2
 
 ## Outputs
 
-- `pure_eb_covariance.png` — 6-block correlation matrix heatmap (icefire diverging colormap)
+- `pure_eb_covariance.png` — 6-block correlation matrix heatmap (vlag diverging colormap)
 - `evidence.json` — condition numbers, eigenvalue bounds, positive definiteness
 
 ## Visualization
 
 Correlation matrix with:
-- icefire diverging colormap (−1 to +1)
+- vlag diverging colormap (−1 to +1)
 - Block boundaries marked
 - Labels for E/B/amb blocks

@@ -85,7 +85,7 @@ def main():
         config = yaml.safe_load(f)
 
     versions = config["versions"]
-    blinds = ["A", "B", "C"]
+    blinds = snakemake.params.blinds
     fiducial_min_scale = config["fiducial"]["fiducial_min_scale"]
     fiducial_max_scale = config["fiducial"]["fiducial_max_scale"]
 

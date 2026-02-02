@@ -111,7 +111,10 @@ def main():
         float(config["fiducial"]["fiducial_min_scale"]),
         float(config["fiducial"]["fiducial_max_scale"]),
     )
-    full_scale_cut = (1.0, 250.0)
+    full_scale_cut = (
+        float(config["cosebis"]["theta_min"]),
+        float(config["cosebis"]["theta_max"]),
+    )
 
     scale_cuts = {
         "fiducial": fiducial_scale_cut,
