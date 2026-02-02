@@ -41,6 +41,53 @@ CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_
 # Single-blind operations use config["fiducial"]["blind"] instead
 BLINDS = ["A", "B", "C"]
 
+# Fiducial parameters shorthand - avoids repeated config["fiducial"]["X"] access
+FIDUCIAL = config["fiducial"]
+
+# Default mask suffix from config
+DEFAULT_MASK_SUFFIX = "_masked" if config["covariance"].get("default_masked", False) else ""
+
+
+def resolve_covariance_version(version):
+    """Map version to its covariance version.
+
+    v1.4.10.1 uses v1.4.6's covariance (same footprint, blending corrections don't change geometry).
+    """
+    if "v1.4.10.1" in version:
+        return version.replace("v1.4.10.1", "v1.4.6")
+    return version
+
+
+def covariance_path(version, blind, gaussian="ng", min_sep=None, max_sep=None, nbins=None,
+                    mask_suffix=None, suffix="_processed.txt"):
+    """Construct covariance file path. Single source of truth for covariance paths.
+
+    Args:
+        version: Catalog version (v1.4.10.1 auto-mapped to v1.4.6)
+        blind: Blind letter (A, B, C)
+        gaussian: "g" or "ng" (non-Gaussian)
+        min_sep, max_sep, nbins: Binning params (default to fiducial)
+        mask_suffix: "_masked" or "" (default from config)
+        suffix: File suffix (default "_processed.txt")
+
+    Returns:
+        Full path to covariance file
+    """
+    # Use fiducial defaults if not specified
+    min_sep = min_sep if min_sep is not None else FIDUCIAL["min_sep"]
+    max_sep = max_sep if max_sep is not None else FIDUCIAL["max_sep"]
+    nbins = nbins if nbins is not None else FIDUCIAL["nbins"]
+    mask_suffix = mask_suffix if mask_suffix is not None else DEFAULT_MASK_SUFFIX
+
+    # Map v1.4.10.1 to v1.4.6 for covariance
+    cov_version = resolve_covariance_version(version)
+
+    base = (
+        f"covariance_{cov_version}_{blind}_{gaussian}"
+        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
+    )
+    return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
+
 
 def build_redshift_path(version, blind):
     """Construct n(z) filepath for given catalog version and blind.
@@ -105,20 +152,6 @@ rule rho_tau_stats:
         disk_mb=20000,
     script:
         "scripts/run_rho_tau.py"
-
-
-rule sandbox:
-    output:
-        "results/sandbox",
-
-
-rule run_cosmo_val:
-    threads: 1
-    shell:
-        """
-        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val 
-        python run_cosmo_val.py
-        """
 
 
 

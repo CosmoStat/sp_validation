@@ -29,8 +29,8 @@ def covariance_paths(version, blind, gaussian, min_sep, max_sep, nbins, mask_suf
     return dir_path, file_prefix
 
 
+# DEFAULT_MASK_SUFFIX defined in Snakefile
 MASK_CLS_FILES = config["covariance"].get("mask_cls_files", {})
-DEFAULT_MASK_SUFFIX = "_masked" if config["covariance"].get("default_masked", False) else ""
 
 
 def get_mask_cls_path(version):
@@ -191,44 +191,17 @@ rule covariance_glass_mock:
         "../scripts/compute_glass_mock_covariance.py"
 
 
+def _fiducial_binning_suffix():
+    """Return binning suffix for fiducial parameters."""
+    return f"_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}"
+
+
 rule generate_glass_mock_rhotau_samples:
     input:
-        cov_rho=lambda w: str(
-            COSMO_VAL / f"rho_tau_stats/cov_rho_{config['fiducial']['mock_version']}.npy"
-        ),
-        cov_tau=lambda w: str(
-            COSMO_VAL
-            / (
-                "rho_tau_stats/"
-                f"cov_tau_{config['fiducial']['mock_version']}"
-                f"_minsep={config['fiducial']['min_sep']}"
-                f"_maxsep={config['fiducial']['max_sep']}"
-                f"_nbins={config['fiducial']['nbins']}"
-                f"_npatch={config['fiducial']['npatch']}_th.npy"
-            )
-        ),
-        ref_rho=lambda w: str(
-            COSMO_VAL
-            / (
-                "rho_tau_stats/"
-                f"rho_stats_{config['fiducial']['mock_version']}"
-                f"_minsep={config['fiducial']['min_sep']}"
-                f"_maxsep={config['fiducial']['max_sep']}"
-                f"_nbins={config['fiducial']['nbins']}"
-                f"_npatch={config['fiducial']['npatch']}.fits"
-            )
-        ),
-        ref_tau=lambda w: str(
-            COSMO_VAL
-            / (
-                "rho_tau_stats/"
-                f"tau_stats_{config['fiducial']['mock_version']}"
-                f"_minsep={config['fiducial']['min_sep']}"
-                f"_maxsep={config['fiducial']['max_sep']}"
-                f"_nbins={config['fiducial']['nbins']}"
-                f"_npatch={config['fiducial']['npatch']}.fits"
-            )
-        ),
+        cov_rho=str(COSMO_VAL / f"rho_tau_stats/cov_rho_{FIDUCIAL['mock_version']}.npy"),
+        cov_tau=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{_fiducial_binning_suffix()}_th.npy"),
+        ref_rho=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{_fiducial_binning_suffix()}.fits"),
+        ref_tau=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['mock_version']}{_fiducial_binning_suffix()}.fits"),
     output:
         rho="results/glass_mock_rhotau_samples/{mock_id}/rho_stats_sampled.fits",
         tau="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
@@ -266,29 +239,15 @@ rule covariance_process:
 
 
 def fiducial_covariance_outputs(mask_suffix=""):
-    version = config["fiducial"]["version"]
-    blind = config["fiducial"]["blind"]
-
+    """Return processed covariance files for fiducial version/blind."""
     ng_prefix = covariance_paths(
-        version,
-        blind,
-        "ng",
-        config["fiducial"]["min_sep"],
-        config["fiducial"]["max_sep"],
-        config["fiducial"]["nbins"],
-        mask_suffix,
+        FIDUCIAL["version"], FIDUCIAL["blind"], "ng",
+        FIDUCIAL["min_sep"], FIDUCIAL["max_sep"], FIDUCIAL["nbins"], mask_suffix
     )[1]
-
     g_prefix = covariance_paths(
-        version,
-        blind,
-        "g",
-        config["fiducial"]["min_sep_int"],
-        config["fiducial"]["max_sep_int"],
-        config["fiducial"]["nbins_int"],
-        mask_suffix,
+        FIDUCIAL["version"], FIDUCIAL["blind"], "g",
+        FIDUCIAL["min_sep_int"], FIDUCIAL["max_sep_int"], FIDUCIAL["nbins_int"], mask_suffix
     )[1]
-
     return [f"{ng_prefix}_processed.txt", f"{g_prefix}_processed.txt"]
 
 
@@ -317,30 +276,8 @@ rule covariance_blind_consistency:
             "workflow/config/covariance.md",
         ],
         config="workflow/config/config.yaml",
-        cov_a=lambda w: str(
-            COSMO_INFERENCE / f"data/covariance/covariance_{config['fiducial']['version']}_A_ng"
-            f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}/"
-            f"covariance_{config['fiducial']['version']}_A_ng"
-            f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_processed.txt"
-        ),
-        cov_b=lambda w: str(
-            COSMO_INFERENCE / f"data/covariance/covariance_{config['fiducial']['version']}_B_ng"
-            f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}/"
-            f"covariance_{config['fiducial']['version']}_B_ng"
-            f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_processed.txt"
-        ),
-        cov_c=lambda w: str(
-            COSMO_INFERENCE / f"data/covariance/covariance_{config['fiducial']['version']}_C_ng"
-            f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}/"
-            f"covariance_{config['fiducial']['version']}_C_ng"
-            f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_processed.txt"
-        ),
+        # Use centralized covariance_path() from Snakefile
+        covs=[covariance_path(FIDUCIAL["version"], blind) for blind in BLINDS],
     output:
         evidence="results/claims/covariance_blind_consistency/evidence.json",
         figure="results/claims/covariance_blind_consistency/figure.png",

@@ -319,3 +319,12 @@ rule prepare_mask_for_cosmocov:
             f.write("Set c_footprint_file parameter to the appropriate power spectrum file path.\n")
         
         print(f"CosmoCov integration prepared: {output.cosmocov_ready}")
+
+
+# Fast rules that don't need cluster resources
+localrules:
+    combine_area_summaries,
+    effective_area_comparison,
+    prepare_mask_for_cosmocov,
+    masks_only,
+    masks_full_analysis,

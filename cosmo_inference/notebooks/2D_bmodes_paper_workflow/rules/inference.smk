@@ -1,9 +1,9 @@
-import os
 from pathlib import Path
 
-PROJECT_ROOT = Path("/n17data/cdaley/unions/pure_eb")
-PSEUDO_CL_DIR = Path("/home/guerrini/sp_validation/notebooks/cosmo_val/output")
+# FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path defined in Snakefile
+PSEUDO_CL_DIR = COSMO_VAL.parent  # Same directory structure
 GLASS_MOCK_VERSION = config["glass_mocks"].get("version", "v0")
+GLASS_MOCK_SEED_RANGE = config["glass_mocks"]["seed_range"]
 
 GLASS_MOCK_FITS_PATTERN = str(
     COSMO_INFERENCE_PROD
@@ -23,17 +23,8 @@ def pseudo_cl_assets(version):
 
 rule inference_prep:
     input:
-        # Processed covariance matrix
-        cov_matrix=lambda w: str(
-            COSMO_INFERENCE
-            / (
-                f"data/covariance/"
-                f"covariance_{w.version}_{w.blind}_ng_minsep={w.min_sep}_maxsep={w.max_sep}_nbins={w.nbins}"
-                f"{'_masked' if config['covariance']['default_masked'] else ''}/"
-                f"covariance_{w.version}_{w.blind}_ng_minsep={w.min_sep}_maxsep={w.max_sep}_nbins={w.nbins}"
-                f"{'_masked' if config['covariance']['default_masked'] else ''}_processed.txt"
-            )
-        ),
+        # Processed covariance matrix - use centralized covariance_path()
+        cov_matrix=lambda w: covariance_path(w.version, w.blind, min_sep=w.min_sep, max_sep=w.max_sep, nbins=w.nbins),
         # Xi FITS files
         xi_plus=str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         xi_minus=str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
@@ -60,6 +51,9 @@ rule inference_prep:
         data_dir="/n09data/guerrini/output_chains/{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}",
         output_root=str(COSMO_INFERENCE_PROD),
     threads: 1
+    resources:
+        mem_mb=8000,
+        runtime=10,
     shell:
         """
         cd /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference
@@ -83,67 +77,44 @@ rule inference_prep:
 
 rule inference_fiducial:
     input:
-        # Use the same output patterns as inference_prep
+        # Use the same output patterns as inference_prep with FIDUCIAL params
         rules.inference_prep.output.fits_file.format(
-            version=config["fiducial"]["version"],
-            blind=config["fiducial"]["blind"],
-            min_sep=config["fiducial"]["min_sep"],
-            max_sep=config["fiducial"]["max_sep"],
-            nbins=config["fiducial"]["nbins"],
-            npatch=config["fiducial"]["npatch"]
+            version=FIDUCIAL["version"], blind=FIDUCIAL["blind"],
+            min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"],
+            nbins=FIDUCIAL["nbins"], npatch=FIDUCIAL["npatch"]
         ),
         rules.inference_prep.output.config_file.format(
-            version=config["fiducial"]["version"],
-            blind=config["fiducial"]["blind"],
-            min_sep=config["fiducial"]["min_sep"],
-            max_sep=config["fiducial"]["max_sep"],
-            nbins=config["fiducial"]["nbins"],
-            npatch=config["fiducial"]["npatch"]
+            version=FIDUCIAL["version"], blind=FIDUCIAL["blind"],
+            min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"],
+            nbins=FIDUCIAL["nbins"], npatch=FIDUCIAL["npatch"]
         )
 
 
 rule inference_glass_mocks:
     input:
-        expand(GLASS_MOCK_FITS_PATTERN, mock_id=[f"{i:05d}" for i in range(1, 351)])
+        expand(GLASS_MOCK_FITS_PATTERN, mock_id=[f"{i:05d}" for i in range(GLASS_MOCK_SEED_RANGE[0], GLASS_MOCK_SEED_RANGE[1] + 1)])
+
+
+def _fiducial_rhotau_suffix():
+    """Binning suffix for fiducial rho/tau stats."""
+    return f"_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}"
 
 
 rule inference_prep_glass_mock:
     input:
         xi="/n09data/guerrini/glass_mock_v1.4.6/results/xi_glass_mock_{mock_id}_4096_nbins=20.fits",
-        cov_matrix=lambda w: str(
-            COSMO_INFERENCE
-            / (
-                f"data/covariance/"
-                f"covariance_{config['fiducial']['mock_version']}_A_ng_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}_nbins={config['fiducial']['nbins']}"
-                f"{'_masked' if config['covariance']['default_masked'] else ''}/"
-                f"covariance_{config['fiducial']['mock_version']}_A_ng_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}_nbins={config['fiducial']['nbins']}"
-                f"{'_masked' if config['covariance']['default_masked'] else ''}_processed.txt"
-            )
-        ),
+        # Use centralized covariance_path() with fiducial mock version
+        cov_matrix=covariance_path(FIDUCIAL["mock_version"], "A"),
         # n(z) file
-        nz_file=lambda w: build_redshift_path(config["fiducial"]["mock_version"], "A"),
+        nz_file=build_redshift_path(FIDUCIAL["mock_version"], "A"),
         # Rho/tau stats: rho from real data, tau sampled
-        rho_stats=str(
-            COSMO_VAL
-            / (
-                "rho_tau_stats/"
-                f"rho_stats_{config['fiducial']['mock_version']}_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}_nbins={config['fiducial']['nbins']}_npatch={config['fiducial']['npatch']}.fits"
-            )
-        ),
-        tau_stats=lambda w: str(
-            PROJECT_ROOT / f"results/glass_mock_rhotau_samples/{w.mock_id}/tau_stats_sampled.fits"
-        ),
+        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{_fiducial_rhotau_suffix()}.fits"),
+        tau_stats="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
         # Tau covariance (real data)
-        tau_cov=str(
-            COSMO_VAL
-            / (
-                "rho_tau_stats/"
-                f"cov_tau_{config['fiducial']['mock_version']}_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}_nbins={config['fiducial']['nbins']}_npatch={config['fiducial']['npatch']}_th.npy"
-            )
-        ),
+        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{_fiducial_rhotau_suffix()}_th.npy"),
         # C_ell data for dual config generation
         cl_file="/n09data/guerrini/glass_mock_v1.4.6/results/cl_glass_mock_{mock_id}_4096.npy",
-        cl_cov=lambda w: pseudo_cl_assets(config["fiducial"]["mock_version"])[1],
+        cl_cov=pseudo_cl_assets(FIDUCIAL["mock_version"])[1],
     output:
         fits_file=GLASS_MOCK_FITS_PATTERN,
         config_file=GLASS_MOCK_CONFIG_PATTERN,

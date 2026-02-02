@@ -10,21 +10,24 @@ import os
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# CONFIG_DIR, CLAIMS_DIR, PAPER_FIGURES_DIR, BLINDS defined in Snakefile
-# COSMO_VAL, COSMO_INFERENCE defined as Path objects in Snakefile
+# CONFIG_DIR, CLAIMS_DIR, PAPER_FIGURES_DIR, BLINDS, FIDUCIAL defined in Snakefile
+# COSMO_VAL, COSMO_INFERENCE, covariance_path() defined in Snakefile
 COSMO_VAL_OUTPUT = str(COSMO_VAL)  # String version for f-string interpolation
 
 # Fiducial binning parameters — used by multiple pure E/B rules
-# Avoids repeating config["fiducial"][key] in each rule's params block
+# Avoids repeating FIDUCIAL[key] in each rule's params block
 FIDUCIAL_BINNING = {
-    "min_sep": config["fiducial"]["min_sep"],
-    "max_sep": config["fiducial"]["max_sep"],
-    "nbins": config["fiducial"]["nbins"],
-    "min_sep_int": config["fiducial"]["min_sep_int"],
-    "max_sep_int": config["fiducial"]["max_sep_int"],
-    "nbins_int": config["fiducial"]["nbins_int"],
-    "npatch": config["fiducial"]["npatch"],
+    "min_sep": FIDUCIAL["min_sep"],
+    "max_sep": FIDUCIAL["max_sep"],
+    "nbins": FIDUCIAL["nbins"],
+    "min_sep_int": FIDUCIAL["min_sep_int"],
+    "max_sep_int": FIDUCIAL["max_sep_int"],
+    "nbins_int": FIDUCIAL["nbins_int"],
+    "npatch": FIDUCIAL["npatch"],
 }
+
+# VERSION_LABELS from config for passing to plotting scripts
+VERSION_LABELS = config["plotting"].get("version_labels", {})
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -32,56 +35,43 @@ FIDUCIAL_BINNING = {
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def _covariance_path(version, min_sep, max_sep, nbins, blind=None, gaussian="g"):
-    """Construct covariance file path.
+    """Construct covariance file path using centralized covariance_path() from Snakefile.
 
     TODO(generate-v1-4-10-1-covariance-55144852): v1.4.10.1 uses v1.4.6 covariance
     as workaround until proper covariance is generated. Same footprint justifies this.
     """
     if blind is None:
-        blind = config["fiducial"]["blind"]
-    # v1.4.10.1 uses v1.4.6 covariance (same footprint, blending corrections don't change geometry)
-    cov_version = version.replace("v1.4.10.1", "v1.4.6") if "v1.4.10.1" in version else version
-    base_name = f"covariance_{cov_version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
-    return (
-        "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance/"
-        f"{base_name}/{base_name}_processed.txt"
-    )
+        blind = FIDUCIAL["blind"]
+    return covariance_path(version, blind, gaussian=gaussian, min_sep=min_sep, max_sep=max_sep, nbins=nbins)
 
 
 def _reporting_cov_path(version, blind):
     """Path to reporting-scale covariance (non-Gaussian, masked)."""
-    min_sep = config["fiducial"]["min_sep"]
-    max_sep = config["fiducial"]["max_sep"]
-    nbins = config["fiducial"]["nbins"]
-    return _covariance_path(version, min_sep, max_sep, nbins, blind=blind, gaussian="ng")
+    return covariance_path(version, blind, gaussian="ng")
 
 
 def _xi_reporting_path(version):
     """Path to reporting-scale 2PCF file."""
     return (
-        f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={config['fiducial']['min_sep']}"
-        f"_maxsep={config['fiducial']['max_sep']}"
-        f"_nbins={config['fiducial']['nbins']}"
-        f"_npatch={config['fiducial']['npatch']}.txt"
+        f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep']}"
+        f"_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.txt"
     )
 
 
 def _xi_integration_path(version):
     """Path to fine-binned 2PCF integration file."""
     return (
-        f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={config['fiducial']['min_sep_int']}"
-        f"_maxsep={config['fiducial']['max_sep_int']}"
-        f"_nbins={config['fiducial']['nbins_int']}"
-        f"_npatch={config['fiducial']['npatch']}.txt"
+        f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep_int']}"
+        f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch={FIDUCIAL['npatch']}.txt"
     )
 
 
 def _cov_integration_path(version, blind):
     """Covariance path for integration bins (Gaussian, for COSEBIS PTE)."""
-    min_sep_int = config["fiducial"]["min_sep_int"]
-    max_sep_int = config["fiducial"]["max_sep_int"]
-    nbins_int = config["fiducial"]["nbins_int"]
-    return _covariance_path(version, min_sep_int, max_sep_int, nbins_int, blind=blind, gaussian="g")
+    return covariance_path(
+        version, blind, gaussian="g",
+        min_sep=FIDUCIAL["min_sep_int"], max_sep=FIDUCIAL["max_sep_int"], nbins=FIDUCIAL["nbins_int"]
+    )
 
 
 def _pte_scale_cut_pairs():
@@ -123,12 +113,10 @@ rule cosebis_version_comparison:
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         xi_integration=[_xi_integration_path(ver) for ver in config["versions"]],
-        cov_integration=[
-            _covariance_path(ver, config["fiducial"]["min_sep_int"], config["fiducial"]["max_sep_int"], config["fiducial"]["nbins_int"], blind="A")
-            for ver in config["versions"]
-        ],
+        cov_integration=[_cov_integration_path(ver, "A") for ver in config["versions"]],
     params:
-        cov_base_dir="/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance",
+        cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
+        version_labels=VERSION_LABELS,
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
         figure_stacked=f"{CLAIMS_DIR}/cosebis_version_comparison/figure_stacked.png",
@@ -150,16 +138,10 @@ rule cosebis_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        xi_integration=_xi_integration_path(config["fiducial"]["version"]),
-        cov_integration=_covariance_path(
-            config["fiducial"]["version"],
-            config["fiducial"]["min_sep_int"],
-            config["fiducial"]["max_sep_int"],
-            config["fiducial"]["nbins_int"],
-            blind="A",
-        ),
+        xi_integration=_xi_integration_path(FIDUCIAL["version"]),
+        cov_integration=_cov_integration_path(FIDUCIAL["version"], "A"),
     params:
-        cov_base_dir="/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance",
+        cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
         figure=f"{CLAIMS_DIR}/cosebis_data_vector/figure.png",
@@ -275,6 +257,8 @@ rule pure_eb_version_comparison:
             f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
             for ver in config["versions"]
         ],
+    params:
+        version_labels=VERSION_LABELS,
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_version_comparison/evidence.json",
         figure=f"{CLAIMS_DIR}/pure_eb_version_comparison/figure.png",
@@ -301,7 +285,7 @@ rule pure_eb_covariance:
             f"{CONFIG_DIR}/2d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pure_eb_data=f"results/paper_plots/intermediate/{config['fiducial']['version']}_A_pure_eb_semianalytic.npz",
+        pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL['version']}_A_pure_eb_semianalytic.npz",
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_covariance/evidence.json",
         figure=f"{CLAIMS_DIR}/pure_eb_covariance/figure.png",
@@ -367,8 +351,8 @@ rule cl_data_vector:
             f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pseudo_cl=_pseudo_cl_path(config['fiducial']['version']),
-        pseudo_cl_cov=_pseudo_cl_cov_path(config['fiducial']['version']),
+        pseudo_cl=_pseudo_cl_path(FIDUCIAL['version']),
+        pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL['version']),
     output:
         evidence=f"{CLAIMS_DIR}/cl_data_vector/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_data_vector/figure.png",
@@ -389,6 +373,10 @@ rule cl_version_comparison:
         cl_data_vector_evidence=rules.cl_data_vector.output.evidence,
         pseudo_cl=[_pseudo_cl_path(ver) for ver in config["versions"]],
         pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in config["versions"]],
+    params:
+        version_labels=VERSION_LABELS,
+        ell_min_cut=config["cl"]["fiducial_ell_min"],
+        ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
         evidence=f"{CLAIMS_DIR}/cl_version_comparison/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_version_comparison/figure.png",
@@ -409,7 +397,7 @@ rule compute_cosebis_pte:
     output:
         pte_json=f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{{version}}/{{blind}}/pte_{{i_min}}_{{i_max}}.json",
     params:
-        nmodes=config["fiducial"]["nmodes"],
+        nmodes=FIDUCIAL["nmodes"],
     wildcard_constraints:
         i_min=r"\d{3}",
         i_max=r"\d{3}",

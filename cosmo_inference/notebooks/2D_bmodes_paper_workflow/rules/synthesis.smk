@@ -207,7 +207,7 @@ rule serve_claims:
         claims_dir=CLAIMS_DIR,
         port_start=8000,
     run:
-        import subprocess, sys, socket
+        # socket, subprocess, sys imported at module level
 
         def find_open_port(start_port, max_attempts=100):
             for port in range(start_port, start_port + max_attempts):

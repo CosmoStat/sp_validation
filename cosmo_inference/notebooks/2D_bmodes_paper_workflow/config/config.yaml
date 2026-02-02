@@ -106,6 +106,12 @@ plotting:
     linewidth: 1.5
     capsize: 3
   x_offsets: [-0.2, -0.07, 0.07, 0.2]  # prevent overlap in comparisons (4 versions)
+  # Human-readable version labels for plots
+  version_labels:
+    SP_v1.4.5_leak_corr: "Initial"
+    SP_v1.4.6_leak_corr: "Size cuts"
+    SP_v1.4.8_leak_corr: "Masking"
+    SP_v1.4.10.1_leak_corr: "Fiducial"
 
 # pixel mask processing for survey geometry and CosmoCov integration
 pixel_mask:
