@@ -95,9 +95,7 @@ rule inference_glass_mocks:
         expand(GLASS_MOCK_FITS_PATTERN, mock_id=[f"{i:05d}" for i in range(GLASS_MOCK_SEED_RANGE[0], GLASS_MOCK_SEED_RANGE[1] + 1)])
 
 
-def _fiducial_rhotau_suffix():
-    """Binning suffix for fiducial rho/tau stats."""
-    return f"_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}"
+# fiducial_binning_suffix() defined in Snakefile (used for rho/tau stats too)
 
 
 rule inference_prep_glass_mock:
@@ -108,10 +106,10 @@ rule inference_prep_glass_mock:
         # n(z) file
         nz_file=build_redshift_path(FIDUCIAL["mock_version"], "A"),
         # Rho/tau stats: rho from real data, tau sampled
-        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{_fiducial_rhotau_suffix()}.fits"),
+        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
         tau_stats="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
         # Tau covariance (real data)
-        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{_fiducial_rhotau_suffix()}_th.npy"),
+        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
         # C_ell data for dual config generation
         cl_file="/n09data/guerrini/glass_mock_v1.4.6/results/cl_glass_mock_{mock_id}_4096.npy",
         cl_cov=pseudo_cl_assets(FIDUCIAL["mock_version"])[1],

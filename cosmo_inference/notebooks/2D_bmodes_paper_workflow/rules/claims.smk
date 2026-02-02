@@ -4,8 +4,6 @@ Claims — testable assertions that produce evidence.
 Claims depend on methods (for technique definitions) and compute outputs (for data).
 """
 
-import os
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -560,4 +558,4 @@ rule harmonic_config_cosebis_comparison:
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_pte_matrix, pure_eb_covariance, pure_eb_version_comparison, cosebis_pte_matrix, config_space_pte_matrices, harmonic_space_pte_matrices, harmonic_config_cosebis_comparison
+localrules: cl_data_vector, cl_version_comparison, pure_eb_pte_matrix, pure_eb_covariance, pure_eb_version_comparison, cosebis_pte_matrix, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, harmonic_config_cosebis_comparison

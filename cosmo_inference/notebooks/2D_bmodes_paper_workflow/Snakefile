@@ -47,6 +47,18 @@ FIDUCIAL = config["fiducial"]
 # Default mask suffix from config
 DEFAULT_MASK_SUFFIX = "_masked" if config["covariance"].get("default_masked", False) else ""
 
+# CosmoCov block indices: (symbol, CosmoCov block_i argument)
+# ++: xi+ x xi+, --: xi- x xi-, +-: xi+ x xi-
+BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
+
+
+def fiducial_binning_suffix():
+    """Return binning suffix for fiducial parameters.
+
+    Used by multiple rules across covariance.smk and inference.smk.
+    """
+    return f"_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}"
+
 
 def resolve_covariance_version(version):
     """Map version to its covariance version.

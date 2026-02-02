@@ -156,10 +156,11 @@ rule effective_area_comparison:
         mem_mb=1000,
         runtime=5
     run:
+        import os
         import yaml
         import numpy as np
         from pathlib import Path
-        
+
         # Load effective area summary
         with open(input.summary, 'r') as f:
             summary_data = yaml.safe_load(f)

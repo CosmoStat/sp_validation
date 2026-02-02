@@ -1,4 +1,4 @@
-BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
+# BLOCK_PAIRS defined in Snakefile
 
 
 
@@ -191,17 +191,15 @@ rule covariance_glass_mock:
         "../scripts/compute_glass_mock_covariance.py"
 
 
-def _fiducial_binning_suffix():
-    """Return binning suffix for fiducial parameters."""
-    return f"_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}"
+# fiducial_binning_suffix() defined in Snakefile
 
 
 rule generate_glass_mock_rhotau_samples:
     input:
         cov_rho=str(COSMO_VAL / f"rho_tau_stats/cov_rho_{FIDUCIAL['mock_version']}.npy"),
-        cov_tau=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{_fiducial_binning_suffix()}_th.npy"),
-        ref_rho=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{_fiducial_binning_suffix()}.fits"),
-        ref_tau=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['mock_version']}{_fiducial_binning_suffix()}.fits"),
+        cov_tau=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
+        ref_rho=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
+        ref_tau=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
     output:
         rho="results/glass_mock_rhotau_samples/{mock_id}/rho_stats_sampled.fits",
         tau="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
