@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import treecorr
-from scipy import stats
 
+from plotting_utils import compute_chi2_pte
 from sp_validation.b_modes import calculate_cosebis
 
 
@@ -31,13 +31,6 @@ def _load_snakemake():
 
 
 snakemake = _load_snakemake()
-
-
-def _compute_pte(values, covariance):
-    """Compute PTE for B-mode null test."""
-    chi2 = float(values @ np.linalg.solve(covariance, values))
-    dof = len(values)
-    return chi2, stats.chi2.sf(chi2, dof)
 
 
 def main():
@@ -89,14 +82,14 @@ def main():
     # 6 modes: use first 6
     cov_B_6 = cov_full[nmodes:nmodes+6, nmodes:nmodes+6]
     cov_E_6 = cov_full[:6, :6]
-    chi2_B_6, pte_B_6 = _compute_pte(Bn_full[:6], cov_B_6)
-    chi2_E_6, pte_E_6 = _compute_pte(En_full[:6], cov_E_6)
+    chi2_B_6, pte_B_6, _ = compute_chi2_pte(Bn_full[:6], cov_B_6)
+    chi2_E_6, pte_E_6, _ = compute_chi2_pte(En_full[:6], cov_E_6)
 
     # 20 modes: use all
     cov_B_20 = cov_full[nmodes:, nmodes:]
     cov_E_20 = cov_full[:nmodes, :nmodes]
-    chi2_B_20, pte_B_20 = _compute_pte(Bn_full, cov_B_20)
-    chi2_E_20, pte_E_20 = _compute_pte(En_full, cov_E_20)
+    chi2_B_20, pte_B_20, _ = compute_chi2_pte(Bn_full, cov_B_20)
+    chi2_E_20, pte_E_20, _ = compute_chi2_pte(En_full, cov_E_20)
 
     # Write output with both 6 and 20 mode results
     output = {

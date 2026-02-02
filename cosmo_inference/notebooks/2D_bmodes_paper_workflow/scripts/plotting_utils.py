@@ -4,6 +4,32 @@ import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
 import numpy as np
+from scipy import stats
+
+
+def compute_chi2_pte(data, covariance):
+    """Compute chi-squared and PTE for null test.
+
+    Parameters
+    ----------
+    data : array_like
+        Data vector (e.g., B-mode signal).
+    covariance : array_like
+        Covariance matrix.
+
+    Returns
+    -------
+    chi2 : float
+        Chi-squared value.
+    pte : float
+        Probability to exceed (survival function).
+    dof : int
+        Degrees of freedom (length of data).
+    """
+    chi2 = float(data @ np.linalg.solve(covariance, data))
+    dof = len(data)
+    pte = stats.chi2.sf(chi2, dof)
+    return chi2, pte, dof
 
 
 class SquareRootScale(mscale.ScaleBase):

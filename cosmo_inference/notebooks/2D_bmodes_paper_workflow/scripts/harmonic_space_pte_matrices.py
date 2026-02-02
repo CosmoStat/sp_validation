@@ -19,7 +19,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import seaborn as sns
 from astropy.io import fits
-from scipy import stats
+
+from plotting_utils import compute_chi2_pte
 
 
 plt.style.use(
@@ -41,14 +42,6 @@ def _load_snakemake():
 
 
 snakemake = _load_snakemake()
-
-
-def _compute_pte(data, covariance):
-    """Compute chi-squared PTE."""
-    chi2 = float(data @ np.linalg.solve(covariance, data))
-    dof = len(data)
-    pte = stats.chi2.sf(chi2, dof)
-    return pte, chi2, dof
 
 
 def compute_pte_matrix(pseudo_cl_path, pseudo_cl_cov_path, fiducial_ell_min=None, fiducial_ell_max=None):
@@ -98,7 +91,7 @@ def compute_pte_matrix(pseudo_cl_path, pseudo_cl_cov_path, fiducial_ell_min=None
             cov_slice = cov_bb[idx_slice, idx_slice]
 
             try:
-                pte, chi2, dof = _compute_pte(bb_slice, cov_slice)
+                chi2, pte, dof = compute_chi2_pte(bb_slice, cov_slice)
                 pte_matrix[i_min, i_max] = pte
             except np.linalg.LinAlgError:
                 pass
@@ -207,7 +200,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
     return im
 
 
-def create_single_panel(pte_matrix, ell, version_label):
+def create_single_panel(pte_matrix, ell):
     """Create single-panel figure for fiducial version."""
     fig, ax = plt.subplots(1, 1, figsize=(3.54, 3.54))
 
@@ -350,11 +343,9 @@ def main():
 
     # Create fiducial single-panel figure
     if fiducial_version in all_matrices:
-        fiducial_label = version_labels.get(fiducial_version, fiducial_version)
         fig_fiducial = create_single_panel(
             all_matrices[fiducial_version],
             all_ells[fiducial_version],
-            f"{fiducial_label} (fiducial)",
         )
 
         fig_path = Path(snakemake.output["figure_fiducial"])
