@@ -8,7 +8,7 @@ Plotting: [2D Plots](2d_plots.md)
 
 Harmonic-space B-mode PTEs are consistent with noise at fiducial multipole range for the fiducial catalog version. PTE heatmaps across all (ell_min, ell_max) combinations show where B-modes become significant. The appendix presents all catalog versions (from `config.versions`) for comparison.
 
-Fiducial scale cuts from `cl.fiducial_ell_min` and `cl.fiducial_ell_max`. Full B-mode test range from `cl.ell_min` to `cl.ell_max`.
+Fiducial scale cuts from `cl.fiducial_ell_min` and `cl.fiducial_ell_max`. Full B-mode test range spans all multipole bins present in the input pseudo-Cℓ file.
 
 ## Blind Handling
 
@@ -20,9 +20,10 @@ Uses fiducial blind from `config["fiducial"]["blind"]`. The C_ℓ^BB data vector
 |-----------|------------|
 | Versions | `versions` |
 | Fiducial version | `fiducial.version` |
-| Full multipole range | `cl.ell_min`, `cl.ell_max` |
 | Fiducial multipole range | `cl.fiducial_ell_min`, `cl.fiducial_ell_max` |
 | Number of bins | `cl.n_ell_bins` |
+
+Note: Full multipole range is determined by the input pseudo-Cℓ file, not config.
 
 ## Evidence
 

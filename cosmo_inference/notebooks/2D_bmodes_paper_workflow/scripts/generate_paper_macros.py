@@ -382,8 +382,6 @@ def generate_evidence(
         if dep_evidence.exists():
             with open(dep_evidence) as f:
                 data = json.load(f)
-            # Extract key values for the summary
-            ev = data.get("evidence", {})
             summary[dep] = {
                 "has_evidence": True,
                 "generated": data.get("generated"),
@@ -412,15 +410,15 @@ def generate_evidence(
 
 if __name__ == "__main__":
     # When run via snakemake
-    claims_dir = Path(snakemake.params.claims_dir)
-    config = snakemake.config
+    claims_dir = Path(snakemake.params.claims_dir)  # noqa: F821
+    config = snakemake.config  # noqa: F821
     fiducial_version = config["fiducial"]["version"]
     versions = config["versions"]
     version_labels = config["plotting"]["version_labels"]
 
     # Separate macro outputs from evidence output
-    macro_outputs = [Path(p) for p in snakemake.output if p.endswith(".tex")]
-    evidence_outputs = [Path(p) for p in snakemake.output if p.endswith("evidence.json")]
+    macro_outputs = [Path(p) for p in snakemake.output if p.endswith(".tex")]  # noqa: F821
+    evidence_outputs = [Path(p) for p in snakemake.output if p.endswith("evidence.json")]  # noqa: F821
 
     print(f"Generating macros from {claims_dir}")
     generate_macros(claims_dir, macro_outputs, fiducial_version)

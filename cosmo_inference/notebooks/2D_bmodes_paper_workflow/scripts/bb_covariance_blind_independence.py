@@ -431,15 +431,15 @@ def main(snakemake):
         json.dump(evidence, f, indent=2)
 
     # Print summary
-    print(f"\nBB Covariance Blind Independence Summary:")
+    print("\nBB Covariance Blind Independence Summary:")
     print(f"  COSEBIS B_n max deviation: {cosebis_bb_max*100:.6f}%")
     print(f"  COSEBIS E_n max deviation: {cosebis_ee_max*100:.2f}%")
     print(f"  COSEBIS B_n blind-independent (<0.1%): {cosebis_bb_blind_independent}")
     print(f"  E-modes vary as expected (5-15%): {ee_varies_as_expected}")
-    print(f"\n  Pure E/B + Harmonic (MC methods):")
+    print("\n  Pure E/B + Harmonic (MC methods):")
     print(f"    BB max deviation: {bb_max*100:.2f}%")
     print(f"    EE max deviation: {ee_max*100:.2f}%")
-    print(f"    Note: MC sampling noise causes BB to vary similarly to EE")
+    print("    Note: MC sampling noise causes BB to vary similarly to EE")
 
 
 if __name__ == "__main__":
