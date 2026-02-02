@@ -1,13 +1,15 @@
 """
 Snakemake rules for UNIONS pixel mask processing and analysis.
 
+NOTE: This subsystem is exploratory/infrastructure. The outputs are NOT currently
+wired into the main covariance workflow, which uses pre-computed mask Cls from
+MASK_CLS_FILES in covariance.smk. See covariance.md spec for details.
+
 This file contains rules for:
 - Processing HealSparse masks to individual nside values (parallelizable)
 - Calculating effective survey areas
 - Computing mask power spectra for CosmoCov integration
 - Generating comparison plots and analysis
-
-Author: Claude Code
 """
 from datetime import datetime
 
@@ -126,7 +128,6 @@ rule effective_area_comparison:
         mem_mb=1000,
         runtime=5
     run:
-        import os
         import yaml
         import numpy as np
         from pathlib import Path
@@ -218,7 +219,7 @@ rule effective_area_comparison:
         ])
         
         # Write report
-        os.makedirs(os.path.dirname(output.report), exist_ok=True)
+        Path(output.report).parent.mkdir(parents=True, exist_ok=True)
         with open(output.report, 'w') as f:
             f.write('\n'.join(report_content))
         
