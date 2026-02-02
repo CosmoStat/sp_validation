@@ -640,7 +640,7 @@ SP_v1.4.8:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
-SP_v1.4.10.1:
+SP_v1.4.11.2:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: blue
@@ -649,9 +649,9 @@ SP_v1.4.10.1:
   marker: s
   cov_th:
     A: 2405.3892055695346
-    n_e: 6.128201234871523
+    n_e: 7.529428768078532
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.380499698062307
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
@@ -670,7 +670,7 @@ SP_v1.4.10.1:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: v1.4.10.1/unions_shapepipe_cut_struc_2024_v1.4.10.1.fits
+    path: v1.4.11.2/unions_shapepipe_cut_struc_2024_v1.4.11.2.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
     e1_col: e1

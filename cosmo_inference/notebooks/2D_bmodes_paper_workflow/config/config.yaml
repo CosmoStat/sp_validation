@@ -1,4 +1,4 @@
-versions: ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr", "SP_v1.4.10.1_leak_corr"]
+versions: ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr", "SP_v1.4.11.2_leak_corr"]
 ellipticity_suffix: "_leak_corrected"
 
 # grid search parameters
@@ -14,7 +14,7 @@ nbins_int: [100, 200, 300, 500]
 
 # fiducial parameters
 fiducial:
-  version: SP_v1.4.6_leak_corr
+  version: SP_v1.4.11.2_leak_corr
   blind: A
   npatch: 1
   min_sep: 1.0
@@ -55,24 +55,8 @@ covariance:
   use_semianalytic: true
   # Number of Monte Carlo samples for covariance propagation (used by pure E/B mode analysis)
   n_samples: 2000
-  # CosmoCov cosmological parameters (KiDS-Legacy fiducial values)
-  cosmology:
-    Omega_m: 0.326
-    sigma_8: 0.786
-    n_s: 0.960
-    h: 0.670
-    Omega_b: 0.050
-  mask_cls_files:
-    v1.4.5: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.5_nside_8192_norm.txt"
-    v1.4.6: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.6_nside_8192_norm.txt"
-    v1.4.7: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.7_nside_8192_norm.txt"
-    v1.4.8: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.8_nside_8192_norm.txt"
-    # v1.4.10.1 uses same footprint as v1.4.6 (blending corrections don't change geometry)
-    v1.4.10.1: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.6_nside_8192_norm.txt"
-
-pseudo_cl_files:
-  SP_v1.4.6: "/automnt/n17data/sguerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6.fits"
-  SP_v1.4.6_leak_corr: "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6_leak_corr.fits"
+  # Cosmology: imported from sp_validation.cosmology.PLANCK18 (astropy Planck18)
+  # Mask Cl paths: defined in covariance.smk (MASK_CLS_FILES)
 
 # Harmonic-space (C_l) analysis parameters
 cl:
@@ -107,12 +91,12 @@ plotting:
     capsize: 3
   x_offsets: [-0.2, -0.07, 0.07, 0.2]  # prevent overlap in comparisons (4 versions)
   # Human-readable version labels for plots
-  # v1.4.6 is fiducial (passes all B-mode tests); v1.4.10.1 fails harmonic-space
+  # v1.4.11.2 is fiducial candidate (blends fix + updated processing)
   version_labels:
     SP_v1.4.5_leak_corr: "Initial"
-    SP_v1.4.6_leak_corr: "Fiducial"
+    SP_v1.4.6_leak_corr: "Size cuts"
     SP_v1.4.8_leak_corr: "Masking"
-    SP_v1.4.10.1_leak_corr: "Blends fix"
+    SP_v1.4.11.2_leak_corr: "Fiducial"
 
 # Pure E/B mode analysis
 pure_eb:
