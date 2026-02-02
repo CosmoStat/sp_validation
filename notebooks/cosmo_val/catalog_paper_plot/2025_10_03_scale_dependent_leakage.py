@@ -18,7 +18,7 @@ import pandas as pd
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
 
 plt.style.use(
-    "/home/guerrini/matplotlib_config/paper.mplstyle"
+    "./matplotlib_config/paper.mplstyle"
 )
 
 plt.rcParams["text.usetex"] = True
@@ -33,8 +33,8 @@ path_cat = "/n17data/sguerrini/unions_shapepipe_cut_struc_2024_v1.4.5_rerun.fits
 num_bins = 20
 
 # %%
-versions = ["SP_v1.4.5", "SP_v1.4.5_leak_corr"]
-labels = ["SP v1.4.5", "SP v1.4.5 w/ leakage corr."]
+versions = ["SP_v1.4.6", "SP_v1.4.6_leak_corr"]
+labels = ["Fiducial sample", "Fiducial sample w/ leakage corr."]
 colors = ["C0", "C4"]
 
 tau_stats = []
@@ -83,7 +83,7 @@ plt.ylabel(r"$\alpha(\vartheta)$")
 
 plt.xscale('log')
 plt.legend()
-plt.savefig('./plots/scale_dependent_alpha.png', dpi=200)
+plt.savefig('./plots/scale_dependent_alpha.pdf')
 plt.show()
 
 # %%
@@ -158,7 +158,7 @@ plt.xscale('log')
 plt.yscale('log')
 plt.legend()
 
-plt.savefig('./plots/scale_dependent_xi_sys.png', dpi=200)
+plt.savefig('./plots/scale_dependent_xi_sys.pdf')
 plt.show()
 
 # %%
@@ -245,7 +245,7 @@ plt.xscale('log')
 plt.yscale('log')
 
 plt.legend()
-plt.savefig('./plots/scale_dependent_xi_sys_comparison.png', dpi=200)
+plt.savefig('./plots/scale_dependent_xi_sys_comparison.pdf')
 plt.show()
 
     

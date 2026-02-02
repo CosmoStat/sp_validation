@@ -659,6 +659,7 @@ def plot_pure_eb_correlations(
         ax.set(xscale="log", xlabel=r"$\theta$ [arcmin]")
         ax.axhline(0, alpha=0.3, color="k", linestyle="--", linewidth=0.5)
         ax.legend(loc="upper left")
+        ax.set_ylim(-0.5, 2)
 
     # Save the axis limits after data plotting but before adding gray regions
     original_xlims = [ax.get_xlim() for ax in axs]
@@ -1037,6 +1038,7 @@ def plot_cosebis_modes(
     plt.legend()
     plt.xlabel("n (mode)")
     plt.ylabel("E_n, B_n")
+    plt.ylim(-0.5e-10, 3e-10)
 
     # Add scale cut information to title - use actual scale cut from results
     scale_info = ""
@@ -1092,4 +1094,3 @@ def plot_cosebis_covariance_matrix(results, version, var_method, output_path):
 
     ax.set_title(f"{version} COSEBIs E/B {var_method} correlation matrix")
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
-

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 plt.style.use(
-    "/home/guerrini/matplotlib_config/paper.mplstyle"
+    "./matplotlib_config/paper.mplstyle"
 )
 
 plt.rcParams["text.usetex"] = True
@@ -22,8 +22,8 @@ if ipython is not None:
 
 base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/"
 # %%
-versions = ["SP_v1.4.5", "SP_v1.4.5_leak_corr", "SP_v1.4.6", "SP_v1.4.6_leak_corr", "SP_v1.4.8", "SP_v1.4.8_leak_corr"]
-labels = ["SP v1.4.5", "SP v1.4.5 w/ leakage corr.", "SP v1.4.6", "SP v1.4.6 w/ leakage corr.", "SP v1.4.8", "SP v1.4.8 w/ leakage corr."]
+versions = ["SP_v1.4.6", "SP_v1.4.6_leak_corr"]
+labels = ["Fiducial sample", "Fiducial sample w/ leakage corr."]
 colors = [f"C{i}" for i in range(len(versions))]
 
 tau_stats = []
@@ -87,17 +87,20 @@ for i in range(3):
     axs[i].set_xscale('log')
     axs[i].set_xlabel(r"$\vartheta$ [arcmin]")
     axs[i].set_ylabel(y_labels[i])
-    axs[i].axhline(0, color='gray', linestyle='--', linewidth=1)
+    axs[i].axhline(0, color='black', linestyle='--', linewidth=1)
 
-axs[1].legend(
+handles, labels = axs[1].get_legend_handles_labels()
+fig.legend(
+    handles, labels,
     loc="upper center",
-    bbox_to_anchor=(0.5, -0.3),  # (x, y) relative to the axes
-    ncol=2,  # number of columns
-    frameon=False
+    bbox_to_anchor=(0.5, 0.05),   # centered under all axes
+    ncol=2,
+    frameon=False,
+    fontsize=16
 )
 
 plt.tight_layout()
 
-plt.savefig("./plots/tau_stats.png", dpi=300, bbox_inches='tight')
+plt.savefig("./plots/tau_stats.pdf", bbox_inches='tight')
 plt.show()
 # %%
