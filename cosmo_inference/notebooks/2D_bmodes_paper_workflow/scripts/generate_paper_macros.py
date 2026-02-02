@@ -20,7 +20,9 @@ VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "11.2": "ElevenTwo"}
 def _parse_version_short(version: str) -> str:
     """Extract short version number from full version string.
 
-    Example: "SP_v1.4.6_leak_corr" → "6"
+    Examples:
+        "SP_v1.4.6_leak_corr" → "6"
+        "SP_v1.4.11.2" → "11.2"
     """
     return version.split("v1.4.")[1].split("_")[0]
 
