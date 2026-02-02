@@ -38,6 +38,7 @@ rule covariance_ini:
         ),
         ng_value=lambda wildcards: "1" if wildcards.gaussian == "ng" else "0",
         omega_m=config["covariance"]["cosmology"]["Omega_m"],
+        omega_v=1 - config["covariance"]["cosmology"]["Omega_m"],  # flat cosmology
         sigma_8=config["covariance"]["cosmology"]["sigma_8"],
         n_s=config["covariance"]["cosmology"]["n_s"],
         h=config["covariance"]["cosmology"]["h"],
@@ -56,7 +57,7 @@ rule covariance_ini:
 # Cosmological parameters
 #
 Omega_m : {params.omega_m}
-Omega_v : 0.75
+Omega_v : {params.omega_v}
 sigma_8 : {params.sigma_8}
 n_spec : {params.n_s}
 w0 : -1
