@@ -218,13 +218,14 @@ rule covariance_glass_mock:
 
 
 rule generate_glass_mock_rhotau_samples:
+    """Generate sampled tau statistics for glass mocks.
+
+    Only tau is sampled; inference_prep_glass_mock uses real rho data.
+    """
     input:
-        cov_rho=str(COSMO_VAL / f"rho_tau_stats/cov_rho_{FIDUCIAL['mock_version']}.npy"),
         cov_tau=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
-        ref_rho=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
         ref_tau=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
     output:
-        rho="results/glass_mock_rhotau_samples/{mock_id}/rho_stats_sampled.fits",
         tau="results/glass_mock_rhotau_samples/{mock_id}/tau_stats_sampled.fits",
     params:
         mock_id="{mock_id}",
@@ -233,13 +234,10 @@ rule generate_glass_mock_rhotau_samples:
     shell:
         """
         python workflow/scripts/generate_glass_mock_rhotau_samples.py \
-            --cov-rho {input.cov_rho} \
             --cov-tau {input.cov_tau} \
-            --ref-rho {input.ref_rho} \
             --ref-tau {input.ref_tau} \
             --output-dir {params.output_dir} \
-            --mock-ids {params.mock_id} \
-            --threads 1
+            --mock-ids {params.mock_id}
         """
 
 

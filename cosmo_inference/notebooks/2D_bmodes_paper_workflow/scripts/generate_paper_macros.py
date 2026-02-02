@@ -24,8 +24,9 @@ def _parse_version_short(version: str) -> str:
 
 def _format_value(value) -> str:
     """Format a value for LaTeX."""
+    import math
     if isinstance(value, float):
-        if value != value:  # NaN check
+        if math.isnan(value):
             return "--"
         if abs(value) < 0.001 and value != 0:
             return f"{value:.2e}"
