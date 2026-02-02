@@ -216,7 +216,7 @@ rule precompute_pure_eb_blind:
     resources:
         mem_mb=32000,
         runtime=60,
-    threads: 48
+    threads: 16  # Reduced from 48 to avoid libgomp thread creation failures
     script:
         "../scripts/precompute_pure_eb_covariance.py"
 

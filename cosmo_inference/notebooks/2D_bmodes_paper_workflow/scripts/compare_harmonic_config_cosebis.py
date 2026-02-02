@@ -189,7 +189,7 @@ def main():
         cl_ee = cl_ee_full[ell_mask]
         cl_bb = cl_bb_full[ell_mask]
 
-        cosebis_cell = COSEBIS(theta_min, theta_max, nmodes_long)
+        cosebis_cell = COSEBIS(theta_min, theta_max, nmodes_long, precision=120)
         ce_harm, cb_harm = cosebis_cell.cosebis_from_Cell(
             ell=ell,
             Cell_E=cl_ee,

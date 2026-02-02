@@ -303,10 +303,13 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         ]
 
         # Calculate COSEBIs E/B modes using actual theta range (per Axel's recommendation)
+        # Use precision=120 (vs default 80) to avoid sympy root convergence failures
+        # for high modes (11+). The error "try n < 80 or maxsteps > 50" requires higher precision.
         cosebis = COSEBIS(
             theta_min=np.min(theta_cut),
             theta_max=np.max(theta_cut),
-            N_max=nmodes
+            N_max=nmodes,
+            precision=120,
         )
         En, Bn = cosebis.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
 
