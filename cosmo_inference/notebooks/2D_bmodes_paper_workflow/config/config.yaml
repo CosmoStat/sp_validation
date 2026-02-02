@@ -1,5 +1,9 @@
-versions: ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
-ellipticity_suffix: "_leak_corrected"
+versions: [
+  "SP_v1.4.5", "SP_v1.4.5_leak_corr",
+  "SP_v1.4.6", "SP_v1.4.6_leak_corr",
+  "SP_v1.4.8", "SP_v1.4.8_leak_corr"
+]
+ellipticity_suffix: "_leak_corrected"  # only used for _leak_corr versions
 
 # grid search parameters
 npatches: [120]
@@ -11,6 +15,9 @@ nbins: [20]
 min_seps_int : [0.1]
 max_seps_int: [500]
 nbins_int: [100, 200, 300, 500]
+
+# Blinds to analyze (A is the default)
+blinds: ["A"]
 
 # fiducial parameters
 fiducial:
@@ -32,15 +39,15 @@ fiducial:
   nmodes: 20
   
   # Unified fiducial scale cut for all B-mode analyses (arcmin)
-  # Matches Paper IV (xi cosmology): [9, 83] for xi+, [16, 83] for xi-
-  # COSEBIs use xi+ cuts since they cannot have separate xi+/xi- ranges
-  fiducial_min_scale: 9
+  # Matches Paper IV (Goh et al.): [12, 83] for both xi+ and xi-
+  # COSEBIs use unified cuts since they cannot have separate xi+/xi- ranges
+  fiducial_min_scale: 12
   fiducial_max_scale: 83
 
   # Pure E/B mode fiducial scale cuts for plots (arcmin)
-  # From Paper IV: xi+ [9, 83], xi- [16, 83]
-  fiducial_xip_scale_cut: [9, 83]
-  fiducial_xim_scale_cut: [16, 83]
+  # From Paper IV: [12, 83] for both (most conservative choice)
+  fiducial_xip_scale_cut: [12, 83]
+  fiducial_xim_scale_cut: [12, 83]
 
   chain: SP_v1.4.6_leak_corr_C_sc_10_150_new_ia
 
@@ -54,8 +61,26 @@ covariance:
   # Enable semi-analytical covariance propagation
   use_semianalytic: true
   # Number of Monte Carlo samples for covariance propagation (used by pure E/B mode analysis)
-  n_samples: 2000
-  # CosmoCov cosmological parameters (KiDS-Legacy fiducial values)
+  n_samples: 4000
+  # Default cosmology for covariance calculation
+  default_cosmology: kids_legacy
+  # Named cosmologies for CosmoCov
+  cosmologies:
+    kids_legacy:
+      # KiDS-Legacy fiducial (used for main analysis)
+      Omega_m: 0.326
+      sigma_8: 0.786
+      n_s: 0.960
+      h: 0.670
+      Omega_b: 0.050
+    planck18:
+      # Planck 2018 TT,TE,EE+lowE+lensing (from cosmology.py defaults)
+      Omega_m: 0.31111
+      sigma_8: 0.8102
+      n_s: 0.9665
+      h: 0.6766
+      Omega_b: 0.04897
+  # Backward compatibility alias
   cosmology:
     Omega_m: 0.326
     sigma_8: 0.786
@@ -68,9 +93,19 @@ covariance:
     v1.4.7: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.7_nside_8192_norm.txt"
     v1.4.8: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.8_nside_8192_norm.txt"
 
-pseudo_cl_files:
-  SP_v1.4.6: "/automnt/n17data/sguerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6.fits"
-  SP_v1.4.6_leak_corr: "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6_leak_corr.fits"
+# Pseudo-Cl presets for different analyses
+pseudo_cl:
+  presets:
+    fine:      # DEPRECATED: MCM deconvolution unstable with partial sky
+      binning: linear
+      nbins: 2040
+    harmonic:  # for C_ell PTEs (standard analysis)
+      binning: powspace
+      nbins: 32
+    cosebis:   # for harmonic→COSEBIS comparison (stable MCM, dense enough for T_n integration)
+      binning: powspace
+      nbins: 100
+  power: 0.5  # power for powspace binning (0.5 = sqrt spacing)
 
 # Harmonic-space (C_l) analysis parameters
 cl:

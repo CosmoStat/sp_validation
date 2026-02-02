@@ -184,8 +184,11 @@ def generate_macros(claims_dir: Path, output_paths: list[Path]):
 
         # Generate individual macros for each version
         # Use word-based names to avoid TeX Live 2025 cleveref/siunitx conflict
+        # Filter to leak_corr versions only (paper uses these)
         version_words = {"5": "Five", "6": "Six", "8": "Eight"}
         for ver, ver_data in versions.items():
+            if "leak_corr" not in ver:
+                continue
             short_ver = ver.split("v1.4.")[1].split("_")[0]  # "5", "6", or "8"
             prefix = f"configPte{version_words.get(short_ver, short_ver)}"
 
@@ -224,6 +227,8 @@ def generate_macros(claims_dir: Path, output_paths: list[Path]):
 
         version_words = {"5": "Five", "6": "Six", "8": "Eight"}
         for ver, ver_data in versions.items():
+            if "leak_corr" not in ver:
+                continue
             short_ver = ver.split("v1.4.")[1].split("_")[0]
             prefix = f"clPte{version_words.get(short_ver, short_ver)}"
 
@@ -288,18 +293,19 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path):
             xim = cfg.get("xim_stats", {})
             cosebis = cfg.get("cosebis_stats", {})
 
+            # Fiducial scale cuts from Paper IV (Goh et al.): [12, 83] for all config-space
             if xip:
                 pte_fid = _format_value(xip.get("pte_at_fiducial", float("nan")))
                 pte_full = _format_value(xip.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    $\\xi_+^B$ & {pte_fid} & {pte_full} & [9--83]$'$ \\\\")
+                results_table.append(f"    $\\xi_+^B$ & {pte_fid} & {pte_full} & [12--83]$'$ \\\\")
             if xim:
                 pte_fid = _format_value(xim.get("pte_at_fiducial", float("nan")))
                 pte_full = _format_value(xim.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    $\\xi_-^B$ & {pte_fid} & {pte_full} & [16--83]$'$ \\\\")
+                results_table.append(f"    $\\xi_-^B$ & {pte_fid} & {pte_full} & [12--83]$'$ \\\\")
             if cosebis:
                 pte_fid = _format_value(cosebis.get("pte_at_fiducial", float("nan")))
                 pte_full = _format_value(cosebis.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    COSEBIS $B_n$ & {pte_fid} & {pte_full} & [9--83]$'$ \\\\")
+                results_table.append(f"    COSEBIS $B_n$ & {pte_fid} & {pte_full} & [12--83]$'$ \\\\")
 
         if fiducial_ver in harmonic_data:
             harm = harmonic_data[fiducial_ver]

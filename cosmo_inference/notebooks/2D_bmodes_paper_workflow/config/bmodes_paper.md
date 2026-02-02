@@ -51,7 +51,7 @@ Appears in §2.4 after COSEBIS covariance discussion:
 
 > Figure~\ref{fig:eb_covariance} shows the pure E/B covariance structure.
 
-Caption references `covariance.n_samples` (currently 2000).
+Caption references `covariance.n_samples` (currently 4000).
 
 ## PTE Reporting
 
