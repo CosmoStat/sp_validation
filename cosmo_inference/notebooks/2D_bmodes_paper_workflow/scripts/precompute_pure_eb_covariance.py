@@ -41,14 +41,14 @@ snakemake = _load_snakemake()
 params = snakemake.params
 
 
-def _build_cosmology(config):
-    cosmo_cfg = config["covariance"]["cosmology"]
+def _build_cosmology(cosmo_params):
+    """Build CCL cosmology from PLANCK18 params dict."""
     return ccl.Cosmology(
-        Omega_c=cosmo_cfg["Omega_m"] - cosmo_cfg["Omega_b"],
-        Omega_b=cosmo_cfg["Omega_b"],
-        h=cosmo_cfg["h"],
-        sigma8=cosmo_cfg["sigma_8"],
-        n_s=cosmo_cfg["n_s"],
+        Omega_c=cosmo_params["Omega_m"] - cosmo_params["Omega_b"],
+        Omega_b=cosmo_params["Omega_b"],
+        h=cosmo_params["h"],
+        sigma8=cosmo_params["sigma_8"],
+        n_s=cosmo_params["n_s"],
     )
 
 
@@ -138,9 +138,7 @@ def compute_pure_eb_covariance(
 
 
 def main():
-    config = snakemake.config
-    covariance_cfg = config["covariance"]
-    cosmo_cov = _build_cosmology(config)
+    cosmo_cov = _build_cosmology(params["cosmo_params"])
 
     # Extract blind from output path
     output_path = Path(snakemake.output[0])

@@ -12,7 +12,6 @@ def get_cov(filename):
 
 	print("Dimension of cov: %dx%d"%(ndata,ndata))
 
-	ndata_min = int(np.min(data[:,0]))
 	cov_g = np.zeros((ndata,ndata))
 	cov_ng = np.zeros((ndata,ndata))
 	for i in range(0,data.shape[0]):
@@ -78,5 +77,5 @@ if __name__ == '__main__':
 	ax.text(-9, 3*int(ndata/4), r'$\xi_-^{ij}(\theta)$', fontsize=12)
 
 	plt.savefig(plot_path,dpi=2000)
-	plt.show()
+	plt.close()
 	print("Plot saved as %s"%(plot_path))

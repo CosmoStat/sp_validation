@@ -8,7 +8,7 @@ Claims depend on methods (for technique definitions) and compute outputs (for da
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# CONFIG_DIR, CLAIMS_DIR, PAPER_FIGURES_DIR, BLINDS, FIDUCIAL defined in Snakefile
+# CONFIG_DIR, CLAIMS_DIR, PAPER_FIGURES_DIR, BLINDS, FIDUCIAL, PLANCK18 defined in Snakefile
 # COSMO_VAL, COSMO_INFERENCE, covariance_path() defined in Snakefile
 COSMO_VAL_OUTPUT = str(COSMO_VAL)  # String version for f-string interpolation
 
@@ -175,6 +175,7 @@ rule precompute_pure_eb_chunk:
         chunk_id="{chunk_id}",
         n_chunks=N_PURE_EB_CHUNKS,
         n_samples=config["covariance"]["n_samples"],
+        cosmo_params=PLANCK18,
         **FIDUCIAL_BINNING,
     resources:
         mem_mb=8000,
@@ -214,6 +215,7 @@ rule precompute_pure_eb_blind:
     params:
         version=config["fiducial"]["version"],
         n_samples=config["covariance"]["n_samples"],
+        cosmo_params=PLANCK18,
         **FIDUCIAL_BINNING,
     resources:
         mem_mb=32000,
