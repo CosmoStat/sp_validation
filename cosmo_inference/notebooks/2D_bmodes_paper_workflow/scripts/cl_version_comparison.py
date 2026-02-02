@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.scale as mscale
 import matplotlib.ticker as mticker
 import matplotlib.transforms as mtransforms
+from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
 from astropy.io import fits

@@ -11,7 +11,6 @@ Key features:
 """
 
 import os
-import sys
 
 import healpy as hp
 import numpy as np

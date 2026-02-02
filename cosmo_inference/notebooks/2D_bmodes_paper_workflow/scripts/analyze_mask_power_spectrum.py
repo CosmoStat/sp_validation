@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import healpy as hp
 import seaborn as sns
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, Tuple, Optional
 
 # Add interactive session handling
 from IPython import get_ipython

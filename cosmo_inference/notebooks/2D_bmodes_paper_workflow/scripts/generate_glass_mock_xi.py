@@ -4,7 +4,6 @@ Standalone script for computing correlation functions from GLASS mocks.
 """
 
 import os
-import sys
 
 import numpy as np
 import treecorr
