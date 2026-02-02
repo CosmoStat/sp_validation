@@ -1,6 +1,15 @@
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
 
+def get_cosmology_params(cosmology_name):
+    """Get cosmological parameters for a named cosmology."""
+    cosmologies = config["covariance"].get("cosmologies", {})
+    if cosmology_name not in cosmologies:
+        raise KeyError(
+            f"Cosmology '{cosmology_name}' not found. "
+            f"Available: {list(cosmologies.keys())}"
+        )
+    return cosmologies[cosmology_name]
 
 
 def get_cat_params(version):
@@ -22,19 +31,20 @@ wildcard_constraints:
     block_i="[123]",
     version=r"SP_v[0-9]+\.[0-9]+\.[0-9]+[_a-zA-Z0-9]*",
     mask_suffix="(_masked)?",
-    mock_id=r"\d{5}"
+    mock_id=r"\d{5}",
+    cosmology="[a-z0-9_]+"
 
 
-def covariance_paths(version, blind, gaussian, min_sep, max_sep, nbins, mask_suffix):
+def covariance_paths(version, blind, gaussian, min_sep, max_sep, nbins, mask_suffix, cosmology):
     """Return directory path and file prefix for covariance outputs."""
     covariance_root = str(COSMO_INFERENCE / "data/covariance")
     dir_path = (
         f"{covariance_root}/covariance_{version}_{blind}_{gaussian}"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
+        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}"
     )
     file_prefix = (
         f"{dir_path}/covariance_{version}_{blind}_{gaussian}"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
+        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}"
     )
     return dir_path, file_prefix
 
@@ -54,17 +64,17 @@ rule covariance_ini:
         nz_file=lambda w: build_redshift_path(w.version, w.blind),
         mask=lambda w: [] if w.mask_suffix != "_masked" else [get_mask_cls_path(w.version)],
     output:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.ini")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}.ini")
     params:
         outdir=lambda w: covariance_paths(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
+            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix, w.cosmology
         )[0],
         ng_value=lambda wildcards: "1" if wildcards.gaussian == "ng" else "0",
-        omega_m=config["covariance"]["cosmology"]["Omega_m"],
-        sigma_8=config["covariance"]["cosmology"]["sigma_8"],
-        n_s=config["covariance"]["cosmology"]["n_s"],
-        h=config["covariance"]["cosmology"]["h"],
-        omega_b=config["covariance"]["cosmology"]["Omega_b"],
+        omega_m=lambda w: get_cosmology_params(w.cosmology)["Omega_m"],
+        sigma_8=lambda w: get_cosmology_params(w.cosmology)["sigma_8"],
+        n_s=lambda w: get_cosmology_params(w.cosmology)["n_s"],
+        h=lambda w: get_cosmology_params(w.cosmology)["h"],
+        omega_b=lambda w: get_cosmology_params(w.cosmology)["Omega_b"],
         area=lambda w: get_cat_params(w.version)[0],
         n_e=lambda w: get_cat_params(w.version)[1],
         sigma_e_param=lambda w: get_cat_params(w.version)[2],
@@ -138,14 +148,14 @@ rule covariance_cosmocov:
     input:
         rules.covariance_ini.output,
     output:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/cov_tmp_ssss_{block_pm}_cov_Ntheta{nbins}_Ntomo1_{block_i}")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/cov_tmp_ssss_{block_pm}_cov_Ntheta{nbins}_Ntomo1_{block_i}")
     params:
         block_i="{block_i}",
         outdir=lambda w: covariance_paths(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
+            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix, w.cosmology
         )[0],
         ini_path=lambda w: covariance_paths(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
+            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix, w.cosmology
         )[1]
         + ".ini",
     container:
@@ -153,8 +163,8 @@ rule covariance_cosmocov:
     threads: 1
     shell:
         """
+        module purge 2>/dev/null || true
         module load gcc
-        module unload intelpython || true
         module load intelpython/3-2024.1.0
         module load openmpi
 
@@ -166,13 +176,13 @@ rule covariance_cosmocov:
 rule covariance_cat:
     input:
         cov_block=lambda w: [
-            f"{covariance_paths(w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix)[0]}"
+            f"{covariance_paths(w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix, w.cosmology)[0]}"
             f"/cov_tmp_ssss_{pm}_cov_Ntheta{w.nbins}_Ntomo1_{idx}"
             for pm, idx in BLOCK_PAIRS
         ],
     threads: 1
     output:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}.txt")
     shell:
         """
         cat {input} > {output}
@@ -261,13 +271,13 @@ rule generate_glass_mock_rhotau_samples:
 
 rule covariance_process:
     input:
-        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
+        str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}.txt")
     output:
-        matrix=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed.txt"),
-        gaussian=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_g.txt"),
-        plot=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_plot.pdf")
+        matrix=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}_processed.txt"),
+        gaussian=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}_processed_g.txt"),
+        plot=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}_processed_plot.pdf")
     params:
-        output_stub=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed")
+        output_stub=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_cosmo={cosmology}_processed")
     threads: 1
     shell:
         """
@@ -275,9 +285,11 @@ rule covariance_process:
         """
 
 
-def fiducial_covariance_outputs(mask_suffix=""):
+def fiducial_covariance_outputs(mask_suffix="", cosmology=None):
     version = config["fiducial"]["version"]
     blind = config["fiducial"]["blind"]
+    if cosmology is None:
+        cosmology = config["covariance"].get("default_cosmology", "kids_legacy")
 
     ng_prefix = covariance_paths(
         version,
@@ -287,6 +299,7 @@ def fiducial_covariance_outputs(mask_suffix=""):
         config["fiducial"]["max_sep"],
         config["fiducial"]["nbins"],
         mask_suffix,
+        cosmology,
     )[1]
 
     g_prefix = covariance_paths(
@@ -297,6 +310,7 @@ def fiducial_covariance_outputs(mask_suffix=""):
         config["fiducial"]["max_sep_int"],
         config["fiducial"]["nbins_int"],
         mask_suffix,
+        cosmology,
     )[1]
 
     return [f"{ng_prefix}_processed.txt", f"{g_prefix}_processed.txt"]
@@ -319,6 +333,9 @@ rule covariance_unmasked:
 
 ruleorder: covariance_ini > covariance_cosmocov > covariance_cat > covariance_process > covariance
 
+DEFAULT_COSMOLOGY = config["covariance"].get("default_cosmology", "kids_legacy")
+
+
 rule covariance_blind_consistency:
     """Blind consistency check: covariance matrices for blinds A, B, C."""
     input:
@@ -330,26 +347,26 @@ rule covariance_blind_consistency:
         cov_a=lambda w: str(
             COSMO_INFERENCE / f"data/covariance/covariance_{config['fiducial']['version']}_A_ng"
             f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}/"
+            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_cosmo={DEFAULT_COSMOLOGY}/"
             f"covariance_{config['fiducial']['version']}_A_ng"
             f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_processed.txt"
+            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_cosmo={DEFAULT_COSMOLOGY}_processed.txt"
         ),
         cov_b=lambda w: str(
             COSMO_INFERENCE / f"data/covariance/covariance_{config['fiducial']['version']}_B_ng"
             f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}/"
+            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_cosmo={DEFAULT_COSMOLOGY}/"
             f"covariance_{config['fiducial']['version']}_B_ng"
             f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_processed.txt"
+            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_cosmo={DEFAULT_COSMOLOGY}_processed.txt"
         ),
         cov_c=lambda w: str(
             COSMO_INFERENCE / f"data/covariance/covariance_{config['fiducial']['version']}_C_ng"
             f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}/"
+            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_cosmo={DEFAULT_COSMOLOGY}/"
             f"covariance_{config['fiducial']['version']}_C_ng"
             f"_minsep={config['fiducial']['min_sep']}_maxsep={config['fiducial']['max_sep']}"
-            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_processed.txt"
+            f"_nbins={config['fiducial']['nbins']}{DEFAULT_MASK_SUFFIX}_cosmo={DEFAULT_COSMOLOGY}_processed.txt"
         ),
     output:
         evidence="results/claims/covariance_blind_consistency/evidence.json",
@@ -364,3 +381,117 @@ localrules:
     covariance_process,
     generate_glass_mock_rhotau_samples,
     covariance_blind_consistency,
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Pseudo-Cl Generation (for COSEBIS cross-validation)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
+
+
+BLINDS = ["A", "B", "C"]
+# Base versions without _leak_corr suffix for n(z) path matching
+BASE_VERSIONS = ["SP_v1.4.5", "SP_v1.4.6", "SP_v1.4.8"]
+
+
+# Wildcard constraints for unified pseudo-Cl rules
+wildcard_constraints:
+    binning = "linear|powspace",
+    nbins = r"\d+",
+
+
+rule pseudo_cl:
+    """Generate pseudo-Cl data vector with configurable binning.
+
+    Output pattern: pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits
+
+    Binning modes:
+    - linear: uniform ell bins (nbins determines ell_step)
+    - powspace: power-law spaced bins (nbins=32 with power=0.5 for sqrt spacing)
+    """
+    output:
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
+    wildcard_constraints:
+        blind="[ABC]",
+    params:
+        version="{version}",
+        blind="{blind}",
+        cat_config=CAT_CONFIG,
+        nside=1024,
+        npatch=1,
+        cosmo_params=config["covariance"]["cosmology"],
+        binning="{binning}",
+        nbins=lambda w: int(w.nbins),
+        power=config.get("pseudo_cl", {}).get("power", 0.5),
+    resources:
+        mem_mb=32000,
+        runtime=120,
+    threads: 12
+    script:
+        "../scripts/generate_pseudo_cl.py"
+
+
+rule pseudo_cl_cov:
+    """Generate pseudo-Cl covariance with configurable binning.
+
+    Output pattern: pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits
+
+    Binning modes:
+    - linear: uniform ell bins (nbins determines ell_step)
+    - powspace: power-law spaced bins (nbins=32 with power=0.5 for sqrt spacing)
+    """
+    output:
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
+    wildcard_constraints:
+        blind="[ABC]",
+    params:
+        version="{version}",
+        blind="{blind}",
+        cat_config=CAT_CONFIG,
+        nside=1024,
+        npatch=1,
+        cosmo_params=config["covariance"]["cosmology"],
+        binning="{binning}",
+        nbins=lambda w: int(w.nbins),
+        power=config.get("pseudo_cl", {}).get("power", 0.5),
+    resources:
+        mem_mb=16000,
+        runtime=60,
+    threads: 12
+    script:
+        "../scripts/generate_pseudo_cl_cov.py"
+
+
+PSEUDO_CL_VERSIONS = [
+    "SP_v1.4.5", "SP_v1.4.5_leak_corr",
+    "SP_v1.4.6", "SP_v1.4.6_leak_corr",
+    "SP_v1.4.8", "SP_v1.4.8_leak_corr",
+]
+
+rule pseudo_cl_all:
+    """Generate pseudo-Cls for all versions (harmonic preset, blind A only)."""
+    input:
+        expand(
+            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"),
+            version=PSEUDO_CL_VERSIONS,
+        ),
+
+
+rule pseudo_cl_cov_all:
+    """Generate pseudo-Cl covariances for all versions (harmonic preset, blind A only)."""
+    input:
+        expand(
+            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits"),
+            version=PSEUDO_CL_VERSIONS,
+        ),
+
+
+rule pseudo_cl_fine_all:
+    """Generate fine pseudo-Cls for COSEBIS (linear preset)."""
+    input:
+        expand(
+            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.fits"),
+            version=config["versions"],
+            blind=BLINDS,
+        ),

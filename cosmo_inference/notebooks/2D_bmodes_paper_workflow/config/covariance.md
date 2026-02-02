@@ -18,7 +18,7 @@ Gaussian-only approximation: non-Gaussian contributions computationally prohibit
 
 | Parameter | Config Key | Description |
 |-----------|------------|-------------|
-| Samples | `covariance.n_samples` | MC samples for propagation (default 2000) |
+| Samples | `covariance.n_samples` | MC samples for propagation (default 4000) |
 | Ω_m | `covariance.cosmology.Omega_m` | Matter density |
 | σ_8 | `covariance.cosmology.sigma_8` | Amplitude of fluctuations |
 | n_s | `covariance.cosmology.n_s` | Spectral index |

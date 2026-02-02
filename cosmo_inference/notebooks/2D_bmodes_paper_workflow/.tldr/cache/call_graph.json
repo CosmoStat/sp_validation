@@ -1,0 +1,1094 @@
+{
+  "edges": [
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "collect_mock_files",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "extract_mock_id"
+    },
+    {
+      "from_file": "scripts/cosebis_version_comparison.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cosebis_version_comparison.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/pure_eb_data_vector.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_data_vector.py",
+      "to_func": "_compute_per_blind_ptes"
+    },
+    {
+      "from_file": "scripts/pure_eb_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_covariance.py",
+      "to_func": "_cov_to_corr"
+    },
+    {
+      "from_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "from_func": "<module>",
+      "to_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "compute_pte_matrix",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/compute_cosebis_pte_single.py",
+      "from_func": "<module>",
+      "to_file": "scripts/compute_cosebis_pte_single.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/generate_paper_macros.py",
+      "from_func": "<module>",
+      "to_file": "scripts/generate_paper_macros.py",
+      "to_func": "generate_evidence"
+    },
+    {
+      "from_file": "scripts/covariance_blind_consistency.py",
+      "from_func": "<module>",
+      "to_file": "scripts/covariance_blind_consistency.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/explorations/compare_mask_effect.py",
+      "from_func": "<module>",
+      "to_file": "scripts/explorations/compare_mask_effect.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/analyze_mask_power_spectrum.py",
+      "from_func": "main",
+      "to_file": "scripts/analyze_mask_power_spectrum.py",
+      "to_func": "plot_power_spectra"
+    },
+    {
+      "from_file": "scripts/cosebis_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/cosebis_version_comparison.py",
+      "to_func": "_get_cov_path"
+    },
+    {
+      "from_file": "scripts/cl_fiducial.py",
+      "from_func": "_compute_pte_with_cuts",
+      "to_file": "scripts/cl_fiducial.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/pure_eb_pte_matrix.py",
+      "from_func": "<module>",
+      "to_file": "scripts/pure_eb_pte_matrix.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/claims_server.py",
+      "from_func": "<module>",
+      "to_file": "scripts/claims_server.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "create_single_panel",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "plot_cl_pte_panel"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "main",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "create_3panel_composite"
+    },
+    {
+      "from_file": "scripts/pure_eb_data_vector.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_data_vector.py",
+      "to_func": "shade_excluded_regions"
+    },
+    {
+      "from_file": "scripts/cosebis_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/cosebis_version_comparison.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/cl_fiducial.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cl_fiducial.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "create_3panel_composite",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "plot_cl_pte_panel"
+    },
+    {
+      "from_file": "scripts/plot_xip_b_versions.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_xip_b_versions.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/plot_cosebis_pte_heatmap.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_cosebis_pte_heatmap.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "main",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "load_spec"
+    },
+    {
+      "from_file": "scripts/precompute_cosebis.py",
+      "from_func": "<module>",
+      "to_file": "scripts/precompute_cosebis.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/calculate_pure_eb_ptes.py",
+      "from_func": "<module>",
+      "to_file": "scripts/calculate_pure_eb_ptes.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "<module>",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/composite_version_comparison.py",
+      "from_func": "<module>",
+      "to_file": "scripts/composite_version_comparison.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "<module>",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/pure_eb_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_covariance.py",
+      "to_func": "_analyze_block"
+    },
+    {
+      "from_file": "scripts/precompute_pure_eb_chunk.py",
+      "from_func": "main",
+      "to_file": "scripts/precompute_pure_eb_chunk.py",
+      "to_func": "_build_cosmology"
+    },
+    {
+      "from_file": "scripts/process_mask.py",
+      "from_func": "main",
+      "to_file": "scripts/process_mask.py",
+      "to_func": "load_healsparse_mask"
+    },
+    {
+      "from_file": "scripts/precompute_pure_eb_covariance.py",
+      "from_func": "<module>",
+      "to_file": "scripts/precompute_pure_eb_covariance.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/run_pseudo_cl.py",
+      "from_func": "<module>",
+      "to_file": "scripts/run_pseudo_cl.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/precompute_pure_eb_chunk.py",
+      "from_func": "<module>",
+      "to_file": "scripts/precompute_pure_eb_chunk.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "main",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "create_3panel_composite"
+    },
+    {
+      "from_file": "scripts/pure_eb_version_comparison.py",
+      "from_func": "<module>",
+      "to_file": "scripts/pure_eb_version_comparison.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/plot_pure_eb_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/plot_pure_eb_covariance.py",
+      "to_func": "_correlation_from_covariance"
+    },
+    {
+      "from_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "to_func": "create_single_pte_figure"
+    },
+    {
+      "from_file": "scripts/pure_eb_data_vector.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_data_vector.py",
+      "to_func": "_extract_sigma"
+    },
+    {
+      "from_file": "scripts/compare_harmonic_config_cosebis.py",
+      "from_func": "main",
+      "to_file": "scripts/compare_harmonic_config_cosebis.py",
+      "to_func": "_build_cell_covariance"
+    },
+    {
+      "from_file": "scripts/explorations/compare_mask_effect.py",
+      "from_func": "main",
+      "to_file": "scripts/explorations/compare_mask_effect.py",
+      "to_func": "create_diagnostics"
+    },
+    {
+      "from_file": "scripts/plot_cosebis_comparison.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_cosebis_comparison.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "from_func": "<module>",
+      "to_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "to_func": "run_from_cli"
+    },
+    {
+      "from_file": "scripts/pure_eb_covariance.py",
+      "from_func": "<module>",
+      "to_file": "scripts/pure_eb_covariance.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/plot_xip_b_versions.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_xip_b_versions.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/plot_pure_eb_covariance.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_pure_eb_covariance.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/pure_eb_data_vector.py",
+      "from_func": "_compute_per_blind_ptes",
+      "to_file": "scripts/pure_eb_data_vector.py",
+      "to_func": "_compute_joint_pte"
+    },
+    {
+      "from_file": "scripts/cl_fiducial.py",
+      "from_func": "main",
+      "to_file": "scripts/cl_fiducial.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/compute_cosebis_pte_single.py",
+      "from_func": "main",
+      "to_file": "scripts/compute_cosebis_pte_single.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/explorations/compare_mask_effect.py",
+      "from_func": "main",
+      "to_file": "scripts/explorations/compare_mask_effect.py",
+      "to_func": "load_covariance_pair"
+    },
+    {
+      "from_file": "scripts/composite_pte_panels.py",
+      "from_func": "main",
+      "to_file": "scripts/composite_pte_panels.py",
+      "to_func": "compute_stats"
+    },
+    {
+      "from_file": "scripts/composite_pte_panels.py",
+      "from_func": "<module>",
+      "to_file": "scripts/composite_pte_panels.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_3panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "compute_stats"
+    },
+    {
+      "from_file": "scripts/precompute_pure_eb_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/precompute_pure_eb_covariance.py",
+      "to_func": "_build_cosmology"
+    },
+    {
+      "from_file": "scripts/cl_version_comparison.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cl_version_comparison.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "build_mock_matrix"
+    },
+    {
+      "from_file": "scripts/cosebis_data_vector.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cosebis_data_vector.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/plot_pure_eb_pte_heatmap.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_pure_eb_pte_heatmap.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/plot_xip_b_versions.py",
+      "from_func": "main",
+      "to_file": "scripts/plot_xip_b_versions.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "collect_mock_files"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "<module>",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "plot_correlation"
+    },
+    {
+      "from_file": "scripts/gather_pure_eb_chunks.py",
+      "from_func": "<module>",
+      "to_file": "scripts/gather_pure_eb_chunks.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/pure_eb_data_vector.py",
+      "from_func": "_compute_per_blind_ptes",
+      "to_file": "scripts/pure_eb_data_vector.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_9panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "compute_stats"
+    },
+    {
+      "from_file": "scripts/cl_fiducial.py",
+      "from_func": "main",
+      "to_file": "scripts/cl_fiducial.py",
+      "to_func": "_compute_pte_with_cuts"
+    },
+    {
+      "from_file": "scripts/compare_harmonic_config_cosebis.py",
+      "from_func": "main",
+      "to_file": "scripts/compare_harmonic_config_cosebis.py",
+      "to_func": "_build_transforms"
+    },
+    {
+      "from_file": "scripts/covariance_blind_consistency.py",
+      "from_func": "main",
+      "to_file": "scripts/covariance_blind_consistency.py",
+      "to_func": "load_covariance_diagonal"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "generate_dag_data",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "compute_tiers"
+    },
+    {
+      "from_file": "scripts/explorations/compare_mask_effect.py",
+      "from_func": "main",
+      "to_file": "scripts/explorations/compare_mask_effect.py",
+      "to_func": "plot_comparison"
+    },
+    {
+      "from_file": "scripts/cl_pte_heatmap_per_version.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cl_pte_heatmap_per_version.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/composite_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/composite_version_comparison.py",
+      "to_func": "composite_horizontal"
+    },
+    {
+      "from_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/cl_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/cl_version_comparison.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "build_mock_matrix",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "load_xi_components"
+    },
+    {
+      "from_file": "scripts/calculate_cosebis_ptes.py",
+      "from_func": "<module>",
+      "to_file": "scripts/calculate_cosebis_ptes.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "main",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "generate_html"
+    },
+    {
+      "from_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "from_func": "generate_samples_for_mock",
+      "to_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "to_func": "create_tau_fits"
+    },
+    {
+      "from_file": "scripts/process_mask.py",
+      "from_func": "<module>",
+      "to_file": "scripts/process_mask.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/cl_pte_matrix.py",
+      "from_func": "main",
+      "to_file": "scripts/cl_pte_matrix.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/composite_pte_panels.py",
+      "from_func": "main",
+      "to_file": "scripts/composite_pte_panels.py",
+      "to_func": "plot_pte_panel"
+    },
+    {
+      "from_file": "scripts/generate_paper_macros.py",
+      "from_func": "_format_value",
+      "to_file": "scripts/generate_paper_macros.py",
+      "to_func": "_format_value"
+    },
+    {
+      "from_file": "scripts/compute_cosebis_pte_single.py",
+      "from_func": "<module>",
+      "to_file": "scripts/compute_cosebis_pte_single.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_3panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "plot_pte_panel"
+    },
+    {
+      "from_file": "scripts/process_mask.py",
+      "from_func": "main",
+      "to_file": "scripts/process_mask.py",
+      "to_func": "save_area_summary"
+    },
+    {
+      "from_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "from_func": "<module>",
+      "to_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "to_func": "run_from_snakemake"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "main",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "create_single_panel"
+    },
+    {
+      "from_file": "scripts/composite_pte_panels.py",
+      "from_func": "main",
+      "to_file": "scripts/composite_pte_panels.py",
+      "to_func": "load_cosebis_pte_matrix"
+    },
+    {
+      "from_file": "scripts/generate_paper_macros.py",
+      "from_func": "generate_macros",
+      "to_file": "scripts/generate_paper_macros.py",
+      "to_func": "_format_value"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "build_mock_matrix",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "load_cl_components"
+    },
+    {
+      "from_file": "scripts/analyze_mask_power_spectrum.py",
+      "from_func": "analyze_convergence",
+      "to_file": "scripts/analyze_mask_power_spectrum.py",
+      "to_func": "load_healpix_mask"
+    },
+    {
+      "from_file": "scripts/pure_eb_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_version_comparison.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/compare_harmonic_config_cosebis.py",
+      "from_func": "main",
+      "to_file": "scripts/compare_harmonic_config_cosebis.py",
+      "to_func": "_compute_statistics"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "covariance_to_correlation"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_9panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "plot_pte_panel"
+    },
+    {
+      "from_file": "scripts/claims_server.py",
+      "from_func": "main",
+      "to_file": "scripts/claims_server.py",
+      "to_func": "create_app"
+    },
+    {
+      "from_file": "scripts/process_mask.py",
+      "from_func": "main",
+      "to_file": "scripts/process_mask.py",
+      "to_func": "calculate_effective_area"
+    },
+    {
+      "from_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "from_func": "main",
+      "to_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "to_func": "load_reference_fits"
+    },
+    {
+      "from_file": "scripts/plot_xip_b_versions.py",
+      "from_func": "main",
+      "to_file": "scripts/plot_xip_b_versions.py",
+      "to_func": "_extract_sigma"
+    },
+    {
+      "from_file": "scripts/precompute_cosebis.py",
+      "from_func": "<module>",
+      "to_file": "scripts/precompute_cosebis.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/cosebis_pte_matrix.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cosebis_pte_matrix.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/calculate_pure_eb_ptes.py",
+      "from_func": "<module>",
+      "to_file": "scripts/calculate_pure_eb_ptes.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/gather_cosebis_pte_matrices.py",
+      "from_func": "<module>",
+      "to_file": "scripts/gather_cosebis_pte_matrices.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/compare_harmonic_config_cosebis.py",
+      "from_func": "<module>",
+      "to_file": "scripts/compare_harmonic_config_cosebis.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/compare_harmonic_config_cosebis.py",
+      "from_func": "main",
+      "to_file": "scripts/compare_harmonic_config_cosebis.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/precompute_cosebis.py",
+      "from_func": "main",
+      "to_file": "scripts/precompute_cosebis.py",
+      "to_func": "_build_cosmology"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "main",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "parse_args"
+    },
+    {
+      "from_file": "scripts/plot_cosebis_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/plot_cosebis_comparison.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/gather_cosebis_pte_matrices.py",
+      "from_func": "<module>",
+      "to_file": "scripts/gather_cosebis_pte_matrices.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/covariance_blind_consistency.py",
+      "from_func": "main",
+      "to_file": "scripts/covariance_blind_consistency.py",
+      "to_func": "compute_ratios"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "main",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "load_claim"
+    },
+    {
+      "from_file": "scripts/gather_pure_eb_chunks.py",
+      "from_func": "main",
+      "to_file": "scripts/gather_pure_eb_chunks.py",
+      "to_func": "_load_xi"
+    },
+    {
+      "from_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "from_func": "generate_samples_for_mock",
+      "to_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "to_func": "create_rho_fits"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "generate_html",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "generate_dag_data"
+    },
+    {
+      "from_file": "scripts/precompute_pure_eb_chunk.py",
+      "from_func": "<module>",
+      "to_file": "scripts/precompute_pure_eb_chunk.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "from_func": "<module>",
+      "to_file": "scripts/pure_eb_pte_heatmap_per_version.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "main",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "compute_pte_matrix"
+    },
+    {
+      "from_file": "scripts/assemble_bmodes_pdf.py",
+      "from_func": "<module>",
+      "to_file": "scripts/assemble_bmodes_pdf.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/process_mask.py",
+      "from_func": "main",
+      "to_file": "scripts/process_mask.py",
+      "to_func": "save_healpix_mask"
+    },
+    {
+      "from_file": "scripts/precompute_pure_eb_chunk.py",
+      "from_func": "main",
+      "to_file": "scripts/precompute_pure_eb_chunk.py",
+      "to_func": "_load_xi"
+    },
+    {
+      "from_file": "scripts/cl_pte_matrix.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cl_pte_matrix.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/pure_eb_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_version_comparison.py",
+      "to_func": "_extract_sigma"
+    },
+    {
+      "from_file": "scripts/plot_pure_eb_covariance.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_pure_eb_covariance.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_3panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "extract_full_range_ptes"
+    },
+    {
+      "from_file": "scripts/compare_harmonic_config_cosebis.py",
+      "from_func": "<module>",
+      "to_file": "scripts/compare_harmonic_config_cosebis.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/compute_glass_mock_covariance.py",
+      "from_func": "<module>",
+      "to_file": "scripts/compute_glass_mock_covariance.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/plot_cosebis_pte_heatmap.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_cosebis_pte_heatmap.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_3panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "load_pure_eb_pte_matrices"
+    },
+    {
+      "from_file": "scripts/compare_harmonic_config_cosebis.py",
+      "from_func": "_compute_statistics",
+      "to_file": "scripts/compare_harmonic_config_cosebis.py",
+      "to_func": "_safe_solve"
+    },
+    {
+      "from_file": "scripts/plot_pure_eb_pte_heatmap.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_pure_eb_pte_heatmap.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/cl_pte_heatmap_per_version.py",
+      "from_func": "main",
+      "to_file": "scripts/cl_pte_heatmap_per_version.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_3panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "load_cosebis_pte_matrix"
+    },
+    {
+      "from_file": "scripts/pure_eb_pte_matrix.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_pte_matrix.py",
+      "to_func": "_create_pte_figure"
+    },
+    {
+      "from_file": "scripts/plot_cosebis_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/plot_cosebis_comparison.py",
+      "to_func": "_build_cosmology"
+    },
+    {
+      "from_file": "scripts/gather_cosebis_pte_matrices.py",
+      "from_func": "main",
+      "to_file": "scripts/gather_cosebis_pte_matrices.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/calculate_pure_eb_ptes.py",
+      "from_func": "main",
+      "to_file": "scripts/calculate_pure_eb_ptes.py",
+      "to_func": "FakeGG"
+    },
+    {
+      "from_file": "scripts/composite_version_comparison.py",
+      "from_func": "<module>",
+      "to_file": "scripts/composite_version_comparison.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/harmonic_space_pte_matrices.py",
+      "from_func": "<module>",
+      "to_file": "scripts/harmonic_space_pte_matrices.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_9panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "extract_full_range_ptes"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "<module>",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/gather_pure_eb_chunks.py",
+      "from_func": "<module>",
+      "to_file": "scripts/gather_pure_eb_chunks.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "load_specs",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "load_claim"
+    },
+    {
+      "from_file": "scripts/pure_eb_pte_matrix.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_pte_matrix.py",
+      "to_func": "_compute_pte_stats"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "main",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "load_script_content"
+    },
+    {
+      "from_file": "scripts/generate_paper_macros.py",
+      "from_func": "<module>",
+      "to_file": "scripts/generate_paper_macros.py",
+      "to_func": "generate_macros"
+    },
+    {
+      "from_file": "scripts/cl_pte_heatmap_per_version.py",
+      "from_func": "<module>",
+      "to_file": "scripts/cl_pte_heatmap_per_version.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/precompute_pure_eb_covariance.py",
+      "from_func": "<module>",
+      "to_file": "scripts/precompute_pure_eb_covariance.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/run_pseudo_cl.py",
+      "from_func": "<module>",
+      "to_file": "scripts/run_pseudo_cl.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_9panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "load_pure_eb_pte_matrices"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "create_9panel_composite",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "load_cosebis_pte_matrix"
+    },
+    {
+      "from_file": "scripts/cosebis_data_vector.py",
+      "from_func": "main",
+      "to_file": "scripts/cosebis_data_vector.py",
+      "to_func": "_create_single_panel_bmode_figure"
+    },
+    {
+      "from_file": "scripts/assemble_bmodes_pdf.py",
+      "from_func": "main",
+      "to_file": "scripts/assemble_bmodes_pdf.py",
+      "to_func": "load_inputs"
+    },
+    {
+      "from_file": "scripts/plot_cosebis_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/plot_cosebis_comparison.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/calculate_cosebis_ptes.py",
+      "from_func": "<module>",
+      "to_file": "scripts/calculate_cosebis_ptes.py",
+      "to_func": "_load_snakemake"
+    },
+    {
+      "from_file": "scripts/covariance_blind_consistency.py",
+      "from_func": "main",
+      "to_file": "scripts/covariance_blind_consistency.py",
+      "to_func": "make_figure"
+    },
+    {
+      "from_file": "scripts/generate_fine_pseudo_cl.py",
+      "from_func": "<module>",
+      "to_file": "scripts/generate_fine_pseudo_cl.py",
+      "to_func": "generate_pseudo_cl"
+    },
+    {
+      "from_file": "scripts/generate_paper_macros.py",
+      "from_func": "generate_pte_tables",
+      "to_file": "scripts/generate_paper_macros.py",
+      "to_func": "_format_value"
+    },
+    {
+      "from_file": "scripts/generate_claims_dashboard.py",
+      "from_func": "main",
+      "to_file": "scripts/generate_claims_dashboard.py",
+      "to_func": "load_fibers_for_claim"
+    },
+    {
+      "from_file": "scripts/plot_cosebis_comparison.py",
+      "from_func": "<module>",
+      "to_file": "scripts/plot_cosebis_comparison.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "from_func": "main",
+      "to_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "to_func": "generate_samples_for_mock"
+    },
+    {
+      "from_file": "scripts/analyze_mask_power_spectrum.py",
+      "from_func": "main",
+      "to_file": "scripts/analyze_mask_power_spectrum.py",
+      "to_func": "analyze_convergence"
+    },
+    {
+      "from_file": "scripts/cosebis_pte_matrix.py",
+      "from_func": "main",
+      "to_file": "scripts/cosebis_pte_matrix.py",
+      "to_func": "_create_pte_figure"
+    },
+    {
+      "from_file": "scripts/pure_eb_data_vector.py",
+      "from_func": "<module>",
+      "to_file": "scripts/pure_eb_data_vector.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/composite_pte_panels.py",
+      "from_func": "<module>",
+      "to_file": "scripts/composite_pte_panels.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/analyze_mask_power_spectrum.py",
+      "from_func": "analyze_convergence",
+      "to_file": "scripts/analyze_mask_power_spectrum.py",
+      "to_func": "calculate_power_spectrum"
+    },
+    {
+      "from_file": "scripts/cl_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/cl_version_comparison.py",
+      "to_func": "_version_label"
+    },
+    {
+      "from_file": "scripts/cosebis_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/cosebis_version_comparison.py",
+      "to_func": "_create_stacked_bmode_figure"
+    },
+    {
+      "from_file": "scripts/process_mask.py",
+      "from_func": "main",
+      "to_file": "scripts/process_mask.py",
+      "to_func": "degrade_mask"
+    },
+    {
+      "from_file": "scripts/generate_paper_macros.py",
+      "from_func": "<module>",
+      "to_file": "scripts/generate_paper_macros.py",
+      "to_func": "generate_pte_tables"
+    },
+    {
+      "from_file": "scripts/pure_eb_data_vector.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_data_vector.py",
+      "to_func": "setup_panel"
+    },
+    {
+      "from_file": "scripts/analyze_mask_power_spectrum.py",
+      "from_func": "<module>",
+      "to_file": "scripts/analyze_mask_power_spectrum.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/assemble_bmodes_pdf.py",
+      "from_func": "main",
+      "to_file": "scripts/assemble_bmodes_pdf.py",
+      "to_func": "add_image_page"
+    },
+    {
+      "from_file": "scripts/cl_pte_heatmap_per_version.py",
+      "from_func": "main",
+      "to_file": "scripts/cl_pte_heatmap_per_version.py",
+      "to_func": "_compute_pte"
+    },
+    {
+      "from_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "from_func": "<module>",
+      "to_file": "scripts/generate_glass_mock_rhotau_samples.py",
+      "to_func": "main"
+    },
+    {
+      "from_file": "scripts/pure_eb_version_comparison.py",
+      "from_func": "main",
+      "to_file": "scripts/pure_eb_version_comparison.py",
+      "to_func": "_create_version_comparison_figure"
+    },
+    {
+      "from_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "from_func": "run_from_snakemake",
+      "to_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "to_func": "compute_ratio"
+    },
+    {
+      "from_file": "scripts/claims_server.py",
+      "from_func": "main",
+      "to_file": "scripts/claims_server.py",
+      "to_func": "graceful_shutdown"
+    },
+    {
+      "from_file": "scripts/config_space_pte_matrices.py",
+      "from_func": "main",
+      "to_file": "scripts/config_space_pte_matrices.py",
+      "to_func": "create_9panel_composite"
+    },
+    {
+      "from_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "from_func": "run_from_cli",
+      "to_file": "scripts/explorations/plot_mask_diagonal_ratio.py",
+      "to_func": "compute_ratio"
+    },
+    {
+      "from_file": "scripts/analyze_mask_power_spectrum.py",
+      "from_func": "main",
+      "to_file": "scripts/analyze_mask_power_spectrum.py",
+      "to_func": "export_power_spectra_for_cosmocov"
+    }
+  ],
+  "languages": [
+    "python"
+  ],
+  "timestamp": 1768345127.620212
+}

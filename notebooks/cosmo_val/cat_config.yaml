@@ -357,8 +357,8 @@ SP_v1.4.5:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
-    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+    path: /n17data/sguerrini/unions_shapepipe_cut_struc_2024_v1.4.5_rerun.fits
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.5/nz_SP_v1.4.5_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
@@ -615,9 +615,7 @@ SP_v1.4.6:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
-    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
-    ra_col: RA
-    dec_col: Dec
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
@@ -710,9 +708,7 @@ SP_v1.4.8:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
-    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
-    ra_col: RA
-    dec_col: Dec
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.8/nz_SP_v1.4.8_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected

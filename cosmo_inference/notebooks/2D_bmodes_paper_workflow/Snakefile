@@ -53,6 +53,7 @@ rule xi:
     resources:
         mem_mb=30000,
         disk_mb=20000,
+        runtime=120,
     script:
         "scripts/run_2pcf.py"
 
@@ -89,8 +90,12 @@ rule run_cosmo_val:
 
 
 
+# Compute rules (infrastructure — raw outputs, no evidence.json)
 include: "rules/covariance.smk"
 include: "rules/inference.smk"
 include: "rules/masks.smk"
-include: "rules/bmodes.smk"
-include: "rules/epistemics_v2.smk"
+
+# Epistemic rules (evidence.json producers, order matters: specs → claims → synthesis)
+include: "rules/specs.smk"
+include: "rules/claims.smk"
+include: "rules/synthesis.smk"

@@ -8,7 +8,13 @@ Plotting: [2D Plots](2d_plots.md)
 
 Fiducial angular scale cuts are justified by PTE heatmaps across all (theta_min, theta_max) combinations. The main text presents a 1x3 composite for the fiducial version showing xi+^B, xi-^B, and COSEBIS B_n. The appendix presents a 3x3 composite showing all catalog versions (v1.4.5, v1.4.6, v1.4.8) with each of the three B-mode statistics. Rows represent versions, columns represent statistics.
 
-Scale cuts: xi+ [9, 83] arcmin, xi- [16, 83] arcmin, COSEBIS [9, 83] arcmin. Different xi+/xi- cuts reflect the different angular sensitivity of each correlation function. COSEBIS uses the xi+ cuts since it cannot have separate ranges.
+Scale cuts: [12, 83] arcmin for both xi+ and xi-, matching Paper IV (Goh et al.). COSEBIS uses the same unified range.
+
+## Blind Handling
+
+Data vectors (ξ+^B, ξ-^B, COSEBIS B_n) are identical across blinds A, B, C. Covariances vary with blind via n(z)-dependent theoretical predictions.
+
+**Report minimum PTE across blinds** — the most conservative value. This ensures reported PTEs remain valid regardless of which blind is unblinded.
 
 ## Config References
 

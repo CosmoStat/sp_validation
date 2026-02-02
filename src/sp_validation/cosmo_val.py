@@ -209,10 +209,13 @@ class CosmologyValidation:
         n_ell_bins=32,
         ell_step=10,
         pol_factor=True,
-        cell_method="map",
+        cell_method='map',
+        noise_bias_method='analytic',
+        fiducial_input_inka='coupled',
         nrandom_cell=10,
         path_onecovariance=None,
         cosmo_params=None,
+        blind=None,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -236,13 +239,15 @@ class CosmologyValidation:
         self.pol_factor = pol_factor
         self.nrandom_cell = nrandom_cell
         self.cell_method = cell_method
+        self.noise_bias_method = noise_bias_method
+        self.fiducial_input_inka = fiducial_input_inka
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
+        self.blind = blind
 
-        assert self.cell_method in [
-            "map",
-            "catalog",
-        ], "cell_method must be 'map' or 'catalog'"
+        assert self.cell_method in ["map", "catalog"], "cell_method must be 'map' or 'catalog'"
+        assert self.noise_bias_method in ["analytic", "randoms"], "noise_bias_method must be 'analytical' or 'randoms'"
+        assert self.fiducial_input_inka in ["coupled", "decoupled"], "fiducial_input_inka must be 'coupled' or 'decoupled'"
 
         # For theory calculations:
         # Create cosmology object using new functionality
@@ -361,8 +366,20 @@ class CosmologyValidation:
             Redshift values
         nz : ndarray
             n(z) probability density
+
+        Notes
+        -----
+        If self.blind is set, the redshift path is modified to use the
+        specified blind (A, B, or C) by replacing the blind suffix in the
+        configured path.
         """
+        import re
         redshift_path = self.cc[version]["shear"]["redshift_path"]
+
+        # Override blind if specified
+        if self.blind is not None:
+            redshift_path = re.sub(r'_[ABC]\.txt$', f'_{self.blind}.txt', redshift_path)
+
         return np.loadtxt(redshift_path, unpack=True)
 
     def compute_survey_stats(
@@ -707,10 +724,8 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if not hasattr(self.cc[ver]["shear"], "mask"):
-                print(
-                    "Mask not found in config file, calculating area from binned catalog"
-                )
+            if not ('mask' in self.cc[ver]['shear'].keys()):
+                print("Mask not found in config file, calculating area from binned catalog")
                 area[ver] = self.calculate_area_from_binned_catalog(ver)
             else:
                 mask = hp.read_map(self.cc[ver]["shear"]["mask"], verbose=False)
@@ -2743,6 +2758,56 @@ class CosmologyValidation:
                 fiducial_scale_cut=fiducial_scale_cut,
             )
 
+    def get_namaster_bin(self, lmin, lmax, b_lmax):
+
+        if self.binning == 'linear':
+            # To be implemented correctly
+            step = 10
+            b = nmt.NmtBin.from_nside_linear(self.nside, step)
+        elif self.binning == 'powspace':
+            ells = np.arange(lmin, lmax+1)
+
+            start = np.power(lmin, self.power)
+            end = np.power(lmax, self.power)
+            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
+
+            #Get bandpowers
+            bpws = np.digitize(ells.astype(float), bins_ell) - 1
+            bpws[0] = 0
+            bpws[-1] = self.n_ell_bins-1
+
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+
+        return b
+
+    def get_variance_map(self, nside, e1, e2, w, unique_pix, idx_rep):
+        """
+        Create a variance map from the input catalog.
+        """
+        
+        variance_map = np.zeros(hp.nside2npix(nside))
+
+        variance_map[unique_pix] = np.bincount(
+            idx_rep, weights=(e1**2 + e2**2)/2*w**2
+        )
+
+        return variance_map
+    
+    def get_field_and_workspace_from_map(self, mask, lmax, b):
+        """
+        Create a NaMaster field and workspace from the input map.
+        """
+
+        nside = hp.npix2nside(len(mask))
+
+        #Create NaMaster field
+        f = nmt.NmtField(mask=mask, maps=[np.zeros(hp.nside2npix(nside)), np.zeros(hp.nside2npix(nside))], lmax=lmax)
+
+        #Create NaMaster workspace
+        wsp = nmt.NmtWorkspace.from_fields(f, f, b)
+
+        return f, wsp
+
     def calculate_pseudo_cl_eb_cov(self):
         """
         Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
@@ -2787,7 +2852,7 @@ class CosmologyValidation:
                     )
                 pw = pw[1 : len(ell) + 1]
 
-                # Load redshift distribution and calculate theory C_ell
+                # Calculate theory C_ell using redshift distribution from get_redshift()
                 fiducial_cl = (
                     get_theo_c_ell(
                         ell=ell,
@@ -2799,9 +2864,7 @@ class CosmologyValidation:
                     * pw**2
                 )
 
-                self.print_cyan(
-                    "Getting a sample of the fiducial Cl's with noise"
-                )
+                self.print_cyan("Getting a binning, n_gal_map, field and workspace.")
 
                 lmin = 8
                 lmax = 2 * self.nside
@@ -2839,44 +2902,70 @@ class CosmologyValidation:
                 )
                 mask = n_gal != 0
 
-                cl_noise, f, wsp = self.get_sample(
-                    params,
-                    self.nside,
-                    b_lmax,
-                    b,
-                    cat_gal,
-                    n_gal,
-                    mask,
-                    unique_pix,
-                    idx_rep,
-                )
+                f, wsp = self.get_field_and_workspace_from_map(n_gal, b_lmax, b)
 
-                fiducial_cl = np.array(
-                    [
-                        fiducial_cl,
-                        0.0 * fiducial_cl,
-                        0.0 * fiducial_cl,
-                        0.0 * fiducial_cl,
-                    ]
-                ) + np.mean(cl_noise, axis=1, keepdims=True)
+                if self.noise_bias_method == 'randoms':
 
+                    self.print_cyan("Getting a sample of Cls with noise bias.")
+                    
+                    cl_noise, f, wsp = self.get_sample(params, self.nside, b_lmax, b, cat_gal, n_gal, n_gal, unique_pix, idx_rep)
+
+                    cl_noise = np.mean(cl_noise, axis=0)
+                    noise_bias_cl = cl_noise
+                    noise_bias_cl = b.unbin_cell(noise_bias_cl) #Unbin
+                    lowest_ell = b.get_ell_list(0)[0]
+                    for i in range(4):
+                        noise_bias_cl[i, :lowest_ell] = noise_bias_cl[i, lowest_ell] #Fill the data vector below lmin
+                
+                elif self.noise_bias_method == 'analytic':
+
+                    self.print_cyan("Getting analytic noise bias.")
+
+                    e1, e2, w = cat_gal[self.cc[ver]["shear"]["e1_col"]], cat_gal[self.cc[ver]["shear"]["e2_col"]], cat_gal[self.cc[ver]["shear"]["w_col"]]
+                    variance_map = self.get_variance_map(self.nside, e1, e2, w, unique_pix, idx_rep)
+
+                    noise_bias = hp.nside2pixarea(self.nside)*np.mean(variance_map)
+
+                    noise_bias_cl = np.zeros((4, lmax))
+                    noise_bias_cl[0, :] = noise_bias
+                    noise_bias_cl[3, :] = noise_bias
+
+                    noise_bias_cl = wsp.decouple_cell(noise_bias_cl) #Decouple
+                    noise_bias_cl = b.unbin_cell(noise_bias_cl) #Unbin
+                    lowest_ell = b.get_ell_list(0)[0]
+                    for i in range(4):
+                        noise_bias_cl[i, :lowest_ell] = noise_bias_cl[i, lowest_ell] #Fill the data vector below lmin
+                
+                else:
+                    raise ValueError(f"Noise bias method {self.noise_bias_method} not recognized. It should be 'randoms' or 'analytic'.")
+                
+                self.print_cyan("Adding noise bias to the fiducial Cls.")
+                
+                fiducial_cl = np.array([fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl, 0.*fiducial_cl])+ noise_bias_cl
+
+                if self.fiducial_input_inka == 'coupled':
+                    self.print_cyan("Coupling the fiducial Cls.")
+
+                    coupling_mat = wsp.get_coupling_matrix()
+                    coupling_mat_re = np.reshape(coupling_mat, (4, lmax, 4, lmax), order='F')
+                    fiducial_cl = np.tensordot(
+                        coupling_mat_re, fiducial_cl
+                    ) / np.mean(n_gal**2) #couple and divide by the mean of the mask squared
+
+                
                 self.print_cyan("Computing the Pseudo-Cl covariance")
 
                 cw = nmt.NmtCovarianceWorkspace.from_fields(f, f, f, f)
 
-                covar_22_22 = nmt.gaussian_covariance(
-                    cw,
-                    2,
-                    2,
-                    2,
-                    2,
-                    fiducial_cl,
-                    fiducial_cl,
-                    fiducial_cl,
-                    fiducial_cl,
-                    wsp,
-                    wb=wsp,
-                ).reshape([self.n_ell_bins, 4, self.n_ell_bins, 4])
+                # Get actual number of ell bins from binning scheme
+                n_ell_actual = b.get_n_bands()
+
+                covar_22_22 = nmt.gaussian_covariance(cw, 2, 2, 2, 2,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        fiducial_cl,
+                                                        wsp, wb=wsp).reshape([n_ell_actual, 4, n_ell_actual, 4])
 
                 covar_EE_EE = covar_22_22[:, 0, :, 0]
                 covar_EE_EB = covar_22_22[:, 0, :, 1]
@@ -3197,7 +3286,7 @@ class CosmologyValidation:
 
         del shear_map_e1, shear_map_e2
 
-        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map)
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map, n_gal_map)
 
         cl_noise = np.zeros_like(cl_shear)
 
@@ -3217,7 +3306,7 @@ class CosmologyValidation:
             noise_map = noise_map_e1 + 1j * noise_map_e2
             del noise_map_e1, noise_map_e2
 
-            _, cl_noise_, _ = self.get_pseudo_cls_map(noise_map, wsp)
+            _, cl_noise_, _ = self.get_pseudo_cls_map(noise_map, n_gal_map, wsp)
             cl_noise += cl_noise_
 
         cl_noise /= self.nrandom_cell
@@ -3307,8 +3396,8 @@ class CosmologyValidation:
         cl_noise = wsp.decouple_cell(cl_noise)
 
         return cl_noise, f, wsp
-
-    def get_pseudo_cls_map(self, map, wsp=None):
+    
+    def get_pseudo_cls_map(self, map, mask, wsp=None):
         """
         Compute the pseudo-cl for a given map.
         """
@@ -3342,10 +3431,7 @@ class CosmologyValidation:
 
         factor = -1 if self.pol_factor else 1
 
-        f_all = nmt.NmtField(
-            mask=(map != 0), maps=[map.real, factor * map.imag], lmax=b_lmax
-        )
-
+        f_all = nmt.NmtField(mask=mask, maps=[map.real, factor*map.imag], lmax=b_lmax)
         if wsp is None:
             wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
 
