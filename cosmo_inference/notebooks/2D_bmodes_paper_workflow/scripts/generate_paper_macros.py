@@ -284,7 +284,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
             xim = cfg.get("xim_stats", {})
             cosebis = cfg.get("cosebis_stats", {})
 
-            # Fiducial scale cuts from Paper IV (Goh et al.): [12, 83] for all config-space
+            # Fiducial scale cuts from Paper II (Goh et al.): [12, 83] for all config-space
             if xip:
                 pte_fid = _format_value(xip.get("pte_at_fiducial", float("nan")))
                 pte_full = _format_value(xip.get("pte_at_full_range", float("nan")))

@@ -136,7 +136,7 @@ rule spec_dependencies:
     output:
         deps=f"{CLAIMS_DIR}/deps.json",
     run:
-        import subprocess, json
+        import json
         from pathlib import Path
 
         # Use --dry-run instead of --forceall to avoid timestamp pollution

@@ -449,6 +449,7 @@ rule harmonic_space_pte_matrices:
     input:
         specs=[
             f"{CONFIG_DIR}/harmonic_space_pte_matrices.md",
+            f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         # Harmonic PTE matrices only for leak-corrected versions

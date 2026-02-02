@@ -13,7 +13,6 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import matplotlib.scale as mscale
 import matplotlib.ticker as mticker
 import matplotlib.transforms as mtransforms
@@ -27,7 +26,7 @@ plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
 )
 
-# Scale cuts from snakemake params (originally from Guerrini et al.)
+# Scale cuts from snakemake params (Paper II, Goh et al.)
 # Actual values set in main() from snakemake.params.ell_min_cut/ell_max_cut
 ELL_MIN_CUT = None
 ELL_MAX_CUT = None
