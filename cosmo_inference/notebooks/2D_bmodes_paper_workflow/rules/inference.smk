@@ -1,4 +1,4 @@
-# FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path defined in Snakefile
+# Imports from Snakefile: FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path, build_redshift_path, fiducial_binning_suffix
 # NOTE: This subsystem is dormant — see fiber pseudo-cl-assets-in-inference-28589160
 COSMO_INFERENCE_PROD = Path("/home/guerrini/sp_validation/cosmo_inference")  # dormant subsystem
 PSEUDO_CL_DIR = COSMO_VAL.parent  # Same directory structure
@@ -146,5 +146,6 @@ rule inference_prep_glass_mock:
 
 localrules:
     inference_prep,
+    inference_prep_glass_mock,
     inference_fiducial,
     inference_glass_mocks,

@@ -46,7 +46,7 @@ localrules: xi_cosmology_paper, paper_macros, bmodes_paper_spec, all_claims, spe
 rule xi_cosmology_paper:
     """Spec for B-mode reporting in configuration-space paper (Goh et al.).
 
-    Depends on the two B-mode claims plus covariance consistency, produces macros for Paper II.
+    Depends on COSEBIS version comparison, pure E/B data vector, and covariance consistency.
     Reports fiducial version, n=6 COSEBIS, joint pure-mode PTEs at both full and fiducial scales.
     Also generates evidence.json for dashboard dependency tracking.
     """
