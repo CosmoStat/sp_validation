@@ -27,10 +27,10 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [Conf
 
 ## Outputs
 
-Main figure shows leak_corr catalog versions only (v1.4.5, v1.4.6, v1.4.8) for catalog evolution comparison. Second figure shows correction impact (v1.4.6 leak_corr vs uncorrected).
+Main figure shows leak_corr catalog versions from `config.versions` for catalog evolution comparison.
 
 - `figure_stacked.png` — Two-panel figure showing $B_n / \sigma_n$ (catalog evolution)
   - Top: Full range (no scale cuts)
   - Bottom: Fiducial scale cut
   - Error bars are unity by construction (normalized)
-  - Legend: Initial (v1.4.5), Fiducial (v1.4.6), Masked (v1.4.8)
+  - Legend labels from `config.version_labels`

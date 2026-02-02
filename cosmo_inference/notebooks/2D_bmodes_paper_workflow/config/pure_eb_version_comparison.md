@@ -28,11 +28,11 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [Conf
 
 ## Outputs
 
-Main figure shows leak_corr catalog versions only (v1.4.5, v1.4.6, v1.4.8) for catalog evolution comparison. Second figure shows correction impact (v1.4.6 leak_corr vs uncorrected).
+Main figure shows leak_corr catalog versions from `config.versions` for catalog evolution comparison.
 
 - `figure.png` — Four-panel figure with asymmetric row heights (catalog evolution)
   - Top row (2/3 height): $\xi_+$ (left), $\xi_-$ (right) as $\theta \xi \times 10^4$
   - Bottom row (1/3 height): $\xi_+^B / \sigma$ (left), $\xi_-^B / \sigma$ (right)
   - Data outside fiducial scale cuts shown greyed out
   - B-mode error bars are unity by construction (normalized)
-  - Legend: Initial (v1.4.5), Fiducial (v1.4.6), Masked (v1.4.8)
+  - Legend labels from `config.version_labels`
