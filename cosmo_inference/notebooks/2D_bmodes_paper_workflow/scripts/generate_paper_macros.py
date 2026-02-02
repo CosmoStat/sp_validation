@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Version number to word mapping for TeX-safe macro names
 # (avoids TeX Live 2025 cleveref/siunitx conflict with numeric names)
-VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "10.1": "TenOne", "11.2": "ElevenTwo"}
+VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "11.2": "ElevenTwo"}
 
 
 def _format_value(value) -> str:

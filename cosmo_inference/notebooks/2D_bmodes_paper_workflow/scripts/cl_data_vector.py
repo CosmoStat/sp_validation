@@ -28,9 +28,6 @@ plt.style.use(
 ELL_MIN_CUT = 300
 ELL_MAX_CUT = 1600
 
-# X-shift for visual separation (in sqrt(ell) space, corresponds to ~2% shift)
-X_SHIFT_FACTOR = 0.02
-
 
 # SquareRootScale for ell axis
 class SquareRootScale(mscale.ScaleBase):

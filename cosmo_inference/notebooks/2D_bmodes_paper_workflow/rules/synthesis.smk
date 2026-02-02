@@ -48,7 +48,7 @@ rule xi_cosmology_paper:
     """Spec for B-mode reporting in configuration-space paper (Goh et al.).
 
     Depends on the two B-mode claims plus covariance consistency, produces macros for Paper II.
-    Reports v1.4.6, n=6 COSEBIS, joint pure-mode PTEs at both full and fiducial scales.
+    Reports fiducial version, n=6 COSEBIS, joint pure-mode PTEs at both full and fiducial scales.
     Also generates evidence.json for dashboard dependency tracking.
     """
     input:

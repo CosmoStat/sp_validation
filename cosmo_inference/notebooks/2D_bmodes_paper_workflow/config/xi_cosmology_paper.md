@@ -12,7 +12,7 @@ This spec defines what B-mode evidence appears in Paper II (Goh et al.). Paper I
 
 ### Catalog Version
 
-Report only **v1.4.6** (fiducial catalog with leakage correction). Version comparisons belong in Paper III.
+Report only the **fiducial catalog** (with leakage correction, see `fiducial.version` in config). Version comparisons belong in Paper III.
 
 ### COSEBIS Mode Count
 

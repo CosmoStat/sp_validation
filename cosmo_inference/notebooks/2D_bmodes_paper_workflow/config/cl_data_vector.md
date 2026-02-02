@@ -5,7 +5,7 @@ Method: [Harmonic-Space Power Spectra](cl.md)
 
 ## Claim
 
-The fiducial catalog (v1.4.6) shows B-mode power spectra consistent with zero across all ell bins, validating the absence of significant systematic contamination in harmonic space. PTEs are reported both for the full ell range and with scale cuts (ell_min=300, ell_max=1600) from the harmonic space paper.
+The fiducial catalog shows B-mode power spectra consistent with zero across all ell bins, validating the absence of significant systematic contamination in harmonic space. PTEs are reported both for the full ell range and with scale cuts (ell_min=300, ell_max=1600) from the harmonic space paper.
 
 ## Config References
 
@@ -32,8 +32,8 @@ Power spectra and PTEs for BB and EB components, with and without scale cuts:
 
 ## Outputs
 
-- `figure.png` — Single panel with BB and EB on same axis
-- BB: filled circles, EB: unfilled squares, slight x-shift for clarity
+- `figure.png` — Two-panel figure (BB top, EB bottom)
+- BB: filled circles, EB: unfilled squares
 - Data normalized by errors (C_ell / sigma)
-- Scale cuts marked with vertical dashed lines and shaded excluded regions
+- Scale cuts marked with shaded excluded regions
 - sqrt(ell) x-axis scaling matches bandpower binning
