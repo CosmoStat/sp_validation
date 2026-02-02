@@ -9,7 +9,6 @@ Statistical PTEs reported separately in evidence.json.
 
 import json
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 

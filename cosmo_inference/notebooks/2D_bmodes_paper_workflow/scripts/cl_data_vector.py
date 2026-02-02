@@ -6,7 +6,6 @@ Produces single-panel figure with BB and EB on same axis and evidence.json.
 
 import json
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 

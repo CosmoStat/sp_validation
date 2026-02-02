@@ -10,7 +10,7 @@ COSEBIS compress 2PCF information into discrete modes with clean E/B separation.
 
 | Parameter | Config Key | Description |
 |-----------|------------|-------------|
-| n_modes | `cosebis.nmodes` | Number of COSEBIS modes to compute |
+| n_modes | `fiducial.nmodes` | Number of COSEBIS modes to compute |
 | θ_min | `cosebis.theta_min` | Minimum angular scale (arcmin) |
 | θ_max | `cosebis.theta_max` | Maximum angular scale (arcmin) |
 | mode_subsets | `cosebis.mode_subsets` | Mode counts for PTE evaluation |

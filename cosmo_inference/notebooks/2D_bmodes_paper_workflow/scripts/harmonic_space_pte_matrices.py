@@ -2,7 +2,7 @@
 
 Produces:
 - Results: single-panel fiducial Cl^BB PTE matrix
-- Appendix: 3-panel composite (v1.4.5, v1.4.6, v1.4.8)
+- Appendix: N-panel composite for all versions from config.versions
 
 Uses fiducial blind covariance only (blind independence validated elsewhere).
 """
