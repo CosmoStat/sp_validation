@@ -93,10 +93,10 @@ def generate_samples_for_mock(mock_id, cov_tau, theta, ref_tau_header, output_di
     Only tau is needed; inference_prep_glass_mock uses real rho data.
     """
     # Deterministic seeding based on mock_id
-    np.random.seed(int(mock_id))
+    rng = np.random.default_rng(int(mock_id))
 
     # Sample tau statistics from N(0, Cov_tau)
-    tau_samples = np.random.multivariate_normal(
+    tau_samples = rng.multivariate_normal(
         mean=np.zeros(cov_tau.shape[0]),
         cov=cov_tau
     )

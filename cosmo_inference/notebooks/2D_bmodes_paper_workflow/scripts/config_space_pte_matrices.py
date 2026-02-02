@@ -355,7 +355,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     ax_cosebis = fig.add_subplot(gs[0, 2])
 
     # Plot panels with titles
-    im_xip = plot_pte_panel(
+    plot_pte_panel(
         ax_xip, pte_xip_B, theta_pure_eb,
         xip_start, xip_stop,
         r"$\xi_+^B$",
@@ -363,7 +363,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     )
     ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
 
-    im_xim = plot_pte_panel(
+    plot_pte_panel(
         ax_xim, pte_xim_B, theta_pure_eb,
         xim_start, xim_stop,
         r"$\xi_-^B$",
@@ -481,7 +481,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         cosebis_title = r"COSEBIS $B_n$" if row_idx == 0 else ""
 
         # Plot panels
-        im_xip = plot_pte_panel(
+        plot_pte_panel(
             ax_xip, pte_xip_B, theta_pure_eb,
             xip_start, xip_stop,
             xip_title,
@@ -490,7 +490,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         # Add y-axis label to leftmost panel of each row
         ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
 
-        im_xim = plot_pte_panel(
+        plot_pte_panel(
             ax_xim, pte_xim_B, theta_pure_eb,
             xim_start, xim_stop,
             xim_title,
@@ -600,8 +600,8 @@ def main():
         traceback.print_exc()
         raise
 
-    # Generate 3x3 composite for all versions (appendix)
-    print("\n--- Creating 3x3 composite for all versions ---", flush=True)
+    # Generate Nx3 composite for all versions (appendix)
+    print("\n--- Creating Nx3 composite for all versions ---", flush=True)
 
     try:
         fig, appendix_stats, appendix_ptes = create_9panel_composite(
