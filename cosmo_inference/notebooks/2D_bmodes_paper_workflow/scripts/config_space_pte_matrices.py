@@ -17,15 +17,6 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
-from IPython import get_ipython
-
-
-ipython = get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-    ipython.run_line_magic("matplotlib", "inline")
 
 plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"

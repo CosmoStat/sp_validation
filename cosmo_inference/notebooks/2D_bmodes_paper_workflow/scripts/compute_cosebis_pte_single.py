@@ -1,7 +1,7 @@
 # %%
 """Compute COSEBIS B-mode PTE for a single scale cut.
 
-Scatter job for figure_3_cosebis_pte_matrices claim.
+Scatter job for config_space_pte_matrices claim.
 Reads precomputed fine-binned 2PCF and covariance, computes one PTE.
 """
 
@@ -22,7 +22,7 @@ def _load_snakemake():
         from snakemake_helpers import snakemake_interactive
 
         return snakemake_interactive(
-            "results/claims/figure_3_cosebis_pte_matrices/pte_values/SP_v1.4.6_leak_corr/pte_000_005.json",
+            "results/claims/config_space_pte_matrices/pte_values/SP_v1.4.6_leak_corr/pte_000_005.json",
             str(Path.cwd()),
         )
     from snakemake.script import snakemake

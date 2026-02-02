@@ -1,8 +1,6 @@
 """Harmonic-space C_ell^BB version comparison.
 
-Claim: B-mode power spectra consistent with zero for v1.4.6 and v1.4.8,
-while v1.4.5 shows marginal tension.
-
+Compares B-mode power spectra across configured catalog versions.
 Visualizes C_ell^BB and C_ell^EB normalized by error bars (C_ell / sigma).
 Statistical PTEs reported separately in evidence.json.
 """

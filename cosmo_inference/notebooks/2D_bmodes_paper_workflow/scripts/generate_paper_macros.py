@@ -183,7 +183,7 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
         # Generate individual macros for each version
         for ver, ver_data in versions.items():
-            short_ver = ver.split("v1.4.")[1].split("_")[0]  # "5", "6", "8", "10.1", or "11.2"
+            short_ver = ver.split("v1.4.")[1].split("_")[0]  # e.g. "5", "6", "8", "11.2"
             prefix = f"configPte{VERSION_WORDS.get(short_ver, short_ver)}"
 
             xip = ver_data.get("xip_stats", {})

@@ -93,7 +93,7 @@ rule inference_glass_mocks:
         expand(GLASS_MOCK_FITS_PATTERN, mock_id=[f"{i:05d}" for i in range(GLASS_MOCK_SEED_RANGE[0], GLASS_MOCK_SEED_RANGE[1] + 1)])
 
 
-# fiducial_binning_suffix() defined in Snakefile (used for rho/tau stats too)
+# fiducial_binning_suffix() defined in Snakefile
 
 
 rule inference_prep_glass_mock:
@@ -148,3 +148,4 @@ rule inference_prep_glass_mock:
 localrules:
     inference_prep,
     inference_fiducial,
+    inference_glass_mocks,
