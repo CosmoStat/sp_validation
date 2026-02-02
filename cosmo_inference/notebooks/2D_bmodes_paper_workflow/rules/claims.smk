@@ -81,6 +81,10 @@ def _pte_scale_cut_pairs():
     return [(i, j) for i in range(20) for j in range(i + 1, 21) if (i, j) != (9, 10)]
 
 
+# Pre-compute PTE scale cut pairs (called multiple times in rule inputs)
+PTE_SCALE_CUT_PAIRS = _pte_scale_cut_pairs()
+
+
 def _pseudo_cl_path(version, blind="A", nbins=32):
     """Return pseudo-Cl path for a catalog version.
 
@@ -153,7 +157,7 @@ rule cosebis_data_vector:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # Number of parallel chunks for MC covariance estimation
-N_PURE_EB_CHUNKS = 20
+N_PURE_EB_CHUNKS = config["pure_eb"]["n_chunks"]
 
 
 rule precompute_pure_eb_chunk:
@@ -421,7 +425,7 @@ rule cosebis_pte_matrix:
             f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{blind}/pte_{i:03d}_{j:03d}.json"
             for ver in config["versions"]
             for blind in BLINDS
-            for i, j in _pte_scale_cut_pairs()
+            for i, j in PTE_SCALE_CUT_PAIRS
         ],
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_pte_matrix/evidence.json",
@@ -429,13 +433,13 @@ rule cosebis_pte_matrix:
             f"{CLAIMS_DIR}/cosebis_pte_matrix/figure_{{version}}_{{blind}}_n{{nmodes}}.png",
             version=config["versions"],
             blind=BLINDS,
-            nmodes=[6, 20],
+            nmodes=config["cosebis"]["mode_subsets"],
         ),
         paper_figures=expand(
             f"{PAPER_FIGURES_DIR}/cosebis_pte_matrices_{{version}}_{{blind}}_n{{nmodes}}.png",
             version=config["versions"],
             blind=BLINDS,
-            nmodes=[6, 20],
+            nmodes=config["cosebis"]["mode_subsets"],
         ),
     script:
         "../scripts/cosebis_pte_matrix.py"
@@ -471,7 +475,7 @@ rule config_space_pte_matrices:
             f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{blind}/pte_{i:03d}_{j:03d}.json"
             for ver in config["versions"]
             for blind in BLINDS
-            for i, j in _pte_scale_cut_pairs()
+            for i, j in PTE_SCALE_CUT_PAIRS
         ],
     output:
         evidence=f"{CLAIMS_DIR}/config_space_pte_matrices/evidence.json",

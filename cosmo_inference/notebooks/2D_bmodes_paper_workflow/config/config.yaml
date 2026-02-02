@@ -113,12 +113,23 @@ plotting:
     SP_v1.4.8_leak_corr: "Masking"
     SP_v1.4.10.1_leak_corr: "Fiducial"
 
+# Pure E/B mode analysis
+pure_eb:
+  # Number of parallel chunks for MC covariance estimation
+  n_chunks: 20
+
 # pixel mask processing for survey geometry and CosmoCov integration
 pixel_mask:
   # Target nside values for downgrading (balance accuracy vs computational cost)
   target_nsides: [2048, 4096, 8192]
+  # Source mask file for downgrading
+  source_file: "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
 
 # GLASS mock covariance computation
 glass_mocks:
   version: "v0"
   seed_range: [1, 350]
+
+# External tools
+tools:
+  cosmocov_executable: "/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov"

@@ -138,6 +138,7 @@ rule covariance_cosmocov:
             w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
         )[1]
         + ".ini",
+        cosmocov=config["tools"]["cosmocov_executable"],
     container:
         None
     threads: 1
@@ -149,7 +150,7 @@ rule covariance_cosmocov:
         module load openmpi
 
         cd {params.outdir}
-        /n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov {params.block_i} {params.ini_path}
+        {params.cosmocov} {params.block_i} {params.ini_path}
         """
 
 

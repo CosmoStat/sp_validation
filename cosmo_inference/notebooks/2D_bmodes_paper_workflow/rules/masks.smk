@@ -13,10 +13,10 @@ Date: 2025-08-18
 
 # Wildcard constraints centralized in Snakefile
 
-# Define paths directly in Snakefile 
-SOURCE_MASK_FILE = "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
+# Paths from config and Snakefile
+SOURCE_MASK_FILE = config["pixel_mask"]["source_file"]
 MASK_OUTPUT_DIR = "output/masks"
-COSMOCOV_MASK_DIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/masks"
+COSMOCOV_MASK_DIR = str(COSMO_INFERENCE / "data/masks")
 
 # Get target nside values from config (no fallbacks)
 target_nsides = config["pixel_mask"]["target_nsides"]

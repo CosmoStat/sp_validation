@@ -22,16 +22,9 @@ plt.style.use(
 )
 
 
-VERSION_LABELS = {
-    "SP_v1.4.5_leak_corr": "Initial",
-    "SP_v1.4.6_leak_corr": "Fiducial",
-    "SP_v1.4.8_leak_corr": "Masked",
-    "SP_v1.4.10.1_leak_corr": "Blends",
-}
-
-
-def _version_label(version):
-    return VERSION_LABELS.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
+def _version_label(version, version_labels):
+    """Get human-readable label for version from config."""
+    return version_labels.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
 
 
 def _extract_sigma(covariance, block_index, block_size):
@@ -352,6 +345,7 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
 
 def main():
     config = snakemake.config
+    version_labels = snakemake.params.version_labels
     versions = config["versions"]
     fiducial_version = config["fiducial"]["version"]
 
@@ -401,7 +395,7 @@ def main():
 
         datasets.append({
             "version": version,
-            "label": _version_label(version),
+            "label": _version_label(version, version_labels),
             "color": color,
             "alpha": version_alpha.get(version, 1.0),
             "theta": theta,

@@ -25,12 +25,6 @@ plt.style.use(
 )
 
 
-VERSION_LABELS = {
-    "SP_v1.4.5_leak_corr": "Initial",
-    "SP_v1.4.6_leak_corr": "Fiducial",
-    "SP_v1.4.8_leak_corr": "Masked",
-    "SP_v1.4.10.1_leak_corr": "Blends",
-}
 
 
 def _draw_normalized_version_boxes_modes(ax, modes, datasets, y_norm_key, fiducial_idx):
@@ -75,8 +69,9 @@ def _draw_normalized_version_boxes_modes(ax, modes, datasets, y_norm_key, fiduci
         )
 
 
-def _version_label(version):
-    return VERSION_LABELS.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
+def _version_label(version, version_labels):
+    """Get human-readable label for version from config."""
+    return version_labels.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
 
 
 def _get_cov_path(cov_base_dir, version, blind, min_sep, max_sep, nbins):
@@ -195,6 +190,7 @@ def main():
     # Use blind A for plotting (B-modes are same across blinds, only covariance differs)
     blind = "A"
     cov_base_dir = snakemake.params.cov_base_dir
+    version_labels = snakemake.params.version_labels
 
     fiducial_scale_cut = (
         float(config["fiducial"]["fiducial_min_scale"]),
@@ -260,7 +256,7 @@ def main():
 
             datasets.append({
                 "version": version,
-                "label": _version_label(version),
+                "label": _version_label(version, version_labels),
                 "color": color,
                 "alpha": version_alpha.get(version, 1.0),
                 "Bn_normalized": Bn / sigma_B,
