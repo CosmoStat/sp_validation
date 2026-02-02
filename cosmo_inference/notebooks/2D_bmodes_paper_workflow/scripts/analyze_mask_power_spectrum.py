@@ -19,14 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import healpy as hp
 import seaborn as sns
-from pathlib import Path
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
 
-# Add interactive session handling
-from IPython import get_ipython
-ipython = get_ipython()
-if ipython is not None:
-    ipython.run_line_magic("matplotlib", "inline")
 
 # Apply plotting style consistent with project conventions
 plt.style.use("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle")
@@ -322,17 +316,17 @@ def main():
     export_paths = export_power_spectra_for_cosmocov(analysis_results, output_dir, verbose=verbose)
     
     # Print summary
-    print(f"\n=== Analysis Summary ===")
+    print("\n=== Analysis Summary ===")
     print(f"Power spectra calculated for {len(target_nsides)} nside values")
     print(f"Comparison plot saved: {plot_path}")
-    print(f"Power spectra exported for CosmoCov integration:")
+    print("Power spectra exported for CosmoCov integration:")
     for key, path in export_paths.items():
         print(f"  {key}: {os.path.basename(path)}")
-    
+
     # Provide convergence recommendations
     convergence_metrics = analysis_results['convergence_metrics']
     if convergence_metrics:
-        print(f"\n=== Convergence Recommendations ===")
+        print("\n=== Convergence Recommendations ===")
         for comparison, metrics in convergence_metrics.items():
             if metrics['mean_rel_diff'] < 0.01:
                 print(f"✓ {comparison}: Well converged (mean rel. diff: {metrics['mean_rel_diff']:.3f})")

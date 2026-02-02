@@ -18,13 +18,7 @@ import numpy as np
 import healpy as hp
 import healsparse as hsp
 import yaml
-from pathlib import Path
 
-# Add interactive session handling
-from IPython import get_ipython
-ipython = get_ipython()
-if ipython is not None:
-    ipython.run_line_magic("matplotlib", "inline")
 
 def load_healsparse_mask(mask_path: str, verbose: bool = True) -> hsp.HealSparseMap:
     """Load HealSparse mask from file."""
