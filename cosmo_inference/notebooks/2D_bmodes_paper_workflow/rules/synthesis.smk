@@ -29,6 +29,7 @@ CLAIM_RULES = [
     "config_space_pte_matrices",
     "harmonic_space_pte_matrices",
     "bb_covariance_blind_independence",
+    "covariance_blind_consistency",
 ]
 
 

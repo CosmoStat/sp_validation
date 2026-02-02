@@ -46,7 +46,7 @@ if __name__ == '__main__':
 		print("non-positive eigenvalue encountered! Covariance Invalid!")
 		exit()
 
-	print("Covariance is postive definite!")
+	print("Covariance is positive definite!")
 
 	pp_var = []
 	for i in range(ndata):

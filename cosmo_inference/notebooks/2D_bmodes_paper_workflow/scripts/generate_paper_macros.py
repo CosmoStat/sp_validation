@@ -9,6 +9,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+# Version number to word mapping for TeX-safe macro names
+# (avoids TeX Live 2025 cleveref/siunitx conflict with numeric names)
+VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "10.1": "TenOne", "11.2": "ElevenTwo"}
+
 
 def _format_value(value) -> str:
     """Format a value for LaTeX."""
@@ -34,7 +38,7 @@ def _format_value(value) -> str:
 def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version: str):
     """Generate LaTeX macros from evidence files.
 
-    Macro names are kept simple. The spec (config_space_paper_bmodes.md)
+    Macro names are kept simple. The spec (bmodes_paper.md)
     determines which values go into the paper. Fiducial version from config.
     """
     macros = []
@@ -183,11 +187,9 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append("")
 
         # Generate individual macros for each version
-        # Use word-based names to avoid TeX Live 2025 cleveref/siunitx conflict
-        version_words = {"5": "Five", "6": "Six", "8": "Eight", "10.1": "TenOne", "11.2": "ElevenTwo"}
         for ver, ver_data in versions.items():
             short_ver = ver.split("v1.4.")[1].split("_")[0]  # "5", "6", "8", "10.1", or "11.2"
-            prefix = f"configPte{version_words.get(short_ver, short_ver)}"
+            prefix = f"configPte{VERSION_WORDS.get(short_ver, short_ver)}"
 
             xip = ver_data.get("xip_stats", {})
             xim = ver_data.get("xim_stats", {})
@@ -222,10 +224,9 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append("% harmonic_space_pte_matrices (all versions)")
         macros.append("")
 
-        version_words = {"5": "Five", "6": "Six", "8": "Eight", "10.1": "TenOne", "11.2": "ElevenTwo"}
         for ver, ver_data in versions.items():
             short_ver = ver.split("v1.4.")[1].split("_")[0]
-            prefix = f"clPte{version_words.get(short_ver, short_ver)}"
+            prefix = f"clPte{VERSION_WORDS.get(short_ver, short_ver)}"
 
             # Fiducial PTEs
             if "pte_at_fiducial" in ver_data:
