@@ -177,7 +177,7 @@ rule claims_dashboard:
         config=f"{CONFIG_DIR}/config.yaml",
         # Method specs (foundational, no dependencies)
         method_specs=expand(f"{CLAIMS_DIR}/{{spec}}/evidence.json", spec=METHOD_SPECS),
-        # Paper specs (B-modes paper only — xi_cosmology_paper needs covariance_blind_consistency)
+        # Paper specs
         bmodes_paper=rules.bmodes_paper_spec.output,
         paper_macros=rules.paper_macros.output,
         # All claim rules (using shared CLAIM_RULES list)

@@ -14,6 +14,14 @@ from pathlib import Path
 VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "11.2": "ElevenTwo"}
 
 
+def _parse_version_short(version: str) -> str:
+    """Extract short version number from full version string.
+
+    Example: "SP_v1.4.6_leak_corr" → "6"
+    """
+    return version.split("v1.4.")[1].split("_")[0]
+
+
 def _format_value(value) -> str:
     """Format a value for LaTeX."""
     if isinstance(value, float):
@@ -183,7 +191,7 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
         # Generate individual macros for each version
         for ver, ver_data in versions.items():
-            short_ver = ver.split("v1.4.")[1].split("_")[0]  # e.g. "5", "6", "8", "11.2"
+            short_ver = _parse_version_short(ver)
             prefix = f"configPte{VERSION_WORDS.get(short_ver, short_ver)}"
 
             xip = ver_data.get("xip_stats", {})
@@ -220,7 +228,7 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append("")
 
         for ver, ver_data in versions.items():
-            short_ver = ver.split("v1.4.")[1].split("_")[0]
+            short_ver = _parse_version_short(ver)
             prefix = f"clPte{VERSION_WORDS.get(short_ver, short_ver)}"
 
             # Fiducial PTEs
