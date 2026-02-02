@@ -6,7 +6,7 @@ Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](p
 
 ## Scope
 
-Three statistics, three catalog versions, one question: are B-modes consistent with noise?
+Three statistics, multiple catalog versions (from `config.versions`), one question: are B-modes consistent with noise?
 
 Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper shows the work — methodology, version comparison, scale cut selection.
 
@@ -76,9 +76,9 @@ Example structure (values populated from evidence):
 | v1.4.5 | `pure_eb_data_vector.evidence.v145...` | ... | ... |
 | v1.4.6 | `pure_eb_data_vector.evidence.fiducial...` | ... | ... |
 
-### Conservative Reporting
+### Blind Handling
 
-All PTEs are minimum across blinds (A, B, C). This ensures validity regardless of which blind is unblinded.
+All PTEs use the fiducial blind from `config["fiducial"]["blind"]`.
 
 ## Macros
 

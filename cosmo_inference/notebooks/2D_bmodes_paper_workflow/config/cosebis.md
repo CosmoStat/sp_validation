@@ -35,9 +35,7 @@ Compare across catalog versions from `config.versions`:
 
 ## Blind Handling
 
-COSEBIS B_n data vectors are identical across blinds A, B, C. Covariances vary with blind via n(z)-dependent theoretical predictions.
-
-**Report minimum PTE across blinds** — the most conservative value.
+Uses fiducial blind from `config["fiducial"]["blind"]`. COSEBIS B_n data vectors are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions.
 
 ## Analysis Decisions
 

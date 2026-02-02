@@ -6,13 +6,11 @@ Plotting: [1D Plots](1d_plots.md)
 
 ## Claim
 
-COSEBIS B-modes at fiducial version (v1.4.6) are consistent with zero across the full angular range and at fiducial scale cuts.
+COSEBIS B-modes at fiducial version (`fiducial.version`) are consistent with zero across the full angular range and at fiducial scale cuts.
 
 ## Blind Handling
 
-COSEBIS B_n data vectors are identical across blinds A, B, C. Covariances vary with blind via n(z)-dependent theoretical predictions.
-
-**Report minimum PTE across blinds** — the most conservative value. Statistical evidence (PTEs) is in [COSEBIS PTE Matrix](cosebis_pte_matrix.md).
+Uses fiducial blind from `config["fiducial"]["blind"]`. COSEBIS B_n data vectors are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions. Statistical evidence (PTEs) is in [COSEBIS PTE Matrix](cosebis_pte_matrix.md).
 
 ## Config References
 
@@ -34,7 +32,7 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [COSE
 
 ## Outputs
 
-- `figure.png` — Single-panel figure showing $B_n / \sigma_n$ for v1.4.6
+- `figure.png` — Single-panel figure showing $B_n / \sigma_n$ for fiducial version
   - Both scale cuts (fiducial and full) overplotted with different colors
   - Error bars are unity by construction (normalized)
   - Paper figure for main text B-mode validation
