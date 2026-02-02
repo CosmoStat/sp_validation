@@ -155,19 +155,8 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append(f"\\newcommand{{\\covXipMaxDev}}{{{_format_value(xip_max * 100)}\\%}}")
         macros.append(f"\\newcommand{{\\covXimMaxDev}}{{{_format_value(xim_max * 100)}\\%}}")
 
-        macros.append("")
-
-    # PTE variation macros (computed from per-blind PTEs)
-    eb_path = claims_dir / "pure_eb_data_vector" / "evidence.json"
-    if eb_path.exists():
-        with open(eb_path) as f:
-            data = json.load(f)
-        ev = data.get("evidence", {})
-        fid = ev.get("fiducial", {})
-
+        # PTE variation across blinds (uses fid from above)
         macros.append("% PTE variation across blinds (fiducial scale cuts)")
-
-        # Joint PTE variation — absolute delta (max - min)
         joint_ptes = [fid.get(f"pte_joint_{b}") for b in ["A", "B", "C"] if f"pte_joint_{b}" in fid]
         if joint_ptes:
             joint_delta = max(joint_ptes) - min(joint_ptes)

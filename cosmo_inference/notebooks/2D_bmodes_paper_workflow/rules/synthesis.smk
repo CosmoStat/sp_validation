@@ -107,6 +107,7 @@ rule bmodes_paper_spec:
         cosebis_bmode_stacked=rules.cosebis_version_comparison.output.paper_stacked,
         # Consistency checks
         bb_covariance_blind=rules.bb_covariance_blind_independence.output.evidence,
+        covariance_blind_consistency=rules.covariance_blind_consistency.output.evidence,
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:
