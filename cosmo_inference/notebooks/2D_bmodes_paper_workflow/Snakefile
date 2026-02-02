@@ -8,6 +8,14 @@ envvars:
     "PYTHONUNBUFFERED",
 
 from pathlib import Path
+import json
+
+# Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
+# Source of truth: sp_validation.cosmology.PLANCK18
+# Regenerate with: snakemake results/cosmology/planck18.json
+COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
+with open(COSMOLOGY_PARAMS) as _f:
+    PLANCK18 = json.load(_f)
 
 # Wildcard constraints — centralized here, not in individual rule files
 # Patterns must match all expected values; overly restrictive patterns cause silent failures

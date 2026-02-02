@@ -1,6 +1,4 @@
-# BLOCK_PAIRS defined in Snakefile
-
-
+# BLOCK_PAIRS, PLANCK18, COSMOLOGY_PARAMS defined in Snakefile
 
 
 def get_cat_params(version):
@@ -16,13 +14,50 @@ def get_cat_params(version):
 # covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
-MASK_CLS_FILES = config["covariance"].get("mask_cls_files", {})
+# Mask power spectra for masked covariance calculation
+MASK_CLS_BASE = "/home/guerrini/sp_validation/cosmo_inference/data/mask"
+MASK_CLS_FILES = {
+    "v1.4.5": f"{MASK_CLS_BASE}/mask_cls_v1.4.5_nside_8192_norm.txt",
+    "v1.4.6": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
+    "v1.4.7": f"{MASK_CLS_BASE}/mask_cls_v1.4.7_nside_8192_norm.txt",
+    "v1.4.8": f"{MASK_CLS_BASE}/mask_cls_v1.4.8_nside_8192_norm.txt",
+    # v1.4.10.1 uses same footprint as v1.4.6 (blending corrections don't change geometry)
+    "v1.4.10.1": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
+}
 
 
 def get_mask_cls_path(version):
     """Return absolute mask Cl path for the requested catalog version."""
     version_dir = version.replace('_leak_corr', '').replace('SP_', '')
     return MASK_CLS_FILES.get(version_dir, "")
+
+
+COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
+
+
+rule cosmology_params:
+    """Generate cosmology parameters JSON from sp_validation.
+
+    This decouples snakemake parse-time from sp_validation import.
+    Source of truth remains sp_validation.cosmology.PLANCK18.
+    """
+    output:
+        COSMOLOGY_PARAMS
+    shell:
+        """
+        python -c "
+from sp_validation.cosmology import PLANCK18
+import json
+from pathlib import Path
+
+Path('{output}').parent.mkdir(parents=True, exist_ok=True)
+params = dict(PLANCK18)
+params['Omega_v'] = 1 - PLANCK18['Omega_m']
+
+with open('{output}', 'w') as f:
+    json.dump(params, f, indent=2)
+"
+        """
 
 
 rule covariance_ini:
@@ -37,12 +72,12 @@ rule covariance_ini:
             resolve_version=False
         ),
         ng_value=lambda wildcards: "1" if wildcards.gaussian == "ng" else "0",
-        omega_m=config["covariance"]["cosmology"]["Omega_m"],
-        omega_v=1 - config["covariance"]["cosmology"]["Omega_m"],  # flat cosmology
-        sigma_8=config["covariance"]["cosmology"]["sigma_8"],
-        n_s=config["covariance"]["cosmology"]["n_s"],
-        h=config["covariance"]["cosmology"]["h"],
-        omega_b=config["covariance"]["cosmology"]["Omega_b"],
+        omega_m=PLANCK18["Omega_m"],
+        omega_v=PLANCK18["Omega_v"],
+        sigma_8=PLANCK18["sigma_8"],
+        n_s=PLANCK18["n_s"],
+        h=PLANCK18["h"],
+        omega_b=PLANCK18["Omega_b"],
         area=lambda w: get_cat_params(w.version)[0],
         n_e=lambda w: get_cat_params(w.version)[1],
         sigma_e_param=lambda w: get_cat_params(w.version)[2],
@@ -275,6 +310,7 @@ rule covariance_blind_consistency:
 
 
 localrules:
+    cosmology_params,
     covariance_ini,
     covariance_cat,
     covariance_process,
@@ -296,7 +332,7 @@ rule fine_pseudo_cl:
 
     Uses linear binning with configurable ell_step (default 1 for single-ell bins).
     Supports blind parameter (A, B, C) to override n(z) distribution.
-    Uses KiDS-Legacy fiducial cosmology for covariance calculation.
+    Uses astropy Planck18 fiducial cosmology for covariance calculation.
     """
     output:
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_ellstep={ell_step}.fits"),
@@ -309,7 +345,7 @@ rule fine_pseudo_cl:
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
-        cosmo_params=config["covariance"]["cosmology"],
+        cosmo_params=PLANCK18,
         binning="linear",
         ell_step=lambda w: int(w.ell_step),
     resources:
@@ -324,7 +360,7 @@ rule pseudo_cl_cov:
     """Generate 32-bin pseudo-Cl covariances for B-mode null tests.
 
     Uses power-space (sqrt) binning matching Sasha's NaMaster setup.
-    Uses KiDS-Legacy fiducial cosmology for consistency with CosmoCov.
+    Uses astropy Planck18 fiducial cosmology for consistency with harmonic analysis.
     Supports blind parameter (A, B, C) to override n(z) distribution.
     """
     output:
@@ -337,7 +373,7 @@ rule pseudo_cl_cov:
         cat_config=CAT_CONFIG,
         nside=1024,
         npatch=1,
-        cosmo_params=config["covariance"]["cosmology"],
+        cosmo_params=PLANCK18,
         binning="powspace",
         n_ell_bins=32,
         power=0.5,
