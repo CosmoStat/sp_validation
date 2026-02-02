@@ -1396,7 +1396,6 @@ class CosmologyValidation:
             self.print_magenta(ver)
 
             results_obj = self.results_objectwise[ver]
-            print("MKDEBUG query done")
             results_obj.check_params()
             results_obj.update_params()
             results_obj.prepare_output()
@@ -1513,26 +1512,6 @@ class CosmologyValidation:
             cs_plots.savefig(out_path, close_fig=False)
             cs_plots.show()
             self.print_done("Weight histograms saved to " + out_path)
-
-    def plot_separation(self, nbins=200):
-        self.print_start("Separation histograms")
-        if "SP_matched_MP_v1.0" in self.versions:
-            fig, axs = plt.subplots(1, 1, figsize=(10, 7))
-            with self.results["SP_matched_MP_v1.0"].temporarily_read_data():
-                sep = self.results["SP_matched_MP_v1.0"].dat_shear["Separation"]
-            axs.hist(
-                sep,
-                bins=nbins,
-                density=False,
-                histtype="step",
-                label="SP_matched_MP_v1.0",
-                color=self.cc["SP_matched_MP_v1.0"]["colour"],
-            )
-            print("Max separation: %s arcsec" % max(sep))
-            axs.set_xlabel(r"Separation $\theta$ [arcsec]")
-            axs.legend()
-        else:
-            self.print_done("SP_matched_MP_v1.0 not in versions")
 
     def calculate_additive_bias(self):
         self.print_start("Calculating additive bias:")
