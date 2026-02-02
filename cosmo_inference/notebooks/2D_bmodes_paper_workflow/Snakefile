@@ -71,10 +71,12 @@ def fiducial_binning_suffix():
 def resolve_covariance_version(version):
     """Map version to its covariance version.
 
-    v1.4.10.1 uses v1.4.6's covariance (same footprint, blending corrections don't change geometry).
+    v1.4.10.1 and v1.4.11.2 use v1.4.6's covariance (same footprint).
+    v1.4.10.1: blending corrections don't change geometry.
+    v1.4.11.2: blends fix + updated processing, n(z) not yet available.
     """
-    if "v1.4.10.1" in version:
-        return version.replace("v1.4.10.1", "v1.4.6")
+    if "v1.4.10.1" in version or "v1.4.11.2" in version:
+        return version.replace("v1.4.10.1", "v1.4.6").replace("v1.4.11.2", "v1.4.6")
     return version
 
 
@@ -137,11 +139,13 @@ def covariance_path(version, blind, gaussian="ng", min_sep=None, max_sep=None, n
 def build_redshift_path(version, blind):
     """Construct n(z) filepath for given catalog version and blind.
 
-    v1.4.10.1 uses v1.4.6's N(z) since it's the same galaxies with blending corrections.
+    v1.4.10.1 and v1.4.11.2 use v1.4.6's N(z):
+    - v1.4.10.1: same galaxies with blending corrections
+    - v1.4.11.2: blends fix + updated processing, n(z) not yet available
     """
     base_version = version.replace('_leak_corr', '')
-    # v1.4.10.1 is derived from v1.4.6 with blending corrections - use same N(z)
-    if 'v1.4.10' in base_version:
+    # Versions derived from v1.4.6 footprint - use same N(z)
+    if 'v1.4.10' in base_version or 'v1.4.11' in base_version:
         base_version = 'SP_v1.4.6'
     version_dir = base_version.replace('SP_', '')
     return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"

@@ -525,7 +525,7 @@ rule harmonic_config_cosebis_comparison:
     - Config: ξ± → W_n(θ) integration → E_n, B_n
 
     Agreement validates both pseudo-C_ℓ estimation and COSEBIS machinery.
-    Uses blind=A fine-binned pseudo-Cl with KiDS-Legacy cosmology covariance.
+    Uses blind=A fine-binned pseudo-Cl with Planck18 cosmology covariance.
     """
     input:
         spec=f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",

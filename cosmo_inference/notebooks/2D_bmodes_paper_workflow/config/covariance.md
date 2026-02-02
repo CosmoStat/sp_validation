@@ -16,16 +16,12 @@ Gaussian-only approximation: non-Gaussian contributions computationally prohibit
 
 ## Config References
 
-| Parameter | Config Key | Description |
-|-----------|------------|-------------|
-| Samples | `covariance.n_samples` | MC samples for propagation (default 2000) |
-| Ω_m | `covariance.cosmology.Omega_m` | Matter density |
-| σ_8 | `covariance.cosmology.sigma_8` | Amplitude of fluctuations |
-| n_s | `covariance.cosmology.n_s` | Spectral index |
-| h | `covariance.cosmology.h` | Hubble parameter |
-| Ω_b | `covariance.cosmology.Omega_b` | Baryon density |
-| Mask Cls | `covariance.mask_cls_files` | Per-version mask power spectra |
-| Use masked | `covariance.default_masked` | Whether to use masked covariance |
+| Parameter | Source | Description |
+|-----------|--------|-------------|
+| Samples | `config.yaml: covariance.n_samples` | MC samples for propagation (default 2000) |
+| Use masked | `config.yaml: covariance.default_masked` | Whether to use masked covariance |
+| Cosmology | `covariance.smk: PLANCK18` | astropy Planck18 via sp_validation.cosmology |
+| Mask Cls | `covariance.smk: MASK_CLS_FILES` | Per-version mask power spectra |
 
 ## Survey Properties
 

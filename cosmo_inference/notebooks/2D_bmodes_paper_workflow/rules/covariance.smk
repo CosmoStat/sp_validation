@@ -21,8 +21,9 @@ MASK_CLS_FILES = {
     "v1.4.6": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
     "v1.4.7": f"{MASK_CLS_BASE}/mask_cls_v1.4.7_nside_8192_norm.txt",
     "v1.4.8": f"{MASK_CLS_BASE}/mask_cls_v1.4.8_nside_8192_norm.txt",
-    # v1.4.10.1 uses same footprint as v1.4.6 (blending corrections don't change geometry)
+    # v1.4.10.1 and v1.4.11.2 use same footprint as v1.4.6
     "v1.4.10.1": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
+    "v1.4.11.2": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
 }
 
 
