@@ -1,6 +1,6 @@
 """COSEBIs data vector claim.
 
-Single-panel figure showing B-mode COSEBIS for fiducial version (v1.4.6).
+Single-panel figure showing B-mode COSEBIS for fiducial version (from config.fiducial.version).
 Overplots fiducial and full angular range scale cuts.
 Paper figure for main text B-mode validation.
 """

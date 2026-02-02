@@ -31,11 +31,11 @@ def _format_value(value) -> str:
         return str(value)
 
 
-def generate_macros(claims_dir: Path, output_paths: list[Path]):
+def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_versionsion: str):
     """Generate LaTeX macros from evidence files.
 
     Macro names are kept simple. The spec (config_space_paper_bmodes.md)
-    determines which values go into the paper (v1.4.6, n=6).
+    determines which values go into the paper. Fiducial version from config.
     """
     macros = []
     macros.append("% Auto-generated from claim evidence")
@@ -43,28 +43,28 @@ def generate_macros(claims_dir: Path, output_paths: list[Path]):
     macros.append("% See workflow/config/config_space_paper_bmodes.md for paper choices")
     macros.append("")
 
-    # COSEBIS version comparison - extract v1.4.6, n=6, min across blinds
+    # COSEBIS version comparison - extract fiducial version, n=6
     cosebis_path = claims_dir / "cosebis_version_comparison" / "evidence.json"
     if cosebis_path.exists():
         with open(cosebis_path) as f:
             data = json.load(f)
         ev = data.get("evidence", {})
 
-        macros.append("% cosebis (v1.4.6, n=6, min across blinds per spec)")
+        macros.append(f"% cosebis ({fiducial_versionsion}, n=6)")
 
         # Fiducial scale cut - use pte_6_min (conservative across blinds)
         fiducial = ev.get("fiducial", {})
         fid_versions = fiducial.get("versions", {})
-        v146_fid = fid_versions.get("SP_v1.4.6_leak_corr", {})
-        if "pte_6_min" in v146_fid:
-            macros.append(f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(v146_fid['pte_6_min'])}}}")
+        fid_data = fid_versions.get(fiducial_versionsion, {})
+        if "pte_6_min" in fid_data:
+            macros.append(f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}")
 
         # Full range
         full = ev.get("full", {})
         full_versions = full.get("versions", {})
-        v146_full = full_versions.get("SP_v1.4.6_leak_corr", {})
-        if "pte_6_min" in v146_full:
-            macros.append(f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(v146_full['pte_6_min'])}}}")
+        full_data = full_versions.get(fiducial_versionsion, {})
+        if "pte_6_min" in full_data:
+            macros.append(f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'])}}}")
 
         # Scale cuts from fiducial
         if "scale_cut_arcmin" in fiducial:
@@ -244,15 +244,13 @@ def generate_macros(claims_dir: Path, output_paths: list[Path]):
         print(f"  → {output_path}")
 
 
-def generate_pte_tables(claims_dir: Path, output_dir: Path):
+def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: str, versions: list, version_labels: dict):
     """Generate LaTeX table files from PTE evidence.
 
     Creates:
     - pte_table_results.tex: Fiducial version PTE summary
     - pte_table_appendix.tex: All versions PTE comparison
     """
-    tables = []
-
     # Load config-space PTE evidence
     config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"
     config_data = {}
@@ -267,23 +265,25 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path):
         with open(harmonic_pte_path) as f:
             harmonic_data = json.load(f).get("evidence", {}).get("versions", {})
 
+    # Get short version label for caption
+    fid_label = version_labels.get(fiducial_version, fiducial_version)
+
     # Results table (fiducial only)
-    fiducial_ver = "SP_v1.4.6_leak_corr"
-    if fiducial_ver in config_data or fiducial_ver in harmonic_data:
+    if fiducial_version in config_data or fiducial_version in harmonic_data:
         results_table = []
         results_table.append("% Auto-generated PTE summary table (Results section)")
         results_table.append("% Regenerate: snakemake paper_macros")
         results_table.append(r"\begin{table}")
         results_table.append(r"  \centering")
-        results_table.append(r"  \caption{B-mode PTE values for v1.4.6 at fiducial and full-range scale cuts.}")
+        results_table.append(rf"  \caption{{B-mode PTE values for {fid_label} at fiducial and full-range scale cuts.}}")
         results_table.append(r"  \label{tab:pte_results}")
         results_table.append(r"  \begin{tabular}{lccc}")
         results_table.append(r"    \hline")
         results_table.append(r"    Statistic & PTE (fiducial) & PTE (full range) & Fiducial cut \\")
         results_table.append(r"    \hline")
 
-        if fiducial_ver in config_data:
-            cfg = config_data[fiducial_ver]
+        if fiducial_version in config_data:
+            cfg = config_data[fiducial_version]
             xip = cfg.get("xip_stats", {})
             xim = cfg.get("xim_stats", {})
             cosebis = cfg.get("cosebis_stats", {})
@@ -302,8 +302,8 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path):
                 pte_full = _format_value(cosebis.get("pte_at_full_range", float("nan")))
                 results_table.append(f"    COSEBIS $B_n$ & {pte_fid} & {pte_full} & [12--83]$'$ \\\\")
 
-        if fiducial_ver in harmonic_data:
-            harm = harmonic_data[fiducial_ver]
+        if fiducial_version in harmonic_data:
+            harm = harmonic_data[fiducial_version]
             pte_fid = _format_value(harm.get("pte_at_fiducial", float("nan")))
             pte_full = _format_value(harm.get("pte_at_full_range", float("nan")))
             results_table.append(f"    $C_\\ell^{{BB}}$ & {pte_fid} & {pte_full} & $\\ell$=[300--1600] \\\\")
@@ -331,11 +331,11 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path):
         appendix_table.append(r"    Version & $\xi_+^B$ & $\xi_-^B$ & COSEBIS $B_n$ & $C_\ell^{BB}$ \\")
         appendix_table.append(r"    \hline")
 
-        versions = ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
-        version_labels = {"SP_v1.4.5_leak_corr": "v1.4.5", "SP_v1.4.6_leak_corr": "v1.4.6 (fiducial)", "SP_v1.4.8_leak_corr": "v1.4.8"}
-
         for ver in versions:
             label = version_labels.get(ver, ver)
+            # Mark fiducial version in table
+            if ver == fiducial_version:
+                label = f"{label} (fiducial)"
             row = [f"    {label}"]
 
             # Config-space - fiducial PTEs only
@@ -415,19 +415,23 @@ def generate_evidence(
 if __name__ == "__main__":
     # When run via snakemake
     claims_dir = Path(snakemake.params.claims_dir)
+    config = snakemake.config
+    fiducial_version = config["fiducial"]["version"]
+    versions = config["versions"]
+    version_labels = config["plotting"]["version_labels"]
 
     # Separate macro outputs from evidence output
     macro_outputs = [Path(p) for p in snakemake.output if p.endswith(".tex")]
     evidence_outputs = [Path(p) for p in snakemake.output if p.endswith("evidence.json")]
 
     print(f"Generating macros from {claims_dir}")
-    generate_macros(claims_dir, macro_outputs)
+    generate_macros(claims_dir, macro_outputs, fiducial_version)
 
     # Generate PTE tables
     if macro_outputs:
         paper_dir = macro_outputs[0].parent
         print(f"Generating PTE tables to {paper_dir}")
-        generate_pte_tables(claims_dir, paper_dir)
+        generate_pte_tables(claims_dir, paper_dir, fiducial_version, versions, version_labels)
 
     # Generate evidence.json if requested
     for evidence_path in evidence_outputs:

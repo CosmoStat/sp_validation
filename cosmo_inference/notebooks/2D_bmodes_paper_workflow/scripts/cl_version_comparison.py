@@ -121,12 +121,11 @@ def _draw_normalized_version_boxes_ell(ax, ell, ell_widths, datasets, y_norm_key
         )
 
 
-DEFAULT_VERSION_ALPHA = {
-    "SP_v1.4.5_leak_corr": 0.4,
-    "SP_v1.4.6_leak_corr": 1.0,
-    "SP_v1.4.8_leak_corr": 0.4,
-    "SP_v1.4.10.1_leak_corr": 0.4,
-}
+def _get_version_alpha(version, fiducial_version, plotting_config):
+    """Get alpha value for version - fiducial is opaque, others are faded."""
+    if version == fiducial_version:
+        return plotting_config["version_alpha"]["fiducial"]
+    return plotting_config["version_alpha"]["comparison"]
 
 
 def _version_label(version, version_labels):
@@ -151,7 +150,8 @@ def main():
 
     version_labels = snakemake.params.version_labels
     versions = config["versions"]
-    version_alpha = DEFAULT_VERSION_ALPHA
+    fiducial_version = config["fiducial"]["version"]
+    plotting_config = config["plotting"]
 
     # Load data for all versions
     datasets = []
@@ -181,7 +181,7 @@ def main():
             "version": version,
             "label": _version_label(version, version_labels),
             "color": colors[i],
-            "alpha": version_alpha.get(version, 1.0),
+            "alpha": _get_version_alpha(version, fiducial_version, plotting_config),
             "ell": ell,
             "cl_bb": cl_bb,
             "cl_eb": cl_eb,
@@ -209,10 +209,9 @@ def main():
     marker_styles = ["o", "s", "D", "^"]
 
     # Find fiducial version index
-    fiducial_version = config["fiducial"]["version"]
     fiducial_idx = next(
         (i for i, d in enumerate(datasets) if d["version"] == fiducial_version),
-        1  # Default to index 1 (v1.4.6)
+        0  # Fallback to first version
     )
 
     # Pre-compute normalized values for box drawing

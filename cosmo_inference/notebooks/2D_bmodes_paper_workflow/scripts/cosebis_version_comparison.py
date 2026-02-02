@@ -213,7 +213,7 @@ def main():
     # Find fiducial version index for box highlighting
     fiducial_idx = next(
         (i for i, v in enumerate(versions) if v == fiducial_version),
-        1  # Default to index 1 (v1.4.6)
+        0  # Fallback to first version
     )
 
     colors = sns.color_palette("colorblind", len(versions))

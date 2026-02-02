@@ -1,8 +1,8 @@
 """Configuration-space PTE matrix composites for B-modes paper.
 
 Produces 3-panel composites (xi+^B, xi-^B, COSEBIS) for:
-- Results: fiducial version (v1.4.6)
-- Appendix: non-fiducial versions (v1.4.5, v1.4.8)
+- Results: fiducial version (from config.fiducial.version)
+- Appendix: all versions (from config.versions with labels from config.plotting.version_labels)
 
 Each composite has shared axes and a single colorbar.
 """
@@ -431,13 +431,13 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
 
 
 def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
-                            xip_fid, xim_fid, cosebis_fid):
-    """Create a 3x3 composite figure for all versions (appendix).
+                            xip_fid, xim_fid, cosebis_fid, version_labels):
+    """Create a Nx3 composite figure for all versions (appendix).
 
     Parameters
     ----------
     versions : list of str
-        Catalog version strings in display order [v1.4.5, v1.4.6, v1.4.8].
+        Catalog version strings in display order.
     pure_eb_pte_files : list
         All Pure E/B PTE npz files (includes all blinds).
     cosebis_pte_files : list
@@ -446,6 +446,8 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         Fiducial scale cuts for xi+ and xi- (arcmin).
     cosebis_fid : tuple
         Fiducial scale cuts for COSEBIS (arcmin).
+    version_labels : dict
+        Mapping from version string to display label (from config.plotting.version_labels).
 
     Returns
     -------
@@ -456,13 +458,13 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     all_full_range_ptes : dict
         Full-range PTEs keyed by version.
     """
-    # Create figure: 3 rows x 4 columns (3 stats + colorbar)
+    n_versions = len(versions)
     fig_width = 6.5
-    fig_height = 6.5
+    fig_height = 2.2 * n_versions
 
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
-        3, 4,
+        n_versions, 4,
         width_ratios=[1, 1, 1, 0.04],
         wspace=0.03, hspace=0.08,
         left=0.10, right=0.95,
@@ -471,12 +473,6 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
     all_stats = {}
     all_full_range_ptes = {}
-    # Use descriptive version labels per project convention
-    version_labels = {
-        "SP_v1.4.5_leak_corr": "Initial",
-        "SP_v1.4.6_leak_corr": "Fiducial",
-        "SP_v1.4.8_leak_corr": "Masked",
-    }
 
     for row_idx, version in enumerate(versions):
         # Load Pure E/B PTE matrices (minimum across blinds)
@@ -506,7 +502,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         # Y-axis labels on each row (leftmost column only)
         # X-axis labels only on bottom row
         show_yticklabels = True
-        show_xticklabels = (row_idx == 2)
+        show_xticklabels = (row_idx == n_versions - 1)
 
         # Plot titles: version label on top row panels
         version_label = version_labels.get(version, version)
@@ -646,6 +642,7 @@ def main():
             xip_fid=xip_fid,
             xim_fid=xim_fid,
             cosebis_fid=cosebis_fid,
+            version_labels=config["plotting"]["version_labels"],
         )
 
         # Save appendix figure
