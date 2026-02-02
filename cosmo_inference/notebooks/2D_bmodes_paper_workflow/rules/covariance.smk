@@ -133,6 +133,7 @@ rule covariance_cosmocov:
     threads: 1
     shell:
         """
+        module unload gcc || true
         module load gcc
         module unload intelpython || true
         module load intelpython/3-2024.1.0
