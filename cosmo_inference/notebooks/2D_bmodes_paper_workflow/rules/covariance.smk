@@ -298,8 +298,10 @@ rule covariance_blind_consistency:
             "workflow/config/covariance.md",
         ],
         config="workflow/config/config.yaml",
-        # Use centralized covariance_path() from Snakefile
-        covs=[covariance_path(FIDUCIAL["version"], blind) for blind in BLINDS],
+        # Named inputs to match script expectations (cov_a, cov_b, cov_c)
+        cov_a=covariance_path(FIDUCIAL["version"], "A"),
+        cov_b=covariance_path(FIDUCIAL["version"], "B"),
+        cov_c=covariance_path(FIDUCIAL["version"], "C"),
     output:
         evidence="results/claims/covariance_blind_consistency/evidence.json",
         figure="results/claims/covariance_blind_consistency/figure.png",

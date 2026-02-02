@@ -70,6 +70,17 @@ Official results use specific covariance sources for consistency and correctness
 - TreeCorr jackknife covariance — too noisy for official results
 - NPZ `cov_xip_xim` field — deprecated (was jackknife)
 
+### Version Mapping
+
+Some catalog versions share the same survey footprint and mask, so they reuse covariance computed for the base version:
+
+| Version | Covariance Version | Rationale |
+|---------|-------------------|-----------|
+| v1.4.10.1 | v1.4.6 | Blending corrections don't change geometry |
+| v1.4.11.2 | v1.4.6 | Processing updates, same footprint; n(z) not yet available |
+
+This mapping is implemented in `resolve_covariance_version()` (Snakefile) and `MASK_CLS_FILES` (covariance.smk).
+
 ### Why Gaussian for E/B propagation?
 
 Non-Gaussian covariance at 1000-bin integration scale is computationally prohibitive. Using Gaussian-only **underestimates** the E/B covariance, which **overestimates** B-mode significance. This is conservative for a null test: if B-modes pass with underestimated errors, they would also pass with correct errors.
