@@ -59,20 +59,19 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
     cosebis_path = claims_dir / "cosebis_version_comparison" / "evidence.json"
     if cosebis_path.exists():
         with open(cosebis_path) as f:
-            data = json.load(f)
-        ev = data.get("evidence", {})
+            cosebis_ev = json.load(f).get("evidence", {})
 
         macros.append(f"% cosebis ({fiducial_version}, n=6)")
 
         # Fiducial scale cut - use pte_6_min (conservative across blinds)
-        fiducial = ev.get("fiducial", {})
+        fiducial = cosebis_ev.get("fiducial", {})
         fid_versions = fiducial.get("versions", {})
         fid_data = fid_versions.get(fiducial_version, {})
         if "pte_6_min" in fid_data:
             macros.append(f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}")
 
         # Full range
-        full = ev.get("full", {})
+        full = cosebis_ev.get("full", {})
         full_versions = full.get("versions", {})
         full_data = full_versions.get(fiducial_version, {})
         if "pte_6_min" in full_data:
@@ -86,32 +85,32 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
         macros.append("")
 
-    # Pure E/B data vector - use min across blinds
+    # Pure E/B data vector - use min across blinds (cache for reuse below)
     eb_path = claims_dir / "pure_eb_data_vector" / "evidence.json"
+    eb_fid = {}  # cached for PTE variation section
     if eb_path.exists():
         with open(eb_path) as f:
-            data = json.load(f)
-        ev = data.get("evidence", {})
+            eb_ev = json.load(f).get("evidence", {})
 
         macros.append("% pure_eb_data_vector (min across blinds per spec)")
 
         # Fiducial PTEs - use pte_joint_min (conservative across blinds)
-        fid = ev.get("fiducial", {})
-        if "pte_joint_min" in fid:
-            macros.append(f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(fid['pte_joint_min'])}}}")
+        eb_fid = eb_ev.get("fiducial", {})
+        if "pte_joint_min" in eb_fid:
+            macros.append(f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint_min'])}}}")
 
         # Full range PTEs
-        full = ev.get("full", {})
+        full = eb_ev.get("full", {})
         if "pte_joint_min" in full:
             macros.append(f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint_min'])}}}")
 
         # Scale cuts from fiducial
-        if "scale_cut_xip" in fid:
-            cuts = fid["scale_cut_xip"]
+        if "scale_cut_xip" in eb_fid:
+            cuts = eb_fid["scale_cut_xip"]
             macros.append(f"\\newcommand{{\\ebthetaXipMin}}{{{cuts[0]}}}")
             macros.append(f"\\newcommand{{\\ebthetaXipMax}}{{{cuts[1]}}}")
-        if "scale_cut_xim" in fid:
-            cuts = fid["scale_cut_xim"]
+        if "scale_cut_xim" in eb_fid:
+            cuts = eb_fid["scale_cut_xim"]
             macros.append(f"\\newcommand{{\\ebthetaXimMin}}{{{cuts[0]}}}")
             macros.append(f"\\newcommand{{\\ebthetaXimMax}}{{{cuts[1]}}}")
 
@@ -165,13 +164,9 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
         macros.append("")
 
-    # PTE variation across blinds (from pure_eb_data_vector, not covariance_blind_consistency)
-    eb_path = claims_dir / "pure_eb_data_vector" / "evidence.json"
-    if eb_path.exists():
-        with open(eb_path) as f:
-            eb_data = json.load(f)
-        fid = eb_data.get("evidence", {}).get("fiducial", {})
-        joint_ptes = [fid.get(f"pte_joint_{b}") for b in ["A", "B", "C"] if f"pte_joint_{b}" in fid]
+    # PTE variation across blinds (reuse eb_fid cached above)
+    if eb_fid:
+        joint_ptes = [eb_fid.get(f"pte_joint_{b}") for b in ["A", "B", "C"] if f"pte_joint_{b}" in eb_fid]
         if joint_ptes:
             macros.append("% PTE variation across blinds (fiducial scale cuts)")
             joint_delta = max(joint_ptes) - min(joint_ptes)

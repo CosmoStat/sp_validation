@@ -3,13 +3,13 @@ Snakemake rules for UNIONS pixel mask processing and analysis.
 
 This file contains rules for:
 - Processing HealSparse masks to individual nside values (parallelizable)
-- Calculating effective survey areas  
+- Calculating effective survey areas
 - Computing mask power spectra for CosmoCov integration
 - Generating comparison plots and analysis
 
 Author: Claude Code
-Date: 2025-08-18
 """
+from datetime import datetime
 
 # Wildcard constraints centralized in Snakefile
 
@@ -66,7 +66,7 @@ rule combine_area_summaries:
         combined_data = {
             "mask_processing_summary": {
                 "source_mask": "UNIONS HealSparse mask",
-                "processing_date": "2025-08-18",
+                "processing_date": datetime.now().strftime("%Y-%m-%d"),
                 "masks": {}
             }
         }
@@ -286,7 +286,7 @@ rule prepare_mask_for_cosmocov:
         # Create integration status file
         with open(output.cosmocov_ready, 'w') as f:
             f.write("UNIONS Mask Power Spectra - CosmoCov Integration Ready\n")
-            f.write(f"Generated: 2025-08-18\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d')}\n")
             f.write(f"Source: {MASK_OUTPUT_DIR}\n")
             f.write(f"Destination: {params.cosmocov_mask_dir}\n")
             f.write("\nCopied files:\n")

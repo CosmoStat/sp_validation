@@ -9,11 +9,11 @@ This script:
 4. Calculates effective survey area
 
 Author: Claude Code
-Date: 2025-08-18
 """
 
+from datetime import datetime
 import os
-import sys
+
 import numpy as np
 import healpy as hp
 import healsparse as hsp
@@ -93,7 +93,7 @@ def save_area_summary(nside: int, effective_area: float, healpix_mask: np.ndarra
     summary = {
         "mask_processing_summary": {
             "source_mask": "UNIONS HealSparse mask",
-            "processing_date": "2025-08-18",
+            "processing_date": datetime.now().strftime("%Y-%m-%d"),
             "masks": {
                 f"nside_{nside}": {
                     "nside": int(nside),
@@ -119,18 +119,9 @@ def save_area_summary(nside: int, effective_area: float, healpix_mask: np.ndarra
 
 def main():
     """Main processing function."""
-    # Handle both Snakemake and interactive execution
-    if hasattr(sys, 'ps1'):
-        # Interactive mode - use example parameters
-        from snakemake_helpers import snakemake_interactive
-        snakemake = snakemake_interactive(
-            output_mask="/n17data/cdaley/unions/pure_eb/output/masks/mask_nside4096.fits",
-            output_summary="/n17data/cdaley/unions/pure_eb/output/masks/area_nside4096.yaml",
-            nside=4096
-        )
-    else:
-        from snakemake.script import snakemake
-    
+    # Snakemake script execution only (no interactive mode)
+    from snakemake.script import snakemake
+
     # Get parameters from Snakemake
     source_mask_path = snakemake.input.mask
     target_nside = snakemake.params.nside

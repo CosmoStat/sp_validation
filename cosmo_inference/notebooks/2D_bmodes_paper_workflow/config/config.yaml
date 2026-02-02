@@ -37,13 +37,13 @@ fiducial:
   nmodes: 20
   
   # Unified fiducial scale cut for all B-mode analyses (arcmin)
-  # Matches Paper IV (Goh et al.): [12, 83] for both xi+ and xi-
+  # Matches Paper II (Goh et al.): [12, 83] for both xi+ and xi-
   # COSEBIs use unified cuts since they cannot have separate xi+/xi- ranges
   fiducial_min_scale: 12
   fiducial_max_scale: 83
 
   # Pure E/B mode fiducial scale cuts for plots (arcmin)
-  # From Paper IV: [12, 83] for both (most conservative choice)
+  # From Paper II: [12, 83] for both (most conservative choice)
   fiducial_xip_scale_cut: [12, 83]
   fiducial_xim_scale_cut: [12, 83]
 
