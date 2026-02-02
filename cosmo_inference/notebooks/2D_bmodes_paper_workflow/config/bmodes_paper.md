@@ -2,7 +2,7 @@
 
 Paper III (Daley et al.) — B-mode validation for UNIONS cosmic shear.
 
-Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [cosebis_version_comparison](cosebis_version_comparison.md), [cl_data_vector](cl_data_vector.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md)
+Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [cosebis_version_comparison](cosebis_version_comparison.md), [cl_data_vector](cl_data_vector.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md), [covariance_blind_consistency](covariance_blind_consistency.md)
 
 ## Scope
 
@@ -26,8 +26,7 @@ Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper sh
 
 | Figure | Claim | Output | Section | Label |
 |--------|-------|--------|---------|-------|
-| Config-space PTE v1.4.5 | `config_space_pte_matrices` | `paper_figure_v145` | Appendix | `fig:pte_config_v145` |
-| Config-space PTE v1.4.8 | `config_space_pte_matrices` | `paper_figure_v148` | Appendix | `fig:pte_config_v148` |
+| Config-space PTE composite | `config_space_pte_matrices` | `paper_figure_appendix` | Appendix | `fig:pte_config_appendix` |
 | Harmonic PTE appendix | `harmonic_space_pte_matrices` | `paper_figure_appendix` | Appendix | `fig:pte_cl_appendix` |
 
 Figures copy from `results/claims/{claim}/` to `docs/unions_release/unions_bmodes/Figures/`.

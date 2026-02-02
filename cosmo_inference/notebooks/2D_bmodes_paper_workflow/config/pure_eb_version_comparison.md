@@ -36,8 +36,3 @@ Main figure shows leak_corr catalog versions only (v1.4.5, v1.4.6, v1.4.8) for c
   - Data outside fiducial scale cuts shown greyed out
   - B-mode error bars are unity by construction (normalized)
   - Legend: Initial (v1.4.5), Fiducial (v1.4.6), Masked (v1.4.8)
-
-- `figure_correction.png` — Leakage correction impact comparison
-  - Same layout as main figure
-  - Shows v1.4.6 leak_corr vs v1.4.6 uncorrected
-  - Demonstrates minimal impact of leakage correction on pure B-modes
