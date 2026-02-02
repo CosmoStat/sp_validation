@@ -98,8 +98,10 @@ rule bmodes_paper_spec:
         # Upstream evidence (using rules.X.output for single source of truth)
         pure_eb_covariance=rules.pure_eb_covariance.output.evidence,
         pure_eb_data_vector=rules.pure_eb_data_vector.output.evidence,
+        cosebis_data_vector=rules.cosebis_data_vector.output.evidence,
         cosebis_version_comparison=rules.cosebis_version_comparison.output.evidence,
         cl_data_vector=rules.cl_data_vector.output.evidence,
+        cl_version_comparison=rules.cl_version_comparison.output.evidence,
         config_space_pte=rules.config_space_pte_matrices.output.evidence,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,
         # Paper figure dependencies (ensures dashboard regenerates version comparison plots)
