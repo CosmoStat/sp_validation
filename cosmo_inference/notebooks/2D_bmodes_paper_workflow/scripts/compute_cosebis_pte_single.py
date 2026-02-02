@@ -60,8 +60,9 @@ def main():
     gg.read(snakemake.input.xi_integration)
     print(f"[TIMING] Load 2PCF: {time.time() - t0:.2f}s")
 
-    # Compute theta grid from gg bin edges (20 bins for PTE matrix)
-    theta_grid = np.geomspace(1.0, 250.0, 21)  # 21 edges -> 20 bins
+    # Theta grid from config (nbins+1 edges for PTE matrix)
+    fid = config["fiducial"]
+    theta_grid = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
 
     theta_min = theta_grid[i_min]
     theta_max = theta_grid[i_max]

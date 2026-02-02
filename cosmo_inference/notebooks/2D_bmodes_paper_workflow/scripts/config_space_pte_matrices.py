@@ -39,7 +39,7 @@ def _load_snakemake():
 snakemake = _load_snakemake()
 
 
-def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
+def load_cosebis_pte_matrix(pte_files, version, config, nmodes=6):
     """Load COSEBIS PTE values from JSON files into matrix.
 
     Uses fiducial blind only (data vectors identical across blinds).
@@ -50,17 +50,20 @@ def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
         Paths to PTE JSON files for fiducial blind.
     version : str
         Version to filter for.
+    config : dict
+        Workflow config with fiducial.min_sep, max_sep, nbins.
     nmodes : int
         Number of COSEBIS modes (6 or 20).
 
     Returns
     -------
     pte_matrix : ndarray
-        21x21 PTE matrix (theta indices 0-20).
+        (nbins+1)x(nbins+1) PTE matrix (theta indices).
     theta_grid : ndarray
-        Angular scale grid (21 values).
+        Angular scale grid (nbins+1 values).
     """
-    theta_grid = np.geomspace(1.0, 250.0, 21)
+    fid = config["fiducial"]
+    theta_grid = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
     n_theta = len(theta_grid)
     # Initialize with nan for cells without data
     pte_matrix = np.full((n_theta, n_theta), np.nan)
@@ -292,7 +295,7 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
 
 
 def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
-                            xip_fid, xim_fid, cosebis_fid):
+                            xip_fid, xim_fid, cosebis_fid, config):
     """Create a 1×3 composite figure for the fiducial version (main text).
 
     Parameters
@@ -307,6 +310,8 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         Fiducial scale cuts for xi+ and xi- (arcmin).
     cosebis_fid : tuple
         Fiducial scale cuts for COSEBIS (arcmin).
+    config : dict
+        Workflow config with fiducial parameters.
 
     Returns
     -------
@@ -337,7 +342,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
 
     # Load COSEBIS PTE matrix
     pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
-        cosebis_pte_files, version, nmodes=6
+        cosebis_pte_files, version, config, nmodes=6
     )
 
     # Compute fiducial indices
@@ -401,7 +406,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
 
 
 def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
-                            xip_fid, xim_fid, cosebis_fid, version_labels):
+                            xip_fid, xim_fid, cosebis_fid, version_labels, config):
     """Create a Nx3 composite figure for all versions (appendix).
 
     Parameters
@@ -418,6 +423,8 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         Fiducial scale cuts for COSEBIS (arcmin).
     version_labels : dict
         Mapping from version string to display label (from config.plotting.version_labels).
+    config : dict
+        Workflow config with fiducial parameters.
 
     Returns
     -------
@@ -452,7 +459,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
         # Load COSEBIS PTE matrix
         pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
-            cosebis_pte_files, version, nmodes=6
+            cosebis_pte_files, version, config, nmodes=6
         )
 
         # Compute fiducial indices
@@ -578,6 +585,7 @@ def main():
             xip_fid=xip_fid,
             xim_fid=xim_fid,
             cosebis_fid=cosebis_fid,
+            config=config,
         )
 
         # Save fiducial figure
@@ -612,6 +620,7 @@ def main():
             xim_fid=xim_fid,
             cosebis_fid=cosebis_fid,
             version_labels=config["plotting"]["version_labels"],
+            config=config,
         )
 
         # Save appendix figure

@@ -415,6 +415,7 @@ rule config_space_pte_matrices:
             f"{CONFIG_DIR}/config_space_pte_matrices.md",
             f"{CONFIG_DIR}/pure_eb.md",
             f"{CONFIG_DIR}/cosebis.md",
+            f"{CONFIG_DIR}/2d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         # Claim dependencies
@@ -453,6 +454,7 @@ rule harmonic_space_pte_matrices:
         specs=[
             f"{CONFIG_DIR}/harmonic_space_pte_matrices.md",
             f"{CONFIG_DIR}/cl.md",
+            f"{CONFIG_DIR}/2d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         # Harmonic PTE matrices only for leak-corrected versions
