@@ -244,10 +244,10 @@ def main():
     print(f"  cov_rho shape: {cov_rho.shape}")
     print(f"  cov_tau shape: {cov_tau.shape}")
 
-    # Load reference FITS files
+    # Load reference FITS files (only headers needed for output structure)
     print("Loading reference FITS files...")
     ref_rho_data, ref_rho_header = load_reference_fits(args.ref_rho)
-    ref_tau_data, ref_tau_header = load_reference_fits(args.ref_tau)
+    _, ref_tau_header = load_reference_fits(args.ref_tau)
     theta = ref_rho_data['theta']
     print(f"  theta range: {theta.min():.3f} - {theta.max():.3f} arcmin")
     print(f"  nbins: {len(theta)}")

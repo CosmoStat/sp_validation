@@ -219,12 +219,11 @@ def plot_power_spectra(analysis_results: Dict, output_dir: str, verbose: bool = 
     plot_path = os.path.join(output_dir, 'mask_power_spectra_comparison.png')
     os.makedirs(output_dir, exist_ok=True)
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    
+    plt.close(fig)
+
     if verbose:
         print(f"Saved power spectrum comparison plot: {plot_path}")
-    
-    plt.show()
-    
+
     return plot_path
 
 

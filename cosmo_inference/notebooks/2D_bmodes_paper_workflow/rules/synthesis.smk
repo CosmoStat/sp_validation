@@ -13,8 +13,7 @@ import sys
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# These are defined in Snakefile, specs.smk, and claims.smk (included before this file)
-# CONFIG_DIR, CLAIMS_DIR, SKILL_PATH, METHOD_SPECS already available
+# Variables from included files: CONFIG_DIR, CLAIMS_DIR (Snakefile); SKILL_PATH, METHOD_SPECS (specs.smk)
 
 # Claim rules that produce evidence.json — single source of truth for all_claims and claims_dashboard
 # Each entry is a rule name; we access rules.X.output to get all outputs

@@ -101,7 +101,6 @@ rule mask_power_spectrum:
     output:
         power_spectrum=f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt"
     params:
-        nside=lambda wildcards: int(wildcards.nside),
         target_nsides=target_nsides,
         output_dir=MASK_OUTPUT_DIR
     threads: 1
