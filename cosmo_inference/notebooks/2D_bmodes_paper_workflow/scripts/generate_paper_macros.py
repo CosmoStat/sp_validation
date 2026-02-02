@@ -184,9 +184,9 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
         # Generate individual macros for each version
         # Use word-based names to avoid TeX Live 2025 cleveref/siunitx conflict
-        version_words = {"5": "Five", "6": "Six", "8": "Eight"}
+        version_words = {"5": "Five", "6": "Six", "8": "Eight", "10.1": "TenOne"}
         for ver, ver_data in versions.items():
-            short_ver = ver.split("v1.4.")[1].split("_")[0]  # "5", "6", or "8"
+            short_ver = ver.split("v1.4.")[1].split("_")[0]  # "5", "6", "8", or "10.1"
             prefix = f"configPte{version_words.get(short_ver, short_ver)}"
 
             xip = ver_data.get("xip_stats", {})
@@ -222,7 +222,7 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append("% harmonic_space_pte_matrices (all versions)")
         macros.append("")
 
-        version_words = {"5": "Five", "6": "Six", "8": "Eight"}
+        version_words = {"5": "Five", "6": "Six", "8": "Eight", "10.1": "TenOne"}
         for ver, ver_data in versions.items():
             short_ver = ver.split("v1.4.")[1].split("_")[0]
             prefix = f"clPte{version_words.get(short_ver, short_ver)}"
