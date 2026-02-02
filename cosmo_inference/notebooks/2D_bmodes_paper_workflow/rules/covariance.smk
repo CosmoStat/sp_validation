@@ -19,7 +19,6 @@ MASK_CLS_BASE = "/home/guerrini/sp_validation/cosmo_inference/data/mask"
 MASK_CLS_FILES = {
     "v1.4.5": f"{MASK_CLS_BASE}/mask_cls_v1.4.5_nside_8192_norm.txt",
     "v1.4.6": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
-    "v1.4.7": f"{MASK_CLS_BASE}/mask_cls_v1.4.7_nside_8192_norm.txt",
     "v1.4.8": f"{MASK_CLS_BASE}/mask_cls_v1.4.8_nside_8192_norm.txt",
     # v1.4.10.1 and v1.4.11.2 use same footprint as v1.4.6
     "v1.4.10.1": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
@@ -125,7 +124,7 @@ A_ia : 0.0
 eta_ia : 0.0
 
 
-# Covariance paramters
+# Covariance parameters
 #
 # tmin,tmax in arcminutes
 tmin : {wildcards.min_sep}

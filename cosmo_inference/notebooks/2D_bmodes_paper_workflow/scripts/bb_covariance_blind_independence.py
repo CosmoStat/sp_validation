@@ -16,7 +16,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import treecorr
 from astropy.io import fits
 
@@ -112,7 +111,7 @@ def compute_ratios(diag_ref, diag_test):
     }
 
 
-def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, output_path, n_samples=4000):
+def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, output_path, n_samples=2000):
     """Four-panel figure comparing BB vs EE stability across blinds.
 
     Layout: 2x2

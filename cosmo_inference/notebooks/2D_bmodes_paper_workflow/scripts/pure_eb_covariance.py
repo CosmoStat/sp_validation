@@ -93,7 +93,7 @@ def main():
     # Matrix is 6*nbins x 6*nbins:
     # Block structure: [E+, E-, B+, B-, amb+, amb-]
     # Each block is nbins x nbins
-    assert cov_pure_eb.shape == (6*nbins, 6*nbins), f"Expected (120, 120), got {cov_pure_eb.shape}"
+    assert cov_pure_eb.shape == (6*nbins, 6*nbins), f"Expected ({6*nbins}, {6*nbins}), got {cov_pure_eb.shape}"
 
     # Analyze full matrix
     eigenvalues = np.linalg.eigvalsh(cov_pure_eb)
