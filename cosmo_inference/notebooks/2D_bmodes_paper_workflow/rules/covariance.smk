@@ -33,9 +33,6 @@ def get_mask_cls_path(version):
     return MASK_CLS_FILES.get(version_dir, "")
 
 
-COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
-
-
 rule cosmology_params:
     """Generate cosmology parameters JSON from sp_validation.
 

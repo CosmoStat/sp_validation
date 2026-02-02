@@ -37,11 +37,7 @@ VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v]
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def _covariance_path(version, min_sep, max_sep, nbins, blind=None, gaussian="g"):
-    """Construct covariance file path using centralized covariance_path() from Snakefile.
-
-    TODO(generate-v1-4-10-1-covariance-55144852): v1.4.10.1 uses v1.4.6 covariance
-    as workaround until proper covariance is generated. Same footprint justifies this.
-    """
+    """Construct covariance file path using centralized covariance_path() from Snakefile."""
     if blind is None:
         blind = FIDUCIAL["blind"]
     return covariance_path(version, blind, gaussian=gaussian, min_sep=min_sep, max_sep=max_sep, nbins=nbins)

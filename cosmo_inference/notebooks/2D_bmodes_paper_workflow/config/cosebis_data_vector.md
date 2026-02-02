@@ -10,7 +10,7 @@ COSEBIS B-modes at fiducial version (`fiducial.version`) are consistent with zer
 
 ## Blind Handling
 
-Uses fiducial blind from `config["fiducial"]["blind"]`. COSEBIS B_n data vectors are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions. Statistical evidence (PTEs) is in [COSEBIS PTE Matrix](cosebis_pte_matrix.md).
+Uses fiducial blind from `config["fiducial"]["blind"]`. COSEBIS B_n data vectors are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions. Statistical evidence (PTEs) is in [Config-Space PTE Matrices](config_space_pte_matrices.md).
 
 ## Config References
 
@@ -22,7 +22,7 @@ Uses fiducial blind from `config["fiducial"]["blind"]`. COSEBIS B_n data vectors
 
 ## Evidence
 
-This claim produces visualizations only. Statistical evidence (PTEs) is in [COSEBIS PTE Matrix](cosebis_pte_matrix.md).
+This claim produces visualizations only. Statistical evidence (PTEs) is in [Config-Space PTE Matrices](config_space_pte_matrices.md).
 
 | Metric | Description |
 |--------|-------------|

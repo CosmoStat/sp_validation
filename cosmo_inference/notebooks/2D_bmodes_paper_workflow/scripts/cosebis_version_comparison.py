@@ -77,11 +77,10 @@ def _version_label(version, version_labels):
 def _get_cov_path(cov_base_dir, version, blind, min_sep, max_sep, nbins):
     """Construct covariance path for a specific blind.
 
-    TODO(generate-v1-4-10-1-covariance-55144852): v1.4.10.1 uses v1.4.6 covariance
-    as workaround until proper covariance is generated. Same footprint justifies this.
+    Versions derived from v1.4.6 footprint (v1.4.10.1, v1.4.11.2) use v1.4.6 covariance.
     """
-    # v1.4.10.1 uses v1.4.6 covariance (same footprint, blending corrections don't change geometry)
-    cov_version = version.replace("v1.4.10.1", "v1.4.6") if "v1.4.10.1" in version else version
+    # Same footprint → same covariance geometry
+    cov_version = version.replace("v1.4.10.1", "v1.4.6").replace("v1.4.11.2", "v1.4.6")
     base_name_masked = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     masked_path = f"{cov_base_dir}/{base_name_masked}/{base_name_masked}_processed.txt"
     if Path(masked_path).exists():

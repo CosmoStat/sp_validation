@@ -31,7 +31,7 @@ def _format_value(value) -> str:
         return str(value)
 
 
-def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_versionsion: str):
+def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version: str):
     """Generate LaTeX macros from evidence files.
 
     Macro names are kept simple. The spec (config_space_paper_bmodes.md)
@@ -50,19 +50,19 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
             data = json.load(f)
         ev = data.get("evidence", {})
 
-        macros.append(f"% cosebis ({fiducial_versionsion}, n=6)")
+        macros.append(f"% cosebis ({fiducial_version}, n=6)")
 
         # Fiducial scale cut - use pte_6_min (conservative across blinds)
         fiducial = ev.get("fiducial", {})
         fid_versions = fiducial.get("versions", {})
-        fid_data = fid_versions.get(fiducial_versionsion, {})
+        fid_data = fid_versions.get(fiducial_version, {})
         if "pte_6_min" in fid_data:
             macros.append(f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}")
 
         # Full range
         full = ev.get("full", {})
         full_versions = full.get("versions", {})
-        full_data = full_versions.get(fiducial_versionsion, {})
+        full_data = full_versions.get(fiducial_version, {})
         if "pte_6_min" in full_data:
             macros.append(f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'])}}}")
 
