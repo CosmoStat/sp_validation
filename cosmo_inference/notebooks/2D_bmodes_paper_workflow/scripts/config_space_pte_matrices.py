@@ -51,13 +51,12 @@ snakemake = _load_snakemake()
 def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
     """Load COSEBIS PTE values from JSON files into matrix.
 
-    Takes minimum PTE across blinds (A, B, C) for each scale cut combination.
-    This is the conservative approach: if any blind shows significance, we report it.
+    Uses fiducial blind only (data vectors identical across blinds).
 
     Parameters
     ----------
     pte_files : list of str
-        Paths to all PTE JSON files (includes all blinds).
+        Paths to PTE JSON files for fiducial blind.
     version : str
         Version to filter for.
     nmodes : int
@@ -66,14 +65,14 @@ def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
     Returns
     -------
     pte_matrix : ndarray
-        21x21 PTE matrix (theta indices 0-20), minimum across blinds.
+        21x21 PTE matrix (theta indices 0-20).
     theta_grid : ndarray
         Angular scale grid (21 values).
     """
     theta_grid = np.geomspace(1.0, 250.0, 21)
     n_theta = len(theta_grid)
-    # Initialize with inf so np.minimum works correctly
-    pte_matrix = np.full((n_theta, n_theta), np.inf)
+    # Initialize with nan for cells without data
+    pte_matrix = np.full((n_theta, n_theta), np.nan)
 
     for pte_file in pte_files:
         pte_path = Path(pte_file)
@@ -99,63 +98,43 @@ def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
         else:
             continue
 
-        # Take minimum across blinds (conservative)
+        # Store PTE value
         if not np.isnan(pte_val):
-            pte_matrix[i_min, i_max] = np.minimum(pte_matrix[i_min, i_max], pte_val)
-
-    # Replace inf with nan (cells that had no valid data)
-    pte_matrix[np.isinf(pte_matrix)] = np.nan
+            pte_matrix[i_min, i_max] = pte_val
 
     return pte_matrix, theta_grid
 
 
 def load_pure_eb_pte_matrices(pte_files, version):
-    """Load Pure E/B PTE matrices from per-blind npz files.
+    """Load Pure E/B PTE matrices from npz files.
 
-    Takes minimum PTE across blinds (A, B, C) for each scale cut combination.
-    This is the conservative approach: if any blind shows significance, we report it.
+    Uses fiducial blind only (data vectors identical across blinds).
 
     Parameters
     ----------
     pte_files : list of str
-        Paths to all pure_eb_ptes.npz files (includes all blinds).
+        Paths to pure_eb_ptes.npz files for fiducial blind.
     version : str
         Version to filter for.
 
     Returns
     -------
     pte_xip_B : ndarray
-        PTE matrix for xi+^B, minimum across blinds.
+        PTE matrix for xi+^B.
     pte_xim_B : ndarray
-        PTE matrix for xi-^B, minimum across blinds.
+        PTE matrix for xi-^B.
     theta : ndarray
         Angular scale grid.
     """
-    pte_xip_B = None
-    pte_xim_B = None
-    theta = None
-
     for pte_file in pte_files:
         # Filter to this version
         if version not in pte_file:
             continue
 
         data = np.load(pte_file)
+        return data["pte_xip_B"], data["pte_xim_B"], data["theta"]
 
-        if theta is None:
-            theta = data["theta"]
-            pte_xip_B = np.full_like(data["pte_xip_B"], np.inf)
-            pte_xim_B = np.full_like(data["pte_xim_B"], np.inf)
-
-        # Take minimum across blinds
-        pte_xip_B = np.minimum(pte_xip_B, np.nan_to_num(data["pte_xip_B"], nan=np.inf))
-        pte_xim_B = np.minimum(pte_xim_B, np.nan_to_num(data["pte_xim_B"], nan=np.inf))
-
-    # Replace inf with nan
-    pte_xip_B[np.isinf(pte_xip_B)] = np.nan
-    pte_xim_B[np.isinf(pte_xim_B)] = np.nan
-
-    return pte_xip_B, pte_xim_B, theta
+    raise ValueError(f"No PTE file found for version {version}")
 
 
 def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
@@ -278,9 +257,9 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
     Returns
     -------
     ptes : dict
-        Full-range PTEs for xip, xim, and cosebis (minimum across blinds).
+        Full-range PTEs for xip, xim, and cosebis (fiducial blind).
     """
-    # Get full-range PTEs from pure E/B (minimum across blinds)
+    # Get full-range PTEs from pure E/B (fiducial blind)
     xip_ptes = []
     xim_ptes = []
     for pte_file in pure_eb_pte_files:
@@ -360,7 +339,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         bottom=0.15, top=0.90
     )
 
-    # Load Pure E/B PTE matrices (minimum across blinds)
+    # Load Pure E/B PTE matrices (fiducial blind)
     pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
         pure_eb_pte_files, version
     )
@@ -475,7 +454,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     all_full_range_ptes = {}
 
     for row_idx, version in enumerate(versions):
-        # Load Pure E/B PTE matrices (minimum across blinds)
+        # Load Pure E/B PTE matrices (fiducial blind)
         pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
             pure_eb_pte_files, version
         )

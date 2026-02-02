@@ -95,7 +95,7 @@ def _pseudo_cl_path(version, blind="A", nbins=32):
 
 def _pseudo_cl_cov_path(version, blind="A", nbins=32):
     """Return pseudo-Cl covariance path for a catalog version."""
-    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{version}_blind={blind}_powspace_nbins={nbins}.fits"
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{version}_blind={blind}_nellbins={nbins}.fits"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -467,16 +467,14 @@ rule config_space_pte_matrices:
         # Claim dependencies
         pure_eb_data_vector=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
         cosebis_data_vector=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
-        # Data inputs
+        # Data inputs (fiducial blind only)
         pure_eb_pte=[
-            f"results/paper_plots/intermediate/{ver}_{blind}_pure_eb_ptes.npz"
+            f"results/paper_plots/intermediate/{ver}_{config['fiducial']['blind']}_pure_eb_ptes.npz"
             for ver in config["versions"]
-            for blind in BLINDS
         ],
         cosebis_pte_files=[
-            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{blind}/pte_{i:03d}_{j:03d}.json"
+            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{config['fiducial']['blind']}/pte_{i:03d}_{j:03d}.json"
             for ver in config["versions"]
-            for blind in BLINDS
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
     output:

@@ -103,8 +103,8 @@ def main():
     version = config["fiducial"]["version"]
     nmodes = config["fiducial"]["nmodes"]
 
-    # Use blind A for plotting (B-modes are same across blinds)
-    blind = "A"
+    # Use fiducial blind for plotting (B-modes are same across blinds)
+    blind = config["fiducial"]["blind"]
     cov_base_dir = snakemake.params.cov_base_dir
 
     fiducial_scale_cut = (

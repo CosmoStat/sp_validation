@@ -187,8 +187,8 @@ def main():
     versions = config["versions"]
     nmodes = config["fiducial"]["nmodes"]
 
-    # Use blind A for plotting (B-modes are same across blinds, only covariance differs)
-    blind = "A"
+    # Use fiducial blind for plotting (B-modes are same across blinds, only covariance differs)
+    blind = config["fiducial"]["blind"]
     cov_base_dir = snakemake.params.cov_base_dir
     version_labels = snakemake.params.version_labels
 
