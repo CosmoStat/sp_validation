@@ -77,7 +77,7 @@ Some catalog versions share the same survey footprint and mask, so they reuse co
 | Version | Covariance Version | Rationale |
 |---------|-------------------|-----------|
 | v1.4.10.1 | v1.4.6 | Blending corrections don't change geometry |
-| v1.4.11.2 | v1.4.6 | Processing updates, same footprint; n(z) not yet available |
+| v1.4.11.2 | v1.4.6 | PSF size integration; same footprint and mask |
 
 This mapping is implemented in `resolve_covariance_version()` (Snakefile) and `MASK_CLS_FILES` (covariance.smk).
 

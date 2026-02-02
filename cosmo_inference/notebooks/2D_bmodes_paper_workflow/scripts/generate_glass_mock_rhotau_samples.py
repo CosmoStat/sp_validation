@@ -76,8 +76,8 @@ def create_rho_fits(sampled_values, theta, header=None):
             if key not in hdu.header:
                 try:
                     hdu.header[key] = value
-                except:
-                    pass
+                except (ValueError, KeyError):
+                    pass  # Skip invalid FITS header keys
 
     return hdu
 
@@ -140,8 +140,8 @@ def create_tau_fits(sampled_values, theta, header=None):
             if key not in hdu.header:
                 try:
                     hdu.header[key] = value
-                except:
-                    pass
+                except (ValueError, KeyError):
+                    pass  # Skip invalid FITS header keys
 
     return hdu
 

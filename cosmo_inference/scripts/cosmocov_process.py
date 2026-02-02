@@ -3,9 +3,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import linalg as LA
 import sys
-from pathlib import Path
 
 def get_cov(filename):
 
@@ -40,17 +38,13 @@ if __name__ == '__main__':
 	cov = c_ng+c_g
 	cov_g = c_g
 
-	b = np.sort(LA.eigvals(cov))
+	b = np.sort(np.linalg.eigvals(cov))
 	print("min+max eigenvalues cov: %e, %e"%(np.min(b), np.max(b)))
 	if(np.min(b)<=0.):
 		print("non-positive eigenvalue encountered! Covariance Invalid!")
 		exit()
 
 	print("Covariance is positive definite!")
-
-	pp_var = []
-	for i in range(ndata):
-		pp_var.append(cov[i][i])
 
 	np.savetxt(str(output_base)+'.txt',cov)
 	print("covmat saved as %s" %(str(output_base)+'.txt'))
