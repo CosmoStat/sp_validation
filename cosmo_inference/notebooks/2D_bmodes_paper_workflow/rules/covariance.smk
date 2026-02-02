@@ -13,21 +13,7 @@ def get_cat_params(version):
 
 
 # Wildcard constraints centralized in Snakefile
-
-
-def covariance_paths(version, blind, gaussian, min_sep, max_sep, nbins, mask_suffix):
-    """Return directory path and file prefix for covariance outputs."""
-    covariance_root = str(COSMO_INFERENCE / "data/covariance")
-    dir_path = (
-        f"{covariance_root}/covariance_{version}_{blind}_{gaussian}"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
-    )
-    file_prefix = (
-        f"{dir_path}/covariance_{version}_{blind}_{gaussian}"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
-    )
-    return dir_path, file_prefix
-
+# covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
 MASK_CLS_FILES = config["covariance"].get("mask_cls_files", {})
@@ -46,9 +32,10 @@ rule covariance_ini:
     output:
         str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.ini")
     params:
-        outdir=lambda w: covariance_paths(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
-        )[0],
+        outdir=lambda w: covariance_dir(
+            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix,
+            resolve_version=False
+        ),
         ng_value=lambda wildcards: "1" if wildcards.gaussian == "ng" else "0",
         omega_m=config["covariance"]["cosmology"]["Omega_m"],
         sigma_8=config["covariance"]["cosmology"]["sigma_8"],
@@ -131,13 +118,14 @@ rule covariance_cosmocov:
         str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/cov_tmp_ssss_{block_pm}_cov_Ntheta{nbins}_Ntomo1_{block_i}")
     params:
         block_i="{block_i}",
-        outdir=lambda w: covariance_paths(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
-        )[0],
-        ini_path=lambda w: covariance_paths(
-            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix
-        )[1]
-        + ".ini",
+        outdir=lambda w: covariance_dir(
+            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix,
+            resolve_version=False
+        ),
+        ini_path=lambda w: covariance_path(
+            w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix,
+            suffix=".ini", resolve_version=False
+        ),
         cosmocov=config["tools"]["cosmocov_executable"],
     container:
         None
@@ -157,7 +145,7 @@ rule covariance_cosmocov:
 rule covariance_cat:
     input:
         cov_block=lambda w: [
-            f"{covariance_paths(w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix)[0]}"
+            f"{covariance_dir(w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins, w.mask_suffix, resolve_version=False)}"
             f"/cov_tmp_ssss_{pm}_cov_Ntheta{w.nbins}_Ntomo1_{idx}"
             for pm, idx in BLOCK_PAIRS
         ],
@@ -239,15 +227,15 @@ rule covariance_process:
 
 def fiducial_covariance_outputs(mask_suffix=""):
     """Return processed covariance files for fiducial version/blind."""
-    ng_prefix = covariance_paths(
+    ng_path = covariance_path(
         FIDUCIAL["version"], FIDUCIAL["blind"], "ng",
         FIDUCIAL["min_sep"], FIDUCIAL["max_sep"], FIDUCIAL["nbins"], mask_suffix
-    )[1]
-    g_prefix = covariance_paths(
+    )
+    g_path = covariance_path(
         FIDUCIAL["version"], FIDUCIAL["blind"], "g",
         FIDUCIAL["min_sep_int"], FIDUCIAL["max_sep_int"], FIDUCIAL["nbins_int"], mask_suffix
-    )[1]
-    return [f"{ng_prefix}_processed.txt", f"{g_prefix}_processed.txt"]
+    )
+    return [ng_path, g_path]
 
 
 rule covariance:
