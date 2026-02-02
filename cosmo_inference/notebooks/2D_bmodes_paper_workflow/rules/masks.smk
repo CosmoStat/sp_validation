@@ -113,30 +113,6 @@ rule mask_power_spectrum:
         "../scripts/analyze_mask_power_spectrum.py"
 
 
-# NOTE: Rule disabled - script does not exist and pipeline is unused
-# Production uses pre-existing mask Cls from /home/guerrini/.../data/mask/
-# rule mask_power_spectra_comparison:
-#     """
-#     Create comparison plots and convergence analysis across all nside values.
-#     """
-#     input:
-#         masks=expand(f"{MASK_OUTPUT_DIR}/mask_nside{{nside}}.fits", nside=target_nsides),
-#         power_spectra=expand(f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt", nside=target_nsides),
-#         summary=f"{MASK_OUTPUT_DIR}/effective_areas.yaml"
-#     output:
-#         comparison_plot=f"{MASK_OUTPUT_DIR}/mask_power_spectra_comparison.png"
-#     params:
-#         target_nsides=target_nsides,
-#         output_dir=MASK_OUTPUT_DIR
-#     threads: 1
-#     resources:
-#         mem_mb=4000,
-#         disk_mb=1000,
-#         runtime=10
-#     script:
-#         "../scripts/create_mask_comparison_plots.py"
-
-
 rule effective_area_comparison:
     """
     Compare effective areas across different mask resolutions.
@@ -268,7 +244,6 @@ rule masks_full_analysis:
     """Complete mask processing and analysis pipeline."""
     input:
         f"{MASK_OUTPUT_DIR}/effective_areas.yaml",
-        f"{MASK_OUTPUT_DIR}/mask_power_spectra_comparison.png",
         f"{MASK_OUTPUT_DIR}/area_comparison_report.md"
 
 

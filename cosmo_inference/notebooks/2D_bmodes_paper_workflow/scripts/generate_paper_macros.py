@@ -155,14 +155,20 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append(f"\\newcommand{{\\covXipMaxDev}}{{{_format_value(xip_max * 100)}\\%}}")
         macros.append(f"\\newcommand{{\\covXimMaxDev}}{{{_format_value(xim_max * 100)}\\%}}")
 
-        # PTE variation across blinds (uses fid from above)
-        macros.append("% PTE variation across blinds (fiducial scale cuts)")
+        macros.append("")
+
+    # PTE variation across blinds (from pure_eb_data_vector, not covariance_blind_consistency)
+    eb_path = claims_dir / "pure_eb_data_vector" / "evidence.json"
+    if eb_path.exists():
+        with open(eb_path) as f:
+            eb_data = json.load(f)
+        fid = eb_data.get("evidence", {}).get("fiducial", {})
         joint_ptes = [fid.get(f"pte_joint_{b}") for b in ["A", "B", "C"] if f"pte_joint_{b}" in fid]
         if joint_ptes:
+            macros.append("% PTE variation across blinds (fiducial scale cuts)")
             joint_delta = max(joint_ptes) - min(joint_ptes)
             macros.append(f"\\newcommand{{\\ebJointPteDelta}}{{{_format_value(joint_delta)}}}")
-
-        macros.append("")
+            macros.append("")
 
     # Config-space PTE matrices - generate table
     config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"

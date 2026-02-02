@@ -1,6 +1,4 @@
-from pathlib import Path
-
-# FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path defined in Snakefile
+# FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, COSMO_INFERENCE_PROD, covariance_path defined in Snakefile
 PSEUDO_CL_DIR = COSMO_VAL.parent  # Same directory structure
 GLASS_MOCK_VERSION = config["glass_mocks"].get("version", "v0")
 GLASS_MOCK_SEED_RANGE = config["glass_mocks"]["seed_range"]
