@@ -36,11 +36,13 @@ The joint test combines ξ+^B and ξ-^B using the full cross-covariance matrix.
 
 ### Scale Cuts
 
+Scale cuts from config (`fiducial.fiducial_xip_scale_cut`, `fiducial.fiducial_xim_scale_cut`):
+
 | Correlation | Min (arcmin) | Max (arcmin) |
 |-------------|--------------|--------------|
-| ξ+^B | 6 | 85 |
-| ξ-^B | 15 | 85 |
-| COSEBIS | 6 | 85 |
+| ξ+^B | 12 | 83 |
+| ξ-^B | 12 | 83 |
+| COSEBIS | 12 | 83 |
 
 ## Text Requirements
 

@@ -24,9 +24,9 @@ plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
 )
 
-# Scale cuts from harmonic space paper (Guerrini et al.)
-ELL_MIN_CUT = 300
-ELL_MAX_CUT = 1600
+# Scale cuts passed from config via snakemake.params
+ELL_MIN_CUT = None
+ELL_MAX_CUT = None
 
 
 # SquareRootScale for ell axis
@@ -94,6 +94,10 @@ def _compute_pte_with_cuts(data, covariance, ell, ell_min, ell_max):
 
 def main():
     from snakemake.script import snakemake
+
+    global ELL_MIN_CUT, ELL_MAX_CUT
+    ELL_MIN_CUT = int(snakemake.params.ell_min_cut)
+    ELL_MAX_CUT = int(snakemake.params.ell_max_cut)
 
     # Load pseudo-Cl data
     hdu = fits.open(snakemake.input["pseudo_cl"])

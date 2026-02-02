@@ -272,12 +272,6 @@ def create_npanel_composite(matrices, ells, panel_labels):
     return fig
 
 
-# Backwards compatibility alias
-def create_3panel_composite(matrices, ells, version_labels):
-    """Create 3-panel composite (legacy wrapper)."""
-    return create_npanel_composite(matrices, ells, version_labels)
-
-
 def main():
     config = snakemake.config
     versions = config["versions"]

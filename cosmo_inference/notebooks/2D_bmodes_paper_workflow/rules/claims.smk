@@ -336,6 +336,9 @@ rule cl_data_vector:
         config=f"{CONFIG_DIR}/config.yaml",
         pseudo_cl=_pseudo_cl_path(FIDUCIAL['version']),
         pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL['version']),
+    params:
+        ell_min_cut=config["cl"]["fiducial_ell_min"],
+        ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
         evidence=f"{CLAIMS_DIR}/cl_data_vector/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_data_vector/figure.png",
