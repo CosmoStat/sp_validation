@@ -2,7 +2,7 @@
 
 Paper III (Daley et al.) — B-mode validation for UNIONS cosmic shear.
 
-Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [pure_eb_version_comparison](pure_eb_version_comparison.md), [cosebis_version_comparison](cosebis_version_comparison.md) (incl. `paper_stacked` output), [cl_data_vector](cl_data_vector.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md), [bb_covariance_blind_independence](bb_covariance_blind_independence.md), [covariance_blind_consistency](covariance_blind_consistency.md)
+Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [pure_eb_version_comparison](pure_eb_version_comparison.md), [cosebis_version_comparison](cosebis_version_comparison.md) (incl. `paper_stacked` output), [cosebis_data_vector](cosebis_data_vector.md), [cl_data_vector](cl_data_vector.md), [cl_version_comparison](cl_version_comparison.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md), [bb_covariance_blind_independence](bb_covariance_blind_independence.md), [covariance_blind_consistency](covariance_blind_consistency.md)
 
 ## Scope
 

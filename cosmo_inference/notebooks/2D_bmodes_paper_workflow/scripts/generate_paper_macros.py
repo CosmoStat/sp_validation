@@ -438,12 +438,17 @@ if __name__ == "__main__":
         generate_pte_tables(claims_dir, paper_dir, fiducial_version, versions, version_labels, config)
 
     # Generate evidence.json if requested
+    # Dependencies derived from snakemake inputs (rules.X.output declarations)
+    rule_inputs = snakemake.input.keys()  # noqa: F821
+    input_deps = [k for k in rule_inputs if k.endswith("_evidence") or k == "covariance_evidence"]
+    depends_on = [d.replace("_evidence", "") for d in input_deps]
+
     for evidence_path in evidence_outputs:
         spec_id = evidence_path.parent.name  # e.g., xi_cosmology_paper
         generate_evidence(
             spec_id=spec_id,
             spec_path=f"workflow/config/{spec_id}.md",
-            depends_on=["pure_eb_data_vector", "cosebis_version_comparison", "covariance_blind_consistency"],
+            depends_on=depends_on,
             claims_dir=claims_dir,
             output_path=evidence_path,
         )
