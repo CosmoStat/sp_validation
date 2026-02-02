@@ -88,26 +88,19 @@ rule combine_area_summaries:
 
 
 rule mask_power_spectrum:
-    """
-    Calculate angular power spectrum for a single mask.
-    
-    This rule:
-    1. Loads the downgraded HEALPix mask
-    2. Calculates power spectrum C_ℓ using healpy.anafast
-    3. Exports power spectrum for CosmoCov integration
+    """Calculate angular power spectrum for a single mask.
+
+    Loads downgraded HEALPix mask, computes C_ell, exports for CosmoCov.
     """
     input:
         mask=f"{MASK_OUTPUT_DIR}/mask_nside{{nside}}.fits"
     output:
         power_spectrum=f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt"
-    params:
-        target_nsides=target_nsides,
-        output_dir=MASK_OUTPUT_DIR
     threads: 1
     resources:
         mem_mb=4000,
         disk_mb=500,
-        runtime=10    # minutes
+        runtime=10
     script:
         "../scripts/analyze_mask_power_spectrum.py"
 

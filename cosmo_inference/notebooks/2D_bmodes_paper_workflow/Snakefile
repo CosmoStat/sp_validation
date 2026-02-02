@@ -35,7 +35,6 @@ wildcard_constraints:
 # Common paths
 COSMO_VAL = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output")
 COSMO_INFERENCE = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference")
-COSMO_INFERENCE_PROD = Path("/home/guerrini/sp_validation/cosmo_inference")
 
 # Workflow directories
 CONFIG_DIR = "workflow/config"
