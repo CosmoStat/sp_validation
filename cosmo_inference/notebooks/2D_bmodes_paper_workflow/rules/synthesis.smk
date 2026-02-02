@@ -28,6 +28,7 @@ CLAIM_RULES = [
     "cl_version_comparison",
     "config_space_pte_matrices",
     "harmonic_space_pte_matrices",
+    "bb_covariance_blind_independence",
 ]
 
 
@@ -103,6 +104,8 @@ rule bmodes_paper_spec:
         # Paper figure dependencies (ensures dashboard regenerates version comparison plots)
         pure_eb_version_comparison=rules.pure_eb_version_comparison.output.evidence,
         cosebis_bmode_stacked=rules.cosebis_version_comparison.output.paper_stacked,
+        # Consistency checks
+        bb_covariance_blind=rules.bb_covariance_blind_independence.output.evidence,
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:

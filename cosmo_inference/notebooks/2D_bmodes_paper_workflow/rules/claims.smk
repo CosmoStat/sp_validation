@@ -95,7 +95,7 @@ def _pseudo_cl_path(version, blind="A", nbins=32):
 
 def _pseudo_cl_cov_path(version, blind="A", nbins=32):
     """Return pseudo-Cl covariance path for a catalog version."""
-    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{version}_blind={blind}_nellbins={nbins}.fits"
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{version}_blind={blind}_powspace_nbins={nbins}.fits"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -320,27 +320,6 @@ rule calculate_pure_eb_ptes:
         "../scripts/calculate_pure_eb_ptes.py"
 
 
-rule pure_eb_pte_matrix:
-    """PTE heatmap: Pure E/B B-modes across scale cut combinations."""
-    input:
-        specs=[
-            f"{CONFIG_DIR}/pure_eb_pte_matrix.md",
-            f"{CONFIG_DIR}/pure_eb_data_vector.md",
-            f"{CONFIG_DIR}/2d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
-        pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
-        pte_data=f"results/paper_plots/intermediate/{config['fiducial']['version']}_pure_eb_ptes.npz",
-    output:
-        evidence=f"{CLAIMS_DIR}/pure_eb_pte_matrix/evidence.json",
-        figure_xip=f"{CLAIMS_DIR}/pure_eb_pte_matrix/figure_xip.png",
-        figure_xim=f"{CLAIMS_DIR}/pure_eb_pte_matrix/figure_xim.png",
-        paper_figure_xip=f"{PAPER_FIGURES_DIR}/pure_eb_pte_xip.png",
-        paper_figure_xim=f"{PAPER_FIGURES_DIR}/pure_eb_pte_xim.png",
-    script:
-        "../scripts/pure_eb_pte_matrix.py"
-
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Harmonic-Space Claims (Cl)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -410,41 +389,6 @@ rule compute_cosebis_pte:
         runtime=30,
     script:
         "../scripts/compute_cosebis_pte_single.py"
-
-
-rule cosebis_pte_matrix:
-    """Gather: Assemble PTE values into matrices, generate figures and evidence."""
-    input:
-        specs=[
-            f"{CONFIG_DIR}/cosebis_pte_matrix.md",
-            f"{CONFIG_DIR}/cosebis_version_comparison.md",
-            f"{CONFIG_DIR}/2d_plots.md",
-        ],
-        config=f"{CONFIG_DIR}/config.yaml",
-        pte_files=[
-            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{blind}/pte_{i:03d}_{j:03d}.json"
-            for ver in config["versions"]
-            for blind in BLINDS
-            for i, j in PTE_SCALE_CUT_PAIRS
-        ],
-    params:
-        blinds=BLINDS,
-    output:
-        evidence=f"{CLAIMS_DIR}/cosebis_pte_matrix/evidence.json",
-        figures=expand(
-            f"{CLAIMS_DIR}/cosebis_pte_matrix/figure_{{version}}_{{blind}}_n{{nmodes}}.png",
-            version=config["versions"],
-            blind=BLINDS,
-            nmodes=config["cosebis"]["mode_subsets"],
-        ),
-        paper_figures=expand(
-            f"{PAPER_FIGURES_DIR}/cosebis_pte_matrices_{{version}}_{{blind}}_n{{nmodes}}.png",
-            version=config["versions"],
-            blind=BLINDS,
-            nmodes=config["cosebis"]["mode_subsets"],
-        ),
-    script:
-        "../scripts/cosebis_pte_matrix.py"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -517,51 +461,50 @@ rule harmonic_space_pte_matrices:
         "../scripts/harmonic_space_pte_matrices.py"
 
 
-rule harmonic_config_cosebis_comparison:
-    """Cross-validate COSEBIS from harmonic-space C_ℓ vs configuration-space ξ±.
+rule bb_covariance_blind_independence:
+    """Test BB covariance blind-independence vs EE variation.
 
-    Tests consistency between two independent paths to COSEBIS:
-    - Harmonic: pseudo-C_ℓ → T_n(ℓ) integration → E_n, B_n
-    - Config: ξ± → W_n(θ) integration → E_n, B_n
+    BB covariances should be stable across blinds (null signal → no sample variance).
+    EE covariances should vary (~10%) due to sample variance from cosmological signal.
 
-    Agreement validates both pseudo-C_ℓ estimation and COSEBIS machinery.
-    Uses blind=A fine-binned pseudo-Cl with Planck18 cosmology covariance.
+    Covers all three analysis spaces: Pure E/B, COSEBIS, and harmonic (pseudo-Cl).
     """
     input:
-        spec=f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
+        specs=[
+            f"{CONFIG_DIR}/bb_covariance_blind_independence.md",
+            f"{CONFIG_DIR}/covariance.md",
+            f"{CONFIG_DIR}/pure_eb.md",
+            f"{CONFIG_DIR}/cosebis.md",
+            f"{CONFIG_DIR}/cl.md",
+        ],
         config=f"{CONFIG_DIR}/config.yaml",
-        # Fine-binned pseudo-Cl for accurate C_ℓ → COSEBIS conversion
-        pseudo_cls=f"{COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}_blind=A_ellstep=1.fits",
-        pseudo_cls_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_blind=A_ellstep=1.fits",
-        cov_integration=_covariance_path(
-            config["fiducial"]["version"],
-            config["fiducial"]["min_sep_int"],
-            config["fiducial"]["max_sep_int"],
-            config["fiducial"]["nbins_int"],
-            blind="A",
-        ),
-    output:
-        comparison=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure.png",
-        stats=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/stats.txt",
+        # Per-blind MC-propagated pure E/B covariances
+        # Base file (no suffix) uses blind=A, so reuse it for A
+        pure_eb_A=f"results/paper_plots/intermediate/{config['fiducial']['version']}_pure_eb_semianalytic.npz",
+        pure_eb_B=f"results/paper_plots/intermediate/{config['fiducial']['version']}_B_pure_eb_semianalytic.npz",
+        pure_eb_C=f"results/paper_plots/intermediate/{config['fiducial']['version']}_C_pure_eb_semianalytic.npz",
+        # COSEBIS: xi integration file (shared) + per-blind config-space covariances
+        xi_integration=_xi_integration_path(config["fiducial"]["version"]),
+        cov_integration_A=_cov_integration_path(config["fiducial"]["version"], "A"),
+        cov_integration_B=_cov_integration_path(config["fiducial"]["version"], "B"),
+        cov_integration_C=_cov_integration_path(config["fiducial"]["version"], "C"),
+        # Per-blind harmonic covariances
+        harmonic_A=_pseudo_cl_cov_path(config["fiducial"]["version"], "A"),
+        harmonic_B=_pseudo_cl_cov_path(config["fiducial"]["version"], "B"),
+        harmonic_C=_pseudo_cl_cov_path(config["fiducial"]["version"], "C"),
     params:
-        version=config["fiducial"]["version"],
-        nmodes_long=config["cosebis"]["nmodes"],
-        nmodes_short=config["cosebis"]["mode_subsets"][0],
+        nmodes=config["fiducial"]["nmodes"],
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
-        min_sep_int=config["fiducial"]["min_sep_int"],
-        max_sep_int=config["fiducial"]["max_sep_int"],
-        nbins_int=config["fiducial"]["nbins_int"],
-        npatch=config["fiducial"]["npatch"],
-        # ℓ cuts for harmonic-space (avoid noisy low-ℓ modes in fine binning)
-        ell_min=config["cl"]["ell_min"],
-        ell_max=config["cl"]["ell_max"],
+    output:
+        evidence=f"{CLAIMS_DIR}/bb_covariance_blind_independence/evidence.json",
+        figure=f"{CLAIMS_DIR}/bb_covariance_blind_independence/figure.png",
     script:
-        "../scripts/compare_harmonic_config_cosebis.py"
+        "../scripts/bb_covariance_blind_independence.py"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_pte_matrix, pure_eb_covariance, pure_eb_version_comparison, cosebis_pte_matrix, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, harmonic_config_cosebis_comparison
+localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence

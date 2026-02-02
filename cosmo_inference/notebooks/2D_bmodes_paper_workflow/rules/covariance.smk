@@ -328,16 +328,24 @@ localrules:
 BASE_VERSIONS = [v.replace("_leak_corr", "") for v in config["versions"]]
 
 
-rule fine_pseudo_cl:
-    """Generate finely-binned pseudo-Cls for accurate C_ℓ → COSEBIS conversion.
+# Wildcard constraints for unified pseudo-Cl rules
+wildcard_constraints:
+    binning = "linear|powspace",
 
-    Uses linear binning with configurable ell_step (default 1 for single-ell bins).
-    Supports blind parameter (A, B, C) to override n(z) distribution.
-    Uses astropy Planck18 fiducial cosmology for covariance calculation.
+
+rule pseudo_cl:
+    """Generate pseudo-Cl data vector with configurable binning.
+
+    Output pattern: pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits
+
+    Binning modes:
+    - linear: uniform ell bins (nbins determines ell_step)
+    - powspace: power-law spaced bins (nbins=32 with power=0.5 for sqrt spacing)
+
+    Uses astropy Planck18 fiducial cosmology.
     """
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_ellstep={ell_step}.fits"),
-        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_ellstep={ell_step}.fits"),
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
     wildcard_constraints:
         blind="[ABC]",
     params:
@@ -347,25 +355,30 @@ rule fine_pseudo_cl:
         nside=1024,
         npatch=1,
         cosmo_params=PLANCK18,
-        binning="linear",
-        ell_step=lambda w: int(w.ell_step),
+        binning="{binning}",
+        nbins=lambda w: int(w.nbins),
+        power=0.5,
     resources:
         mem_mb=32000,
-        runtime=120,  # minutes
-    threads: 48
+        runtime=120,
+    threads: 12
     script:
-        "../scripts/generate_fine_pseudo_cl.py"
+        "../scripts/generate_pseudo_cl.py"
 
 
 rule pseudo_cl_cov:
-    """Generate 32-bin pseudo-Cl covariances for B-mode null tests.
+    """Generate pseudo-Cl covariance with configurable binning.
 
-    Uses power-space (sqrt) binning matching Sasha's NaMaster setup.
-    Uses astropy Planck18 fiducial cosmology for consistency with harmonic analysis.
-    Supports blind parameter (A, B, C) to override n(z) distribution.
+    Output pattern: pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits
+
+    Binning modes:
+    - linear: uniform ell bins (nbins determines ell_step)
+    - powspace: power-law spaced bins (nbins=32 with power=0.5 for sqrt spacing)
+
+    Uses astropy Planck18 fiducial cosmology.
     """
     output:
-        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_nellbins=32.fits"),
+        pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
     wildcard_constraints:
         blind="[ABC]",
     params:
@@ -375,40 +388,43 @@ rule pseudo_cl_cov:
         nside=1024,
         npatch=1,
         cosmo_params=PLANCK18,
-        binning="powspace",
-        n_ell_bins=32,
+        binning="{binning}",
+        nbins=lambda w: int(w.nbins),
         power=0.5,
     resources:
         mem_mb=16000,
-        runtime=30,  # minutes - faster than fine binning
-    threads: 24
+        runtime=60,
+    threads: 12
     script:
-        "../scripts/generate_fine_pseudo_cl.py"
+        "../scripts/generate_pseudo_cl_cov.py"
 
 
 # Both leak-corrected and base versions for pseudo-Cl generation
 PSEUDO_CL_VERSIONS = config["versions"] + BASE_VERSIONS
 
-rule pseudo_cl_cov_all:
-    """Generate 32-bin pseudo-Cl covariances for all versions and blinds."""
+rule pseudo_cl_all:
+    """Generate pseudo-Cls for all versions (harmonic preset, blind A only)."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_nellbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"),
             version=PSEUDO_CL_VERSIONS,
-            blind=BLINDS,
         ),
 
 
-rule fine_pseudo_cl_all:
-    """Generate finely-binned pseudo-Cls for all versions and blinds."""
+rule pseudo_cl_cov_all:
+    """Generate pseudo-Cl covariances for all versions (harmonic preset, blind A only)."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_ellstep=1.fits"),
-            version=config["versions"],
-            blind=BLINDS,
+            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits"),
+            version=PSEUDO_CL_VERSIONS,
         ),
+
+
+rule pseudo_cl_fine_all:
+    """Generate fine pseudo-Cls for COSEBIS (linear preset)."""
+    input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_ellstep=1.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.fits"),
             version=config["versions"],
             blind=BLINDS,
         ),
