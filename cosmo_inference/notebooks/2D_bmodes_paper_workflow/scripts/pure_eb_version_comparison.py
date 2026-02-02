@@ -1,6 +1,8 @@
 """Pure E/B version comparison claim.
 
-Visualizes total and B-mode correlation functions across catalog versions.
+Main figure: leak_corr versions only (catalog evolution across v1.4.5, v1.4.6, v1.4.8)
+Second figure: v1.4.6 leak_corr vs uncorrected (correction impact comparison)
+
 Top row: xi_total +/- (same style as data vector plot)
 Bottom row: xi_B +/- normalized by error (B / sigma)
 Data outside fiducial scale cuts shown greyed out.
@@ -25,7 +27,21 @@ VERSION_LABELS = {
     "SP_v1.4.5_leak_corr": "Initial",
     "SP_v1.4.6_leak_corr": "Fiducial",
     "SP_v1.4.8_leak_corr": "Masked",
+    "SP_v1.4.6": "Uncorrected",
 }
+
+# Versions for main catalog evolution figure (leak_corr only)
+CATALOG_VERSIONS = [
+    "SP_v1.4.5_leak_corr",
+    "SP_v1.4.6_leak_corr",
+    "SP_v1.4.8_leak_corr",
+]
+
+# Versions for correction comparison figure
+CORRECTION_VERSIONS = [
+    "SP_v1.4.6_leak_corr",
+    "SP_v1.4.6",
+]
 
 
 def _version_label(version):
@@ -60,10 +76,13 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
         sharex=True,
         gridspec_kw={"height_ratios": [2, 1]},
     )
-    # Share y-axis for bottom row
+    # Share y-axes within each row for tighter layout (hide duplicate tick labels)
+    axes[0, 1].sharey(axes[0, 0])
     axes[1, 1].sharey(axes[1, 0])
+    plt.setp(axes[0, 1].get_yticklabels(), visible=False)
+    plt.setp(axes[1, 1].get_yticklabels(), visible=False)
 
-    x_offset_factors = [0.94, 1.0, 1.06]
+    x_offset_factors = [0.97, 1.0, 1.03]
     marker_styles = ["o", "s", "D"]
     scale_factor = 1e-4
 
@@ -109,7 +128,7 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
                 elinewidth=elinewidth,
             )
 
-            if col == 0:
+            if col == 1:
                 legend_handles.append(line)
                 legend_labels.append(data["label"])
 
@@ -161,8 +180,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
         if col == 0:
             ax.set_ylabel(r"$\xi^B / \sigma$")
 
-    # Legend in top-left panel
-    axes[0, 0].legend(
+    # Legend in top-right panel (xi-)
+    axes[0, 1].legend(
         legend_handles,
         legend_labels,
         loc="upper left",
@@ -186,9 +205,49 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     return fig
 
 
+def _load_version_data(version, data_path):
+    """Load and process data for a single version."""
+    data = np.load(data_path)
+
+    theta = data["theta"]
+    nbins = len(theta)
+
+    # Total correlation functions
+    xip_total = data["xip_total"]
+    xim_total = data["xim_total"]
+
+    # B-mode data
+    xip_B = data["xip_B"]
+    xim_B = data["xim_B"]
+    cov_pure_eb = data["cov_pure_eb"]
+
+    # Use E-mode errors for total xi (E dominates signal, good proxy for visualization)
+    # Blocks: 0=xip_E, 1=xim_E, 2=xip_B, 3=xim_B, 4=xip_amb, 5=xim_amb
+    sigma_xip_total = _extract_sigma(cov_pure_eb, 0, nbins)
+    sigma_xim_total = _extract_sigma(cov_pure_eb, 1, nbins)
+
+    # Extract B-mode errors (blocks 2 and 3 of the 6-block covariance)
+    sigma_xip_B = _extract_sigma(cov_pure_eb, 2, nbins)
+    sigma_xim_B = _extract_sigma(cov_pure_eb, 3, nbins)
+
+    return {
+        "version": version,
+        "label": _version_label(version),
+        "theta": theta,
+        # Total correlation functions
+        "xip_total": xip_total,
+        "xim_total": xim_total,
+        "sigma_xip_total": sigma_xip_total,
+        "sigma_xim_total": sigma_xim_total,
+        # B-mode (normalized)
+        "xip_B_normalized": xip_B / sigma_xip_B,
+        "xim_B_normalized": xim_B / sigma_xim_B,
+    }
+
+
 def main():
     config = snakemake.config
-    versions = config["versions"]
+    all_versions = config["versions"]
     fiducial_version = config["fiducial"]["version"]
 
     # Scale cuts
@@ -201,66 +260,31 @@ def main():
         "fiducial_xim": fiducial_xim_scale_cut,
     }
 
-    colors = sns.color_palette("colorblind", len(versions))
-    version_alpha = {v: 1.0 if v == fiducial_version else 0.5 for v in versions}
-
-    # Load data for all versions
-    datasets = []
-
-    for version, color, data_path in zip(
-        versions,
-        colors,
-        snakemake.input["pure_eb_data"],
-    ):
-        data = np.load(data_path)
-
-        theta = data["theta"]
-        nbins = len(theta)
-
-        # Total correlation functions
-        xip_total = data["xip_total"]
-        xim_total = data["xim_total"]
-
-        # B-mode data
-        xip_B = data["xip_B"]
-        xim_B = data["xim_B"]
-        cov_pure_eb = data["cov_pure_eb"]
-
-        # Use E-mode errors for total xi (E dominates signal, good proxy for visualization)
-        # Blocks: 0=xip_E, 1=xim_E, 2=xip_B, 3=xim_B, 4=xip_amb, 5=xim_amb
-        sigma_xip_total = _extract_sigma(cov_pure_eb, 0, nbins)
-        sigma_xim_total = _extract_sigma(cov_pure_eb, 1, nbins)
-
-        # Extract B-mode errors (blocks 2 and 3 of the 6-block covariance)
-        sigma_xip_B = _extract_sigma(cov_pure_eb, 2, nbins)
-        sigma_xim_B = _extract_sigma(cov_pure_eb, 3, nbins)
-
-        datasets.append({
-            "version": version,
-            "label": _version_label(version),
-            "color": color,
-            "alpha": version_alpha.get(version, 1.0),
-            "theta": theta,
-            # Total correlation functions
-            "xip_total": xip_total,
-            "xim_total": xim_total,
-            "sigma_xip_total": sigma_xip_total,
-            "sigma_xim_total": sigma_xim_total,
-            # B-mode (normalized)
-            "xip_B_normalized": xip_B / sigma_xip_B,
-            "xim_B_normalized": xim_B / sigma_xim_B,
-        })
+    # Build version-to-path lookup
+    version_to_path = {
+        ver: path
+        for ver, path in zip(all_versions, snakemake.input["pure_eb_data"])
+    }
 
     # Create output directory
     output_dir = Path(snakemake.output["evidence"]).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate figure
-    fig = _create_version_comparison_figure(datasets, scale_cuts, fiducial_version)
+    # === Main figure: catalog evolution (leak_corr only) ===
+    catalog_colors = sns.color_palette("colorblind", len(CATALOG_VERSIONS))
+    catalog_datasets = []
+    for version, color in zip(CATALOG_VERSIONS, catalog_colors):
+        data = _load_version_data(version, version_to_path[version])
+        data["color"] = color
+        data["alpha"] = 1.0 if version == fiducial_version else 0.5
+        catalog_datasets.append(data)
 
-    fig_name = "figure.png"
-    fig_path = output_dir / fig_name
-    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+    fig_catalog = _create_version_comparison_figure(
+        catalog_datasets, scale_cuts, fiducial_version
+    )
+
+    fig_path = output_dir / "figure.png"
+    fig_catalog.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
 
     # Copy to paper figures
@@ -270,7 +294,33 @@ def main():
         shutil.copy2(fig_path, paper_path)
         print(f"Copied to {paper_path}")
 
-    plt.close(fig)
+    plt.close(fig_catalog)
+
+    # === Second figure: correction comparison (v1.4.6 leak_corr vs uncorrected) ===
+    correction_colors = sns.color_palette("colorblind", len(CORRECTION_VERSIONS))
+    correction_datasets = []
+    for version, color in zip(CORRECTION_VERSIONS, correction_colors):
+        data = _load_version_data(version, version_to_path[version])
+        data["color"] = color
+        data["alpha"] = 1.0  # Both at full opacity for direct comparison
+        correction_datasets.append(data)
+
+    fig_correction = _create_version_comparison_figure(
+        correction_datasets, scale_cuts, fiducial_version
+    )
+
+    fig_correction_path = output_dir / "figure_correction.png"
+    fig_correction.savefig(fig_correction_path, dpi=300, bbox_inches="tight")
+    print(f"Saved {fig_correction_path}")
+
+    # Copy to paper figures
+    if "paper_figure_correction" in snakemake.output.keys():
+        paper_correction_path = Path(snakemake.output["paper_figure_correction"])
+        paper_correction_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(fig_correction_path, paper_correction_path)
+        print(f"Copied to {paper_correction_path}")
+
+    plt.close(fig_correction)
 
     # Write evidence
     spec_paths = snakemake.input["specs"]
@@ -281,11 +331,15 @@ def main():
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": {k: list(v) for k, v in scale_cuts.items()},
-            "versions_plotted": versions,
+            "catalog_versions": CATALOG_VERSIONS,
+            "correction_versions": CORRECTION_VERSIONS,
             "fiducial_version": fiducial_version,
-            "note": "Visualization only. Statistical PTEs in pure_eb_pte_matrix and config_space_pte_matrices claims.",
+            "note": "Main figure: catalog evolution (leak_corr only). Second figure: correction comparison (v1.4.6 leak_corr vs uncorrected). Statistical PTEs in config_space_pte_matrices claim.",
         },
-        "artifacts": {"figure": fig_name},
+        "artifacts": {
+            "figure": "figure.png",
+            "figure_correction": "figure_correction.png",
+        },
     }
 
     evidence_path = Path(snakemake.output["evidence"])

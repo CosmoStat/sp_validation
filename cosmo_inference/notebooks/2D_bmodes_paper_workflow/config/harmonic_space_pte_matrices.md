@@ -50,7 +50,10 @@ Per-version statistics:
 
 ## Outputs
 
+Main and appendix figures show leak_corr versions. Second appendix figure shows uncorrected version for comparison.
+
 - `figure_fiducial.png` — PTE heatmap for fiducial version (main text)
-- `figure_appendix.png` — 3-panel composite for all versions (v1.4.5, v1.4.6, v1.4.8) (appendix)
+- `figure_appendix.png` — 3-panel composite for all leak_corr versions (v1.4.5, v1.4.6, v1.4.8) (appendix)
+- `figure_appendix_uncorrected.png` — 3-panel composite for uncorrected versions (appendix)
 
 Heatmaps use vlag colormap [0, 1] with contours at 0.05/0.95. Fiducial multipole range marked with hatched rectangle.

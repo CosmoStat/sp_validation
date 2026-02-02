@@ -58,17 +58,18 @@ if cv.rho_tau_method != "none":
 cv.plot_objectwise_leakage()
 
 # %%
+cv.plot_objectwise_leakage_aux()
+
+# %%
 #cv.plot_ellipticity()
 
 # %%
 cv.plot_weights()
 
 # %%
-cv.plot_separation()
+cv.calculate_additive_bias()
 
 # %%
-cv.npatch = 1
-cv.treecorr_config["var_method"] = "shot"
 cv.plot_2pcf()
 cv.treecorr_config["var_method"] = "jackknife"
 cv.npatch = 100
