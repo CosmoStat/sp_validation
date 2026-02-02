@@ -210,7 +210,7 @@ def main():
     spec_paths = snakemake.input["specs"]
 
     evidence_data = {
-        "spec_id": "cl_fiducial",
+        "spec_id": "cl_data_vector",
         "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {

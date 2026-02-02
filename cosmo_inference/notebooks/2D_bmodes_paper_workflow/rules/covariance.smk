@@ -12,17 +12,7 @@ def get_cat_params(version):
     return cov_th["A"], cov_th["n_e"], cov_th["sigma_e"]
 
 
-wildcard_constraints:
-    nbins=r"\d+",
-    min_sep="[0-9.]+",
-    max_sep="[0-9.]+",
-    blind="[ABC]",
-    gaussian="(g|ng)",
-    block_pm=r"(\+\+|--|\+-)",
-    block_i="[123]",
-    version=r"SP_v[0-9]+\.[0-9]+\.[0-9]+[_a-zA-Z0-9]*",
-    mask_suffix="(_masked)?",
-    mock_id=r"\d{5}"
+# Wildcard constraints centralized in Snakefile
 
 
 def covariance_paths(version, blind, gaussian, min_sep, max_sep, nbins, mask_suffix):
@@ -370,12 +360,9 @@ localrules:
 # Pseudo-Cl Generation (for COSEBIS cross-validation)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
-
-
-BLINDS = ["A", "B", "C"]
-# Base versions without _leak_corr suffix for n(z) path matching
-BASE_VERSIONS = ["SP_v1.4.5", "SP_v1.4.6", "SP_v1.4.8"]
+# CAT_CONFIG and BLINDS defined in Snakefile
+# Derive version lists from config["versions"] to stay in sync
+BASE_VERSIONS = [v.replace("_leak_corr", "") for v in config["versions"]]
 
 
 rule fine_pseudo_cl:
@@ -436,11 +423,8 @@ rule pseudo_cl_cov:
         "../scripts/generate_fine_pseudo_cl.py"
 
 
-PSEUDO_CL_VERSIONS = [
-    "SP_v1.4.5", "SP_v1.4.5_leak_corr",
-    "SP_v1.4.6", "SP_v1.4.6_leak_corr",
-    "SP_v1.4.8", "SP_v1.4.8_leak_corr",
-]
+# Both leak-corrected and base versions for pseudo-Cl generation
+PSEUDO_CL_VERSIONS = config["versions"] + BASE_VERSIONS
 
 rule pseudo_cl_cov_all:
     """Generate 32-bin pseudo-Cl covariances for all versions and blinds."""

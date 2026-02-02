@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
 
@@ -25,6 +26,7 @@ VERSION_LABELS = {
     "SP_v1.4.5_leak_corr": "Initial",
     "SP_v1.4.6_leak_corr": "Fiducial",
     "SP_v1.4.8_leak_corr": "Masked",
+    "SP_v1.4.10.1_leak_corr": "Blends",
 }
 
 
@@ -39,6 +41,140 @@ def _extract_sigma(covariance, block_index, block_size):
     return np.sqrt(np.clip(np.diag(block), 0, None))
 
 
+def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
+                        scale_factor=1.0, apply_theta_scaling=True):
+    """Draw boxes spanning version spread with fiducial line through each bin.
+
+    For each angular bin, draws:
+    - A box from min(y - sigma) to max(y + sigma) across all versions
+    - A horizontal fiducial line at the fiducial version's y value
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axis to draw on
+    theta : array
+        Angular bin centers
+    datasets : list of dict
+        Version data dictionaries
+    y_key : str
+        Key for y-values in datasets
+    sigma_key : str
+        Key for error values in datasets
+    fiducial_idx : int
+        Index of fiducial version in datasets
+    scale_factor : float
+        Factor to divide values by (for plotting in scaled units)
+    apply_theta_scaling : bool
+        If True, multiply y and sigma by theta (for theta*xi plots)
+    """
+    nbins = len(theta)
+
+    # Compute log-scale box widths (fraction of bin position in log space)
+    log_theta = np.log10(theta)
+    box_width_factor = 0.15  # Fraction of distance to next bin
+
+    for i in range(nbins):
+        # Collect all version values at this bin
+        y_vals = []
+        y_lower = []
+        y_upper = []
+
+        for data in datasets:
+            y = data[y_key][i]
+            sigma = data[sigma_key][i]
+
+            if apply_theta_scaling:
+                y = theta[i] * y
+                sigma = theta[i] * sigma
+
+            y_scaled = y / scale_factor
+            sigma_scaled = sigma / scale_factor
+
+            y_vals.append(y_scaled)
+            y_lower.append(y_scaled - sigma_scaled)
+            y_upper.append(y_scaled + sigma_scaled)
+
+        # Box spans from min lower to max upper
+        box_bottom = min(y_lower)
+        box_top = max(y_upper)
+
+        # Compute box width in log space
+        if i < nbins - 1:
+            log_width = (log_theta[i + 1] - log_theta[i]) * box_width_factor
+        else:
+            log_width = (log_theta[i] - log_theta[i - 1]) * box_width_factor
+
+        x_left = 10 ** (log_theta[i] - log_width)
+        x_right = 10 ** (log_theta[i] + log_width)
+
+        # Draw box
+        rect = Rectangle(
+            (x_left, box_bottom),
+            x_right - x_left,
+            box_top - box_bottom,
+            facecolor='none',
+            edgecolor='0.4',
+            linewidth=0.5,
+            zorder=1,
+        )
+        ax.add_patch(rect)
+
+        # Draw fiducial line
+        fiducial_y = y_vals[fiducial_idx]
+        ax.hlines(
+            fiducial_y, x_left, x_right,
+            colors='0.5', linewidth=0.6, zorder=1
+        )
+
+
+def _draw_normalized_version_boxes(ax, theta, datasets, y_norm_key, fiducial_idx):
+    """Draw boxes for normalized (y/sigma) plots where error bars are unity.
+
+    For each angular bin, draws:
+    - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
+    - A horizontal fiducial line at the fiducial version's y_norm value
+    """
+    nbins = len(theta)
+    log_theta = np.log10(theta)
+    box_width_factor = 0.15
+
+    for i in range(nbins):
+        y_vals = [data[y_norm_key][i] for data in datasets]
+
+        # Error is 1 by construction for normalized plots
+        y_lower = [y - 1 for y in y_vals]
+        y_upper = [y + 1 for y in y_vals]
+
+        box_bottom = min(y_lower)
+        box_top = max(y_upper)
+
+        if i < nbins - 1:
+            log_width = (log_theta[i + 1] - log_theta[i]) * box_width_factor
+        else:
+            log_width = (log_theta[i] - log_theta[i - 1]) * box_width_factor
+
+        x_left = 10 ** (log_theta[i] - log_width)
+        x_right = 10 ** (log_theta[i] + log_width)
+
+        rect = Rectangle(
+            (x_left, box_bottom),
+            x_right - x_left,
+            box_top - box_bottom,
+            facecolor='none',
+            edgecolor='0.4',
+            linewidth=0.5,
+            zorder=1,
+        )
+        ax.add_patch(rect)
+
+        fiducial_y = y_vals[fiducial_idx]
+        ax.hlines(
+            fiducial_y, x_left, x_right,
+            colors='0.5', linewidth=0.6, zorder=1
+        )
+
+
 def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     """Create figure comparing total and B-mode correlations across versions.
 
@@ -49,6 +185,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
       Plotted as B / sigma (normalized)
 
     Data outside fiducial scale cuts shown with light axvspan shading.
+    For each bin, a box spans the range of all versions' error bars,
+    with a line marking the fiducial version's value.
     """
     fig_width = 7.24
 
@@ -63,9 +201,16 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     # Share y-axis for bottom row
     axes[1, 1].sharey(axes[1, 0])
 
-    x_offset_factors = [0.94, 1.0, 1.06]
-    marker_styles = ["o", "s", "D"]
+    x_offset_factors = [0.91, 0.97, 1.03, 1.09]
+    marker_styles = ["o", "s", "D", "^"]
     scale_factor = 1e-4
+
+    # Find fiducial version index
+    fiducial_idx = next(
+        (i for i, d in enumerate(datasets) if d["version"] == fiducial_version),
+        0
+    )
+    theta = datasets[0]["theta"]
 
     # Plotting parameters (matching data vector style)
     ms = 2.5
@@ -84,8 +229,18 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     ]):
         ax = axes[0, col]
 
+        # Draw version spread boxes (before data points so they're behind)
+        _draw_version_boxes(
+            ax, theta, datasets,
+            y_key=mode_key,
+            sigma_key=f"sigma_{mode_key}",
+            fiducial_idx=fiducial_idx,
+            scale_factor=scale_factor,
+            apply_theta_scaling=True,
+        )
+
         for i, data in enumerate(datasets):
-            theta = data["theta"]
+            theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
             marker = marker_styles[i] if i < len(marker_styles) else "o"
 
@@ -94,9 +249,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
 
             # Plot all points (full color)
             line = ax.errorbar(
-                theta * offset,
-                (theta * y) / scale_factor,
-                yerr=(theta * sigma) / scale_factor,
+                theta_i * offset,
+                (theta_i * y) / scale_factor,
+                yerr=(theta_i * sigma) / scale_factor,
                 fmt=marker,
                 color=data["color"],
                 alpha=data["alpha"],
@@ -107,6 +262,7 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
                 capsize=capsize,
                 capthick=capthick,
                 elinewidth=elinewidth,
+                zorder=2,
             )
 
             if col == 0:
@@ -128,8 +284,15 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     ]):
         ax = axes[1, col]
 
+        # Draw version spread boxes (before data points)
+        _draw_normalized_version_boxes(
+            ax, theta, datasets,
+            y_norm_key=f"{mode_key}_normalized",
+            fiducial_idx=fiducial_idx,
+        )
+
         for i, data in enumerate(datasets):
-            theta = data["theta"]
+            theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
             marker = marker_styles[i] if i < len(marker_styles) else "o"
 
@@ -137,9 +300,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
 
             # Plot all points (full color, error bars = 1 by construction)
             ax.errorbar(
-                theta * offset,
+                theta_i * offset,
                 y_norm,
-                yerr=np.ones(len(theta)),
+                yerr=np.ones(len(theta_i)),
                 fmt=marker,
                 color=data["color"],
                 alpha=data["alpha"],
@@ -150,6 +313,7 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
                 capsize=capsize,
                 capthick=capthick,
                 elinewidth=elinewidth,
+                zorder=2,
             )
 
         ax.axhline(0, color="k", linestyle="--", alpha=0.6, linewidth=0.8)

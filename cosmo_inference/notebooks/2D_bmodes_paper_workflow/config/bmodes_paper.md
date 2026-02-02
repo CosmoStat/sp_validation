@@ -2,7 +2,7 @@
 
 Paper III (Daley et al.) — B-mode validation for UNIONS cosmic shear.
 
-Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [cosebis_version_comparison](cosebis_version_comparison.md), [cl_fiducial](cl_fiducial.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md)
+Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [cosebis_version_comparison](cosebis_version_comparison.md), [cl_data_vector](cl_data_vector.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md)
 
 ## Scope
 
@@ -18,7 +18,7 @@ Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper sh
 |--------|-------|--------|---------|-------|
 | Pure E/B covariance | `pure_eb_covariance` | `figure.png` | §2.4 | `fig:eb_covariance` |
 | Pure E/B data vector | `pure_eb_data_vector` | `paper_figure` | §2.3 | `fig:pure_eb_data_vector` |
-| Harmonic fiducial | `cl_fiducial` | `paper_figure` | §2.3 | `fig:cl_fiducial` |
+| Harmonic fiducial | `cl_data_vector` | `paper_figure` | §2.3 | `fig:cl_data_vector` |
 | Config-space PTE composite | `config_space_pte_matrices` | `paper_figure_fiducial` | Results | `fig:pte_config_space` |
 | Harmonic PTE matrix | `harmonic_space_pte_matrices` | `paper_figure_fiducial` | Results | `fig:pte_cl` |
 

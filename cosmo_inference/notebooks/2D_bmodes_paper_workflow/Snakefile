@@ -9,15 +9,48 @@ envvars:
 
 from pathlib import Path
 
+# Wildcard constraints — centralized here, not in individual rule files
+# Patterns must match all expected values; overly restrictive patterns cause silent failures
+wildcard_constraints:
+    version=r"SP_v[\d.]+(_leak_corr)?",
+    blind=r"[ABC]",
+    nbins=r"\d+",
+    min_sep=r"[0-9.]+",
+    max_sep=r"[0-9.]+",
+    gaussian=r"(g|ng)",
+    block_pm=r"(\+\+|--|\+-)",
+    block_i=r"[123]",
+    mask_suffix=r"(_masked)?",
+    mock_id=r"\d{5}",
+    nside=r"\d+",
+
 # Common paths
 COSMO_VAL = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output")
 COSMO_INFERENCE = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference")
 COSMO_INFERENCE_PROD = Path("/home/guerrini/sp_validation/cosmo_inference")
 
+# Workflow directories
+CONFIG_DIR = "workflow/config"
+CLAIMS_DIR = "results/claims"
+PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
+
+# Catalog config path (also loaded as configfile above, but scripts need the path)
+CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
+
+# All three blinds (for rules that need all, e.g. covariance_blind_consistency)
+# Single-blind operations use config["fiducial"]["blind"] instead
+BLINDS = ["A", "B", "C"]
+
 
 def build_redshift_path(version, blind):
-    """Construct n(z) filepath for given catalog version and blind."""
+    """Construct n(z) filepath for given catalog version and blind.
+
+    v1.4.10.1 uses v1.4.6's N(z) since it's the same galaxies with blending corrections.
+    """
     base_version = version.replace('_leak_corr', '')
+    # v1.4.10.1 is derived from v1.4.6 with blending corrections - use same N(z)
+    if 'v1.4.10' in base_version:
+        base_version = 'SP_v1.4.6'
     version_dir = base_version.replace('SP_', '')
     return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
 

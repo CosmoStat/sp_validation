@@ -11,9 +11,7 @@ Author: Claude Code
 Date: 2025-08-18
 """
 
-# Wildcard constraints for mask processing
-wildcard_constraints:
-    nside=r"\d+"
+# Wildcard constraints centralized in Snakefile
 
 # Define paths directly in Snakefile 
 SOURCE_MASK_FILE = "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"

@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
 
@@ -28,7 +29,50 @@ VERSION_LABELS = {
     "SP_v1.4.5_leak_corr": "Initial",
     "SP_v1.4.6_leak_corr": "Fiducial",
     "SP_v1.4.8_leak_corr": "Masked",
+    "SP_v1.4.10.1_leak_corr": "Blends",
 }
+
+
+def _draw_normalized_version_boxes_modes(ax, modes, datasets, y_norm_key, fiducial_idx):
+    """Draw boxes for normalized (y/sigma) COSEBIS modes.
+
+    For each mode, draws:
+    - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
+    - A horizontal fiducial line at the fiducial version's y_norm value
+    """
+    nmodes = len(modes)
+    box_half_width = 0.35  # Half width of box in mode units
+
+    for i in range(nmodes):
+        y_vals = [data[y_norm_key][i] for data in datasets]
+
+        # Error is 1 by construction for normalized plots
+        y_lower = [y - 1 for y in y_vals]
+        y_upper = [y + 1 for y in y_vals]
+
+        box_bottom = min(y_lower)
+        box_top = max(y_upper)
+
+        x_center = modes[i]
+        x_left = x_center - box_half_width
+        x_right = x_center + box_half_width
+
+        rect = Rectangle(
+            (x_left, box_bottom),
+            x_right - x_left,
+            box_top - box_bottom,
+            facecolor='none',
+            edgecolor='0.4',
+            linewidth=0.5,
+            zorder=1,
+        )
+        ax.add_patch(rect)
+
+        fiducial_y = y_vals[fiducial_idx]
+        ax.hlines(
+            fiducial_y, x_left, x_right,
+            colors='0.5', linewidth=0.6, zorder=1
+        )
 
 
 def _version_label(version):
@@ -36,28 +80,36 @@ def _version_label(version):
 
 
 def _get_cov_path(cov_base_dir, version, blind, min_sep, max_sep, nbins):
-    """Construct covariance path for a specific blind."""
-    base_name_masked = f"covariance_{version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+    """Construct covariance path for a specific blind.
+
+    TODO(generate-v1-4-10-1-covariance-55144852): v1.4.10.1 uses v1.4.6 covariance
+    as workaround until proper covariance is generated. Same footprint justifies this.
+    """
+    # v1.4.10.1 uses v1.4.6 covariance (same footprint, blending corrections don't change geometry)
+    cov_version = version.replace("v1.4.10.1", "v1.4.6") if "v1.4.10.1" in version else version
+    base_name_masked = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     masked_path = f"{cov_base_dir}/{base_name_masked}/{base_name_masked}_processed.txt"
     if Path(masked_path).exists():
         return masked_path
 
-    base_name = f"covariance_{version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
+    base_name = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
     return f"{cov_base_dir}/{base_name}/{base_name}_processed.txt"
 
 
-def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, y_limits=None):
+def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, fiducial_idx, y_limits=None):
     """Create a vertically stacked B-mode COSEBIS comparison figure.
 
     Plots B_n / sigma_n (dimensionless, in units of standard deviation).
     Top panel: full range, bottom panel: fiducial scale cut.
+    For each mode, a box spans the range of all versions' error bars,
+    with a line marking the fiducial version's value.
     """
     fig_width = 7.24
     fig, axes = plt.subplots(2, 1, figsize=(fig_width, fig_width * 0.6), sharex=True)
 
-    x_offsets = np.array([-0.2, 0.0, 0.2])
+    x_offsets = np.array([-0.2, -0.07, 0.07, 0.2])
     modes = np.arange(1, nmodes + 1)
-    marker_styles = ["o", "s", "D"]
+    marker_styles = ["o", "s", "D", "^"]
     scale_labels = {"fiducial": "Fiducial", "full": "Full"}
 
     panels = [
@@ -69,6 +121,12 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
     legend_labels = []
 
     for panel_idx, (scale_key, datasets, ax, scale_cut) in enumerate(panels):
+        # Draw version spread boxes (before data points)
+        _draw_normalized_version_boxes_modes(
+            ax, modes, datasets,
+            y_norm_key="Bn_normalized", fiducial_idx=fiducial_idx
+        )
+
         for i, data in enumerate(datasets):
             offset = x_offsets[i] if i < len(x_offsets) else 0
             marker = marker_styles[i] if i < len(marker_styles) else "o"
@@ -87,6 +145,7 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
                 capthick=0.8,
                 linewidth=0.8,
                 elinewidth=0.8,
+                zorder=2,
             )
             if panel_idx == 0:
                 legend_handles.append(line)
@@ -116,7 +175,7 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
         legend_handles,
         legend_labels,
         loc="upper center",
-        ncol=3,
+        ncol=4,
         frameon=True,
         framealpha=0.9,
         handletextpad=0.3,
@@ -154,6 +213,12 @@ def main():
 
     fiducial_version = config["fiducial"]["version"]
     version_alpha = {v: 1.0 if v == fiducial_version else 0.4 for v in versions}
+
+    # Find fiducial version index for box highlighting
+    fiducial_idx = next(
+        (i for i, v in enumerate(versions) if v == fiducial_version),
+        1  # Default to index 1 (v1.4.6)
+    )
 
     colors = sns.color_palette("colorblind", len(versions))
 
@@ -221,6 +286,7 @@ def main():
         all_datasets["full"],
         nmodes,
         scale_cuts,
+        fiducial_idx,
         y_limits,
     )
 

@@ -20,7 +20,7 @@ B-mode signals in UNIONS cosmic shear are consistent with zero at fiducial scale
 
 ## Evidence
 
-PTE values for B-mode null tests computed for each blind (A, B, C) at two scale ranges:
+PTE values for B-mode null tests at two scale ranges, using fiducial blind (A):
 
 1. **Fiducial scale cuts**: Angular range used for cosmological inference
 2. **Full theta range**: All measured angular bins (no cuts)
@@ -30,18 +30,16 @@ For each range, report:
 - xi-^B PTE
 - Joint [xi+^B, xi-^B] PTE using full cross-covariance between components
 
-**Report minimum PTE across blinds** — the most conservative value. Fiducial PTEs should fall within healthy range for null hypothesis consistency. Full-range PTEs may show tension at scales excluded from analysis.
+Fiducial PTEs should fall within healthy range for null hypothesis consistency. Full-range PTEs may show tension at scales excluded from analysis.
 
 | Metric | Description |
 |--------|-------------|
-| `fiducial.pte_xip_B_{blind}` | Per-blind xi+ B-mode PTE at fiducial cuts |
-| `fiducial.pte_xim_B_{blind}` | Per-blind xi- B-mode PTE at fiducial cuts |
-| `fiducial.pte_joint_{blind}` | Per-blind joint PTE at fiducial cuts |
-| `fiducial.pte_*_min` | Minimum across blinds (conservative) |
-| `full.pte_xip_B_{blind}` | Per-blind xi+ B-mode PTE, full range |
-| `full.pte_xim_B_{blind}` | Per-blind xi- B-mode PTE, full range |
-| `full.pte_joint_{blind}` | Per-blind joint PTE, full range |
-| `full.pte_*_min` | Minimum across blinds (conservative) |
+| `fiducial.pte_xip_B` | xi+ B-mode PTE at fiducial cuts |
+| `fiducial.pte_xim_B` | xi- B-mode PTE at fiducial cuts |
+| `fiducial.pte_joint` | Joint PTE at fiducial cuts |
+| `full.pte_xip_B` | xi+ B-mode PTE, full range |
+| `full.pte_xim_B` | xi- B-mode PTE, full range |
+| `full.pte_joint` | Joint PTE, full range |
 
 ## Outputs
 

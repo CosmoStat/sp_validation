@@ -10,13 +10,21 @@ import os
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CONFIG_DIR = "workflow/config"
-CLAIMS_DIR = "results/claims"
-COSMO_VAL_OUTPUT = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output"
-SASHA_COSMO_VAL_OUTPUT = "/home/guerrini/sp_validation/notebooks/cosmo_val/output"
-PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
+# CONFIG_DIR, CLAIMS_DIR, PAPER_FIGURES_DIR, BLINDS defined in Snakefile
+# COSMO_VAL, COSMO_INFERENCE defined as Path objects in Snakefile
+COSMO_VAL_OUTPUT = str(COSMO_VAL)  # String version for f-string interpolation
 
-BLINDS = ["A", "B", "C"]
+# Fiducial binning parameters — used by multiple pure E/B rules
+# Avoids repeating config["fiducial"][key] in each rule's params block
+FIDUCIAL_BINNING = {
+    "min_sep": config["fiducial"]["min_sep"],
+    "max_sep": config["fiducial"]["max_sep"],
+    "nbins": config["fiducial"]["nbins"],
+    "min_sep_int": config["fiducial"]["min_sep_int"],
+    "max_sep_int": config["fiducial"]["max_sep_int"],
+    "nbins_int": config["fiducial"]["nbins_int"],
+    "npatch": config["fiducial"]["npatch"],
+}
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -24,10 +32,16 @@ BLINDS = ["A", "B", "C"]
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def _covariance_path(version, min_sep, max_sep, nbins, blind=None, gaussian="g"):
-    """Construct covariance file path."""
+    """Construct covariance file path.
+
+    TODO(generate-v1-4-10-1-covariance-55144852): v1.4.10.1 uses v1.4.6 covariance
+    as workaround until proper covariance is generated. Same footprint justifies this.
+    """
     if blind is None:
         blind = config["fiducial"]["blind"]
-    base_name = f"covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+    # v1.4.10.1 uses v1.4.6 covariance (same footprint, blending corrections don't change geometry)
+    cov_version = version.replace("v1.4.10.1", "v1.4.6") if "v1.4.10.1" in version else version
+    base_name = f"covariance_{cov_version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     return (
         "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance/"
         f"{base_name}/{base_name}_processed.txt"
@@ -77,6 +91,19 @@ def _pte_scale_cut_pairs():
     polynomial root finding with nmodes=20.
     """
     return [(i, j) for i in range(20) for j in range(i + 1, 21) if (i, j) != (9, 10)]
+
+
+def _pseudo_cl_path(version, blind="A", nbins=32):
+    """Return pseudo-Cl path for a catalog version.
+
+    All leak-corrected versions use consistent local naming with blind and binning.
+    """
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_{version}_blind={blind}_powspace_nbins={nbins}.fits"
+
+
+def _pseudo_cl_cov_path(version, blind="A", nbins=32):
+    """Return pseudo-Cl covariance path for a catalog version."""
+    return f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{version}_blind={blind}_powspace_nbins={nbins}.fits"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -161,14 +188,8 @@ rule precompute_pure_eb_chunk:
         version="{version}",
         chunk_id="{chunk_id}",
         n_chunks=N_PURE_EB_CHUNKS,
-        min_sep=config["fiducial"]["min_sep"],
-        max_sep=config["fiducial"]["max_sep"],
-        nbins=config["fiducial"]["nbins"],
-        min_sep_int=config["fiducial"]["min_sep_int"],
-        max_sep_int=config["fiducial"]["max_sep_int"],
-        nbins_int=config["fiducial"]["nbins_int"],
-        npatch=config["fiducial"]["npatch"],
         n_samples=config["covariance"]["n_samples"],
+        **FIDUCIAL_BINNING,
     resources:
         mem_mb=8000,
     script:
@@ -190,13 +211,7 @@ rule precompute_pure_eb:
         "results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
     params:
         version="{version}",
-        min_sep=config["fiducial"]["min_sep"],
-        max_sep=config["fiducial"]["max_sep"],
-        nbins=config["fiducial"]["nbins"],
-        min_sep_int=config["fiducial"]["min_sep_int"],
-        max_sep_int=config["fiducial"]["max_sep_int"],
-        nbins_int=config["fiducial"]["nbins_int"],
-        npatch=config["fiducial"]["npatch"],
+        **FIDUCIAL_BINNING,
     resources:
         mem_mb=8000,
         runtime=5,
@@ -212,14 +227,8 @@ rule precompute_pure_eb_blind:
         f"results/paper_plots/intermediate/{config['fiducial']['version']}_{{blind}}_pure_eb_semianalytic.npz",
     params:
         version=config["fiducial"]["version"],
-        min_sep=config["fiducial"]["min_sep"],
-        max_sep=config["fiducial"]["max_sep"],
-        nbins=config["fiducial"]["nbins"],
-        min_sep_int=config["fiducial"]["min_sep_int"],
-        max_sep_int=config["fiducial"]["max_sep_int"],
-        nbins_int=config["fiducial"]["nbins_int"],
-        npatch=config["fiducial"]["npatch"],
         n_samples=config["covariance"]["n_samples"],
+        **FIDUCIAL_BINNING,
     resources:
         mem_mb=32000,
         runtime=60,
@@ -231,8 +240,7 @@ rule precompute_pure_eb_blind:
 rule pure_eb_data_vector:
     """B-mode null test: Pure E/B data vector at fiducial scale cuts.
 
-    Multi-blind: Computes PTEs for each blind (A, B, C) using per-blind
-    MC-propagated E/B covariances from the Gaussian integration covariances.
+    Uses fiducial blind only (config.fiducial.blind) for PTE calculation.
     """
     input:
         specs=[
@@ -241,12 +249,8 @@ rule pure_eb_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pure_eb_A=f"results/paper_plots/intermediate/{config['fiducial']['version']}_A_pure_eb_semianalytic.npz",
-        pure_eb_B=f"results/paper_plots/intermediate/{config['fiducial']['version']}_B_pure_eb_semianalytic.npz",
-        pure_eb_C=f"results/paper_plots/intermediate/{config['fiducial']['version']}_C_pure_eb_semianalytic.npz",
-        cov_a=_reporting_cov_path(config["fiducial"]["version"], "A"),
-        cov_b=_reporting_cov_path(config["fiducial"]["version"], "B"),
-        cov_c=_reporting_cov_path(config["fiducial"]["version"], "C"),
+        pure_eb=f"results/paper_plots/intermediate/{config['fiducial']['version']}_{config['fiducial']['blind']}_pure_eb_semianalytic.npz",
+        cov=_reporting_cov_path(config["fiducial"]["version"], config["fiducial"]["blind"]),
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.png",
@@ -359,19 +363,18 @@ rule cl_data_vector:
     """Harmonic-space B-mode power spectra at fiducial ell range."""
     input:
         specs=[
-            f"{CONFIG_DIR}/cl_fiducial.md",
+            f"{CONFIG_DIR}/cl_data_vector.md",
             f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pseudo_cl=f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{config['fiducial']['version']}.fits",
-        # Use our covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
-        pseudo_cl_cov=f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{config['fiducial']['version']}_nellbins=32.fits",
+        pseudo_cl=_pseudo_cl_path(config['fiducial']['version']),
+        pseudo_cl_cov=_pseudo_cl_cov_path(config['fiducial']['version']),
     output:
-        evidence=f"{CLAIMS_DIR}/cl_fiducial/evidence.json",
-        figure=f"{CLAIMS_DIR}/cl_fiducial/figure.png",
-        paper_figure=f"{PAPER_FIGURES_DIR}/cl_fiducial.png",
+        evidence=f"{CLAIMS_DIR}/cl_data_vector/evidence.json",
+        figure=f"{CLAIMS_DIR}/cl_data_vector/figure.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/cl_data_vector.png",
     script:
-        "../scripts/cl_fiducial.py"
+        "../scripts/cl_data_vector.py"
 
 
 rule cl_version_comparison:
@@ -380,19 +383,12 @@ rule cl_version_comparison:
         specs=[
             f"{CONFIG_DIR}/cl_version_comparison.md",
             f"{CONFIG_DIR}/cl.md",
-            f"{CONFIG_DIR}/cl_fiducial.md",
+            f"{CONFIG_DIR}/cl_data_vector.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        cl_fiducial_evidence=rules.cl_data_vector.output.evidence,
-        pseudo_cl=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
-            for ver in config["versions"]
-        ],
-        # Use our covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
-        pseudo_cl_cov=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_nellbins=32.fits"
-            for ver in config["versions"]
-        ],
+        cl_data_vector_evidence=rules.cl_data_vector.output.evidence,
+        pseudo_cl=[_pseudo_cl_path(ver) for ver in config["versions"]],
+        pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in config["versions"]],
     output:
         evidence=f"{CLAIMS_DIR}/cl_version_comparison/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_version_comparison/figure.png",
@@ -507,22 +503,17 @@ rule harmonic_space_pte_matrices:
     Results: Single-panel Cl^BB PTE matrix for fiducial v1.4.6
     Appendix: 3-panel composite (v1.4.5, v1.4.6, v1.4.8)
 
-    Uses per-blind covariances and reports minimum PTE across blinds A, B, C.
+    Uses fiducial blind covariance (blind independence validated in bb_covariance_blind_independence).
     """
     input:
         specs=[
             f"{CONFIG_DIR}/harmonic_space_pte_matrices.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pseudo_cl=[
-            f"{SASHA_COSMO_VAL_OUTPUT}/pseudo_cl_{ver}.fits"
-            for ver in config["versions"]
-        ],
-        # Per-blind covariances with KiDS-Legacy cosmology (consistent with CosmoCov)
+        pseudo_cl=[_pseudo_cl_path(ver) for ver in config["versions"]],
         pseudo_cl_cov=[
-            f"{COSMO_VAL_OUTPUT}/pseudo_cl_cov_{ver}_blind={blind}_nellbins=32.fits"
+            _pseudo_cl_cov_path(ver, blind=config["fiducial"]["blind"])
             for ver in config["versions"]
-            for blind in BLINDS
         ],
     output:
         evidence=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",

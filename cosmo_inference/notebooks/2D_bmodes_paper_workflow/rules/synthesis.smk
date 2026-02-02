@@ -13,8 +13,27 @@ import sys
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# These are defined in specs.smk and claims.smk, included before this file
+# These are defined in Snakefile, specs.smk, and claims.smk (included before this file)
 # CONFIG_DIR, CLAIMS_DIR, SKILL_PATH, METHOD_SPECS already available
+
+# Claim rules that produce evidence.json — single source of truth for all_claims and claims_dashboard
+# Each entry is a rule name; we access rules.X.output to get all outputs
+CLAIM_RULES = [
+    "cosebis_version_comparison",
+    "cosebis_data_vector",
+    "pure_eb_data_vector",
+    "pure_eb_version_comparison",
+    "pure_eb_covariance",
+    "cl_data_vector",
+    "cl_version_comparison",
+    "config_space_pte_matrices",
+    "harmonic_space_pte_matrices",
+]
+
+
+def _claim_outputs():
+    """Get all outputs from claim rules."""
+    return {name: getattr(rules, name).output for name in CLAIM_RULES}
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -78,7 +97,7 @@ rule bmodes_paper_spec:
         pure_eb_covariance=rules.pure_eb_covariance.output.evidence,
         pure_eb_data_vector=rules.pure_eb_data_vector.output.evidence,
         cosebis_version_comparison=rules.cosebis_version_comparison.output.evidence,
-        cl_fiducial=rules.cl_data_vector.output.evidence,
+        cl_data_vector=rules.cl_data_vector.output.evidence,
         config_space_pte=rules.config_space_pte_matrices.output.evidence,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,
         # Paper figure dependencies (ensures dashboard regenerates version comparison plots)
@@ -100,15 +119,7 @@ rule all_claims:
         method_specs=expand(f"{CLAIMS_DIR}/{{spec}}/evidence.json", spec=METHOD_SPECS),
         bmodes_paper=rules.bmodes_paper_spec.output,
         xi_cosmology_paper=rules.xi_cosmology_paper.output,
-        cosebis_version_comparison=rules.cosebis_version_comparison.output,
-        cosebis_data_vector=rules.cosebis_data_vector.output,
-        pure_eb_data_vector=rules.pure_eb_data_vector.output,
-        pure_eb_version_comparison=rules.pure_eb_version_comparison.output,
-        pure_eb_covariance=rules.pure_eb_covariance.output,
-        cl_fiducial=rules.cl_data_vector.output,
-        cl_version_comparison=rules.cl_version_comparison.output,
-        config_space_pte=rules.config_space_pte_matrices.output,
-        harmonic_space_pte=rules.harmonic_space_pte_matrices.output,
+        **_claim_outputs(),
 
 
 rule spec_dependencies:
@@ -123,8 +134,9 @@ rule spec_dependencies:
         import subprocess, json
         from pathlib import Path
 
+        # Use --dry-run instead of --forceall to avoid timestamp pollution
         r = subprocess.run(
-            ["snakemake", "--forceall", "--detailed-summary", "all_claims"],
+            ["snakemake", "--dry-run", "--detailed-summary", "all_claims"],
             capture_output=True, text=True
         )
 
@@ -161,18 +173,9 @@ rule claims_dashboard:
         # Paper specs
         bmodes_paper=rules.bmodes_paper_spec.output,
         xi_cosmology_paper=rules.xi_cosmology_paper.output,
-        # All claim rules that produce evidence
-        cosebis_version_comparison=rules.cosebis_version_comparison.output,
-        cosebis_data_vector=rules.cosebis_data_vector.output,
-        pure_eb_data_vector=rules.pure_eb_data_vector.output,
-        pure_eb_version_comparison=rules.pure_eb_version_comparison.output,
-        pure_eb_covariance=rules.pure_eb_covariance.output,
-        cl_fiducial=rules.cl_data_vector.output,
-        cl_version_comparison=rules.cl_version_comparison.output,
-        # PTE matrix composites (supersede individual pure_eb_pte_matrix and cosebis_pte_matrix)
-        config_space_pte=rules.config_space_pte_matrices.output,
-        harmonic_space_pte=rules.harmonic_space_pte_matrices.output,
         paper_macros=rules.paper_macros.output,
+        # All claim rules (using shared CLAIM_RULES list)
+        **_claim_outputs(),
     output:
         html=f"{CLAIMS_DIR}/index.html",
     params:

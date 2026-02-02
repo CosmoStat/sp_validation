@@ -27,17 +27,15 @@ Uses semi-analytical covariance propagation through the decomposition.
 
 ## Data Products
 
-Per-blind precomputed decomposition stored in:
+Precomputed decomposition stored in:
 `results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz`
 
-where `{blind}` is A, B, or C. Each NPZ contains:
+Uses fiducial blind (A) from config. Each NPZ contains:
 - `theta`: Angular bins
-- `xip_E`, `xim_E`: Pure E-mode components (identical across blinds)
-- `xip_B`, `xim_B`: Pure B-mode components (identical across blinds)
-- `xip_amb`, `xim_amb`: Ambiguous components (identical across blinds)
-- `cov_pure_eb`: Full covariance matrix for decomposed modes (blind-specific via MC propagation)
-
-**Report minimum PTE across blinds** — the most conservative value.
+- `xip_E`, `xim_E`: Pure E-mode components
+- `xip_B`, `xim_B`: Pure B-mode components
+- `xip_amb`, `xim_amb`: Ambiguous components
+- `cov_pure_eb`: Full covariance matrix for decomposed modes (MC propagation)
 
 ## Plotting Conventions
 
