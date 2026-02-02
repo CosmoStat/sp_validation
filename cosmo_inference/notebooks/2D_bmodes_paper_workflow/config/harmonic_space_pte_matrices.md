@@ -21,9 +21,8 @@ Uses fiducial blind from `config["fiducial"]["blind"]`. The C_ℓ^BB data vector
 | Versions | `versions` |
 | Fiducial version | `fiducial.version` |
 | Fiducial multipole range | `cl.fiducial_ell_min`, `cl.fiducial_ell_max` |
-| Number of bins | `cl.n_ell_bins` |
 
-Note: Full multipole range is determined by the input pseudo-Cℓ file, not config.
+Note: Number of multipole bins and full multipole range are determined by the input pseudo-Cℓ file, not config.
 
 ## Evidence
 

@@ -1,11 +1,14 @@
 """Generate LaTeX macros from claim evidence.
 
-Reads evidence.json files and produces claims_macros.tex.
-Macro names are simple; the spec determines what goes in the paper.
-Also generates evidence.json for dashboard dependency tracking.
+Reads evidence.json files and produces:
+- claims_macros.tex: LaTeX macro definitions for paper values
+- pte_table_results.tex: PTE results table for main text
+- pte_table_appendix.tex: PTE table for appendix
+- evidence.json: Dashboard dependency tracking
 """
 
 import json
+import math
 from datetime import datetime
 from pathlib import Path
 
@@ -24,7 +27,6 @@ def _parse_version_short(version: str) -> str:
 
 def _format_value(value) -> str:
     """Format a value for LaTeX."""
-    import math
     if isinstance(value, float):
         if math.isnan(value):
             return "--"

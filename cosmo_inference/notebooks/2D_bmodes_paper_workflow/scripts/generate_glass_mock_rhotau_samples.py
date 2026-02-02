@@ -140,10 +140,10 @@ def main():
     print(f"  theta range: {theta.min():.3f} - {theta.max():.3f} arcmin, nbins: {len(theta)}")
 
     # Parse mock ID range
-    mock_ids = (range(int(args.mock_ids.split("-")[0]), int(args.mock_ids.split("-")[1]) + 1)
+    mock_ids = (list(range(int(args.mock_ids.split("-")[0]), int(args.mock_ids.split("-")[1]) + 1))
                 if "-" in args.mock_ids else [int(args.mock_ids)])
 
-    print(f"Generating tau samples for {len(list(mock_ids))} mocks...")
+    print(f"Generating tau samples for {len(mock_ids)} mocks...")
     for mock_id in mock_ids:
         msg = generate_samples_for_mock(mock_id, cov_tau, theta, ref_tau_header, args.output_dir)
         print(msg)

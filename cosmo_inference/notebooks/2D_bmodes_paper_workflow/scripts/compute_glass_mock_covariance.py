@@ -87,7 +87,6 @@ def plot_correlation(
     """Generate a correlation heatmap with block annotations."""
 
     sns.set_theme(style="white")
-    sns.set_palette("husl", len(block_sizes))
 
     fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(
