@@ -157,7 +157,7 @@ def calculate_pure_eb_correlation(
         return get_pure_EB_modes(
             theta=gg.meanr, xip=gg.xip, xim=gg.xim,
             theta_int=gg_int.meanr, xip_int=gg_int.xip, xim_int=gg_int.xim,
-            tmin=min_sep, tmax=max_sep
+            tmin=min_sep, tmax=max_sep, parallel=True
         )
 
     # Initialize results dictionary with basic E/B mode data
@@ -216,7 +216,7 @@ def calculate_pure_eb_correlation(
                 theta=gg.meanr, theta_int=gg_int.meanr,
                 xip=samples_rep_xip[i], xim=samples_rep_xim[i],
                 xip_int=samples_int_xip[i], xim_int=samples_int_xim[i],
-                tmin=min_sep, tmax=max_sep
+                tmin=min_sep, tmax=max_sep, parallel=True
             ))
             for i in tqdm.tqdm(range(n_samples), desc="MC samples")
         ]
@@ -277,7 +277,6 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         scale_cuts = [(gg.left_edges[0], gg.right_edges[-1])]
 
     # Pre-compute values that don't change across scale cuts
-    dtheta = gg.right_edges - gg.left_edges
     nbins = len(gg.meanr)
 
     # Load covariance matrix and calculate Hartlap factor once
@@ -299,22 +298,25 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         start_bin, stop_bin = scale_cut_to_bins(gg, min_theta, max_theta)
         inds = np.arange(start_bin, stop_bin)
 
-        theta_cut, dtheta_cut, xip_cut, xim_cut = [
-            arr[inds] for arr in [gg.meanr, dtheta, gg.xip, gg.xim]
+        theta_cut, xip_cut, xim_cut = [
+            arr[inds] for arr in [gg.meanr, gg.xip, gg.xim]
         ]
 
-        # Calculate COSEBIs E/B modes using exact bin edges from indices
+        # Calculate COSEBIs E/B modes using actual theta range (per Axel's recommendation)
+        # Use precision=120 (vs default 80) to avoid sympy root convergence failures
+        # for high modes (11+). The error "try n < 80 or maxsteps > 50" requires higher precision.
         cosebis = COSEBIS(
-            theta_min=gg.left_edges[inds][0],
-            theta_max=gg.right_edges[inds][-1],
-            N_max=nmodes
+            theta_min=np.min(theta_cut),
+            theta_max=np.max(theta_cut),
+            N_max=nmodes,
+            precision=120,
         )
-        En, Bn = cosebis.cosebis_from_xipm(theta_cut, dtheta_cut, xip_cut, xim_cut)
+        En, Bn = cosebis.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
 
         # Extract covariance and transform to COSEBIs space
         cov_inds = np.concatenate([inds, inds + nbins])
         cov_cosebis = cosebis.cosebis_covariance_from_xipm_covariance(
-            theta_cut, dtheta_cut, cov_xipm[cov_inds[:, None], cov_inds]
+            theta_cut, cov_xipm[cov_inds[:, None], cov_inds]
         )
         cov_E, cov_B = cov_cosebis[:nmodes, :nmodes], cov_cosebis[nmodes:, nmodes:]
         chi2_E, chi2_B = [

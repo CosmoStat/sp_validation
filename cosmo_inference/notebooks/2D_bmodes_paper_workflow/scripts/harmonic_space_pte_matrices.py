@@ -2,7 +2,9 @@
 
 Produces:
 - Results: single-panel fiducial Cl^BB PTE matrix
-- Appendix: 3-panel composites (leak_corr and uncorrected versions)
+- Appendix: 3-panel composite (v1.4.5, v1.4.6, v1.4.8)
+
+Uses fiducial blind covariance only (blind independence validated elsewhere).
 """
 
 import json
@@ -12,7 +14,6 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
@@ -24,16 +25,6 @@ from scipy import stats
 plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
 )
-
-
-def compute_ell_edges(lmin, lmax, n_bins, power=0.5):
-    """Compute bin edges for powspace binning.
-
-    Matches the NaMaster binning formula from sp_validation/cosmo_val.py:2235.
-    """
-    start = np.power(lmin, power)
-    end = np.power(lmax, power)
-    return np.power(np.linspace(start, end, n_bins + 1), 1 / power)
 
 
 def _load_snakemake():
@@ -137,24 +128,7 @@ def compute_pte_matrix(pseudo_cl_path, pseudo_cl_cov_path, fiducial_ell_min=None
     return pte_matrix, ell, stats_out
 
 
-def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85)):
-    """Create discrete colormap with sharp breaks at significance thresholds."""
-    vlag = sns.color_palette("vlag", as_cmap=True)
-    solid_blue = vlag(0.0)
-    solid_red = vlag(1.0)
-    n_total = 256
-    n_low = int(low * n_total)
-    n_high = int((1 - high) * n_total)
-    n_mid = n_total - n_low - n_high
-    g_lo, g_hi = gradient_range
-    gradient_colors = [vlag(g_lo + (g_hi - g_lo) * i / (n_mid - 1)) for i in range(n_mid)]
-    all_colors = [solid_blue] * n_low + gradient_colors + [solid_red] * n_high
-    cmap = LinearSegmentedColormap.from_list("pte_discrete", all_colors, N=256)
-    cmap.set_bad(color="lightgray")
-    return cmap
-
-
-def plot_cl_pte_panel(ax, pte_matrix, ell_edges, title, show_colorbar=False,
+def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
                       show_xlabel=True, show_ylabel=True):
     """Plot a single Cl PTE heatmap panel.
 
@@ -164,8 +138,8 @@ def plot_cl_pte_panel(ax, pte_matrix, ell_edges, title, show_colorbar=False,
         Matplotlib axes.
     pte_matrix : ndarray
         PTE matrix.
-    ell_edges : ndarray
-        Ell bin edges (n_bins + 1 values).
+    ell : ndarray
+        Ell bin centers.
     title : str
         Panel title.
     show_colorbar : bool
@@ -178,10 +152,10 @@ def plot_cl_pte_panel(ax, pte_matrix, ell_edges, title, show_colorbar=False,
     im : AxesImage
         The image object.
     """
-    n_ell = len(ell_edges) - 1  # number of bins = edges - 1
+    n_ell = len(ell)
 
-    # Discrete colormap: solid blue below 0.05, solid red above 0.95
-    pte_cmap = make_pte_colormap()
+    vlag_cmap = sns.color_palette("vlag", as_cmap=True).copy()
+    vlag_cmap.set_bad(color="lightgray")
 
     # pte_matrix[i_min, i_max] -> transpose so rows=i_max, cols=i_min
     # With origin="lower", row 0 is at bottom (small i_max), row n-1 at top (large i_max)
@@ -190,27 +164,36 @@ def plot_cl_pte_panel(ax, pte_matrix, ell_edges, title, show_colorbar=False,
 
     im = ax.imshow(
         pte_plot, origin="lower", aspect="equal",
-        cmap=pte_cmap, vmin=0, vmax=1, extent=[0, n_ell, 0, n_ell],
+        cmap=vlag_cmap, vmin=0, vmax=1, extent=[0, n_ell, 0, n_ell],
     )
 
+    # Contours - with origin="lower", both imshow and contour have same orientation
+    cs = ax.contour(
+        pte_plot, levels=[0.05, 0.95], colors="black",
+        linewidths=0.8, extent=[0, n_ell, 0, n_ell],
+    )
+    ax.clabel(cs, inline=True, fontsize=6, fmt="%.2f")
 
-    # Tick positioning: x-axis at left edge of bins, y-axis at top edge
-    tick_step = max(1, n_ell // 5)  # Fewer ticks for cleaner labels
+    # Mark full ell range
+    ax.add_patch(
+        Rectangle((0, 0), 1, 1, fill=False, edgecolor="black",
+                  linewidth=1.5, hatch="///", alpha=0.8)
+    )
+
+    # Tick labels - more frequent markers per review feedback
+    tick_step = max(1, n_ell // 8)
     tick_indices = np.arange(0, n_ell, tick_step)
-    # x-axis (lower cut): ticks at left edge of bins
-    ax.set_xticks(tick_indices)
-    # y-axis (upper cut): ticks at top edge of bins
-    ax.set_yticks(tick_indices + 1)
+    ax.set_xticks(tick_indices + 0.5)
+    ax.set_yticks(tick_indices + 0.5)
 
     if show_xlabel:
-        x_labels = [f"{ell_edges[i]:.0f}" for i in tick_indices]
-        ax.set_xticklabels(x_labels, rotation=45, ha="right", rotation_mode="anchor")
+        ax.set_xticklabels([f"{ell[i]:.0f}" for i in tick_indices],
+                          rotation=45, ha="right", fontsize=6)
     else:
         ax.set_xticklabels([])
 
     if show_ylabel:
-        y_labels = [f"{ell_edges[min(i + 1, n_ell)]:.0f}" for i in tick_indices]
-        ax.set_yticklabels(y_labels, rotation=45, ha="right", rotation_mode="anchor")
+        ax.set_yticklabels([f"{ell[i]:.0f}" for i in tick_indices], fontsize=6)
     else:
         ax.set_yticklabels([])
 
@@ -218,38 +201,35 @@ def plot_cl_pte_panel(ax, pte_matrix, ell_edges, title, show_colorbar=False,
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         cbar = plt.colorbar(im, cax=cax)
-        cbar.set_label("PTE")
-        cbar.set_ticks([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0])
-        cbar.set_ticklabels(["0", "", "0.25", "0.5", "0.75", "", "1"])
-        for thresh in [0.05, 0.95]:
-            cbar.ax.axhline(thresh, color="black", linewidth=0.8)
+        cbar.set_label("PTE", fontsize=8)
+        cbar.ax.tick_params(labelsize=7)
 
     return im
 
 
-def create_single_panel(pte_matrix, ell_edges, version_label):
+def create_single_panel(pte_matrix, ell, version_label):
     """Create single-panel figure for fiducial version."""
     fig, ax = plt.subplots(1, 1, figsize=(3.54, 3.54))
 
-    plot_cl_pte_panel(ax, pte_matrix, ell_edges, "", show_colorbar=True)
+    plot_cl_pte_panel(ax, pte_matrix, ell, "", show_colorbar=True)
 
-    ax.set_xlabel(r"$\ell_\mathrm{min}$")
-    ax.set_ylabel(r"$\ell_\mathrm{max}$")
+    ax.set_xlabel(r"$\ell_{\rm min}$")
+    ax.set_ylabel(r"$\ell_{\rm max}$")
 
     plt.tight_layout()
     return fig
 
 
-def create_3panel_composite(matrices, ell_edges_list, version_labels):
-    """Create 3-panel composite for appendix versions.
+def create_npanel_composite(matrices, ells, panel_labels):
+    """Create N-panel composite for appendix versions.
 
     Parameters
     ----------
     matrices : list of ndarray
         PTE matrices for each version.
-    ell_edges_list : list of ndarray
-        Ell bin edges for each version.
-    version_labels : list of str
+    ells : list of ndarray
+        Ell arrays for each version.
+    panel_labels : list of str
         Labels for each panel.
 
     Returns
@@ -257,67 +237,56 @@ def create_3panel_composite(matrices, ell_edges_list, version_labels):
     fig : Figure
         The composite figure.
     """
-    fig_width = 7.24  # A&A double-column
+    n_panels = len(matrices)
+    panel_width = 3.5
+    fig_width = panel_width * n_panels + 0.5  # Extra for colorbar
     fig_height = 2.8
 
     fig = plt.figure(figsize=(fig_width, fig_height))
+    width_ratios = [1] * n_panels + [0.05]
     gs = fig.add_gridspec(
-        1, 4,
-        width_ratios=[1, 1, 1, 0.03],
-        wspace=0.12,
-        left=0.08, right=0.95,
-        bottom=0.18, top=0.88
+        1, n_panels + 1,
+        width_ratios=width_ratios,
+        wspace=0.08,
+        left=0.06, right=0.95,
+        bottom=0.15, top=0.88
     )
 
-    ax0 = fig.add_subplot(gs[0])
-    ax1 = fig.add_subplot(gs[1])
-    ax2 = fig.add_subplot(gs[2])
-    cax = fig.add_subplot(gs[3])
+    axes = [fig.add_subplot(gs[i]) for i in range(n_panels)]
+    cax = fig.add_subplot(gs[n_panels])
 
-    im0 = plot_cl_pte_panel(ax0, matrices[0], ell_edges_list[0], "",
-                            show_ylabel=True)
-    im1 = plot_cl_pte_panel(ax1, matrices[1], ell_edges_list[1], "",
-                            show_ylabel=False)
-    im2 = plot_cl_pte_panel(ax2, matrices[2], ell_edges_list[2], "",
-                            show_ylabel=False)
+    for i, (ax, matrix, ell, label) in enumerate(zip(axes, matrices, ells, panel_labels)):
+        im = plot_cl_pte_panel(ax, matrix, ell, "", show_ylabel=(i == 0))
+        ax.set_title(label, fontsize=9)
 
-    # Add version titles
-    ax0.set_title(version_labels[0])
-    ax1.set_title(version_labels[1])
-    ax2.set_title(version_labels[2])
-
-    # Shared colorbar
-    cbar = fig.colorbar(im2, cax=cax)
-    cbar.set_label("PTE")
-    cbar.set_ticks([0, 0.05, 0.25, 0.5, 0.75, 0.95, 1.0])
-    cbar.set_ticklabels(["0", "", "0.25", "0.5", "0.75", "", "1"])
-    for thresh in [0.05, 0.95]:
-        cbar.ax.axhline(thresh, color="black", linewidth=0.8)
+    # Shared colorbar (use last image)
+    cbar = fig.colorbar(im, cax=cax)
+    cbar.set_label("PTE", fontsize=8)
+    cbar.ax.tick_params(labelsize=7)
 
     # Common axis labels
-    fig.text(0.5, 0.03, r"$\ell_\mathrm{min}$", ha="center")
-    fig.text(0.01, 0.53, r"$\ell_\mathrm{max}$",
-             va="center", rotation="vertical")
+    fig.text(0.5, 0.02, r"$\ell_{\rm min}$", ha="center", fontsize=9)
+    fig.text(0.02, 0.53, r"$\ell_{\rm max}$",
+             va="center", rotation="vertical", fontsize=9)
 
     return fig
+
+
+# Backwards compatibility alias
+def create_3panel_composite(matrices, ells, version_labels):
+    """Create 3-panel composite (legacy wrapper)."""
+    return create_npanel_composite(matrices, ells, version_labels)
 
 
 def main():
     config = snakemake.config
     versions = config["versions"]
     fiducial_version = config["fiducial"]["version"]
-    fiducial_blind = "A"  # Use blind A as fiducial (per adopt-blind-a-as-fiducial-bb fiber)
+    fiducial_blind = config["fiducial"]["blind"]
 
     # Fiducial ell cuts from config
     fiducial_ell_min = config["cl"]["fiducial_ell_min"]
     fiducial_ell_max = config["cl"]["fiducial_ell_max"]
-
-    # Compute ell bin edges from config (same for all versions)
-    ell_min = config["cl"]["ell_min"]
-    ell_max = config["cl"]["ell_max"]
-    n_ell_bins = config["cl"]["n_ell_bins"]
-    power = config["pseudo_cl"]["power"]
-    ell_edges = compute_ell_edges(ell_min, ell_max, n_ell_bins, power)
 
     # Output paths
     output_dir = Path(snakemake.output["evidence"]).parent
@@ -335,30 +304,30 @@ def main():
     if isinstance(pseudo_cl_cov_files, str):
         pseudo_cl_cov_files = [pseudo_cl_cov_files]
 
-    # Map versions to their data vector files
-    # Sort by length descending so "SP_v1.4.6_leak_corr" matches before "SP_v1.4.6"
-    versions_by_length = sorted(versions, key=len, reverse=True)
+    # Map versions to their files (sort by length descending to match longer version strings first)
+    sorted_versions = sorted(versions, key=len, reverse=True)
+
     version_to_cl = {}
     for cl_file in pseudo_cl_files:
-        for ver in versions_by_length:
+        for ver in sorted_versions:
             if ver in cl_file:
                 version_to_cl[ver] = cl_file
                 break
 
-    # Map versions to covariance files (blind A only)
     version_to_cov = {}
     for cov_file in pseudo_cl_cov_files:
-        for ver in versions_by_length:
+        for ver in sorted_versions:
             if ver in cov_file:
                 version_to_cov[ver] = cov_file
                 break
 
-    # Compute PTE matrices for all versions using blind A covariance
+    # Compute PTE matrices for all versions using fiducial blind
     all_stats = {}
     all_matrices = {}
+    all_ells = {}
 
     for version in versions:
-        print(f"\n--- Processing {version} ---")
+        print(f"\n--- Processing {version} (blind={fiducial_blind}) ---")
 
         if version not in version_to_cl:
             print(f"  WARNING: No pseudo-Cl file found for {version}, skipping")
@@ -374,20 +343,24 @@ def main():
             fiducial_ell_min=fiducial_ell_min,
             fiducial_ell_max=fiducial_ell_max,
         )
-        print(f"  Blind {fiducial_blind}: PTE at fiducial = {stats.get('pte_at_fiducial', 'N/A'):.4f}")
 
         all_stats[version] = stats
         all_matrices[version] = pte_matrix
+        all_ells[version] = ell
 
         print(f"  PTE at fiducial: {stats.get('pte_at_fiducial', 'N/A'):.4f}")
         print(f"  PTE at full range: {stats.get('pte_at_full_range', 'N/A'):.4f}")
 
+    # Get version labels from params
+    version_labels = snakemake.params.version_labels
+
     # Create fiducial single-panel figure
     if fiducial_version in all_matrices:
+        fiducial_label = version_labels.get(fiducial_version, fiducial_version)
         fig_fiducial = create_single_panel(
             all_matrices[fiducial_version],
-            ell_edges,
-            "v1.4.6 (fiducial)",
+            all_ells[fiducial_version],
+            f"{fiducial_label} (fiducial)",
         )
 
         fig_path = Path(snakemake.output["figure_fiducial"])
@@ -400,19 +373,14 @@ def main():
 
         plt.close(fig_fiducial)
 
-    # Create appendix 3-panel composite (leak_corr versions)
-    leak_corr_versions = [v for v in versions if "leak_corr" in v]
-    if len(leak_corr_versions) >= 3:
-        # Use all three leak_corr versions (v1.4.5, v1.4.6, v1.4.8)
-        v145 = [v for v in leak_corr_versions if "v1.4.5" in v][0]
-        v146 = [v for v in leak_corr_versions if "v1.4.6" in v][0]
-        v148 = [v for v in leak_corr_versions if "v1.4.8" in v][0]
+    # Create appendix N-panel composite (all versions from config)
+    appendix_versions = [v for v in versions if v in all_matrices]
+    if len(appendix_versions) >= 2:
+        matrices = [all_matrices[v] for v in appendix_versions]
+        ells = [all_ells[v] for v in appendix_versions]
+        labels = [version_labels.get(v, v) for v in appendix_versions]
 
-        matrices = [all_matrices[v145], all_matrices[v146], all_matrices[v148]]
-        ell_edges_list = [ell_edges, ell_edges, ell_edges]  # Same binning for all versions
-        labels = ["Initial", "Fiducial", "Masked"]
-
-        fig_appendix = create_3panel_composite(matrices, ell_edges_list, labels)
+        fig_appendix = create_npanel_composite(matrices, ells, labels)
 
         fig_path = Path(snakemake.output["figure_appendix"])
         fig_appendix.savefig(fig_path, dpi=300, bbox_inches="tight", facecolor="white")
@@ -424,29 +392,6 @@ def main():
 
         plt.close(fig_appendix)
 
-    # Create appendix 3-panel composite (uncorrected versions)
-    uncorr_versions = [v for v in versions if "leak_corr" not in v]
-    if len(uncorr_versions) >= 3:
-        v145 = [v for v in uncorr_versions if "v1.4.5" in v][0]
-        v146 = [v for v in uncorr_versions if "v1.4.6" in v][0]
-        v148 = [v for v in uncorr_versions if "v1.4.8" in v][0]
-
-        matrices = [all_matrices[v145], all_matrices[v146], all_matrices[v148]]
-        ell_edges_list = [ell_edges, ell_edges, ell_edges]
-        labels = ["Initial", "Fiducial", "Masked"]
-
-        fig_appendix_uncorr = create_3panel_composite(matrices, ell_edges_list, labels)
-
-        fig_path = Path(snakemake.output["figure_appendix_uncorrected"])
-        fig_appendix_uncorr.savefig(fig_path, dpi=300, bbox_inches="tight", facecolor="white")
-        print(f"\nSaved uncorrected appendix figure: {fig_path}")
-
-        paper_path = Path(snakemake.output["paper_figure_appendix_uncorrected"])
-        shutil.copy2(fig_path, paper_path)
-        print(f"Copied to {paper_path}")
-
-        plt.close(fig_appendix_uncorr)
-
     # Build evidence
     spec_paths = snakemake.input["specs"]
 
@@ -455,12 +400,12 @@ def main():
         "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
+            "blind": fiducial_blind,
             "versions": {},
         },
         "artifacts": {
             "figure_fiducial": Path(snakemake.output["figure_fiducial"]).name,
             "figure_appendix": Path(snakemake.output["figure_appendix"]).name,
-            "figure_appendix_uncorrected": Path(snakemake.output["figure_appendix_uncorrected"]).name,
         },
     }
 

@@ -11,14 +11,12 @@ Author: Claude Code
 Date: 2025-08-18
 """
 
-# Wildcard constraints for mask processing
-wildcard_constraints:
-    nside=r"\d+"
+# Wildcard constraints centralized in Snakefile
 
-# Define paths directly in Snakefile 
-SOURCE_MASK_FILE = "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
+# Paths from config and Snakefile
+SOURCE_MASK_FILE = config["pixel_mask"]["source_file"]
 MASK_OUTPUT_DIR = "output/masks"
-COSMOCOV_MASK_DIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/masks"
+COSMOCOV_MASK_DIR = str(COSMO_INFERENCE / "data/masks")
 
 # Get target nside values from config (no fallbacks)
 target_nsides = config["pixel_mask"]["target_nsides"]
@@ -158,10 +156,11 @@ rule effective_area_comparison:
         mem_mb=1000,
         runtime=5
     run:
+        import os
         import yaml
         import numpy as np
         from pathlib import Path
-        
+
         # Load effective area summary
         with open(input.summary, 'r') as f:
             summary_data = yaml.safe_load(f)
@@ -321,3 +320,12 @@ rule prepare_mask_for_cosmocov:
             f.write("Set c_footprint_file parameter to the appropriate power spectrum file path.\n")
         
         print(f"CosmoCov integration prepared: {output.cosmocov_ready}")
+
+
+# Fast rules that don't need cluster resources
+localrules:
+    combine_area_summaries,
+    effective_area_comparison,
+    prepare_mask_for_cosmocov,
+    masks_only,
+    masks_full_analysis,

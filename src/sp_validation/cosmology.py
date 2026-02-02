@@ -16,6 +16,7 @@ import pyccl as ccl
 # For correlation function calculations
 import treecorr
 from astropy import cosmology
+from astropy.cosmology import Planck18
 from astropy.io import fits
 from cs_util import canfar
 from lenspack.geometry.projections.gnom import radec2xy
@@ -23,6 +24,31 @@ from scipy.spatial import cKDTree
 from tqdm import tqdm
 
 from sp_validation.survey import get_footprint
+
+
+# =============================================================================
+# Fiducial Cosmology: astropy Planck18
+# =============================================================================
+# Source: Planck 2018 Paper VI, Table 2 (TT,TE,EE+lowE+lensing+BAO)
+# Reference: Planck Collaboration 2020, A&A, 641, A6
+#
+# Note on sigma_8 / A_s consistency:
+# CAMB with A_s=2.1e-9 and m_nu=0.06 eV derives sigma_8 ~ 0.806, not 0.8102.
+# This ~0.5% difference arises from Planck's MCMC marginalization details.
+# Policy: Use sigma_8=0.8102 for codes taking sigma_8 directly (CosmoCov, CCL);
+#         use A_s=2.1e-9 for CAMB-based predictions.
+# =============================================================================
+PLANCK18 = {
+    "Omega_m": Planck18.Om0,              # 0.30966
+    "Omega_b": Planck18.Ob0,              # 0.04897
+    "h": Planck18.h,                      # 0.6766
+    "n_s": Planck18.meta["n"],            # 0.9665
+    "sigma_8": Planck18.meta["sigma8"],   # 0.8102
+    "A_s": 2.1e-9,                        # ln(10^10 A_s) = 3.047
+    "m_nu": 0.06,                         # eV, sum of neutrino masses
+    "w0": -1.0,
+    "wa": 0.0,
+}
 
 
 def _ccl_to_camb(cosmo):
@@ -184,20 +210,21 @@ def get_cosmo(
 ):
     """Get CCL cosmology object with user-specified parameters.
 
-    Defaults to Planck 2018 cosmology. Can also use CosmoCov or CAMB parameter formats.
+    Defaults to astropy Planck18 cosmology (Table 2: TT,TE,EE+lowE+lensing+BAO).
+    Can also use CosmoCov or CAMB parameter formats.
 
     Parameters
     ----------
     Omega_m : float, default=None
-        Matter density parameter (defaults to Planck 2018: 0.31111)
+        Matter density parameter (defaults to Planck18: 0.30966)
     Omega_b : float, default=None
-        Baryon density parameter (defaults to Planck 2018: 0.04897)
+        Baryon density parameter (defaults to Planck18: 0.04897)
     h : float, default=None
-        Reduced Hubble constant (defaults to Planck 2018: 0.6766)
+        Reduced Hubble constant (defaults to Planck18: 0.6766)
     sig8 : float, default=None
-        RMS matter fluctuation amplitude at 8 Mpc/h (defaults to Planck 2018: 0.8102)
+        RMS matter fluctuation amplitude at 8 Mpc/h (defaults to Planck18: 0.8102)
     ns : float, default=None
-        Scalar spectral index (defaults to Planck 2018: 0.9665)
+        Scalar spectral index (defaults to Planck18: 0.9665)
     w0 : float, default=None
         Dark energy equation of state parameter (defaults to -1.0)
     wa : float, default=None
@@ -236,15 +263,15 @@ def get_cosmo(
     else:
         ccl_params = {}
 
-    # Planck 2018 defaults
+    # Planck 2018 defaults from astropy (see PLANCK18 dict at module level)
     planck_defaults = {
-        "Omega_m": 0.31111,
-        "Omega_b": 0.04897,
-        "h": 0.6766,
-        "sig8": 0.8102,
-        "ns": 0.9665,
-        "w0": -1.0,
-        "wa": 0.0,
+        "Omega_m": PLANCK18["Omega_m"],
+        "Omega_b": PLANCK18["Omega_b"],
+        "h": PLANCK18["h"],
+        "sig8": PLANCK18["sigma_8"],
+        "ns": PLANCK18["n_s"],
+        "w0": PLANCK18["w0"],
+        "wa": PLANCK18["wa"],
     }
 
     combined_params = {

@@ -1,8 +1,6 @@
 """Pure E/B version comparison claim.
 
-Main figure: leak_corr versions only (catalog evolution across v1.4.5, v1.4.6, v1.4.8)
-Second figure: v1.4.6 leak_corr vs uncorrected (correction impact comparison)
-
+Visualizes total and B-mode correlation functions across catalog versions.
 Top row: xi_total +/- (same style as data vector plot)
 Bottom row: xi_B +/- normalized by error (B / sigma)
 Data outside fiducial scale cuts shown greyed out.
@@ -14,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
 
@@ -23,29 +22,9 @@ plt.style.use(
 )
 
 
-VERSION_LABELS = {
-    "SP_v1.4.5_leak_corr": "Initial",
-    "SP_v1.4.6_leak_corr": "Fiducial",
-    "SP_v1.4.8_leak_corr": "Masked",
-    "SP_v1.4.6": "Uncorrected",
-}
-
-# Versions for main catalog evolution figure (leak_corr only)
-CATALOG_VERSIONS = [
-    "SP_v1.4.5_leak_corr",
-    "SP_v1.4.6_leak_corr",
-    "SP_v1.4.8_leak_corr",
-]
-
-# Versions for correction comparison figure
-CORRECTION_VERSIONS = [
-    "SP_v1.4.6_leak_corr",
-    "SP_v1.4.6",
-]
-
-
-def _version_label(version):
-    return VERSION_LABELS.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
+def _version_label(version, version_labels):
+    """Get human-readable label for version from config."""
+    return version_labels.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
 
 
 def _extract_sigma(covariance, block_index, block_size):
@@ -53,6 +32,140 @@ def _extract_sigma(covariance, block_index, block_size):
     block_slice = slice(block_index * block_size, (block_index + 1) * block_size)
     block = covariance[block_slice, block_slice]
     return np.sqrt(np.clip(np.diag(block), 0, None))
+
+
+def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
+                        scale_factor=1.0, apply_theta_scaling=True):
+    """Draw boxes spanning version spread with fiducial line through each bin.
+
+    For each angular bin, draws:
+    - A box from min(y - sigma) to max(y + sigma) across all versions
+    - A horizontal fiducial line at the fiducial version's y value
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axis to draw on
+    theta : array
+        Angular bin centers
+    datasets : list of dict
+        Version data dictionaries
+    y_key : str
+        Key for y-values in datasets
+    sigma_key : str
+        Key for error values in datasets
+    fiducial_idx : int
+        Index of fiducial version in datasets
+    scale_factor : float
+        Factor to divide values by (for plotting in scaled units)
+    apply_theta_scaling : bool
+        If True, multiply y and sigma by theta (for theta*xi plots)
+    """
+    nbins = len(theta)
+
+    # Compute log-scale box widths (fraction of bin position in log space)
+    log_theta = np.log10(theta)
+    box_width_factor = 0.15  # Fraction of distance to next bin
+
+    for i in range(nbins):
+        # Collect all version values at this bin
+        y_vals = []
+        y_lower = []
+        y_upper = []
+
+        for data in datasets:
+            y = data[y_key][i]
+            sigma = data[sigma_key][i]
+
+            if apply_theta_scaling:
+                y = theta[i] * y
+                sigma = theta[i] * sigma
+
+            y_scaled = y / scale_factor
+            sigma_scaled = sigma / scale_factor
+
+            y_vals.append(y_scaled)
+            y_lower.append(y_scaled - sigma_scaled)
+            y_upper.append(y_scaled + sigma_scaled)
+
+        # Box spans from min lower to max upper
+        box_bottom = min(y_lower)
+        box_top = max(y_upper)
+
+        # Compute box width in log space
+        if i < nbins - 1:
+            log_width = (log_theta[i + 1] - log_theta[i]) * box_width_factor
+        else:
+            log_width = (log_theta[i] - log_theta[i - 1]) * box_width_factor
+
+        x_left = 10 ** (log_theta[i] - log_width)
+        x_right = 10 ** (log_theta[i] + log_width)
+
+        # Draw box
+        rect = Rectangle(
+            (x_left, box_bottom),
+            x_right - x_left,
+            box_top - box_bottom,
+            facecolor='none',
+            edgecolor='0.4',
+            linewidth=0.5,
+            zorder=1,
+        )
+        ax.add_patch(rect)
+
+        # Draw fiducial line
+        fiducial_y = y_vals[fiducial_idx]
+        ax.hlines(
+            fiducial_y, x_left, x_right,
+            colors='0.5', linewidth=0.6, zorder=1
+        )
+
+
+def _draw_normalized_version_boxes(ax, theta, datasets, y_norm_key, fiducial_idx):
+    """Draw boxes for normalized (y/sigma) plots where error bars are unity.
+
+    For each angular bin, draws:
+    - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
+    - A horizontal fiducial line at the fiducial version's y_norm value
+    """
+    nbins = len(theta)
+    log_theta = np.log10(theta)
+    box_width_factor = 0.15
+
+    for i in range(nbins):
+        y_vals = [data[y_norm_key][i] for data in datasets]
+
+        # Error is 1 by construction for normalized plots
+        y_lower = [y - 1 for y in y_vals]
+        y_upper = [y + 1 for y in y_vals]
+
+        box_bottom = min(y_lower)
+        box_top = max(y_upper)
+
+        if i < nbins - 1:
+            log_width = (log_theta[i + 1] - log_theta[i]) * box_width_factor
+        else:
+            log_width = (log_theta[i] - log_theta[i - 1]) * box_width_factor
+
+        x_left = 10 ** (log_theta[i] - log_width)
+        x_right = 10 ** (log_theta[i] + log_width)
+
+        rect = Rectangle(
+            (x_left, box_bottom),
+            x_right - x_left,
+            box_top - box_bottom,
+            facecolor='none',
+            edgecolor='0.4',
+            linewidth=0.5,
+            zorder=1,
+        )
+        ax.add_patch(rect)
+
+        fiducial_y = y_vals[fiducial_idx]
+        ax.hlines(
+            fiducial_y, x_left, x_right,
+            colors='0.5', linewidth=0.6, zorder=1
+        )
 
 
 def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
@@ -65,6 +178,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
       Plotted as B / sigma (normalized)
 
     Data outside fiducial scale cuts shown with light axvspan shading.
+    For each bin, a box spans the range of all versions' error bars,
+    with a line marking the fiducial version's value.
     """
     fig_width = 7.24
 
@@ -76,15 +191,19 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
         sharex=True,
         gridspec_kw={"height_ratios": [2, 1]},
     )
-    # Share y-axes within each row for tighter layout (hide duplicate tick labels)
-    axes[0, 1].sharey(axes[0, 0])
+    # Share y-axis for bottom row
     axes[1, 1].sharey(axes[1, 0])
-    plt.setp(axes[0, 1].get_yticklabels(), visible=False)
-    plt.setp(axes[1, 1].get_yticklabels(), visible=False)
 
-    x_offset_factors = [0.97, 1.0, 1.03]
-    marker_styles = ["o", "s", "D"]
+    x_offset_factors = [0.91, 0.97, 1.03, 1.09]
+    marker_styles = ["o", "s", "D", "^"]
     scale_factor = 1e-4
+
+    # Find fiducial version index
+    fiducial_idx = next(
+        (i for i, d in enumerate(datasets) if d["version"] == fiducial_version),
+        0
+    )
+    theta = datasets[0]["theta"]
 
     # Plotting parameters (matching data vector style)
     ms = 2.5
@@ -103,8 +222,18 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     ]):
         ax = axes[0, col]
 
+        # Draw version spread boxes (before data points so they're behind)
+        _draw_version_boxes(
+            ax, theta, datasets,
+            y_key=mode_key,
+            sigma_key=f"sigma_{mode_key}",
+            fiducial_idx=fiducial_idx,
+            scale_factor=scale_factor,
+            apply_theta_scaling=True,
+        )
+
         for i, data in enumerate(datasets):
-            theta = data["theta"]
+            theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
             marker = marker_styles[i] if i < len(marker_styles) else "o"
 
@@ -113,9 +242,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
 
             # Plot all points (full color)
             line = ax.errorbar(
-                theta * offset,
-                (theta * y) / scale_factor,
-                yerr=(theta * sigma) / scale_factor,
+                theta_i * offset,
+                (theta_i * y) / scale_factor,
+                yerr=(theta_i * sigma) / scale_factor,
                 fmt=marker,
                 color=data["color"],
                 alpha=data["alpha"],
@@ -126,9 +255,10 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
                 capsize=capsize,
                 capthick=capthick,
                 elinewidth=elinewidth,
+                zorder=2,
             )
 
-            if col == 1:
+            if col == 0:
                 legend_handles.append(line)
                 legend_labels.append(data["label"])
 
@@ -147,8 +277,15 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     ]):
         ax = axes[1, col]
 
+        # Draw version spread boxes (before data points)
+        _draw_normalized_version_boxes(
+            ax, theta, datasets,
+            y_norm_key=f"{mode_key}_normalized",
+            fiducial_idx=fiducial_idx,
+        )
+
         for i, data in enumerate(datasets):
-            theta = data["theta"]
+            theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
             marker = marker_styles[i] if i < len(marker_styles) else "o"
 
@@ -156,9 +293,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
 
             # Plot all points (full color, error bars = 1 by construction)
             ax.errorbar(
-                theta * offset,
+                theta_i * offset,
                 y_norm,
-                yerr=np.ones(len(theta)),
+                yerr=np.ones(len(theta_i)),
                 fmt=marker,
                 color=data["color"],
                 alpha=data["alpha"],
@@ -169,6 +306,7 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
                 capsize=capsize,
                 capthick=capthick,
                 elinewidth=elinewidth,
+                zorder=2,
             )
 
         ax.axhline(0, color="k", linestyle="--", alpha=0.6, linewidth=0.8)
@@ -180,8 +318,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
         if col == 0:
             ax.set_ylabel(r"$\xi^B / \sigma$")
 
-    # Legend in top-right panel (xi-)
-    axes[0, 1].legend(
+    # Legend in top-left panel
+    axes[0, 0].legend(
         legend_handles,
         legend_labels,
         loc="upper left",
@@ -205,49 +343,10 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     return fig
 
 
-def _load_version_data(version, data_path):
-    """Load and process data for a single version."""
-    data = np.load(data_path)
-
-    theta = data["theta"]
-    nbins = len(theta)
-
-    # Total correlation functions
-    xip_total = data["xip_total"]
-    xim_total = data["xim_total"]
-
-    # B-mode data
-    xip_B = data["xip_B"]
-    xim_B = data["xim_B"]
-    cov_pure_eb = data["cov_pure_eb"]
-
-    # Use E-mode errors for total xi (E dominates signal, good proxy for visualization)
-    # Blocks: 0=xip_E, 1=xim_E, 2=xip_B, 3=xim_B, 4=xip_amb, 5=xim_amb
-    sigma_xip_total = _extract_sigma(cov_pure_eb, 0, nbins)
-    sigma_xim_total = _extract_sigma(cov_pure_eb, 1, nbins)
-
-    # Extract B-mode errors (blocks 2 and 3 of the 6-block covariance)
-    sigma_xip_B = _extract_sigma(cov_pure_eb, 2, nbins)
-    sigma_xim_B = _extract_sigma(cov_pure_eb, 3, nbins)
-
-    return {
-        "version": version,
-        "label": _version_label(version),
-        "theta": theta,
-        # Total correlation functions
-        "xip_total": xip_total,
-        "xim_total": xim_total,
-        "sigma_xip_total": sigma_xip_total,
-        "sigma_xim_total": sigma_xim_total,
-        # B-mode (normalized)
-        "xip_B_normalized": xip_B / sigma_xip_B,
-        "xim_B_normalized": xim_B / sigma_xim_B,
-    }
-
-
 def main():
     config = snakemake.config
-    all_versions = config["versions"]
+    version_labels = snakemake.params.version_labels
+    versions = config["versions"]
     fiducial_version = config["fiducial"]["version"]
 
     # Scale cuts
@@ -260,31 +359,66 @@ def main():
         "fiducial_xim": fiducial_xim_scale_cut,
     }
 
-    # Build version-to-path lookup
-    version_to_path = {
-        ver: path
-        for ver, path in zip(all_versions, snakemake.input["pure_eb_data"])
-    }
+    colors = sns.color_palette("colorblind", len(versions))
+    version_alpha = {v: 1.0 if v == fiducial_version else 0.5 for v in versions}
+
+    # Load data for all versions
+    datasets = []
+
+    for version, color, data_path in zip(
+        versions,
+        colors,
+        snakemake.input["pure_eb_data"],
+    ):
+        data = np.load(data_path)
+
+        theta = data["theta"]
+        nbins = len(theta)
+
+        # Total correlation functions
+        xip_total = data["xip_total"]
+        xim_total = data["xim_total"]
+
+        # B-mode data
+        xip_B = data["xip_B"]
+        xim_B = data["xim_B"]
+        cov_pure_eb = data["cov_pure_eb"]
+
+        # Use E-mode errors for total xi (E dominates signal, good proxy for visualization)
+        # Blocks: 0=xip_E, 1=xim_E, 2=xip_B, 3=xim_B, 4=xip_amb, 5=xim_amb
+        sigma_xip_total = _extract_sigma(cov_pure_eb, 0, nbins)
+        sigma_xim_total = _extract_sigma(cov_pure_eb, 1, nbins)
+
+        # Extract B-mode errors (blocks 2 and 3 of the 6-block covariance)
+        sigma_xip_B = _extract_sigma(cov_pure_eb, 2, nbins)
+        sigma_xim_B = _extract_sigma(cov_pure_eb, 3, nbins)
+
+        datasets.append({
+            "version": version,
+            "label": _version_label(version, version_labels),
+            "color": color,
+            "alpha": version_alpha.get(version, 1.0),
+            "theta": theta,
+            # Total correlation functions
+            "xip_total": xip_total,
+            "xim_total": xim_total,
+            "sigma_xip_total": sigma_xip_total,
+            "sigma_xim_total": sigma_xim_total,
+            # B-mode (normalized)
+            "xip_B_normalized": xip_B / sigma_xip_B,
+            "xim_B_normalized": xim_B / sigma_xim_B,
+        })
 
     # Create output directory
     output_dir = Path(snakemake.output["evidence"]).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # === Main figure: catalog evolution (leak_corr only) ===
-    catalog_colors = sns.color_palette("colorblind", len(CATALOG_VERSIONS))
-    catalog_datasets = []
-    for version, color in zip(CATALOG_VERSIONS, catalog_colors):
-        data = _load_version_data(version, version_to_path[version])
-        data["color"] = color
-        data["alpha"] = 1.0 if version == fiducial_version else 0.5
-        catalog_datasets.append(data)
+    # Generate figure
+    fig = _create_version_comparison_figure(datasets, scale_cuts, fiducial_version)
 
-    fig_catalog = _create_version_comparison_figure(
-        catalog_datasets, scale_cuts, fiducial_version
-    )
-
-    fig_path = output_dir / "figure.png"
-    fig_catalog.savefig(fig_path, dpi=300, bbox_inches="tight")
+    fig_name = "figure.png"
+    fig_path = output_dir / fig_name
+    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
 
     # Copy to paper figures
@@ -294,33 +428,7 @@ def main():
         shutil.copy2(fig_path, paper_path)
         print(f"Copied to {paper_path}")
 
-    plt.close(fig_catalog)
-
-    # === Second figure: correction comparison (v1.4.6 leak_corr vs uncorrected) ===
-    correction_colors = sns.color_palette("colorblind", len(CORRECTION_VERSIONS))
-    correction_datasets = []
-    for version, color in zip(CORRECTION_VERSIONS, correction_colors):
-        data = _load_version_data(version, version_to_path[version])
-        data["color"] = color
-        data["alpha"] = 1.0  # Both at full opacity for direct comparison
-        correction_datasets.append(data)
-
-    fig_correction = _create_version_comparison_figure(
-        correction_datasets, scale_cuts, fiducial_version
-    )
-
-    fig_correction_path = output_dir / "figure_correction.png"
-    fig_correction.savefig(fig_correction_path, dpi=300, bbox_inches="tight")
-    print(f"Saved {fig_correction_path}")
-
-    # Copy to paper figures
-    if "paper_figure_correction" in snakemake.output.keys():
-        paper_correction_path = Path(snakemake.output["paper_figure_correction"])
-        paper_correction_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(fig_correction_path, paper_correction_path)
-        print(f"Copied to {paper_correction_path}")
-
-    plt.close(fig_correction)
+    plt.close(fig)
 
     # Write evidence
     spec_paths = snakemake.input["specs"]
@@ -331,15 +439,11 @@ def main():
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": {k: list(v) for k, v in scale_cuts.items()},
-            "catalog_versions": CATALOG_VERSIONS,
-            "correction_versions": CORRECTION_VERSIONS,
+            "versions_plotted": versions,
             "fiducial_version": fiducial_version,
-            "note": "Main figure: catalog evolution (leak_corr only). Second figure: correction comparison (v1.4.6 leak_corr vs uncorrected). Statistical PTEs in config_space_pte_matrices claim.",
+            "note": "Visualization only. Statistical PTEs in pure_eb_pte_matrix and config_space_pte_matrices claims.",
         },
-        "artifacts": {
-            "figure": "figure.png",
-            "figure_correction": "figure_correction.png",
-        },
+        "artifacts": {"figure": fig_name},
     }
 
     evidence_path = Path(snakemake.output["evidence"])

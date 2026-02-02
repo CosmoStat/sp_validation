@@ -16,16 +16,12 @@ Gaussian-only approximation: non-Gaussian contributions computationally prohibit
 
 ## Config References
 
-| Parameter | Config Key | Description |
-|-----------|------------|-------------|
-| Samples | `covariance.n_samples` | MC samples for propagation (default 4000) |
-| Ω_m | `covariance.cosmology.Omega_m` | Matter density |
-| σ_8 | `covariance.cosmology.sigma_8` | Amplitude of fluctuations |
-| n_s | `covariance.cosmology.n_s` | Spectral index |
-| h | `covariance.cosmology.h` | Hubble parameter |
-| Ω_b | `covariance.cosmology.Omega_b` | Baryon density |
-| Mask Cls | `covariance.mask_cls_files` | Per-version mask power spectra |
-| Use masked | `covariance.default_masked` | Whether to use masked covariance |
+| Parameter | Source | Description |
+|-----------|--------|-------------|
+| Samples | `config.yaml: covariance.n_samples` | MC samples for propagation (default 2000) |
+| Use masked | `config.yaml: covariance.default_masked` | Whether to use masked covariance |
+| Cosmology | `covariance.smk: PLANCK18` | astropy Planck18 via sp_validation.cosmology |
+| Mask Cls | `covariance.smk: MASK_CLS_FILES` | Per-version mask power spectra |
 
 ## Survey Properties
 
@@ -52,28 +48,13 @@ covariance_{version}_{blind}_{gaussian}_minsep={min}_maxsep={max}_nbins={n}{mask
 - `gaussian`: g (Gaussian-only) or ng (non-Gaussian)
 - `mask_suffix`: empty or `_masked`
 
-## Multi-Blind Strategy
+## Blind Handling
 
-All B-mode claims compute statistics for each blind (A, B, C) and report the **minimum PTE** — the most conservative value. This ensures robustness to n(z) variations between blinds.
+B-mode claims use the fiducial blind from `config["fiducial"]["blind"]`. Covariances are computed for the fiducial blind only.
 
-Requires covariances for all three blinds at both:
-- **Reporting binning** (20 bins) — for PTE calculation
-- **Integration binning** (1000 bins) — for COSEBIS/pure E/B propagation
+### Historical Note
 
-### Covariance Sensitivity
-
-Covariance diagonals shift by ~10% between blinds due to n(z) dependence of the lensing kernel. See [Covariance Blind Consistency](covariance_blind_consistency.md) for validation.
-
-### PTE Stability
-
-Despite ~10% covariance shifts, PTEs remain stable:
-
-| Statistic | PTE variation (absolute) | Notes |
-|-----------|-------------------------|-------|
-| COSEBIS B_n | <0.001 | Effectively zero; B-mode signal identical across blinds |
-| Pure-mode ξ±^B | ~0.06 | 6 percentage points; covariance-driven, not signal |
-
-The COSEBIS stability confirms that B-mode signal is blind-invariant. Pure-mode variation is larger because per-blind covariances affect the chi-squared normalization, not the data vector.
+Earlier analysis computed min-PTE across all three blinds (A, B, C). This was simplified to single-blind after determining that B-mode data vectors are identical across blinds (only covariances differ via n(z)). See [Covariance Blind Consistency](covariance_blind_consistency.md) for validation showing ~10% diagonal variation between blinds.
 
 ## Covariance Usage Policy
 
