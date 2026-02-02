@@ -27,6 +27,10 @@ FIDUCIAL_BINNING = {
 # VERSION_LABELS from config for passing to plotting scripts
 VERSION_LABELS = config["plotting"].get("version_labels", {})
 
+# Filter versions for different analysis types
+# Pure E/B and PTEs only apply to leak-corrected versions
+VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v]
+
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Path Helper Functions
@@ -114,8 +118,9 @@ rule cosebis_version_comparison:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        xi_integration=[_xi_integration_path(ver) for ver in config["versions"]],
-        cov_integration=[_cov_integration_path(ver, "A") for ver in config["versions"]],
+        # COSEBIs only for leak-corrected versions
+        xi_integration=[_xi_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
+        cov_integration=[_cov_integration_path(ver, "A") for ver in VERSIONS_LEAK_CORR],
     params:
         cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
         version_labels=VERSION_LABELS,
@@ -255,9 +260,10 @@ rule pure_eb_version_comparison:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
+        # Pure E/B only for leak-corrected versions
         pure_eb_data=[
             f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
-            for ver in config["versions"]
+            for ver in VERSIONS_LEAK_CORR
         ],
     params:
         version_labels=VERSION_LABELS,
@@ -352,8 +358,9 @@ rule cl_version_comparison:
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         cl_data_vector_evidence=rules.cl_data_vector.output.evidence,
-        pseudo_cl=[_pseudo_cl_path(ver) for ver in config["versions"]],
-        pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in config["versions"]],
+        # Cl version comparison only for leak-corrected versions
+        pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_LEAK_CORR],
+        pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in VERSIONS_LEAK_CORR],
     params:
         version_labels=VERSION_LABELS,
         ell_min_cut=config["cl"]["fiducial_ell_min"],
@@ -412,13 +419,14 @@ rule config_space_pte_matrices:
         pure_eb_data_vector=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
         cosebis_data_vector=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
         # Data inputs (fiducial blind only)
+        # Pure E/B and COSEBIs PTEs only for leak-corrected versions
         pure_eb_pte=[
             f"results/paper_plots/intermediate/{ver}_{config['fiducial']['blind']}_pure_eb_ptes.npz"
-            for ver in config["versions"]
+            for ver in VERSIONS_LEAK_CORR
         ],
         cosebis_pte_files=[
             f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{config['fiducial']['blind']}/pte_{i:03d}_{j:03d}.json"
-            for ver in config["versions"]
+            for ver in VERSIONS_LEAK_CORR
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
     output:
@@ -444,10 +452,11 @@ rule harmonic_space_pte_matrices:
             f"{CONFIG_DIR}/harmonic_space_pte_matrices.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pseudo_cl=[_pseudo_cl_path(ver) for ver in config["versions"]],
+        # Harmonic PTE matrices only for leak-corrected versions
+        pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_LEAK_CORR],
         pseudo_cl_cov=[
             _pseudo_cl_cov_path(ver, blind=config["fiducial"]["blind"])
-            for ver in config["versions"]
+            for ver in VERSIONS_LEAK_CORR
         ],
     params:
         version_labels=VERSION_LABELS,
