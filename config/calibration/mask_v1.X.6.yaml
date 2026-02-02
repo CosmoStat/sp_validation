@@ -31,13 +31,13 @@ dat:
 
   # Number of epochs
   - col_name: N_EPOCH
-    label: r"$n_{\rm epoch}$"
+    label: $n_{\rm epoch}$
     kind: greater_equal
     value: 2
 
   # Magnitude range
   - col_name: mag
-    label: mag range
+    label: r
     kind: range
     value: [15, 30]
 
@@ -86,7 +86,7 @@ dat_ext:
 
   # Rough pointing coverage
   - col_name: npoint3
-    label: r"$n_{\rm pointing}$"
+    label: $n_{\rm pointing}$
     kind: greater_equal
     value: 3
 
