@@ -505,7 +505,6 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         )
 
         # Add version label to the right of each row
-        version_label = version_labels.get(version, version)
         ax_cosebis.annotate(
             version_label, xy=(1.02, 0.5), xycoords="axes fraction",
             fontsize=8, weight="bold", va="center", ha="left", rotation=-90
@@ -595,9 +594,9 @@ def main():
         all_stats[fiducial_version] = fid_stats
         all_full_range_ptes[fiducial_version] = fid_ptes
 
-    except Exception as e:
+    except Exception:
         import traceback
-        print(f"  ERROR creating fiducial composite:", flush=True)
+        print("  ERROR creating fiducial composite:", flush=True)
         traceback.print_exc()
         raise
 
@@ -630,9 +629,9 @@ def main():
         all_stats.update(appendix_stats)
         all_full_range_ptes.update(appendix_ptes)
 
-    except Exception as e:
+    except Exception:
         import traceback
-        print(f"  ERROR creating appendix composite:", flush=True)
+        print("  ERROR creating appendix composite:", flush=True)
         traceback.print_exc()
         raise
 

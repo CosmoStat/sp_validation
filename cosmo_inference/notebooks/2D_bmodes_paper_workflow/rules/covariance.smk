@@ -134,7 +134,6 @@ ng : {params.ng_value}
 cng : {params.ng_value}
 
 
-#mkdir before running!
 outdir : ./
 filename : cov_tmp
 ss : true
