@@ -164,15 +164,17 @@ rule spec_dependencies:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule claims_dashboard:
-    """Render claims dashboard with specs and evidence."""
+    """Render claims dashboard with specs and evidence.
+
+    Dashboard reads specs from felt fibers (foundation/claim/synthesis kinds).
+    Evidence links to results/claims/{fiber_id}/ directories.
+    """
     input:
         config=f"{CONFIG_DIR}/config.yaml",
-        deps=f"{CLAIMS_DIR}/deps.json",
         # Method specs (foundational, no dependencies)
         method_specs=expand(f"{CLAIMS_DIR}/{{spec}}/evidence.json", spec=METHOD_SPECS),
-        # Paper specs
+        # Paper specs (B-modes paper only — xi_cosmology_paper needs covariance_blind_consistency)
         bmodes_paper=rules.bmodes_paper_spec.output,
-        xi_cosmology_paper=rules.xi_cosmology_paper.output,
         paper_macros=rules.paper_macros.output,
         # All claim rules (using shared CLAIM_RULES list)
         **_claim_outputs(),
@@ -181,7 +183,6 @@ rule claims_dashboard:
     params:
         project_name="UNIONS B-modes",
         tagline="Spec-driven validation",
-        config_dir=CONFIG_DIR,
         claims_dir=CLAIMS_DIR,
         skill_path=SKILL_PATH,
     shell:
@@ -190,10 +191,8 @@ rule claims_dashboard:
             {output.html} \
             --project-name "{params.project_name}" \
             --tagline "{params.tagline}" \
-            --specs-dir {params.config_dir} \
             --claims-dir {params.claims_dir} \
-            --config-file {input.config} \
-            --deps-file {input.deps}
+            --config-file {input.config}
         """
 
 
