@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Version number to word mapping for TeX-safe macro names
-# (avoids TeX Live 2025 cleveref/siunitx conflict with numeric names)
+# (avoids cleveref/siunitx conflict with numeric names)
 VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "11.2": "ElevenTwo"}
 
 
@@ -240,7 +240,7 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         print(f"  → {output_path}")
 
 
-def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: str, versions: list, version_labels: dict):
+def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: str, versions: list, version_labels: dict, config: dict):
     """Generate LaTeX table files from PTE evidence.
 
     Creates:
@@ -284,25 +284,27 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
             xim = cfg.get("xim_stats", {})
             cosebis = cfg.get("cosebis_stats", {})
 
-            # Fiducial scale cuts from Paper II (Goh et al.): [12, 83] for all config-space
+            # Config-space scale cuts from config (Paper II, Goh et al.)
+            config_cut = f"[{config['fiducial']['fiducial_min_scale']}--{config['fiducial']['fiducial_max_scale']}]$'$"
             if xip:
                 pte_fid = _format_value(xip.get("pte_at_fiducial", float("nan")))
                 pte_full = _format_value(xip.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    $\\xi_+^B$ & {pte_fid} & {pte_full} & [12--83]$'$ \\\\")
+                results_table.append(f"    $\\xi_+^B$ & {pte_fid} & {pte_full} & {config_cut} \\\\")
             if xim:
                 pte_fid = _format_value(xim.get("pte_at_fiducial", float("nan")))
                 pte_full = _format_value(xim.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    $\\xi_-^B$ & {pte_fid} & {pte_full} & [12--83]$'$ \\\\")
+                results_table.append(f"    $\\xi_-^B$ & {pte_fid} & {pte_full} & {config_cut} \\\\")
             if cosebis:
                 pte_fid = _format_value(cosebis.get("pte_at_fiducial", float("nan")))
                 pte_full = _format_value(cosebis.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    COSEBIS $B_n$ & {pte_fid} & {pte_full} & [12--83]$'$ \\\\")
+                results_table.append(f"    COSEBIS $B_n$ & {pte_fid} & {pte_full} & {config_cut} \\\\")
 
         if fiducial_version in harmonic_data:
             harm = harmonic_data[fiducial_version]
             pte_fid = _format_value(harm.get("pte_at_fiducial", float("nan")))
             pte_full = _format_value(harm.get("pte_at_full_range", float("nan")))
-            results_table.append(f"    $C_\\ell^{{BB}}$ & {pte_fid} & {pte_full} & $\\ell$=[300--1600] \\\\")
+            harmonic_cut = f"$\\ell$=[{config['cl']['fiducial_ell_min']}--{config['cl']['fiducial_ell_max']}]"
+            results_table.append(f"    $C_\\ell^{{BB}}$ & {pte_fid} & {pte_full} & {harmonic_cut} \\\\")
 
         results_table.append(r"    \hline")
         results_table.append(r"  \end{tabular}")
@@ -427,7 +429,7 @@ if __name__ == "__main__":
     if macro_outputs:
         paper_dir = macro_outputs[0].parent
         print(f"Generating PTE tables to {paper_dir}")
-        generate_pte_tables(claims_dir, paper_dir, fiducial_version, versions, version_labels)
+        generate_pte_tables(claims_dir, paper_dir, fiducial_version, versions, version_labels, config)
 
     # Generate evidence.json if requested
     for evidence_path in evidence_outputs:
