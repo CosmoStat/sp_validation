@@ -11,14 +11,14 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.scale as mscale
-import matplotlib.ticker as mticker
-import matplotlib.transforms as mtransforms
 from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
 from astropy.io import fits
 from scipy import stats
+
+# Import and register SquareRootScale (registration happens at import)
+import plotting_utils  # noqa: F401
 
 
 plt.style.use(
@@ -29,51 +29,6 @@ plt.style.use(
 # Actual values set in main() from snakemake.params.ell_min_cut/ell_max_cut
 ELL_MIN_CUT = None
 ELL_MAX_CUT = None
-
-
-# SquareRootScale for x-axis
-class SquareRootScale(mscale.ScaleBase):
-    name = "squareroot"
-
-    def __init__(self, axis, **kwargs):
-        mscale.ScaleBase.__init__(self, axis, **kwargs)
-
-    def set_default_locators_and_formatters(self, axis):
-        axis.set_major_locator(mticker.AutoLocator())
-        axis.set_major_formatter(mticker.ScalarFormatter(useMathText=True))
-        axis.set_minor_locator(mticker.NullLocator())
-        axis.set_minor_formatter(mticker.NullFormatter())
-
-    def limit_range_for_scale(self, vmin, vmax, minpos):
-        return max(0.0, vmin), vmax
-
-    class SquareRootTransform(mtransforms.Transform):
-        input_dims = 1
-        output_dims = 1
-        is_separable = True
-
-        def transform_non_affine(self, a):
-            return np.array(a) ** 0.5
-
-        def inverted(self):
-            return SquareRootScale.InvertedSquareRootTransform()
-
-    class InvertedSquareRootTransform(mtransforms.Transform):
-        input_dims = 1
-        output_dims = 1
-        is_separable = True
-
-        def transform_non_affine(self, a):
-            return np.array(a) ** 2
-
-        def inverted(self):
-            return SquareRootScale.SquareRootTransform()
-
-    def get_transform(self):
-        return self.SquareRootTransform()
-
-
-mscale.register_scale(SquareRootScale)
 
 
 def _draw_normalized_version_boxes_ell(ax, ell, ell_widths, datasets, y_norm_key, fiducial_idx):

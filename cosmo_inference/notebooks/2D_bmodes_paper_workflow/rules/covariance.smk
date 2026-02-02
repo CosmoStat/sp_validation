@@ -10,12 +10,12 @@ def get_cat_params(version):
     return cov_th["A"], cov_th["n_e"], cov_th["sigma_e"]
 
 
-# Wildcard constraints centralized in Snakefile
 # covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
+# Additional wildcard constraints defined locally for pseudo-Cl rules (line 327)
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
-# Mask power spectra for masked covariance calculation
-MASK_CLS_BASE = "/home/guerrini/sp_validation/cosmo_inference/data/mask"
+# Mask power spectra for masked covariance calculation (relative to COSMO_INFERENCE)
+MASK_CLS_BASE = str(COSMO_INFERENCE / "data/mask")
 MASK_CLS_FILES = {
     "v1.4.5": f"{MASK_CLS_BASE}/mask_cls_v1.4.5_nside_8192_norm.txt",
     "v1.4.6": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",

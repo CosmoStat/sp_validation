@@ -424,16 +424,17 @@ if __name__ == "__main__":
     versions = config["versions"]
     version_labels = config["plotting"]["version_labels"]
 
-    # Separate macro outputs from evidence output
-    macro_outputs = [Path(p) for p in snakemake.output if p.endswith(".tex")]  # noqa: F821
+    # Separate macro file from PTE tables and evidence
+    # Only claims_macros.tex gets macro content; PTE tables generated separately
+    macro_file = [Path(p) for p in snakemake.output if p.endswith("claims_macros.tex")]  # noqa: F821
     evidence_outputs = [Path(p) for p in snakemake.output if p.endswith("evidence.json")]  # noqa: F821
 
     print(f"Generating macros from {claims_dir}")
-    generate_macros(claims_dir, macro_outputs, fiducial_version)
+    generate_macros(claims_dir, macro_file, fiducial_version)
 
-    # Generate PTE tables
-    if macro_outputs:
-        paper_dir = macro_outputs[0].parent
+    # Generate PTE tables (separate files, not macro content)
+    if macro_file:
+        paper_dir = macro_file[0].parent
         print(f"Generating PTE tables to {paper_dir}")
         generate_pte_tables(claims_dir, paper_dir, fiducial_version, versions, version_labels, config)
 
