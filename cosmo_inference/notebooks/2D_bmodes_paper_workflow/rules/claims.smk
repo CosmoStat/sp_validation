@@ -129,10 +129,11 @@ rule cosebis_version_comparison:
 
 
 rule cosebis_data_vector:
-    """B-mode data vector: COSEBIS B-modes for fiducial version (v1.4.6).
+    """B-mode data vector: COSEBIS B-modes for fiducial version.
 
     Single-panel figure combining fiducial and full angular ranges.
     Paper figure for main text. PTEs are in cosebis_pte_matrix.
+    Version set by config['fiducial']['version'].
     """
     input:
         specs=[

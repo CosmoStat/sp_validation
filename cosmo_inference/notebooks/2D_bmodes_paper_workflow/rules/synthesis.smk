@@ -69,6 +69,7 @@ rule paper_macros:
     input:
         cosebis_evidence=rules.cosebis_version_comparison.output.evidence,
         pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
+        pure_eb_covariance=rules.pure_eb_covariance.output.evidence,
         # PTE composite evidence for table generation
         config_space_pte=rules.config_space_pte_matrices.output.evidence,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,

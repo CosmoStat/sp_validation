@@ -65,14 +65,17 @@ def load_harmonic_diagonals(path):
     }
 
 
-def load_cosebis_diagonals(xi_integration_path, cov_integration_path, nmodes, theta_min, theta_max):
+def load_cosebis_diagonals(
+    xi_integration_path, cov_integration_path, nmodes, theta_min, theta_max,
+    min_sep_int, max_sep_int, nbins_int
+):
     """Compute COSEBIS covariance diagonals from config-space covariance.
 
     Uses calculate_cosebis to transform config-space covariance to COSEBIS space.
     Returns E_n and B_n covariance diagonals.
     """
     # Load fine-binned 2PCF (need the binning info for COSEBIS calculation)
-    gg = treecorr.GGCorrelation(min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin")
+    gg = treecorr.GGCorrelation(min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin")
     gg.read(xi_integration_path)
 
     # Compute COSEBIS with this blind's covariance
@@ -252,6 +255,11 @@ def main(snakemake):
     nmodes = snakemake.params.nmodes
     theta_min = snakemake.params.theta_min
     theta_max = snakemake.params.theta_max
+    # Integration binning parameters from config
+    min_sep_int = config["fiducial"]["min_sep_int"]
+    max_sep_int = config["fiducial"]["max_sep_int"]
+    nbins_int = config["fiducial"]["nbins_int"]
+
     cosebis_data = {}
     for blind in BLINDS:
         cosebis_data[blind] = load_cosebis_diagonals(
@@ -260,6 +268,9 @@ def main(snakemake):
             nmodes,
             theta_min,
             theta_max,
+            min_sep_int,
+            max_sep_int,
+            nbins_int,
         )
 
     # Effective ell values (log-spaced bins)

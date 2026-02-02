@@ -42,15 +42,21 @@ def _compute_pte(values, covariance):
 
 def main():
     t_start = time.time()
+    config = snakemake.config
 
     # Extract wildcards
     i_min = int(snakemake.wildcards.i_min)
     i_max = int(snakemake.wildcards.i_max)
     nmodes = int(snakemake.params.nmodes)  # Should be 20 for full computation
 
+    # Integration binning parameters from config
+    min_sep_int = config["fiducial"]["min_sep_int"]
+    max_sep_int = config["fiducial"]["max_sep_int"]
+    nbins_int = config["fiducial"]["nbins_int"]
+
     # Load precomputed fine-binned 2PCF
     t0 = time.time()
-    gg = treecorr.GGCorrelation(min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin")
+    gg = treecorr.GGCorrelation(min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin")
     gg.read(snakemake.input.xi_integration)
     print(f"[TIMING] Load 2PCF: {time.time() - t0:.2f}s")
 
