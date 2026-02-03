@@ -32,10 +32,16 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [Conf
 
 ## Outputs
 
+**Main figure (leak-corrected, paper):**
 - `figure.png` — Single-panel figure showing $B_n / \sigma_n$ for fiducial version
   - Both scale cuts (fiducial and full) overplotted with different colors
   - Error bars are unity by construction (normalized)
   - Paper figure for main text B-mode validation
+
+**Companion figure (uncorrected, dashboard only):**
+- `figure_uncorrected.png` — Same layout, using uncorrected shear measurements
+- Titled "COSEBIS B-modes (uncorrected)"
+- Not included in paper, for validation/comparison purposes
 
 ## Notes
 

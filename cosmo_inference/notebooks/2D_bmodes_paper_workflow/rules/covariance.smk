@@ -388,14 +388,15 @@ rule pseudo_cl_cov:
         power=0.5,
     resources:
         mem_mb=16000,
-        runtime=60,
+        runtime=180,
     threads: 12
     script:
         "../scripts/generate_pseudo_cl_cov.py"
 
 
-# Both leak-corrected and base versions for pseudo-Cl generation
-PSEUDO_CL_VERSIONS = config["versions"] + BASE_VERSIONS
+# Use same versions as other statistics (leak-corrected only)
+# Uncorrected versions are generated on-demand when needed by specific claims
+PSEUDO_CL_VERSIONS = config["versions"]
 
 rule pseudo_cl_all:
     """Generate pseudo-Cls for all versions (harmonic preset, blind A only)."""

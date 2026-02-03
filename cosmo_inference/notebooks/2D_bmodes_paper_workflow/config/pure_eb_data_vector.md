@@ -43,10 +43,14 @@ Fiducial PTEs should fall within healthy range for null hypothesis consistency. 
 
 ## Outputs
 
-- `figure.png` -- Pure E/B decomposition showing xi+^B and xi-^B consistent with zero
-
-Figure shows:
+**Main figure (leak-corrected, paper):**
+- `figure.png` — Pure E/B decomposition showing xi+^B and xi-^B consistent with zero
 - 1x2 layout: left panel (ξ+), right panel (ξ-)
 - Each panel shows all decomposition components stacked: total, E-modes, ambiguous, B-modes
 - Color coding: total (black), E-modes (teal), ambiguous (purple), B-modes (crimson)
 - Excluded scale regions shaded gray (outside fiducial range)
+
+**Companion figure (uncorrected, dashboard only):**
+- `figure_uncorrected.png` — Same layout, using uncorrected shear measurements
+- Labeled "(uncorrected)" in title
+- Not included in paper, for validation/comparison purposes

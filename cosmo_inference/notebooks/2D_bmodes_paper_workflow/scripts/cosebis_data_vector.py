@@ -3,6 +3,10 @@
 Single-panel figure showing B-mode COSEBIS for fiducial version (from config.fiducial.version).
 Overplots fiducial and full angular range scale cuts.
 Paper figure for main text B-mode validation.
+
+Produces two figures:
+- Main figure (leak-corrected, unlabeled) for paper
+- Companion figure (uncorrected, labeled) for dashboard
 """
 
 import json
@@ -24,11 +28,36 @@ plt.style.use(
 )
 
 
-def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts):
+def _compute_cosebis_datasets(gg, cov_path, nmodes, scale_cuts):
+    """Compute COSEBIS B-modes for given scale cuts.
+
+    Returns dict with normalized B_n / sigma_n for each scale cut.
+    """
+    datasets = {}
+    for scale_key, scale_cut in scale_cuts.items():
+        results = calculate_cosebis(
+            gg,
+            nmodes=nmodes,
+            scale_cuts=[scale_cut],
+            cov_path=cov_path,
+        )
+        cosebis_result = results[scale_cut]
+        Bn = cosebis_result["Bn"]
+        cov = cosebis_result["cov"]
+        cov_B = cov[nmodes:, nmodes:]
+        sigma_B = np.sqrt(np.diag(cov_B))
+        datasets[scale_key] = {"Bn_normalized": Bn / sigma_B}
+    return datasets
+
+
+def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title_suffix=""):
     """Create a single-panel B-mode COSEBIS figure.
 
     Plots B_n / sigma_n (dimensionless, in units of standard deviation).
     Both scale cuts overplotted with horizontal offset and different colors.
+
+    Args:
+        title_suffix: Optional suffix for title (e.g., " (uncorrected)")
     """
     fig_width = 7.24
     fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.35))
@@ -78,6 +107,9 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts):
     ax.set_xticks(np.arange(1, nmodes + 1))
     ax.tick_params(axis="both", width=0.5, length=3)
 
+    if title_suffix:
+        ax.set_title(f"COSEBIS B-modes{title_suffix}", fontsize=10)
+
     # Compute y-limits from data
     all_y = []
     for data in datasets.values():
@@ -121,7 +153,11 @@ def main():
     max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_int = int(config["fiducial"]["nbins_int"])
 
-    # Load 2PCF
+    # Create output directory
+    output_dir = Path(snakemake.output["evidence"]).parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # --- Main figure (leak-corrected) ---
     gg = treecorr.GGCorrelation(
         min_sep=min_sep_int,
         max_sep=max_sep_int,
@@ -129,35 +165,10 @@ def main():
         sep_units="arcmin",
     )
     gg.read(snakemake.input["xi_integration"])
-
-    # Compute COSEBIS for both scale cuts
-    datasets = {}
-
-    for scale_key, scale_cut in scale_cuts.items():
-        cov_path = snakemake.input["cov_integration"]
-
-        results = calculate_cosebis(
-            gg,
-            nmodes=nmodes,
-            scale_cuts=[scale_cut],
-            cov_path=cov_path,
-        )
-
-        cosebis_result = results[scale_cut]
-        Bn = cosebis_result["Bn"]
-        cov = cosebis_result["cov"]
-        cov_B = cov[nmodes:, nmodes:]
-        sigma_B = np.sqrt(np.diag(cov_B))
-
-        datasets[scale_key] = {
-            "Bn_normalized": Bn / sigma_B,
-        }
-
-    # Create output
-    output_dir = Path(snakemake.output["evidence"]).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    fig = _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts)
+    datasets = _compute_cosebis_datasets(
+        gg, snakemake.input["cov_integration"], nmodes, scale_cuts
+    )
+    fig = _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title_suffix="")
 
     fig_name = "figure.png"
     fig_path = output_dir / fig_name
@@ -169,8 +180,27 @@ def main():
         paper_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(fig_path, paper_path)
         print(f"Copied to {paper_path}")
-
     plt.close(fig)
+
+    # --- Companion figure (uncorrected) ---
+    gg_uncorr = treecorr.GGCorrelation(
+        min_sep=min_sep_int,
+        max_sep=max_sep_int,
+        nbins=nbins_int,
+        sep_units="arcmin",
+    )
+    gg_uncorr.read(snakemake.input["xi_integration_uncorr"])
+    datasets_uncorr = _compute_cosebis_datasets(
+        gg_uncorr, snakemake.input["cov_integration_uncorr"], nmodes, scale_cuts
+    )
+    fig_uncorr = _create_single_panel_bmode_figure(
+        datasets_uncorr, nmodes, scale_cuts, title_suffix=" (uncorrected)"
+    )
+
+    fig_uncorr_path = Path(snakemake.output["figure_uncorrected"])
+    fig_uncorr.savefig(fig_uncorr_path, dpi=300, bbox_inches="tight")
+    print(f"Saved {fig_uncorr_path}")
+    plt.close(fig_uncorr)
 
     # Write evidence
     spec_paths = snakemake.input["specs"]
@@ -186,7 +216,10 @@ def main():
             "nmodes": nmodes,
             "note": "Paper data vector figure. Statistical PTEs in cosebis_pte_matrix claim.",
         },
-        "artifacts": {"figure": fig_name},
+        "artifacts": {
+            "figure": fig_name,
+            "figure_uncorrected": fig_uncorr_path.name,
+        },
     }
 
     evidence_path = Path(snakemake.output["evidence"])

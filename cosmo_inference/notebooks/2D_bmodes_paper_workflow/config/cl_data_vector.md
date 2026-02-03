@@ -32,8 +32,14 @@ Power spectra and PTEs for BB and EB components, with and without scale cuts:
 
 ## Outputs
 
+**Main figure (leak-corrected, paper):**
 - `figure.png` — Two-panel figure (BB top, EB bottom)
 - BB: filled circles, EB: unfilled squares
 - Data normalized by errors (C_ell / sigma)
 - Scale cuts marked with shaded excluded regions
 - sqrt(ell) x-axis scaling matches bandpower binning
+
+**Companion figure (uncorrected, dashboard only):**
+- `figure_uncorrected.png` — Same layout, using uncorrected shear measurements
+- Labeled "(uncorrected)" in legend
+- Not included in paper, for validation/comparison purposes

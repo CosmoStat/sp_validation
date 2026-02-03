@@ -1,7 +1,9 @@
 """Harmonic-space fiducial B-mode power spectrum.
 
 Claim: Fiducial catalog shows C_ell^BB consistent with zero.
-Produces single-panel figure with BB and EB on same axis and evidence.json.
+Produces two figures:
+- Main figure (leak-corrected, unlabeled) for paper
+- Companion figure (uncorrected, labeled) for dashboard
 """
 
 import json
@@ -13,27 +15,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from astropy.io import fits
-from scipy import stats
 
-# Import and register SquareRootScale (registration happens at import)
-import plotting_utils  # noqa: F401
+# Import shared utilities (also registers SquareRootScale)
+from plotting_utils import compute_chi2_pte
 
 
 plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
 )
-
-# Scale cuts passed from config via snakemake.params
-ELL_MIN_CUT = None
-ELL_MAX_CUT = None
-
-
-def _compute_pte(data, covariance):
-    """Compute PTE for B-mode null test."""
-    chi2 = float(data @ np.linalg.solve(covariance, data))
-    dof = len(data)
-    pte = stats.chi2.sf(chi2, dof)
-    return pte, chi2, dof
 
 
 def _compute_pte_with_cuts(data, covariance, ell, ell_min, ell_max):
@@ -41,18 +30,13 @@ def _compute_pte_with_cuts(data, covariance, ell, ell_min, ell_max):
     mask = (ell >= ell_min) & (ell <= ell_max)
     data_cut = data[mask]
     cov_cut = covariance[np.ix_(mask, mask)]
-    return _compute_pte(data_cut, cov_cut)
+    chi2, pte, dof = compute_chi2_pte(data_cut, cov_cut)
+    return pte, chi2, dof
 
 
-def main():
-    from snakemake.script import snakemake
-
-    global ELL_MIN_CUT, ELL_MAX_CUT
-    ELL_MIN_CUT = int(snakemake.params.ell_min_cut)
-    ELL_MAX_CUT = int(snakemake.params.ell_max_cut)
-
-    # Load pseudo-Cl data
-    hdu = fits.open(snakemake.input["pseudo_cl"])
+def _load_pseudo_cl_data(pseudo_cl_path, pseudo_cl_cov_path):
+    """Load pseudo-Cl data and covariance from FITS files."""
+    hdu = fits.open(pseudo_cl_path)
     data = hdu["PSEUDO_CELL"].data
     hdu.close()
 
@@ -60,32 +44,27 @@ def main():
     cl_eb = data["EB"]
     cl_bb = data["BB"]
 
-    # Load covariances
-    hdu_cov = fits.open(snakemake.input["pseudo_cl_cov"])
+    hdu_cov = fits.open(pseudo_cl_cov_path)
     cov_eb = hdu_cov["COVAR_EB_EB"].data
     cov_bb = hdu_cov["COVAR_BB_BB"].data
     hdu_cov.close()
 
-    # Extract errors from diagonal
     sigma_eb = np.sqrt(np.diag(cov_eb))
     sigma_bb = np.sqrt(np.diag(cov_bb))
 
-    # Compute PTEs (null tests) using full ell range
-    pte_eb_full, chi2_eb_full, dof_eb_full = _compute_pte(cl_eb, cov_eb)
-    pte_bb_full, chi2_bb_full, dof_bb_full = _compute_pte(cl_bb, cov_bb)
+    return ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb
 
-    # Compute PTEs with scale cuts
-    pte_eb_cut, chi2_eb_cut, dof_eb_cut = _compute_pte_with_cuts(
-        cl_eb, cov_eb, ell, ELL_MIN_CUT, ELL_MAX_CUT
-    )
-    pte_bb_cut, chi2_bb_cut, dof_bb_cut = _compute_pte_with_cuts(
-        cl_bb, cov_bb, ell, ELL_MIN_CUT, ELL_MAX_CUT
-    )
 
-    # Create two-panel figure (vertically stacked, two-column width)
+def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_max_cut, label_suffix=""):
+    """Create two-panel Cl figure.
+
+    Args:
+        ell_min_cut: Lower scale cut for shading excluded region
+        ell_max_cut: Upper scale cut for shading excluded region
+        label_suffix: Optional suffix for labels (e.g., " (uncorrected)")
+    """
     fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(7.24, 5.0), sharex=True)
 
-    # Use husl palette for two series
     sns.set_palette("husl", 2)
     colors = sns.color_palette()
     color_bb = colors[0]
@@ -93,11 +72,12 @@ def main():
 
     minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 
-    # BB panel (circles, filled) - top
+    # BB panel
+    bb_label = rf"$C_\ell^{{BB}}${label_suffix}"
     ax_bb.errorbar(
         ell, cl_bb / sigma_bb, yerr=np.ones_like(cl_bb),
         fmt="o", mfc=color_bb, mec=color_bb, color=color_bb,
-        capsize=2, markersize=4, linewidth=1.0, label=r"$C_\ell^{BB}$",
+        capsize=2, markersize=4, linewidth=1.0, label=bb_label,
     )
     ax_bb.axhline(0, color="black", linestyle="-", linewidth=1.0, alpha=0.8)
     ax_bb.set_xscale("squareroot")
@@ -105,11 +85,12 @@ def main():
     ax_bb.grid(True, which="major", axis="both", alpha=0.3)
     ax_bb.legend(loc="upper left", framealpha=0.9)
 
-    # EB panel (squares, unfilled) - bottom
+    # EB panel
+    eb_label = rf"$C_\ell^{{EB}}${label_suffix}"
     ax_eb.errorbar(
         ell, cl_eb / sigma_eb, yerr=np.ones_like(cl_eb),
         fmt="s", mfc="none", mec=color_eb, color=color_eb,
-        capsize=2, markersize=4, linewidth=1.0, label=r"$C_\ell^{EB}$",
+        capsize=2, markersize=4, linewidth=1.0, label=eb_label,
     )
     ax_eb.axhline(0, color="black", linestyle="-", linewidth=1.0, alpha=0.8)
     ax_eb.set_xscale("squareroot")
@@ -120,33 +101,53 @@ def main():
 
     # Apply shading and ticks to both panels
     for ax in [ax_bb, ax_eb]:
-        # Get data range for shading
         ell_min_data = ell.min()
         ell_max_data = ell.max()
-
-        # Set x limits to data range before shading
         ax.set_xlim(ell_min_data * 0.95, ell_max_data * 1.05)
 
-        # Shade excluded regions (extending to plot edges)
         xlim = ax.get_xlim()
-        ax.axvspan(xlim[0], ELL_MIN_CUT, alpha=0.1, color="gray", zorder=0)
-        ax.axvspan(ELL_MAX_CUT, xlim[1], alpha=0.1, color="gray", zorder=0)
-
-        # Restore limits (shading may have expanded them)
+        ax.axvspan(xlim[0], ell_min_cut, alpha=0.1, color="gray", zorder=0)
+        ax.axvspan(ell_max_cut, xlim[1], alpha=0.1, color="gray", zorder=0)
         ax.set_xlim(xlim)
 
-        # Ticks
         ax.set_xticks(np.array([100, 400, 900, 1600]))
         ax.minorticks_on()
         ax.tick_params(axis="x", which="minor", length=2, width=0.8)
         ax.set_xticks(minor_ticks, minor=True)
 
     plt.tight_layout()
+    return fig
 
-    # Save figure
+
+def main():
+    ell_min_cut = int(snakemake.params.ell_min_cut)
+    ell_max_cut = int(snakemake.params.ell_max_cut)
+
+    # Load leak-corrected data (main figure)
+    ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
+        snakemake.input["pseudo_cl"], snakemake.input["pseudo_cl_cov"]
+    )
+
+    # Compute PTEs (null tests) using full ell range
+    chi2_eb_full, pte_eb_full, dof_eb_full = compute_chi2_pte(cl_eb, cov_eb)
+    chi2_bb_full, pte_bb_full, dof_bb_full = compute_chi2_pte(cl_bb, cov_bb)
+
+    # Compute PTEs with scale cuts
+    pte_eb_cut, chi2_eb_cut, dof_eb_cut = _compute_pte_with_cuts(
+        cl_eb, cov_eb, ell, ell_min_cut, ell_max_cut
+    )
+    pte_bb_cut, chi2_bb_cut, dof_bb_cut = _compute_pte_with_cuts(
+        cl_bb, cov_bb, ell, ell_min_cut, ell_max_cut
+    )
+
+    # Create output directory
     output_dir = Path(snakemake.output["evidence"]).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # --- Main figure (leak-corrected, unlabeled) ---
+    fig = _create_cl_figure(
+        ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_max_cut, label_suffix=""
+    )
     fig_path = Path(snakemake.output["figure"])
     fig.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
@@ -156,10 +157,22 @@ def main():
     paper_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(fig_path, paper_path)
     print(f"Copied to {paper_path}")
-
     plt.close(fig)
 
-    # Build evidence
+    # --- Companion figure (uncorrected, labeled) ---
+    ell_uc, cl_bb_uc, cl_eb_uc, _, _, sigma_bb_uc, sigma_eb_uc = _load_pseudo_cl_data(
+        snakemake.input["pseudo_cl_uncorr"], snakemake.input["pseudo_cl_cov_uncorr"]
+    )
+    fig_uc = _create_cl_figure(
+        ell_uc, cl_bb_uc, cl_eb_uc, sigma_bb_uc, sigma_eb_uc, ell_min_cut, ell_max_cut,
+        label_suffix=" (uncorrected)"
+    )
+    fig_uc_path = Path(snakemake.output["figure_uncorrected"])
+    fig_uc.savefig(fig_uc_path, dpi=300, bbox_inches="tight")
+    print(f"Saved {fig_uc_path}")
+    plt.close(fig_uc)
+
+    # Build evidence (based on leak-corrected data only)
     spec_paths = snakemake.input["specs"]
 
     evidence_data = {
@@ -182,8 +195,8 @@ def main():
             "chi2_bb_cut": float(chi2_bb_cut),
             "dof_bb_cut": int(dof_bb_cut),
             # Scale cut values
-            "ell_min_cut": int(ELL_MIN_CUT),
-            "ell_max_cut": int(ELL_MAX_CUT),
+            "ell_min_cut": int(ell_min_cut),
+            "ell_max_cut": int(ell_max_cut),
             # Data range
             "ell_min": float(ell.min()),
             "ell_max": float(ell.max()),
@@ -191,6 +204,7 @@ def main():
         },
         "artifacts": {
             "figure": fig_path.name,
+            "figure_uncorrected": fig_uc_path.name,
         },
     }
 

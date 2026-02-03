@@ -133,7 +133,10 @@ rule cosebis_data_vector:
 
     Single-panel figure combining fiducial and full angular ranges.
     Paper figure for main text. PTEs are in cosebis_pte_matrix.
-    Version set by config['fiducial']['version'].
+
+    Produces two figures:
+    - Main figure: leak-corrected (default, unlabeled)
+    - Companion figure: uncorrected (labeled "uncorrected")
     """
     input:
         specs=[
@@ -142,14 +145,19 @@ rule cosebis_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
+        # Leak-corrected (main)
         xi_integration=_xi_integration_path(FIDUCIAL["version"]),
         cov_integration=_cov_integration_path(FIDUCIAL["version"], "A"),
+        # Uncorrected (companion)
+        xi_integration_uncorr=_xi_integration_path(FIDUCIAL["version"].replace("_leak_corr", "")),
+        cov_integration_uncorr=_cov_integration_path(FIDUCIAL["version"].replace("_leak_corr", ""), "A"),
     params:
         cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
         figure=f"{CLAIMS_DIR}/cosebis_data_vector/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/cosebis_data_vector.png",
+        figure_uncorrected=f"{CLAIMS_DIR}/cosebis_data_vector/figure_uncorrected.png",
     script:
         "../scripts/cosebis_data_vector.py"
 
@@ -186,7 +194,7 @@ rule precompute_pure_eb_chunk:
 rule precompute_pure_eb:
     """Gather MC sample chunks and compute final pure E/B covariance."""
     wildcard_constraints:
-        version=r"[^_]+_v[\d.]+_leak_corr",  # e.g. SP_v1.4.6_leak_corr (no blind suffix)
+        version=r"[^_]+_v[\d.]+(_leak_corr)?",  # e.g. SP_v1.4.6 or SP_v1.4.6_leak_corr (no blind suffix)
     input:
         chunks=expand(
             "results/paper_plots/intermediate/chunks/{{version}}_pure_eb_chunk_{chunk_id}.npz",
@@ -207,15 +215,20 @@ rule precompute_pure_eb:
 
 
 rule precompute_pure_eb_blind:
-    """Precompute pure E/B decomposition with per-blind covariance."""
+    """Precompute pure E/B decomposition with per-blind covariance.
+
+    Parameterized by version to support both leak_corr and uncorrected versions.
+    """
+    wildcard_constraints:
+        version=r"[^_]+_v[\d.]+(_leak_corr)?",  # e.g. SP_v1.4.6 or SP_v1.4.6_leak_corr
     input:
-        base_pure_eb=f"results/paper_plots/intermediate/{config['fiducial']['version']}_pure_eb_semianalytic.npz",
-        xi_integration=_xi_integration_path(config["fiducial"]["version"]),
-        cov_integration=lambda w: _cov_integration_path(config["fiducial"]["version"], w.blind),
+        base_pure_eb=lambda w: f"results/paper_plots/intermediate/{w.version}_pure_eb_semianalytic.npz",
+        xi_integration=lambda w: _xi_integration_path(w.version),
+        cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
     output:
-        f"results/paper_plots/intermediate/{config['fiducial']['version']}_{{blind}}_pure_eb_semianalytic.npz",
+        "results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz",
     params:
-        version=config["fiducial"]["version"],
+        version="{version}",
         n_samples=config["covariance"]["n_samples"],
         cosmo_params=PLANCK18,
         **FIDUCIAL_BINNING,
@@ -230,7 +243,11 @@ rule precompute_pure_eb_blind:
 rule pure_eb_data_vector:
     """B-mode null test: Pure E/B data vector at fiducial scale cuts.
 
-    Uses fiducial blind only (config.fiducial.blind) for PTE calculation.
+    Uses fiducial blind only (FIDUCIAL["blind"]) for PTE calculation.
+
+    Produces two figures:
+    - Main figure: leak-corrected (default, unlabeled)
+    - Companion figure: uncorrected (labeled "uncorrected")
     """
     input:
         specs=[
@@ -239,11 +256,16 @@ rule pure_eb_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pure_eb=f"results/paper_plots/intermediate/{config['fiducial']['version']}_{config['fiducial']['blind']}_pure_eb_semianalytic.npz",
-        cov=_reporting_cov_path(config["fiducial"]["version"], config["fiducial"]["blind"]),
+        # Leak-corrected (main)
+        pure_eb=f"results/paper_plots/intermediate/{FIDUCIAL['version']}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz",
+        cov=_reporting_cov_path(FIDUCIAL["version"], FIDUCIAL["blind"]),
+        # Uncorrected (companion)
+        pure_eb_uncorr=f"results/paper_plots/intermediate/{FIDUCIAL['version'].replace('_leak_corr', '')}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz",
+        cov_uncorr=_reporting_cov_path(FIDUCIAL["version"].replace("_leak_corr", ""), FIDUCIAL["blind"]),
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.png",
+        figure_uncorrected=f"{CLAIMS_DIR}/pure_eb_data_vector/figure_uncorrected.png",
     script:
         "../scripts/pure_eb_data_vector.py"
 
@@ -332,15 +354,24 @@ rule calculate_pure_eb_ptes:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule cl_data_vector:
-    """Harmonic-space B-mode power spectra at fiducial ell range."""
+    """Harmonic-space B-mode power spectra at fiducial ell range.
+
+    Produces two figures:
+    - Main figure: leak-corrected (default, unlabeled)
+    - Companion figure: uncorrected (labeled "uncorrected")
+    """
     input:
         specs=[
             f"{CONFIG_DIR}/cl_data_vector.md",
             f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
+        # Leak-corrected (main)
         pseudo_cl=_pseudo_cl_path(FIDUCIAL['version']),
         pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL['version']),
+        # Uncorrected (companion)
+        pseudo_cl_uncorr=_pseudo_cl_path(FIDUCIAL['version'].replace('_leak_corr', '')),
+        pseudo_cl_cov_uncorr=_pseudo_cl_cov_path(FIDUCIAL['version'].replace('_leak_corr', '')),
     params:
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
@@ -348,6 +379,7 @@ rule cl_data_vector:
         evidence=f"{CLAIMS_DIR}/cl_data_vector/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_data_vector/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/cl_data_vector.png",
+        figure_uncorrected=f"{CLAIMS_DIR}/cl_data_vector/figure_uncorrected.png",
     script:
         "../scripts/cl_data_vector.py"
 
