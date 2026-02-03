@@ -27,45 +27,49 @@ plt.style.use(
 
 
 
-def _draw_normalized_version_boxes_modes(ax, modes, datasets, y_norm_key, fiducial_idx):
+def _draw_normalized_version_boxes_modes(ax, modes, datasets, y_norm_key, fiducial_idx,
+                                          x_offsets=None):
     """Draw boxes for normalized (y/sigma) COSEBIS modes.
 
     For each mode, draws:
     - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
     - A horizontal fiducial line at the fiducial version's y_norm value
-    """
-    nmodes = len(modes)
-    box_half_width = 0.35  # Half width of box in mode units
 
-    for i in range(nmodes):
-        y_vals = [data[y_norm_key][i] for data in datasets]
+    Parameters
+    ----------
+    x_offsets : array-like, optional
+        Array of x-offsets used for jittering data points. Box width will
+        cover this range plus 25% padding. Default: [-0.2, -0.07, 0.07, 0.2]
+    """
+    if x_offsets is None:
+        x_offsets = np.array([-0.2, -0.07, 0.07, 0.2])
+
+    box_half_width = np.max(np.abs(x_offsets)) * 1.25
+
+    for i, mode in enumerate(modes):
+        y_vals = np.array([data[y_norm_key][i] for data in datasets])
 
         # Error is 1 by construction for normalized plots
-        y_lower = [y - 1 for y in y_vals]
-        y_upper = [y + 1 for y in y_vals]
+        box_bottom = y_vals.min() - 1
+        box_top = y_vals.max() + 1
 
-        box_bottom = min(y_lower)
-        box_top = max(y_upper)
-
-        x_center = modes[i]
-        x_left = x_center - box_half_width
-        x_right = x_center + box_half_width
+        x_left = mode - box_half_width
+        x_right = mode + box_half_width
 
         rect = Rectangle(
             (x_left, box_bottom),
             x_right - x_left,
             box_top - box_bottom,
             facecolor='none',
-            edgecolor='0.4',
-            linewidth=0.5,
+            edgecolor='0.3',
+            linewidth=0.7,
             zorder=1,
         )
         ax.add_patch(rect)
 
-        fiducial_y = y_vals[fiducial_idx]
         ax.hlines(
-            fiducial_y, x_left, x_right,
-            colors='0.5', linewidth=0.6, zorder=1
+            y_vals[fiducial_idx], x_left, x_right,
+            colors='0.4', linewidth=0.7, zorder=1
         )
 
 
@@ -118,7 +122,8 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
         # Draw version spread boxes (before data points)
         _draw_normalized_version_boxes_modes(
             ax, modes, datasets,
-            y_norm_key="Bn_normalized", fiducial_idx=fiducial_idx
+            y_norm_key="Bn_normalized", fiducial_idx=fiducial_idx,
+            x_offsets=x_offsets
         )
 
         for i, data in enumerate(datasets):

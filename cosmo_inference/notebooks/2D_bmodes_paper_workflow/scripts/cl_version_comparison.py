@@ -31,46 +31,49 @@ ELL_MIN_CUT = None
 ELL_MAX_CUT = None
 
 
-def _draw_normalized_version_boxes_ell(ax, ell, ell_widths, datasets, y_norm_key, fiducial_idx):
-    """Draw boxes for normalized (y/sigma) plots in ell space with sqrt scale.
+def _draw_normalized_version_boxes_ell(ax, ell, ell_widths, datasets, y_norm_key, fiducial_idx,
+                                        jitter_fraction=0.15, n_versions=4):
+    """Draw boxes for normalized (y/sigma) plots in ell space.
 
     For each multipole bin, draws:
     - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
     - A horizontal fiducial line at the fiducial version's y_norm value
-    """
-    nbins = len(ell)
-    box_width_factor = 0.12  # Fraction of bin width
 
-    for i in range(nbins):
-        y_vals = [data[y_norm_key][i] for data in datasets]
+    Parameters
+    ----------
+    jitter_fraction : float
+        Jitter fraction used for offsetting data points.
+    n_versions : int
+        Number of versions being plotted (affects jitter range).
+    """
+    # Max jitter is ((n-1)/2) * jitter_fraction; add 15% padding
+    box_half_width_factor = ((n_versions - 1) / 2) * jitter_fraction * 1.15
+
+    for i, ell_i in enumerate(ell):
+        y_vals = np.array([data[y_norm_key][i] for data in datasets])
 
         # Error is 1 by construction for normalized plots
-        y_lower = [y - 1 for y in y_vals]
-        y_upper = [y + 1 for y in y_vals]
+        box_bottom = y_vals.min() - 1
+        box_top = y_vals.max() + 1
 
-        box_bottom = min(y_lower)
-        box_top = max(y_upper)
-
-        # Box width as fraction of bin width
-        half_width = ell_widths[i] * box_width_factor
-        x_left = ell[i] - half_width
-        x_right = ell[i] + half_width
+        half_width = ell_widths[i] * box_half_width_factor
+        x_left = ell_i - half_width
+        x_right = ell_i + half_width
 
         rect = Rectangle(
             (x_left, box_bottom),
             x_right - x_left,
             box_top - box_bottom,
             facecolor='none',
-            edgecolor='0.4',
-            linewidth=0.5,
+            edgecolor='0.3',
+            linewidth=0.7,
             zorder=1,
         )
         ax.add_patch(rect)
 
-        fiducial_y = y_vals[fiducial_idx]
         ax.hlines(
-            fiducial_y, x_left, x_right,
-            colors='0.5', linewidth=0.6, zorder=1
+            y_vals[fiducial_idx], x_left, x_right,
+            colors='0.4', linewidth=0.7, zorder=1
         )
 
 
@@ -181,11 +184,13 @@ def main():
     # Draw version spread boxes (before data points)
     _draw_normalized_version_boxes_ell(
         ax_bb, ell_ref, ell_widths, datasets,
-        y_norm_key="cl_bb_normalized", fiducial_idx=fiducial_idx
+        y_norm_key="cl_bb_normalized", fiducial_idx=fiducial_idx,
+        jitter_fraction=jitter_fraction, n_versions=len(datasets)
     )
     _draw_normalized_version_boxes_ell(
         ax_eb, ell_ref, ell_widths, datasets,
-        y_norm_key="cl_eb_normalized", fiducial_idx=fiducial_idx
+        y_norm_key="cl_eb_normalized", fiducial_idx=fiducial_idx,
+        jitter_fraction=jitter_fraction, n_versions=len(datasets)
     )
 
     legend_handles = []

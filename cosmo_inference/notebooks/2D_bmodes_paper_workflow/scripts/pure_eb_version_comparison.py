@@ -35,7 +35,8 @@ def _extract_sigma(covariance, block_index, block_size):
 
 
 def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
-                        scale_factor=1.0, apply_theta_scaling=True):
+                        scale_factor=1.0, apply_theta_scaling=True,
+                        x_offset_range=(0.91, 1.09)):
     """Draw boxes spanning version spread with fiducial line through each bin.
 
     For each angular bin, draws:
@@ -44,31 +45,21 @@ def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
 
     Parameters
     ----------
-    ax : matplotlib.axes.Axes
-        Axis to draw on
-    theta : array
-        Angular bin centers
-    datasets : list of dict
-        Version data dictionaries
-    y_key : str
-        Key for y-values in datasets
-    sigma_key : str
-        Key for error values in datasets
-    fiducial_idx : int
-        Index of fiducial version in datasets
     scale_factor : float
-        Factor to divide values by (for plotting in scaled units)
+        Factor to divide values by (for plotting in scaled units).
     apply_theta_scaling : bool
-        If True, multiply y and sigma by theta (for theta*xi plots)
+        If True, multiply y and sigma by theta (for theta*xi plots).
+    x_offset_range : tuple
+        (min, max) multiplicative offsets for data points. Box will cover
+        this range plus 10% padding.
     """
-    nbins = len(theta)
+    offset_min, offset_max = x_offset_range
+    padding = 0.1 * (offset_max - offset_min)
+    box_left_factor = offset_min - padding
+    box_right_factor = offset_max + padding
 
-    # Compute log-scale box widths (fraction of bin position in log space)
-    log_theta = np.log10(theta)
-    box_width_factor = 0.15  # Fraction of distance to next bin
-
-    for i in range(nbins):
-        # Collect all version values at this bin
+    for i, theta_i in enumerate(theta):
+        # Collect scaled values for all versions
         y_vals = []
         y_lower = []
         y_upper = []
@@ -78,8 +69,8 @@ def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
             sigma = data[sigma_key][i]
 
             if apply_theta_scaling:
-                y = theta[i] * y
-                sigma = theta[i] * sigma
+                y = theta_i * y
+                sigma = theta_i * sigma
 
             y_scaled = y / scale_factor
             sigma_scaled = sigma / scale_factor
@@ -88,83 +79,69 @@ def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
             y_lower.append(y_scaled - sigma_scaled)
             y_upper.append(y_scaled + sigma_scaled)
 
-        # Box spans from min lower to max upper
-        box_bottom = min(y_lower)
-        box_top = max(y_upper)
+        x_left = theta_i * box_left_factor
+        x_right = theta_i * box_right_factor
 
-        # Compute box width in log space
-        if i < nbins - 1:
-            log_width = (log_theta[i + 1] - log_theta[i]) * box_width_factor
-        else:
-            log_width = (log_theta[i] - log_theta[i - 1]) * box_width_factor
-
-        x_left = 10 ** (log_theta[i] - log_width)
-        x_right = 10 ** (log_theta[i] + log_width)
-
-        # Draw box
         rect = Rectangle(
-            (x_left, box_bottom),
+            (x_left, min(y_lower)),
             x_right - x_left,
-            box_top - box_bottom,
+            max(y_upper) - min(y_lower),
             facecolor='none',
-            edgecolor='0.4',
-            linewidth=0.5,
+            edgecolor='0.3',
+            linewidth=0.7,
             zorder=1,
         )
         ax.add_patch(rect)
 
-        # Draw fiducial line
-        fiducial_y = y_vals[fiducial_idx]
         ax.hlines(
-            fiducial_y, x_left, x_right,
-            colors='0.5', linewidth=0.6, zorder=1
+            y_vals[fiducial_idx], x_left, x_right,
+            colors='0.4', linewidth=0.7, zorder=1
         )
 
 
-def _draw_normalized_version_boxes(ax, theta, datasets, y_norm_key, fiducial_idx):
+def _draw_normalized_version_boxes(ax, theta, datasets, y_norm_key, fiducial_idx,
+                                    x_offset_range=(0.91, 1.09)):
     """Draw boxes for normalized (y/sigma) plots where error bars are unity.
 
     For each angular bin, draws:
     - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
     - A horizontal fiducial line at the fiducial version's y_norm value
-    """
-    nbins = len(theta)
-    log_theta = np.log10(theta)
-    box_width_factor = 0.15
 
-    for i in range(nbins):
-        y_vals = [data[y_norm_key][i] for data in datasets]
+    Parameters
+    ----------
+    x_offset_range : tuple
+        (min, max) multiplicative offsets for data points. Box will cover
+        this range plus 10% padding.
+    """
+    offset_min, offset_max = x_offset_range
+    padding = 0.1 * (offset_max - offset_min)
+    box_left_factor = offset_min - padding
+    box_right_factor = offset_max + padding
+
+    for i, theta_i in enumerate(theta):
+        y_vals = np.array([data[y_norm_key][i] for data in datasets])
 
         # Error is 1 by construction for normalized plots
-        y_lower = [y - 1 for y in y_vals]
-        y_upper = [y + 1 for y in y_vals]
+        box_bottom = y_vals.min() - 1
+        box_top = y_vals.max() + 1
 
-        box_bottom = min(y_lower)
-        box_top = max(y_upper)
-
-        if i < nbins - 1:
-            log_width = (log_theta[i + 1] - log_theta[i]) * box_width_factor
-        else:
-            log_width = (log_theta[i] - log_theta[i - 1]) * box_width_factor
-
-        x_left = 10 ** (log_theta[i] - log_width)
-        x_right = 10 ** (log_theta[i] + log_width)
+        x_left = theta_i * box_left_factor
+        x_right = theta_i * box_right_factor
 
         rect = Rectangle(
             (x_left, box_bottom),
             x_right - x_left,
             box_top - box_bottom,
             facecolor='none',
-            edgecolor='0.4',
-            linewidth=0.5,
+            edgecolor='0.3',
+            linewidth=0.7,
             zorder=1,
         )
         ax.add_patch(rect)
 
-        fiducial_y = y_vals[fiducial_idx]
         ax.hlines(
-            fiducial_y, x_left, x_right,
-            colors='0.5', linewidth=0.6, zorder=1
+            y_vals[fiducial_idx], x_left, x_right,
+            colors='0.4', linewidth=0.7, zorder=1
         )
 
 
