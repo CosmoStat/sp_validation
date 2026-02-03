@@ -183,7 +183,8 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
 
 def main():
     config = snakemake.config
-    versions = config["versions"]
+    # Only leak-corrected versions have COSEBIS computed
+    versions = [v for v in config["versions"] if "_leak_corr" in v]
     nmodes = config["fiducial"]["nmodes"]
 
     # Use fiducial blind for plotting (B-modes are same across blinds, only covariance differs)

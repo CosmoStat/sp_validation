@@ -107,7 +107,8 @@ def main():
     ELL_MAX_CUT = int(snakemake.params.ell_max_cut)
 
     version_labels = snakemake.params.version_labels
-    versions = config["versions"]
+    # Only leak-corrected versions have pseudo-Cl computed
+    versions = [v for v in config["versions"] if "_leak_corr" in v]
     fiducial_version = config["fiducial"]["version"]
     plotting_config = config["plotting"]
 
