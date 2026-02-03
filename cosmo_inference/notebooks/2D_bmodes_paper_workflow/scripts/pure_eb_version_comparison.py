@@ -300,7 +300,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
 def main():
     config = snakemake.config
     version_labels = snakemake.params.version_labels
-    versions = config["versions"]
+    # Only leak-corrected versions have pure E/B computed
+    versions = [v for v in config["versions"] if "_leak_corr" in v]
     fiducial_version = config["fiducial"]["version"]
     plotting_config = config["plotting"]
 
