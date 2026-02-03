@@ -15,6 +15,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns  # Registers seaborn colormaps (icefire, etc.) with matplotlib
 
 
 plt.style.use(
