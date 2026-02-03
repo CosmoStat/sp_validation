@@ -33,10 +33,3 @@ Location: `{COSMO_VAL_OUTPUT}/` (defined in Snakefile, typically `/n17data/cdale
 
 Default parameters: `blind=A` (from `fiducial.blind`), `nbins=32` (from `cl.n_ell_bins`).
 
-## Comparison to Configuration-Space
-
-Harmonic-space methods integrate over angular scales, averaging out localized B-mode contamination. This explains why:
-- v1.4.8 passes harmonic tests but fails configuration-space tests
-- PTE healthy fractions are higher in harmonic space (~96%) than configuration space (~67-73%)
-
-The complementary sensitivity makes both approaches valuable for systematic validation.

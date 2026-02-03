@@ -52,10 +52,6 @@ covariance_{version}_{blind}_{gaussian}_minsep={min}_maxsep={max}_nbins={n}{mask
 
 B-mode claims use the fiducial blind from `config["fiducial"]["blind"]`. Covariances are computed for the fiducial blind only.
 
-### Historical Note
-
-Earlier analysis computed min-PTE across all three blinds (A, B, C). This was simplified to single-blind after determining that B-mode data vectors are identical across blinds (only covariances differ via n(z)). See [Covariance Blind Consistency](covariance_blind_consistency.md) for validation showing ~10% diagonal variation between blinds.
-
 ## Covariance Usage Policy
 
 Official results use specific covariance sources for consistency and correctness:
@@ -80,10 +76,6 @@ Some catalog versions share the same survey footprint and mask, so they reuse co
 | v1.4.11.2 | v1.4.6 | PSF size integration; same footprint and mask |
 
 This mapping is implemented in `resolve_covariance_version()` (Snakefile) and `MASK_CLS_FILES` (covariance.smk).
-
-### Why Gaussian for E/B propagation?
-
-Non-Gaussian covariance at 1000-bin integration scale is computationally prohibitive. Using Gaussian-only **underestimates** the E/B covariance, which **overestimates** B-mode significance. This is conservative for a null test: if B-modes pass with underestimated errors, they would also pass with correct errors.
 
 ## Related Specs
 

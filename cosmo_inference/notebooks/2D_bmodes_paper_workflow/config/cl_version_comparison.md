@@ -6,7 +6,7 @@ Plotting: [2D Plots](2d_plots.md)
 
 ## Claim
 
-B-mode power spectra C_ell^BB are consistent with zero for all leak-corrected versions, validating the absence of significant systematic contamination in harmonic space. Unlike configuration-space statistics, harmonic methods average over localized B-modes.
+B-mode power spectra C_ell^BB are consistent with zero for all leak-corrected versions.
 
 ## Config References
 
