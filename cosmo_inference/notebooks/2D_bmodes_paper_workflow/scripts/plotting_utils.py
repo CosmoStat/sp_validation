@@ -388,3 +388,111 @@ def draw_normalized_boxes_ell_scale(ax, ell, ell_widths, datasets, y_norm_key, f
         x_left = ell_i - half_width
         x_right = ell_i + half_width
         draw_normalized_version_box(ax, x_left, x_right, y_vals, y_vals[fiducial_idx], style)
+
+
+def extract_version_number(version_string):
+    """Extract short version number from full version string.
+
+    Examples:
+        SP_v1.4.5_leak_corr -> v1.4.5
+        SP_v1.4.11.2_leak_corr -> v1.4.11.2
+        SP_v1.4.5 -> v1.4.5
+
+    Parameters
+    ----------
+    version_string : str
+        Full version string (e.g., "SP_v1.4.5_leak_corr").
+
+    Returns
+    -------
+    str
+        Short version number (e.g., "v1.4.5").
+    """
+    import re
+    match = re.search(r'(v[\d.]+)', version_string)
+    return match.group(1) if match else version_string
+
+
+def iter_version_figures(version_labels, fiducial_version):
+    """Iterate over the 9 figure specs for per-version data vector plots.
+
+    Produces specs for:
+    - 1 paper figure: fiducial version, leak-corrected, no title
+    - 8 dashboard figures: all versions × (corrected + uncorrected), with titles
+
+    Parameters
+    ----------
+    version_labels : dict
+        Mapping from leak-corrected version strings to human-readable labels.
+        E.g., {"SP_v1.4.5_leak_corr": "Initial", ...}
+    fiducial_version : str
+        Fiducial version string (e.g., "SP_v1.4.11.2_leak_corr").
+
+    Yields
+    ------
+    dict
+        Figure specification with keys:
+        - filename: output filename (e.g., "figure_v1.4.5.png")
+        - version_leak_corr: leak-corrected version string
+        - version_uncorr: uncorrected version string
+        - leak_corrected: bool
+        - title: title string or None (for paper figure)
+        - is_paper_figure: bool
+    """
+    # Paper figure: fiducial, leak-corrected, no title
+    yield {
+        "filename": "figure.png",
+        "version_leak_corr": fiducial_version,
+        "version_uncorr": fiducial_version.replace("_leak_corr", ""),
+        "leak_corrected": True,
+        "title": None,
+        "is_paper_figure": True,
+    }
+
+    # Dashboard figures: all versions × (corrected + uncorrected)
+    # Sort by version string length descending to ensure proper matching
+    for version_lc in sorted(version_labels.keys(), key=lambda v: -len(v)):
+        version_num = extract_version_number(version_lc)
+        label = version_labels[version_lc]
+        version_uncorr = version_lc.replace("_leak_corr", "")
+
+        # Leak-corrected figure
+        yield {
+            "filename": f"figure_{version_num}.png",
+            "version_leak_corr": version_lc,
+            "version_uncorr": version_uncorr,
+            "leak_corrected": True,
+            "title": label,
+            "is_paper_figure": False,
+        }
+
+        # Uncorrected figure
+        yield {
+            "filename": f"figure_{version_num}_uncorrected.png",
+            "version_leak_corr": version_lc,
+            "version_uncorr": version_uncorr,
+            "leak_corrected": False,
+            "title": f"{label} (uncorrected)",
+            "is_paper_figure": False,
+        }
+
+
+def get_version_figure_outputs(version_labels):
+    """Get list of all per-version figure filenames for Snakemake outputs.
+
+    Parameters
+    ----------
+    version_labels : dict
+        Mapping from leak-corrected version strings to human-readable labels.
+
+    Returns
+    -------
+    list of str
+        List of 9 filenames (1 paper + 8 dashboard figures).
+    """
+    filenames = ["figure.png"]
+    for version_lc in sorted(version_labels.keys(), key=lambda v: -len(v)):
+        version_num = extract_version_number(version_lc)
+        filenames.append(f"figure_{version_num}.png")
+        filenames.append(f"figure_{version_num}_uncorrected.png")
+    return filenames

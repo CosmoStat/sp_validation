@@ -5,9 +5,10 @@ Writes evidence.json with PTE values including joint B-mode test.
 
 Uses fiducial blind only (config.fiducial.blind) for PTE calculation.
 
-Produces two figures:
-- Main figure (leak-corrected, unlabeled) for paper
-- Companion figure (uncorrected, labeled) for dashboard
+Produces 9 figures:
+- figure.png: fiducial version, leak-corrected, no title (paper)
+- figure_v{X.Y.Z}.png: version X.Y.Z, leak-corrected, with title
+- figure_v{X.Y.Z}_uncorrected.png: version X.Y.Z, uncorrected, with title
 """
 
 import json
@@ -18,12 +19,14 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from plotting_utils import compute_chi2_pte
-
-
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
+from plotting_utils import (
+    PAPER_MPLSTYLE,
+    compute_chi2_pte,
+    iter_version_figures,
 )
+
+
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _extract_sigma(covariance, block_index, block_size):
@@ -128,7 +131,10 @@ def _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
         )
     shade_excluded_regions(ax, fiducial_xip_scale_cut)
     setup_panel(ax, ylabel_text=r"$\theta \xi \times 10^4$")
-    ax.set_title(rf"$\xi_+${title_suffix}")
+    if title_suffix:
+        ax.set_title(rf"$\xi_+${title_suffix}")
+    else:
+        ax.set_title(r"$\xi_+$")
 
     # Right panel: xi- decomposition
     ax = axes[1]
@@ -146,7 +152,10 @@ def _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
         )
     shade_excluded_regions(ax, fiducial_xim_scale_cut)
     setup_panel(ax)
-    ax.set_title(rf"$\xi_-${title_suffix}")
+    if title_suffix:
+        ax.set_title(rf"$\xi_-${title_suffix}")
+    else:
+        ax.set_title(r"$\xi_-$")
     handles, labels = axes[0].get_legend_handles_labels()
     ax.legend(handles, labels, loc="upper left", fontsize="small")
 
@@ -159,11 +168,62 @@ def main():
     config = snakemake.config
     blind = config["fiducial"]["blind"]
     version = config["fiducial"]["version"]
+    version_labels = config["plotting"]["version_labels"]
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
     fiducial_xim_scale_cut = tuple(config["fiducial"]["fiducial_xim_scale_cut"])
 
-    # Load leak-corrected data (main)
-    data = _load_pure_eb_data(snakemake.input["pure_eb"], snakemake.input["cov"])
+    # Build input path lookup from snakemake inputs
+    pure_eb_paths = {k: v for k, v in snakemake.input.items() if k.startswith("pure_eb_")}
+    cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("cov_")}
+
+    # Create output directory
+    output_dir = Path(snakemake.output["evidence"]).parent
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Track generated artifacts
+    artifacts = {}
+
+    # Generate all 9 figures
+    for fig_spec in iter_version_figures(version_labels, version):
+        # Determine which input keys to use
+        if fig_spec["leak_corrected"]:
+            pure_eb_key = f"pure_eb_{fig_spec['version_leak_corr']}"
+            cov_key = f"cov_{fig_spec['version_leak_corr']}"
+        else:
+            pure_eb_key = f"pure_eb_{fig_spec['version_uncorr']}"
+            cov_key = f"cov_{fig_spec['version_uncorr']}"
+
+        # Load data
+        data = _load_pure_eb_data(pure_eb_paths[pure_eb_key], cov_paths[cov_key])
+
+        # Create figure with appropriate title
+        title_suffix = f" ({fig_spec['title']})" if fig_spec["title"] else ""
+        fig = _create_pure_eb_figure(
+            data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
+            title_suffix=title_suffix
+        )
+
+        # Save figure
+        fig_path = output_dir / fig_spec["filename"]
+        fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+        print(f"Saved {fig_path}")
+        plt.close(fig)
+
+        # Track artifact
+        artifacts[fig_spec["filename"].replace(".png", "").replace(".", "_")] = fig_spec["filename"]
+
+        # Copy paper figure to paper figures directory
+        if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
+            paper_path = Path(snakemake.output["paper_figure"])
+            paper_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(fig_path, paper_path)
+            print(f"Copied to {paper_path}")
+
+    # Compute PTEs for evidence (fiducial version, leak-corrected only)
+    data = _load_pure_eb_data(
+        pure_eb_paths[f"pure_eb_{version}"],
+        cov_paths[f"cov_{version}"]
+    )
     theta = data["theta"]
     nbins = data["nbins"]
     cov_pure_eb = data["cov_pure_eb"]
@@ -199,34 +259,7 @@ def main():
 
     print(f"Blind {blind} PTEs (fiducial): xi+^B={pte_xip_fid:.3f}, xi-^B={pte_xim_fid:.3f}, joint={pte_joint_fid:.3f}")
 
-    # Create output directory
-    output_dir = Path(snakemake.output["evidence"]).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # --- Main figure (leak-corrected) ---
-    fig = _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut, title_suffix="")
-    fig_path = output_dir / "figure.png"
-    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
-    print(f"Saved {fig_path}")
-
-    if "paper_figure" in snakemake.output.keys():
-        paper_path = Path(snakemake.output["paper_figure"])
-        paper_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(fig_path, paper_path)
-        print(f"Copied to {paper_path}")
-    plt.close(fig)
-
-    # --- Companion figure (uncorrected) ---
-    data_uncorr = _load_pure_eb_data(snakemake.input["pure_eb_uncorr"], snakemake.input["cov_uncorr"])
-    fig_uncorr = _create_pure_eb_figure(
-        data_uncorr, fiducial_xip_scale_cut, fiducial_xim_scale_cut, title_suffix=" (uncorrected)"
-    )
-    fig_uncorr_path = Path(snakemake.output["figure_uncorrected"])
-    fig_uncorr.savefig(fig_uncorr_path, dpi=300, bbox_inches="tight")
-    print(f"Saved {fig_uncorr_path}")
-    plt.close(fig_uncorr)
-
-    # Write evidence.json (based on leak-corrected data only)
+    # Write evidence.json (based on leak-corrected fiducial data only)
     evidence_data = {
         "spec_id": "pure_eb_data_vector",
         "spec_path": snakemake.input["specs"][0],
@@ -252,10 +285,7 @@ def main():
             "version": version,
             "blind": blind,
         },
-        "artifacts": {
-            "figure": "figure.png",
-            "figure_uncorrected": fig_uncorr_path.name,
-        },
+        "artifacts": artifacts,
     }
 
     evidence_path = Path(snakemake.output["evidence"])

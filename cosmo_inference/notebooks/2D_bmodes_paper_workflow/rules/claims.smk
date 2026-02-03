@@ -31,6 +31,32 @@ VERSION_LABELS = config["plotting"].get("version_labels", {})
 # Pure E/B and PTEs only apply to leak-corrected versions
 VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v]
 
+# All versions needed for per-version data vector plots (both leak-corrected and uncorrected)
+VERSIONS_ALL_FOR_PLOTS = VERSIONS_LEAK_CORR + [v.replace("_leak_corr", "") for v in VERSIONS_LEAK_CORR]
+
+
+def _extract_version_number(version_string):
+    """Extract short version number from full version string for filenames."""
+    import re
+    match = re.search(r'(v[\d.]+)', version_string)
+    return match.group(1) if match else version_string
+
+
+def _per_version_figure_outputs(claim_dir):
+    """Generate output dict for 9 per-version figures.
+
+    Returns dict mapping output keys to paths for all 9 figures:
+    - figure.png (paper figure)
+    - figure_v{X.Y.Z}.png for each leak-corrected version
+    - figure_v{X.Y.Z}_uncorrected.png for each uncorrected version
+    """
+    outputs = {"figure": f"{claim_dir}/figure.png"}
+    for ver_lc in sorted(VERSION_LABELS.keys(), key=lambda v: -len(v)):
+        ver_num = _extract_version_number(ver_lc)
+        outputs[f"figure_{ver_num.replace('.', '_')}"] = f"{claim_dir}/figure_{ver_num}.png"
+        outputs[f"figure_{ver_num.replace('.', '_')}_uncorrected"] = f"{claim_dir}/figure_{ver_num}_uncorrected.png"
+    return outputs
+
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Path Helper Functions
@@ -129,14 +155,15 @@ rule cosebis_version_comparison:
 
 
 rule cosebis_data_vector:
-    """B-mode data vector: COSEBIS B-modes for fiducial version.
+    """B-mode data vector: COSEBIS B-modes for all catalog versions.
 
     Single-panel figure combining fiducial and full angular ranges.
     Paper figure for main text. PTEs are in cosebis_pte_matrix.
 
-    Produces two figures:
-    - Main figure: leak-corrected (default, unlabeled)
-    - Companion figure: uncorrected (labeled "uncorrected")
+    Produces 9 figures:
+    - figure.png: fiducial version, leak-corrected, no title (paper)
+    - figure_v{X.Y.Z}.png: each version, leak-corrected, with title
+    - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
     """
     input:
         specs=[
@@ -145,19 +172,15 @@ rule cosebis_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        # Leak-corrected (main)
-        xi_integration=_xi_integration_path(FIDUCIAL["version"]),
-        cov_integration=_cov_integration_path(FIDUCIAL["version"], "A"),
-        # Uncorrected (companion)
-        xi_integration_uncorr=_xi_integration_path(FIDUCIAL["version"].replace("_leak_corr", "")),
-        cov_integration_uncorr=_cov_integration_path(FIDUCIAL["version"].replace("_leak_corr", ""), "A"),
+        # Per-version inputs: xi_{version} and cov_{version} for all versions
+        **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"cov_{ver}": _cov_integration_path(ver, "A") for ver in VERSIONS_ALL_FOR_PLOTS},
     params:
         cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
-        figure=f"{CLAIMS_DIR}/cosebis_data_vector/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/cosebis_data_vector.png",
-        figure_uncorrected=f"{CLAIMS_DIR}/cosebis_data_vector/figure_uncorrected.png",
+        **_per_version_figure_outputs(f"{CLAIMS_DIR}/cosebis_data_vector"),
     script:
         "../scripts/cosebis_data_vector.py"
 
@@ -245,9 +268,10 @@ rule pure_eb_data_vector:
 
     Uses fiducial blind only (FIDUCIAL["blind"]) for PTE calculation.
 
-    Produces two figures:
-    - Main figure: leak-corrected (default, unlabeled)
-    - Companion figure: uncorrected (labeled "uncorrected")
+    Produces 9 figures:
+    - figure.png: fiducial version, leak-corrected, no title (paper)
+    - figure_v{X.Y.Z}.png: each version, leak-corrected, with title
+    - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
     """
     input:
         specs=[
@@ -256,16 +280,15 @@ rule pure_eb_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        # Leak-corrected (main)
-        pure_eb=f"results/paper_plots/intermediate/{FIDUCIAL['version']}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz",
-        cov=_reporting_cov_path(FIDUCIAL["version"], FIDUCIAL["blind"]),
-        # Uncorrected (companion)
-        pure_eb_uncorr=f"results/paper_plots/intermediate/{FIDUCIAL['version'].replace('_leak_corr', '')}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz",
-        cov_uncorr=_reporting_cov_path(FIDUCIAL["version"].replace("_leak_corr", ""), FIDUCIAL["blind"]),
+        # Per-version inputs: pure_eb_{version} and cov_{version} for all versions
+        **{f"pure_eb_{ver}": f"results/paper_plots/intermediate/{ver}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz"
+           for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"cov_{ver}": _reporting_cov_path(ver, FIDUCIAL["blind"])
+           for ver in VERSIONS_ALL_FOR_PLOTS},
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.png",
-        figure_uncorrected=f"{CLAIMS_DIR}/pure_eb_data_vector/figure_uncorrected.png",
+        **_per_version_figure_outputs(f"{CLAIMS_DIR}/pure_eb_data_vector"),
     script:
         "../scripts/pure_eb_data_vector.py"
 
@@ -354,11 +377,12 @@ rule calculate_pure_eb_ptes:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule cl_data_vector:
-    """Harmonic-space B-mode power spectra at fiducial ell range.
+    """Harmonic-space B-mode power spectra for all catalog versions.
 
-    Produces two figures:
-    - Main figure: leak-corrected (default, unlabeled)
-    - Companion figure: uncorrected (labeled "uncorrected")
+    Produces 9 figures:
+    - figure.png: fiducial version, leak-corrected, no title (paper)
+    - figure_v{X.Y.Z}.png: each version, leak-corrected, with title
+    - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
     """
     input:
         specs=[
@@ -366,20 +390,16 @@ rule cl_data_vector:
             f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        # Leak-corrected (main)
-        pseudo_cl=_pseudo_cl_path(FIDUCIAL['version']),
-        pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL['version']),
-        # Uncorrected (companion)
-        pseudo_cl_uncorr=_pseudo_cl_path(FIDUCIAL['version'].replace('_leak_corr', '')),
-        pseudo_cl_cov_uncorr=_pseudo_cl_cov_path(FIDUCIAL['version'].replace('_leak_corr', '')),
+        # Per-version inputs: pseudo_cl_{version} and pseudo_cl_cov_{version} for all versions
+        **{f"pseudo_cl_{ver}": _pseudo_cl_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"pseudo_cl_cov_{ver}": _pseudo_cl_cov_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
     params:
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
         evidence=f"{CLAIMS_DIR}/cl_data_vector/evidence.json",
-        figure=f"{CLAIMS_DIR}/cl_data_vector/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/cl_data_vector.png",
-        figure_uncorrected=f"{CLAIMS_DIR}/cl_data_vector/figure_uncorrected.png",
+        **_per_version_figure_outputs(f"{CLAIMS_DIR}/cl_data_vector"),
     script:
         "../scripts/cl_data_vector.py"
 
