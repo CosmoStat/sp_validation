@@ -3,8 +3,51 @@
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
+from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
+import seaborn as sns
 from scipy import stats
+
+
+def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85)):
+    """Create discrete colormap with sharp breaks at significance thresholds.
+
+    Provides clear visual distinction between passing (middle) and failing
+    (extreme) PTE regions without requiring contour overlays.
+
+    Parameters
+    ----------
+    low, high : float
+        PTE thresholds. Solid blue below `low`, solid red above `high`.
+    gradient_range : tuple
+        Range of vlag colormap (0-1) to use for the gradient portion.
+        Narrower range = shallower gradient = sharper contrast at boundaries.
+
+    Returns
+    -------
+    cmap : LinearSegmentedColormap
+        Discrete colormap with sharp breaks at thresholds.
+    """
+    vlag = sns.color_palette("vlag", as_cmap=True)
+
+    # Solid regions use extreme vlag colors for sharp contrast
+    solid_blue = vlag(0.0)
+    solid_red = vlag(1.0)
+
+    # Build colormap: [0, low] solid blue, [low, high] compressed gradient, [high, 1] solid red
+    n_total = 256
+    n_low = int(low * n_total)
+    n_high = int((1 - high) * n_total)
+    n_mid = n_total - n_low - n_high
+
+    # Gradient samples from compressed range of vlag
+    g_lo, g_hi = gradient_range
+    gradient_colors = [vlag(g_lo + (g_hi - g_lo) * i / (n_mid - 1)) for i in range(n_mid)]
+
+    all_colors = [solid_blue] * n_low + gradient_colors + [solid_red] * n_high
+    cmap = LinearSegmentedColormap.from_list("pte_discrete", all_colors, N=256)
+    cmap.set_bad(color="lightgray")
+    return cmap
 
 
 def compute_chi2_pte(data, covariance):

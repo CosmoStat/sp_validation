@@ -16,7 +16,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
-import seaborn as sns
+
+from plotting_utils import make_pte_colormap
 
 plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
@@ -157,63 +158,52 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     """
     n_theta = len(theta_grid)
 
-    # Colormap
-    vlag_cmap = sns.color_palette("vlag", as_cmap=True).copy()
-    vlag_cmap.set_bad(color="lightgray")
+    # Discrete colormap: solid blue below 0.05, solid red above 0.95, gradient between
+    pte_cmap = make_pte_colormap()
 
-    # Plot heatmap
+    # Plot heatmap (no contours - colormap provides visual threshold distinction)
     im = ax.imshow(
         pte_matrix.T,
         origin="lower",
         aspect="equal",
-        cmap=vlag_cmap,
+        cmap=pte_cmap,
         vmin=0,
         vmax=1,
         extent=[0, n_theta, 0, n_theta],
     )
 
-    # Contours at significance levels
-    cs = ax.contour(
-        pte_matrix.T,
-        levels=[0.05, 0.95],
-        colors="black",
-        linewidths=0.6,
-        extent=[0, n_theta, 0, n_theta],
-    )
-    ax.clabel(cs, inline=True, fontsize=6, fmt="%.2f")
-
-    # Fiducial scale cut marker
+    # Fiducial scale cut marker (black square, no hatching for cleaner look)
     ax.add_patch(
         Rectangle(
             (fid_start, fid_stop),
             1, 1,
             fill=False,
             edgecolor="black",
-            linewidth=1.2,
-            hatch="///",
-            alpha=0.8,
+            linewidth=1.5,
         )
     )
 
     # Title
     ax.set_title(title, fontsize=9)
 
-    # Tick labels - more frequent markers
+    # Tick positioning: x-axis at left edge of bins, y-axis at top edge
     tick_step = 2
     tick_indices = np.arange(0, n_theta, tick_step)
-    tick_labels = [f"{theta_grid[i]:.0f}" for i in tick_indices]
-    tick_positions = tick_indices + 0.5
+    x_tick_labels = [f"{theta_grid[i]:.0f}" for i in tick_indices]
+    y_tick_labels = [f"{theta_grid[min(i + 1, n_theta - 1)]:.0f}" for i in tick_indices]
 
-    ax.set_xticks(tick_positions)
-    ax.set_yticks(tick_positions)
+    # x-axis (lower cut): ticks at left edge of bins
+    ax.set_xticks(tick_indices)
+    # y-axis (upper cut): ticks at top edge of bins
+    ax.set_yticks(tick_indices + 1)
 
     if show_xticklabels:
-        ax.set_xticklabels(tick_labels, fontsize=6)
+        ax.set_xticklabels(x_tick_labels, fontsize=6)
     else:
         ax.set_xticklabels([])
 
     if show_yticklabels:
-        ax.set_yticklabels(tick_labels, fontsize=6)
+        ax.set_yticklabels(y_tick_labels, fontsize=6)
     else:
         ax.set_yticklabels([])
 

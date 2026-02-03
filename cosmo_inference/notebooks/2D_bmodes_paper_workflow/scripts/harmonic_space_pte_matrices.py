@@ -17,10 +17,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-import seaborn as sns
 from astropy.io import fits
 
-from plotting_utils import compute_chi2_pte
+from plotting_utils import compute_chi2_pte, make_pte_colormap
 
 
 plt.style.use(
@@ -147,8 +146,8 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
     """
     n_ell = len(ell)
 
-    vlag_cmap = sns.color_palette("vlag", as_cmap=True).copy()
-    vlag_cmap.set_bad(color="lightgray")
+    # Discrete colormap: solid blue below 0.05, solid red above 0.95, gradient between
+    pte_cmap = make_pte_colormap()
 
     # pte_matrix[i_min, i_max] -> transpose so rows=i_max, cols=i_min
     # With origin="lower", row 0 is at bottom (small i_max), row n-1 at top (large i_max)
@@ -157,27 +156,22 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
 
     im = ax.imshow(
         pte_plot, origin="lower", aspect="equal",
-        cmap=vlag_cmap, vmin=0, vmax=1, extent=[0, n_ell, 0, n_ell],
+        cmap=pte_cmap, vmin=0, vmax=1, extent=[0, n_ell, 0, n_ell],
     )
 
-    # Contours - with origin="lower", both imshow and contour have same orientation
-    cs = ax.contour(
-        pte_plot, levels=[0.05, 0.95], colors="black",
-        linewidths=0.8, extent=[0, n_ell, 0, n_ell],
-    )
-    ax.clabel(cs, inline=True, fontsize=6, fmt="%.2f")
-
-    # Mark full ell range
+    # Mark full ell range (black square, no hatching for cleaner look)
     ax.add_patch(
-        Rectangle((0, 0), 1, 1, fill=False, edgecolor="black",
-                  linewidth=1.5, hatch="///", alpha=0.8)
+        Rectangle((0, 0), 1, 1, fill=False, edgecolor="black", linewidth=1.5)
     )
 
-    # Tick labels - more frequent markers per review feedback
-    tick_step = max(1, n_ell // 8)
+    # Tick positioning: x-axis at left edge of bins, y-axis at top edge
+    tick_step = max(1, n_ell // 5)  # Fewer ticks for cleaner labels
     tick_indices = np.arange(0, n_ell, tick_step)
-    ax.set_xticks(tick_indices + 0.5)
-    ax.set_yticks(tick_indices + 0.5)
+
+    # x-axis (lower cut): ticks at left edge of bins
+    ax.set_xticks(tick_indices)
+    # y-axis (upper cut): ticks at top edge of bins
+    ax.set_yticks(tick_indices + 1)
 
     if show_xlabel:
         ax.set_xticklabels([f"{ell[i]:.0f}" for i in tick_indices],
@@ -186,7 +180,8 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
         ax.set_xticklabels([])
 
     if show_ylabel:
-        ax.set_yticklabels([f"{ell[i]:.0f}" for i in tick_indices], fontsize=6)
+        y_tick_labels = [f"{ell[min(i + 1, n_ell - 1)]:.0f}" for i in tick_indices]
+        ax.set_yticklabels(y_tick_labels, fontsize=6)
     else:
         ax.set_yticklabels([])
 
