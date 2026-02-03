@@ -209,6 +209,8 @@ rule precompute_pure_eb:
 rule precompute_pure_eb_blind:
     """Precompute pure E/B decomposition with per-blind covariance."""
     input:
+        base_pure_eb=f"results/paper_plots/intermediate/{config['fiducial']['version']}_pure_eb_semianalytic.npz",
+        xi_integration=_xi_integration_path(config["fiducial"]["version"]),
         cov_integration=lambda w: _cov_integration_path(config["fiducial"]["version"], w.blind),
     output:
         f"results/paper_plots/intermediate/{config['fiducial']['version']}_{{blind}}_pure_eb_semianalytic.npz",
