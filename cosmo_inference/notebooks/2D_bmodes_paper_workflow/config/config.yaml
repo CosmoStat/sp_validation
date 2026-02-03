@@ -94,14 +94,21 @@ plotting:
     style: "unfilled"
     linewidth: 1.5
     capsize: 3
-  x_offsets: [-0.2, -0.07, 0.07, 0.2]  # prevent overlap in comparisons (4 versions)
+  x_offsets: [-0.12, -0.04, 0.04, 0.12]  # prevent overlap in comparisons (4 versions), tighter spacing
   # Human-readable version labels for plots
-  # v1.4.11.2 is fiducial candidate (blends fix + updated processing)
   version_labels:
     SP_v1.4.5_leak_corr: "Initial"
     SP_v1.4.6_leak_corr: "Size cuts"
     SP_v1.4.8_leak_corr: "Masking"
-    SP_v1.4.11.2_leak_corr: "Fiducial"
+    SP_v1.4.11.2_leak_corr: "Blends"
+  # Which version's value is drawn as the fiducial reference line in version comparison plots
+  fiducial_for_comparison: "SP_v1.4.11.2_leak_corr"
+  # Version box styling
+  version_box:
+    edge_color: "0.3"
+    edge_linewidth: 0.7
+    fiducial_line_color: "black"
+    fiducial_line_width: 1.0
 
 # Pure E/B mode analysis
 pure_eb:

@@ -16,15 +16,20 @@ from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
 
-
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
+from plotting_utils import (
+    ERRORBAR_DEFAULTS,
+    FIG_WIDTH_FULL,
+    MARKER_STYLES,
+    PAPER_MPLSTYLE,
+    draw_normalized_boxes_log_scale,
+    find_fiducial_index,
+    get_box_style,
+    get_version_alpha,
+    version_label,
 )
 
 
-def _version_label(version, version_labels):
-    """Get human-readable label for version from config."""
-    return version_labels.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _extract_sigma(covariance, block_index, block_size):
@@ -36,7 +41,7 @@ def _extract_sigma(covariance, block_index, block_size):
 
 def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
                         scale_factor=1.0, apply_theta_scaling=True,
-                        x_offset_range=(0.91, 1.09)):
+                        x_offset_range=(0.91, 1.09), box_style=None):
     """Draw boxes spanning version spread with fiducial line through each bin.
 
     For each angular bin, draws:
@@ -52,7 +57,12 @@ def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
     x_offset_range : tuple
         (min, max) multiplicative offsets for data points. Box will cover
         this range plus 10% padding.
+    box_style : dict, optional
+        Styling config with keys: edge_color, edge_linewidth, fiducial_line_color,
+        fiducial_line_width. Uses defaults if not provided.
     """
+    style = get_box_style(box_style)
+
     offset_min, offset_max = x_offset_range
     padding = 0.1 * (offset_max - offset_min)
     box_left_factor = offset_min - padding
@@ -87,65 +97,24 @@ def _draw_version_boxes(ax, theta, datasets, y_key, sigma_key, fiducial_idx,
             x_right - x_left,
             max(y_upper) - min(y_lower),
             facecolor='none',
-            edgecolor='0.3',
-            linewidth=0.7,
+            edgecolor=style["edge_color"],
+            linewidth=style["edge_linewidth"],
             zorder=1,
         )
         ax.add_patch(rect)
 
         ax.hlines(
             y_vals[fiducial_idx], x_left, x_right,
-            colors='0.4', linewidth=0.7, zorder=1
+            colors=style["fiducial_line_color"],
+            linewidth=style["fiducial_line_width"],
+            zorder=1
         )
 
 
-def _draw_normalized_version_boxes(ax, theta, datasets, y_norm_key, fiducial_idx,
-                                    x_offset_range=(0.91, 1.09)):
-    """Draw boxes for normalized (y/sigma) plots where error bars are unity.
-
-    For each angular bin, draws:
-    - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
-    - A horizontal fiducial line at the fiducial version's y_norm value
-
-    Parameters
-    ----------
-    x_offset_range : tuple
-        (min, max) multiplicative offsets for data points. Box will cover
-        this range plus 10% padding.
-    """
-    offset_min, offset_max = x_offset_range
-    padding = 0.1 * (offset_max - offset_min)
-    box_left_factor = offset_min - padding
-    box_right_factor = offset_max + padding
-
-    for i, theta_i in enumerate(theta):
-        y_vals = np.array([data[y_norm_key][i] for data in datasets])
-
-        # Error is 1 by construction for normalized plots
-        box_bottom = y_vals.min() - 1
-        box_top = y_vals.max() + 1
-
-        x_left = theta_i * box_left_factor
-        x_right = theta_i * box_right_factor
-
-        rect = Rectangle(
-            (x_left, box_bottom),
-            x_right - x_left,
-            box_top - box_bottom,
-            facecolor='none',
-            edgecolor='0.3',
-            linewidth=0.7,
-            zorder=1,
-        )
-        ax.add_patch(rect)
-
-        ax.hlines(
-            y_vals[fiducial_idx], x_left, x_right,
-            colors='0.4', linewidth=0.7, zorder=1
-        )
 
 
-def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
+def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
+                                       x_offset_factors=None, box_style=None):
     """Create figure comparing total and B-mode correlations across versions.
 
     Layout:
@@ -157,30 +126,34 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
     Data outside fiducial scale cuts shown with light axvspan shading.
     For each bin, a box spans the range of all versions' error bars,
     with a line marking the fiducial version's value.
+
+    Parameters
+    ----------
+    x_offset_factors : list, optional
+        Multiplicative offsets for each version (for log scale). Defaults to
+        [0.88, 0.96, 1.04, 1.12] for tighter spacing.
+    box_style : dict, optional
+        Styling for version boxes. See _draw_version_boxes for keys.
     """
-    fig_width = 7.24
+    if x_offset_factors is None:
+        x_offset_factors = [0.88, 0.96, 1.04, 1.12]
 
     # Create figure with custom height ratios: top row 2x height of bottom
     # Bottom row shares y-axis
     fig, axes = plt.subplots(
         2, 2,
-        figsize=(fig_width, fig_width * 0.65),
+        figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.65),
         sharex=True,
         gridspec_kw={"height_ratios": [2, 1]},
     )
     # Share y-axis for bottom row
     axes[1, 1].sharey(axes[1, 0])
 
-    x_offset_factors = [0.91, 0.97, 1.03, 1.09]
-    marker_styles = ["o", "s", "D", "^"]
     scale_factor = 1e-4
 
-    # Find fiducial version index
-    fiducial_idx = next(
-        (i for i, d in enumerate(datasets) if d["version"] == fiducial_version),
-        0
-    )
+    fiducial_idx = find_fiducial_index(datasets, fiducial_version)
     theta = datasets[0]["theta"]
+    x_offset_range = (min(x_offset_factors), max(x_offset_factors))
 
     # Plotting parameters (matching data vector style)
     ms = 2.5
@@ -207,12 +180,14 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
             fiducial_idx=fiducial_idx,
             scale_factor=scale_factor,
             apply_theta_scaling=True,
+            x_offset_range=x_offset_range,
+            box_style=box_style,
         )
 
         for i, data in enumerate(datasets):
             theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
-            marker = marker_styles[i] if i < len(marker_styles) else "o"
+            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
 
             y = data[mode_key]
             sigma = data[f"sigma_{mode_key}"]
@@ -255,16 +230,18 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version):
         ax = axes[1, col]
 
         # Draw version spread boxes (before data points)
-        _draw_normalized_version_boxes(
+        draw_normalized_boxes_log_scale(
             ax, theta, datasets,
             y_norm_key=f"{mode_key}_normalized",
             fiducial_idx=fiducial_idx,
+            x_offset_range=x_offset_range,
+            box_style=box_style,
         )
 
         for i, data in enumerate(datasets):
             theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
-            marker = marker_styles[i] if i < len(marker_styles) else "o"
+            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
 
             y_norm = data[f"{mode_key}_normalized"]
 
@@ -325,6 +302,17 @@ def main():
     version_labels = snakemake.params.version_labels
     versions = config["versions"]
     fiducial_version = config["fiducial"]["version"]
+    plotting_config = config["plotting"]
+
+    # Which version gets the fiducial reference line in boxes
+    fiducial_for_comparison = plotting_config.get("fiducial_for_comparison", fiducial_version)
+
+    # Convert additive x_offsets to multiplicative factors for log scale
+    x_offsets = plotting_config.get("x_offsets", [-0.12, -0.04, 0.04, 0.12])
+    x_offset_factors = [1.0 + offset for offset in x_offsets]
+
+    # Box styling from config
+    box_style = plotting_config.get("version_box", {})
 
     # Scale cuts
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
@@ -337,7 +325,6 @@ def main():
     }
 
     colors = sns.color_palette("colorblind", len(versions))
-    version_alpha = {v: 1.0 if v == fiducial_version else 0.5 for v in versions}
 
     # Load data for all versions
     datasets = []
@@ -372,9 +359,9 @@ def main():
 
         datasets.append({
             "version": version,
-            "label": _version_label(version, version_labels),
+            "label": version_label(version, version_labels),
             "color": color,
-            "alpha": version_alpha.get(version, 1.0),
+            "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
             "theta": theta,
             # Total correlation functions
             "xip_total": xip_total,
@@ -391,7 +378,10 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate figure
-    fig = _create_version_comparison_figure(datasets, scale_cuts, fiducial_version)
+    fig = _create_version_comparison_figure(
+        datasets, scale_cuts, fiducial_for_comparison,
+        x_offset_factors=x_offset_factors, box_style=box_style
+    )
 
     fig_name = "figure.png"
     fig_path = output_dir / fig_name

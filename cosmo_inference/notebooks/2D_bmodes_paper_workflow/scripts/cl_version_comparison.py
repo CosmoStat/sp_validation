@@ -11,93 +11,31 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
 from astropy.io import fits
-from scipy import stats
 
-# Import and register SquareRootScale (registration happens at import)
+from plotting_utils import (
+    ERRORBAR_DEFAULTS,
+    FIG_WIDTH_FULL,
+    MARKER_STYLES,
+    PAPER_MPLSTYLE,
+    compute_chi2_pte,
+    draw_normalized_boxes_ell_scale,
+    find_fiducial_index,
+    get_version_alpha,
+    version_label,
+)
+# Import to register SquareRootScale
 import plotting_utils  # noqa: F401
 
 
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
-
-# Scale cuts from snakemake params (Paper II, Goh et al.)
-# Actual values set in main() from snakemake.params.ell_min_cut/ell_max_cut
-ELL_MIN_CUT = None
-ELL_MAX_CUT = None
+plt.style.use(PAPER_MPLSTYLE)
 
 
-def _draw_normalized_version_boxes_ell(ax, ell, ell_widths, datasets, y_norm_key, fiducial_idx,
-                                        jitter_fraction=0.15, n_versions=4):
-    """Draw boxes for normalized (y/sigma) plots in ell space.
-
-    For each multipole bin, draws:
-    - A box from min(y_norm - 1) to max(y_norm + 1) across all versions
-    - A horizontal fiducial line at the fiducial version's y_norm value
-
-    Parameters
-    ----------
-    jitter_fraction : float
-        Jitter fraction used for offsetting data points.
-    n_versions : int
-        Number of versions being plotted (affects jitter range).
-    """
-    # Max jitter is ((n-1)/2) * jitter_fraction; add 15% padding
-    box_half_width_factor = ((n_versions - 1) / 2) * jitter_fraction * 1.15
-
-    for i, ell_i in enumerate(ell):
-        y_vals = np.array([data[y_norm_key][i] for data in datasets])
-
-        # Error is 1 by construction for normalized plots
-        box_bottom = y_vals.min() - 1
-        box_top = y_vals.max() + 1
-
-        half_width = ell_widths[i] * box_half_width_factor
-        x_left = ell_i - half_width
-        x_right = ell_i + half_width
-
-        rect = Rectangle(
-            (x_left, box_bottom),
-            x_right - x_left,
-            box_top - box_bottom,
-            facecolor='none',
-            edgecolor='0.3',
-            linewidth=0.7,
-            zorder=1,
-        )
-        ax.add_patch(rect)
-
-        ax.hlines(
-            y_vals[fiducial_idx], x_left, x_right,
-            colors='0.4', linewidth=0.7, zorder=1
-        )
-
-
-def _get_version_alpha(version, fiducial_version, plotting_config):
-    """Get alpha value for version - fiducial is opaque, others are faded."""
-    if version == fiducial_version:
-        return plotting_config["version_alpha"]["fiducial"]
-    return plotting_config["version_alpha"]["comparison"]
-
-
-def _version_label(version, version_labels):
-    """Get human-readable label for version from config."""
-    return version_labels.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
-
-
-def _compute_pte(data, covariance):
-    chi2 = float(data @ np.linalg.solve(covariance, data))
-    dof = len(data)
-    pte = stats.chi2.sf(chi2, dof)
-    return pte, chi2, dof
 
 
 def main():
-    global ELL_MIN_CUT, ELL_MAX_CUT
     from snakemake.script import snakemake
 
     # Read config
@@ -105,15 +43,18 @@ def main():
     with open(snakemake.input["config"]) as f:
         config = yaml.safe_load(f)
 
-    # Set scale cuts from params (passed from rule, originally Guerrini et al.)
-    ELL_MIN_CUT = int(snakemake.params.ell_min_cut)
-    ELL_MAX_CUT = int(snakemake.params.ell_max_cut)
+    # Scale cuts from params (passed from rule, originally Guerrini et al.)
+    ell_min_cut = int(snakemake.params.ell_min_cut)
+    ell_max_cut = int(snakemake.params.ell_max_cut)
 
     version_labels = snakemake.params.version_labels
     # Only leak-corrected versions have pseudo-Cl computed
     versions = [v for v in config["versions"] if "_leak_corr" in v]
-    fiducial_version = config["fiducial"]["version"]
     plotting_config = config["plotting"]
+
+    # Which version gets the fiducial reference line in boxes
+    fiducial_for_comparison = plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"])
+    box_style = plotting_config.get("version_box", {})
 
     # Load data for all versions
     datasets = []
@@ -136,14 +77,15 @@ def main():
         sigma_bb = np.sqrt(np.diag(cov_bb))
         sigma_eb = np.sqrt(np.diag(cov_eb))
 
-        pte_bb, chi2_bb, dof_bb = _compute_pte(cl_bb, cov_bb)
-        pte_eb, chi2_eb, dof_eb = _compute_pte(cl_eb, cov_eb)
+        # Note: compute_chi2_pte returns (chi2, pte, dof) order
+        chi2_bb, pte_bb, dof_bb = compute_chi2_pte(cl_bb, cov_bb)
+        chi2_eb, pte_eb, dof_eb = compute_chi2_pte(cl_eb, cov_eb)
 
         datasets.append({
             "version": version,
-            "label": _version_label(version, version_labels),
+            "label": version_label(version, version_labels),
             "color": colors[i],
-            "alpha": _get_version_alpha(version, fiducial_version, plotting_config),
+            "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
             "ell": ell,
             "cl_bb": cl_bb,
             "cl_eb": cl_eb,
@@ -158,23 +100,14 @@ def main():
         })
 
     # Two-panel figure: BB (top) and EB (bottom)
-    # Full-width figure (7.24 inches for two-column A&A format)
-    fig_width = 7.24
-    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(fig_width, fig_width * 0.6), sharex=True)
+    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.6), sharex=True)
 
     ell_ref = datasets[0]["ell"]
     ell_widths = np.diff(ell_ref)
     ell_widths = np.append(ell_widths, ell_widths[-1])
     jitter_fraction = 0.15
 
-    # Marker styles matching cosebis_version_comparison
-    marker_styles = ["o", "s", "D", "^"]
-
-    # Find fiducial version index
-    fiducial_idx = next(
-        (i for i, d in enumerate(datasets) if d["version"] == fiducial_version),
-        0  # Fallback to first version
-    )
+    fiducial_idx = find_fiducial_index(datasets, fiducial_for_comparison)
 
     # Pre-compute normalized values for box drawing
     for data in datasets:
@@ -182,15 +115,15 @@ def main():
         data["cl_eb_normalized"] = data["cl_eb"] / data["sigma_eb"]
 
     # Draw version spread boxes (before data points)
-    _draw_normalized_version_boxes_ell(
+    draw_normalized_boxes_ell_scale(
         ax_bb, ell_ref, ell_widths, datasets,
         y_norm_key="cl_bb_normalized", fiducial_idx=fiducial_idx,
-        jitter_fraction=jitter_fraction, n_versions=len(datasets)
+        jitter_fraction=jitter_fraction, n_versions=len(datasets), box_style=box_style
     )
-    _draw_normalized_version_boxes_ell(
+    draw_normalized_boxes_ell_scale(
         ax_eb, ell_ref, ell_widths, datasets,
         y_norm_key="cl_eb_normalized", fiducial_idx=fiducial_idx,
-        jitter_fraction=jitter_fraction, n_versions=len(datasets)
+        jitter_fraction=jitter_fraction, n_versions=len(datasets), box_style=box_style
     )
 
     legend_handles = []
@@ -203,7 +136,7 @@ def main():
         color = data["color"]
         label = data["label"]
         alpha = data["alpha"]
-        marker = marker_styles[i] if i < len(marker_styles) else "o"
+        marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
 
         cl_bb_normalized = data["cl_bb_normalized"]
         cl_eb_normalized = data["cl_eb_normalized"]
@@ -211,16 +144,16 @@ def main():
         line_bb = ax_bb.errorbar(
             ell_jittered, cl_bb_normalized, yerr=np.ones_like(cl_bb_normalized),
             fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=color, markeredgecolor="white", markeredgewidth=0.5,
-            markersize=4, capsize=2, capthick=0.8, linewidth=0.8, elinewidth=0.8,
+            markerfacecolor=color, markeredgecolor="white",
+            **ERRORBAR_DEFAULTS,
             zorder=2,
         )
 
         ax_eb.errorbar(
             ell_jittered, cl_eb_normalized, yerr=np.ones_like(cl_eb_normalized),
             fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=color, markeredgecolor="white", markeredgewidth=0.5,
-            markersize=4, capsize=2, capthick=0.8, linewidth=0.8, elinewidth=0.8,
+            markerfacecolor=color, markeredgecolor="white",
+            **ERRORBAR_DEFAULTS,
             zorder=2,
         )
 
@@ -241,8 +174,8 @@ def main():
 
         # Shade excluded regions (matching cl_data_vector)
         xlim = ax.get_xlim()
-        ax.axvspan(xlim[0], ELL_MIN_CUT, alpha=0.1, color="gray", zorder=0)
-        ax.axvspan(ELL_MAX_CUT, xlim[1], alpha=0.1, color="gray", zorder=0)
+        ax.axvspan(xlim[0], ell_min_cut, alpha=0.1, color="gray", zorder=0)
+        ax.axvspan(ell_max_cut, xlim[1], alpha=0.1, color="gray", zorder=0)
         ax.set_xlim(xlim)  # Restore limits after shading
 
         ax.set_xticks(major_ticks)
