@@ -110,3 +110,14 @@ metacal:
 
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
+
+# Binned footprint mask
+binned_mask:
+  # Resolution
+  nside: 8192
+
+  # Mask value for "good region (observed)
+  good: False
+
+  # Output file path
+  output_path: "footprint_binned.fits"

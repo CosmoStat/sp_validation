@@ -113,3 +113,14 @@ metacal:
 
   # Weight for global response matrix, None for unweighted mean
   global_R_weight: w
+
+# Binned footprint mask
+binned_mask:
+  # Resolution
+  nside: 8192
+
+  # Mask value for "good region (observed)
+  good: False
+
+  # Output file path
+  output_path: "footprint_binned.fits"
