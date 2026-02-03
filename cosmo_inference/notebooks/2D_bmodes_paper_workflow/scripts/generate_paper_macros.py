@@ -189,8 +189,12 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append("% config_space_pte_matrices (all versions)")
         macros.append("")
 
+        # Filter to leak_corr versions only to avoid duplicate macro definitions
+        # (both SP_v1.4.6 and SP_v1.4.6_leak_corr map to configPteSix)
+        leak_corr_versions = {k: v for k, v in versions.items() if "leak_corr" in k}
+
         # Generate individual macros for each version
-        for ver, ver_data in versions.items():
+        for ver, ver_data in leak_corr_versions.items():
             short_ver = _parse_version_short(ver)
             prefix = f"configPte{VERSION_WORDS.get(short_ver, short_ver)}"
 
@@ -337,7 +341,9 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         appendix_table.append(r"    Version & $\xi_+^B$ & $\xi_-^B$ & COSEBIS $B_n$ & $C_\ell^{BB}$ \\")
         appendix_table.append(r"    \hline")
 
-        for ver in versions:
+        # Filter to only leak_corr versions (those with labels in version_labels)
+        table_versions = [v for v in versions if v in version_labels]
+        for ver in table_versions:
             label = version_labels.get(ver, ver)
             # Mark fiducial version in table
             if ver == fiducial_version:
