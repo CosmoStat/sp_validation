@@ -175,7 +175,6 @@ spv_cat.write_PSF_cat(
     g_star_psf[1],
 )
 
-
 #### Refine: Match to SPREAD_CLASS samples
 if "SPREAD_CLASS" in dd.dtype.names:
     spv_cat.match_spread_class(dd, ind_star, m_star, stats_file, len(ra_star), verbose=verbose)

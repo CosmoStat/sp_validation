@@ -194,6 +194,10 @@ class metacal:
                 masked_data[f'{self._prefix}_Tpsf_{name_shear}']
             )
 
+        # Hack to fix incorrect propagation of noshear PSF size
+        print("FHP hack using p1 PSF for ns in cuts")
+        ns["Tpsf"] = p1["Tpsf"]
+
         ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
             masked_data,
             self._sigma_eps,
@@ -372,14 +376,15 @@ class metacal:
             else:
                 snr_flux = data['flux'] / data['flux_err']
 
-            if name == 'ns':
+            #if name == 'ns':
                 # This is a FHP hack, the ns PSF measured in shapepipe is not correct,
                 # fortunately it is the same dilated PSF as the other branches,
                 # thus we can simply use p1
                 print("FHP using p1 PSF for ns in cuts")
-                Tpsf = self.p1['Tpsf']
-            else:
-                Tpsf = data['Tpsf']
+                #Tpsf = self.p1['Tpsf']
+            #else:
+                #Tpsf = data['Tpsf']
+            Tpsf = data["Tpsf"]
 
             mask_tmp = (
                 (data['flag'] == 0)
@@ -393,6 +398,19 @@ class metacal:
             ind_masked = np.where(mask_tmp == True)[0]
 
             self.mask_dict[name] = ind_masked
+
+            # MKDBEUG: Check why not all small objects are cut
+            if name == "ns":
+                ma = self.mask_dict[name]
+                Tr_tmp_ma = Tr_tmp[ma]
+                Tpsf_ma = Tpsf[ma]
+                x = Tr_tmp_ma / Tpsf_ma
+                ind_low = np.argsort(x)[:5]
+                print("MKDEBUG lowest objects:")
+                print("ratio", x[ind_low])
+                print("gal size", Tr_tmp[ind_low])
+                print("PSF size", Tpsf[ind_low])
+                print("rel_size_min", self._rel_size_max)
 
     def _masking_gal_mom(self):
         """Add docstring.

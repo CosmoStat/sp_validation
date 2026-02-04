@@ -127,8 +127,8 @@ sp_joint.compute_weights_gatti(
     num_bins=20,
     snr_min=cm["gal_snr_min"],
     snr_max=cm["gal_snr_max"],
-    size_ratio_min=cm["size_ratio_min"],
-    size_ratio_max=cm["size_ratio_max"],
+    size_ratio_min=cm["gal_rel_size_min"],
+    size_ratio_max=cm["gal_rel_size_max"],
 )
 
 # %%
@@ -199,7 +199,6 @@ for key in add_cols:
         mask_combined._mask,
         mask_metacal
     )
-    #add_cols_data[key] = dat[key][mask_combined._mask][mask_metacal]
 
 # %%
 # Additional post-processing columns to write to output cat
@@ -235,7 +234,16 @@ for my_mask in masks:
 
 
 # %%
-header
+# MKDEBUG check bug of minimal size objects
+print("MKDEBUG calibration min size checks")
+T = add_cols_data["NGMIX_T_NOSHEAR"]
+Tpsf = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
+x = T / Tpsf
+ind_low = np.argsort(x)[:5]
+print("ratio", x[ind_low])
+print("gal size", T[ind_low])
+print("PSF size", Tpsf[ind_low])
+print("rel_size_min", cm["gal_rel_size_min"])
 
 # %%
 output_shape_cat_path = obj._params["input_path"].replace(
