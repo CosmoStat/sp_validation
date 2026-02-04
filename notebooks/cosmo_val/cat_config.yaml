@@ -632,6 +632,105 @@ SP_v1.4.6:
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
   patch_number: 100
+SP_v1.4.6_GAIA_faint:                                                            
+  subdir: /n17data/UNIONS/WL/v1.4.x
+  pipeline: SP                                                                  
+  colour: lightgreen                                                            
+  getdist_colour: 0.0, 0.5, 1.0                                                 
+  ls: dashed                                                                    
+  marker: d                                                                     
+  cov_th:                                                                       
+     A: 2420.2651014497287 #deg^2                                               
+     n_e: 7.040818382014773 #arcmin-2                                           
+     n_psf: 0.752316232272063 #arcmin-2                                         
+     sigma_e: 0.30961528707207325                                               
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  shear:                                                                        
+     path: v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt                        
+     ra_col: RA                                                                 
+     dec_col: Dec                                                               
+     e1_col: e1                                                                 
+     e2_col: e2                                                                 
+     e1_PSF_col: e1_PSF                                                         
+     e2_PSF_col: e2_PSF                                                         
+     w_col: w_des                                                               
+     R: 1.0                                                                     
+     mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits              
+     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+  psf:                                                                          
+     path: ../../GAIA/gaia_stars_g_faint.fits                                
+     hdu: 1                                                                     
+     ra_col: RA                                                                 
+     dec_col: Dec                                                               
+     square_size: True                                                          
+  patch_number: 100
+SP_v1.4.6_GAIA_bright:                                                            
+  subdir: /n17data/UNIONS/WL/v1.4.x
+  pipeline: SP                                                                  
+  colour: green                                                            
+  getdist_colour: 0.0, 0.5, 1.0                                                 
+  ls: dashed                                                                    
+  marker: s                                                                     
+  cov_th:                                                                       
+     A: 2420.2651014497287 #deg^2                                               
+     n_e: 7.040818382014773 #arcmin-2                                           
+     n_psf: 0.752316232272063 #arcmin-2                                         
+     sigma_e: 0.30961528707207325                                               
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  shear:                                                                        
+     path: v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt                        
+     ra_col: RA                                                                 
+     dec_col: Dec                                                               
+     e1_col: e1                                                                 
+     e2_col: e2                                                                 
+     e1_PSF_col: e1_PSF                                                         
+     e2_PSF_col: e2_PSF                                                         
+     w_col: w_des                                                               
+     R: 1.0                                                                     
+     mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits              
+     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+  psf:                                                                          
+     path: ../../GAIA/gaia_stars_g_bright.fits                                
+     hdu: 1                                                                     
+     ra_col: RA                                                                 
+     dec_col: Dec                                                               
+     square_size: True                                                          
+  patch_number: 100
+SP_v1.4.6_GAIA_medium:                                                            
+  subdir: /n17data/UNIONS/WL/v1.4.x
+  pipeline: SP                                                                  
+  colour: darkgreen                                                            
+  getdist_colour: 0.0, 0.5, 1.0                                                 
+  ls: dashed                                                                    
+  marker: o                                                                     
+  cov_th:                                                                       
+     A: 2420.2651014497287 #deg^2                                               
+     n_e: 7.040818382014773 #arcmin-2                                           
+     n_psf: 0.752316232272063 #arcmin-2                                         
+     sigma_e: 0.30961528707207325                                               
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  shear:                                                                        
+     path: v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt                        
+     ra_col: RA                                                                 
+     dec_col: Dec                                                               
+     e1_col: e1                                                                 
+     e2_col: e2                                                                 
+     e1_PSF_col: e1_PSF                                                         
+     e2_PSF_col: e2_PSF                                                         
+     w_col: w_des                                                               
+     R: 1.0                                                                     
+     mask: /n09data/guerrini/glass_mock/mask_v1.4.5_nside8192.fits              
+     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+  psf:                                                                          
+     path: ../../GAIA/gaia_stars_g_medium.fits                                
+     hdu: 1                                                                     
+     ra_col: RA                                                                 
+     dec_col: Dec                                                               
+     square_size: True                                                          
+  patch_number: 100
 SP_v1.4.7:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
