@@ -20,7 +20,7 @@ with open(COSMOLOGY_PARAMS) as _f:
 # Wildcard constraints — centralized here, not in individual rule files
 # Patterns must match all expected values; overly restrictive patterns cause silent failures
 wildcard_constraints:
-    version=r"SP_v[\d.]+(_leak_corr)?",
+    version=r"SP_v[\d.]+(_w_iv)?(_leak_corr)?",
     blind=r"[ABC]",
     nbins=r"\d+",
     min_sep=r"[0-9.]+",
