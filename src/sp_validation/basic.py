@@ -147,6 +147,12 @@ class metacal:
                 ns,
             )
 
+        print("FHP/MK hack using p1 PSF for ns in cuts")
+        indices = np.where(mask)[0]
+        new_psf = data[indices][f"{self._prefix}_Tpsf_1P"]
+        ns["Tpsf"] = new_psf
+        data[f"{self._prefix}_Tpsf_NOSHEAR"][mask] = new_psf
+
         self.m1 = m1
         self.p1 = p1
         self.m2 = m2
@@ -159,7 +165,7 @@ class metacal:
         Read data from ngmix catalogue.
         
         """
-        
+
         for name_shear, dict_tmp in zip(
             ['1M', '1P', '2M', '2P', 'NOSHEAR'],
             [m1, p1, m2, p2, ns]
@@ -193,10 +199,6 @@ class metacal:
             dict_tmp['Tpsf'] = (
                 masked_data[f'{self._prefix}_Tpsf_{name_shear}']
             )
-
-
-            print("FHP using p1 PSF for ns in read_data_ngmix")
-            dict_tmp["Tpsf"] = masked_data[f"{self._prefix}_Tpsf_1P"]
 
         ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
             masked_data,
@@ -376,16 +378,8 @@ class metacal:
             else:
                 snr_flux = data['flux'] / data['flux_err']
 
-            #if name == 'ns':
-                # This is a FHP hack, the ns PSF measured in shapepipe is not correct,
-                # fortunately it is the same dilated PSF as the other branches,
-                # thus we can simply use p1
-                #print("FHP using p1 PSF for ns in cuts")
-                #Tpsf = self.p1['Tpsf']
-            #else:
-                #Tpsf = data['Tpsf']
-
             Tpsf = data['Tpsf']
+            print("MKDEBUG cuts on Tpsf", name, Tpsf[:5])
 
             mask_tmp = (
                 (data['flag'] == 0)
