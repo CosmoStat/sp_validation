@@ -57,7 +57,7 @@ print(bits)
 # +
 # Set parameters
 base = "unions_shapepipe_comprehensive"
-ver = "v1.6.c"
+ver = "v1.3.c"
 
 if ver == "v1.3.c":
     year = 2022
