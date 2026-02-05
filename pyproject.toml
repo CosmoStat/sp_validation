@@ -1,13 +1,15 @@
 [project]
 name = "sp_validation"
-version = "0.5.0"
+version = "0.6.0"
 description = "Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by ShapePipe"
 authors = [
-    {name = "Martin Kilbinger", email = "martin.kilbinger@cea.fr"}
+    {name = "Martin Kilbinger", email = "martin.kilbinger@cea.fr"},
+    {name = "Cail Daley", email = "cail.daley@cea.fr"},
+    {name = "Sacha Guerrini", email = "sacha.guerrini@cea.fr"},
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.11"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
