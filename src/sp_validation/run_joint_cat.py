@@ -1143,7 +1143,7 @@ class CalibrateCat(BaseCat):
         except:
             print(f"Error while reading file {fpath}")
             raise
-   
+
         if verbose:
             print(
                 f"Found {len(dat)} (~{util.millify(len(dat))}) objects"

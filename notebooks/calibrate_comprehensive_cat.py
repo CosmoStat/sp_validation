@@ -8,9 +8,10 @@ from IPython import get_ipython
 # enable autoreload for interactive sessions                                     
 ipython = get_ipython()                                                          
 if ipython is not None:                                                          
-    ipython.run_line_magic("load_ext", "autoreload")                             
+    ipython.run_line_magic("reload_ext", "autoreload")                             
     ipython.run_line_magic("autoreload", "2")
-    ipython.run_line_magic("load_ext", "log_cell_time")
+    ipython.run_line_magic("reload_ext", "log_cell_time")
+
 
 # %%
 import sys
@@ -36,6 +37,11 @@ obj = sp_joint.CalibrateCat()
 # Read configuration file and set parameters
 config = obj.read_config_set_params("config_mask.yaml")
 
+
+
+# %%
+obj._params
+
 # %%
 # Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
@@ -47,7 +53,6 @@ if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
     dat_ext = dat_ext[:n_test]
-
 
 
 # %%
@@ -232,19 +237,6 @@ obj.add_params_to_FITS_header(header, cm=cm)
 for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
 
-
-# %%
-# MKDEBUG check bug of minimal size objects
-print("MKDEBUG calibration min size checks")
-T = add_cols_data["NGMIX_T_NOSHEAR"]
-Tpsf = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
-x = T / Tpsf
-ind_low = np.argsort(x)[:5]
-print("ratio", x[ind_low])
-print("gal size", T[ind_low])
-print("PSF size", Tpsf[ind_low])
-print("rel_size_min", cm["gal_rel_size_min"])
-
 # %%
 output_shape_cat_path = obj._params["input_path"].replace(
     "comprehensive", "cut"
@@ -276,6 +268,19 @@ cat.write_shape_catalog(
 with open("masks.txt", "w") as f_out:
     for my_mask in masks:
         my_mask.print_summary(f_out)
+
+
+# %%
+# MKDEBUG check bug of minimal size objects
+print("MKDEBUG calibration min size checks")
+T = add_cols_data["NGMIX_T_NOSHEAR"]
+Tpsf = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
+x = T / Tpsf
+ind_low = np.argsort(x)[:5]
+print("ratio", x[ind_low])
+print("gal size", T[ind_low])
+print("PSF size", Tpsf[ind_low])
+print("rel_size_min", cm["gal_rel_size_min"])
 
 
 # %%
