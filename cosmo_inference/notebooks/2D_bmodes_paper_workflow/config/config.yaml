@@ -4,6 +4,8 @@ versions: [
   "SP_v1.4.8", "SP_v1.4.8_leak_corr",
   "SP_v1.4.11.2", "SP_v1.4.11.2_leak_corr"
 ]
+# IV weight variants available but excluded from main analysis (see fiber v1-4-11-2-iv-weights-harmonic-b-2a2ed88b):
+# "SP_v1.4.11.2_w_iv", "SP_v1.4.11.2_w_iv_leak_corr"
 ellipticity_suffix: "_leak_corrected"
 
 # grid search parameters
