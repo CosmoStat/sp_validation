@@ -143,7 +143,6 @@ def create_bins(x, num_bins, type="log", x_min=None, x_max=None):
     if type == "log":
         xmin = x.min() if not x_min else x_min
         xmax = x.max() if not x_max else x_max
-        print(f"MKDEBUG create bins {x_min} ... {x_max}")
         return np.logspace(np.log10(xmin), np.log10(xmax), num_bins + 1)
     else:
         raise ValueError("Type not supported")     
