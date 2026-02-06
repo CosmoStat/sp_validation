@@ -377,7 +377,6 @@ class metacal:
                 snr_flux = data['flux'] / data['flux_err']
 
             Tpsf = data['Tpsf']
-            print("MKDEBUG cuts on Tpsf", name, Tpsf[:5])
 
             mask_tmp = (
                 (data['flag'] == 0)
