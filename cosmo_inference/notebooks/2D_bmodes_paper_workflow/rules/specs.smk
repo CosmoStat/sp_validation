@@ -10,8 +10,7 @@ import os
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-CONFIG_DIR = "workflow/config"
-CLAIMS_DIR = "results/claims"
+# CONFIG_DIR, CLAIMS_DIR defined in Snakefile
 SKILL_PATH = os.path.expanduser("~/.claude/skills/conducting-research/templates")
 
 # Method specs — foundational techniques, plot types, analysis methods

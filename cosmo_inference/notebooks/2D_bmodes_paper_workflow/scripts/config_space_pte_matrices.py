@@ -1,8 +1,8 @@
 """Configuration-space PTE matrix composites for B-modes paper.
 
 Produces 3-panel composites (xi+^B, xi-^B, COSEBIS) for:
-- Results: fiducial version (v1.4.6)
-- Appendix: non-fiducial versions (v1.4.5, v1.4.8)
+- Results: fiducial version (from config.fiducial.version)
+- Appendix: all versions (from config.versions with labels from config.plotting.version_labels)
 
 Each composite has shared axes and a single colorbar.
 """
@@ -16,16 +16,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
-import seaborn as sns
-from IPython import get_ipython
 
-
-ipython = get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-    ipython.run_line_magic("matplotlib", "inline")
+from plotting_utils import make_pte_colormap
 
 plt.style.use(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
@@ -48,32 +40,34 @@ def _load_snakemake():
 snakemake = _load_snakemake()
 
 
-def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
+def load_cosebis_pte_matrix(pte_files, version, config, nmodes=6):
     """Load COSEBIS PTE values from JSON files into matrix.
 
-    Takes minimum PTE across blinds (A, B, C) for each scale cut combination.
-    This is the conservative approach: if any blind shows significance, we report it.
+    Uses fiducial blind only (data vectors identical across blinds).
 
     Parameters
     ----------
     pte_files : list of str
-        Paths to all PTE JSON files (includes all blinds).
+        Paths to PTE JSON files for fiducial blind.
     version : str
         Version to filter for.
+    config : dict
+        Workflow config with fiducial.min_sep, max_sep, nbins.
     nmodes : int
         Number of COSEBIS modes (6 or 20).
 
     Returns
     -------
     pte_matrix : ndarray
-        21x21 PTE matrix (theta indices 0-20), minimum across blinds.
+        (nbins+1)x(nbins+1) PTE matrix (theta indices).
     theta_grid : ndarray
-        Angular scale grid (21 values).
+        Angular scale grid (nbins+1 values).
     """
-    theta_grid = np.geomspace(1.0, 250.0, 21)
+    fid = config["fiducial"]
+    theta_grid = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
     n_theta = len(theta_grid)
-    # Initialize with inf so np.minimum works correctly
-    pte_matrix = np.full((n_theta, n_theta), np.inf)
+    # Initialize with nan for cells without data
+    pte_matrix = np.full((n_theta, n_theta), np.nan)
 
     for pte_file in pte_files:
         pte_path = Path(pte_file)
@@ -99,63 +93,43 @@ def load_cosebis_pte_matrix(pte_files, version, nmodes=6):
         else:
             continue
 
-        # Take minimum across blinds (conservative)
+        # Store PTE value
         if not np.isnan(pte_val):
-            pte_matrix[i_min, i_max] = np.minimum(pte_matrix[i_min, i_max], pte_val)
-
-    # Replace inf with nan (cells that had no valid data)
-    pte_matrix[np.isinf(pte_matrix)] = np.nan
+            pte_matrix[i_min, i_max] = pte_val
 
     return pte_matrix, theta_grid
 
 
 def load_pure_eb_pte_matrices(pte_files, version):
-    """Load Pure E/B PTE matrices from per-blind npz files.
+    """Load Pure E/B PTE matrices from npz files.
 
-    Takes minimum PTE across blinds (A, B, C) for each scale cut combination.
-    This is the conservative approach: if any blind shows significance, we report it.
+    Uses fiducial blind only (data vectors identical across blinds).
 
     Parameters
     ----------
     pte_files : list of str
-        Paths to all pure_eb_ptes.npz files (includes all blinds).
+        Paths to pure_eb_ptes.npz files for fiducial blind.
     version : str
         Version to filter for.
 
     Returns
     -------
     pte_xip_B : ndarray
-        PTE matrix for xi+^B, minimum across blinds.
+        PTE matrix for xi+^B.
     pte_xim_B : ndarray
-        PTE matrix for xi-^B, minimum across blinds.
+        PTE matrix for xi-^B.
     theta : ndarray
         Angular scale grid.
     """
-    pte_xip_B = None
-    pte_xim_B = None
-    theta = None
-
     for pte_file in pte_files:
         # Filter to this version
         if version not in pte_file:
             continue
 
         data = np.load(pte_file)
+        return data["pte_xip_B"], data["pte_xim_B"], data["theta"]
 
-        if theta is None:
-            theta = data["theta"]
-            pte_xip_B = np.full_like(data["pte_xip_B"], np.inf)
-            pte_xim_B = np.full_like(data["pte_xim_B"], np.inf)
-
-        # Take minimum across blinds
-        pte_xip_B = np.minimum(pte_xip_B, np.nan_to_num(data["pte_xip_B"], nan=np.inf))
-        pte_xim_B = np.minimum(pte_xim_B, np.nan_to_num(data["pte_xim_B"], nan=np.inf))
-
-    # Replace inf with nan
-    pte_xip_B[np.isinf(pte_xip_B)] = np.nan
-    pte_xim_B[np.isinf(pte_xim_B)] = np.nan
-
-    return pte_xip_B, pte_xim_B, theta
+    raise ValueError(f"No PTE file found for version {version}")
 
 
 def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
@@ -184,63 +158,52 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     """
     n_theta = len(theta_grid)
 
-    # Colormap
-    vlag_cmap = sns.color_palette("vlag", as_cmap=True).copy()
-    vlag_cmap.set_bad(color="lightgray")
+    # Discrete colormap: solid blue below 0.05, solid red above 0.95, gradient between
+    pte_cmap = make_pte_colormap()
 
-    # Plot heatmap
+    # Plot heatmap (no contours - colormap provides visual threshold distinction)
     im = ax.imshow(
         pte_matrix.T,
         origin="lower",
         aspect="equal",
-        cmap=vlag_cmap,
+        cmap=pte_cmap,
         vmin=0,
         vmax=1,
         extent=[0, n_theta, 0, n_theta],
     )
 
-    # Contours at significance levels
-    cs = ax.contour(
-        pte_matrix.T,
-        levels=[0.05, 0.95],
-        colors="black",
-        linewidths=0.6,
-        extent=[0, n_theta, 0, n_theta],
-    )
-    ax.clabel(cs, inline=True, fontsize=6, fmt="%.2f")
-
-    # Fiducial scale cut marker
+    # Fiducial scale cut marker (black square, no hatching for cleaner look)
     ax.add_patch(
         Rectangle(
             (fid_start, fid_stop),
             1, 1,
             fill=False,
             edgecolor="black",
-            linewidth=1.2,
-            hatch="///",
-            alpha=0.8,
+            linewidth=1.5,
         )
     )
 
     # Title
     ax.set_title(title, fontsize=9)
 
-    # Tick labels - more frequent markers
+    # Tick positioning: x-axis at left edge of bins, y-axis at top edge
     tick_step = 2
     tick_indices = np.arange(0, n_theta, tick_step)
-    tick_labels = [f"{theta_grid[i]:.0f}" for i in tick_indices]
-    tick_positions = tick_indices + 0.5
+    x_tick_labels = [f"{theta_grid[i]:.0f}" for i in tick_indices]
+    y_tick_labels = [f"{theta_grid[min(i + 1, n_theta - 1)]:.0f}" for i in tick_indices]
 
-    ax.set_xticks(tick_positions)
-    ax.set_yticks(tick_positions)
+    # x-axis (lower cut): ticks at left edge of bins
+    ax.set_xticks(tick_indices)
+    # y-axis (upper cut): ticks at top edge of bins
+    ax.set_yticks(tick_indices + 1)
 
     if show_xticklabels:
-        ax.set_xticklabels(tick_labels, fontsize=6)
+        ax.set_xticklabels(x_tick_labels, fontsize=6)
     else:
         ax.set_xticklabels([])
 
     if show_yticklabels:
-        ax.set_yticklabels(tick_labels, fontsize=6)
+        ax.set_yticklabels(y_tick_labels, fontsize=6)
     else:
         ax.set_yticklabels([])
 
@@ -278,9 +241,9 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
     Returns
     -------
     ptes : dict
-        Full-range PTEs for xip, xim, and cosebis (minimum across blinds).
+        Full-range PTEs for xip, xim, and cosebis (fiducial blind).
     """
-    # Get full-range PTEs from pure E/B (minimum across blinds)
+    # Get full-range PTEs from pure E/B (fiducial blind)
     xip_ptes = []
     xim_ptes = []
     for pte_file in pure_eb_pte_files:
@@ -322,7 +285,7 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
 
 
 def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
-                            xip_fid, xim_fid, cosebis_fid):
+                            xip_fid, xim_fid, cosebis_fid, config):
     """Create a 1×3 composite figure for the fiducial version (main text).
 
     Parameters
@@ -337,6 +300,8 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         Fiducial scale cuts for xi+ and xi- (arcmin).
     cosebis_fid : tuple
         Fiducial scale cuts for COSEBIS (arcmin).
+    config : dict
+        Workflow config with fiducial parameters.
 
     Returns
     -------
@@ -360,14 +325,14 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         bottom=0.15, top=0.90
     )
 
-    # Load Pure E/B PTE matrices (minimum across blinds)
+    # Load Pure E/B PTE matrices (fiducial blind)
     pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
         pure_eb_pte_files, version
     )
 
     # Load COSEBIS PTE matrix
     pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
-        cosebis_pte_files, version, nmodes=6
+        cosebis_pte_files, version, config, nmodes=6
     )
 
     # Compute fiducial indices
@@ -385,7 +350,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     ax_cosebis = fig.add_subplot(gs[0, 2])
 
     # Plot panels with titles
-    im_xip = plot_pte_panel(
+    plot_pte_panel(
         ax_xip, pte_xip_B, theta_pure_eb,
         xip_start, xip_stop,
         r"$\xi_+^B$",
@@ -393,7 +358,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     )
     ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
 
-    im_xim = plot_pte_panel(
+    plot_pte_panel(
         ax_xim, pte_xim_B, theta_pure_eb,
         xim_start, xim_stop,
         r"$\xi_-^B$",
@@ -431,13 +396,13 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
 
 
 def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
-                            xip_fid, xim_fid, cosebis_fid):
-    """Create a 3x3 composite figure for all versions (appendix).
+                            xip_fid, xim_fid, cosebis_fid, version_labels, config):
+    """Create a Nx3 composite figure for all versions (appendix).
 
     Parameters
     ----------
     versions : list of str
-        Catalog version strings in display order [v1.4.5, v1.4.6, v1.4.8].
+        Catalog version strings in display order.
     pure_eb_pte_files : list
         All Pure E/B PTE npz files (includes all blinds).
     cosebis_pte_files : list
@@ -446,6 +411,10 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         Fiducial scale cuts for xi+ and xi- (arcmin).
     cosebis_fid : tuple
         Fiducial scale cuts for COSEBIS (arcmin).
+    version_labels : dict
+        Mapping from version string to display label (from config.plotting.version_labels).
+    config : dict
+        Workflow config with fiducial parameters.
 
     Returns
     -------
@@ -456,13 +425,13 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     all_full_range_ptes : dict
         Full-range PTEs keyed by version.
     """
-    # Create figure: 3 rows x 4 columns (3 stats + colorbar)
+    n_versions = len(versions)
     fig_width = 6.5
-    fig_height = 6.5
+    fig_height = 2.2 * n_versions
 
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
-        3, 4,
+        n_versions, 4,
         width_ratios=[1, 1, 1, 0.04],
         wspace=0.03, hspace=0.08,
         left=0.10, right=0.95,
@@ -471,22 +440,16 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
     all_stats = {}
     all_full_range_ptes = {}
-    # Use descriptive version labels per project convention
-    version_labels = {
-        "SP_v1.4.5_leak_corr": "Initial",
-        "SP_v1.4.6_leak_corr": "Fiducial",
-        "SP_v1.4.8_leak_corr": "Masked",
-    }
 
     for row_idx, version in enumerate(versions):
-        # Load Pure E/B PTE matrices (minimum across blinds)
+        # Load Pure E/B PTE matrices (fiducial blind)
         pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
             pure_eb_pte_files, version
         )
 
         # Load COSEBIS PTE matrix
         pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
-            cosebis_pte_files, version, nmodes=6
+            cosebis_pte_files, version, config, nmodes=6
         )
 
         # Compute fiducial indices
@@ -506,7 +469,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         # Y-axis labels on each row (leftmost column only)
         # X-axis labels only on bottom row
         show_yticklabels = True
-        show_xticklabels = (row_idx == 2)
+        show_xticklabels = (row_idx == n_versions - 1)
 
         # Plot titles: version label on top row panels
         version_label = version_labels.get(version, version)
@@ -515,7 +478,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         cosebis_title = r"COSEBIS $B_n$" if row_idx == 0 else ""
 
         # Plot panels
-        im_xip = plot_pte_panel(
+        plot_pte_panel(
             ax_xip, pte_xip_B, theta_pure_eb,
             xip_start, xip_stop,
             xip_title,
@@ -524,7 +487,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         # Add y-axis label to leftmost panel of each row
         ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
 
-        im_xim = plot_pte_panel(
+        plot_pte_panel(
             ax_xim, pte_xim_B, theta_pure_eb,
             xim_start, xim_stop,
             xim_title,
@@ -539,7 +502,6 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         )
 
         # Add version label to the right of each row
-        version_label = version_labels.get(version, version)
         ax_cosebis.annotate(
             version_label, xy=(1.02, 0.5), xycoords="axes fraction",
             fontsize=8, weight="bold", va="center", ha="left", rotation=-90
@@ -613,6 +575,7 @@ def main():
             xip_fid=xip_fid,
             xim_fid=xim_fid,
             cosebis_fid=cosebis_fid,
+            config=config,
         )
 
         # Save fiducial figure
@@ -629,14 +592,14 @@ def main():
         all_stats[fiducial_version] = fid_stats
         all_full_range_ptes[fiducial_version] = fid_ptes
 
-    except Exception as e:
+    except Exception:
         import traceback
-        print(f"  ERROR creating fiducial composite:", flush=True)
+        print("  ERROR creating fiducial composite:", flush=True)
         traceback.print_exc()
         raise
 
-    # Generate 3x3 composite for all versions (appendix)
-    print("\n--- Creating 3x3 composite for all versions ---", flush=True)
+    # Generate Nx3 composite for all versions (appendix)
+    print("\n--- Creating Nx3 composite for all versions ---", flush=True)
 
     try:
         fig, appendix_stats, appendix_ptes = create_9panel_composite(
@@ -646,6 +609,8 @@ def main():
             xip_fid=xip_fid,
             xim_fid=xim_fid,
             cosebis_fid=cosebis_fid,
+            version_labels=config["plotting"]["version_labels"],
+            config=config,
         )
 
         # Save appendix figure
@@ -663,9 +628,9 @@ def main():
         all_stats.update(appendix_stats)
         all_full_range_ptes.update(appendix_ptes)
 
-    except Exception as e:
+    except Exception:
         import traceback
-        print(f"  ERROR creating appendix composite:", flush=True)
+        print("  ERROR creating appendix composite:", flush=True)
         traceback.print_exc()
         raise
 

@@ -6,17 +6,13 @@ Plotting: [2D Plots](2d_plots.md)
 
 ## Claim
 
-Harmonic-space B-mode PTEs are consistent with noise at fiducial multipole range for the fiducial catalog version. PTE heatmaps across all (ell_min, ell_max) combinations show where B-modes become significant. The appendix presents all three catalog versions (v1.4.5, v1.4.6, v1.4.8) for comparison.
+Harmonic-space B-mode PTEs are consistent with noise at fiducial multipole range for the fiducial catalog version. PTE heatmaps across all (ell_min, ell_max) combinations show where B-modes become significant. The appendix presents all catalog versions (from `config.versions`) for comparison.
 
-Fiducial scale cuts: ell_min=300, ell_max=1600 (from Paper II, Goh et al.). Full B-mode test range: 50 < ell < 2000.
+Fiducial scale cuts from `cl.fiducial_ell_min` and `cl.fiducial_ell_max`. Full B-mode test range spans all multipole bins present in the input pseudo-Cℓ file.
 
 ## Blind Handling
 
-The C_ℓ^BB data vector is computed from catalog-level shear maps and is identical across blinds A, B, C.
-
-Per-blind 32-bin covariances are computed using blind-specific n(z) distributions. The reported PTE at fiducial is the minimum across blinds A, B, C — if any blind shows significance, we report it. This conservative approach is consistent with configuration-space statistics.
-
-Evidence includes both the minimum PTE (`pte_at_fiducial`) and per-blind PTEs (`pte_at_fiducial_A`, `pte_at_fiducial_B`, `pte_at_fiducial_C`).
+Uses fiducial blind from `config["fiducial"]["blind"]`. The C_ℓ^BB data vector is identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions.
 
 ## Config References
 
@@ -24,9 +20,9 @@ Evidence includes both the minimum PTE (`pte_at_fiducial`) and per-blind PTEs (`
 |-----------|------------|
 | Versions | `versions` |
 | Fiducial version | `fiducial.version` |
-| Full multipole range | `cl.ell_min`, `cl.ell_max` |
 | Fiducial multipole range | `cl.fiducial_ell_min`, `cl.fiducial_ell_max` |
-| Number of bins | `cl.n_ell_bins` |
+
+Note: Number of multipole bins and full multipole range are determined by the input pseudo-Cℓ file, not config.
 
 ## Evidence
 
@@ -35,14 +31,8 @@ Per-version statistics:
 | Metric | Description |
 |--------|-------------|
 | `{version}.role` | "fiducial" or "appendix" |
-| `{version}.pte_at_fiducial` | Minimum C_l^BB PTE across blinds at fiducial multipole range [300, 1600] |
-| `{version}.pte_at_fiducial_A` | C_l^BB PTE for blind A at fiducial multipole range |
-| `{version}.pte_at_fiducial_B` | C_l^BB PTE for blind B at fiducial multipole range |
-| `{version}.pte_at_fiducial_C` | C_l^BB PTE for blind C at fiducial multipole range |
-| `{version}.pte_at_full_range` | Minimum C_l^BB PTE across blinds at full multipole range |
-| `{version}.pte_at_full_range_A` | C_l^BB PTE for blind A at full multipole range |
-| `{version}.pte_at_full_range_B` | C_l^BB PTE for blind B at full multipole range |
-| `{version}.pte_at_full_range_C` | C_l^BB PTE for blind C at full multipole range |
+| `{version}.pte_at_fiducial` | C_l^BB PTE at fiducial multipole range |
+| `{version}.pte_at_full_range` | C_l^BB PTE at full multipole range |
 | `{version}.n_evaluated` | Number of (ell_min, ell_max) pairs |
 | `{version}.ell_range` | [ell_min, ell_max] of full range |
 | `{version}.fiducial_ell_range` | [ell_min, ell_max] of fiducial range |
@@ -51,6 +41,6 @@ Per-version statistics:
 ## Outputs
 
 - `figure_fiducial.png` — PTE heatmap for fiducial version (main text)
-- `figure_appendix.png` — 3-panel composite for all versions (v1.4.5, v1.4.6, v1.4.8) (appendix)
+- `figure_appendix.png` — N-panel composite for all versions from `config.versions` (appendix)
 
 Heatmaps use vlag colormap [0, 1] with contours at 0.05/0.95. Fiducial multipole range marked with hatched rectangle.

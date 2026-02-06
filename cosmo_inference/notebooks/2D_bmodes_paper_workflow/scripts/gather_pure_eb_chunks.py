@@ -6,16 +6,9 @@ from pathlib import Path
 
 import numpy as np
 
-from IPython import get_ipython
-
-ipython = get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-else:
-    sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
+# Unbuffered output for Snakemake log streaming
+sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
+sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
 
 
 def _load_snakemake():
@@ -60,17 +53,34 @@ def main():
         "npatch": int(params["npatch"]),
     }
 
+    blind = params.get("blind", "A")
+    print(f"Gathering pure E/B for blind {blind}")
+
     # Load precomputed correlation functions from Snakemake inputs
     gg = _load_xi(snakemake.input["xi_reporting"], numeric_params["nbins"])
     gg_int = _load_xi(snakemake.input["xi_integration"], numeric_params["nbins_int"])
 
-    # Compute pure E/B decomposition directly (covariance comes from MC samples)
-    eb_results = get_pure_EB_modes(
-        theta=gg["meanr"], xip=gg["xip"], xim=gg["xim"],
-        theta_int=gg_int["meanr"], xip_int=gg_int["xip"], xim_int=gg_int["xim"],
-        tmin=numeric_params["min_sep"], tmax=numeric_params["max_sep"]
-    )
-    xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = eb_results
+    # For per-blind B/C, load data vectors from base file
+    # For base or A, compute data vectors fresh
+    base_input = snakemake.input.get("base_pure_eb", [])
+    if base_input:
+        # Per-blind case: load data vectors from base file
+        base_data = np.load(base_input[0] if isinstance(base_input, list) else base_input)
+        print(f"Loading data vectors from base file: {base_input}")
+        xip_E = base_data["xip_E"]
+        xim_E = base_data["xim_E"]
+        xip_B = base_data["xip_B"]
+        xim_B = base_data["xim_B"]
+        xip_amb = base_data["xip_amb"]
+        xim_amb = base_data["xim_amb"]
+    else:
+        # Base or A case: compute data vectors fresh
+        eb_results = get_pure_EB_modes(
+            theta=gg["meanr"], xip=gg["xip"], xim=gg["xim"],
+            theta_int=gg_int["meanr"], xip_int=gg_int["xip"], xim_int=gg_int["xim"],
+            tmin=numeric_params["min_sep"], tmax=numeric_params["max_sep"]
+        )
+        xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = eb_results
 
     # Load and concatenate all chunks
     chunk_files = sorted(snakemake.input["chunks"])

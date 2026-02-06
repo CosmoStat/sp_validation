@@ -2689,9 +2689,7 @@ class CosmologyValidation:
                     )
                 pw = pw[1:len(ell)+1]
 
-                # Load redshift distribution and calculate theory C_ell
-                z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
-                ell = np.arange(1, lmax + 1)
+                # Calculate theory C_ell with pixel window
                 fiducial_cl = (
                     get_theo_c_ell(
                         ell=ell,
@@ -2700,7 +2698,7 @@ class CosmologyValidation:
                         backend="camb",
                         cosmo=self.cosmo,
                     )
-                    * pw[1:]**2
+                    * pw**2
                 )
 
                 self.print_cyan("Getting a binning, n_gal_map, field and workspace.")

@@ -13,51 +13,66 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 import treecorr
 
 from sp_validation.b_modes import calculate_cosebis
-
-
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
+from plotting_utils import (
+    ERRORBAR_DEFAULTS,
+    FIG_WIDTH_FULL,
+    MARKER_STYLES,
+    PAPER_MPLSTYLE,
+    draw_normalized_boxes_linear_scale,
+    find_fiducial_index,
+    get_version_alpha,
+    version_label,
 )
 
 
-VERSION_LABELS = {
-    "SP_v1.4.5_leak_corr": "Initial",
-    "SP_v1.4.6_leak_corr": "Fiducial",
-    "SP_v1.4.8_leak_corr": "Masked",
-}
+plt.style.use(PAPER_MPLSTYLE)
 
 
-def _version_label(version):
-    return VERSION_LABELS.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
+
 
 
 def _get_cov_path(cov_base_dir, version, blind, min_sep, max_sep, nbins):
-    """Construct covariance path for a specific blind."""
-    base_name_masked = f"covariance_{version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+    """Construct covariance path for a specific blind.
+
+    Versions derived from v1.4.6 footprint (v1.4.10.1, v1.4.11.2) use v1.4.6 covariance.
+    """
+    # Same footprint → same covariance geometry
+    cov_version = version.replace("v1.4.10.1", "v1.4.6").replace("v1.4.11.2", "v1.4.6")
+    base_name_masked = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     masked_path = f"{cov_base_dir}/{base_name_masked}/{base_name_masked}_processed.txt"
     if Path(masked_path).exists():
         return masked_path
 
-    base_name = f"covariance_{version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
+    base_name = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
     return f"{cov_base_dir}/{base_name}/{base_name}_processed.txt"
 
 
-def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, y_limits=None):
+def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, fiducial_idx,
+                                  y_limits=None, x_offsets=None, box_style=None):
     """Create a vertically stacked B-mode COSEBIS comparison figure.
 
     Plots B_n / sigma_n (dimensionless, in units of standard deviation).
     Top panel: full range, bottom panel: fiducial scale cut.
-    """
-    fig_width = 7.24
-    fig, axes = plt.subplots(2, 1, figsize=(fig_width, fig_width * 0.6), sharex=True)
+    For each mode, a box spans the range of all versions' error bars,
+    with a line marking the fiducial version's value.
 
-    x_offsets = np.array([-0.2, 0.0, 0.2])
+    Parameters
+    ----------
+    x_offsets : array-like, optional
+        Additive offsets for each version. Default: [-0.12, -0.04, 0.04, 0.12]
+    box_style : dict, optional
+        Styling for version boxes.
+    """
+    if x_offsets is None:
+        x_offsets = np.array([-0.12, -0.04, 0.04, 0.12])
+    x_offsets = np.array(x_offsets)
+
+    fig, axes = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.6), sharex=True)
+
     modes = np.arange(1, nmodes + 1)
-    marker_styles = ["o", "s", "D"]
     scale_labels = {"fiducial": "Fiducial", "full": "Full"}
 
     panels = [
@@ -69,9 +84,16 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
     legend_labels = []
 
     for panel_idx, (scale_key, datasets, ax, scale_cut) in enumerate(panels):
+        # Draw version spread boxes (before data points)
+        draw_normalized_boxes_linear_scale(
+            ax, modes, datasets,
+            y_norm_key="Bn_normalized", fiducial_idx=fiducial_idx,
+            x_offsets=x_offsets, box_style=box_style
+        )
+
         for i, data in enumerate(datasets):
             offset = x_offsets[i] if i < len(x_offsets) else 0
-            marker = marker_styles[i] if i < len(marker_styles) else "o"
+            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
             line = ax.errorbar(
                 modes + offset,
                 data["Bn_normalized"],
@@ -81,12 +103,8 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
                 alpha=data["alpha"],
                 markerfacecolor=data["color"],
                 markeredgecolor="white",
-                markeredgewidth=0.5,
-                markersize=4,
-                capsize=2,
-                capthick=0.8,
-                linewidth=0.8,
-                elinewidth=0.8,
+                **ERRORBAR_DEFAULTS,
+                zorder=2,
             )
             if panel_idx == 0:
                 legend_handles.append(line)
@@ -116,7 +134,7 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
         legend_handles,
         legend_labels,
         loc="upper center",
-        ncol=3,
+        ncol=4,
         frameon=True,
         framealpha=0.9,
         handletextpad=0.3,
@@ -130,18 +148,31 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
 
 def main():
     config = snakemake.config
-    versions = config["versions"]
+    # Only leak-corrected versions have COSEBIS computed
+    versions = [v for v in config["versions"] if "_leak_corr" in v]
     nmodes = config["fiducial"]["nmodes"]
+    plotting_config = config["plotting"]
 
-    # Use blind A for plotting (B-modes are same across blinds, only covariance differs)
-    blind = "A"
+    # Use fiducial blind for plotting (B-modes are same across blinds, only covariance differs)
+    blind = config["fiducial"]["blind"]
     cov_base_dir = snakemake.params.cov_base_dir
+    version_labels = snakemake.params.version_labels
+
+    # Which version gets the fiducial reference line in boxes
+    fiducial_for_comparison = plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"])
+
+    # Plotting config
+    x_offsets = plotting_config.get("x_offsets", [-0.12, -0.04, 0.04, 0.12])
+    box_style = plotting_config.get("version_box", {})
 
     fiducial_scale_cut = (
         float(config["fiducial"]["fiducial_min_scale"]),
         float(config["fiducial"]["fiducial_max_scale"]),
     )
-    full_scale_cut = (1.0, 250.0)
+    full_scale_cut = (
+        float(config["cosebis"]["theta_min"]),
+        float(config["cosebis"]["theta_max"]),
+    )
 
     scale_cuts = {
         "fiducial": fiducial_scale_cut,
@@ -152,12 +183,10 @@ def main():
     max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_int = int(config["fiducial"]["nbins_int"])
 
-    fiducial_version = config["fiducial"]["version"]
-    version_alpha = {v: 1.0 if v == fiducial_version else 0.4 for v in versions}
 
     colors = sns.color_palette("colorblind", len(versions))
 
-    # Compute COSEBIS for visualization
+    # Compute COSEBIS for visualization - need to build datasets first to get fiducial_idx
     all_datasets = {}
 
     for scale_key, scale_cut in scale_cuts.items():
@@ -195,9 +224,9 @@ def main():
 
             datasets.append({
                 "version": version,
-                "label": _version_label(version),
+                "label": version_label(version, version_labels),
                 "color": color,
-                "alpha": version_alpha.get(version, 1.0),
+                "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
                 "Bn_normalized": Bn / sigma_B,
             })
 
@@ -212,6 +241,9 @@ def main():
     y_range = max(all_y) - min(all_y)
     y_limits = (min(all_y) - 0.1 * y_range, max(all_y) + 0.1 * y_range)
 
+    # Find fiducial version index for box highlighting (use fiducial datasets)
+    fiducial_idx = find_fiducial_index(all_datasets["fiducial"], fiducial_for_comparison)
+
     # Create output
     output_dir = Path(snakemake.output["evidence"]).parent
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -221,7 +253,10 @@ def main():
         all_datasets["full"],
         nmodes,
         scale_cuts,
+        fiducial_idx,
         y_limits,
+        x_offsets=x_offsets,
+        box_style=box_style,
     )
 
     fig_name = "figure_stacked.png"
