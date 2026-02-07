@@ -312,6 +312,14 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
     """
     bold = 0.01  # bold PTE values below this threshold
 
+    # Paper-consistent table labels (distinct from short plot labels)
+    table_labels = {
+        "SP_v1.4.5_leak_corr": "Initial (v1.4.5)",
+        "SP_v1.4.6_leak_corr": "Size cut (v1.4.6)",
+        "SP_v1.4.8_leak_corr": "Masked (v1.4.8)",
+        "SP_v1.4.11.2_leak_corr": "Extended flags (v1.4.11.2)",
+    }
+
     # Load config-space PTE evidence
     config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"
     config_data = {}
@@ -326,8 +334,8 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         with open(harmonic_pte_path) as f:
             harmonic_data = json.load(f).get("evidence", {}).get("versions", {})
 
-    # Get short version label for caption
-    fid_label = version_labels.get(fiducial_version, fiducial_version)
+    # Get table label for caption
+    fid_label = table_labels.get(fiducial_version, version_labels.get(fiducial_version, fiducial_version))
 
     # Results table (fiducial only) — grouped by statistic family
     if fiducial_version in config_data or fiducial_version in harmonic_data:
@@ -337,7 +345,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         results_table.append(r"% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
         results_table.append(r"\begin{table*}")
         results_table.append(r"  \centering")
-        results_table.append(rf"  \caption{{B-mode PTE values for {fid_label} at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}}")
+        results_table.append(rf"  \caption{{$B$-mode PTE values for the fiducial catalog ({fid_label}, leakage-corrected) at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}}")
         results_table.append(r"  \label{tab:pte_results}")
         # Column layout: Scale | COSEBIS n≤6 | COSEBIS n≤20 || ξ+^B | ξ-^B | ξ_tot^B ||| C_ℓ^BB
         results_table.append(r"  \begin{tabular}{l cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
@@ -373,7 +381,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         appendix_table.append("% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
         appendix_table.append(r"\begin{table*}")
         appendix_table.append(r"  \centering")
-        appendix_table.append(r"  \caption{B-mode PTE values across catalog versions at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}")
+        appendix_table.append(r"  \caption{$B$-mode PTE values across catalog versions at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}")
         appendix_table.append(r"  \label{tab:pte_appendix}")
         appendix_table.append(r"  \begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         appendix_table.append(r"    \hline")
@@ -385,7 +393,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         # Filter to only leak_corr versions (those with labels in version_labels)
         table_versions = [v for v in versions if v in version_labels]
         for i, ver in enumerate(table_versions):
-            label = version_labels.get(ver, ver)
+            label = table_labels.get(ver, version_labels.get(ver, ver))
             if ver == fiducial_version:
                 label = f"{label} (fiducial)"
 
