@@ -224,8 +224,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
 
     # Bottom row: xi_B +/- normalized
     for col, (mode_key, title) in enumerate([
-        ("xip_B", r"$\xi_+^B / \sigma$"),
-        ("xim_B", r"$\xi_-^B / \sigma$"),
+        ("xip_B", r"$\xi_+^{\mathrm{B}} / \sigma$"),
+        ("xim_B", r"$\xi_-^{\mathrm{B}} / \sigma$"),
     ]):
         ax = axes[1, col]
 

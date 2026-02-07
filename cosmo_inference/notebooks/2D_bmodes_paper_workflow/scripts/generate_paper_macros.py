@@ -360,7 +360,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         results_table.append(r"    \hline")
         results_table.append(r"    & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
         results_table.append(r"    \cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(l){7-7}")
-        results_table.append(r"    Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^B$ & $\xi_-^B$ & $\xi_{\rm tot}^B$ & $C_\ell^{BB}$ \\")
+        results_table.append(r"    Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\")
         results_table.append(r"    \hline")
 
         cfg = config_data.get(fiducial_version, {})
@@ -395,7 +395,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         appendix_table.append(r"    \hline")
         appendix_table.append(r"    & & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
         appendix_table.append(r"    \cmidrule(lr){3-4} \cmidrule(lr){5-7} \cmidrule(l){8-8}")
-        appendix_table.append(r"    Version & Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^B$ & $\xi_-^B$ & $\xi_{\rm tot}^B$ & $C_\ell^{BB}$ \\")
+        appendix_table.append(r"    Version & Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\")
         appendix_table.append(r"    \hline")
 
         # Filter to only leak_corr versions (those with labels in version_labels)

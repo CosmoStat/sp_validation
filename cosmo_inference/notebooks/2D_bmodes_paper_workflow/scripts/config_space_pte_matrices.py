@@ -416,7 +416,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     plot_pte_panel(
         ax_xip, pte_xip_B, theta_pure_eb,
         xip_start, xip_stop,
-        r"$\xi_+^B$",
+        r"$\xi_+^{\mathrm{B}}$",
         show_xticklabels=True, show_yticklabels=True
     )
     ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
@@ -424,7 +424,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     plot_pte_panel(
         ax_xim, pte_xim_B, theta_pure_eb,
         xim_start, xim_stop,
-        r"$\xi_-^B$",
+        r"$\xi_-^{\mathrm{B}}$",
         show_xticklabels=True, show_yticklabels=False
     )
 
@@ -540,8 +540,8 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
         # Plot titles: version label on top row panels
         version_label = version_labels.get(version, version)
-        xip_title = rf"{version_label}: $\xi_+^B$" if row_idx == 0 else ""
-        xim_title = r"$\xi_-^B$" if row_idx == 0 else ""
+        xip_title = rf"{version_label}: $\xi_+^{{\mathrm{{B}}}}$" if row_idx == 0 else ""
+        xim_title = r"$\xi_-^{\mathrm{B}}$" if row_idx == 0 else ""
         cosebis_title = r"COSEBIS $B_n$" if row_idx == 0 else ""
 
         # Plot panels

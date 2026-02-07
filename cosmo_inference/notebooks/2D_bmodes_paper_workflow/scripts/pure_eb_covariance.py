@@ -17,10 +17,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns  # Registers seaborn colormaps (icefire, etc.) with matplotlib
 
+from plotting_utils import PAPER_MPLSTYLE
 
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _analyze_block(covariance, start_idx, end_idx, name):
@@ -137,12 +137,12 @@ def main():
 
     # 6 block labels (matching v1 epistemics style)
     block_labels = [
-        r"$\xi_+^E$",
-        r"$\xi_-^E$",
-        r"$\xi_+^B$",
-        r"$\xi_-^B$",
-        r"$\xi_+^\mathrm{amb}$",
-        r"$\xi_-^\mathrm{amb}$",
+        r"$\xi_+^{\mathrm{E}}$",
+        r"$\xi_-^{\mathrm{E}}$",
+        r"$\xi_+^{\mathrm{B}}$",
+        r"$\xi_-^{\mathrm{B}}$",
+        r"$\xi_+^{\mathrm{amb}}$",
+        r"$\xi_-^{\mathrm{amb}}$",
     ]
 
     # Compute block boundaries and centers

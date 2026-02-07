@@ -19,12 +19,10 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from astropy.io import fits
 
-from plotting_utils import compute_chi2_pte, make_pte_colormap
+from plotting_utils import PAPER_MPLSTYLE, compute_chi2_pte, make_pte_colormap
 
 
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _load_snakemake():
@@ -201,8 +199,8 @@ def create_single_panel(pte_matrix, ell):
 
     plot_cl_pte_panel(ax, pte_matrix, ell, "", show_colorbar=True)
 
-    ax.set_xlabel(r"$\ell_{\rm min}$")
-    ax.set_ylabel(r"$\ell_{\rm max}$")
+    ax.set_xlabel(r"$\ell_{\mathrm{min}}$")
+    ax.set_ylabel(r"$\ell_{\mathrm{max}}$")
 
     plt.tight_layout()
     return fig
@@ -253,8 +251,8 @@ def create_npanel_composite(matrices, ells, panel_labels):
     cbar.ax.tick_params(labelsize=7)
 
     # Common axis labels
-    fig.text(0.5, 0.02, r"$\ell_{\rm min}$", ha="center", fontsize=9)
-    fig.text(0.02, 0.53, r"$\ell_{\rm max}$",
+    fig.text(0.5, 0.02, r"$\ell_{\mathrm{min}}$", ha="center", fontsize=9)
+    fig.text(0.02, 0.53, r"$\ell_{\mathrm{max}}$",
              va="center", rotation="vertical", fontsize=9)
 
     return fig
@@ -262,7 +260,7 @@ def create_npanel_composite(matrices, ells, panel_labels):
 
 def main():
     config = snakemake.config
-    versions = config["versions"]
+    versions = [v for v in config["versions"] if "_leak_corr" in v]
     fiducial_version = config["fiducial"]["version"]
     fiducial_blind = config["fiducial"]["blind"]
 
