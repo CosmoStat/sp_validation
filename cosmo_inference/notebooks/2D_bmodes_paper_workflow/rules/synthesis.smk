@@ -28,7 +28,7 @@ CLAIM_RULES = [
     "config_space_pte_matrices",
     "harmonic_space_pte_matrices",
     "bb_covariance_blind_independence",
-    "covariance_blind_consistency",
+    "harmonic_config_cosebis_comparison",
 ]
 
 
@@ -54,7 +54,7 @@ rule xi_cosmology_paper:
         spec=f"{CONFIG_DIR}/xi_cosmology_paper.md",
         cosebis_evidence=rules.cosebis_version_comparison.output.evidence,
         pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
-        covariance_evidence=rules.covariance_blind_consistency.output.evidence,
+        bb_blind_evidence=rules.bb_covariance_blind_independence.output.evidence,
     output:
         macros="docs/unions_release/unions_2d_shear_xi/claims_macros.tex",
         evidence=f"{CLAIMS_DIR}/xi_cosmology_paper/evidence.json",
@@ -109,7 +109,6 @@ rule bmodes_paper_spec:
         cosebis_bmode_stacked=rules.cosebis_version_comparison.output.paper_stacked,
         # Consistency checks
         bb_covariance_blind=rules.bb_covariance_blind_independence.output.evidence,
-        covariance_blind_consistency=rules.covariance_blind_consistency.output.evidence,
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:

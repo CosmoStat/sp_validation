@@ -144,7 +144,6 @@ rule cosebis_version_comparison:
         xi_integration=[_xi_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
         cov_integration=[_cov_integration_path(ver, "A") for ver in VERSIONS_LEAK_CORR],
     params:
-        cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
         version_labels=VERSION_LABELS,
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
@@ -196,13 +195,14 @@ N_PURE_EB_CHUNKS = config["pure_eb"]["n_chunks"]
 rule precompute_pure_eb_chunk:
     """Compute a chunk of MC samples for pure E/B covariance (scatter)."""
     input:
-        cov_integration=lambda w: _cov_integration_path(w.version, "A"),
+        cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/chunks/{version}_pure_eb_chunk_{chunk_id}.npz",
+        "results/paper_plots/intermediate/chunks/{version}_{blind}_pure_eb_chunk_{chunk_id}.npz",
     params:
         version="{version}",
+        blind="{blind}",
         chunk_id="{chunk_id}",
         n_chunks=N_PURE_EB_CHUNKS,
         n_samples=config["covariance"]["n_samples"],
@@ -217,16 +217,17 @@ rule precompute_pure_eb_chunk:
 rule precompute_pure_eb:
     """Gather MC sample chunks and compute final pure E/B covariance."""
     wildcard_constraints:
-        version=r"[^_]+_v[\d.]+(_leak_corr)?",  # e.g. SP_v1.4.6 or SP_v1.4.6_leak_corr (no blind suffix)
+        version=r"[^_]+_v[\d.]+(_leak_corr)?",  # e.g. SP_v1.4.6 or SP_v1.4.6_leak_corr
+        blind=r"[ABC]",
     input:
         chunks=expand(
-            "results/paper_plots/intermediate/chunks/{{version}}_pure_eb_chunk_{chunk_id}.npz",
+            "results/paper_plots/intermediate/chunks/{{version}}_{{blind}}_pure_eb_chunk_{chunk_id}.npz",
             chunk_id=range(N_PURE_EB_CHUNKS),
         ),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
+        "results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz",
     params:
         version="{version}",
         **FIDUCIAL_BINNING,
@@ -235,32 +236,6 @@ rule precompute_pure_eb:
         runtime=5,
     script:
         "../scripts/gather_pure_eb_chunks.py"
-
-
-rule precompute_pure_eb_blind:
-    """Precompute pure E/B decomposition with per-blind covariance.
-
-    Parameterized by version to support both leak_corr and uncorrected versions.
-    """
-    wildcard_constraints:
-        version=r"[^_]+_v[\d.]+(_leak_corr)?",  # e.g. SP_v1.4.6 or SP_v1.4.6_leak_corr
-    input:
-        base_pure_eb=lambda w: f"results/paper_plots/intermediate/{w.version}_pure_eb_semianalytic.npz",
-        xi_integration=lambda w: _xi_integration_path(w.version),
-        cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
-    output:
-        "results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz",
-    params:
-        version="{version}",
-        n_samples=config["covariance"]["n_samples"],
-        cosmo_params=PLANCK18,
-        **FIDUCIAL_BINNING,
-    resources:
-        mem_mb=32000,
-        runtime=60,
-    threads: 16  # Reduced from 48 to avoid libgomp thread creation failures
-    script:
-        "../scripts/precompute_pure_eb_covariance.py"
 
 
 rule pure_eb_data_vector:
@@ -308,7 +283,7 @@ rule pure_eb_version_comparison:
         config=f"{CONFIG_DIR}/config.yaml",
         # Pure E/B only for leak-corrected versions
         pure_eb_data=[
-            f"results/paper_plots/intermediate/{ver}_pure_eb_semianalytic.npz"
+            f"results/paper_plots/intermediate/{ver}_A_pure_eb_semianalytic.npz"
             for ver in VERSIONS_LEAK_CORR
         ],
     params:
@@ -353,9 +328,13 @@ rule calculate_pure_eb_ptes:
 
     Per-blind: Uses blind-specific integration covariance for PTE calculation.
     The pure_eb_data vectors are identical across blinds; only covariance differs.
+
+    In practice, BB covariance is blind-independent (validated by
+    bb_covariance_blind_independence), so downstream consumers (config_space_pte_matrices)
+    only request blind A. The per-blind wildcard is retained for the blind independence test.
     """
     input:
-        pure_eb_data="results/paper_plots/intermediate/{version}_pure_eb_semianalytic.npz",
+        pure_eb_data="results/paper_plots/intermediate/{version}_A_pure_eb_semianalytic.npz",
         cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
     output:
         "results/paper_plots/intermediate/{version}_{blind}_pure_eb_ptes.npz",
@@ -536,6 +515,10 @@ rule bb_covariance_blind_independence:
     EE covariances should vary (~10%) due to sample variance from cosmological signal.
 
     Covers all three analysis spaces: Pure E/B, COSEBIS, and harmonic (pseudo-Cl).
+
+    Uses mock_version (v1.4.6) for per-blind covariances — blind independence is a
+    property of survey geometry, not catalog version. Avoids generating B/C covariances
+    for the fiducial version.
     """
     input:
         specs=[
@@ -546,20 +529,19 @@ rule bb_covariance_blind_independence:
             f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        # Per-blind MC-propagated pure E/B covariances
-        # Base file (no suffix) uses blind=A, so reuse it for A
-        pure_eb_A=f"results/paper_plots/intermediate/{config['fiducial']['version']}_pure_eb_semianalytic.npz",
-        pure_eb_B=f"results/paper_plots/intermediate/{config['fiducial']['version']}_B_pure_eb_semianalytic.npz",
-        pure_eb_C=f"results/paper_plots/intermediate/{config['fiducial']['version']}_C_pure_eb_semianalytic.npz",
+        # Per-blind MC-propagated pure E/B covariances (using mock_version for all blinds)
+        pure_eb_A=f"results/paper_plots/intermediate/{config['fiducial']['mock_version']}_leak_corr_A_pure_eb_semianalytic.npz",
+        pure_eb_B=f"results/paper_plots/intermediate/{config['fiducial']['mock_version']}_leak_corr_B_pure_eb_semianalytic.npz",
+        pure_eb_C=f"results/paper_plots/intermediate/{config['fiducial']['mock_version']}_leak_corr_C_pure_eb_semianalytic.npz",
         # COSEBIS: xi integration file (shared) + per-blind config-space covariances
-        xi_integration=_xi_integration_path(config["fiducial"]["version"]),
-        cov_integration_A=_cov_integration_path(config["fiducial"]["version"], "A"),
-        cov_integration_B=_cov_integration_path(config["fiducial"]["version"], "B"),
-        cov_integration_C=_cov_integration_path(config["fiducial"]["version"], "C"),
+        xi_integration=_xi_integration_path(f"{config['fiducial']['mock_version']}_leak_corr"),
+        cov_integration_A=_cov_integration_path(f"{config['fiducial']['mock_version']}_leak_corr", "A"),
+        cov_integration_B=_cov_integration_path(f"{config['fiducial']['mock_version']}_leak_corr", "B"),
+        cov_integration_C=_cov_integration_path(f"{config['fiducial']['mock_version']}_leak_corr", "C"),
         # Per-blind harmonic covariances
-        harmonic_A=_pseudo_cl_cov_path(config["fiducial"]["version"], "A"),
-        harmonic_B=_pseudo_cl_cov_path(config["fiducial"]["version"], "B"),
-        harmonic_C=_pseudo_cl_cov_path(config["fiducial"]["version"], "C"),
+        harmonic_A=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "A"),
+        harmonic_B=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "B"),
+        harmonic_C=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "C"),
     params:
         nmodes=config["fiducial"]["nmodes"],
         theta_min=config["cosebis"]["theta_min"],
@@ -572,7 +554,35 @@ rule bb_covariance_blind_independence:
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Harmonic vs Configuration-Space COSEBIS Comparison
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+rule harmonic_config_cosebis_comparison:
+    """Cross-validate COSEBIS from harmonic (pseudo-Cl) and config (xi_pm) paths.
+
+    Both paths should yield the same E_n and B_n modes. Produces chi2/PTE
+    statistics and a comparison figure with residuals.
+    """
+    input:
+        specs=[
+            f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
+            f"{CONFIG_DIR}/cosebis.md",
+            f"{CONFIG_DIR}/cl.md",
+        ],
+        config=f"{CONFIG_DIR}/config.yaml",
+        pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_LEAK_CORR],
+        pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in VERSIONS_LEAK_CORR],
+        xi_integration=[_xi_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
+        cov_integration=[_cov_integration_path(ver, FIDUCIAL["blind"]) for ver in VERSIONS_LEAK_CORR],
+    output:
+        evidence=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/evidence.json",
+        figure=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure.png",
+    script:
+        "../scripts/harmonic_config_cosebis_comparison.py"
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence
+localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence, harmonic_config_cosebis_comparison
