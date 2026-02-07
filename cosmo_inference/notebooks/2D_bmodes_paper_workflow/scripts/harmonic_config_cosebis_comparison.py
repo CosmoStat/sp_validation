@@ -4,8 +4,7 @@ Cross-validates COSEBIS E_n and B_n computed from two independent paths:
 1. Harmonic: pseudo-C_ell (powspace nbins=32) -> cosebis_from_Cell()
 2. Configuration: fine-binned xi_pm -> calculate_cosebis()
 
-Agreement validates that the pseudo-C_ell estimation and COSEBIS integration
-give consistent results.
+Visual cross-check only — no chi2/PTE on differences (cross-covariance unknown).
 """
 
 import json
@@ -13,11 +12,10 @@ from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 import numpy as np
+import seaborn as sns
 import treecorr
 from astropy.io import fits
-from scipy import stats
 
 from cosmo_numba.B_modes.cosebis import COSEBIS
 from sp_validation.b_modes import calculate_cosebis
@@ -73,30 +71,14 @@ def _build_transforms(cosebis_obj, ell, theta_grid):
     return T_E, T_B
 
 
-def _chi2_pte(residual, covariance):
-    """Compute chi-squared and PTE for a residual vector.
-
-    Falls back to pseudo-inverse if covariance is singular (possible for
-    propagated harmonic covariance).
-    """
-    try:
-        chi2 = float(residual @ np.linalg.solve(covariance, residual))
-    except np.linalg.LinAlgError:
-        chi2 = float(residual @ np.linalg.pinv(covariance) @ residual)
-    pte = float(stats.chi2.sf(chi2, len(residual)))
-    return chi2, pte
-
-
 def _compute_harmonic_cosebis(pseudo_cl_path, pseudo_cov_path, nmodes, theta_min, theta_max):
     """Compute COSEBIS from pseudo-C_ell and propagate covariance."""
-    # Load pseudo-Cl
     with fits.open(pseudo_cl_path) as hdul:
         data = hdul["PSEUDO_CELL"].data
         ell = np.asarray(data["ELL"], dtype=float)
         cl_ee = np.asarray(data["EE"], dtype=float)
         cl_bb = np.asarray(data["BB"], dtype=float)
 
-    # COSEBIS from C_ell (no ell cuts — use full powspace range)
     theta_grid = np.logspace(np.log10(theta_min), np.log10(theta_max), 5000)
     cosebis_obj = COSEBIS(theta_min, theta_max, nmodes)
 
@@ -104,7 +86,6 @@ def _compute_harmonic_cosebis(pseudo_cl_path, pseudo_cov_path, nmodes, theta_min
         ell=ell, Cell_E=cl_ee, Cell_B=cl_bb, theta=theta_grid, cache=True,
     )
 
-    # Build transform matrices and propagate covariance
     T_E, T_B = _build_transforms(cosebis_obj, ell, theta_grid)
 
     cov_cell = _build_cell_covariance(pseudo_cov_path)
@@ -117,8 +98,11 @@ def _compute_harmonic_cosebis(pseudo_cl_path, pseudo_cov_path, nmodes, theta_min
     return ce_harm, cb_harm, cov_harmonic
 
 
-def _compute_config_cosebis(xi_path, cov_path, nmodes, theta_min, theta_max, config):
-    """Compute COSEBIS from fine-binned xi_pm."""
+def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cuts, config):
+    """Compute COSEBIS from fine-binned xi_pm for multiple scale cuts.
+
+    Returns dict keyed by scale_cut tuple -> (En, Bn, cov).
+    """
     min_sep_int = float(config["fiducial"]["min_sep_int"])
     max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_int = int(config["fiducial"]["nbins_int"])
@@ -128,87 +112,212 @@ def _compute_config_cosebis(xi_path, cov_path, nmodes, theta_min, theta_max, con
     )
     gg.read(xi_path)
 
-    scale_cut = (theta_min, theta_max)
-    results = calculate_cosebis(gg, nmodes=nmodes, scale_cuts=[scale_cut], cov_path=cov_path)
-    result = results[scale_cut]
+    cut_list = list(scale_cuts.values())
+    results = calculate_cosebis(gg, nmodes=nmodes, scale_cuts=cut_list, cov_path=cov_path)
 
-    return result["En"], result["Bn"], result["cov"]
+    out = {}
+    for key, cut in scale_cuts.items():
+        r = results[cut]
+        out[key] = (r["En"], r["Bn"], r["cov"])
+    return out
 
 
-def _make_figure(datasets, nmodes):
-    """Create comparison figure with main panels + residuals."""
+def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cuts):
+    """Data vector figure for fiducial catalog: E and B from both methods.
+
+    Two rows (E-modes, B-modes), each showing both scale cuts with
+    config-space and harmonic-space overlaid.
+    B-modes in B_n/sigma units. E-modes in raw units.
+    """
     modes = np.arange(1, nmodes + 1)
+    colors = sns.color_palette("colorblind", 2)
+    method_colors = {"config": colors[0], "harmonic": colors[1]}
 
-    fig = plt.figure(figsize=(14, 5 * len(datasets)))
-    outer = GridSpec(len(datasets), 2, hspace=0.35, wspace=0.25)
+    fig, axes = plt.subplots(2, 1, figsize=(7.24, 7.24 * 0.6), sharex=True)
 
-    for row, data in enumerate(datasets):
-        for col, (key, ylabel) in enumerate([("E", r"$E_n$"), ("B", r"$B_n$")]):
-            sub = GridSpecFromSubplotSpec(
-                2, 1, subplot_spec=outer[row, col], height_ratios=[3, 1], hspace=0.05,
+    # --- E-modes (raw units) ---
+    ax_e = axes[0]
+    offset_map = {"full": -0.15, "fiducial": 0.15}
+    marker_map = {"full": "o", "fiducial": "s"}
+
+    for scale_key in ["full", "fiducial"]:
+        cut = scale_cuts[scale_key]
+        offset = offset_map[scale_key]
+        marker = marker_map[scale_key]
+
+        ce_config, _, cov_config = config_data[scale_key]
+        sigma_config_E = np.sqrt(np.clip(np.diag(cov_config[:nmodes, :nmodes]), 0, None))
+
+        ce_harm = harm_data[scale_key]["En"]
+        sigma_harm_E = harm_data[scale_key]["sigma_E"]
+
+        label_c = rf"Config $\theta \in [{cut[0]:.0f}, {cut[1]:.0f}]'$"
+        label_h = rf"Harmonic $\theta \in [{cut[0]:.0f}, {cut[1]:.0f}]'$"
+
+        ax_e.errorbar(
+            modes + offset - 0.05, ce_config, yerr=sigma_config_E,
+            fmt=marker, color=method_colors["config"], mfc=method_colors["config"],
+            ms=4, alpha=0.8, capsize=2, capthick=0.8, elinewidth=0.8,
+        )
+        ax_e.errorbar(
+            modes + offset + 0.05, ce_harm, yerr=sigma_harm_E,
+            fmt=marker, color=method_colors["harmonic"], mfc="white",
+            ms=4, alpha=0.8, capsize=2, capthick=0.8, elinewidth=0.8,
+        )
+
+    ax_e.axhline(0.0, color="black", lw=0.8, alpha=0.6)
+    ax_e.set_ylabel(r"$E_n$")
+    ax_e.set_xlim(0.5, nmodes + 0.5)
+    ax_e.tick_params(axis="both", width=0.5, length=3)
+    ax_e.set_title("E-modes", fontsize=10)
+
+    # Manual legend for methods
+    ax_e.errorbar([], [], fmt="o", color=method_colors["config"], mfc=method_colors["config"],
+                  ms=4, label="Config-space")
+    ax_e.errorbar([], [], fmt="o", color=method_colors["harmonic"], mfc="white",
+                  ms=4, label="Harmonic-space")
+    ax_e.legend(fontsize=8, loc="upper right", framealpha=0.9)
+
+    # --- B-modes (B_n / sigma units) ---
+    ax_b = axes[1]
+
+    for scale_key in ["full", "fiducial"]:
+        cut = scale_cuts[scale_key]
+        offset = offset_map[scale_key]
+        marker = marker_map[scale_key]
+
+        _, cb_config, cov_config = config_data[scale_key]
+        sigma_config_B = np.sqrt(np.clip(np.diag(cov_config[nmodes:, nmodes:]), 0, None))
+        sigma_safe = np.where(sigma_config_B > 0, sigma_config_B, 1.0)
+
+        cb_harm = harm_data[scale_key]["Bn"]
+        sigma_harm_B = harm_data[scale_key]["sigma_B"]
+        sigma_harm_safe = np.where(sigma_harm_B > 0, sigma_harm_B, 1.0)
+
+        ax_b.errorbar(
+            modes + offset - 0.05, cb_config / sigma_safe, yerr=np.ones(nmodes),
+            fmt=marker, color=method_colors["config"], mfc=method_colors["config"],
+            ms=4, alpha=0.8, capsize=2, capthick=0.8, elinewidth=0.8,
+        )
+        ax_b.errorbar(
+            modes + offset + 0.05, cb_harm / sigma_harm_safe, yerr=np.ones(nmodes),
+            fmt=marker, color=method_colors["harmonic"], mfc="white",
+            ms=4, alpha=0.8, capsize=2, capthick=0.8, elinewidth=0.8,
+        )
+
+    ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
+    ax_b.set_ylabel(r"$B_n / \sigma_n$")
+    ax_b.set_xlabel("COSEBIS mode $n$")
+    ax_b.set_xticks(np.arange(1, nmodes + 1))
+    ax_b.set_xlim(0.5, nmodes + 0.5)
+    ax_b.tick_params(axis="both", width=0.5, length=3)
+    ax_b.set_title("B-modes", fontsize=10)
+
+    # Scale-cut legend
+    for scale_key in ["full", "fiducial"]:
+        cut = scale_cuts[scale_key]
+        marker = marker_map[scale_key]
+        ax_b.plot([], [], marker=marker, color="0.4", ls="none", ms=4,
+                  label=rf"$\theta \in [{cut[0]:.0f}, {cut[1]:.0f}]'$")
+    ax_b.legend(fontsize=8, loc="upper right", framealpha=0.9)
+
+    plt.tight_layout()
+    plt.subplots_adjust(hspace=0.15)
+    return fig
+
+
+def _make_version_comparison_figure(all_version_data, nmodes, scale_cuts, version_labels_map):
+    """Version comparison: all versions, both methods, B-modes in B_n/sigma.
+
+    Two rows: full range (top), fiducial (bottom).
+    Each version is a color. Config=filled marker, harmonic=open marker.
+    """
+    modes = np.arange(1, nmodes + 1)
+    n_versions = len(all_version_data)
+    colors = sns.color_palette("colorblind", n_versions)
+
+    fig, axes = plt.subplots(2, 1, figsize=(7.24, 7.24 * 0.6), sharex=True)
+    scale_labels = {"full": "Full", "fiducial": "Fiducial"}
+
+    x_offsets = np.linspace(-0.2, 0.2, n_versions)
+
+    for panel_idx, (scale_key, ax) in enumerate(
+        zip(["full", "fiducial"], axes)
+    ):
+        cut = scale_cuts[scale_key]
+
+        for i, (version, vdata) in enumerate(all_version_data.items()):
+            color = colors[i]
+            offset = x_offsets[i]
+            label = version_label(version, version_labels_map)
+
+            _, cb_config, cov_config = vdata["config"][scale_key]
+            sigma_config_B = np.sqrt(np.clip(np.diag(cov_config[nmodes:, nmodes:]), 0, None))
+            sigma_safe = np.where(sigma_config_B > 0, sigma_config_B, 1.0)
+
+            cb_harm = vdata["harm"][scale_key]["Bn"]
+            sigma_harm_B = vdata["harm"][scale_key]["sigma_B"]
+            sigma_harm_safe = np.where(sigma_harm_B > 0, sigma_harm_B, 1.0)
+
+            # Config-space: filled marker
+            ax.errorbar(
+                modes + offset - 0.03, cb_config / sigma_safe, yerr=np.ones(nmodes),
+                fmt="o", color=color, mfc=color, ms=3.5, alpha=0.85,
+                capsize=1.5, capthick=0.6, elinewidth=0.6,
+                label=f"{label} (config)" if panel_idx == 0 else None,
             )
-            ax_main = fig.add_subplot(sub[0, 0])
-            ax_res = fig.add_subplot(sub[1, 0], sharex=ax_main)
-
-            config_vals = data[f"c{key.lower()}_config"]
-            harm_vals = data[f"c{key.lower()}_harm"]
-            sigma_config = data[f"sigma_config_{key}"]
-            sigma_harm = data[f"sigma_harm_{key}"]
-            residual = data[f"residual_{key}"]
-            chi2 = data[f"chi2_{key}"]
-            pte = data[f"pte_{key}"]
-
-            ax_main.errorbar(
-                modes - 0.1, config_vals, yerr=sigma_config,
-                fmt="o", color="C0", mfc="C0", ms=4, alpha=0.9, label="Config-space",
-            )
-            ax_main.errorbar(
-                modes + 0.1, harm_vals, yerr=sigma_harm,
-                fmt="s", color="C1", mfc="white", ms=4, alpha=0.9, label="Harmonic-space",
+            # Harmonic-space: open marker
+            ax.errorbar(
+                modes + offset + 0.03, cb_harm / sigma_harm_safe, yerr=np.ones(nmodes),
+                fmt="s", color=color, mfc="white", ms=3.5, alpha=0.85,
+                capsize=1.5, capthick=0.6, elinewidth=0.6, mew=0.8,
+                label=f"{label} (harmonic)" if panel_idx == 0 else None,
             )
 
-            ax_main.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-            ax_main.set_ylabel(ylabel)
-            ax_main.grid(True, alpha=0.2)
-            ax_main.set_title(f"{data['label']} {key}-modes")
+        ax.axhline(0.0, color="black", lw=0.8, alpha=0.6)
+        ax.set_ylabel(r"$B_n / \sigma_n$")
+        ax.set_xlim(0.5, nmodes + 0.5)
+        ax.tick_params(axis="both", width=0.5, length=3)
 
-            sigma_safe = np.where(sigma_config > 0, sigma_config, np.inf)
-            ax_res.plot(modes, residual / sigma_safe, marker="o", color="C2", ms=3, lw=1.0)
-            ax_res.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-            ax_res.fill_between([0.5, nmodes + 0.5], -2, 2, color="0.9", alpha=0.5, zorder=0)
-            ax_res.set_ylabel(r"$\Delta/\sigma$")
-            ax_res.set_xlabel("Mode $n$")
-            ax_res.set_ylim(-5, 5)
-            ax_res.grid(True, alpha=0.2)
+        ax.text(
+            0.98, 0.95,
+            rf"{scale_labels[scale_key]} $\theta \in [{cut[0]:.0f}, {cut[1]:.0f}]'$",
+            transform=ax.transAxes, ha="right", va="top",
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
+        )
 
-            ax_main.text(
-                0.02, 0.95,
-                rf"$\chi^2 = {chi2:.1f}$, PTE $= {pte:.3f}$" + f"\n(dof = {nmodes})",
-                transform=ax_main.transAxes, ha="left", va="top", fontsize=9,
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
-            )
+    axes[1].set_xlabel("COSEBIS mode $n$")
+    axes[1].set_xticks(np.arange(1, nmodes + 1))
 
-            if row == 0 and col == 0:
-                ax_main.legend(fontsize=9)
+    axes[0].legend(
+        fontsize=7, loc="upper left", ncol=2,
+        frameon=True, framealpha=0.9,
+        handletextpad=0.3, columnspacing=0.8,
+    )
 
-            plt.setp(ax_main.get_xticklabels(), visible=False)
-
-    fig.suptitle("COSEBIS: harmonic vs configuration-space cross-validation", y=0.98)
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    plt.tight_layout()
+    plt.subplots_adjust(hspace=0.08)
     return fig
 
 
 def main():
     config = snakemake.config
     nmodes = int(config["fiducial"]["nmodes"])
-    theta_min = float(config["cosebis"]["theta_min"])
-    theta_max = float(config["cosebis"]["theta_max"])
-    version_labels = config["plotting"].get("version_labels", {})
+    version_labels_map = config["plotting"].get("version_labels", {})
 
-    # Only leak-corrected versions
+    fiducial_version = config["fiducial"]["version"]
+    fiducial_scale_cut = (
+        float(config["fiducial"]["fiducial_min_scale"]),
+        float(config["fiducial"]["fiducial_max_scale"]),
+    )
+    full_scale_cut = (
+        float(config["cosebis"]["theta_min"]),
+        float(config["cosebis"]["theta_max"]),
+    )
+    scale_cuts = {"full": full_scale_cut, "fiducial": fiducial_scale_cut}
+
     versions = [v for v in config["versions"] if "_leak_corr" in v]
 
-    # Resolve inputs by version (ensure lists for single-version case)
     pseudo_cl_inputs = snakemake.input["pseudo_cl"]
     pseudo_cov_inputs = snakemake.input["pseudo_cl_cov"]
     xi_inputs = snakemake.input["xi_integration"]
@@ -220,77 +329,70 @@ def main():
         xi_inputs = [xi_inputs]
         cov_inputs = [cov_inputs]
 
-    datasets = []
-    all_stats = {}
+    # Compute COSEBIS for all versions, both methods, both scale cuts
+    all_version_data = {}
 
     for idx, version in enumerate(versions):
         print(f"Processing {version}...")
 
-        ce_harm, cb_harm, cov_harmonic = _compute_harmonic_cosebis(
-            pseudo_cl_inputs[idx], pseudo_cov_inputs[idx], nmodes, theta_min, theta_max,
+        # Config-space: multiple scale cuts in one call
+        config_results = _compute_config_cosebis(
+            xi_inputs[idx], cov_inputs[idx], nmodes, scale_cuts, config,
         )
 
-        ce_config, cb_config, cov_config = _compute_config_cosebis(
-            xi_inputs[idx], cov_inputs[idx], nmodes, theta_min, theta_max, config,
-        )
+        # Harmonic: compute per scale cut (different COSEBIS object per theta range)
+        harm_results = {}
+        for scale_key, cut in scale_cuts.items():
+            ce_h, cb_h, cov_h = _compute_harmonic_cosebis(
+                pseudo_cl_inputs[idx], pseudo_cov_inputs[idx], nmodes, cut[0], cut[1],
+            )
+            harm_results[scale_key] = {
+                "En": ce_h, "Bn": cb_h,
+                "sigma_E": np.sqrt(np.clip(np.diag(cov_h[:nmodes, :nmodes]), 0, None)),
+                "sigma_B": np.sqrt(np.clip(np.diag(cov_h[nmodes:, nmodes:]), 0, None)),
+            }
 
-        cov_config_E = cov_config[:nmodes, :nmodes]
-        cov_config_B = cov_config[nmodes:, nmodes:]
+        all_version_data[version] = {"config": config_results, "harm": harm_results}
 
-        sigma_config_E = np.sqrt(np.clip(np.diag(cov_config_E), 0, None))
-        sigma_config_B = np.sqrt(np.clip(np.diag(cov_config_B), 0, None))
-        sigma_harm_E = np.sqrt(np.clip(np.diag(cov_harmonic[:nmodes, :nmodes]), 0, None))
-        sigma_harm_B = np.sqrt(np.clip(np.diag(cov_harmonic[nmodes:, nmodes:]), 0, None))
+    # --- Data vector figure (fiducial version only) ---
+    fid_data = all_version_data[fiducial_version]
+    fig_dv = _make_data_vector_figure(
+        fid_data["harm"], fid_data["config"], nmodes, scale_cuts,
+    )
+    fig_dv_path = Path(snakemake.output["figure"])
+    fig_dv_path.parent.mkdir(parents=True, exist_ok=True)
+    fig_dv.savefig(fig_dv_path, dpi=300, bbox_inches="tight")
+    print(f"Saved {fig_dv_path}")
+    plt.close(fig_dv)
 
-        residual_E = ce_harm - ce_config
-        residual_B = cb_harm - cb_config
+    # --- Version comparison figure ---
+    fig_vc = _make_version_comparison_figure(
+        all_version_data, nmodes, scale_cuts, version_labels_map,
+    )
+    fig_vc_path = Path(snakemake.output["figure_versions"])
+    fig_vc.savefig(fig_vc_path, dpi=300, bbox_inches="tight")
+    print(f"Saved {fig_vc_path}")
+    plt.close(fig_vc)
 
-        chi2_E, pte_E = _chi2_pte(residual_E, cov_config_E)
-        chi2_B, pte_B = _chi2_pte(residual_B, cov_config_B)
-
-        datasets.append({
-            "version": version,
-            "label": version_label(version, version_labels),
-            "ce_harm": ce_harm, "cb_harm": cb_harm,
-            "ce_config": ce_config, "cb_config": cb_config,
-            "sigma_config_E": sigma_config_E, "sigma_config_B": sigma_config_B,
-            "sigma_harm_E": sigma_harm_E, "sigma_harm_B": sigma_harm_B,
-            "residual_E": residual_E, "residual_B": residual_B,
-            "chi2_E": chi2_E, "pte_E": pte_E,
-            "chi2_B": chi2_B, "pte_B": pte_B,
-        })
-
-        all_stats[version] = {
-            "E_modes": {"chi2": chi2_E, "pte": pte_E, "dof": nmodes},
-            "B_modes": {"chi2": chi2_B, "pte": pte_B, "dof": nmodes},
-        }
-        print(f"  E-modes: chi2={chi2_E:.2f}, PTE={pte_E:.4f}")
-        print(f"  B-modes: chi2={chi2_B:.2f}, PTE={pte_B:.4f}")
-
-    # Create figure
-    fig = _make_figure(datasets, nmodes)
-
-    fig_path = Path(snakemake.output["figure"])
-    fig_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
-    print(f"Saved {fig_path}")
-    plt.close(fig)
-
-    # Write evidence
-    spec_paths = snakemake.input["specs"]
-
+    # --- Evidence ---
     evidence = {
         "spec_id": "harmonic_config_cosebis_comparison",
-        "spec_path": spec_paths[0],
+        "spec_path": snakemake.input["specs"][0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             "nmodes": nmodes,
-            "theta_range": [theta_min, theta_max],
+            "scale_cuts": {k: list(v) for k, v in scale_cuts.items()},
             "powspace_nbins": int(config["cl"]["n_ell_bins"]),
-            "statistics": all_stats,
+            "versions_compared": versions,
+            "note": (
+                "Visual cross-check only. No chi2/PTE on differences because "
+                "cross-covariance between harmonic and config-space methods is unknown. "
+                "E-mode FFT-log W_n(ell) has known accuracy limitations at high ell."
+            ),
         },
         "artifacts": {
             "figure": "figure.png",
+            "figure_versions": "figure_versions.png",
         },
     }
 

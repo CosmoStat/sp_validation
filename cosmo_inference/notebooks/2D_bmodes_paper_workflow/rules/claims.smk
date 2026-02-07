@@ -577,6 +577,7 @@ rule harmonic_config_cosebis_comparison:
     output:
         evidence=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/evidence.json",
         figure=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure.png",
+        figure_versions=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure_versions.png",
     script:
         "../scripts/harmonic_config_cosebis_comparison.py"
 

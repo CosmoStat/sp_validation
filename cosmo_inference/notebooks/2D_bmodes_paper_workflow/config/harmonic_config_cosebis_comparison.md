@@ -6,6 +6,8 @@ Cross-validate COSEBIS E_n and B_n modes computed from two independent paths.
 
 Validate consistency between harmonic-space and configuration-space COSEBIS estimates. Both paths should yield the same E_n and B_n modes since they measure the same underlying shear field. Disagreement would indicate a problem in one of the estimation pipelines.
 
+This is a visual cross-check. No chi2/PTE is computed on the difference because the cross-covariance between methods is unknown.
+
 ## Methods
 
 ### Path 1: Harmonic (pseudo-C_ell -> COSEBIS)
@@ -20,22 +22,30 @@ Validate consistency between harmonic-space and configuration-space COSEBIS esti
 2. `sp_validation.b_modes.calculate_cosebis()` integrates xi_pm with COSEBIS filter functions
 3. Covariance from `COSEBIS.cosebis_covariance_from_xipm_covariance()` applied to theoretical xi_pm covariance
 
+## Scale Cuts
+
+Both full range and fiducial scale cuts are shown:
+
+| Scale Cut | Range |
+|-----------|-------|
+| Full | `cosebis.theta_min` to `cosebis.theta_max` (1-250 arcmin) |
+| Fiducial | `fiducial.fiducial_min_scale` to `fiducial.fiducial_max_scale` (12-83 arcmin) |
+
 ## Config References
 
 | Parameter | Config Key |
 |-----------|------------|
 | n_modes | `fiducial.nmodes` |
-| theta_min | `cosebis.theta_min` |
-| theta_max | `cosebis.theta_max` |
+| theta_min (full) | `cosebis.theta_min` |
+| theta_max (full) | `cosebis.theta_max` |
+| theta_min (fiducial) | `fiducial.fiducial_min_scale` |
+| theta_max (fiducial) | `fiducial.fiducial_max_scale` |
 | powspace_nbins | `cl.n_ell_bins` |
 
-## Statistical Test
+## Figures
 
-Chi-squared statistic on the residual (harmonic - config) using config-space covariance:
-
-    chi2 = (E_harm - E_config)^T Cov_config_E^{-1} (E_harm - E_config)
-
-PTE from chi2 distribution with n_modes degrees of freedom. Computed separately for E-modes and B-modes.
+1. **Data vector** (fiducial catalog): E-modes in raw E_n units, B-modes in B_n/sigma_n. Both scale cuts overlaid.
+2. **Version comparison**: All catalog versions, B-modes in B_n/sigma_n. Config-space (filled markers) vs harmonic-space (open markers).
 
 ## Known Limitations
 
