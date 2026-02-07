@@ -27,13 +27,16 @@ def _parse_version_short(version: str) -> str:
     return version.split("v1.4.")[1].split("_")[0]
 
 
-def _format_value(value, bold_threshold=None) -> str:
+def _format_value(value, bold_threshold=None, italic_threshold=None) -> str:
     """Format a value for LaTeX.
 
     Parameters
     ----------
     bold_threshold : float, optional
         If set and value is a float below this threshold, wrap in \\textbf{}.
+    italic_threshold : float, optional
+        If set and value is a float below this threshold, wrap in \\textit{}.
+        Checked after bold_threshold, so bold takes precedence.
     """
     if isinstance(value, float):
         if math.isnan(value):
@@ -46,6 +49,8 @@ def _format_value(value, bold_threshold=None) -> str:
             text = f"{value:.2f}"
         if bold_threshold is not None and value < bold_threshold:
             return rf"\textbf{{{text}}}"
+        if italic_threshold is not None and value < italic_threshold:
+            return rf"\textit{{{text}}}"
         return text
     elif isinstance(value, int):
         return str(value)
@@ -274,7 +279,7 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 _CONFIG_STATS = ["cosebis_stats", "cosebis_20_stats", "xip_stats", "xim_stats", "combined_stats"]
 
 
-def _pte_row_cells(pte_key, cfg, harm, bold):
+def _pte_row_cells(pte_key, cfg, harm, bold, italic=None):
     """Build the 6 PTE table cells for one row.
 
     Column order: COSEBIS n=6, n=20, ξ+^B, ξ-^B, ξ_tot^B, C_ℓ^BB.
@@ -289,6 +294,8 @@ def _pte_row_cells(pte_key, cfg, harm, bold):
         Harmonic-space evidence for one version (may be empty).
     bold : float
         Bold threshold for PTE formatting.
+    italic : float, optional
+        Italic threshold for PTE formatting (values between bold and italic).
 
     Returns
     -------
@@ -298,8 +305,8 @@ def _pte_row_cells(pte_key, cfg, harm, bold):
     cells = []
     for stat in _CONFIG_STATS:
         s = cfg.get(stat, {})
-        cells.append(f"& {_format_value(s.get(pte_key, float('nan')), bold_threshold=bold)}")
-    cells.append(f"& {_format_value(harm.get(pte_key, float('nan')), bold_threshold=bold)}")
+        cells.append(f"& {_format_value(s.get(pte_key, float('nan')), bold_threshold=bold, italic_threshold=italic)}")
+    cells.append(f"& {_format_value(harm.get(pte_key, float('nan')), bold_threshold=bold, italic_threshold=italic)}")
     return cells
 
 
@@ -311,6 +318,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
     - pte_table_appendix.tex: All versions PTE comparison
     """
     bold = 0.01  # bold PTE values below this threshold
+    italic = 0.05  # italic PTE values between bold and this threshold
 
     # Paper-consistent table labels (distinct from short plot labels)
     table_labels = {
@@ -345,7 +353,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         results_table.append(r"% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
         results_table.append(r"\begin{table*}")
         results_table.append(r"  \centering")
-        results_table.append(rf"  \caption{{$B$-mode PTE values for the fiducial catalog ({fid_label}, leakage-corrected) at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}}")
+        results_table.append(rf"  \caption{{$B$-mode PTE values for the fiducial catalog ({fid_label}, leakage-corrected) at fiducial and full-range scale cuts. Italic values indicate PTE $< 0.05$ (null-test failure); bold indicates PTE $< 0.01$.}}")
         results_table.append(r"  \label{tab:pte_results}")
         # Column layout: Scale | COSEBIS n≤6 | COSEBIS n≤20 || ξ+^B | ξ-^B | ξ_tot^B ||| C_ℓ^BB
         results_table.append(r"  \begin{tabular}{l cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
@@ -360,7 +368,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
 
         for pte_key, cut_label in [("pte_at_fiducial", "Fiducial"), ("pte_at_full_range", "Full range")]:
             row = [f"    {cut_label}"]
-            row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
+            row.extend(_pte_row_cells(pte_key, cfg, harm, bold, italic))
             row.append(r" \\")
             results_table.append(" ".join(row))
 
@@ -381,7 +389,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         appendix_table.append("% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
         appendix_table.append(r"\begin{table*}")
         appendix_table.append(r"  \centering")
-        appendix_table.append(r"  \caption{$B$-mode PTE values across catalog versions at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}")
+        appendix_table.append(r"  \caption{$B$-mode PTE values across catalog versions at fiducial and full-range scale cuts. Italic values indicate PTE $< 0.05$ (null-test failure); bold indicates PTE $< 0.01$.}")
         appendix_table.append(r"  \label{tab:pte_appendix}")
         appendix_table.append(r"  \begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         appendix_table.append(r"    \hline")
@@ -403,7 +411,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
                 row = [f"    {row_label} & {cut_label}"]
                 cfg = config_data.get(ver, {})
                 harm = harmonic_data.get(ver, {})
-                row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
+                row.extend(_pte_row_cells(pte_key, cfg, harm, bold, italic))
                 row.append(r" \\")
                 appendix_table.append(" ".join(row))
 
