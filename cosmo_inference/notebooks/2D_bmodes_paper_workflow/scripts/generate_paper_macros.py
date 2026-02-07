@@ -209,23 +209,33 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
             xip = ver_data.get("xip_stats", {})
             xim = ver_data.get("xim_stats", {})
+            combined = ver_data.get("combined_stats", {})
             cosebis = ver_data.get("cosebis_stats", {})
+            cosebis_20 = ver_data.get("cosebis_20_stats", {})
 
             # Fiducial PTEs
             if "pte_at_fiducial" in xip:
                 macros.append(f"\\newcommand{{\\{prefix}Xip}}{{{_format_value(xip['pte_at_fiducial'])}}}")
             if "pte_at_fiducial" in xim:
                 macros.append(f"\\newcommand{{\\{prefix}Xim}}{{{_format_value(xim['pte_at_fiducial'])}}}")
+            if "pte_at_fiducial" in combined:
+                macros.append(f"\\newcommand{{\\{prefix}Combined}}{{{_format_value(combined['pte_at_fiducial'])}}}")
             if "pte_at_fiducial" in cosebis:
                 macros.append(f"\\newcommand{{\\{prefix}Cosebis}}{{{_format_value(cosebis['pte_at_fiducial'])}}}")
+            if "pte_at_fiducial" in cosebis_20:
+                macros.append(f"\\newcommand{{\\{prefix}CosebisTwenty}}{{{_format_value(cosebis_20['pte_at_fiducial'])}}}")
 
             # Full-range PTEs
             if "pte_at_full_range" in xip:
                 macros.append(f"\\newcommand{{\\{prefix}XipFull}}{{{_format_value(xip['pte_at_full_range'])}}}")
             if "pte_at_full_range" in xim:
                 macros.append(f"\\newcommand{{\\{prefix}XimFull}}{{{_format_value(xim['pte_at_full_range'])}}}")
+            if "pte_at_full_range" in combined:
+                macros.append(f"\\newcommand{{\\{prefix}CombinedFull}}{{{_format_value(combined['pte_at_full_range'])}}}")
             if "pte_at_full_range" in cosebis:
                 macros.append(f"\\newcommand{{\\{prefix}CosebisFull}}{{{_format_value(cosebis['pte_at_full_range'])}}}")
+            if "pte_at_full_range" in cosebis_20:
+                macros.append(f"\\newcommand{{\\{prefix}CosebisTwentyFull}}{{{_format_value(cosebis_20['pte_at_full_range'])}}}")
 
         macros.append("")
 
@@ -261,6 +271,38 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         print(f"  → {output_path}")
 
 
+_CONFIG_STATS = ["cosebis_stats", "cosebis_20_stats", "xip_stats", "xim_stats", "combined_stats"]
+
+
+def _pte_row_cells(pte_key, cfg, harm, bold):
+    """Build the 6 PTE table cells for one row.
+
+    Column order: COSEBIS n=6, n=20, ξ+^B, ξ-^B, ξ_tot^B, C_ℓ^BB.
+
+    Parameters
+    ----------
+    pte_key : str
+        Evidence key ("pte_at_fiducial" or "pte_at_full_range").
+    cfg : dict
+        Config-space evidence for one version (may be empty).
+    harm : dict
+        Harmonic-space evidence for one version (may be empty).
+    bold : float
+        Bold threshold for PTE formatting.
+
+    Returns
+    -------
+    list of str
+        Six cell strings, each prefixed with "& ".
+    """
+    cells = []
+    for stat in _CONFIG_STATS:
+        s = cfg.get(stat, {})
+        cells.append(f"& {_format_value(s.get(pte_key, float('nan')), bold_threshold=bold)}")
+    cells.append(f"& {_format_value(harm.get(pte_key, float('nan')), bold_threshold=bold)}")
+    return cells
+
+
 def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: str, versions: list, version_labels: dict, config: dict):
     """Generate LaTeX table files from PTE evidence.
 
@@ -287,58 +329,57 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
     # Get short version label for caption
     fid_label = version_labels.get(fiducial_version, fiducial_version)
 
-    # Results table (fiducial only)
+    # Results table (fiducial only) — grouped by statistic family
     if fiducial_version in config_data or fiducial_version in harmonic_data:
         results_table = []
         results_table.append("% Auto-generated PTE summary table (Results section)")
         results_table.append("% Regenerate: snakemake paper_macros")
-        results_table.append(r"\begin{table}")
+        results_table.append(r"% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
+        results_table.append(r"\begin{table*}")
         results_table.append(r"  \centering")
-        results_table.append(rf"  \caption{{B-mode PTE values for {fid_label} at fiducial and full-range scale cuts.}}")
+        results_table.append(rf"  \caption{{B-mode PTE values for {fid_label} at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}}")
         results_table.append(r"  \label{tab:pte_results}")
-        results_table.append(r"  \begin{tabular}{lccc}")
+        # Column layout: Scale | COSEBIS n≤6 | COSEBIS n≤20 || ξ+^B | ξ-^B | ξ_tot^B ||| C_ℓ^BB
+        results_table.append(r"  \begin{tabular}{l cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         results_table.append(r"    \hline")
-        results_table.append(r"    Statistic & PTE (fiducial) & PTE (full range) & Fiducial cut \\")
+        results_table.append(r"    & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
+        results_table.append(r"    \cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(l){7-7}")
+        results_table.append(r"    Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^B$ & $\xi_-^B$ & $\xi_{\rm tot}^B$ & $C_\ell^{BB}$ \\")
         results_table.append(r"    \hline")
 
-        if fiducial_version in config_data:
-            cfg = config_data[fiducial_version]
-            config_cut = f"[{config['fiducial']['fiducial_min_scale']}--{config['fiducial']['fiducial_max_scale']}]$'$"
-            for stat_key, tex_label in [("xip_stats", r"$\xi_+^B$"), ("xim_stats", r"$\xi_-^B$"), ("cosebis_stats", r"COSEBIS $B_n$")]:
-                s = cfg.get(stat_key, {})
-                if s:
-                    pte_fid = _format_value(s.get("pte_at_fiducial", float("nan")), bold_threshold=bold)
-                    pte_full = _format_value(s.get("pte_at_full_range", float("nan")), bold_threshold=bold)
-                    results_table.append(f"    {tex_label} & {pte_fid} & {pte_full} & {config_cut} \\\\")
+        cfg = config_data.get(fiducial_version, {})
+        harm = harmonic_data.get(fiducial_version, {})
 
-        if fiducial_version in harmonic_data:
-            harm = harmonic_data[fiducial_version]
-            pte_fid = _format_value(harm.get("pte_at_fiducial", float("nan")), bold_threshold=bold)
-            pte_full = _format_value(harm.get("pte_at_full_range", float("nan")), bold_threshold=bold)
-            harmonic_cut = f"$\\ell$=[{config['cl']['fiducial_ell_min']}--{config['cl']['fiducial_ell_max']}]"
-            results_table.append(f"    $C_\\ell^{{BB}}$ & {pte_fid} & {pte_full} & {harmonic_cut} \\\\")
+        for pte_key, cut_label in [("pte_at_fiducial", "Fiducial"), ("pte_at_full_range", "Full range")]:
+            row = [f"    {cut_label}"]
+            row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
+            row.append(r" \\")
+            results_table.append(" ".join(row))
 
         results_table.append(r"    \hline")
         results_table.append(r"  \end{tabular}")
-        results_table.append(r"\end{table}")
+        results_table.append(r"\end{table*}")
 
         results_path = output_dir / "pte_table_results.tex"
         results_path.parent.mkdir(parents=True, exist_ok=True)
         results_path.write_text("\n".join(results_table))
         print(f"  → {results_path}")
 
-    # Appendix table (all versions, fiducial + full-range rows)
+    # Appendix table (all versions, fiducial + full-range rows) — grouped by statistic family
     if config_data or harmonic_data:
         appendix_table = []
         appendix_table.append("% Auto-generated PTE comparison table (Appendix)")
         appendix_table.append("% Regenerate: snakemake paper_macros")
+        appendix_table.append("% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
         appendix_table.append(r"\begin{table*}")
         appendix_table.append(r"  \centering")
         appendix_table.append(r"  \caption{B-mode PTE values across catalog versions at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}")
         appendix_table.append(r"  \label{tab:pte_appendix}")
-        appendix_table.append(r"  \begin{tabular}{llcccc}")
+        appendix_table.append(r"  \begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         appendix_table.append(r"    \hline")
-        appendix_table.append(r"    Version & Scale cuts & $\xi_+^B$ & $\xi_-^B$ & COSEBIS $B_n$ & $C_\ell^{BB}$ \\")
+        appendix_table.append(r"    & & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
+        appendix_table.append(r"    \cmidrule(lr){3-4} \cmidrule(lr){5-7} \cmidrule(l){8-8}")
+        appendix_table.append(r"    Version & Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^B$ & $\xi_-^B$ & $\xi_{\rm tot}^B$ & $C_\ell^{BB}$ \\")
         appendix_table.append(r"    \hline")
 
         # Filter to only leak_corr versions (those with labels in version_labels)
@@ -352,25 +393,9 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
                 # Only show version label on first row of each pair
                 row_label = label if pte_key == "pte_at_fiducial" else ""
                 row = [f"    {row_label} & {cut_label}"]
-
-                # Config-space PTEs
-                if ver in config_data:
-                    cfg = config_data[ver]
-                    for stat in ["xip_stats", "xim_stats", "cosebis_stats"]:
-                        s = cfg.get(stat, {})
-                        pte = _format_value(s.get(pte_key, float("nan")), bold_threshold=bold)
-                        row.append(f"& {pte}")
-                else:
-                    row.extend(["& --"] * 3)
-
-                # Harmonic-space PTE
-                if ver in harmonic_data:
-                    harm = harmonic_data[ver]
-                    pte = _format_value(harm.get(pte_key, float("nan")), bold_threshold=bold)
-                    row.append(f"& {pte}")
-                else:
-                    row.append("& --")
-
+                cfg = config_data.get(ver, {})
+                harm = harmonic_data.get(ver, {})
+                row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
                 row.append(r" \\")
                 appendix_table.append(" ".join(row))
 
