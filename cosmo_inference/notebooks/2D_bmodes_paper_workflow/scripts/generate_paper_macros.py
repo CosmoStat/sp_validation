@@ -269,6 +269,29 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
         macros.append("")
 
+    # Harmonic-config COSEBIS comparison - harmonic B-mode PTEs (modes 1-6)
+    harm_cosebis_path = claims_dir / "harmonic_config_cosebis_comparison" / "evidence.json"
+    if harm_cosebis_path.exists():
+        with open(harm_cosebis_path) as f:
+            data = json.load(f)
+        ev = data.get("evidence", {})
+        harm_ptes = ev.get("harmonic_b_mode_ptes", {})
+
+        macros.append("% harmonic_config_cosebis_comparison (harmonic B-mode COSEBIS PTEs, modes 1-6)")
+        macros.append("")
+
+        for ver, pte_data in harm_ptes.items():
+            short_ver = _parse_version_short(ver)
+            word = VERSION_WORDS.get(short_ver, short_ver)
+            pte = pte_data.get("pte")
+            chi2 = pte_data.get("chi2")
+            if pte is not None:
+                macros.append(f"\\newcommand{{\\harmCosebisPte{word}}}{{{_format_value(pte)}}}")
+            if chi2 is not None:
+                macros.append(f"\\newcommand{{\\harmCosebisChisq{word}}}{{{_format_value(chi2)}}}")
+
+        macros.append("")
+
     content = "\n".join(macros)
     for output_path in output_paths:
         output_path.parent.mkdir(parents=True, exist_ok=True)
