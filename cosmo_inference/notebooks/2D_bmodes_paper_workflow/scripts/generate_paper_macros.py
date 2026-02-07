@@ -27,17 +27,26 @@ def _parse_version_short(version: str) -> str:
     return version.split("v1.4.")[1].split("_")[0]
 
 
-def _format_value(value) -> str:
-    """Format a value for LaTeX."""
+def _format_value(value, bold_threshold=None) -> str:
+    """Format a value for LaTeX.
+
+    Parameters
+    ----------
+    bold_threshold : float, optional
+        If set and value is a float below this threshold, wrap in \\textbf{}.
+    """
     if isinstance(value, float):
         if math.isnan(value):
             return "--"
         if abs(value) < 0.001 and value != 0:
-            return f"{value:.2e}"
+            text = f"{value:.2e}"
         elif abs(value) < 0.1:
-            return f"{value:.3f}"
+            text = f"{value:.3f}"
         else:
-            return f"{value:.2f}"
+            text = f"{value:.2f}"
+        if bold_threshold is not None and value < bold_threshold:
+            return rf"\textbf{{{text}}}"
+        return text
     elif isinstance(value, int):
         return str(value)
     elif isinstance(value, str):
@@ -259,6 +268,8 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
     - pte_table_results.tex: Fiducial version PTE summary
     - pte_table_appendix.tex: All versions PTE comparison
     """
+    bold = 0.01  # bold PTE values below this threshold
+
     # Load config-space PTE evidence
     config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"
     config_data = {}
@@ -292,29 +303,18 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
 
         if fiducial_version in config_data:
             cfg = config_data[fiducial_version]
-            xip = cfg.get("xip_stats", {})
-            xim = cfg.get("xim_stats", {})
-            cosebis = cfg.get("cosebis_stats", {})
-
-            # Config-space scale cuts from config
             config_cut = f"[{config['fiducial']['fiducial_min_scale']}--{config['fiducial']['fiducial_max_scale']}]$'$"
-            if xip:
-                pte_fid = _format_value(xip.get("pte_at_fiducial", float("nan")))
-                pte_full = _format_value(xip.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    $\\xi_+^B$ & {pte_fid} & {pte_full} & {config_cut} \\\\")
-            if xim:
-                pte_fid = _format_value(xim.get("pte_at_fiducial", float("nan")))
-                pte_full = _format_value(xim.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    $\\xi_-^B$ & {pte_fid} & {pte_full} & {config_cut} \\\\")
-            if cosebis:
-                pte_fid = _format_value(cosebis.get("pte_at_fiducial", float("nan")))
-                pte_full = _format_value(cosebis.get("pte_at_full_range", float("nan")))
-                results_table.append(f"    COSEBIS $B_n$ & {pte_fid} & {pte_full} & {config_cut} \\\\")
+            for stat_key, tex_label in [("xip_stats", r"$\xi_+^B$"), ("xim_stats", r"$\xi_-^B$"), ("cosebis_stats", r"COSEBIS $B_n$")]:
+                s = cfg.get(stat_key, {})
+                if s:
+                    pte_fid = _format_value(s.get("pte_at_fiducial", float("nan")), bold_threshold=bold)
+                    pte_full = _format_value(s.get("pte_at_full_range", float("nan")), bold_threshold=bold)
+                    results_table.append(f"    {tex_label} & {pte_fid} & {pte_full} & {config_cut} \\\\")
 
         if fiducial_version in harmonic_data:
             harm = harmonic_data[fiducial_version]
-            pte_fid = _format_value(harm.get("pte_at_fiducial", float("nan")))
-            pte_full = _format_value(harm.get("pte_at_full_range", float("nan")))
+            pte_fid = _format_value(harm.get("pte_at_fiducial", float("nan")), bold_threshold=bold)
+            pte_full = _format_value(harm.get("pte_at_full_range", float("nan")), bold_threshold=bold)
             harmonic_cut = f"$\\ell$=[{config['cl']['fiducial_ell_min']}--{config['cl']['fiducial_ell_max']}]"
             results_table.append(f"    $C_\\ell^{{BB}}$ & {pte_fid} & {pte_full} & {harmonic_cut} \\\\")
 
@@ -327,49 +327,56 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         results_path.write_text("\n".join(results_table))
         print(f"  → {results_path}")
 
-    # Appendix table (all versions)
+    # Appendix table (all versions, fiducial + full-range rows)
     if config_data or harmonic_data:
         appendix_table = []
         appendix_table.append("% Auto-generated PTE comparison table (Appendix)")
         appendix_table.append("% Regenerate: snakemake paper_macros")
         appendix_table.append(r"\begin{table*}")
         appendix_table.append(r"  \centering")
-        appendix_table.append(r"  \caption{B-mode PTE values at fiducial scale cuts across catalog versions.}")
+        appendix_table.append(r"  \caption{B-mode PTE values across catalog versions at fiducial and full-range scale cuts. Bold values indicate PTE $< 0.01$.}")
         appendix_table.append(r"  \label{tab:pte_appendix}")
-        appendix_table.append(r"  \begin{tabular}{lcccc}")
+        appendix_table.append(r"  \begin{tabular}{llcccc}")
         appendix_table.append(r"    \hline")
-        appendix_table.append(r"    Version & $\xi_+^B$ & $\xi_-^B$ & COSEBIS $B_n$ & $C_\ell^{BB}$ \\")
+        appendix_table.append(r"    Version & Scale cuts & $\xi_+^B$ & $\xi_-^B$ & COSEBIS $B_n$ & $C_\ell^{BB}$ \\")
         appendix_table.append(r"    \hline")
 
         # Filter to only leak_corr versions (those with labels in version_labels)
         table_versions = [v for v in versions if v in version_labels]
-        for ver in table_versions:
+        for i, ver in enumerate(table_versions):
             label = version_labels.get(ver, ver)
-            # Mark fiducial version in table
             if ver == fiducial_version:
                 label = f"{label} (fiducial)"
-            row = [f"    {label}"]
 
-            # Config-space - fiducial PTEs only
-            if ver in config_data:
-                cfg = config_data[ver]
-                for stat in ["xip_stats", "xim_stats", "cosebis_stats"]:
-                    s = cfg.get(stat, {})
-                    pte = _format_value(s.get("pte_at_fiducial", float("nan")))
+            for pte_key, cut_label in [("pte_at_fiducial", "Fiducial"), ("pte_at_full_range", "Full range")]:
+                # Only show version label on first row of each pair
+                row_label = label if pte_key == "pte_at_fiducial" else ""
+                row = [f"    {row_label} & {cut_label}"]
+
+                # Config-space PTEs
+                if ver in config_data:
+                    cfg = config_data[ver]
+                    for stat in ["xip_stats", "xim_stats", "cosebis_stats"]:
+                        s = cfg.get(stat, {})
+                        pte = _format_value(s.get(pte_key, float("nan")), bold_threshold=bold)
+                        row.append(f"& {pte}")
+                else:
+                    row.extend(["& --"] * 3)
+
+                # Harmonic-space PTE
+                if ver in harmonic_data:
+                    harm = harmonic_data[ver]
+                    pte = _format_value(harm.get(pte_key, float("nan")), bold_threshold=bold)
                     row.append(f"& {pte}")
-            else:
-                row.extend(["& --"] * 3)
+                else:
+                    row.append("& --")
 
-            # Harmonic-space - fiducial PTE
-            if ver in harmonic_data:
-                harm = harmonic_data[ver]
-                pte = _format_value(harm.get("pte_at_fiducial", harm.get("pte_at_full_range", float("nan"))))
-                row.append(f"& {pte}")
-            else:
-                row.append("& --")
+                row.append(r" \\")
+                appendix_table.append(" ".join(row))
 
-            row.append(r" \\")
-            appendix_table.append(" ".join(row))
+            # Visual separator between versions (except after last)
+            if i < len(table_versions) - 1:
+                appendix_table.append(r"    \noalign{\vskip 2pt}")
 
         appendix_table.append(r"    \hline")
         appendix_table.append(r"  \end{tabular}")
