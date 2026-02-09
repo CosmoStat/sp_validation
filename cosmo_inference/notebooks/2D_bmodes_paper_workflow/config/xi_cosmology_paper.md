@@ -12,7 +12,7 @@ This spec defines what B-mode evidence appears in Paper II (Goh et al.). Paper I
 
 ### Catalog Version
 
-Report only **v1.4.6** (fiducial catalog with leakage correction). Version comparisons belong in Paper III.
+Report only the **fiducial catalog** (with leakage correction, see `fiducial.version` in config). Version comparisons belong in Paper III.
 
 ### COSEBIS Mode Count
 
@@ -25,22 +25,26 @@ Use **n=6** modes, not n=20. Rationale:
 
 Report both full-range and fiducial scale cut PTEs for both statistics. All PTEs are the **minimum across blinds** (conservative).
 
-| Statistic | Macro | Value |
-|-----------|-------|-------|
-| COSEBIS full PTE | `\cosebisfullPte` | 1.52e-06 |
-| COSEBIS fiducial PTE | `\cosebisfiducialPte` | 0.29 |
-| Joint ξ±^B full PTE | `\ebfullPte` | 0.048 |
-| Joint ξ±^B fiducial PTE | `\ebfiducialPte` | 0.28 |
+| Statistic | Macro |
+|-----------|-------|
+| COSEBIS full PTE | `\cosebisfullPte` |
+| COSEBIS fiducial PTE | `\cosebisfiducialPte` |
+| Joint ξ±^B full PTE | `\ebfullPte` |
+| Joint ξ±^B fiducial PTE | `\ebfiducialPte` |
+
+Values read from `evidence.json` at build time; see `generate_paper_macros.py`.
 
 The joint test combines ξ+^B and ξ-^B using the full cross-covariance matrix.
 
 ### Scale Cuts
 
+Scale cuts from config (`fiducial.fiducial_xip_scale_cut`, `fiducial.fiducial_xim_scale_cut`):
+
 | Correlation | Min (arcmin) | Max (arcmin) |
 |-------------|--------------|--------------|
-| ξ+^B | 6 | 85 |
-| ξ-^B | 15 | 85 |
-| COSEBIS | 6 | 85 |
+| ξ+^B | 12 | 83 |
+| ξ-^B | 12 | 83 |
+| COSEBIS | 12 | 83 |
 
 ## Text Requirements
 
@@ -63,25 +67,23 @@ From `covariance_blind_consistency`:
 
 ### PTE Variation Between Blinds
 
-The covariance variations propagate into PTE estimates differently for the two statistics:
+The covariance variations propagate into PTE estimates differently for the two statistics. Example values (illustrative, see evidence.json for current):
 
 **Pure E/B (fiducial scale cuts):**
 
 | Blind | ξ+^B PTE | ξ-^B PTE | Joint PTE |
 |-------|----------|----------|-----------|
-| A | 0.483 | 0.097 | 0.284 |
-| B | 0.489 | 0.098 | 0.311 |
-| C | 0.502 | 0.083 | 0.288 |
-| **Δ (max − min)** | 0.02 | 0.015 | 0.027 |
+| A | 0.48 | 0.10 | 0.28 |
+| B | 0.49 | 0.10 | 0.31 |
+| C | 0.50 | 0.08 | 0.29 |
+| **Δ** | ~0.02 | ~0.02 | ~0.03 |
 
 **COSEBIS (fiducial scale cuts, n=6):**
 
 | Blind | PTE |
 |-------|-----|
-| A | 0.2927 |
-| B | 0.2927 |
-| C | 0.2927 |
-| **Δ (max − min)** | <0.0001 |
+| A, B, C | ~0.29 |
+| **Δ** | <0.001 |
 
 The near-identical COSEBIS PTEs reflect the compressed information in mode space — the integration over angular scales averages out the blind-dependent covariance variations. Pure E/B PTEs show more sensitivity (ΔPTE ≈ 0.03) because the test operates directly on angular bins where covariance differences are localized.
 
@@ -91,11 +93,13 @@ Report the **minimum PTE across blinds** as the conservative estimate. This ensu
 
 **Additional macros for blinding discussion:**
 
-| Macro | Value | Description |
-|-------|-------|-------------|
-| `\covXipMaxDev` | 9.08% | Max ξ+ covariance deviation between blinds |
-| `\covXimMaxDev` | 8.59% | Max ξ- covariance deviation between blinds |
-| `\ebJointPteDelta` | 0.027 | Joint PTE variation across blinds (max − min) |
+| Macro | Description |
+|-------|-------------|
+| `\covXipMaxDev` | Max ξ+ covariance deviation between blinds |
+| `\covXimMaxDev` | Max ξ- covariance deviation between blinds |
+| `\ebJointPteDelta` | Joint PTE variation across blinds (max − min) |
+
+Values read from `covariance_blind_consistency/evidence.json` at build time.
 
 ## Config References
 

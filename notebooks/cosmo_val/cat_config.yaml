@@ -643,7 +643,7 @@ SP_v1.4.8:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
-SP_v1.4.10.1:
+SP_v1.4.11.2:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: blue
@@ -652,9 +652,9 @@ SP_v1.4.10.1:
   marker: s
   cov_th:
     A: 2405.3892055695346
-    n_e: 6.128201234871523
+    n_e: 7.529428768078532
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.380499698062307
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
@@ -673,9 +673,54 @@ SP_v1.4.10.1:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: v1.4.10.1/unions_shapepipe_cut_struc_2024_v1.4.10.1.fits
+    path: v1.4.11.2/unions_shapepipe_cut_struc_2024_v1.4.11.2.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: unions_shapepipe_star_2024_v1.4.a.fits
+SP_v1.4.11.2_w_iv:
+  subdir: /n17data/UNIONS/WL/v1.4.x
+  pipeline: SP
+  colour: teal
+  getdist_colour: 0.0, 0.7, 0.7
+  ls: dotted
+  marker: s
+  cov_th:
+    A: 2405.3892055695346
+    n_e: 7.529428768078532
+    n_psf: 0.752316232272063
+    sigma_e: 0.380499698062307
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  psf:
+    PSF_flag: FLAG_PSF_HSM
+    PSF_size: SIGMA_PSF_HSM
+    square_size: true
+    star_flag: FLAG_STAR_HSM
+    star_size: SIGMA_STAR_HSM
+    hdu: 1
+    path: unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: Dec
+    e1_PSF_col: E1_PSF_HSM
+    e1_star_col: E1_STAR_HSM
+    e2_PSF_col: E2_PSF_HSM
+    e2_star_col: E2_STAR_HSM
+  shear:
+    R: 1.0
+    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+    path: v1.4.11.2/unions_shapepipe_cut_struc_2024_v1.4.11.2.fits
+    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+    w_col: w_iv
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
     e1_PSF_col: e1_PSF

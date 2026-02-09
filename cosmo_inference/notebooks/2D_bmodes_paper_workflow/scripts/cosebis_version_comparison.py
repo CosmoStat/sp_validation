@@ -1,8 +1,5 @@
 """COSEBIS version comparison claim.
 
-Main figure: leak_corr versions only (catalog evolution across v1.4.5, v1.4.6, v1.4.8)
-Second figure: v1.4.6 leak_corr vs uncorrected (correction impact comparison)
-
 Visualizes B-mode COSEBIS across catalog versions.
 Produces figures at fiducial scale cut and full range.
 Statistical evidence (PTEs) is in cosebis_pte_matrix.
@@ -16,58 +13,34 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 import treecorr
 
 from sp_validation.b_modes import calculate_cosebis
-
-
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
+from plotting_utils import (
+    ERRORBAR_DEFAULTS,
+    FIG_WIDTH_FULL,
+    MARKER_STYLES,
+    PAPER_MPLSTYLE,
+    draw_normalized_boxes_linear_scale,
+    find_fiducial_index,
+    get_version_alpha,
+    version_label,
 )
 
 
-VERSION_LABELS = {
-    "SP_v1.4.5_leak_corr": "Initial",
-    "SP_v1.4.6_leak_corr": "Fiducial",
-    "SP_v1.4.8_leak_corr": "Masked",
-    "SP_v1.4.6": "Uncorrected",
-}
-
-# Versions for main catalog evolution figure (leak_corr only)
-CATALOG_VERSIONS = [
-    "SP_v1.4.5_leak_corr",
-    "SP_v1.4.6_leak_corr",
-    "SP_v1.4.8_leak_corr",
-]
-
-# Versions for correction comparison figure
-CORRECTION_VERSIONS = [
-    "SP_v1.4.6_leak_corr",
-    "SP_v1.4.6",
-]
+plt.style.use(PAPER_MPLSTYLE)
 
 
-def _version_label(version):
-    return VERSION_LABELS.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
 
-
-def _normalize_version_for_cov(version):
-    """Normalize version to leak_corr for covariance lookups.
-
-    Covariances depend on survey properties (area, n_eff, sigma_e), which are
-    identical for corrected/uncorrected ellipticities. Use _leak_corr covariance
-    for all versions.
-    """
-    if "leak_corr" not in version:
-        return version + "_leak_corr"
-    return version
 
 
 def _get_cov_path(cov_base_dir, version, blind, min_sep, max_sep, nbins):
-    """Construct covariance path for a specific blind."""
-    # Normalize version to leak_corr for covariance
-    cov_version = _normalize_version_for_cov(version)
+    """Construct covariance path for a specific blind.
+
+    Versions derived from v1.4.6 footprint (v1.4.10.1, v1.4.11.2) use v1.4.6 covariance.
+    """
+    # Same footprint → same covariance geometry
+    cov_version = version.replace("v1.4.10.1", "v1.4.6").replace("v1.4.11.2", "v1.4.6")
     base_name_masked = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
     masked_path = f"{cov_base_dir}/{base_name_masked}/{base_name_masked}_processed.txt"
     if Path(masked_path).exists():
@@ -77,18 +50,29 @@ def _get_cov_path(cov_base_dir, version, blind, min_sep, max_sep, nbins):
     return f"{cov_base_dir}/{base_name}/{base_name}_processed.txt"
 
 
-def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, y_limits=None):
+def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, fiducial_idx,
+                                  y_limits=None, x_offsets=None, box_style=None):
     """Create a vertically stacked B-mode COSEBIS comparison figure.
 
     Plots B_n / sigma_n (dimensionless, in units of standard deviation).
     Top panel: full range, bottom panel: fiducial scale cut.
-    """
-    fig_width = 7.24
-    fig, axes = plt.subplots(2, 1, figsize=(fig_width, fig_width * 0.6), sharex=True)
+    For each mode, a box spans the range of all versions' error bars,
+    with a line marking the fiducial version's value.
 
-    x_offsets = np.array([-0.1, 0.0, 0.1])
+    Parameters
+    ----------
+    x_offsets : array-like, optional
+        Additive offsets for each version. Default: [-0.12, -0.04, 0.04, 0.12]
+    box_style : dict, optional
+        Styling for version boxes.
+    """
+    if x_offsets is None:
+        x_offsets = np.array([-0.12, -0.04, 0.04, 0.12])
+    x_offsets = np.array(x_offsets)
+
+    fig, axes = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.6), sharex=True)
+
     modes = np.arange(1, nmodes + 1)
-    marker_styles = ["o", "s", "D"]
     scale_labels = {"fiducial": "Fiducial", "full": "Full"}
 
     panels = [
@@ -100,9 +84,16 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
     legend_labels = []
 
     for panel_idx, (scale_key, datasets, ax, scale_cut) in enumerate(panels):
+        # Draw version spread boxes (before data points)
+        draw_normalized_boxes_linear_scale(
+            ax, modes, datasets,
+            y_norm_key="Bn_normalized", fiducial_idx=fiducial_idx,
+            x_offsets=x_offsets, box_style=box_style
+        )
+
         for i, data in enumerate(datasets):
             offset = x_offsets[i] if i < len(x_offsets) else 0
-            marker = marker_styles[i] if i < len(marker_styles) else "o"
+            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
             line = ax.errorbar(
                 modes + offset,
                 data["Bn_normalized"],
@@ -112,12 +103,8 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
                 alpha=data["alpha"],
                 markerfacecolor=data["color"],
                 markeredgecolor="white",
-                markeredgewidth=0.5,
-                markersize=4,
-                capsize=2,
-                capthick=0.8,
-                linewidth=0.8,
-                elinewidth=0.8,
+                **ERRORBAR_DEFAULTS,
+                zorder=2,
             )
             if panel_idx == 0:
                 legend_handles.append(line)
@@ -147,7 +134,7 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
         legend_handles,
         legend_labels,
         loc="upper center",
-        ncol=3,
+        ncol=4,
         frameon=True,
         framealpha=0.9,
         handletextpad=0.3,
@@ -159,29 +146,57 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
     return fig
 
 
-def _compute_cosebis_for_versions(versions, xi_paths, config, cov_base_dir, scale_cuts):
-    """Compute COSEBIS for a set of versions.
-
-    Returns dict mapping scale_key -> list of dataset dicts.
-    """
+def main():
+    config = snakemake.config
+    # Only leak-corrected versions have COSEBIS computed
+    versions = [v for v in config["versions"] if "_leak_corr" in v]
     nmodes = config["fiducial"]["nmodes"]
-    blind = "A"  # B-modes are same across blinds, only covariance differs
+    plotting_config = config["plotting"]
+
+    # Use fiducial blind for plotting (B-modes are same across blinds, only covariance differs)
+    blind = config["fiducial"]["blind"]
+    cov_base_dir = snakemake.params.cov_base_dir
+    version_labels = snakemake.params.version_labels
+
+    # Which version gets the fiducial reference line in boxes
+    fiducial_for_comparison = plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"])
+
+    # Plotting config
+    x_offsets = plotting_config.get("x_offsets", [-0.12, -0.04, 0.04, 0.12])
+    box_style = plotting_config.get("version_box", {})
+
+    fiducial_scale_cut = (
+        float(config["fiducial"]["fiducial_min_scale"]),
+        float(config["fiducial"]["fiducial_max_scale"]),
+    )
+    full_scale_cut = (
+        float(config["cosebis"]["theta_min"]),
+        float(config["cosebis"]["theta_max"]),
+    )
+
+    scale_cuts = {
+        "fiducial": fiducial_scale_cut,
+        "full": full_scale_cut,
+    }
 
     min_sep_int = float(config["fiducial"]["min_sep_int"])
     max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_int = int(config["fiducial"]["nbins_int"])
 
-    fiducial_version = config["fiducial"]["version"]
-    version_alpha = {v: 1.0 if v == fiducial_version else 0.4 for v in versions}
 
     colors = sns.color_palette("colorblind", len(versions))
 
+    # Compute COSEBIS for visualization - need to build datasets first to get fiducial_idx
     all_datasets = {}
 
     for scale_key, scale_cut in scale_cuts.items():
         datasets = []
 
-        for version, color, xi_path in zip(versions, colors, xi_paths):
+        for version, color, xi_path in zip(
+            versions,
+            colors,
+            snakemake.input["xi_integration"],
+        ):
             gg = treecorr.GGCorrelation(
                 min_sep=min_sep_int,
                 max_sep=max_sep_int,
@@ -209,73 +224,44 @@ def _compute_cosebis_for_versions(versions, xi_paths, config, cov_base_dir, scal
 
             datasets.append({
                 "version": version,
-                "label": _version_label(version),
+                "label": version_label(version, version_labels),
                 "color": color,
-                "alpha": version_alpha.get(version, 1.0),
+                "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
                 "Bn_normalized": Bn / sigma_B,
             })
 
         all_datasets[scale_key] = datasets
 
-    return all_datasets
-
-
-def _compute_y_limits(all_datasets):
-    """Compute y-limits from all datasets."""
+    # Compute y-limits
     all_y = []
     for datasets in all_datasets.values():
         for d in datasets:
             all_y.extend(d["Bn_normalized"] - 1)
             all_y.extend(d["Bn_normalized"] + 1)
     y_range = max(all_y) - min(all_y)
-    return (min(all_y) - 0.1 * y_range, max(all_y) + 0.1 * y_range)
+    y_limits = (min(all_y) - 0.1 * y_range, max(all_y) + 0.1 * y_range)
 
+    # Find fiducial version index for box highlighting (use fiducial datasets)
+    fiducial_idx = find_fiducial_index(all_datasets["fiducial"], fiducial_for_comparison)
 
-def main():
-    config = snakemake.config
-    all_versions = config["versions"]
-    nmodes = config["fiducial"]["nmodes"]
-    fiducial_version = config["fiducial"]["version"]
-    cov_base_dir = snakemake.params.cov_base_dir
-
-    fiducial_scale_cut = (
-        float(config["fiducial"]["fiducial_min_scale"]),
-        float(config["fiducial"]["fiducial_max_scale"]),
-    )
-    full_scale_cut = (1.0, 250.0)
-
-    scale_cuts = {
-        "fiducial": fiducial_scale_cut,
-        "full": full_scale_cut,
-    }
-
-    # Build version-to-path lookup
-    version_to_path = {
-        ver: path
-        for ver, path in zip(all_versions, snakemake.input["xi_integration"])
-    }
-
-    # Create output directory
+    # Create output
     output_dir = Path(snakemake.output["evidence"]).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # === Main figure: catalog evolution (leak_corr only) ===
-    catalog_paths = [version_to_path[v] for v in CATALOG_VERSIONS]
-    catalog_datasets = _compute_cosebis_for_versions(
-        CATALOG_VERSIONS, catalog_paths, config, cov_base_dir, scale_cuts
-    )
-    catalog_y_limits = _compute_y_limits(catalog_datasets)
-
-    fig_catalog = _create_stacked_bmode_figure(
-        catalog_datasets["fiducial"],
-        catalog_datasets["full"],
+    fig = _create_stacked_bmode_figure(
+        all_datasets["fiducial"],
+        all_datasets["full"],
         nmodes,
         scale_cuts,
-        catalog_y_limits,
+        fiducial_idx,
+        y_limits,
+        x_offsets=x_offsets,
+        box_style=box_style,
     )
 
-    fig_path = output_dir / "figure_stacked.png"
-    fig_catalog.savefig(fig_path, dpi=300, bbox_inches="tight")
+    fig_name = "figure_stacked.png"
+    fig_path = output_dir / fig_name
+    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
 
     if "paper_stacked" in snakemake.output.keys():
@@ -284,42 +270,9 @@ def main():
         shutil.copy2(fig_path, paper_path)
         print(f"Copied to {paper_path}")
 
-    plt.close(fig_catalog)
+    plt.close(fig)
 
-    # === Second figure: correction comparison (v1.4.6 leak_corr vs uncorrected) ===
-    correction_paths = [version_to_path[v] for v in CORRECTION_VERSIONS]
-    # Override alpha to full opacity for direct comparison
-    correction_datasets_raw = _compute_cosebis_for_versions(
-        CORRECTION_VERSIONS, correction_paths, config, cov_base_dir, scale_cuts
-    )
-    # Set both to full alpha for direct comparison
-    for scale_key in correction_datasets_raw:
-        for d in correction_datasets_raw[scale_key]:
-            d["alpha"] = 1.0
-
-    correction_y_limits = _compute_y_limits(correction_datasets_raw)
-
-    fig_correction = _create_stacked_bmode_figure(
-        correction_datasets_raw["fiducial"],
-        correction_datasets_raw["full"],
-        nmodes,
-        scale_cuts,
-        correction_y_limits,
-    )
-
-    fig_correction_path = output_dir / "figure_correction.png"
-    fig_correction.savefig(fig_correction_path, dpi=300, bbox_inches="tight")
-    print(f"Saved {fig_correction_path}")
-
-    if "paper_correction" in snakemake.output.keys():
-        paper_correction_path = Path(snakemake.output["paper_correction"])
-        paper_correction_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(fig_correction_path, paper_correction_path)
-        print(f"Copied to {paper_correction_path}")
-
-    plt.close(fig_correction)
-
-    # Write evidence
+    # Write evidence (visualization only, PTEs are in cosebis_pte_matrix)
     spec_paths = snakemake.input["specs"]
 
     evidence_data = {
@@ -328,16 +281,11 @@ def main():
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": scale_cuts,
-            "catalog_versions": CATALOG_VERSIONS,
-            "correction_versions": CORRECTION_VERSIONS,
-            "fiducial_version": fiducial_version,
+            "versions_plotted": versions,
             "nmodes": nmodes,
-            "note": "Main figure: catalog evolution (leak_corr only). Second figure: correction comparison (v1.4.6 leak_corr vs uncorrected). Statistical PTEs in cosebis_pte_matrix claim.",
+            "note": "Visualization only. Statistical PTEs in cosebis_pte_matrix claim.",
         },
-        "artifacts": {
-            "figure_stacked": "figure_stacked.png",
-            "figure_correction": "figure_correction.png",
-        },
+        "artifacts": {"figure_stacked": fig_name},
     }
 
     evidence_path = Path(snakemake.output["evidence"])

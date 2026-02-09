@@ -6,16 +6,9 @@ from pathlib import Path
 
 import numpy as np
 
-from IPython import get_ipython
-
-ipython = get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-else:
-    sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
+# Unbuffered output for Snakemake log streaming
+sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
+sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
 
 
 def _load_snakemake():

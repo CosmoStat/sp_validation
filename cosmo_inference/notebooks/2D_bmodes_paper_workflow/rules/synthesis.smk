@@ -13,8 +13,28 @@ import sys
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# These are defined in specs.smk and claims.smk, included before this file
-# CONFIG_DIR, CLAIMS_DIR, SKILL_PATH, METHOD_SPECS already available
+# Variables from included files: CONFIG_DIR, CLAIMS_DIR (Snakefile); SKILL_PATH, METHOD_SPECS (specs.smk)
+
+# Claim rules that produce evidence.json — single source of truth for all_claims and claims_dashboard
+# Each entry is a rule name; we access rules.X.output to get all outputs
+CLAIM_RULES = [
+    "cosebis_version_comparison",
+    "cosebis_data_vector",
+    "pure_eb_data_vector",
+    "pure_eb_version_comparison",
+    "pure_eb_covariance",
+    "cl_data_vector",
+    "cl_version_comparison",
+    "config_space_pte_matrices",
+    "harmonic_space_pte_matrices",
+    "bb_covariance_blind_independence",
+    "covariance_blind_consistency",
+]
+
+
+def _claim_outputs():
+    """Get all outputs from claim rules."""
+    return {name: getattr(rules, name).output for name in CLAIM_RULES}
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -26,8 +46,8 @@ localrules: xi_cosmology_paper, paper_macros, bmodes_paper_spec, all_claims, spe
 rule xi_cosmology_paper:
     """Spec for B-mode reporting in configuration-space paper (Goh et al.).
 
-    Depends on the two B-mode claims plus covariance consistency, produces macros for Paper II.
-    Reports v1.4.6, n=6 COSEBIS, joint pure-mode PTEs at both full and fiducial scales.
+    Depends on COSEBIS version comparison, pure E/B data vector, and covariance consistency.
+    Reports fiducial version, n=6 COSEBIS, joint pure-mode PTEs at both full and fiducial scales.
     Also generates evidence.json for dashboard dependency tracking.
     """
     input:
@@ -49,6 +69,7 @@ rule paper_macros:
     input:
         cosebis_evidence=rules.cosebis_version_comparison.output.evidence,
         pure_eb_evidence=rules.pure_eb_data_vector.output.evidence,
+        pure_eb_covariance=rules.pure_eb_covariance.output.evidence,
         # PTE composite evidence for table generation
         config_space_pte=rules.config_space_pte_matrices.output.evidence,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,
@@ -77,8 +98,10 @@ rule bmodes_paper_spec:
         # Upstream evidence (using rules.X.output for single source of truth)
         pure_eb_covariance=rules.pure_eb_covariance.output.evidence,
         pure_eb_data_vector=rules.pure_eb_data_vector.output.evidence,
+        cosebis_data_vector=rules.cosebis_data_vector.output.evidence,
         cosebis_version_comparison=rules.cosebis_version_comparison.output.evidence,
-        cl_fiducial=rules.cl_data_vector.output.evidence,
+        cl_data_vector=rules.cl_data_vector.output.evidence,
+        cl_version_comparison=rules.cl_version_comparison.output.evidence,
         config_space_pte=rules.config_space_pte_matrices.output.evidence,
         harmonic_space_pte=rules.harmonic_space_pte_matrices.output.evidence,
         # Paper figure dependencies (ensures dashboard regenerates version comparison plots)
@@ -86,6 +109,7 @@ rule bmodes_paper_spec:
         cosebis_bmode_stacked=rules.cosebis_version_comparison.output.paper_stacked,
         # Consistency checks
         bb_covariance_blind=rules.bb_covariance_blind_independence.output.evidence,
+        covariance_blind_consistency=rules.covariance_blind_consistency.output.evidence,
     output:
         evidence=f"{CLAIMS_DIR}/bmodes_paper/evidence.json",
     script:
@@ -102,16 +126,7 @@ rule all_claims:
         method_specs=expand(f"{CLAIMS_DIR}/{{spec}}/evidence.json", spec=METHOD_SPECS),
         bmodes_paper=rules.bmodes_paper_spec.output,
         xi_cosmology_paper=rules.xi_cosmology_paper.output,
-        cosebis_version_comparison=rules.cosebis_version_comparison.output,
-        cosebis_data_vector=rules.cosebis_data_vector.output,
-        pure_eb_data_vector=rules.pure_eb_data_vector.output,
-        pure_eb_version_comparison=rules.pure_eb_version_comparison.output,
-        pure_eb_covariance=rules.pure_eb_covariance.output,
-        cl_fiducial=rules.cl_data_vector.output,
-        cl_version_comparison=rules.cl_version_comparison.output,
-        config_space_pte=rules.config_space_pte_matrices.output,
-        harmonic_space_pte=rules.harmonic_space_pte_matrices.output,
-        bb_covariance_blind=rules.bb_covariance_blind_independence.output,
+        **_claim_outputs(),
 
 
 rule spec_dependencies:
@@ -123,11 +138,12 @@ rule spec_dependencies:
     output:
         deps=f"{CLAIMS_DIR}/deps.json",
     run:
-        import subprocess, json
+        import json
         from pathlib import Path
 
+        # Use --dry-run instead of --forceall to avoid timestamp pollution
         r = subprocess.run(
-            ["snakemake", "--forceall", "--detailed-summary", "all_claims"],
+            ["snakemake", "--dry-run", "--detailed-summary", "all_claims"],
             capture_output=True, text=True
         )
 
@@ -155,33 +171,25 @@ rule spec_dependencies:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule claims_dashboard:
-    """Render claims dashboard with specs and evidence."""
+    """Render claims dashboard with specs and evidence.
+
+    Dashboard reads specs from felt fibers (foundation/claim/synthesis kinds).
+    Evidence links to results/claims/{fiber_id}/ directories.
+    """
     input:
         config=f"{CONFIG_DIR}/config.yaml",
-        deps=f"{CLAIMS_DIR}/deps.json",
         # Method specs (foundational, no dependencies)
         method_specs=expand(f"{CLAIMS_DIR}/{{spec}}/evidence.json", spec=METHOD_SPECS),
         # Paper specs
         bmodes_paper=rules.bmodes_paper_spec.output,
-        xi_cosmology_paper=rules.xi_cosmology_paper.output,
-        # All claim rules that produce evidence
-        cosebis_version_comparison=rules.cosebis_version_comparison.output,
-        cosebis_data_vector=rules.cosebis_data_vector.output,
-        pure_eb_data_vector=rules.pure_eb_data_vector.output,
-        pure_eb_version_comparison=rules.pure_eb_version_comparison.output,
-        pure_eb_covariance=rules.pure_eb_covariance.output,
-        cl_fiducial=rules.cl_data_vector.output,
-        cl_version_comparison=rules.cl_version_comparison.output,
-        # PTE matrix composites
-        config_space_pte=rules.config_space_pte_matrices.output,
-        harmonic_space_pte=rules.harmonic_space_pte_matrices.output,
         paper_macros=rules.paper_macros.output,
+        # All claim rules (using shared CLAIM_RULES list)
+        **_claim_outputs(),
     output:
         html=f"{CLAIMS_DIR}/index.html",
     params:
         project_name="UNIONS B-modes",
         tagline="Spec-driven validation",
-        config_dir=CONFIG_DIR,
         claims_dir=CLAIMS_DIR,
         skill_path=SKILL_PATH,
     shell:
@@ -190,10 +198,8 @@ rule claims_dashboard:
             {output.html} \
             --project-name "{params.project_name}" \
             --tagline "{params.tagline}" \
-            --specs-dir {params.config_dir} \
             --claims-dir {params.claims_dir} \
-            --config-file {input.config} \
-            --deps-file {input.deps}
+            --config-file {input.config}
         """
 
 
@@ -207,8 +213,6 @@ rule serve_claims:
         claims_dir=CLAIMS_DIR,
         port_start=8000,
     run:
-        import subprocess, sys, socket
-
         def find_open_port(start_port, max_attempts=100):
             for port in range(start_port, start_port + max_attempts):
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

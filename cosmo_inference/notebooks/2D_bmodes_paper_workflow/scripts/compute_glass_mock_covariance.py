@@ -87,7 +87,6 @@ def plot_correlation(
     """Generate a correlation heatmap with block annotations."""
 
     sns.set_theme(style="white")
-    sns.set_palette("husl", len(block_sizes))
 
     fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(
@@ -146,18 +145,18 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    # Try to use Snakemake's injected snakemake object, fall back to argparse
+    # Use snakemake object if available (injected automatically), else argparse
     try:
-        from snakemake.script import snakemake
-        xi_files = collect_mock_files([Path(f) for f in snakemake.input.xi])
-        cl_files = collect_mock_files([Path(f) for f in snakemake.input.cl])
-        xi_covariance_path = Path(snakemake.output.xi_covariance)
-        cl_covariance_path = Path(snakemake.output.cl_covariance)
-        combined_covariance_path = Path(snakemake.output.combined_covariance)
-        correlation_plot_path = Path(snakemake.output.correlation_plot)
-        xi_mean_path = Path(snakemake.output.xi_mean)
-        cl_mean_path = Path(snakemake.output.cl_mean)
-        combined_mean_path = Path(snakemake.output.combined_mean)
+        snakemake  # noqa: F821 - injected by snakemake at runtime
+        xi_files = collect_mock_files([Path(f) for f in snakemake.input.xi])  # noqa: F821
+        cl_files = collect_mock_files([Path(f) for f in snakemake.input.cl])  # noqa: F821
+        xi_covariance_path = Path(snakemake.output.xi_covariance)  # noqa: F821
+        cl_covariance_path = Path(snakemake.output.cl_covariance)  # noqa: F821
+        combined_covariance_path = Path(snakemake.output.combined_covariance)  # noqa: F821
+        correlation_plot_path = Path(snakemake.output.correlation_plot)  # noqa: F821
+        xi_mean_path = Path(snakemake.output.xi_mean)  # noqa: F821
+        cl_mean_path = Path(snakemake.output.cl_mean)  # noqa: F821
+        combined_mean_path = Path(snakemake.output.combined_mean)  # noqa: F821
     except NameError:
         # Standalone execution
         args = parse_args()

@@ -16,7 +16,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import treecorr
 from astropy.io import fits
 
@@ -66,14 +65,17 @@ def load_harmonic_diagonals(path):
     }
 
 
-def load_cosebis_diagonals(xi_integration_path, cov_integration_path, nmodes, theta_min, theta_max):
+def load_cosebis_diagonals(
+    xi_integration_path, cov_integration_path, nmodes, theta_min, theta_max,
+    min_sep_int, max_sep_int, nbins_int
+):
     """Compute COSEBIS covariance diagonals from config-space covariance.
 
     Uses calculate_cosebis to transform config-space covariance to COSEBIS space.
     Returns E_n and B_n covariance diagonals.
     """
     # Load fine-binned 2PCF (need the binning info for COSEBIS calculation)
-    gg = treecorr.GGCorrelation(min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin")
+    gg = treecorr.GGCorrelation(min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin")
     gg.read(xi_integration_path)
 
     # Compute COSEBIS with this blind's covariance
@@ -112,7 +114,7 @@ def compute_ratios(diag_ref, diag_test):
     }
 
 
-def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, output_path, n_samples=4000):
+def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_results, output_path, n_samples=2000):
     """Four-panel figure comparing BB vs EE stability across blinds.
 
     Layout: 2x2
@@ -253,6 +255,11 @@ def main(snakemake):
     nmodes = snakemake.params.nmodes
     theta_min = snakemake.params.theta_min
     theta_max = snakemake.params.theta_max
+    # Integration binning parameters from config
+    min_sep_int = config["fiducial"]["min_sep_int"]
+    max_sep_int = config["fiducial"]["max_sep_int"]
+    nbins_int = config["fiducial"]["nbins_int"]
+
     cosebis_data = {}
     for blind in BLINDS:
         cosebis_data[blind] = load_cosebis_diagonals(
@@ -261,6 +268,9 @@ def main(snakemake):
             nmodes,
             theta_min,
             theta_max,
+            min_sep_int,
+            max_sep_int,
+            nbins_int,
         )
 
     # Effective ell values (log-spaced bins)
@@ -432,15 +442,15 @@ def main(snakemake):
         json.dump(evidence, f, indent=2)
 
     # Print summary
-    print(f"\nBB Covariance Blind Independence Summary:")
+    print("\nBB Covariance Blind Independence Summary:")
     print(f"  COSEBIS B_n max deviation: {cosebis_bb_max*100:.6f}%")
     print(f"  COSEBIS E_n max deviation: {cosebis_ee_max*100:.2f}%")
     print(f"  COSEBIS B_n blind-independent (<0.1%): {cosebis_bb_blind_independent}")
     print(f"  E-modes vary as expected (5-15%): {ee_varies_as_expected}")
-    print(f"\n  Pure E/B + Harmonic (MC methods):")
+    print("\n  Pure E/B + Harmonic (MC methods):")
     print(f"    BB max deviation: {bb_max*100:.2f}%")
     print(f"    EE max deviation: {ee_max*100:.2f}%")
-    print(f"    Note: MC sampling noise causes BB to vary similarly to EE")
+    print("    Note: MC sampling noise causes BB to vary similarly to EE")
 
 
 if __name__ == "__main__":

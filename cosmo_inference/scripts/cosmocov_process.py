@@ -1,11 +1,8 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import linalg as LA
 import sys
-from pathlib import Path
 
 def get_cov(filename):
 
@@ -14,7 +11,6 @@ def get_cov(filename):
 
 	print("Dimension of cov: %dx%d"%(ndata,ndata))
 
-	ndata_min = int(np.min(data[:,0]))
 	cov_g = np.zeros((ndata,ndata))
 	cov_ng = np.zeros((ndata,ndata))
 	for i in range(0,data.shape[0]):
@@ -40,17 +36,13 @@ if __name__ == '__main__':
 	cov = c_ng+c_g
 	cov_g = c_g
 
-	b = np.sort(LA.eigvals(cov))
+	b = np.sort(np.linalg.eigvals(cov))
 	print("min+max eigenvalues cov: %e, %e"%(np.min(b), np.max(b)))
 	if(np.min(b)<=0.):
 		print("non-positive eigenvalue encountered! Covariance Invalid!")
 		exit()
 
-	print("Covariance is postive definite!")
-
-	pp_var = []
-	for i in range(ndata):
-		pp_var.append(cov[i][i])
+	print("Covariance is positive definite!")
 
 	np.savetxt(str(output_base)+'.txt',cov)
 	print("covmat saved as %s" %(str(output_base)+'.txt'))
@@ -84,5 +76,5 @@ if __name__ == '__main__':
 	ax.text(-9, 3*int(ndata/4), r'$\xi_-^{ij}(\theta)$', fontsize=12)
 
 	plt.savefig(plot_path,dpi=2000)
-	plt.show()
+	plt.close()
 	print("Plot saved as %s"%(plot_path))

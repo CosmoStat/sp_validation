@@ -1,7 +1,7 @@
 # %%
 """Compute COSEBIS B-mode PTE for a single scale cut.
 
-Scatter job for figure_3_cosebis_pte_matrices claim.
+Scatter job for config_space_pte_matrices claim.
 Reads precomputed fine-binned 2PCF and covariance, computes one PTE.
 """
 
@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import treecorr
-from scipy import stats
 
+from plotting_utils import compute_chi2_pte
 from sp_validation.b_modes import calculate_cosebis
 
 
@@ -22,7 +22,7 @@ def _load_snakemake():
         from snakemake_helpers import snakemake_interactive
 
         return snakemake_interactive(
-            "results/claims/figure_3_cosebis_pte_matrices/pte_values/SP_v1.4.6_leak_corr/pte_000_005.json",
+            "results/claims/config_space_pte_matrices/pte_values/SP_v1.4.6_leak_corr/pte_000_005.json",
             str(Path.cwd()),
         )
     from snakemake.script import snakemake
@@ -33,29 +33,29 @@ def _load_snakemake():
 snakemake = _load_snakemake()
 
 
-def _compute_pte(values, covariance):
-    """Compute PTE for B-mode null test."""
-    chi2 = float(values @ np.linalg.solve(covariance, values))
-    dof = len(values)
-    return chi2, stats.chi2.sf(chi2, dof)
-
-
 def main():
     t_start = time.time()
+    config = snakemake.config
 
     # Extract wildcards
     i_min = int(snakemake.wildcards.i_min)
     i_max = int(snakemake.wildcards.i_max)
     nmodes = int(snakemake.params.nmodes)  # Should be 20 for full computation
 
+    # Integration binning parameters from config
+    min_sep_int = config["fiducial"]["min_sep_int"]
+    max_sep_int = config["fiducial"]["max_sep_int"]
+    nbins_int = config["fiducial"]["nbins_int"]
+
     # Load precomputed fine-binned 2PCF
     t0 = time.time()
-    gg = treecorr.GGCorrelation(min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin")
+    gg = treecorr.GGCorrelation(min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin")
     gg.read(snakemake.input.xi_integration)
     print(f"[TIMING] Load 2PCF: {time.time() - t0:.2f}s")
 
-    # Compute theta grid from gg bin edges (20 bins for PTE matrix)
-    theta_grid = np.geomspace(1.0, 250.0, 21)  # 21 edges -> 20 bins
+    # Theta grid from config (nbins+1 edges for PTE matrix)
+    fid = config["fiducial"]
+    theta_grid = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
 
     theta_min = theta_grid[i_min]
     theta_max = theta_grid[i_max]
@@ -82,14 +82,14 @@ def main():
     # 6 modes: use first 6
     cov_B_6 = cov_full[nmodes:nmodes+6, nmodes:nmodes+6]
     cov_E_6 = cov_full[:6, :6]
-    chi2_B_6, pte_B_6 = _compute_pte(Bn_full[:6], cov_B_6)
-    chi2_E_6, pte_E_6 = _compute_pte(En_full[:6], cov_E_6)
+    chi2_B_6, pte_B_6, _ = compute_chi2_pte(Bn_full[:6], cov_B_6)
+    chi2_E_6, pte_E_6, _ = compute_chi2_pte(En_full[:6], cov_E_6)
 
     # 20 modes: use all
     cov_B_20 = cov_full[nmodes:, nmodes:]
     cov_E_20 = cov_full[:nmodes, :nmodes]
-    chi2_B_20, pte_B_20 = _compute_pte(Bn_full, cov_B_20)
-    chi2_E_20, pte_E_20 = _compute_pte(En_full, cov_E_20)
+    chi2_B_20, pte_B_20, _ = compute_chi2_pte(Bn_full, cov_B_20)
+    chi2_E_20, pte_E_20, _ = compute_chi2_pte(En_full, cov_E_20)
 
     # Write output with both 6 and 20 mode results
     output = {

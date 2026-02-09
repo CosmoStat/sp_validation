@@ -19,17 +19,9 @@ from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 from sp_validation.cosmology import get_theo_xi
 from sp_validation.cosmo_val import CosmologyValidation
 
-from IPython import get_ipython
-
-
-ipython = get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-else:
-    sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
+# Unbuffered output for Snakemake log streaming
+sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
+sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
 
 
 def _load_snakemake():
@@ -49,14 +41,14 @@ snakemake = _load_snakemake()
 params = snakemake.params
 
 
-def _build_cosmology(config):
-    cosmo_cfg = config["covariance"]["cosmology"]
+def _build_cosmology(cosmo_params):
+    """Build CCL cosmology from PLANCK18 params dict."""
     return ccl.Cosmology(
-        Omega_c=cosmo_cfg["Omega_m"] - cosmo_cfg["Omega_b"],
-        Omega_b=cosmo_cfg["Omega_b"],
-        h=cosmo_cfg["h"],
-        sigma8=cosmo_cfg["sigma_8"],
-        n_s=cosmo_cfg["n_s"],
+        Omega_c=cosmo_params["Omega_m"] - cosmo_params["Omega_b"],
+        Omega_b=cosmo_params["Omega_b"],
+        h=cosmo_params["h"],
+        sigma8=cosmo_params["sigma_8"],
+        n_s=cosmo_params["n_s"],
     )
 
 
@@ -146,9 +138,7 @@ def compute_pure_eb_covariance(
 
 
 def main():
-    config = snakemake.config
-    covariance_cfg = config["covariance"]
-    cosmo_cov = _build_cosmology(config)
+    cosmo_cov = _build_cosmology(params["cosmo_params"])
 
     # Extract blind from output path
     output_path = Path(snakemake.output[0])

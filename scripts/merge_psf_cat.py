@@ -151,19 +151,11 @@ class MergePsfCat:
             if idx == 0:
                 col_names = dat.dtype.names
                 for name in col_names:
-                    if name != "w":
-                        dat_all[name] = []
-                    else:
-                        dat_all[name + "_iv"] = []
+                    dat_all[name] = []
                 dat_all["patch"] = []
 
             for name in col_names:
-                if name != "w":
-                    dat_all[name] = np.append(dat_all[name], dat[name])
-                else:
-                    dat_all[name + "_iv"] = np.append(
-                        dat_all[name + "_iv"], dat[name]
-                    )
+                dat_all[name] = np.append(dat_all[name], dat[name])
 
             dat_all["patch"] = np.append(dat_all["patch"], [idx + 1] * len(dat))
 
@@ -175,8 +167,6 @@ class MergePsfCat:
                 my_format = "D"
             else:
                 my_format = "I"
-            if name == "w":
-                name = "w_iv"
             column = fits.Column(name=name, array=dat_all[name], format=my_format)
             column_all.append(column)
 

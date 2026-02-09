@@ -18,7 +18,7 @@ B-mode COSEBIS magnitudes are small relative to measurement uncertainty across c
 
 ## Evidence
 
-This claim produces visualizations only. Statistical evidence (PTEs) is in [COSEBIS PTE Matrix](cosebis_pte_matrix.md).
+This claim produces visualizations only. Statistical evidence (PTEs) is in [Config-Space PTE Matrices](config_space_pte_matrices.md).
 
 | Metric | Description |
 |--------|-------------|
@@ -27,15 +27,10 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [COSE
 
 ## Outputs
 
-Main figure shows leak_corr catalog versions only (v1.4.5, v1.4.6, v1.4.8) for catalog evolution comparison. Second figure shows correction impact (v1.4.6 leak_corr vs uncorrected).
+Main figure shows leak_corr catalog versions from `config.versions` for catalog evolution comparison.
 
 - `figure_stacked.png` — Two-panel figure showing $B_n / \sigma_n$ (catalog evolution)
   - Top: Full range (no scale cuts)
   - Bottom: Fiducial scale cut
   - Error bars are unity by construction (normalized)
-  - Legend: Initial (v1.4.5), Fiducial (v1.4.6), Masked (v1.4.8)
-
-- `figure_correction.png` — Leakage correction impact comparison
-  - Same layout as main figure
-  - Shows v1.4.6 leak_corr vs v1.4.6 uncorrected
-  - Demonstrates impact of leakage correction on COSEBIS B-modes
+  - Legend labels from `config.version_labels`

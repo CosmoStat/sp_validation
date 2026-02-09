@@ -281,7 +281,8 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
         "STRT_1": int(len(covmat_xi) / 2),
     }
 
-    filename_cov_tau and cov_dict.update({
+    if filename_cov_tau:
+        cov_dict.update({
             "NAME_2": "TAU_0_PLUS",
             "STRT_2": len(covmat_xi),
             "NAME_3": "TAU_2_PLUS",
