@@ -1798,8 +1798,8 @@ class CosmologyValidation:
 
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
 
-
         for idx, ver in enumerate(self.versions):
+            self.calculate_2pcf(ver)
             xi_psf_sys = self.xi_psf_sys[ver]
             gg = self.cat_ggs[ver]
 
