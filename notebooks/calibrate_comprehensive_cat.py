@@ -205,6 +205,14 @@ for key in add_cols:
         mask_metacal
     )
 
+# Keep original NOSHEAR column, override with 1P PSF values (FHP/MK hack)
+print(
+    "FHP/MK hack: explicit copying of the metacal no-shear (updated from 1p)"
+    + f" PSF size"
+)
+add_cols_data["NGMIX_Tpsf_NOSHEAR_orig"] = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
+add_cols_data["NGMIX_Tpsf_NOSHEAR"] = gal_metacal.ns["Tpsf"][mask_metacal]
+
 # %%
 # Additional post-processing columns to write to output cat
 add_cols_post = [
@@ -268,19 +276,6 @@ cat.write_shape_catalog(
 with open("masks.txt", "w") as f_out:
     for my_mask in masks:
         my_mask.print_summary(f_out)
-
-
-# %%
-# MKDEBUG check bug of minimal size objects
-print("MKDEBUG calibration min size checks")
-T = add_cols_data["NGMIX_T_NOSHEAR"]
-Tpsf = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
-x = T / Tpsf
-ind_low = np.argsort(x)[:5]
-print("ratio", x[ind_low])
-print("gal size", T[ind_low])
-print("PSF size", Tpsf[ind_low])
-print("rel_size_min", cm["gal_rel_size_min"])
 
 
 # %%

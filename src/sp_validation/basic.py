@@ -146,13 +146,13 @@ class metacal:
             )
 
         print("FHP/MK hack using p1 PSF for ns in cuts")
-        print("MKDEBUG before ", data[f"{self._prefix}_Tpsf_NOSHEAR"][mask][:5])
         indices = np.where(mask)[0]
-        new_psf = data[indices][f"{self._prefix}_Tpsf_1P"]
-        ns["Tpsf"] = new_psf
-        data[f"{self._prefix}_Tpsf_NOSHEAR"][mask] = new_psf
+        col_noshear = f"{self._prefix}_Tpsf_NOSHEAR"
+        col_1p = f"{self._prefix}_Tpsf_1P"
+        new_psf = data[col_1p][indices]
 
-        print("MKDEBUG after ", data[f"{self._prefix}_Tpsf_NOSHEAR"][mask][:5])
+        # Overwriting incorrect no-shear PSF size to the one from 1p
+        ns["Tpsf"] = new_psf
 
         self.m1 = m1
         self.p1 = p1
