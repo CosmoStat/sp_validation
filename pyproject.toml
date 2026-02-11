@@ -37,7 +37,7 @@ dependencies = [
     "lenspack",
     "lmfit",
     "numexpr",
-    "numpy>=1.14",
+    "numpy>=2.0",
     "opencv-python-headless",
     "pyccl",
     "pyarrow",
