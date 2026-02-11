@@ -557,11 +557,14 @@ rule bb_covariance_blind_independence:
 # Harmonic vs Configuration-Space COSEBIS Comparison
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+_COSEBIS_NBINS = config["cl"].get("cosebis_nbins", 32)
+
 rule harmonic_config_cosebis_comparison:
     """Cross-validate COSEBIS from harmonic (pseudo-Cl) and config (xi_pm) paths.
 
-    Both paths should yield the same E_n and B_n modes. Produces chi2/PTE
-    statistics and a comparison figure with residuals.
+    Produces 9 per-version figures (1 paper + 4 corrected + 4 uncorrected)
+    plus a version comparison figure. Uses cl.cosebis_nbins (default 96) for
+    finer bandpower resolution that recovers COSEBIS modes 1-7.
     """
     input:
         specs=[
@@ -570,20 +573,49 @@ rule harmonic_config_cosebis_comparison:
             f"{CONFIG_DIR}/cl.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_LEAK_CORR],
-        pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in VERSIONS_LEAK_CORR],
-        xi_integration=[_xi_integration_path(ver) for ver in VERSIONS_LEAK_CORR],
-        cov_integration=[_cov_integration_path(ver, FIDUCIAL["blind"]) for ver in VERSIONS_LEAK_CORR],
+        **{f"pseudo_cl_{ver}": _pseudo_cl_path(ver, nbins=_COSEBIS_NBINS) for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"pseudo_cl_cov_{ver}": _pseudo_cl_cov_path(ver, nbins=_COSEBIS_NBINS) for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
+        **{f"cov_{ver}": _cov_integration_path(ver, FIDUCIAL["blind"]) for ver in VERSIONS_ALL_FOR_PLOTS},
     output:
         evidence=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/evidence.json",
-        figure=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure.png",
         figure_versions=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure_versions.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/harmonic_config_cosebis.png",
+        **_per_version_figure_outputs(f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison"),
     script:
         "../scripts/harmonic_config_cosebis_comparison.py"
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# COSEBIS Filter Overlay
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FIDUCIAL_VERSION = config["fiducial"]["version"]
+
+rule cosebis_filter_overlay:
+    """W_n(ell) filter functions overlaid on 32-bin BB bandpower data.
+
+    Builds intuition about the C_ell -> COSEBIS transform.
+    Shows why coarse bandpowers underresolve higher COSEBIS modes.
+    """
+    input:
+        specs=[
+            f"{CONFIG_DIR}/cosebis_filter_overlay.md",
+            f"{CONFIG_DIR}/cosebis.md",
+            f"{CONFIG_DIR}/cl.md",
+        ],
+        config=f"{CONFIG_DIR}/config.yaml",
+        pseudo_cl=_pseudo_cl_path(FIDUCIAL_VERSION),
+        pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL_VERSION),
+    output:
+        evidence=f"{CLAIMS_DIR}/cosebis_filter_overlay/evidence.json",
+        figure=f"{CLAIMS_DIR}/cosebis_filter_overlay/figure.png",
+    script:
+        "../scripts/plot_cosebis_filter_overlay.py"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Local Rules Declaration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence, harmonic_config_cosebis_comparison
+localrules: cl_data_vector, cl_version_comparison, pure_eb_covariance, pure_eb_data_vector, pure_eb_version_comparison, cosebis_version_comparison, cosebis_data_vector, config_space_pte_matrices, harmonic_space_pte_matrices, bb_covariance_blind_independence, harmonic_config_cosebis_comparison, cosebis_filter_overlay

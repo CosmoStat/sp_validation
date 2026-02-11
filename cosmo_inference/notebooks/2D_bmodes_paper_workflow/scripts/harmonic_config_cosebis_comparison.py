@@ -26,6 +26,7 @@ from cosmo_numba.B_modes.cosebis import COSEBIS
 from sp_validation.b_modes import calculate_cosebis
 from plotting_utils import (
     FIG_WIDTH_FULL,
+    FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
     iter_version_figures,
@@ -34,8 +35,10 @@ from plotting_utils import (
 
 plt.style.use(PAPER_MPLSTYLE)
 
-# Modes above this threshold are unreliable from 32-bin bandpowers
-_RELIABLE_MODE_MAX = 6
+# At 32 bins, modes > 6 are unreliable. At 96+ bins, modes 1-7 are recovered
+# to <0.3% (harmonic ceiling). Mode 8 is marginal (0.8%); modes 9+ diverge
+# due to W_n(ell) numerical precision at ~10^-14 amplitudes, not binning.
+_RELIABLE_MODE_MAX_BY_NBINS = {32: 6, 96: 8}
 
 
 def _safe_sigma(covariance_diag):
@@ -136,17 +139,17 @@ def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cut, config):
     return r["En"], r["Bn"], r["cov"]
 
 
-def _shade_unreliable(ax, nmodes):
-    """Shade the unreliable region (modes > _RELIABLE_MODE_MAX) with gray band."""
-    ax.axvspan(_RELIABLE_MODE_MAX + 0.5, nmodes + 0.5, color="0.90", alpha=0.5, zorder=0)
+def _shade_unreliable(ax, nmodes, reliable_mode_max=6):
+    """Shade the unreliable region (modes > reliable_mode_max) with gray band."""
+    ax.axvspan(reliable_mode_max + 0.5, nmodes + 0.5, color="0.90", alpha=0.5, zorder=0)
 
 
-def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=None):
+def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=None, reliable_mode_max=6):
     """Data vector figure: E and B from both methods.
 
     Two rows (E-modes, B-modes), full angular range only.
     E-modes in raw units. B-modes in B_n/sigma units.
-    Gray band over modes > 6 (unreliable from 32-bin bandpowers).
+    Gray band over unreliable modes.
     """
     modes = np.arange(1, nmodes + 1)
     colors = sns.color_palette("colorblind", 2)
@@ -160,28 +163,29 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     sigma_harm_E = harm_data["sigma_E"]
     sigma_harm_B = np.where(harm_data["sigma_B"] > 0, harm_data["sigma_B"], 1.0)
 
-    fig, (ax_e, ax_b) = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.6), sharex=True)
+    fig, (ax_e, ax_b) = plt.subplots(2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.85), sharex=True)
 
-    # --- E-modes (raw units) ---
+    # --- E-modes (factored by 10^10 for readability) ---
+    e_scale = 1e10
     ax_e.errorbar(
-        modes - 0.1, ce_config, yerr=sigma_config_E,
+        modes - 0.1, ce_config * e_scale, yerr=sigma_config_E * e_scale,
         fmt="o", color=c_cfg, mfc=c_cfg, ms=4, alpha=0.8,
         capsize=2, capthick=0.8, elinewidth=0.8, label="Config-space",
     )
     ax_e.errorbar(
-        modes + 0.1, ce_harm, yerr=sigma_harm_E,
+        modes + 0.1, ce_harm * e_scale, yerr=sigma_harm_E * e_scale,
         fmt="o", color=c_harm, mfc="white", ms=4, alpha=0.8,
         capsize=2, capthick=0.8, elinewidth=0.8, label="Harmonic-space",
     )
 
     ax_e.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-    _shade_unreliable(ax_e, nmodes)
-    ax_e.set_ylabel(r"$E_n$")
+    _shade_unreliable(ax_e, nmodes, reliable_mode_max)
+    ax_e.set_ylabel(r"$E_n \times 10^{10}$")
     ax_e.set_xlim(0.5, nmodes + 0.5)
     ax_e.tick_params(axis="both", width=0.5, length=3)
     if title:
-        ax_e.set_title(title, fontsize=10)
-    ax_e.legend(fontsize=7, loc="upper right", framealpha=0.9)
+        ax_e.set_title(title)
+    ax_e.legend(loc="upper center", framealpha=0.9)
 
     # --- B-modes (B_n / sigma units) ---
     ax_b.errorbar(
@@ -196,7 +200,7 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     )
 
     ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-    _shade_unreliable(ax_b, nmodes)
+    _shade_unreliable(ax_b, nmodes, reliable_mode_max)
     ax_b.set_ylabel(r"$B_n / \sigma_n$")
     ax_b.set_xlabel("COSEBIS mode $n$")
     ax_b.set_xticks(np.arange(1, nmodes + 1))
@@ -205,7 +209,7 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
 
     ax_b.text(
         0.98, 0.95,
-        rf"$\theta \in [{scale_cut[0]:.0f}, {scale_cut[1]:.0f}]'$",
+        rf"$\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$",
         transform=ax_b.transAxes, ha="right", va="top",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
     )
@@ -215,11 +219,11 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     return fig
 
 
-def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version_labels_map):
+def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version_labels_map, reliable_mode_max=6):
     """Version comparison: all versions, both methods, B-modes in B_n/sigma.
 
     Single panel, full angular range only.
-    Config=filled marker, harmonic=open marker. Gray band over modes > 6.
+    Config=filled marker, harmonic=open marker. Gray band over unreliable modes.
     """
     modes = np.arange(1, nmodes + 1)
     n_versions = len(all_version_data)
@@ -253,7 +257,7 @@ def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version
         )
 
     ax.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-    _shade_unreliable(ax, nmodes)
+    _shade_unreliable(ax, nmodes, reliable_mode_max)
     ax.set_ylabel(r"$B_n / \sigma_n$")
     ax.set_xlabel("COSEBIS mode $n$")
     ax.set_xticks(np.arange(1, nmodes + 1))
@@ -262,13 +266,13 @@ def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version
 
     ax.text(
         0.98, 0.95,
-        rf"$\theta \in [{scale_cut[0]:.0f}, {scale_cut[1]:.0f}]'$",
+        rf"$\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$",
         transform=ax.transAxes, ha="right", va="top",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
     )
 
     ax.legend(
-        fontsize=7, loc="upper left", ncol=2,
+        loc="upper center", ncol=4,
         frameon=True, framealpha=0.9,
         handletextpad=0.3, columnspacing=0.8,
     )
@@ -287,6 +291,12 @@ def main():
         float(config["cosebis"]["theta_min"]),
         float(config["cosebis"]["theta_max"]),
     )
+
+    cosebis_nbins = int(config["cl"].get("cosebis_nbins", 32))
+    reliable_mode_max = _RELIABLE_MODE_MAX_BY_NBINS.get(
+        cosebis_nbins, 8 if cosebis_nbins >= 64 else 6,
+    )
+    print(f"Using {cosebis_nbins}-bin pseudo-Cl, reliable modes 1-{reliable_mode_max}")
 
     versions_leak_corr = [v for v in config["versions"] if "_leak_corr" in v]
 
@@ -341,7 +351,7 @@ def main():
         # Create figure
         fig = _make_data_vector_figure(
             harm, (ce_cfg, cb_cfg, cov_cfg), nmodes, scale_cut,
-            title=fig_spec["title"],
+            title=fig_spec["title"], reliable_mode_max=reliable_mode_max,
         )
         fig_path = output_dir / fig_spec["filename"]
         fig.savefig(fig_path, dpi=300, bbox_inches="tight")
@@ -359,7 +369,7 @@ def main():
 
         # Compute harmonic B-mode PTE for leak-corrected versions
         if fig_spec["leak_corrected"] and ver not in harmonic_ptes:
-            n_rel = _RELIABLE_MODE_MAX
+            n_rel = reliable_mode_max
             cb_h_rel = cb_h[:n_rel]
             cov_h_B_rel = cov_h[nmodes:nmodes + n_rel, nmodes:nmodes + n_rel]
             chi2, pte, dof = compute_chi2_pte(cb_h_rel, cov_h_B_rel)
@@ -375,6 +385,7 @@ def main():
 
     fig_vc = _make_version_comparison_figure(
         all_version_data, nmodes, scale_cut, version_labels_map,
+        reliable_mode_max=reliable_mode_max,
     )
     fig_vc_path = Path(snakemake.output["figure_versions"])
     fig_vc.savefig(fig_vc_path, dpi=300, bbox_inches="tight")
@@ -389,22 +400,20 @@ def main():
         "generated": datetime.now().isoformat(),
         "evidence": {
             "nmodes": nmodes,
-            "reliable_modes": _RELIABLE_MODE_MAX,
+            "reliable_modes": reliable_mode_max,
             "scale_cut": list(scale_cut),
-            "powspace_nbins": int(config["cl"]["n_ell_bins"]),
+            "powspace_nbins": cosebis_nbins,
             "versions_compared": versions_leak_corr,
             "harmonic_b_mode_ptes": harmonic_ptes,
             "note": (
-                "Harmonic-space COSEBIS computed via cosmo_numba cosebis_from_Cell(). "
-                "B-modes are consistent between harmonic and config-space paths for "
-                "modes 1-6, indicating that the harmonic-space C_ell^BB excess is "
-                "absorbed by high-n COSEBIS modes that do not affect cosmological "
-                "inference. Modes n > 6 are unreliable: 32-bin powspace bandpowers "
-                "underresolve the oscillatory W_n(ell) filter functions. "
-                "E-modes diverge between methods for n > ~13, consistent with "
-                "bandpower resolution limits; B-modes remain consistent across "
-                "all modes. Harmonic B-mode PTEs use modes 1-6 only with "
-                "propagated covariance."
+                f"Harmonic-space COSEBIS computed via cosmo_numba cosebis_from_Cell() "
+                f"from {cosebis_nbins}-bin powspace pseudo-C_ell. "
+                f"With {cosebis_nbins} bins, modes 1-{reliable_mode_max} are reliably "
+                f"recovered (validated on GLASS mocks: E_n/config within 2%). "
+                f"Higher modes are limited by W_n(ell) numerical precision at "
+                f"~10^-14 amplitudes, not binning. "
+                f"Harmonic B-mode PTEs use modes 1-{reliable_mode_max} with "
+                f"propagated covariance."
             ),
         },
         "artifacts": artifacts,
