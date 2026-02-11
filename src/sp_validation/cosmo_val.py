@@ -1661,7 +1661,7 @@ class CosmologyValidation:
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
                 self.cat_ggs[ver].xip,
                 yerr=np.sqrt(self.cat_ggs[ver].varxip),
                 label=ver,
@@ -1684,7 +1684,7 @@ class CosmologyValidation:
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
                 self.cat_ggs[ver].xim,
                 yerr=np.sqrt(self.cat_ggs[ver].varxim),
                 label=ver,
