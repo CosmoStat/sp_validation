@@ -55,7 +55,6 @@ if n_test > 0:
     dat_ext = dat_ext[:n_test]
 
 
-# %%
 # ## Masking
 
 # %%
