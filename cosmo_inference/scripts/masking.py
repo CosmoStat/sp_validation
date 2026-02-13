@@ -4,53 +4,139 @@ import numpy as np
 from multiprocessing import Pool, cpu_count
 import os
 import sys
+from pathlib import Path
+import yaml
 # -------------------------
 # Masking logic
-def apply_masks(data, data_ext):
+
+def apply_condition(array, kind, value): 
     """
-    Returns a boolean mask where True = galaxy passes all cuts (unmasked).
+    Apply a logical condition to a NumPy array and return a boolean mask, based 
+    on the "kind" key in the mask config YAML file.
     """
-    
-    gal_rel_size = np.divide(
+    if kind == "equal":
+        return array == value
+    elif kind == "not_equal":
+        return array != value
+    elif kind == "greater_equal":
+        return array >= value
+    elif kind == "greater":
+        return array > value
+    elif kind == "less_equal":
+        return array <= value
+    elif kind == "less":
+        return array < value
+    elif kind == "range":
+        return (array >= value[0]) & (array <= value[1])
+    else:
+        raise ValueError(f"Unknown kind: {kind}")
+
+def apply_masks(data, data_ext, mask_config):
+    """
+    Construct a boolean mask selecting galaxies that satisfy all
+    masking criteria defined in the YAML configuration file.
+
+    Parameters
+    ----------
+    data : numpy.ndarray or structured array
+        Slice of the HDF5 "data" group containing per-object
+        measurements (e.g. FLAGS, mag, NGMIX quantities).
+
+    data_ext : numpy.ndarray or structured array
+        Slice of the HDF5 "data_ext" group containing external or
+        post-processing flags (e.g. star masks, footprint flags).
+
+    mask_config : dict
+        Dictionary parsed from the YAML mask configuration file.
+        Expected structure:
+            - mask_config["dat"]     : list of cuts applied to `data`
+            - mask_config["dat_ext"] : list of cuts applied to `data_ext`
+            - mask_config["metacal"] : derived-quantity parameters
+              (e.g. relative size limits)
+
+    Returns
+    -------
+    numpy.ndarray (bool)
+        Boolean array of length equal to the input data slice.
+        True indicates the object passes all cuts (kept),
+        False indicates the object is masked (removed).
+    """
+
+    # Initialize mask
+    mask = np.ones(len(data), dtype=bool)
+
+    # --- dat group ---
+    for cut in mask_config.get("dat", []):
+        col = cut["col_name"]
+        kind = cut["kind"]
+        value = cut["value"]
+
+        mask &= apply_condition(data[col], kind, value)
+
+    # --- dat_ext group ---
+    for cut in mask_config.get("dat_ext", []):
+        col = cut["col_name"]
+        kind = cut["kind"]
+        value = cut["value"]
+
+        mask &= apply_condition(data_ext[col], kind, value)
+
+    # --- metacal relative size ---
+
+    rel_size = np.divide(
         data["NGMIX_T_NOSHEAR"],
         data["NGMIX_Tpsf_NOSHEAR"],
-        out=np.zeros_like(data["NGMIX_T_NOSHEAR"]),  # what to fill when denom == 0
-        where=(data["NGMIX_Tpsf_NOSHEAR"] > 0)       # only divide where valid
+        out=np.zeros_like(data["NGMIX_T_NOSHEAR"]),
+        where=(data["NGMIX_Tpsf_NOSHEAR"] > 0)
     )
 
-    mask = (
-        (data["FLAGS"] <= 3) & # v1.4.11.2
-        # (data["FLAGS"] == 0) & # v1.4.5/6/7/8
-        (data["overlap"] == True) &
-        (data["IMAFLAGS_ISO"] == 0) &
-        (data["N_EPOCH"] >= 2) &
-        (data["mag"] >= 15) & (data["mag"] <= 30) &
-        (data["NGMIX_MOM_FAIL"] == 0) &
-        (data["NGMIX_ELL_PSFo_NOSHEAR_0"] != -10) &
-        (data["NGMIX_ELL_PSFo_NOSHEAR_1"] != -10) &
-        # (data_ext["1_Faint_star_halos"] == False) &  # v1.4.8
-        # (data_ext["2_Bright_star_halos"] == False) & # v1.4.7
-        (data_ext["4_Stars"] == False) &
-        (data_ext["8_Manual"] == False) &
-        (data_ext["64_r"] == False) &
-        (data_ext["1024_Maximask"] == False) &
-        (data_ext["npoint3"] >= 3) &
-        (gal_rel_size < 3.0) &
-        # (gal_rel_size > 0.707) # v1.4.6/7/8/11
-        (gal_rel_size > 0.5) # v1.4.5 
-        
-    )
+    rel_min = mask_config["metacal"]["gal_rel_size_min"]
+    rel_max = mask_config["metacal"]["gal_rel_size_max"]
+
+    mask &= (rel_size >= rel_min) & (rel_size <= rel_max)
+
     return mask
 
 # -------------------------
 # Process one chunk
 def process_chunk(args):
-    start, stop, filename, nside = args
+    """
+    Process a chunk of the HDF5 catalogue and return the unique
+    HEALPix pixels containing unmasked galaxies,to be executed in
+    parallel. It reads a slice of the catalogue, applies
+    the defined masking criteria, converts the sky positions
+    (RA, Dec) of retained galaxies into HEALPix pixel indices,
+    and returns the unique pixel indices for that chunk.
+
+    Parameters
+    ----------
+    args : tuple
+        Tuple containing:
+            - start : int
+                Starting row index of the chunk (inclusive).
+            - stop : int
+                Ending row index of the chunk (exclusive).
+            - filename : str
+                Path to the input HDF5 catalogue.
+            - nside : int
+                HEALPix NSIDE parameter defining map resolution.
+            - mask_config : dict
+                Parsed YAML mask configuration.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of unique HEALPix pixel indices (int) corresponding
+        to sky locations of galaxies that pass all mask cuts in
+        this chunk.
+    """
+
+    start, stop, filename, nside, mask_config = args
     with h5py.File(filename, "r") as f:
         data = f["data"][start:stop]
         data_ext = f["data_ext"][start:stop]
 
-    mask = apply_masks(data, data_ext)
+    mask = apply_masks(data, data_ext, mask_config)
 
     ra = data["RA"][mask]
     dec = data["Dec"][mask]
@@ -64,11 +150,39 @@ def process_chunk(args):
 
 # -------------------------
 # Build mask map in parallel
-def build_mask_map_hdf5(filename, nside=512, chunk_size=1_000_000):
+def build_mask_map_hdf5(filename, mask_config, nside, chunk_size=1_000_000):
+    """
+    Build a binary HEALPix mask map from an HDF5 galaxy catalogue.
+
+    The catalogue is processed in chunks to limit memory usage.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the input HDF5 catalogue containing "data" and
+        "data_ext" groups
+    mask_config : dict
+        Dictionary parsed from the YAML mask configuration file
+    nside : int
+        HEALPix NSIDE parameter defining the resolution of the
+        output map.
+    chunk_size : int, optional
+        Number of catalogue rows to process per chunk.
+        Default is 1,000,000.
+
+    Returns
+    -------
+    numpy.ndarray
+        One-dimensional HEALPix map (dtype uint8) of length
+        hp.nside2npix(nside), where:
+            - 1 indicates at least one unmasked galaxy falls
+              in that pixel,
+            - 0 indicates no retained galaxies.
+    """
     with h5py.File(filename, "r") as f:
         nrows = f["data"].shape[0]
 
-    chunks = [(i, min(i+chunk_size, nrows), filename, nside)
+    chunks = [(i, min(i+chunk_size, nrows), filename, nside, mask_config)
               for i in range(0, nrows, chunk_size)]
 
     mask_map = np.zeros(hp.nside2npix(nside), dtype=np.uint8)
@@ -79,21 +193,54 @@ def build_mask_map_hdf5(filename, nside=512, chunk_size=1_000_000):
 
     return mask_map
 
-# Example usage
+############################################################################################################
 if __name__ == "__main__":
-    filename = "/n17data/UNIONS/WL/v1.4.x/v1.4.5/unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5"
-    nside = sys.argv[1]
-    out_dir = os.getcwd()
-    mask_map = build_mask_map_hdf5(filename, nside=nside, chunk_size=500_000)
     
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+
+    nside = int(sys.argv[1])
+    ver = sys.argv[2] 
+    out_dir = Path(f"output_masks_v{ver}")
+    out_dir.mkdir(exist_ok=True)
+    
+    # Open and read in corresponding mask config file given catalogue version
+    mask_config_file = os.path.join(curr_dir, "..","..", "config", "calibration", f"mask_v1.X.{ver[-1]}.yaml")
+    with open(mask_config_file, "r") as f:
+        mask_config = yaml.safe_load(f)
+        
+    # Comprehensive base catalogue
+    filename = f"/n17data/UNIONS/WL/v1.4.x/v1.4.5/{mask_config['params']['input_path']}"
+        
+    # Build mask map from comprehensive catalogue
+    mask_map = build_mask_map_hdf5(filename, mask_config, nside, chunk_size=500_000)
+    
+    # Get survey area after masking
     npix = hp.nside2npix(nside)
     pix_area_sr   = 4 * np.pi / npix
     pix_area_deg2 = (180/np.pi)**2 * pix_area_sr
     n_obs = mask_map.sum()
     f_sky_obs = n_obs / npix
     area_obs_deg2 = n_obs * pix_area_deg2
-    print('kept area = ', area_obs_deg2)
+    print('Kept area = ', area_obs_deg2, "\n")
     
+    # Compute Cls of the mask map
     cl_mask = hp.anafast(mask_map, lmax=3*nside-1)
-    hp.write_map(os.path.join(out_dir, f"mask_map_v1.4.5_nside_{nside}.fits"), mask_map, overwrite=True)
-    np.savez(os.path.join(out_dir, f"mask_cls_from_flags_v1.4.5_nside_{nside}.npz"), ells=np.arange(len(cl_mask)), cl_mask=cl_mask)
+    ells = np.arange(len(cl_mask))
+    
+    # Save mask map and Cls
+    hp.write_map(out_dir / f"mask_map_v{ver}_nside_{nside}.fits", mask_map, overwrite=True)
+    np.savez(out_dir / f"mask_cls_from_flags_v{ver}_nside_{nside}.npz", ells=ells, cl_mask=cl_mask)
+
+    print(f"Mask map saved to {out_dir / f'mask_map_v{ver}_nside_{nside}.fits'} \n")
+    print(f"Mask Cls saved to {out_dir / f'mask_cls_from_flags_v{ver}_nside_{nside}.npz'} \n")
+    
+    # Compute normalising factor for the mask Cls
+    integral_w = np.sum((2*ells + 1) / (4 * np.pi) * cl_mask)/ (np.pi/180)**2
+    norm_factor = area_obs_deg2 / integral_w 
+    norm_cls = cl_mask * norm_factor
+
+    # Save normalised Cls to text file
+    idx = np.arange(len(cl_mask))
+    data_to_save = np.column_stack((idx, norm_cls))
+    np.savetxt(out_dir / f"mask_cls_v{ver}_nside_{nside}_norm.txt", data_to_save, fmt=["%d", "%.10e"])
+    print(f"Normalised mask Cls saved to {out_dir / f'mask_cls_v{ver}_nside_{nside}_norm.txt'} \n")
