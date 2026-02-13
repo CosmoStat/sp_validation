@@ -12,7 +12,8 @@ from scipy import stats
 
 # Shared constants
 PAPER_MPLSTYLE = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-FIG_WIDTH_FULL = 7.24  # Two-column A&A format
+FIG_WIDTH_FULL = 7.24  # Two-column A&A format (textwidth)
+FIG_WIDTH_SINGLE = 3.54  # Single-column A&A format (columnwidth)
 MARKER_STYLES = ["o", "s", "D", "^"]
 
 # Default errorbar styling for version comparison plots
@@ -26,8 +27,8 @@ ERRORBAR_DEFAULTS = {
 
 # Default version box styling
 VERSION_BOX_DEFAULTS = {
-    "edge_color": "0.3",
-    "edge_linewidth": 0.7,
+    "edge_color": "black",
+    "edge_linewidth": 0.8,
     "fiducial_line_color": "black",
     "fiducial_line_width": 1.0,
 }
@@ -74,7 +75,7 @@ def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85)):
     return cmap
 
 
-def compute_chi2_pte(data, covariance):
+def compute_chi2_pte(data, covariance, n_samples=None):
     """Compute chi-squared and PTE for null test.
 
     Parameters
@@ -83,6 +84,11 @@ def compute_chi2_pte(data, covariance):
         Data vector (e.g., B-mode signal).
     covariance : array_like
         Covariance matrix.
+    n_samples : int, optional
+        Number of samples used to estimate the covariance (e.g., MC samples
+        or jackknife patches). When provided, the Hartlap correction factor
+        (n_samples - n_bins - 2) / (n_samples - 1) is applied to debias the
+        inverse covariance estimate. Leave as None for analytical covariances.
 
     Returns
     -------
@@ -95,6 +101,9 @@ def compute_chi2_pte(data, covariance):
     """
     chi2 = float(data @ np.linalg.solve(covariance, data))
     dof = len(data)
+    if n_samples is not None:
+        hartlap_factor = (n_samples - dof - 2) / (n_samples - 1)
+        chi2 *= hartlap_factor
     pte = stats.chi2.sf(chi2, dof)
     return chi2, pte, dof
 
@@ -254,8 +263,8 @@ def draw_normalized_version_box(ax, x_left, x_right, y_vals, fiducial_val, style
         Styling dict from get_box_style().
     """
     y_vals = np.asarray(y_vals)
-    box_bottom = y_vals.min() - 1
-    box_top = y_vals.max() + 1
+    box_bottom = y_vals.min()
+    box_top = y_vals.max()
 
     rect = Rectangle(
         (x_left, box_bottom),
@@ -303,7 +312,7 @@ def draw_normalized_boxes_log_scale(ax, x_centers, datasets, y_norm_key, fiducia
     """
     style = get_box_style(box_style)
     offset_min, offset_max = x_offset_range
-    padding = 0.1 * (offset_max - offset_min)
+    padding = 0.25 * (offset_max - offset_min)
     box_left_factor = offset_min - padding
     box_right_factor = offset_max + padding
 
@@ -341,7 +350,7 @@ def draw_normalized_boxes_linear_scale(ax, x_centers, datasets, y_norm_key, fidu
     """
     style = get_box_style(box_style)
     x_offsets = np.asarray(x_offsets)
-    box_half_width = np.max(np.abs(x_offsets)) * 1.25
+    box_half_width = np.max(np.abs(x_offsets)) * 1.7
 
     for i, x_i in enumerate(x_centers):
         y_vals = np.array([data[y_norm_key][i] for data in datasets])
@@ -380,7 +389,7 @@ def draw_normalized_boxes_ell_scale(ax, ell, ell_widths, datasets, y_norm_key, f
     """
     style = get_box_style(box_style)
     # Max jitter is ((n-1)/2) * jitter_fraction; add 15% padding
-    box_half_width_factor = ((n_versions - 1) / 2) * jitter_fraction * 1.15
+    box_half_width_factor = ((n_versions - 1) / 2) * jitter_fraction * 1.4
 
     for i, ell_i in enumerate(ell):
         y_vals = np.array([data[y_norm_key][i] for data in datasets])

@@ -9,6 +9,7 @@ envvars:
 
 from pathlib import Path
 import json
+import re
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
 # Source of truth: sp_validation.cosmology.PLANCK18
@@ -20,7 +21,7 @@ with open(COSMOLOGY_PARAMS) as _f:
 # Wildcard constraints — centralized here, not in individual rule files
 # Patterns must match all expected values; overly restrictive patterns cause silent failures
 wildcard_constraints:
-    version=r"SP_v[\d.]+(_w_iv)?(_leak_corr)?",
+    version=r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
     blind=r"[ABC]",
     nbins=r"\d+",
     min_sep=r"[0-9.]+",
@@ -44,7 +45,7 @@ PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
 # Catalog config path (also loaded as configfile above, but scripts need the path)
 CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
 
-# All three blinds (for rules that need all, e.g. covariance_blind_consistency)
+# All three blinds (for rules that need all, e.g. bb_covariance_blind_independence)
 # Single-blind operations use config["fiducial"]["blind"] instead
 BLINDS = ["A", "B", "C"]
 
@@ -70,13 +71,13 @@ def fiducial_binning_suffix():
 def resolve_covariance_version(version):
     """Map version to its covariance version.
 
-    v1.4.10.1 and v1.4.11.2 use v1.4.6's covariance (same footprint).
-    v1.4.10.1: blending corrections don't change geometry.
-    v1.4.11.2: blends fix + updated processing, n(z) not yet available.
+    v1.4.11.3 reuses v1.4.11.2's covariance (same mask/area, PSF size fix only).
+    v1.4.11.2 has its own mask/area (2504 deg² vs 2405 for v1.4.6).
+    ecut versions get their own covariance (different n_eff/sigma_e).
     """
-    if "v1.4.10.1" in version or "v1.4.11.2" in version:
-        return version.replace("v1.4.10.1", "v1.4.6").replace("v1.4.11.2", "v1.4.6")
-    return version
+    if "_ecut" in version:
+        return version
+    return version.replace("v1.4.11.3", "v1.4.11.2")
 
 
 def covariance_base(version, blind, gaussian="ng", min_sep=None, max_sep=None, nbins=None,
@@ -138,13 +139,13 @@ def covariance_path(version, blind, gaussian="ng", min_sep=None, max_sep=None, n
 def build_redshift_path(version, blind):
     """Construct n(z) filepath for given catalog version and blind.
 
-    v1.4.10.1 and v1.4.11.2 use v1.4.6's N(z):
-    - v1.4.10.1: same galaxies with blending corrections
-    - v1.4.11.2: blends fix + updated processing, n(z) not yet available
+    v1.4.11.x uses v1.4.6's N(z):
+    - v1.4.11.3: PSF size fix (replaces v1.4.11.2), n(z) not yet available
     """
-    base_version = version.replace('_leak_corr', '')
+    base_version = re.sub(r'_leak_corr$', '', version)
+    base_version = re.sub(r'_ecut\d+', '', base_version)
     # Versions derived from v1.4.6 footprint - use same N(z)
-    if 'v1.4.10' in base_version or 'v1.4.11' in base_version:
+    if 'v1.4.11' in base_version:
         base_version = 'SP_v1.4.6'
     version_dir = base_version.replace('SP_', '')
     return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
@@ -170,7 +171,7 @@ rule xi:
         str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
         str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-    threads: 48
+    threads: 12
     params:
         ver="{version}",
         min_sep="{min_sep}",
@@ -181,7 +182,7 @@ rule xi:
     resources:
         mem_mb=30000,
         disk_mb=20000,
-        runtime=120,
+        runtime=360,
     script:
         "scripts/run_2pcf.py"
 
@@ -208,8 +209,9 @@ rule rho_tau_stats:
 include: "rules/covariance.smk"
 include: "rules/inference.smk"
 include: "rules/masks.smk"
+include: "rules/glass_mock_validation.smk"
 
-# Epistemic rules (evidence.json producers, order matters: specs → claims → synthesis)
-include: "rules/specs.smk"
+# Epistemic rules (evidence.json producers, order matters: claims → synthesis)
 include: "rules/claims.smk"
+include: "rules/ecut.smk"
 include: "rules/synthesis.smk"

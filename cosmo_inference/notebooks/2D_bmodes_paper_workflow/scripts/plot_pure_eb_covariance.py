@@ -10,14 +10,14 @@ import numpy as np
 import seaborn as sns
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+from plotting_utils import PAPER_MPLSTYLE
+
 # Unbuffered output for Snakemake log streaming
 sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
 sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
 
 # Apply paper style
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _load_snakemake():

@@ -19,12 +19,10 @@ import numpy as np
 import treecorr
 from astropy.io import fits
 
+from plotting_utils import PAPER_MPLSTYLE
 from sp_validation.b_modes import calculate_cosebis
 
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/"
-    "2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+plt.style.use(PAPER_MPLSTYLE)
 
 
 BLINDS = ["A", "B", "C"]
@@ -235,7 +233,7 @@ def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_resul
 
 def main(snakemake):
     config = snakemake.config
-    version = config["fiducial"]["version"]
+    version = config["fiducial"]["mock_version"]
 
     # Load pure E/B covariances for all blinds
     pure_eb_data = {}

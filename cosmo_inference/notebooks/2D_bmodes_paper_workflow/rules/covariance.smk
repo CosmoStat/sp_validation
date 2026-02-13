@@ -20,15 +20,18 @@ MASK_CLS_FILES = {
     "v1.4.5": f"{MASK_CLS_BASE}/mask_cls_v1.4.5_nside_8192_norm.txt",
     "v1.4.6": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
     "v1.4.8": f"{MASK_CLS_BASE}/mask_cls_v1.4.8_nside_8192_norm.txt",
-    # v1.4.10.1 and v1.4.11.2 use same footprint as v1.4.6
-    "v1.4.10.1": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
-    "v1.4.11.2": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
+    "v1.4.11.2": f"{MASK_CLS_BASE}/mask_cls_v1.4.11.2_nside_8192_norm_test.txt",
 }
 
 
 def get_mask_cls_path(version):
-    """Return absolute mask Cl path for the requested catalog version."""
+    """Return absolute mask Cl path for the requested catalog version.
+
+    v1.4.11.3 reuses v1.4.11.2's mask (PSF size fix only, same footprint).
+    """
     version_dir = version.replace('_leak_corr', '').replace('SP_', '')
+    version_dir = re.sub(r'_ecut\d+', '', version_dir)
+    version_dir = version_dir.replace("v1.4.11.3", "v1.4.11.2")
     return MASK_CLS_FILES.get(version_dir, "")
 
 
@@ -286,32 +289,12 @@ rule covariance_unmasked:
 
 ruleorder: covariance_ini > covariance_cosmocov > covariance_cat > covariance_process > covariance
 
-rule covariance_blind_consistency:
-    """Blind consistency check: covariance matrices for blinds A, B, C."""
-    input:
-        specs=[
-            "workflow/config/covariance_blind_consistency.md",
-            "workflow/config/covariance.md",
-        ],
-        config="workflow/config/config.yaml",
-        # Named inputs to match script expectations (cov_a, cov_b, cov_c)
-        cov_a=covariance_path(FIDUCIAL["version"], "A"),
-        cov_b=covariance_path(FIDUCIAL["version"], "B"),
-        cov_c=covariance_path(FIDUCIAL["version"], "C"),
-    output:
-        evidence="results/claims/covariance_blind_consistency/evidence.json",
-        figure="results/claims/covariance_blind_consistency/figure.png",
-    script:
-        "../scripts/covariance_blind_consistency.py"
-
-
 localrules:
     cosmology_params,
     covariance_ini,
     covariance_cat,
     covariance_process,
     generate_glass_mock_rhotau_samples,
-    covariance_blind_consistency,
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -325,7 +308,7 @@ BASE_VERSIONS = [v.replace("_leak_corr", "") for v in config["versions"]]
 
 # Wildcard constraints for unified pseudo-Cl rules
 wildcard_constraints:
-    binning = "linear|powspace",
+    binning = "linear|logspace|powspace",
 
 
 rule pseudo_cl:

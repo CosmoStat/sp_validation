@@ -25,7 +25,7 @@ Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper sh
 
 | Figure | Claim | File | Section | Label |
 |--------|-------|------|---------|-------|
-| Config-space PTE heatmaps | `config_space_pte_matrices` | `config_space_pte_composite.png` | §3 | `fig:pte_heatmaps` |
+| Config-space PTE heatmaps | `config_space_pte_matrices` | `config_space_pte_fiducial.png` | §3 | `fig:pte_heatmaps` |
 | Harmonic PTE heatmap | `harmonic_space_pte_matrices` | `cl_pte_heatmap.png` | §3 | `fig:pte_cl` |
 | Pure E/B version comparison | `pure_eb_version_comparison` | `pure_eb_versions.png` | §3.1 | `fig:pure_eb_versions` |
 | Harmonic version comparison | `cl_version_comparison` | `cl_versions.png` | §3.1 | `fig:cl_versions` |

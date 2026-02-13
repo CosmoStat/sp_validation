@@ -148,7 +148,7 @@ rule cosebis_version_comparison:
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
         figure_stacked=f"{CLAIMS_DIR}/cosebis_version_comparison/figure_stacked.png",
-        paper_stacked=f"{PAPER_FIGURES_DIR}/cosebis_bmode_stacked.png",
+        paper_stacked=f"{PAPER_FIGURES_DIR}/cosebis_bmode_stacked.pdf",
     script:
         "../scripts/cosebis_version_comparison.py"
 
@@ -178,7 +178,7 @@ rule cosebis_data_vector:
         cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
-        paper_figure=f"{PAPER_FIGURES_DIR}/cosebis_data_vector.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/cosebis_data_vector.pdf",
         **_per_version_figure_outputs(f"{CLAIMS_DIR}/cosebis_data_vector"),
     script:
         "../scripts/cosebis_data_vector.py"
@@ -217,7 +217,7 @@ rule precompute_pure_eb_chunk:
 rule precompute_pure_eb:
     """Gather MC sample chunks and compute final pure E/B covariance."""
     wildcard_constraints:
-        version=r"[^_]+_v[\d.]+(_leak_corr)?",  # e.g. SP_v1.4.6 or SP_v1.4.6_leak_corr
+        version=r"[^_]+_v[\d.]+(_ecut\d+)?(_leak_corr)?",  # e.g. SP_v1.4.6, SP_v1.4.6_ecut07_leak_corr
         blind=r"[ABC]",
     input:
         chunks=expand(
@@ -262,7 +262,7 @@ rule pure_eb_data_vector:
            for ver in VERSIONS_ALL_FOR_PLOTS},
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
-        paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.pdf",
         **_per_version_figure_outputs(f"{CLAIMS_DIR}/pure_eb_data_vector"),
     script:
         "../scripts/pure_eb_data_vector.py"
@@ -291,7 +291,7 @@ rule pure_eb_version_comparison:
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_version_comparison/evidence.json",
         figure=f"{CLAIMS_DIR}/pure_eb_version_comparison/figure.png",
-        paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_versions.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_versions.pdf",
     script:
         "../scripts/pure_eb_version_comparison.py"
 
@@ -318,7 +318,7 @@ rule pure_eb_covariance:
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_covariance/evidence.json",
         figure=f"{CLAIMS_DIR}/pure_eb_covariance/figure.png",
-        paper_figure=f"{PAPER_FIGURES_DIR}/eb_covariance.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/eb_covariance.pdf",
     script:
         "../scripts/pure_eb_covariance.py"
 
@@ -377,7 +377,7 @@ rule cl_data_vector:
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
         evidence=f"{CLAIMS_DIR}/cl_data_vector/evidence.json",
-        paper_figure=f"{PAPER_FIGURES_DIR}/cl_data_vector.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/cl_data_vector.pdf",
         **_per_version_figure_outputs(f"{CLAIMS_DIR}/cl_data_vector"),
     script:
         "../scripts/cl_data_vector.py"
@@ -403,7 +403,7 @@ rule cl_version_comparison:
     output:
         evidence=f"{CLAIMS_DIR}/cl_version_comparison/evidence.json",
         figure=f"{CLAIMS_DIR}/cl_version_comparison/figure.png",
-        paper_figure=f"{PAPER_FIGURES_DIR}/cl_versions.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/cl_versions.pdf",
     script:
         "../scripts/cl_version_comparison.py"
 
@@ -469,8 +469,8 @@ rule config_space_pte_matrices:
         evidence=f"{CLAIMS_DIR}/config_space_pte_matrices/evidence.json",
         figure_fiducial=f"{CLAIMS_DIR}/config_space_pte_matrices/figure_fiducial.png",
         figure_appendix=f"{CLAIMS_DIR}/config_space_pte_matrices/figure_appendix.png",
-        paper_figure_fiducial=f"{PAPER_FIGURES_DIR}/config_space_pte_fiducial.png",
-        paper_figure_appendix=f"{PAPER_FIGURES_DIR}/config_space_pte_composite_appendix.png",
+        paper_figure_fiducial=f"{PAPER_FIGURES_DIR}/config_space_pte_fiducial.pdf",
+        paper_figure_appendix=f"{PAPER_FIGURES_DIR}/config_space_pte_composite_appendix.pdf",
     script:
         "../scripts/config_space_pte_matrices.py"
 
@@ -502,8 +502,8 @@ rule harmonic_space_pte_matrices:
         evidence=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",
         figure_fiducial=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/figure_fiducial.png",
         figure_appendix=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/figure_appendix.png",
-        paper_figure_fiducial=f"{PAPER_FIGURES_DIR}/cl_pte_heatmap.png",
-        paper_figure_appendix=f"{PAPER_FIGURES_DIR}/cl_pte_composite_appendix.png",
+        paper_figure_fiducial=f"{PAPER_FIGURES_DIR}/cl_pte_heatmap.pdf",
+        paper_figure_appendix=f"{PAPER_FIGURES_DIR}/cl_pte_composite_appendix.pdf",
     script:
         "../scripts/harmonic_space_pte_matrices.py"
 
@@ -559,13 +559,21 @@ rule bb_covariance_blind_independence:
 
 _COSEBIS_NBINS = config["cl"].get("cosebis_nbins", 32)
 
+_COSEBIS_ANGULAR_RANGES = {
+    "full": (float(config["cosebis"]["theta_min"]), float(config["cosebis"]["theta_max"])),
+    "fiducial": (float(config["fiducial"]["fiducial_min_scale"]), float(config["fiducial"]["fiducial_max_scale"])),
+}
+
 rule harmonic_config_cosebis_comparison:
     """Cross-validate COSEBIS from harmonic (pseudo-Cl) and config (xi_pm) paths.
 
+    Parameterized by {angular_range} (full or fiducial scale cuts).
     Produces 9 per-version figures (1 paper + 4 corrected + 4 uncorrected)
     plus a version comparison figure. Uses cl.cosebis_nbins (default 96) for
     finer bandpower resolution that recovers COSEBIS modes 1-7.
     """
+    wildcard_constraints:
+        angular_range="full|fiducial",
     input:
         specs=[
             f"{CONFIG_DIR}/harmonic_config_cosebis_comparison.md",
@@ -577,11 +585,13 @@ rule harmonic_config_cosebis_comparison:
         **{f"pseudo_cl_cov_{ver}": _pseudo_cl_cov_path(ver, nbins=_COSEBIS_NBINS) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"cov_{ver}": _cov_integration_path(ver, FIDUCIAL["blind"]) for ver in VERSIONS_ALL_FOR_PLOTS},
+    params:
+        scale_cut=lambda wildcards: _COSEBIS_ANGULAR_RANGES[wildcards.angular_range],
     output:
-        evidence=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/evidence.json",
-        figure_versions=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison/figure_versions.png",
-        paper_figure=f"{PAPER_FIGURES_DIR}/harmonic_config_cosebis.png",
-        **_per_version_figure_outputs(f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison"),
+        evidence=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/evidence.json",
+        figure_versions=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/figure_versions.png",
+        paper_figure=f"{PAPER_FIGURES_DIR}/harmonic_config_cosebis_{{angular_range}}.pdf",
+        **_per_version_figure_outputs(f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}"),
     script:
         "../scripts/harmonic_config_cosebis_comparison.py"
 

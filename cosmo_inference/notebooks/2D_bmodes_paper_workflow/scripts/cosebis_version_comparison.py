@@ -34,22 +34,6 @@ plt.style.use(PAPER_MPLSTYLE)
 
 
 
-def _get_cov_path(cov_base_dir, version, blind, min_sep, max_sep, nbins):
-    """Construct covariance path for a specific blind.
-
-    Versions derived from v1.4.6 footprint (v1.4.10.1, v1.4.11.2) use v1.4.6 covariance.
-    """
-    # Same footprint → same covariance geometry
-    cov_version = version.replace("v1.4.10.1", "v1.4.6").replace("v1.4.11.2", "v1.4.6")
-    base_name_masked = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
-    masked_path = f"{cov_base_dir}/{base_name_masked}/{base_name_masked}_processed.txt"
-    if Path(masked_path).exists():
-        return masked_path
-
-    base_name = f"covariance_{cov_version}_{blind}_g_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
-    return f"{cov_base_dir}/{base_name}/{base_name}_processed.txt"
-
-
 def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, fiducial_idx,
                                   y_limits=None, x_offsets=None, box_style=None):
     """Create a vertically stacked B-mode COSEBIS comparison figure.
@@ -67,10 +51,10 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
         Styling for version boxes.
     """
     if x_offsets is None:
-        x_offsets = np.array([-0.12, -0.04, 0.04, 0.12])
+        x_offsets = np.array([-0.20, -0.07, 0.07, 0.20])
     x_offsets = np.array(x_offsets)
 
-    fig, axes = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.6), sharex=True)
+    fig, axes = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.4), sharex=True)
 
     modes = np.arange(1, nmodes + 1)
     scale_labels = {"fiducial": "Fiducial", "full": "Full"}
@@ -121,7 +105,7 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
         label = scale_labels[scale_key]
         ax.text(
             0.98, 0.95,
-            rf"{label} $\theta \in [{scale_cut[0]:.0f}, {scale_cut[1]:.0f}]'$",
+            rf"{label} $\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$",
             transform=ax.transAxes,
             ha="right", va="top",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
@@ -148,18 +132,20 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
 
 def main():
     config = snakemake.config
-    # Only leak-corrected versions have COSEBIS computed
-    versions = [v for v in config["versions"] if "_leak_corr" in v]
+    # Version list: from params if provided (ecut comparison), else from config
+    versions = getattr(snakemake.params, "versions", None)
+    if versions is None:
+        versions = [v for v in config["versions"] if "_leak_corr" in v]
     nmodes = config["fiducial"]["nmodes"]
     plotting_config = config["plotting"]
 
-    # Use fiducial blind for plotting (B-modes are same across blinds, only covariance differs)
-    blind = config["fiducial"]["blind"]
-    cov_base_dir = snakemake.params.cov_base_dir
     version_labels = snakemake.params.version_labels
 
     # Which version gets the fiducial reference line in boxes
-    fiducial_for_comparison = plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"])
+    fiducial_for_comparison = getattr(
+        snakemake.params, "fiducial_for_comparison",
+        plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"]),
+    )
 
     # Plotting config
     x_offsets = plotting_config.get("x_offsets", [-0.12, -0.04, 0.04, 0.12])
@@ -184,7 +170,7 @@ def main():
     nbins_int = int(config["fiducial"]["nbins_int"])
 
 
-    colors = sns.color_palette("colorblind", len(versions))
+    colors = sns.husl_palette(len(versions), l=0.4)
 
     # Compute COSEBIS for visualization - need to build datasets first to get fiducial_idx
     all_datasets = {}
@@ -192,10 +178,11 @@ def main():
     for scale_key, scale_cut in scale_cuts.items():
         datasets = []
 
-        for version, color, xi_path in zip(
+        for version, color, xi_path, cov_path in zip(
             versions,
             colors,
             snakemake.input["xi_integration"],
+            snakemake.input["cov_integration"],
         ):
             gg = treecorr.GGCorrelation(
                 min_sep=min_sep_int,
@@ -204,10 +191,6 @@ def main():
                 sep_units="arcmin",
             )
             gg.read(xi_path)
-
-            cov_path = _get_cov_path(
-                cov_base_dir, version, blind, min_sep_int, max_sep_int, nbins_int
-            )
 
             results = calculate_cosebis(
                 gg,
@@ -267,8 +250,8 @@ def main():
     if "paper_stacked" in snakemake.output.keys():
         paper_path = Path(snakemake.output["paper_stacked"])
         paper_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(fig_path, paper_path)
-        print(f"Copied to {paper_path}")
+        fig.savefig(paper_path, bbox_inches="tight")
+        print(f"Saved {paper_path}")
 
     plt.close(fig)
 

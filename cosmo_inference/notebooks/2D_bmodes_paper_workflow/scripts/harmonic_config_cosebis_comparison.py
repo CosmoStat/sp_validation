@@ -7,8 +7,8 @@ Cross-validates COSEBIS E_n and B_n computed from two independent paths:
 Produces 9 figures per the standard data vector pattern (1 paper + 4 corrected
 + 4 uncorrected), plus a version comparison figure.
 
-Full angular range [1, 250]' only. Modes > 6 shown with gray band
-(unreliable from 32-bin bandpowers).
+Angular range parameterized via snakemake.params.scale_cut (full or fiducial).
+Modes > reliable_mode_max shown with gray band.
 """
 
 import json
@@ -287,10 +287,7 @@ def main():
     version_labels_map = config["plotting"].get("version_labels", {})
 
     fiducial_version = config["fiducial"]["version"]
-    scale_cut = (
-        float(config["cosebis"]["theta_min"]),
-        float(config["cosebis"]["theta_max"]),
-    )
+    scale_cut = tuple(snakemake.params.scale_cut)
 
     cosebis_nbins = int(config["cl"].get("cosebis_nbins", 32))
     reliable_mode_max = _RELIABLE_MODE_MAX_BY_NBINS.get(
@@ -312,8 +309,9 @@ def main():
     # Track generated artifacts
     artifacts = {}
 
-    # Compute harmonic PTEs for leak-corrected versions only
+    # Compute B-mode PTEs for leak-corrected versions only
     harmonic_ptes = {}
+    config_ptes = {}
 
     # Cache leak-corrected results for version comparison figure
     all_version_data = {}
@@ -364,17 +362,24 @@ def main():
         if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
             paper_path = Path(snakemake.output["paper_figure"])
             paper_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(fig_path, paper_path)
-            print(f"  Copied to {paper_path}")
+            fig.savefig(paper_path, bbox_inches="tight")
+            print(f"  Saved {paper_path}")
 
-        # Compute harmonic B-mode PTE for leak-corrected versions
+        # Compute B-mode PTEs for leak-corrected versions
         if fig_spec["leak_corrected"] and ver not in harmonic_ptes:
             n_rel = reliable_mode_max
+            # Harmonic-space PTE
             cb_h_rel = cb_h[:n_rel]
             cov_h_B_rel = cov_h[nmodes:nmodes + n_rel, nmodes:nmodes + n_rel]
             chi2, pte, dof = compute_chi2_pte(cb_h_rel, cov_h_B_rel)
             harmonic_ptes[ver] = {"chi2": chi2, "pte": pte, "dof": dof}
             print(f"  Harmonic B-mode PTE (modes 1-{n_rel}): {pte:.4f} (chi2={chi2:.2f}, dof={dof})")
+            # Config-space PTE
+            cb_cfg_rel = cb_cfg[:n_rel]
+            cov_cfg_B_rel = cov_cfg[nmodes:nmodes + n_rel, nmodes:nmodes + n_rel]
+            chi2_c, pte_c, dof_c = compute_chi2_pte(cb_cfg_rel, cov_cfg_B_rel)
+            config_ptes[ver] = {"chi2": chi2_c, "pte": pte_c, "dof": dof_c}
+            print(f"  Config B-mode PTE (modes 1-{n_rel}): {pte_c:.4f} (chi2={chi2_c:.2f}, dof={dof_c})")
 
         # Cache leak-corrected results for version comparison figure
         if fig_spec["leak_corrected"] and ver not in all_version_data:
@@ -405,6 +410,7 @@ def main():
             "powspace_nbins": cosebis_nbins,
             "versions_compared": versions_leak_corr,
             "harmonic_b_mode_ptes": harmonic_ptes,
+            "config_b_mode_ptes": config_ptes,
             "note": (
                 f"Harmonic-space COSEBIS computed via cosmo_numba cosebis_from_Cell() "
                 f"from {cosebis_nbins}-bin powspace pseudo-C_ell. "

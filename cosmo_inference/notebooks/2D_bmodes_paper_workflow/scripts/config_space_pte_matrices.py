@@ -227,8 +227,11 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
         )
     )
 
-    # Title
-    ax.set_title(title, fontsize=9)
+    # Title inside plot (bottom-right of empty upper triangle)
+    if title:
+        ax.text(0.95, 0.05, title, transform=ax.transAxes,
+                ha="right", va="bottom", fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
 
     # Tick positioning: x-axis at left edge of bins, y-axis at top edge
     tick_step = 2
@@ -242,12 +245,12 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     ax.set_yticks(tick_indices + 1)
 
     if show_xticklabels:
-        ax.set_xticklabels(x_tick_labels, fontsize=6)
+        ax.set_xticklabels(x_tick_labels, fontsize=7)
     else:
         ax.set_xticklabels([])
 
     if show_yticklabels:
-        ax.set_yticklabels(y_tick_labels, fontsize=6)
+        ax.set_yticklabels(y_tick_labels, fontsize=7)
     else:
         ax.set_yticklabels([])
 
@@ -419,7 +422,7 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         r"$\xi_+^{\mathrm{B}}$",
         show_xticklabels=True, show_yticklabels=True
     )
-    ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
+    ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
     plot_pte_panel(
         ax_xim, pte_xim_B, theta_pure_eb,
@@ -438,12 +441,12 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     # Shared colorbar on rightmost column
     cax = fig.add_subplot(gs[0, 3])
     cbar = fig.colorbar(im_cosebis, cax=cax)
-    cbar.set_label("PTE", fontsize=8)
-    cbar.ax.tick_params(labelsize=6)
+    cbar.set_label("PTE", fontsize=9)
+    cbar.ax.tick_params(labelsize=7)
 
     # Common x-axis label
     fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center", fontsize=9)
+             ha="center")
 
     # Compute statistics
     stats = {
@@ -552,7 +555,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
             show_xticklabels=show_xticklabels, show_yticklabels=show_yticklabels
         )
         # Add y-axis label to leftmost panel of each row
-        ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
+        ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
         plot_pte_panel(
             ax_xim, pte_xim_B, theta_pure_eb,
@@ -571,7 +574,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         # Add version label to the right of each row
         ax_cosebis.annotate(
             version_label, xy=(1.02, 0.5), xycoords="axes fraction",
-            fontsize=8, weight="bold", va="center", ha="left", rotation=-90
+            fontsize=9, weight="bold", va="center", ha="left", rotation=-90
         )
 
         # Compute statistics
@@ -591,12 +594,12 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     # Shared colorbar on rightmost column
     cax = fig.add_subplot(gs[:, 3])
     cbar = fig.colorbar(im_cosebis, cax=cax)
-    cbar.set_label("PTE", fontsize=8)
-    cbar.ax.tick_params(labelsize=6)
+    cbar.set_label("PTE", fontsize=9)
+    cbar.ax.tick_params(labelsize=7)
 
     # Common x-axis label
     fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center", fontsize=9)
+             ha="center")
 
     return fig, all_stats, all_full_range_ptes
 
@@ -654,8 +657,8 @@ def main():
         print(f"  Saved {fig_fid_path}", flush=True)
 
         paper_fid_path = Path(snakemake.output["paper_figure_fiducial"])
-        shutil.copy2(fig_fid_path, paper_fid_path)
-        print(f"  Copied to {paper_fid_path}", flush=True)
+        fig_fid.savefig(paper_fid_path, bbox_inches="tight", facecolor="white")
+        print(f"  Saved {paper_fid_path}", flush=True)
 
         plt.close(fig_fid)
 
@@ -689,8 +692,8 @@ def main():
         print(f"  Saved {fig_path}", flush=True)
 
         paper_path = Path(snakemake.output["paper_figure_appendix"])
-        shutil.copy2(fig_path, paper_path)
-        print(f"  Copied to {paper_path}", flush=True)
+        fig.savefig(paper_path, bbox_inches="tight", facecolor="white")
+        print(f"  Saved {paper_path}", flush=True)
 
         plt.close(fig)
 

@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns  # Registers seaborn colormaps (icefire, etc.) with matplotlib
 
-from plotting_utils import PAPER_MPLSTYLE
+from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
 
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -119,7 +119,7 @@ def main():
     correlation = _cov_to_corr(cov_pure_eb)
 
     # Create figure (matching v1 epistemics style)
-    fig, ax = plt.subplots(figsize=(7.24, 5.79))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.8))
 
     # Plot correlation matrix (no origin="lower" so y increases downward like v1)
     im = ax.imshow(

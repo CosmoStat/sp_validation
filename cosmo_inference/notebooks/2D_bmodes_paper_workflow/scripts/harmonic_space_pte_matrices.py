@@ -19,7 +19,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from astropy.io import fits
 
-from plotting_utils import PAPER_MPLSTYLE, compute_chi2_pte, make_pte_colormap
+from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE, compute_chi2_pte, make_pte_colormap
 
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -173,13 +173,13 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
 
     if show_xlabel:
         ax.set_xticklabels([f"{ell[i]:.0f}" for i in tick_indices],
-                          rotation=45, ha="right", fontsize=6)
+                          rotation=45, ha="right", fontsize=7)
     else:
         ax.set_xticklabels([])
 
     if show_ylabel:
         y_tick_labels = [f"{ell[min(i + 1, n_ell - 1)]:.0f}" for i in tick_indices]
-        ax.set_yticklabels(y_tick_labels, fontsize=6)
+        ax.set_yticklabels(y_tick_labels, fontsize=7)
     else:
         ax.set_yticklabels([])
 
@@ -187,7 +187,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
         cbar = plt.colorbar(im, cax=cax)
-        cbar.set_label("PTE", fontsize=8)
+        cbar.set_label("PTE", fontsize=9)
         cbar.ax.tick_params(labelsize=7)
 
     return im
@@ -195,7 +195,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
 
 def create_single_panel(pte_matrix, ell):
     """Create single-panel figure for fiducial version."""
-    fig, ax = plt.subplots(1, 1, figsize=(3.54, 3.54))
+    fig, ax = plt.subplots(1, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE))
 
     plot_cl_pte_panel(ax, pte_matrix, ell, "", show_colorbar=True)
 
@@ -243,17 +243,17 @@ def create_npanel_composite(matrices, ells, panel_labels):
 
     for i, (ax, matrix, ell, label) in enumerate(zip(axes, matrices, ells, panel_labels)):
         im = plot_cl_pte_panel(ax, matrix, ell, "", show_ylabel=(i == 0))
-        ax.set_title(label, fontsize=9)
+        ax.set_title(label)
 
     # Shared colorbar (use last image)
     cbar = fig.colorbar(im, cax=cax)
-    cbar.set_label("PTE", fontsize=8)
+    cbar.set_label("PTE", fontsize=9)
     cbar.ax.tick_params(labelsize=7)
 
     # Common axis labels
-    fig.text(0.5, 0.02, r"$\ell_{\mathrm{min}}$", ha="center", fontsize=9)
+    fig.text(0.5, 0.02, r"$\ell_{\mathrm{min}}$", ha="center")
     fig.text(0.02, 0.53, r"$\ell_{\mathrm{max}}$",
-             va="center", rotation="vertical", fontsize=9)
+             va="center", rotation="vertical")
 
     return fig
 
@@ -346,8 +346,8 @@ def main():
         print(f"\nSaved fiducial figure: {fig_path}")
 
         paper_path = Path(snakemake.output["paper_figure_fiducial"])
-        shutil.copy2(fig_path, paper_path)
-        print(f"Copied to {paper_path}")
+        fig_fiducial.savefig(paper_path, bbox_inches="tight")
+        print(f"Saved {paper_path}")
 
         plt.close(fig_fiducial)
 
@@ -365,8 +365,8 @@ def main():
         print(f"\nSaved appendix figure: {fig_path}")
 
         paper_path = Path(snakemake.output["paper_figure_appendix"])
-        shutil.copy2(fig_path, paper_path)
-        print(f"Copied to {paper_path}")
+        fig_appendix.savefig(paper_path, bbox_inches="tight", facecolor="white")
+        print(f"Saved {paper_path}")
 
         plt.close(fig_appendix)
 

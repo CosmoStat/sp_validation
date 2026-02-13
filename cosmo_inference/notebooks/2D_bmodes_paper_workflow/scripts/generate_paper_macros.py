@@ -14,7 +14,7 @@ from pathlib import Path
 
 # Version number to word mapping for TeX-safe macro names
 # (avoids cleveref/siunitx conflict with numeric names)
-VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "11.2": "ElevenTwo"}
+VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "11.2": "ElevenTwo", "11.3": "ElevenThree"}
 
 
 def _parse_version_short(version: str) -> str:
@@ -42,18 +42,18 @@ def _format_value(value, bold_threshold=None, italic_threshold=None) -> str:
         if math.isnan(value):
             return "--"
         if abs(value) < 0.001 and value != 0:
-            text = f"{value:.2e}"
+            text = rf"\num{{{value:.2e}}}"
         elif abs(value) < 0.1:
-            text = f"{value:.3f}"
+            text = rf"\num{{{value:.3f}}}"
         else:
-            text = f"{value:.2f}"
+            text = rf"\num{{{value:.2f}}}"
         if bold_threshold is not None and value < bold_threshold:
             return rf"\textbf{{{text}}}"
         if italic_threshold is not None and value < italic_threshold:
             return rf"\textit{{{text}}}"
         return text
     elif isinstance(value, int):
-        return str(value)
+        return rf"\num{{{value}}}"
     elif isinstance(value, str):
         return value.replace("_", r"\_")
     elif isinstance(value, list):
@@ -87,14 +87,14 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         fid_versions = fiducial.get("versions", {})
         fid_data = fid_versions.get(fiducial_version, {})
         if "pte_6_min" in fid_data:
-            macros.append(f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}")
+            macros.append(f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'], bold_threshold=0.05)}}}")
 
         # Full range
         full = cosebis_ev.get("full", {})
         full_versions = full.get("versions", {})
         full_data = full_versions.get(fiducial_version, {})
         if "pte_6_min" in full_data:
-            macros.append(f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'])}}}")
+            macros.append(f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'], bold_threshold=0.05)}}}")
 
         # Scale cuts from fiducial
         if "scale_cut_arcmin" in fiducial:
@@ -116,22 +116,22 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         # Fiducial PTEs - use pte_joint_min (conservative across blinds)
         eb_fid = eb_ev.get("fiducial", {})
         if "pte_joint_min" in eb_fid:
-            macros.append(f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint_min'])}}}")
+            macros.append(f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint_min'], bold_threshold=0.05)}}}")
 
         # Full range PTEs
         full = eb_ev.get("full", {})
         if "pte_joint_min" in full:
-            macros.append(f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint_min'])}}}")
+            macros.append(f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint_min'], bold_threshold=0.05)}}}")
 
         # Scale cuts from fiducial
         if "scale_cut_xip" in eb_fid:
             cuts = eb_fid["scale_cut_xip"]
-            macros.append(f"\\newcommand{{\\ebthetaXipMin}}{{{cuts[0]}}}")
-            macros.append(f"\\newcommand{{\\ebthetaXipMax}}{{{cuts[1]}}}")
+            macros.append(f"\\newcommand{{\\ebthetaXipMin}}{{\\num{{{cuts[0]}}}}}")
+            macros.append(f"\\newcommand{{\\ebthetaXipMax}}{{\\num{{{cuts[1]}}}}}")
         if "scale_cut_xim" in eb_fid:
             cuts = eb_fid["scale_cut_xim"]
-            macros.append(f"\\newcommand{{\\ebthetaXimMin}}{{{cuts[0]}}}")
-            macros.append(f"\\newcommand{{\\ebthetaXimMax}}{{{cuts[1]}}}")
+            macros.append(f"\\newcommand{{\\ebthetaXimMin}}{{\\num{{{cuts[0]}}}}}")
+            macros.append(f"\\newcommand{{\\ebthetaXimMax}}{{\\num{{{cuts[1]}}}}}")
 
         macros.append("")
 
@@ -148,19 +148,19 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         block_analysis = ev.get("block_analysis", {})
         if "xi_E" in block_analysis:
             cond = block_analysis["xi_E"]["condition_number"]
-            macros.append(f"\\newcommand{{\\ebcovCondE}}{{{cond:.1e}}}")
+            macros.append(f"\\newcommand{{\\ebcovCondE}}{{\\num{{{cond:.1e}}}}}")
         if "xi_B" in block_analysis:
             cond = block_analysis["xi_B"]["condition_number"]
-            macros.append(f"\\newcommand{{\\ebcovCondB}}{{{cond:.1e}}}")
+            macros.append(f"\\newcommand{{\\ebcovCondB}}{{\\num{{{cond:.1e}}}}}")
         if "xi_amb" in block_analysis:
             cond = block_analysis["xi_amb"]["condition_number"]
-            macros.append(f"\\newcommand{{\\ebcovCondAmb}}{{{cond:.1e}}}")
+            macros.append(f"\\newcommand{{\\ebcovCondAmb}}{{\\num{{{cond:.1e}}}}}")
 
         # Full matrix
         if "condition_number" in ev:
-            macros.append(f"\\newcommand{{\\ebcovCondFull}}{{{ev['condition_number']:.1e}}}")
+            macros.append(f"\\newcommand{{\\ebcovCondFull}}{{\\num{{{ev['condition_number']:.1e}}}}}")
         if "n_bins" in ev:
-            macros.append(f"\\newcommand{{\\ebcovNbins}}{{{ev['n_bins']}}}")
+            macros.append(f"\\newcommand{{\\ebcovNbins}}{{\\num{{{ev['n_bins']}}}}}")
 
         macros.append("")
 
@@ -219,28 +219,29 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
             cosebis_20 = ver_data.get("cosebis_20_stats", {})
 
             # Fiducial PTEs
+            bold = 0.05
             if "pte_at_fiducial" in xip:
-                macros.append(f"\\newcommand{{\\{prefix}Xip}}{{{_format_value(xip['pte_at_fiducial'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}Xip}}{{{_format_value(xip['pte_at_fiducial'], bold_threshold=bold)}}}")
             if "pte_at_fiducial" in xim:
-                macros.append(f"\\newcommand{{\\{prefix}Xim}}{{{_format_value(xim['pte_at_fiducial'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}Xim}}{{{_format_value(xim['pte_at_fiducial'], bold_threshold=bold)}}}")
             if "pte_at_fiducial" in combined:
-                macros.append(f"\\newcommand{{\\{prefix}Combined}}{{{_format_value(combined['pte_at_fiducial'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}Combined}}{{{_format_value(combined['pte_at_fiducial'], bold_threshold=bold)}}}")
             if "pte_at_fiducial" in cosebis:
-                macros.append(f"\\newcommand{{\\{prefix}Cosebis}}{{{_format_value(cosebis['pte_at_fiducial'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}Cosebis}}{{{_format_value(cosebis['pte_at_fiducial'], bold_threshold=bold)}}}")
             if "pte_at_fiducial" in cosebis_20:
-                macros.append(f"\\newcommand{{\\{prefix}CosebisTwenty}}{{{_format_value(cosebis_20['pte_at_fiducial'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}CosebisTwenty}}{{{_format_value(cosebis_20['pte_at_fiducial'], bold_threshold=bold)}}}")
 
             # Full-range PTEs
             if "pte_at_full_range" in xip:
-                macros.append(f"\\newcommand{{\\{prefix}XipFull}}{{{_format_value(xip['pte_at_full_range'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}XipFull}}{{{_format_value(xip['pte_at_full_range'], bold_threshold=bold)}}}")
             if "pte_at_full_range" in xim:
-                macros.append(f"\\newcommand{{\\{prefix}XimFull}}{{{_format_value(xim['pte_at_full_range'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}XimFull}}{{{_format_value(xim['pte_at_full_range'], bold_threshold=bold)}}}")
             if "pte_at_full_range" in combined:
-                macros.append(f"\\newcommand{{\\{prefix}CombinedFull}}{{{_format_value(combined['pte_at_full_range'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}CombinedFull}}{{{_format_value(combined['pte_at_full_range'], bold_threshold=bold)}}}")
             if "pte_at_full_range" in cosebis:
-                macros.append(f"\\newcommand{{\\{prefix}CosebisFull}}{{{_format_value(cosebis['pte_at_full_range'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}CosebisFull}}{{{_format_value(cosebis['pte_at_full_range'], bold_threshold=bold)}}}")
             if "pte_at_full_range" in cosebis_20:
-                macros.append(f"\\newcommand{{\\{prefix}CosebisTwentyFull}}{{{_format_value(cosebis_20['pte_at_full_range'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}CosebisTwentyFull}}{{{_format_value(cosebis_20['pte_at_full_range'], bold_threshold=bold)}}}")
 
         macros.append("")
 
@@ -261,34 +262,38 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
             # Fiducial PTEs
             if "pte_at_fiducial" in ver_data:
-                macros.append(f"\\newcommand{{\\{prefix}Fid}}{{{_format_value(ver_data['pte_at_fiducial'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}Fid}}{{{_format_value(ver_data['pte_at_fiducial'], bold_threshold=0.05)}}}")
 
             # Full-range PTEs
             if "pte_at_full_range" in ver_data:
-                macros.append(f"\\newcommand{{\\{prefix}Full}}{{{_format_value(ver_data['pte_at_full_range'])}}}")
+                macros.append(f"\\newcommand{{\\{prefix}Full}}{{{_format_value(ver_data['pte_at_full_range'], bold_threshold=0.05)}}}")
 
         macros.append("")
 
-    # Harmonic-config COSEBIS comparison - harmonic B-mode PTEs (modes 1-6)
-    harm_cosebis_path = claims_dir / "harmonic_config_cosebis_comparison" / "evidence.json"
-    if harm_cosebis_path.exists():
+    # Harmonic-config COSEBIS comparison - B-mode PTEs (modes 1-N) per angular range
+    for angular_range in ["full", "fiducial"]:
+        harm_cosebis_path = claims_dir / f"harmonic_config_cosebis_comparison_{angular_range}" / "evidence.json"
+        if not harm_cosebis_path.exists():
+            continue
         with open(harm_cosebis_path) as f:
             data = json.load(f)
         ev = data.get("evidence", {})
-        harm_ptes = ev.get("harmonic_b_mode_ptes", {})
+        range_suffix = "Full" if angular_range == "full" else "Fid"
 
-        macros.append("% harmonic_config_cosebis_comparison (harmonic B-mode COSEBIS PTEs, modes 1-6)")
+        macros.append(f"% harmonic_config_cosebis_comparison_{angular_range} (B-mode COSEBIS PTEs)")
         macros.append("")
 
-        for ver, pte_data in harm_ptes.items():
-            short_ver = _parse_version_short(ver)
-            word = VERSION_WORDS.get(short_ver, short_ver)
-            pte = pte_data.get("pte")
-            chi2 = pte_data.get("chi2")
-            if pte is not None:
-                macros.append(f"\\newcommand{{\\harmCosebisPte{word}}}{{{_format_value(pte)}}}")
-            if chi2 is not None:
-                macros.append(f"\\newcommand{{\\harmCosebisChisq{word}}}{{{_format_value(chi2)}}}")
+        for method, method_prefix in [("harmonic_b_mode_ptes", "harmCosebis"), ("config_b_mode_ptes", "cfgCosebis")]:
+            ptes = ev.get(method, {})
+            for ver, pte_data in ptes.items():
+                short_ver = _parse_version_short(ver)
+                word = VERSION_WORDS.get(short_ver, short_ver)
+                pte = pte_data.get("pte")
+                chi2 = pte_data.get("chi2")
+                if pte is not None:
+                    macros.append(f"\\newcommand{{\\{method_prefix}Pte{word}{range_suffix}}}{{{_format_value(pte, bold_threshold=0.05)}}}")
+                if chi2 is not None:
+                    macros.append(f"\\newcommand{{\\{method_prefix}Chisq{word}{range_suffix}}}{{{_format_value(chi2)}}}")
 
         macros.append("")
 
@@ -340,15 +345,14 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
     - pte_table_results.tex: Fiducial version PTE summary
     - pte_table_appendix.tex: All versions PTE comparison
     """
-    bold = 0.01  # bold PTE values below this threshold
-    italic = 0.05  # italic PTE values between bold and this threshold
+    bold = 0.05  # bold PTE values below this threshold
 
     # Paper-consistent table labels (distinct from short plot labels)
     table_labels = {
         "SP_v1.4.5_leak_corr": "Initial (v1.4.5)",
         "SP_v1.4.6_leak_corr": "Size cut (v1.4.6)",
         "SP_v1.4.8_leak_corr": "Masked (v1.4.8)",
-        "SP_v1.4.11.2_leak_corr": "Extended flags (v1.4.11.2)",
+        "SP_v1.4.11.3_leak_corr": "Relaxed flags (v1.4.11.3)",
     }
 
     # Load config-space PTE evidence
@@ -371,15 +375,11 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
     # Results table (fiducial only) — grouped by statistic family
     if fiducial_version in config_data or fiducial_version in harmonic_data:
         results_table = []
-        results_table.append("% Auto-generated PTE summary table (Results section)")
+        results_table.append("% Auto-generated PTE summary tabular (Results section)")
         results_table.append("% Regenerate: snakemake paper_macros")
-        results_table.append(r"% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
-        results_table.append(r"\begin{table*}")
-        results_table.append(r"  \centering")
-        results_table.append(rf"  \caption{{$B$-mode PTE values for the fiducial catalog ({fid_label}, leakage-corrected) at fiducial and full-range scale cuts. Italic values indicate PTE $< 0.05$ (null-test failure); bold indicates PTE $< 0.01$.}}")
-        results_table.append(r"  \label{tab:pte_results}")
+        results_table.append(r"% Wrap in table*/table environment in main tex for float control")
         # Column layout: Scale | COSEBIS n≤6 | COSEBIS n≤20 || ξ+^B | ξ-^B | ξ_tot^B ||| C_ℓ^BB
-        results_table.append(r"  \begin{tabular}{l cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
+        results_table.append(r"\begin{tabular}{l cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         results_table.append(r"    \hline")
         results_table.append(r"    & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
         results_table.append(r"    \cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(l){7-7}")
@@ -391,13 +391,12 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
 
         for pte_key, cut_label in [("pte_at_fiducial", "Fiducial"), ("pte_at_full_range", "Full range")]:
             row = [f"    {cut_label}"]
-            row.extend(_pte_row_cells(pte_key, cfg, harm, bold, italic))
+            row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
             row.append(r" \\")
             results_table.append(" ".join(row))
 
-        results_table.append(r"    \hline")
-        results_table.append(r"  \end{tabular}")
-        results_table.append(r"\end{table*}")
+        results_table.append(r"  \hline")
+        results_table.append(r"\end{tabular}")
 
         results_path = output_dir / "pte_table_results.tex"
         results_path.parent.mkdir(parents=True, exist_ok=True)
@@ -407,14 +406,10 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
     # Appendix table (all versions, fiducial + full-range rows) — grouped by statistic family
     if config_data or harmonic_data:
         appendix_table = []
-        appendix_table.append("% Auto-generated PTE comparison table (Appendix)")
+        appendix_table.append("% Auto-generated PTE comparison tabular (Appendix)")
         appendix_table.append("% Regenerate: snakemake paper_macros")
-        appendix_table.append("% Three groups: COSEBIS | Pure E/B | Pseudo-Cl")
-        appendix_table.append(r"\begin{table*}")
-        appendix_table.append(r"  \centering")
-        appendix_table.append(r"  \caption{$B$-mode PTE values across catalog versions at fiducial and full-range scale cuts. Italic values indicate PTE $< 0.05$ (null-test failure); bold indicates PTE $< 0.01$.}")
-        appendix_table.append(r"  \label{tab:pte_appendix}")
-        appendix_table.append(r"  \begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
+        appendix_table.append(r"% Wrap in table*/table environment in main tex for float control")
+        appendix_table.append(r"\begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         appendix_table.append(r"    \hline")
         appendix_table.append(r"    & & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
         appendix_table.append(r"    \cmidrule(lr){3-4} \cmidrule(lr){5-7} \cmidrule(l){8-8}")
@@ -434,7 +429,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
                 row = [f"    {row_label} & {cut_label}"]
                 cfg = config_data.get(ver, {})
                 harm = harmonic_data.get(ver, {})
-                row.extend(_pte_row_cells(pte_key, cfg, harm, bold, italic))
+                row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
                 row.append(r" \\")
                 appendix_table.append(" ".join(row))
 
@@ -442,9 +437,8 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
             if i < len(table_versions) - 1:
                 appendix_table.append(r"    \noalign{\vskip 2pt}")
 
-        appendix_table.append(r"    \hline")
-        appendix_table.append(r"  \end{tabular}")
-        appendix_table.append(r"\end{table*}")
+        appendix_table.append(r"  \hline")
+        appendix_table.append(r"\end{tabular}")
 
         appendix_path = output_dir / "pte_table_appendix.tex"
         appendix_path.parent.mkdir(parents=True, exist_ok=True)

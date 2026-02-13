@@ -1,8 +1,10 @@
 versions: [
   "SP_v1.4.5", "SP_v1.4.5_leak_corr",
   "SP_v1.4.6", "SP_v1.4.6_leak_corr",
+  "SP_v1.4.6_ecut07", "SP_v1.4.6_ecut07_leak_corr",
   "SP_v1.4.8", "SP_v1.4.8_leak_corr",
-  "SP_v1.4.11.3", "SP_v1.4.11.3_leak_corr"
+  "SP_v1.4.11.3", "SP_v1.4.11.3_leak_corr",
+  "SP_v1.4.11.3_ecut07", "SP_v1.4.11.3_ecut07_leak_corr"
 ]
 # IV weight variants removed — one-off test (see fiber v1-4-11-2-iv-weights-harmonic-b-2a2ed88b)
 ellipticity_suffix: "_leak_corrected"
@@ -93,7 +95,7 @@ plotting:
   palette: "colorblind"  # seaborn palette
   version_alpha:
     fiducial: 1.0
-    comparison: 0.4
+    comparison: 1.0
   markers:
     style: "unfilled"
     linewidth: 1.5
@@ -134,3 +136,17 @@ glass_mocks:
 # External tools
 tools:
   cosmocov_executable: "/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov"
+
+# Ellipticity cut investigation
+ecut:
+  versions_for_comparison:
+    - SP_v1.4.6_leak_corr
+    - SP_v1.4.6_ecut07_leak_corr
+    - SP_v1.4.11.3_leak_corr
+    - SP_v1.4.11.3_ecut07_leak_corr
+  version_labels:
+    SP_v1.4.6_leak_corr: "v1.4.6"
+    SP_v1.4.6_ecut07_leak_corr: "v1.4.6 $|e|<0.7$"
+    SP_v1.4.11.3_leak_corr: "v1.4.11.3"
+    SP_v1.4.11.3_ecut07_leak_corr: "v1.4.11.3 $|e|<0.7$"
+  fiducial_for_comparison: "SP_v1.4.6_leak_corr"
