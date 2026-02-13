@@ -48,18 +48,19 @@ dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 # %%
 n_test = -1
-#n_test = 1_000_000
+#n_test = 100_000
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
     dat_ext = dat_ext[:n_test]
+    test = "_test"
+else:
+    test = ""
 
 # %%
 # Additional parameters
 key_ra = "RA"
 key_dec = "Dec"
-
-nside = 8192
 
 # %%
 # Create healsparse mask instance
@@ -90,15 +91,33 @@ mask_combined = sp_joint.Mask.from_list(
 m = mask_combined._mask
 ra = dat[key_ra][m]
 dec = dat[key_dec][m]
-    
+
+cbm = config["binned_mask"]
+nside = cbm["nside"]
 area_deg2, pix = cs_cat.get_binned_area(ra, dec, nside=nside, return_pix=True)
 print(f"binned area (nside={nside}) ≈ {area_deg2:.3f} deg^2")
 
-cbm = config["binned_mask"]
-healpix_map = np.full(hp.nside2npix(cbm["nside"]), not cbm["good"])          
-healpix_map[pix] = cbm["good"]                                               
-print(f"Writing binned mask to file {cbm['output_path']}...")                
-hp.write_map(cbm["output_path"], healpix_map, overwrite=True)
+healpix_map = np.full(hp.nside2npix(nside), not cbm["good"])
+healpix_map[pix] = cbm["good"]
+output_path = f"{cbm['output_base']}_{nside}{test}.fits"
+print(f"Writing binned mask to file {output_path}...")
+
+header = fits.Header()
+for my_mask in masks:
+    my_mask.add_summary_to_FITS_header(header)
+
+# Transform in list form
+extra_header = [                                                         
+	(key, header[key], header.comments[key])                             
+    for key in header.keys()                                             
+ ]                                                                        
+
+hp.write_map(
+    output_path,
+    healpix_map,
+    overwrite=True,
+    extra_header=extra_header,
+)
 
 # %%
 def save_area(area_deg2, filename):
@@ -119,6 +138,6 @@ def save_area(area_deg2, filename):
     print(f"Wrote areas to {filename}")
 
 # %%
-save_area(area_deg2, "area.txt")
+save_area(area_deg2, f"area{test}.txt")
 
 
