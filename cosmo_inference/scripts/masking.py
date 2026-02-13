@@ -94,5 +94,5 @@ if __name__ == "__main__":
     print('kept area = ', area_obs_deg2)
     
     cl_mask = hp.anafast(mask_map, lmax=3*nside-1)
-    hp.write_map(os.path.join(out_dir, "mask_map_v1.4.5_nside_8192.fits"), mask_map, overwrite=True)
-    np.savez(os.path.join(out_dir, "mask_cls_from_flags_v1.4.5_nside_8192.npz"), ells=np.arange(len(cl_mask)), cl_mask=cl_mask)
+    hp.write_map(os.path.join(out_dir, f"mask_map_v1.4.5_nside_{nside}.fits"), mask_map, overwrite=True)
+    np.savez(os.path.join(out_dir, f"mask_cls_from_flags_v1.4.5_nside_{nside}.npz"), ells=np.arange(len(cl_mask)), cl_mask=cl_mask)
