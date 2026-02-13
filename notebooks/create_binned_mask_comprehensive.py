@@ -3,13 +3,13 @@
 # Create healpy mask file from binning the comprehensive catalogue
 
 # %%
-from IPython import get_ipython                                                  
+from IPython import get_ipython
 
 # %%
-# enable autoreload for interactive sessions                                     
-ipython = get_ipython()                                                          
-if ipython is not None:                                                          
-    ipython.run_line_magic("load_ext", "autoreload")                             
+# enable autoreload for interactive sessions
+ipython = get_ipython()
+if ipython is not None:
+    ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("load_ext", "log_cell_time")
 # %%
@@ -48,7 +48,7 @@ dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 # %%
 n_test = -1
-#n_test = 100_000
+# n_test = 100_000
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
@@ -68,24 +68,23 @@ hsp_obj = sp_joint.ApplyHspMasks()
 
 # %% Mask directory and aux mask file(s)
 hsp_obj._params["mask_dir"] = f"{os.environ['HOME']}/masks"
-hsp_obj._params["aux_mask_files"] = f"{hsp_obj._params['mask_dir']}/mask_r_nside131072_npoint.hsp" 
-hsp_obj._params["aux_mask_labels"] = "npoint3"                                       
-hsp_obj._params["verbose"] = True 
+hsp_obj._params["aux_mask_files"] = (
+    f"{hsp_obj._params['mask_dir']}/mask_r_nside131072_npoint.hsp"
+)
+hsp_obj._params["aux_mask_labels"] = "npoint3"
+hsp_obj._params["verbose"] = True
 
 # %%
 # Load and initialise masks
 masks, labels = sp_joint.get_masks_from_config(
-    config,
-    dat,
-    dat_ext,
-    verbose=True
+    config, dat, dat_ext, verbose=True
 )
 
-mask_combined = sp_joint.Mask.from_list(                                         
-    masks,                                                                       
-    label="combined",                                                            
-    verbose=obj._params["verbose"],                                              
-)  
+mask_combined = sp_joint.Mask.from_list(
+    masks,
+    label="combined",
+    verbose=obj._params["verbose"],
+)
 
 # Apply mask to positions
 m = mask_combined._mask
@@ -107,10 +106,9 @@ for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
 
 # Transform in list form
-extra_header = [                                                         
-	(key, header[key], header.comments[key])                             
-    for key in header.keys()                                             
- ]                                                                        
+extra_header = [
+    (key, header[key], header.comments[key]) for key in header.keys()
+]
 
 hp.write_map(
     output_path,
@@ -118,6 +116,7 @@ hp.write_map(
     overwrite=True,
     extra_header=extra_header,
 )
+
 
 # %%
 def save_area(area_deg2, filename):
@@ -130,14 +129,13 @@ def save_area(area_deg2, filename):
     filename : str
         Output filename.
     """
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         # Write header
         f.write("# nside area [deg^2]\n")
         f.write(f"{nside} {area_deg2:.6f}\n")
- 
+
     print(f"Wrote areas to {filename}")
+
 
 # %%
 save_area(area_deg2, f"area{test}.txt")
-
-
