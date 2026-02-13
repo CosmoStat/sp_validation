@@ -3,6 +3,7 @@ import healpy as hp
 import numpy as np
 from multiprocessing import Pool, cpu_count
 import os
+import sys
 # -------------------------
 # Masking logic
 def apply_masks(data, data_ext):
@@ -81,7 +82,7 @@ def build_mask_map_hdf5(filename, nside=512, chunk_size=1_000_000):
 # Example usage
 if __name__ == "__main__":
     filename = "/n17data/UNIONS/WL/v1.4.x/v1.4.5/unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5"
-    nside = 8192
+    nside = sys.argv[1]
     out_dir = os.getcwd()
     mask_map = build_mask_map_hdf5(filename, nside=nside, chunk_size=500_000)
     
