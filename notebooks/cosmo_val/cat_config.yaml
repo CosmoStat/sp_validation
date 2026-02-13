@@ -472,7 +472,6 @@ SP_v1.4.6:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -491,7 +490,8 @@ SP_v1.4.6:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
-    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+    redshift_distr: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+    mask: v1.4.6/footprint_binned_8192.fits
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
@@ -517,7 +517,6 @@ SP_v1.4.6.3:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -536,7 +535,8 @@ SP_v1.4.6.3:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
-    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+    redshift_distr: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+    mask: v1.4.6/footprint_binned_8192.fits
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected

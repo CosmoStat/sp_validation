@@ -78,7 +78,7 @@ metacal:
 # Binned footprint mask
 binned_mask:
   # Resolution
-  nside: 8192
+  nside: 4096
 
   # Mask value for "good region (observed)
   good: False
