@@ -170,7 +170,7 @@ SP_v1.3.6:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -211,11 +211,11 @@ SP_v1.4.5:
   ls: dashed
   marker: d
   cov_th:
-    A: 2582.310451583689
-    n_e: 7.748708180391998
+    A: 2894.0303815287743
+    n_e: 6.477062501504286
     n_psf: 0.4973044366748657
-    sigma_e: 0.4375145387558129
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.5_nside_8192.fits
+    sigma_e: 0.39740419232655605
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -386,7 +386,7 @@ SP_v1.4.6_glass_mock:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -468,11 +468,11 @@ SP_v1.4.6:
   ls: dashed
   marker: d
   cov_th:
-    A: 2405.3892055695346
-    n_e: 6.128201234871523
+    A: 2894.0303815287743
+    n_e: 5.09348802763124
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+    sigma_e: 0.37958760148818926
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -513,10 +513,10 @@ SP_v1.4.6_ecut07:
   ls: dotted
   marker: d
   cov_th:
-    A: 2405.3892055695346
-    n_e: 5.744048448751334
-    sigma_e: 0.3418770365277116
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+    A: 2894.0303815287743
+    n_e: 4.77419733499695
+    sigma_e: 0.34187904441900674
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -561,7 +561,7 @@ SP_v1.4.6.1:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -607,7 +607,7 @@ SP_v1.4.7:
     n_e: 6.121543643587931
     n_psf: 0.752316232272063
     sigma_e: 0.3797419081703805
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.7_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -650,11 +650,11 @@ SP_v1.4.8:
   ls: dashed
   marker: d
   cov_th:
-    A: 2049.034211379564
-    n_e: 6.121484916053109
+    A: 2517.021356326454
+    n_e: 4.983323636055024
     n_psf: 0.752316232272063
-    sigma_e: 0.37973978258052915
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.8_nside_8192.fits
+    sigma_e: 0.3797397825805285
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_starhalo_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -687,7 +687,6 @@ SP_v1.4.8:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
-# v1.4.11.2 retained for covariance resolution (v1.4.11.3 reuses its covariance)
 SP_v1.4.11.2:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -696,11 +695,11 @@ SP_v1.4.11.2:
   ls: dashed
   marker: s
   cov_th:
-    A: 2504.2949722044823
-    n_e: 7.232058077766245
+    A: 2894.0303815287743
+    n_e: 6.25812596800506
     n_psf: 0.752316232272063
     sigma_e: 0.380499698062307
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.11.2_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -740,13 +739,12 @@ SP_v1.4.11.3:
   getdist_colour: 0.0, 0.5, 1.0
   ls: dashed
   marker: s
-  # Reusing v1.4.11.2 mask + cov_th (same footprint, PSF size fix only)
   cov_th:
-    A: 2504.2949722044823
-    n_e: 7.232058077766245
+    A: 2894.0303815287743
+    n_e: 6.25812596800506
     n_psf: 0.752316232272063
     sigma_e: 0.380499698062307
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.11.2_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -787,10 +785,10 @@ SP_v1.4.11.3_ecut07:
   ls: dotted
   marker: s
   cov_th:
-    A: 2504.2949722044823
-    n_e: 6.737436823945591
-    sigma_e: 0.34058370619051986
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.11.2_nside_8192.fits
+    A: 2894.0303815287743
+    n_e: 5.830114732534133
+    sigma_e: 0.34058513153783426
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -1071,7 +1069,7 @@ SP_v1.6.6:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM

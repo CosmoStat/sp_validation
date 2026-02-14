@@ -14,25 +14,23 @@ def get_cat_params(version):
 # Additional wildcard constraints defined locally for pseudo-Cl rules (line 327)
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
-# Mask power spectra for masked covariance calculation (relative to COSMO_INFERENCE)
+# Footprint mask power spectra (nside=4096, from comprehensive catalog with spatial cuts only)
 MASK_CLS_BASE = str(COSMO_INFERENCE / "data/mask")
 MASK_CLS_FILES = {
-    "v1.4.5": f"{MASK_CLS_BASE}/mask_cls_v1.4.5_nside_8192_norm.txt",
-    "v1.4.6": f"{MASK_CLS_BASE}/mask_cls_v1.4.6_nside_8192_norm.txt",
-    "v1.4.8": f"{MASK_CLS_BASE}/mask_cls_v1.4.8_nside_8192_norm.txt",
-    "v1.4.11.2": f"{MASK_CLS_BASE}/mask_cls_v1.4.11.2_nside_8192_norm_test.txt",
+    "footprint": f"{MASK_CLS_BASE}/mask_cls_footprint_nside_4096_norm.txt",
+    "footprint_starhalo": f"{MASK_CLS_BASE}/mask_cls_footprint_starhalo_nside_4096_norm.txt",
 }
+
+# v1.4.8 uses the star-halo footprint; all other versions use the standard footprint
+STARHALO_VERSIONS = {"v1.4.8"}
 
 
 def get_mask_cls_path(version):
-    """Return absolute mask Cl path for the requested catalog version.
-
-    v1.4.11.3 reuses v1.4.11.2's mask (PSF size fix only, same footprint).
-    """
+    """Return absolute mask Cl path for the requested catalog version."""
     version_dir = version.replace('_leak_corr', '').replace('SP_', '')
     version_dir = re.sub(r'_ecut\d+', '', version_dir)
-    version_dir = version_dir.replace("v1.4.11.3", "v1.4.11.2")
-    return MASK_CLS_FILES.get(version_dir, "")
+    key = "footprint_starhalo" if version_dir in STARHALO_VERSIONS else "footprint"
+    return MASK_CLS_FILES[key]
 
 
 rule cosmology_params:

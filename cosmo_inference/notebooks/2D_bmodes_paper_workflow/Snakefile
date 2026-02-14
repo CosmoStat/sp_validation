@@ -71,13 +71,10 @@ def fiducial_binning_suffix():
 def resolve_covariance_version(version):
     """Map version to its covariance version.
 
-    v1.4.11.3 reuses v1.4.11.2's covariance (same mask/area, PSF size fix only).
-    v1.4.11.2 has its own mask/area (2504 deg² vs 2405 for v1.4.6).
-    ecut versions get their own covariance (different n_eff/sigma_e).
+    With footprint masks (nside=4096, spatial cuts only from comprehensive
+    catalog), each version gets its own covariance. No cross-version sharing.
     """
-    if "_ecut" in version:
-        return version
-    return version.replace("v1.4.11.3", "v1.4.11.2")
+    return version
 
 
 def covariance_base(version, blind, gaussian="ng", min_sep=None, max_sep=None, nbins=None,
@@ -171,7 +168,7 @@ rule xi:
         str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
         str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-    threads: 12
+    threads: 24
     params:
         ver="{version}",
         min_sep="{min_sep}",
