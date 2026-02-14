@@ -20,7 +20,6 @@ Pseudo-Cl estimation accounts for:
 | Parameter | Config Key |
 |-----------|------------|
 | ell bins | `cl.n_ell_bins` |
-| ell range | `cl.ell_min`, `cl.ell_max` |
 | Fiducial version | `fiducial.version` |
 
 ## Data Source

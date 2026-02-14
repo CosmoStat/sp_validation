@@ -271,12 +271,9 @@ def main(snakemake):
             nbins_int,
         )
 
-    # Effective ell values (log-spaced bins)
-    ell_min = config["cl"]["ell_min"]
-    ell_max = config["cl"]["ell_max"]
-    n_ell_bins = config["cl"]["n_ell_bins"]
-    ell_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), n_ell_bins + 1)
-    ell_eff = np.sqrt(ell_edges[:-1] * ell_edges[1:])
+    # Read ell bin centers from pseudo-Cl data file
+    with fits.open(snakemake.input.pseudo_cl) as hdu:
+        ell_eff = hdu["PSEUDO_CELL"].data["ELL"]
 
     # Compute ratios relative to blind A
     pure_eb_results = {}

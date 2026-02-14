@@ -68,9 +68,6 @@ covariance:
 
 # Harmonic-space (C_l) analysis parameters
 cl:
-  # Full range for B-mode null tests
-  ell_min: 50
-  ell_max: 2000
   n_ell_bins: 32
   # Finer binning for COSEBIS cross-validation (harmonic_config_cosebis_comparison).
   # 96-bin powspace recovers modes 1-5 within ~2% of config-space (validated on GLASS mocks).

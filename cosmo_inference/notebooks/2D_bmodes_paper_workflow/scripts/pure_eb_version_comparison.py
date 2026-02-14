@@ -20,6 +20,7 @@ from plotting_utils import (
     FIG_WIDTH_FULL,
     MARKER_STYLES,
     PAPER_MPLSTYLE,
+    compute_chi2_pte,
     draw_normalized_boxes_log_scale,
     find_fiducial_index,
     get_box_style,
@@ -115,7 +116,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
         for i, data in enumerate(datasets):
             theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
-            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            marker = data.get("marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o")
+            fillstyle = data.get("fillstyle", "full")
+            mfc = data["color"] if fillstyle == "full" else "none"
 
             y = data[mode_key]
             sigma = data[f"sigma_{mode_key}"]
@@ -128,8 +131,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
                 fmt=marker,
                 color=data["color"],
                 alpha=data["alpha"],
-                markerfacecolor=data["color"],
-                markeredgecolor="white",
+                markerfacecolor=mfc,
+                markeredgecolor=data["color"],
                 markeredgewidth=mew,
                 markersize=ms,
                 capsize=capsize,
@@ -169,7 +172,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
         for i, data in enumerate(datasets):
             theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
-            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            marker = data.get("marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o")
+            fillstyle = data.get("fillstyle", "full")
+            mfc = data["color"] if fillstyle == "full" else "none"
 
             y_norm = data[f"{mode_key}_normalized"]
 
@@ -181,8 +186,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
                 fmt=marker,
                 color=data["color"],
                 alpha=data["alpha"],
-                markerfacecolor=data["color"],
-                markeredgecolor="white",
+                markerfacecolor=mfc,
+                markeredgecolor=data["color"],
                 markeredgewidth=mew,
                 markersize=ms,
                 capsize=capsize,
@@ -257,16 +262,37 @@ def main():
         "fiducial_xim": fiducial_xim_scale_cut,
     }
 
-    colors = sns.husl_palette(len(versions), l=0.4)
+    # Color/marker assignment: pair by parent version if ecut versions present
+    has_ecut = any("_ecut" in v for v in versions)
+    if has_ecut:
+        parents = []
+        for v in versions:
+            parent = v.split("_ecut")[0].replace("_leak_corr", "")
+            if parent not in parents:
+                parents.append(parent)
+        parent_colors = sns.husl_palette(len(parents), l=0.4)
+        parent_color_map = dict(zip(parents, parent_colors))
+    else:
+        colors = sns.husl_palette(len(versions), l=0.4)
 
     # Load data for all versions
     datasets = []
 
-    for version, color, data_path in zip(
+    for i, (version, data_path) in enumerate(zip(
         versions,
-        colors,
         snakemake.input["pure_eb_data"],
-    ):
+    )):
+        if has_ecut:
+            parent = version.split("_ecut")[0].replace("_leak_corr", "")
+            color = parent_color_map[parent]
+            is_cut = "_ecut" in version
+            marker = "o" if not is_cut else "D"
+            fillstyle = "full" if not is_cut else "none"
+        else:
+            color = colors[i]
+            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            fillstyle = "full"
+
         data = np.load(data_path)
 
         theta = data["theta"]
@@ -286,14 +312,32 @@ def main():
         sigma_xip_total = _extract_sigma(cov_pure_eb, 0, nbins)
         sigma_xim_total = _extract_sigma(cov_pure_eb, 1, nbins)
 
-        # Extract B-mode errors (blocks 2 and 3 of the 6-block covariance)
-        sigma_xip_B = _extract_sigma(cov_pure_eb, 2, nbins)
-        sigma_xim_B = _extract_sigma(cov_pure_eb, 3, nbins)
+        # Extract B-mode covariance blocks
+        block_xip_B = cov_pure_eb[2*nbins:3*nbins, 2*nbins:3*nbins]
+        block_xim_B = cov_pure_eb[3*nbins:4*nbins, 3*nbins:4*nbins]
+        sigma_xip_B = np.sqrt(np.clip(np.diag(block_xip_B), 0, None))
+        sigma_xim_B = np.sqrt(np.clip(np.diag(block_xim_B), 0, None))
+
+        # Full-range PTEs
+        chi2_xip_B, pte_xip_B, dof_xip_B = compute_chi2_pte(xip_B, block_xip_B)
+        chi2_xim_B, pte_xim_B, dof_xim_B = compute_chi2_pte(xim_B, block_xim_B)
+
+        # Scale-cut PTEs (fiducial xip and xim cuts)
+        xip_cut_mask = (theta >= fiducial_xip_scale_cut[0]) & (theta <= fiducial_xip_scale_cut[1])
+        xim_cut_mask = (theta >= fiducial_xim_scale_cut[0]) & (theta <= fiducial_xim_scale_cut[1])
+        xip_idx = np.where(xip_cut_mask)[0]
+        xim_idx = np.where(xim_cut_mask)[0]
+        chi2_xip_B_cut, pte_xip_B_cut, dof_xip_B_cut = compute_chi2_pte(
+            xip_B[xip_idx], block_xip_B[np.ix_(xip_idx, xip_idx)])
+        chi2_xim_B_cut, pte_xim_B_cut, dof_xim_B_cut = compute_chi2_pte(
+            xim_B[xim_idx], block_xim_B[np.ix_(xim_idx, xim_idx)])
 
         datasets.append({
             "version": version,
             "label": version_label(version, version_labels),
             "color": color,
+            "marker": marker,
+            "fillstyle": fillstyle,
             "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
             "theta": theta,
             # Total correlation functions
@@ -304,6 +348,11 @@ def main():
             # B-mode (normalized)
             "xip_B_normalized": xip_B / sigma_xip_B,
             "xim_B_normalized": xim_B / sigma_xim_B,
+            # PTEs
+            "pte_xip_B": pte_xip_B, "chi2_xip_B": chi2_xip_B, "dof_xip_B": dof_xip_B,
+            "pte_xim_B": pte_xim_B, "chi2_xim_B": chi2_xim_B, "dof_xim_B": dof_xim_B,
+            "pte_xip_B_cut": pte_xip_B_cut, "chi2_xip_B_cut": chi2_xip_B_cut, "dof_xip_B_cut": dof_xip_B_cut,
+            "pte_xim_B_cut": pte_xim_B_cut, "chi2_xim_B_cut": chi2_xim_B_cut, "dof_xim_B_cut": dof_xim_B_cut,
         })
 
     # Create output directory
@@ -333,15 +382,24 @@ def main():
     # Write evidence
     spec_paths = snakemake.input["specs"]
 
+    # Build flat evidence dict
+    evidence_versions = {}
+    for data in datasets:
+        v = data["version"]
+        for key in ("pte_xip_B", "chi2_xip_B", "dof_xip_B",
+                     "pte_xim_B", "chi2_xim_B", "dof_xim_B",
+                     "pte_xip_B_cut", "chi2_xip_B_cut", "dof_xip_B_cut",
+                     "pte_xim_B_cut", "chi2_xim_B_cut", "dof_xim_B_cut"):
+            val = data[key]
+            evidence_versions[f"{v}_{key}"] = int(val) if "dof" in key else float(val)
+
     evidence_data = {
         "spec_id": "pure_eb_version_comparison",
         "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": {k: list(v) for k, v in scale_cuts.items()},
-            "versions_plotted": versions,
-            "fiducial_version": fiducial_version,
-            "note": "Visualization only. Statistical PTEs in pure_eb_pte_matrix and config_space_pte_matrices claims.",
+            "versions": evidence_versions,
         },
         "artifacts": {"figure": fig_name},
     }

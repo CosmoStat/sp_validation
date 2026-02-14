@@ -21,6 +21,7 @@ from plotting_utils import (
     FIG_WIDTH_FULL,
     MARKER_STYLES,
     PAPER_MPLSTYLE,
+    compute_chi2_pte,
     draw_normalized_boxes_linear_scale,
     find_fiducial_index,
     get_version_alpha,
@@ -77,7 +78,9 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
 
         for i, data in enumerate(datasets):
             offset = x_offsets[i] if i < len(x_offsets) else 0
-            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            marker = data.get("marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o")
+            fillstyle = data.get("fillstyle", "full")
+            mfc = data["color"] if fillstyle == "full" else "none"
             line = ax.errorbar(
                 modes + offset,
                 data["Bn_normalized"],
@@ -85,8 +88,8 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
                 fmt=marker,
                 color=data["color"],
                 alpha=data["alpha"],
-                markerfacecolor=data["color"],
-                markeredgecolor="white",
+                markerfacecolor=mfc,
+                markeredgecolor=data["color"],
                 **ERRORBAR_DEFAULTS,
                 zorder=2,
             )
@@ -170,20 +173,43 @@ def main():
     nbins_int = int(config["fiducial"]["nbins_int"])
 
 
-    colors = sns.husl_palette(len(versions), l=0.4)
+    # Color/marker assignment: pair by parent version if ecut versions present
+    has_ecut = any("_ecut" in v for v in versions)
+    if has_ecut:
+        parents = []
+        for v in versions:
+            parent = v.split("_ecut")[0].replace("_leak_corr", "")
+            if parent not in parents:
+                parents.append(parent)
+        parent_colors = sns.husl_palette(len(parents), l=0.4)
+        parent_color_map = dict(zip(parents, parent_colors))
+    else:
+        colors = sns.husl_palette(len(versions), l=0.4)
 
     # Compute COSEBIS for visualization - need to build datasets first to get fiducial_idx
     all_datasets = {}
+    # Collect PTEs across scale cuts
+    all_ptes = {v: {} for v in versions}
 
     for scale_key, scale_cut in scale_cuts.items():
         datasets = []
 
-        for version, color, xi_path, cov_path in zip(
+        for i, (version, xi_path, cov_path) in enumerate(zip(
             versions,
-            colors,
             snakemake.input["xi_integration"],
             snakemake.input["cov_integration"],
-        ):
+        )):
+            if has_ecut:
+                parent = version.split("_ecut")[0].replace("_leak_corr", "")
+                color = parent_color_map[parent]
+                is_cut = "_ecut" in version
+                marker = "o" if not is_cut else "D"
+                fillstyle = "full" if not is_cut else "none"
+            else:
+                color = colors[i]
+                marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+                fillstyle = "full"
+
             gg = treecorr.GGCorrelation(
                 min_sep=min_sep_int,
                 max_sep=max_sep_int,
@@ -205,10 +231,18 @@ def main():
             cov_B = cov[nmodes:, nmodes:]
             sigma_B = np.sqrt(np.diag(cov_B))
 
+            # PTEs
+            chi2, pte, dof = compute_chi2_pte(Bn, cov_B)
+            all_ptes[version][f"pte_B_{scale_key}"] = float(pte)
+            all_ptes[version][f"chi2_B_{scale_key}"] = float(chi2)
+            all_ptes[version][f"dof_B_{scale_key}"] = int(dof)
+
             datasets.append({
                 "version": version,
                 "label": version_label(version, version_labels),
                 "color": color,
+                "marker": marker,
+                "fillstyle": fillstyle,
                 "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
                 "Bn_normalized": Bn / sigma_B,
             })
@@ -258,15 +292,20 @@ def main():
     # Write evidence (visualization only, PTEs are in cosebis_pte_matrix)
     spec_paths = snakemake.input["specs"]
 
+    # Build flat evidence dict
+    evidence_versions = {}
+    for version, ptes in all_ptes.items():
+        for key, val in ptes.items():
+            evidence_versions[f"{version}_{key}"] = val
+
     evidence_data = {
         "spec_id": "cosebis_version_comparison",
         "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": scale_cuts,
-            "versions_plotted": versions,
             "nmodes": nmodes,
-            "note": "Visualization only. Statistical PTEs in cosebis_pte_matrix claim.",
+            "versions": evidence_versions,
         },
         "artifacts": {"figure_stacked": fig_name},
     }

@@ -284,11 +284,6 @@ def main():
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": evidence_versions,
-            "ell_min": float(datasets[0]["ell"].min()),
-            "ell_max": float(datasets[0]["ell"].max()),
-            "n_ell_bins": int(len(datasets[0]["ell"])),
-            "ell_min_cut": ell_min_cut,
-            "ell_max_cut": ell_max_cut,
         },
         "artifacts": {
             "figure": fig_path.name,

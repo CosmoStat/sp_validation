@@ -26,7 +26,6 @@ Diagonal ratios relative to blind A for both B-modes and E-modes:
 | Bins | `fiducial.nbins` |
 | COSEBIS nmodes | `fiducial.nmodes` |
 | COSEBIS θ range | `cosebis.theta_min` to `cosebis.theta_max` |
-| ℓ range | `cl.ell_min` to `cl.ell_max` |
 | n_ell_bins | `cl.n_ell_bins` |
 
 ## Outputs

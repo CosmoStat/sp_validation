@@ -13,8 +13,7 @@ The fiducial catalog shows B-mode power spectra consistent with zero across all 
 |-----------|------------|
 | Fiducial version | `fiducial.version` |
 | ell bins | `cl.n_ell_bins` |
-| ell range | `cl.ell_min`, `cl.ell_max` |
-| Scale cuts | From harmonic space paper: ell_min=300, ell_max=1600 |
+| Scale cuts | `cl.fiducial_ell_min`, `cl.fiducial_ell_max` (from Paper V, Goh et al.) |
 
 ## Evidence
 
@@ -26,9 +25,7 @@ Power spectra and PTEs for BB and EB components, with and without scale cuts:
 | `pte_eb_full` | E-B cross PTE, full ell range |
 | `pte_bb_cut` | B-mode PTE with scale cuts |
 | `pte_eb_cut` | E-B cross PTE with scale cuts |
-| `ell_min_cut` | Lower scale cut (300) |
-| `ell_max_cut` | Upper scale cut (1600) |
-| `n_ell_bins` | Number of ell bins |
+| `version` | Fiducial catalog version |
 
 ## Outputs
 

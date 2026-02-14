@@ -542,6 +542,8 @@ rule bb_covariance_blind_independence:
         harmonic_A=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "A"),
         harmonic_B=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "B"),
         harmonic_C=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "C"),
+        # Pseudo-Cl data vector (blind A only) for ell bin centers
+        pseudo_cl=_pseudo_cl_path(f"{config['fiducial']['mock_version']}_leak_corr", "A"),
     params:
         nmodes=config["fiducial"]["nmodes"],
         theta_min=config["cosebis"]["theta_min"],

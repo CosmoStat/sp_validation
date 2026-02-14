@@ -220,13 +220,6 @@ def main():
             "pte_bb_cut": float(pte_bb_cut),
             "chi2_bb_cut": float(chi2_bb_cut),
             "dof_bb_cut": int(dof_bb_cut),
-            # Scale cut values
-            "ell_min_cut": int(ell_min_cut),
-            "ell_max_cut": int(ell_max_cut),
-            # Data range
-            "ell_min": float(ell.min()),
-            "ell_max": float(ell.max()),
-            "n_ell_bins": int(len(ell)),
             # Version
             "version": version,
         },
