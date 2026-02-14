@@ -515,6 +515,7 @@ SP_v1.4.6_ecut07:
   cov_th:
     A: 2894.0303815287743
     n_e: 4.77419733499695
+    n_psf: 0.752316232272063
     sigma_e: 0.34187904441900674
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
@@ -787,6 +788,7 @@ SP_v1.4.11.3_ecut07:
   cov_th:
     A: 2894.0303815287743
     n_e: 5.830114732534133
+    n_psf: 0.752316232272063
     sigma_e: 0.34058513153783426
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
