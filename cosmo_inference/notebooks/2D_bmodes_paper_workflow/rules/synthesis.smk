@@ -129,10 +129,11 @@ rule bmodes_paper_spec:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 rule all_claims:
-    """Aggregate target for all claim evidence."""
+    """Aggregate target for all claim evidence and paper outputs."""
     input:
         bmodes_paper=rules.bmodes_paper_spec.output,
         xi_cosmology_paper=rules.xi_cosmology_paper.output,
+        paper_macros=rules.paper_macros.output,
         harmonic_cosebis=expand(
             f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/evidence.json",
             angular_range=_HARMONIC_COSEBIS_ANGULAR_RANGES,
