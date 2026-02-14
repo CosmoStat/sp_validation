@@ -502,7 +502,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         n_versions, 4,
         width_ratios=[1, 1, 1, 0.04],
         wspace=0.03, hspace=0.08,
-        left=0.10, right=0.95,
+        left=0.10, right=0.88,
         bottom=0.08, top=0.94
     )
 
@@ -675,8 +675,11 @@ def main():
     print("\n--- Creating Nx3 composite for all versions ---", flush=True)
 
     try:
+        # Only include paper versions (exclude ecut variants)
+        paper_version_labels = config["plotting"]["version_labels"]
+        paper_versions = [v for v in versions if v in paper_version_labels]
         fig, appendix_stats, appendix_ptes = create_9panel_composite(
-            versions=versions,
+            versions=paper_versions,
             pure_eb_pte_files=pure_eb_pte_files,
             cosebis_pte_files=cosebis_pte_files,
             xip_fid=xip_fid,

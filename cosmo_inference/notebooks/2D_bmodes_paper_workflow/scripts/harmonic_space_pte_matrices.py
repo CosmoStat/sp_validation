@@ -351,8 +351,8 @@ def main():
 
         plt.close(fig_fiducial)
 
-    # Create appendix N-panel composite (all versions from config)
-    appendix_versions = [v for v in versions if v in all_matrices]
+    # Create appendix N-panel composite (paper versions only, no ecut variants)
+    appendix_versions = [v for v in versions if v in all_matrices and v in version_labels]
     if len(appendix_versions) >= 2:
         matrices = [all_matrices[v] for v in appendix_versions]
         ells = [all_ells[v] for v in appendix_versions]

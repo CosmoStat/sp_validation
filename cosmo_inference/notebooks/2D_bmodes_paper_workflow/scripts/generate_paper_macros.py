@@ -256,7 +256,15 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append("% harmonic_space_pte_matrices (all versions)")
         macros.append("")
 
-        for ver, ver_data in versions.items():
+        # Filter to leak_corr versions only (excluding ecut variants) to avoid
+        # duplicate macro definitions — both SP_v1.4.6_ecut07_leak_corr and
+        # SP_v1.4.6_leak_corr would map to the same clPteSix prefix.
+        leak_corr_versions = {
+            k: v for k, v in versions.items()
+            if "leak_corr" in k and "ecut" not in k
+        }
+
+        for ver, ver_data in leak_corr_versions.items():
             short_ver = _parse_version_short(ver)
             prefix = f"clPte{VERSION_WORDS.get(short_ver, short_ver)}"
 
