@@ -160,6 +160,7 @@ rule cosebis_comparison:
     output:
         evidence=f"{CLAIMS_DIR}/{{comparison}}_cosebis_version_comparison/evidence.json",
         figure_stacked=f"{CLAIMS_DIR}/{{comparison}}_cosebis_version_comparison/figure_stacked.png",
+        paper_stacked=f"{CLAIMS_DIR}/{{comparison}}_cosebis_version_comparison/paper_figure.pdf",
     wildcard_constraints:
         comparison=r"(paper|ecut)",
     script:
