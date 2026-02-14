@@ -40,7 +40,7 @@ The 2PCF and covariance are independent and can run in parallel.
 Key resolution functions in `workflow/Snakefile`:
 - `get_shear_catalog()` — resolves catalog path from cat_config, strips `_leak_corr`
 - `build_redshift_path()` — v1.4.11.x uses v1.4.6's n(z)
-- `resolve_covariance_version()` — maps v1.4.11.3 → v1.4.11.2 (ecut versions should NOT be aliased)
+- `resolve_covariance_version()` — identity function (each version gets its own covariance)
 - Wildcard constraint: `version=r"SP_v[\d.]+(_w_iv)?(_leak_corr)?"` — needs `_ecut\d+`
 
 Version comparison rules in `workflow/rules/claims.smk` (lines 131, 271, 386) use
