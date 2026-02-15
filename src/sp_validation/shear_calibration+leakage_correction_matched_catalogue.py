@@ -1,6 +1,6 @@
 # Name file: shear_calibration+leakage_correction_matched_catalogue_.py
 
-# @author: Antonin Corinaldi, antonin.corinaldi@cea.fr
+# @authors: Antonin Corinaldi: antonin.corinaldi@cea.fr; Martin Kilbinger: martin.kilbinger@cea.fr
 
 # Python file to perform metacalibration and PSF leakage correction of the ellipticities of matched catalogues
 # (cf file get_matched_catalogue.py in src/sp_validation for the creation of the matched catalogues)
