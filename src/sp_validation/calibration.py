@@ -244,7 +244,14 @@ def build_df(cat_gal):
     return pd.DataFrame(arr, columns=cat_gal.keys())
     
 
-def get_w_des(cat_gal, num_bins):
+def get_w_des(
+    cat_gal,
+    num_bins,
+    snr_min=None,
+    snr_max=None,
+    size_ratio_min=None,
+    size_ratio_max=None,
+):
     """
     Get DES weights. (Gatti et al. 2021)
     Return an array of DES weights obtained by binning in SNR and size and computing the ratio between
@@ -253,9 +260,18 @@ def get_w_des(cat_gal, num_bins):
     Parameters
     ----------
     cat_gal: dict
-        A catalog of galaxies containing the response matrix and the uncalibrated ellipticities
+        A catalog of galaxies containing the response matrix and the
+        uncalibrated ellipticities
     num_bins : int
         Number of bins to use for the binning of the SNR and size.
+    snr_min : float, optional
+        Minimum SNR, default (`None`): determined by the data
+    snr_max : float, optional
+        Maximum SNR, default (`None`): determined by the data
+    size_ratio_min : float, optional
+        Minimum size ratio, default (`None`): determined by the data
+    size_ratio_max : float, optional
+        Maximum size ratio, default (`None`): determined by the data
 
     Returns
     -------
@@ -266,11 +282,24 @@ def get_w_des(cat_gal, num_bins):
     df_gal = build_df(cat_gal)
 
     #Create logarithmic bins in size and SNR
-    cut_to_bins(df_gal, "snr", num_bins, type="log")
-    cut_to_bins(df_gal, "size_ratio", num_bins, type="log")
+    cut_to_bins(
+        df_gal,
+        "snr",
+        num_bins,
+        type="log",
+        x_min=snr_min,
+        x_max=snr_max,
+    )
+    cut_to_bins(
+        df_gal,
+        "size_ratio",
+        num_bins,
+        type="log",
+        x_min=size_ratio_min,
+        x_max=size_ratio_max,
+    )
 
-    #Compute shape noise and the shear response in each bin
-
+    # Compute shape noise and the shear response in each bin
     for i in range(num_bins):
         for j in range(num_bins):
             bin_mask = (
@@ -496,7 +525,7 @@ def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response
     
     # Create logarithmic bins in size and SNR
     bin_edges = {}
-    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins_x, type="log", x_min=3, x_max=700)
+    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins_x, type="log", x_min=2, x_max=700)
     bin_edges["size_ratio"] = cut_to_bins(df_gal, "size_ratio", num_bins_y, type="log", x_min=0.3, x_max=10)
     
     # Initialize output dict

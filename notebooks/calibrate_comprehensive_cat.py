@@ -8,9 +8,10 @@ from IPython import get_ipython
 # enable autoreload for interactive sessions                                     
 ipython = get_ipython()                                                          
 if ipython is not None:                                                          
-    ipython.run_line_magic("load_ext", "autoreload")                             
+    ipython.run_line_magic("reload_ext", "autoreload")                             
     ipython.run_line_magic("autoreload", "2")
-    ipython.run_line_magic("load_ext", "log_cell_time")
+    ipython.run_line_magic("reload_ext", "log_cell_time")
+
 
 # %%
 import sys
@@ -36,6 +37,11 @@ obj = sp_joint.CalibrateCat()
 # Read configuration file and set parameters
 config = obj.read_config_set_params("config_mask.yaml")
 
+
+
+# %%
+obj._params
+
 # %%
 # Get data. Set load_into_memory to False for very large files
 dat, dat_ext = obj.read_cat(load_into_memory=False)
@@ -49,8 +55,6 @@ if n_test > 0:
     dat_ext = dat_ext[:n_test]
 
 
-
-# %%
 # ## Masking
 
 # %%
@@ -125,6 +129,10 @@ sp_joint.compute_weights_gatti(
     mask_combined,
     mask_metacal,
     num_bins=20,
+    snr_min=cm["gal_snr_min"],
+    snr_max=cm["gal_snr_max"],
+    size_ratio_min=cm["gal_rel_size_min"],
+    size_ratio_max=cm["gal_rel_size_max"],
 )
 
 # %%
@@ -195,7 +203,14 @@ for key in add_cols:
         mask_combined._mask,
         mask_metacal
     )
-    #add_cols_data[key] = dat[key][mask_combined._mask][mask_metacal]
+
+# Keep original NOSHEAR column, override with 1P PSF values (FHP/MK hack)
+print(
+    "FHP/MK hack: explicit copying of the metacal no-shear (updated from 1p)"
+    + f" PSF size"
+)
+add_cols_data["NGMIX_Tpsf_NOSHEAR_orig"] = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
+add_cols_data["NGMIX_Tpsf_NOSHEAR"] = gal_metacal.ns["Tpsf"][mask_metacal]
 
 # %%
 # Additional post-processing columns to write to output cat
@@ -228,10 +243,6 @@ obj.add_params_to_FITS_header(header, cm=cm)
 # Add mask information to FITS header
 for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
-
-
-# %%
-header
 
 # %%
 output_shape_cat_path = obj._params["input_path"].replace(

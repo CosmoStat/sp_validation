@@ -1,14 +1,21 @@
+# Config file for masking and calibration.
+# Standard cuts without halo masks, including deblended objects, type v1.X.11
+
+# General parameters (can also given on command line)
 params:
-  input_path: unions_shapepipe_comprehensive_struc_2024_v1.4.2.hdf5
-  cmatrices: True
+  input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
+  cmatrices: False
+  sky_regions: False
   verbose: True
 
+# Masks
+## Using columns in 'dat' group (ShapePipe flags)
 dat:
   # SExtractor flags
   - col_name: FLAGS
     label: SE FLAGS
-    kind: equal
-    value: 0
+    kind: smaller_equal
+    value: 3
 
   # Duplicate objects
   - col_name: overlap
@@ -50,18 +57,8 @@ dat:
     kind: not_equal
     value: -10
 
+## Using columns in 'dat_ext' group (post-processing flags)
 dat_ext:
-  # Faint star halos
-  - col_name: 1_Faint_star_halos
-    label: "Faint star halos"
-    kind: equal
-    value: False
-
-  # Bright star halos
-  - col_name: 2_Bright_star_halos
-    label: "Bright star halos"
-    kind: equal
-    value: False
 
   # Stars
   - col_name: 4_Stars
@@ -87,7 +84,7 @@ dat_ext:
     kind: equal
     value: False
 
-  # Rought pointing coverage
+  # Rough pointing coverage
   - col_name: npoint3
     label: r"$n_{\rm pointing}$"
     kind: greater_equal
@@ -103,8 +100,11 @@ metacal:
   gal_snr_max: 500
 
   # Relative-size (hlr / hlr_psf) range
-  gal_rel_size_min: 0.5
+  gal_rel_size_min: 0.707
   gal_rel_size_max: 3
 
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
+
+  # Weight for global response matrix, None for unweighted mean
+  global_R_weight: w

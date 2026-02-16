@@ -1331,7 +1331,7 @@ class CosmologyValidation:
             self.print_start("Computing ellipticity histograms:")
 
             fig, axs = plt.subplots(1, 2, figsize=(22, 7))
-            bins = np.linspace(-1.5, 1.5, nbins + 1)
+            bins = np.linspace(-1.1, 1.1, nbins + 1)
             for ver in self.versions:
                 self.print_magenta(ver)
                 R = self.cc[ver]["shear"]["R"]
@@ -1347,7 +1347,7 @@ class CosmologyValidation:
                     axs[0].hist(
                         e1,
                         bins=bins,
-                        density=False,
+                        density=True,
                         histtype="step",
                         weights=w,
                         label=ver,
@@ -1356,7 +1356,7 @@ class CosmologyValidation:
                     axs[1].hist(
                         e2,
                         bins=bins,
-                        density=False,
+                        density=True,
                         histtype="step",
                         weights=w,
                         label=ver,
@@ -1365,7 +1365,7 @@ class CosmologyValidation:
 
             for idx in (0, 1):
                 axs[idx].set_xlabel(f"$e_{idx}$")
-                axs[idx].set_ylabel("frequency")
+                axs[idx].set_ylabel("normalised count")
                 axs[idx].legend()
                 axs[idx].set_xlim([-1.5, 1.5])
             cs_plots.savefig(out_path, close_fig=False)
@@ -1661,7 +1661,7 @@ class CosmologyValidation:
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
                 self.cat_ggs[ver].xip,
                 yerr=np.sqrt(self.cat_ggs[ver].varxip),
                 label=ver,
@@ -1684,7 +1684,7 @@ class CosmologyValidation:
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
                 self.cat_ggs[ver].xim,
                 yerr=np.sqrt(self.cat_ggs[ver].varxim),
                 label=ver,
@@ -1798,8 +1798,8 @@ class CosmologyValidation:
 
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
 
-
         for idx, ver in enumerate(self.versions):
+            self.calculate_2pcf(ver)
             xi_psf_sys = self.xi_psf_sys[ver]
             gg = self.cat_ggs[ver]
 
@@ -1967,7 +1967,7 @@ class CosmologyValidation:
                 labels=labels,
                 xlog=True,
                 xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=[-1e-6, 2e-5],
+                ylim=[-2e-6, 5e-6],
                 colors=colors,
                 linestyles=linestyles,
                 shift_x=True,
@@ -2000,7 +2000,7 @@ class CosmologyValidation:
                 xlog=True,
                 ylog=True,
                 xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=[1e-9, 3e-5],
+                ylim=[1e-8, 1e-5],
                 colors=colors,
                 linestyles=linestyles,
                 shift_x=True,
