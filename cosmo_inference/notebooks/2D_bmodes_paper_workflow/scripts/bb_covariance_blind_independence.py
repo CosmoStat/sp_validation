@@ -19,12 +19,10 @@ import numpy as np
 import treecorr
 from astropy.io import fits
 
+from plotting_utils import PAPER_MPLSTYLE
 from sp_validation.b_modes import calculate_cosebis
 
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/"
-    "2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+plt.style.use(PAPER_MPLSTYLE)
 
 
 BLINDS = ["A", "B", "C"]
@@ -235,7 +233,7 @@ def make_figure(theta, ell_eff, pure_eb_results, harmonic_results, cosebis_resul
 
 def main(snakemake):
     config = snakemake.config
-    version = config["fiducial"]["version"]
+    version = config["fiducial"]["mock_version"]
 
     # Load pure E/B covariances for all blinds
     pure_eb_data = {}
@@ -273,12 +271,9 @@ def main(snakemake):
             nbins_int,
         )
 
-    # Effective ell values (log-spaced bins)
-    ell_min = config["cl"]["ell_min"]
-    ell_max = config["cl"]["ell_max"]
-    n_ell_bins = config["cl"]["n_ell_bins"]
-    ell_edges = np.logspace(np.log10(ell_min), np.log10(ell_max), n_ell_bins + 1)
-    ell_eff = np.sqrt(ell_edges[:-1] * ell_edges[1:])
+    # Read ell bin centers from pseudo-Cl data file
+    with fits.open(snakemake.input.pseudo_cl) as hdu:
+        ell_eff = hdu["PSEUDO_CELL"].data["ELL"]
 
     # Compute ratios relative to blind A
     pure_eb_results = {}

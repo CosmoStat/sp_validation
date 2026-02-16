@@ -1,11 +1,12 @@
 versions: [
   "SP_v1.4.5", "SP_v1.4.5_leak_corr",
   "SP_v1.4.6", "SP_v1.4.6_leak_corr",
+  "SP_v1.4.6_ecut07", "SP_v1.4.6_ecut07_leak_corr",
   "SP_v1.4.8", "SP_v1.4.8_leak_corr",
-  "SP_v1.4.11.2", "SP_v1.4.11.2_leak_corr"
+  "SP_v1.4.11.3", "SP_v1.4.11.3_leak_corr",
+  "SP_v1.4.11.3_ecut07", "SP_v1.4.11.3_ecut07_leak_corr"
 ]
-# IV weight variants available but excluded from main analysis (see fiber v1-4-11-2-iv-weights-harmonic-b-2a2ed88b):
-# "SP_v1.4.11.2_w_iv", "SP_v1.4.11.2_w_iv_leak_corr"
+# IV weight variants removed — one-off test (see fiber v1-4-11-2-iv-weights-harmonic-b-2a2ed88b)
 ellipticity_suffix: "_leak_corrected"
 
 # grid search parameters
@@ -21,7 +22,7 @@ nbins_int: [100, 200, 300, 500]
 
 # fiducial parameters
 fiducial:
-  version: SP_v1.4.11.2_leak_corr
+  version: SP_v1.4.6_leak_corr
   blind: A
   npatch: 1
   min_sep: 1.0
@@ -67,10 +68,11 @@ covariance:
 
 # Harmonic-space (C_l) analysis parameters
 cl:
-  # Full range for B-mode null tests
-  ell_min: 50
-  ell_max: 2000
   n_ell_bins: 32
+  # Finer binning for COSEBIS cross-validation (harmonic_config_cosebis_comparison).
+  # 96-bin powspace recovers modes 1-5 within ~2% of config-space (validated on GLASS mocks).
+  # Modes 6+ remain fundamentally limited by W_n(ell) numerical precision, not binning.
+  cosebis_nbins: 96
   # Fiducial scale cuts for cosmological inference (from Paper II, Goh et al.)
   fiducial_ell_min: 300
   fiducial_ell_max: 1600
@@ -79,7 +81,6 @@ cl:
 cosebis:
   theta_min: 1.0      # arcmin, angular scale range
   theta_max: 250.0    # arcmin, matches max_sep for consistency
-  nmodes: 20          # number of COSEBIS modes to calculate
   mode_subsets: [6, 20]  # mode counts for PTE evaluation
 
 # Statistical thresholds
@@ -91,7 +92,7 @@ plotting:
   palette: "colorblind"  # seaborn palette
   version_alpha:
     fiducial: 1.0
-    comparison: 0.4
+    comparison: 1.0
   markers:
     style: "unfilled"
     linewidth: 1.5
@@ -102,9 +103,9 @@ plotting:
     SP_v1.4.5_leak_corr: "Initial"
     SP_v1.4.6_leak_corr: "Size cuts"
     SP_v1.4.8_leak_corr: "Masking"
-    SP_v1.4.11.2_leak_corr: "Blends"
+    SP_v1.4.11.3_leak_corr: "Relaxed flags"
   # Which version's value is drawn as the fiducial reference line in version comparison plots
-  fiducial_for_comparison: "SP_v1.4.11.2_leak_corr"
+  fiducial_for_comparison: "SP_v1.4.6_leak_corr"
   # Version box styling
   version_box:
     edge_color: "0.3"
@@ -132,3 +133,17 @@ glass_mocks:
 # External tools
 tools:
   cosmocov_executable: "/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov"
+
+# Ellipticity cut investigation
+ecut:
+  versions_for_comparison:
+    - SP_v1.4.6_leak_corr
+    - SP_v1.4.6_ecut07_leak_corr
+    - SP_v1.4.11.3_leak_corr
+    - SP_v1.4.11.3_ecut07_leak_corr
+  version_labels:
+    SP_v1.4.6_leak_corr: "v1.4.6"
+    SP_v1.4.6_ecut07_leak_corr: "v1.4.6 $|e|<0.7$"
+    SP_v1.4.11.3_leak_corr: "v1.4.11.3"
+    SP_v1.4.11.3_ecut07_leak_corr: "v1.4.11.3 $|e|<0.7$"
+  fiducial_for_comparison: "SP_v1.4.6_leak_corr"

@@ -12,22 +12,30 @@ Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper sh
 
 ## Figure Mapping
 
-### Main Text (Results)
+### Main Text — Methods
 
-| Figure | Claim | Output | Section | Label |
-|--------|-------|--------|---------|-------|
-| Pure E/B covariance | `pure_eb_covariance` | `figure.png` | §2.4 | `fig:eb_covariance` |
-| Pure E/B data vector | `pure_eb_data_vector` | `paper_figure` | §2.3 | `fig:pure_eb_data_vector` |
-| Harmonic fiducial | `cl_data_vector` | `paper_figure` | §2.3 | `fig:cl_data_vector` |
-| Config-space PTE composite | `config_space_pte_matrices` | `paper_figure_fiducial` | Results | `fig:pte_config_space` |
-| Harmonic PTE matrix | `harmonic_space_pte_matrices` | `paper_figure_fiducial` | Results | `fig:pte_cl` |
+| Figure | Claim | File | Section | Label |
+|--------|-------|------|---------|-------|
+| Pure E/B decomposition | `pure_eb_data_vector` | `pure_eb_data_vector.png` | §2.3 | `fig:pure_eb_decomposition` |
+| COSEBIS B-modes | `cosebis_data_vector` | `cosebis_data_vector.png` | §2.3 | `fig:cosebis_fiducial` |
+| Harmonic fiducial | `cl_data_vector` | `cl_fiducial.png` | §2.3 | `fig:cl_fiducial` |
+| Pure E/B covariance | `pure_eb_covariance` | `eb_covariance.png` | §2.4 | `fig:eb_covariance` |
+
+### Main Text — Results
+
+| Figure | Claim | File | Section | Label |
+|--------|-------|------|---------|-------|
+| Config-space PTE heatmaps | `config_space_pte_matrices` | `config_space_pte_fiducial.png` | §3 | `fig:pte_heatmaps` |
+| Harmonic PTE heatmap | `harmonic_space_pte_matrices` | `cl_pte_heatmap.png` | §3 | `fig:pte_cl` |
+| Pure E/B version comparison | `pure_eb_version_comparison` | `pure_eb_versions.png` | §3.1 | `fig:pure_eb_versions` |
+| Harmonic version comparison | `cl_version_comparison` | `cl_versions.png` | §3.1 | `fig:cl_versions` |
 
 ### Appendix
 
-| Figure | Claim | Output | Section | Label |
-|--------|-------|--------|---------|-------|
-| Config-space PTE composite | `config_space_pte_matrices` | `paper_figure_appendix` | Appendix | `fig:pte_config_appendix` |
-| Harmonic PTE appendix | `harmonic_space_pte_matrices` | `paper_figure_appendix` | Appendix | `fig:pte_cl_appendix` |
+| Figure | Claim | File | Section | Label |
+|--------|-------|------|---------|-------|
+| Config-space PTE (all versions) | `config_space_pte_matrices` | `config_space_pte_composite_appendix.png` | Appendix A | `fig:pte_appendix` |
+| Harmonic PTE (all versions) | `harmonic_space_pte_matrices` | `cl_pte_composite_appendix.png` | Appendix A | `fig:pte_cl_appendix` |
 
 Figures copy from `results/claims/{claim}/` to `docs/unions_release/unions_bmodes/Figures/`.
 

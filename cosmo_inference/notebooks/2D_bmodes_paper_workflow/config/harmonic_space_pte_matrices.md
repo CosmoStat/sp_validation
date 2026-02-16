@@ -43,4 +43,4 @@ Per-version statistics:
 - `figure_fiducial.png` — PTE heatmap for fiducial version (main text)
 - `figure_appendix.png` — N-panel composite for all versions from `config.versions` (appendix)
 
-Heatmaps use vlag colormap [0, 1] with contours at 0.05/0.95. Fiducial multipole range marked with hatched rectangle.
+Heatmaps use a discrete PTE colormap (`make_pte_colormap` from `plotting_utils.py`) with solid blue below 0.05, solid red above 0.95, and a gradient between. No contour overlays. Fiducial multipole range marked with a plain black-edged rectangle (no hatching).

@@ -66,16 +66,20 @@ Official results use specific covariance sources for consistency and correctness
 - TreeCorr jackknife covariance — too noisy for official results
 - NPZ `cov_xip_xim` field — deprecated (was jackknife)
 
-### Version Mapping
+### Footprint Masks
 
-Some catalog versions share the same survey footprint and mask, so they reuse covariance computed for the base version:
+Two footprint masks at nside=4096, generated from the comprehensive catalog with
+only spatially-structured cuts (no galaxy selection cuts):
 
-| Version | Covariance Version | Rationale |
-|---------|-------------------|-----------|
-| v1.4.10.1 | v1.4.6 | Blending corrections don't change geometry |
-| v1.4.11.2 | v1.4.6 | PSF size integration; same footprint and mask |
+| Mask | Area | Used by |
+|------|------|---------|
+| Standard footprint | 2894 deg² | v1.4.5, v1.4.6, v1.4.11.3 (and ecut variants) |
+| Star-halo footprint | 2517 deg² | v1.4.8 |
 
-This mapping is implemented in `resolve_covariance_version()` (Snakefile) and `MASK_CLS_FILES` (covariance.smk).
+Each version gets its own covariance from its own survey properties (A, n_e, sigma_e).
+`resolve_covariance_version()` is the identity function — no cross-version covariance sharing.
+`MASK_CLS_FILES` (covariance.smk) maps to two mask power spectrum files based on whether
+the version is in `STARHALO_VERSIONS`.
 
 ## Related Specs
 

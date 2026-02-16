@@ -61,6 +61,8 @@ def generate_pseudo_cl(
         # For linear binning, nbins determines ell_step such that we cover 2-2048
         ell_step = max(1, (2048 - 2) // nbins)
         bin_str = f"nbins={nbins} (ell_step={ell_step})"
+    elif binning == "logspace":
+        bin_str = f"nbins={nbins} (geomspace)"
     else:
         bin_str = f"nbins={nbins}, power={power}"
 

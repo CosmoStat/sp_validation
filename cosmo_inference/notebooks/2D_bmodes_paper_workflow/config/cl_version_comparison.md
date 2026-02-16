@@ -14,7 +14,6 @@ B-mode power spectra C_ell^BB are consistent with zero for all leak-corrected ve
 |-----------|------------|
 | Versions | `versions` |
 | ell bins | `cl.n_ell_bins` |
-| ell range | `cl.ell_min`, `cl.ell_max` |
 | PTE healthy range | `statistics.pte_healthy_range` |
 
 ## Evidence

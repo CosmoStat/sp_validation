@@ -23,6 +23,7 @@ import treecorr
 from sp_validation.b_modes import calculate_cosebis
 
 from plotting_utils import (
+    FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     iter_version_figures,
 )
@@ -62,8 +63,7 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     Args:
         title: Optional title for the figure (None for paper figure).
     """
-    fig_width = 7.24
-    fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.35))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.55))
 
     x_offsets = {"fiducial": -0.15, "full": 0.15}
     modes = np.arange(1, nmodes + 1)
@@ -80,7 +80,7 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
         color = scale_colors[scale_key]
         scale_cut = scale_cuts[scale_key]
 
-        label = rf"$\theta \in [{scale_cut[0]:.0f}, {scale_cut[1]:.0f}]'$"
+        label = rf"$\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$"
 
         line = ax.errorbar(
             modes + offset,
@@ -111,7 +111,7 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     ax.tick_params(axis="both", width=0.5, length=3)
 
     if title:
-        ax.set_title(f"COSEBIS B-modes ({title})", fontsize=10)
+        ax.set_title(f"COSEBIS B-modes ({title})")
 
     # Compute y-limits from data
     all_y = []
@@ -204,14 +204,14 @@ def main():
         plt.close(fig)
 
         # Track artifact
-        artifacts[fig_spec["filename"].replace(".png", "").replace(".", "_")] = fig_spec["filename"]
+        artifacts[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
 
         # Copy paper figure to paper figures directory
         if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
             paper_path = Path(snakemake.output["paper_figure"])
             paper_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(fig_path, paper_path)
-            print(f"Copied to {paper_path}")
+            fig.savefig(paper_path, bbox_inches="tight")
+            print(f"Saved {paper_path}")
 
     # Write evidence
     spec_paths = snakemake.input["specs"]

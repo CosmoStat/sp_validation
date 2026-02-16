@@ -20,6 +20,7 @@ from astropy.io import fits
 
 # Import shared utilities (also registers SquareRootScale)
 from plotting_utils import (
+    FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
     iter_version_figures,
@@ -67,12 +68,10 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
         ell_max_cut: Upper scale cut for shading excluded region
         title: Optional title for the figure (None for paper figure)
     """
-    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(7.24, 5.0), sharex=True)
+    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 1.0), sharex=True)
 
-    sns.set_palette("husl", 2)
-    colors = sns.color_palette()
-    color_bb = colors[0]
-    color_eb = colors[1]
+    color_bb = "#2c5f8a"   # dark blue (distinct harmonic-space scheme)
+    color_eb = "#c45a2c"   # burnt orange
 
     minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 
@@ -173,14 +172,14 @@ def main():
         plt.close(fig)
 
         # Track artifact
-        artifacts[fig_spec["filename"].replace(".png", "").replace(".", "_")] = fig_spec["filename"]
+        artifacts[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
 
         # Copy paper figure to paper figures directory
         if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
             paper_path = Path(snakemake.output["paper_figure"])
             paper_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(fig_path, paper_path)
-            print(f"Copied to {paper_path}")
+            fig.savefig(paper_path, bbox_inches="tight")
+            print(f"Saved {paper_path}")
 
     # Compute PTEs for evidence (fiducial version, leak-corrected only)
     ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
@@ -221,13 +220,6 @@ def main():
             "pte_bb_cut": float(pte_bb_cut),
             "chi2_bb_cut": float(chi2_bb_cut),
             "dof_bb_cut": int(dof_bb_cut),
-            # Scale cut values
-            "ell_min_cut": int(ell_min_cut),
-            "ell_max_cut": int(ell_max_cut),
-            # Data range
-            "ell_min": float(ell.min()),
-            "ell_max": float(ell.max()),
-            "n_ell_bins": int(len(ell)),
             # Version
             "version": version,
         },

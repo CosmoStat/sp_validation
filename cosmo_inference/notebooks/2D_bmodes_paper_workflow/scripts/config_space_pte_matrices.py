@@ -17,11 +17,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
 
-from plotting_utils import make_pte_colormap
+from plotting_utils import PAPER_MPLSTYLE, make_pte_colormap
 
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _load_snakemake():
@@ -38,6 +36,22 @@ def _load_snakemake():
 
 
 snakemake = _load_snakemake()
+
+
+def _path_matches_version(path, version):
+    """Check if a file path matches a specific catalog version exactly.
+
+    Avoids substring false positives (e.g. 'SP_v1.4.5' matching
+    'SP_v1.4.5_leak_corr' paths) by rejecting cases where the path
+    actually contains the leak_corr variant of an uncorrected version.
+    """
+    path_str = str(path)
+    if version not in path_str:
+        return False
+    # For uncorrected versions, reject if the path contains the leak_corr variant
+    if not version.endswith("_leak_corr") and (version + "_leak_corr") in path_str:
+        return False
+    return True
 
 
 def load_cosebis_pte_matrix(pte_files, version, config, nmodes=6):
@@ -70,9 +84,8 @@ def load_cosebis_pte_matrix(pte_files, version, config, nmodes=6):
     pte_matrix = np.full((n_theta, n_theta), np.nan)
 
     for pte_file in pte_files:
-        pte_path = Path(pte_file)
-        # Filter to this version (path contains version string)
-        if version not in str(pte_path):
+        # Filter to this version (exact match, no substring false positives)
+        if not _path_matches_version(pte_file, version):
             continue
 
         with open(pte_file) as f:
@@ -120,16 +133,47 @@ def load_pure_eb_pte_matrices(pte_files, version):
         PTE matrix for xi-^B.
     theta : ndarray
         Angular scale grid.
+    pte_combined : ndarray or None
+        PTE matrix for combined ξ_tot^B, or None if not available.
     """
     for pte_file in pte_files:
-        # Filter to this version
-        if version not in pte_file:
+        # Filter to this version (exact match, no substring false positives)
+        if not _path_matches_version(pte_file, version):
             continue
 
         data = np.load(pte_file)
-        return data["pte_xip_B"], data["pte_xim_B"], data["theta"]
+        pte_combined = data["pte_combined"] if "pte_combined" in data else None
+        return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined
 
     raise ValueError(f"No PTE file found for version {version}")
+
+
+def _load_version_pte_data(pure_eb_pte_files, cosebis_pte_files, version, config):
+    """Load all PTE matrices for a single version.
+
+    Returns
+    -------
+    dict with keys: pte_xip_B, pte_xim_B, pte_combined (or None),
+        pte_cosebis, pte_cosebis_20, theta_pure_eb, theta_cosebis.
+    """
+    pte_xip_B, pte_xim_B, theta_pure_eb, pte_combined = load_pure_eb_pte_matrices(
+        pure_eb_pte_files, version
+    )
+    pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
+        cosebis_pte_files, version, config, nmodes=6
+    )
+    pte_cosebis_20, _ = load_cosebis_pte_matrix(
+        cosebis_pte_files, version, config, nmodes=20
+    )
+    return {
+        "pte_xip_B": pte_xip_B,
+        "pte_xim_B": pte_xim_B,
+        "pte_combined": pte_combined,
+        "pte_cosebis": pte_cosebis,
+        "pte_cosebis_20": pte_cosebis_20,
+        "theta_pure_eb": theta_pure_eb,
+        "theta_cosebis": theta_cosebis,
+    }
 
 
 def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
@@ -183,8 +227,11 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
         )
     )
 
-    # Title
-    ax.set_title(title, fontsize=9)
+    # Title inside plot (bottom-right of empty upper triangle)
+    if title:
+        ax.text(0.95, 0.05, title, transform=ax.transAxes,
+                ha="right", va="bottom", fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
 
     # Tick positioning: x-axis at left edge of bins, y-axis at top edge
     tick_step = 2
@@ -198,12 +245,12 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     ax.set_yticks(tick_indices + 1)
 
     if show_xticklabels:
-        ax.set_xticklabels(x_tick_labels, fontsize=6)
+        ax.set_xticklabels(x_tick_labels, fontsize=7)
     else:
         ax.set_xticklabels([])
 
     if show_yticklabels:
-        ax.set_yticklabels(y_tick_labels, fontsize=6)
+        ax.set_yticklabels(y_tick_labels, fontsize=7)
     else:
         ax.set_yticklabels([])
 
@@ -246,8 +293,9 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
     # Get full-range PTEs from pure E/B (fiducial blind)
     xip_ptes = []
     xim_ptes = []
+    combined_ptes = []
     for pte_file in pure_eb_pte_files:
-        if version not in pte_file:
+        if not _path_matches_version(pte_file, version):
             continue
         pte_data = np.load(pte_file)
         theta = pte_data["theta"]
@@ -258,28 +306,44 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
             xip_ptes.append(xip_pte)
         if not np.isnan(xim_pte):
             xim_ptes.append(xim_pte)
+        if "pte_combined" in pte_data:
+            combined_pte = pte_data["pte_combined"][full_range_idx]
+            if not np.isnan(combined_pte):
+                combined_ptes.append(combined_pte)
 
     ptes = {
         "xip": float(min(xip_ptes)) if xip_ptes else float("nan"),
         "xim": float(min(xim_ptes)) if xim_ptes else float("nan"),
+        "combined": float(min(combined_ptes)) if combined_ptes else float("nan"),
         "cosebis": float("nan"),  # Default if file not found
+        "cosebis_20": float("nan"),  # Default for n=20
     }
 
     # Load COSEBIS full-range PTE (pte_000_020.json for full theta range, min across blinds)
-    cosebis_ptes = []
+    cosebis_ptes_6 = []
+    cosebis_ptes_20 = []
     for pte_file in cosebis_pte_files:
-        if version in str(pte_file) and "pte_000_020" in str(pte_file):
+        if _path_matches_version(pte_file, version) and "pte_000_020" in str(pte_file):
             try:
                 with open(pte_file) as f:
                     data = json.load(f)
-                pte_val = data.get("pte_B", data.get("nmodes_6", {}).get("pte_B"))
+                # n=6 PTE
+                pte_val = data.get("nmodes_6", {}).get("pte_B")
+                if pte_val is None:
+                    pte_val = data.get("pte_B")
                 if pte_val is not None and not np.isnan(pte_val):
-                    cosebis_ptes.append(pte_val)
+                    cosebis_ptes_6.append(pte_val)
+                # n=20 PTE
+                pte_20 = data.get("nmodes_20", {}).get("pte_B")
+                if pte_20 is not None and not np.isnan(pte_20):
+                    cosebis_ptes_20.append(pte_20)
             except FileNotFoundError:
                 continue
 
-    if cosebis_ptes:
-        ptes["cosebis"] = float(min(cosebis_ptes))
+    if cosebis_ptes_6:
+        ptes["cosebis"] = float(min(cosebis_ptes_6))
+    if cosebis_ptes_20:
+        ptes["cosebis_20"] = float(min(cosebis_ptes_20))
 
     return ptes
 
@@ -325,15 +389,17 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         bottom=0.15, top=0.90
     )
 
-    # Load Pure E/B PTE matrices (fiducial blind)
-    pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
-        pure_eb_pte_files, version
+    # Load all PTE data for this version
+    matrices = _load_version_pte_data(
+        pure_eb_pte_files, cosebis_pte_files, version, config
     )
-
-    # Load COSEBIS PTE matrix
-    pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
-        cosebis_pte_files, version, config, nmodes=6
-    )
+    pte_xip_B = matrices["pte_xip_B"]
+    pte_xim_B = matrices["pte_xim_B"]
+    pte_combined = matrices["pte_combined"]
+    pte_cosebis = matrices["pte_cosebis"]
+    pte_cosebis_20 = matrices["pte_cosebis_20"]
+    theta_pure_eb = matrices["theta_pure_eb"]
+    theta_cosebis = matrices["theta_cosebis"]
 
     # Compute fiducial indices
     cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
@@ -353,15 +419,15 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     plot_pte_panel(
         ax_xip, pte_xip_B, theta_pure_eb,
         xip_start, xip_stop,
-        r"$\xi_+^B$",
+        r"$\xi_+^{\mathrm{B}}$",
         show_xticklabels=True, show_yticklabels=True
     )
-    ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
+    ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
     plot_pte_panel(
         ax_xim, pte_xim_B, theta_pure_eb,
         xim_start, xim_stop,
-        r"$\xi_-^B$",
+        r"$\xi_-^{\mathrm{B}}$",
         show_xticklabels=True, show_yticklabels=False
     )
 
@@ -375,18 +441,20 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     # Shared colorbar on rightmost column
     cax = fig.add_subplot(gs[0, 3])
     cbar = fig.colorbar(im_cosebis, cax=cax)
-    cbar.set_label("PTE", fontsize=8)
-    cbar.ax.tick_params(labelsize=6)
+    cbar.set_label("PTE", fontsize=9)
+    cbar.ax.tick_params(labelsize=7)
 
     # Common x-axis label
     fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center", fontsize=9)
+             ha="center")
 
     # Compute statistics
     stats = {
         "xip": compute_stats(pte_xip_B, xip_start, xip_stop),
         "xim": compute_stats(pte_xim_B, xim_start, xim_stop),
+        "combined": compute_stats(pte_combined, xip_start, xip_stop) if pte_combined is not None else {"pte_at_fiducial": float("nan")},
         "cosebis": compute_stats(pte_cosebis, cosebis_fid_start, cosebis_fid_stop),
+        "cosebis_20": compute_stats(pte_cosebis_20, cosebis_fid_start, cosebis_fid_stop),
     }
 
     # Extract full-range PTEs
@@ -434,7 +502,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         n_versions, 4,
         width_ratios=[1, 1, 1, 0.04],
         wspace=0.03, hspace=0.08,
-        left=0.10, right=0.95,
+        left=0.10, right=0.88,
         bottom=0.08, top=0.94
     )
 
@@ -442,15 +510,17 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     all_full_range_ptes = {}
 
     for row_idx, version in enumerate(versions):
-        # Load Pure E/B PTE matrices (fiducial blind)
-        pte_xip_B, pte_xim_B, theta_pure_eb = load_pure_eb_pte_matrices(
-            pure_eb_pte_files, version
+        # Load all PTE data for this version
+        matrices = _load_version_pte_data(
+            pure_eb_pte_files, cosebis_pte_files, version, config
         )
-
-        # Load COSEBIS PTE matrix
-        pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
-            cosebis_pte_files, version, config, nmodes=6
-        )
+        pte_xip_B = matrices["pte_xip_B"]
+        pte_xim_B = matrices["pte_xim_B"]
+        pte_combined = matrices["pte_combined"]
+        pte_cosebis = matrices["pte_cosebis"]
+        pte_cosebis_20 = matrices["pte_cosebis_20"]
+        theta_pure_eb = matrices["theta_pure_eb"]
+        theta_cosebis = matrices["theta_cosebis"]
 
         # Compute fiducial indices
         cosebis_fid_start = np.argmin(np.abs(theta_cosebis[:-1] - cosebis_fid[0]))
@@ -473,8 +543,8 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
         # Plot titles: version label on top row panels
         version_label = version_labels.get(version, version)
-        xip_title = rf"{version_label}: $\xi_+^B$" if row_idx == 0 else ""
-        xim_title = r"$\xi_-^B$" if row_idx == 0 else ""
+        xip_title = rf"{version_label}: $\xi_+^{{\mathrm{{B}}}}$" if row_idx == 0 else ""
+        xim_title = r"$\xi_-^{\mathrm{B}}$" if row_idx == 0 else ""
         cosebis_title = r"COSEBIS $B_n$" if row_idx == 0 else ""
 
         # Plot panels
@@ -485,7 +555,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
             show_xticklabels=show_xticklabels, show_yticklabels=show_yticklabels
         )
         # Add y-axis label to leftmost panel of each row
-        ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", fontsize=8, labelpad=2)
+        ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
         plot_pte_panel(
             ax_xim, pte_xim_B, theta_pure_eb,
@@ -504,14 +574,16 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         # Add version label to the right of each row
         ax_cosebis.annotate(
             version_label, xy=(1.02, 0.5), xycoords="axes fraction",
-            fontsize=8, weight="bold", va="center", ha="left", rotation=-90
+            fontsize=9, weight="bold", va="center", ha="left", rotation=-90
         )
 
         # Compute statistics
         stats = {
             "xip": compute_stats(pte_xip_B, xip_start, xip_stop),
             "xim": compute_stats(pte_xim_B, xim_start, xim_stop),
+            "combined": compute_stats(pte_combined, xip_start, xip_stop) if pte_combined is not None else {"pte_at_fiducial": float("nan")},
             "cosebis": compute_stats(pte_cosebis, cosebis_fid_start, cosebis_fid_stop),
+            "cosebis_20": compute_stats(pte_cosebis_20, cosebis_fid_start, cosebis_fid_stop),
         }
         all_stats[version] = stats
 
@@ -522,19 +594,20 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     # Shared colorbar on rightmost column
     cax = fig.add_subplot(gs[:, 3])
     cbar = fig.colorbar(im_cosebis, cax=cax)
-    cbar.set_label("PTE", fontsize=8)
-    cbar.ax.tick_params(labelsize=6)
+    cbar.set_label("PTE", fontsize=9)
+    cbar.ax.tick_params(labelsize=7)
 
     # Common x-axis label
     fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center", fontsize=9)
+             ha="center")
 
     return fig, all_stats, all_full_range_ptes
 
 
 def main():
     config = snakemake.config
-    versions = config["versions"]
+    # Only leak-corrected versions have PTE files computed
+    versions = [v for v in config["versions"] if "_leak_corr" in v]
     fiducial_version = config["fiducial"]["version"]
 
     # Scale cuts from config
@@ -584,8 +657,8 @@ def main():
         print(f"  Saved {fig_fid_path}", flush=True)
 
         paper_fid_path = Path(snakemake.output["paper_figure_fiducial"])
-        shutil.copy2(fig_fid_path, paper_fid_path)
-        print(f"  Copied to {paper_fid_path}", flush=True)
+        fig_fid.savefig(paper_fid_path, bbox_inches="tight", facecolor="white")
+        print(f"  Saved {paper_fid_path}", flush=True)
 
         plt.close(fig_fid)
 
@@ -602,8 +675,11 @@ def main():
     print("\n--- Creating Nx3 composite for all versions ---", flush=True)
 
     try:
+        # Only include paper versions (exclude ecut variants)
+        paper_version_labels = config["plotting"]["version_labels"]
+        paper_versions = [v for v in versions if v in paper_version_labels]
         fig, appendix_stats, appendix_ptes = create_9panel_composite(
-            versions=versions,
+            versions=paper_versions,
             pure_eb_pte_files=pure_eb_pte_files,
             cosebis_pte_files=cosebis_pte_files,
             xip_fid=xip_fid,
@@ -619,8 +695,8 @@ def main():
         print(f"  Saved {fig_path}", flush=True)
 
         paper_path = Path(snakemake.output["paper_figure_appendix"])
-        shutil.copy2(fig_path, paper_path)
-        print(f"  Copied to {paper_path}", flush=True)
+        fig.savefig(paper_path, bbox_inches="tight", facecolor="white")
+        print(f"  Saved {paper_path}", flush=True)
 
         plt.close(fig)
 
@@ -666,9 +742,17 @@ def main():
                 **stats["xim"],
                 "pte_at_full_range": full_ptes["xim"],
             },
+            "combined_stats": {
+                **stats["combined"],
+                "pte_at_full_range": full_ptes["combined"],
+            },
             "cosebis_stats": {
                 **stats["cosebis"],
                 "pte_at_full_range": full_ptes["cosebis"],
+            },
+            "cosebis_20_stats": {
+                **stats["cosebis_20"],
+                "pte_at_full_range": full_ptes["cosebis_20"],
             },
         }
 

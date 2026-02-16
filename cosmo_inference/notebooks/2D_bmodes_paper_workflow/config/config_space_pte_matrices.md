@@ -52,4 +52,4 @@ Per-version statistics for each statistic:
   - Version labels on right side of each row
   - Single shared colorbar on right
 
-Each panel uses vlag colormap [0, 1] with contours at 0.05/0.95. Fiducial scale cut marked with hatched rectangle.
+Each panel uses a discrete PTE colormap (`make_pte_colormap` from `plotting_utils.py`) with solid blue below 0.05, solid red above 0.95, and a gradient between. No contour overlays. Fiducial scale cut marked with a plain black-edged rectangle (no hatching).

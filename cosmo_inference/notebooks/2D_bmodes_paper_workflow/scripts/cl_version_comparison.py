@@ -36,8 +36,6 @@ plt.style.use(PAPER_MPLSTYLE)
 
 
 def main():
-    from snakemake.script import snakemake
-
     # Read config
     import yaml
     with open(snakemake.input["config"]) as f:
@@ -48,19 +46,47 @@ def main():
     ell_max_cut = int(snakemake.params.ell_max_cut)
 
     version_labels = snakemake.params.version_labels
-    # Only leak-corrected versions have pseudo-Cl computed
-    versions = [v for v in config["versions"] if "_leak_corr" in v]
+    # Version list: from params if provided (ecut comparison), else from config
+    versions = getattr(snakemake.params, "versions", None)
+    if versions is None:
+        versions = [v for v in config["versions"] if "_leak_corr" in v]
     plotting_config = config["plotting"]
 
     # Which version gets the fiducial reference line in boxes
-    fiducial_for_comparison = plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"])
+    fiducial_for_comparison = getattr(
+        snakemake.params, "fiducial_for_comparison",
+        plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"]),
+    )
     box_style = plotting_config.get("version_box", {})
 
     # Load data for all versions
     datasets = []
-    colors = sns.color_palette("colorblind", len(versions))
+
+    # Color/marker assignment: pair by parent version if ecut versions present
+    has_ecut = any("_ecut" in v for v in versions)
+    if has_ecut:
+        # Group by parent: same color, filled=uncut / open=cut
+        parents = []
+        for v in versions:
+            parent = v.split("_ecut")[0].replace("_leak_corr", "")
+            if parent not in parents:
+                parents.append(parent)
+        parent_colors = sns.husl_palette(len(parents), l=0.4)
+        parent_color_map = dict(zip(parents, parent_colors))
 
     for i, version in enumerate(versions):
+        if has_ecut:
+            parent = version.split("_ecut")[0].replace("_leak_corr", "")
+            color = parent_color_map[parent]
+            is_cut = "_ecut" in version
+            marker = "o" if not is_cut else "D"
+            fillstyle = "full" if not is_cut else "none"
+        else:
+            colors = sns.husl_palette(len(versions), l=0.4)
+            color = colors[i]
+            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            fillstyle = "full"
+
         hdu = fits.open(snakemake.input["pseudo_cl"][i])
         data = hdu["PSEUDO_CELL"].data
         hdu.close()
@@ -77,14 +103,26 @@ def main():
         sigma_bb = np.sqrt(np.diag(cov_bb))
         sigma_eb = np.sqrt(np.diag(cov_eb))
 
-        # Note: compute_chi2_pte returns (chi2, pte, dof) order
+        # Full-range PTEs
         chi2_bb, pte_bb, dof_bb = compute_chi2_pte(cl_bb, cov_bb)
         chi2_eb, pte_eb, dof_eb = compute_chi2_pte(cl_eb, cov_eb)
+
+        # Scale-cut PTEs
+        cut_mask = (ell >= ell_min_cut) & (ell <= ell_max_cut)
+        idx = np.where(cut_mask)[0]
+        cl_bb_cut = cl_bb[idx]
+        cl_eb_cut = cl_eb[idx]
+        cov_bb_cut = cov_bb[np.ix_(idx, idx)]
+        cov_eb_cut = cov_eb[np.ix_(idx, idx)]
+        chi2_bb_cut, pte_bb_cut, dof_bb_cut = compute_chi2_pte(cl_bb_cut, cov_bb_cut)
+        chi2_eb_cut, pte_eb_cut, dof_eb_cut = compute_chi2_pte(cl_eb_cut, cov_eb_cut)
 
         datasets.append({
             "version": version,
             "label": version_label(version, version_labels),
-            "color": colors[i],
+            "color": color,
+            "marker": marker,
+            "fillstyle": fillstyle,
             "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
             "ell": ell,
             "cl_bb": cl_bb,
@@ -97,10 +135,16 @@ def main():
             "pte_eb": pte_eb,
             "chi2_eb": chi2_eb,
             "dof_eb": dof_eb,
+            "pte_bb_cut": pte_bb_cut,
+            "chi2_bb_cut": chi2_bb_cut,
+            "dof_bb_cut": dof_bb_cut,
+            "pte_eb_cut": pte_eb_cut,
+            "chi2_eb_cut": chi2_eb_cut,
+            "dof_eb_cut": dof_eb_cut,
         })
 
     # Two-panel figure: BB (top) and EB (bottom)
-    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.6), sharex=True)
+    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.45), sharex=True)
 
     ell_ref = datasets[0]["ell"]
     ell_widths = np.diff(ell_ref)
@@ -136,7 +180,9 @@ def main():
         color = data["color"]
         label = data["label"]
         alpha = data["alpha"]
-        marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+        marker = data["marker"]
+        fillstyle = data["fillstyle"]
+        mfc = color if fillstyle == "full" else "none"
 
         cl_bb_normalized = data["cl_bb_normalized"]
         cl_eb_normalized = data["cl_eb_normalized"]
@@ -144,7 +190,7 @@ def main():
         line_bb = ax_bb.errorbar(
             ell_jittered, cl_bb_normalized, yerr=np.ones_like(cl_bb_normalized),
             fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=color, markeredgecolor="white",
+            markerfacecolor=mfc, markeredgecolor=color,
             **ERRORBAR_DEFAULTS,
             zorder=2,
         )
@@ -152,7 +198,7 @@ def main():
         ax_eb.errorbar(
             ell_jittered, cl_eb_normalized, yerr=np.ones_like(cl_eb_normalized),
             fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=color, markeredgecolor="white",
+            markerfacecolor=mfc, markeredgecolor=color,
             **ERRORBAR_DEFAULTS,
             zorder=2,
         )
@@ -208,22 +254,27 @@ def main():
 
     paper_path = Path(snakemake.output["paper_figure"])
     paper_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(fig_path, paper_path)
-    print(f"Copied to {paper_path}")
+    fig.savefig(paper_path, bbox_inches="tight")
+    print(f"Saved {paper_path}")
 
     plt.close(fig)
 
     # Build evidence
     evidence_versions = {}
     for data in datasets:
-        evidence_versions[data["version"]] = {
-            "pte_bb": float(data["pte_bb"]),
-            "chi2_bb": float(data["chi2_bb"]),
-            "dof_bb": int(data["dof_bb"]),
-            "pte_eb": float(data["pte_eb"]),
-            "chi2_eb": float(data["chi2_eb"]),
-            "dof_eb": int(data["dof_eb"]),
-        }
+        v = data["version"]
+        evidence_versions[f"{v}_pte_bb"] = float(data["pte_bb"])
+        evidence_versions[f"{v}_chi2_bb"] = float(data["chi2_bb"])
+        evidence_versions[f"{v}_dof_bb"] = int(data["dof_bb"])
+        evidence_versions[f"{v}_pte_eb"] = float(data["pte_eb"])
+        evidence_versions[f"{v}_chi2_eb"] = float(data["chi2_eb"])
+        evidence_versions[f"{v}_dof_eb"] = int(data["dof_eb"])
+        evidence_versions[f"{v}_pte_bb_cut"] = float(data["pte_bb_cut"])
+        evidence_versions[f"{v}_chi2_bb_cut"] = float(data["chi2_bb_cut"])
+        evidence_versions[f"{v}_dof_bb_cut"] = int(data["dof_bb_cut"])
+        evidence_versions[f"{v}_pte_eb_cut"] = float(data["pte_eb_cut"])
+        evidence_versions[f"{v}_chi2_eb_cut"] = float(data["chi2_eb_cut"])
+        evidence_versions[f"{v}_dof_eb_cut"] = int(data["dof_eb_cut"])
 
     spec_paths = snakemake.input["specs"]
 
@@ -233,9 +284,6 @@ def main():
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": evidence_versions,
-            "ell_min": float(datasets[0]["ell"].min()),
-            "ell_max": float(datasets[0]["ell"].max()),
-            "n_ell_bins": int(len(datasets[0]["ell"])),
         },
         "artifacts": {
             "figure": fig_path.name,

@@ -2602,24 +2602,49 @@ class CosmologyValidation:
 
 
     def get_namaster_bin(self, lmin, lmax, b_lmax):
+        """Build NaMaster binning object.
+
+        Parameters
+        ----------
+        lmin, lmax : int
+            Multipole range.
+        b_lmax : int
+            Maximum multipole for the NmtBin object.
+
+        Returns
+        -------
+        nmt.NmtBin
+        """
+        ells = np.arange(lmin, lmax + 1)
 
         if self.binning == 'linear':
-            # To be implemented correctly
-            step = 10
-            b = nmt.NmtBin.from_nside_linear(self.nside, step)
+            bpws = (ells - lmin) // self.ell_step
+            bpws = np.minimum(bpws, bpws[-1])
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        elif self.binning == 'logspace':
+            # Start geomspace at ell_min_log (>= lmin) to avoid
+            # sub-multipole bins at low ell that destabilize the MCM.
+            # All ell below ell_min_log go into bin 0 as padding.
+            ell_min_log = max(lmin, 50)
+            bins_ell = np.geomspace(ell_min_log, lmax, self.n_ell_bins + 1)
+            bpws = np.digitize(ells.astype(float), bins_ell) - 1
+            bpws = np.clip(bpws, 0, self.n_ell_bins - 1)
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
         elif self.binning == 'powspace':
-            ells = np.arange(lmin, lmax+1)
-
             start = np.power(lmin, self.power)
             end = np.power(lmax, self.power)
-            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-            #Get bandpowers
+            bins_ell = np.power(
+                np.linspace(start, end, self.n_ell_bins + 1), 1 / self.power
+            )
             bpws = np.digitize(ells.astype(float), bins_ell) - 1
             bpws[0] = 0
-            bpws[-1] = self.n_ell_bins-1
-
+            bpws[-1] = self.n_ell_bins - 1
             b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        else:
+            raise ValueError(
+                f"Unknown binning '{self.binning}'. "
+                "Choose from 'linear', 'logspace', 'powspace'."
+            )
 
         return b
 
@@ -2707,24 +2732,7 @@ class CosmologyValidation:
                 lmax = 2*self.nside
                 b_lmax = lmax - 1
 
-                ells = np.arange(lmin, lmax+1)
-
-                if self.binning == 'linear':
-                    # Linear bands of width ell_step, respecting actual lmax
-                    bpws = (ells - lmin) // self.ell_step
-                    bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
-                    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-                elif self.binning == 'powspace':
-                    start = np.power(lmin, self.power)
-                    end = np.power(lmax, self.power)
-                    bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-                    #Get bandpowers
-                    bpws = np.digitize(ells.astype(float), bins_ell) - 1
-                    bpws[0] = 0
-                    bpws[-1] = self.n_ell_bins-1
-
-                    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+                b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
                 #Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
@@ -3155,24 +3163,7 @@ class CosmologyValidation:
         lmax = 2*self.nside
         b_lmax = lmax - 1
 
-        ells = np.arange(lmin, lmax+1)
-
-        if self.binning == 'linear':
-            # Linear bands of width ell_step, respecting actual lmax
-            bpws = (ells - lmin) // self.ell_step
-            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-        elif self.binning == 'powspace':
-            start = np.power(lmin, self.power)
-            end = np.power(lmax, self.power)
-            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-            #Get bandpowers
-            bpws = np.digitize(ells.astype(float), bins_ell) - 1
-            bpws[0] = 0
-            bpws[-1] = self.n_ell_bins-1
-
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
         ell_eff = b.get_effective_ells()
 
@@ -3196,24 +3187,7 @@ class CosmologyValidation:
         lmax = 2*self.nside
         b_lmax = lmax - 1
 
-        ells = np.arange(lmin, lmax+1)
-
-        if self.binning == 'linear':
-            # Linear bands of width ell_step, respecting actual lmax
-            bpws = (ells - lmin) // self.ell_step
-            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-        elif self.binning == 'powspace':
-            start = np.power(lmin, self.power)
-            end = np.power(lmax, self.power)
-            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-            #Get bandpowers
-            bpws = np.digitize(ells.astype(float), bins_ell) - 1
-            bpws[0] = 0
-            bpws[-1] = self.n_ell_bins-1
-
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
         ell_eff = b.get_effective_ells()
 

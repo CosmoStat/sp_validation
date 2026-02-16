@@ -16,7 +16,7 @@ def _load_snakemake():
         from snakemake_helpers import snakemake_interactive
 
         return snakemake_interactive(
-            "results/paper_plots/intermediate/SP_v1.4.6_leak_corr_pure_eb_semianalytic.npz",
+            "results/paper_plots/intermediate/SP_v1.4.6_leak_corr_A_pure_eb_semianalytic.npz",
             str(Path.cwd()),
         )
     from snakemake.script import snakemake
@@ -60,27 +60,13 @@ def main():
     gg = _load_xi(snakemake.input["xi_reporting"], numeric_params["nbins"])
     gg_int = _load_xi(snakemake.input["xi_integration"], numeric_params["nbins_int"])
 
-    # For per-blind B/C, load data vectors from base file
-    # For base or A, compute data vectors fresh
-    base_input = snakemake.input.get("base_pure_eb", [])
-    if base_input:
-        # Per-blind case: load data vectors from base file
-        base_data = np.load(base_input[0] if isinstance(base_input, list) else base_input)
-        print(f"Loading data vectors from base file: {base_input}")
-        xip_E = base_data["xip_E"]
-        xim_E = base_data["xim_E"]
-        xip_B = base_data["xip_B"]
-        xim_B = base_data["xim_B"]
-        xip_amb = base_data["xip_amb"]
-        xim_amb = base_data["xim_amb"]
-    else:
-        # Base or A case: compute data vectors fresh
-        eb_results = get_pure_EB_modes(
-            theta=gg["meanr"], xip=gg["xip"], xim=gg["xim"],
-            theta_int=gg_int["meanr"], xip_int=gg_int["xip"], xim_int=gg_int["xim"],
-            tmin=numeric_params["min_sep"], tmax=numeric_params["max_sep"]
-        )
-        xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = eb_results
+    # Compute data vectors from correlation functions
+    eb_results = get_pure_EB_modes(
+        theta=gg["meanr"], xip=gg["xip"], xim=gg["xim"],
+        theta_int=gg_int["meanr"], xip_int=gg_int["xip"], xim_int=gg_int["xim"],
+        tmin=numeric_params["min_sep"], tmax=numeric_params["max_sep"]
+    )
+    xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = eb_results
 
     # Load and concatenate all chunks
     chunk_files = sorted(snakemake.input["chunks"])
