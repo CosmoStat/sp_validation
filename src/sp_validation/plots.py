@@ -472,6 +472,8 @@ class FootprintPlotter:
         projection=None,
         outpath=None,
         title=None,
+        colorbar=True,
+        colorbar_label="Coverage depth",
     ):
         """Plot Area.
 
@@ -494,6 +496,10 @@ class FootprintPlotter:
             output path, default is ``None``
         title : str, optional
             print title if not ``None`` (default)
+        colorbar : bool, optional
+            add colorbar; default is ``True``
+        colorbar_label : str, optional
+            colorbar label; default is "Coverage depth"
 
         Returns
         --------
@@ -520,8 +526,9 @@ class FootprintPlotter:
         else:
             ax = None
 
+        im = None
         try:
-            _ = projection.draw_hspmap(
+            im, lon_raster, lat_raster, values_raster = projection.draw_hspmap(
                 hsp_map, lon_range=extend[0:2], lat_range=extend[2:]
             )
         except ValueError:
@@ -531,6 +538,10 @@ class FootprintPlotter:
 
         projection.draw_milky_way(width=25, linewidth=1.5, color="black", linestyle="-")
 
+        # Add colorbar if requested and image was drawn
+        if colorbar and im is not None:
+            plt.colorbar(im, ax=ax if ax else projection.ax, label=colorbar_label)
+
         if title:
             plt.title(title, pad=5)
 
@@ -539,8 +550,36 @@ class FootprintPlotter:
 
         return projection, ax
 
-    def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None):
+    def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None, colorbar=True, colorbar_label="Coverage depth"):
+        """Plot Region.
 
+        Plot catalogue in a predefined region on the sky.
+
+        Parameters
+        ----------
+        hsp_map : hsp_HealSparseMap
+            input map
+        region : dict
+            region dictionary with keys 'ra_0', 'extend', 'vmax'
+        projection : skyproj.McBrydeSkyproj, optional
+            if ``None`` (default), a new plot is created
+        outpath : str, optional
+            output path, default is ``None``
+        title : str, optional
+            print title if not ``None`` (default)
+        colorbar : bool, optional
+            add colorbar; default is ``True``
+        colorbar_label : str, optional
+            colorbar label; default is "Coverage depth"
+
+        Returns
+        --------
+        skyproj.McBrydeSkyproj
+            projection instance
+        plt.axes.Axes
+            axes instance
+
+        """
         return self.plot_area(
             hsp_map,
             region["ra_0"],
@@ -549,6 +588,8 @@ class FootprintPlotter:
             projection=projection,
             outpath=outpath,
             title=title,
+            colorbar=colorbar,
+            colorbar_label=colorbar_label,
         )
 
     def plot_all_regions(self, hsp_map, outbase=None):
