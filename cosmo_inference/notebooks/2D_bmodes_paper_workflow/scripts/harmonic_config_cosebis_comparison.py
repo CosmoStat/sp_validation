@@ -307,7 +307,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Track generated artifacts
-    artifacts = {}
+    output = {}
 
     # Compute B-mode PTEs for leak-corrected versions only
     harmonic_ptes = {}
@@ -356,7 +356,7 @@ def main():
         print(f"  Saved {fig_path}")
         plt.close(fig)
 
-        artifacts[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
+        output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
 
         # Copy paper figure
         if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
@@ -396,7 +396,7 @@ def main():
     fig_vc.savefig(fig_vc_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_vc_path}")
     plt.close(fig_vc)
-    artifacts["figure_versions"] = "figure_versions.png"
+    output["figure_versions"] = "figure_versions.png"
 
     # --- Evidence ---
     evidence = {
@@ -422,7 +422,7 @@ def main():
                 f"propagated covariance."
             ),
         },
-        "artifacts": artifacts,
+        "output": output,
     }
 
     evidence_path = Path(snakemake.output["evidence"])

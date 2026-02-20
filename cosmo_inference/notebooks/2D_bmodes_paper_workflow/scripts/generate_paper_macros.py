@@ -486,7 +486,7 @@ def generate_evidence(
             "description": "Aggregates quantitative claims for paper reporting",
             "dependencies_summary": summary,
         },
-        "artifacts": {"macros": "claims_macros.tex"},
+        "output": {"macros": "claims_macros.tex"},
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

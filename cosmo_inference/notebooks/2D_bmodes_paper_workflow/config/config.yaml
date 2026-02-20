@@ -32,7 +32,7 @@ fiducial:
   mock_version: SP_v1.4.6
 
   min_sep_int: 0.5
-  max_sep_int: 500.0
+  max_sep_int: 300.0
   nbins_int: 1000
 
   # COSEBIS parameters

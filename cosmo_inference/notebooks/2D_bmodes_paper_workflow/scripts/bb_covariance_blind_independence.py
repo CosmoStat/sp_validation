@@ -416,7 +416,7 @@ def main(snakemake):
             },
             "version": version,
         },
-        "artifacts": {
+        "output": {
             "figure": Path(snakemake.output.figure).name,
         },
     }

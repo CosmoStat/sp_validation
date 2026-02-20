@@ -166,7 +166,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Track generated artifacts
-    artifacts = {}
+    output = {}
 
     # Generate all 9 figures
     for fig_spec in iter_version_figures(version_labels, version):
@@ -204,7 +204,7 @@ def main():
         plt.close(fig)
 
         # Track artifact
-        artifacts[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
+        output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
 
         # Copy paper figure to paper figures directory
         if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
@@ -227,7 +227,7 @@ def main():
             "nmodes": nmodes,
             "note": "Paper data vector figure. Statistical PTEs in cosebis_pte_matrix claim.",
         },
-        "artifacts": artifacts,
+        "output": output,
     }
 
     evidence_path = Path(snakemake.output["evidence"])

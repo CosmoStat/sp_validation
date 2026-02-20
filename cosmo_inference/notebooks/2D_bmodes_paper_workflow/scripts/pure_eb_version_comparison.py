@@ -401,7 +401,7 @@ def main():
             "scale_cuts": {k: list(v) for k, v in scale_cuts.items()},
             "versions": evidence_versions,
         },
-        "artifacts": {"figure": fig_name},
+        "output": {"figure": fig_name},
     }
 
     evidence_path = Path(snakemake.output["evidence"])

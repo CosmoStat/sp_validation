@@ -18,6 +18,8 @@ from scipy import sparse, stats
 
 from .cosmology import get_theo_xi
 
+_EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
+
 
 def find_conservative_scale_cut_key(results, requested_scale_cut):
     """
@@ -161,9 +163,8 @@ def calculate_pure_eb_correlation(
         )
 
     # Initialize results dictionary with basic E/B mode data
-    eb_keys = ["xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb"]
     results = {"gg": gg, "gg_int": gg_int}
-    results.update(dict(zip(eb_keys, pure_EB([gg, gg_int]))))
+    results.update(dict(zip(_EB_KEYS, pure_EB([gg, gg_int]))))
 
     if cov_path_int is not None:
         # Use semi-analytical covariance propagation
@@ -286,7 +287,7 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         hartlap_factor = 1  # Not defined for analytic covariances
     else:
         cov_xipm = gg.cov
-        hartlap_factor = (gg.npatch - 2 * nmodes - 2) / (gg.npatch - 1)
+        hartlap_factor = (gg.npatch1 - 2 * nmodes - 2) / (gg.npatch1 - 1)
 
     all_results = {}
 
@@ -374,9 +375,8 @@ def calculate_eb_statistics(
     n_eff = n_samples if cov_path_int is not None else npatch
 
     # Extract covariance blocks and standard deviations
-    eb_keys = ["xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb"]
     cov = results["cov"]
-    for i, key in enumerate(eb_keys):
+    for i, key in enumerate(_EB_KEYS):
         start, end = nbins * i, nbins * (i + 1)
         cov_block = cov[start:end, start:end]
         results[f"cov_{key}"] = cov_block
@@ -1068,21 +1068,15 @@ def save_pure_eb_results(results, output_path):
         Output .npz file path
     """
     gg = results["gg"]
-    save_dict = {
-        "theta": gg.meanr,
-        "xip_E": results["xip_E"],
-        "xim_E": results["xim_E"],
-        "xip_B": results["xip_B"],
-        "xim_B": results["xim_B"],
-        "xip_amb": results["xip_amb"],
-        "xim_amb": results["xim_amb"],
-        "cov": results["cov"],
-    }
+
+    # Data vectors and covariance
+    save_dict = {"theta": gg.meanr, "cov": results["cov"]}
+    for key in _EB_KEYS:
+        save_dict[key] = results[key]
 
     # PTE matrices
-    if "pte_matrices" in results:
-        for key, matrix in results["pte_matrices"].items():
-            save_dict[f"pte_matrices_{key}"] = matrix
+    for key, matrix in results.get("pte_matrices", {}).items():
+        save_dict[f"pte_matrices_{key}"] = matrix
 
     # Metadata
     save_dict["npatch"] = np.array(gg.npatch1)
@@ -1094,6 +1088,18 @@ def save_pure_eb_results(results, output_path):
 
     np.savez(output_path, **save_dict)
     print(f"Saved pure E/B results to {output_path}")
+
+
+def _cosebis_result_to_dict(r, suffix=""):
+    """Build save dict entries from a single COSEBIs result."""
+    return {
+        f"En{suffix}": r["En"],
+        f"Bn{suffix}": r["Bn"],
+        f"cov{suffix}": r["cov"],
+        f"chi2_E{suffix}": np.array(r["chi2_E"]),
+        f"chi2_B{suffix}": np.array(r["chi2_B"]),
+        f"pte_B{suffix}": np.array(r["pte_B"]),
+    }
 
 
 def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
@@ -1111,38 +1117,22 @@ def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
         If results has multiple scale cuts, save only this one.
         If None and results has multiple scale cuts, saves all.
     """
-    save_dict = {}
+    is_multi = all(isinstance(k, tuple) for k in results)
 
-    # Detect multi-scale-cut dict (tuple keys)
-    if isinstance(results, dict) and all(isinstance(k, tuple) for k in results.keys()):
-        if fiducial_scale_cut is not None:
-            key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
-            r = results[key]
-            save_dict.update({
-                "En": r["En"], "Bn": r["Bn"], "cov": r["cov"],
-                "chi2_E": np.array(r["chi2_E"]),
-                "chi2_B": np.array(r["chi2_B"]),
-                "pte_B": np.array(r["pte_B"]),
-                "scale_cut": np.array(key),
-            })
-        else:
-            for sc, r in results.items():
-                tag = f"{sc[0]}_{sc[1]}"
-                save_dict[f"En_{tag}"] = r["En"]
-                save_dict[f"Bn_{tag}"] = r["Bn"]
-                save_dict[f"cov_{tag}"] = r["cov"]
-                save_dict[f"chi2_E_{tag}"] = np.array(r["chi2_E"])
-                save_dict[f"chi2_B_{tag}"] = np.array(r["chi2_B"])
-                save_dict[f"pte_B_{tag}"] = np.array(r["pte_B"])
-            save_dict["scale_cuts"] = np.array(list(results.keys()))
+    if is_multi and fiducial_scale_cut is not None:
+        # Select the single best-matching scale cut
+        key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
+        save_dict = _cosebis_result_to_dict(results[key])
+        save_dict["scale_cut"] = np.array(key)
+    elif is_multi:
+        # Save all scale cuts with tagged keys
+        save_dict = {}
+        for sc, r in results.items():
+            save_dict.update(_cosebis_result_to_dict(r, f"_{sc[0]}_{sc[1]}"))
+        save_dict["scale_cuts"] = np.array(list(results.keys()))
     else:
         # Single scale cut
-        save_dict.update({
-            "En": results["En"], "Bn": results["Bn"], "cov": results["cov"],
-            "chi2_E": np.array(results["chi2_E"]),
-            "chi2_B": np.array(results["chi2_B"]),
-            "pte_B": np.array(results["pte_B"]),
-        })
+        save_dict = _cosebis_result_to_dict(results)
         if "scale_cut" in results:
             save_dict["scale_cut"] = np.array(results["scale_cut"])
 

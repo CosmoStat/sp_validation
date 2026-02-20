@@ -725,7 +725,7 @@ def main():
                 "cosebis": list(cosebis_fid),
             },
         },
-        "artifacts": {},
+        "output": {},
     }
 
     for version, stats in all_stats.items():
@@ -756,8 +756,8 @@ def main():
             },
         }
 
-    evidence_data["artifacts"]["figure_fiducial"] = Path(snakemake.output["figure_fiducial"]).name
-    evidence_data["artifacts"]["figure_appendix"] = Path(snakemake.output["figure_appendix"]).name
+    evidence_data["output"]["figure_fiducial"] = Path(snakemake.output["figure_fiducial"]).name
+    evidence_data["output"]["figure_appendix"] = Path(snakemake.output["figure_appendix"]).name
 
     evidence_path = Path(snakemake.output["evidence"])
     with open(evidence_path, "w") as f:
