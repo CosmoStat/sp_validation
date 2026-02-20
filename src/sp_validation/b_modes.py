@@ -1056,6 +1056,100 @@ def plot_cosebis_modes(
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
 
+def save_pure_eb_results(results, output_path):
+    """
+    Save pure E/B mode data vectors and covariance to .npz.
+
+    Parameters
+    ----------
+    results : dict
+        Results dictionary from calculate_eb_statistics
+    output_path : str
+        Output .npz file path
+    """
+    gg = results["gg"]
+    save_dict = {
+        "theta": gg.meanr,
+        "xip_E": results["xip_E"],
+        "xim_E": results["xim_E"],
+        "xip_B": results["xip_B"],
+        "xim_B": results["xim_B"],
+        "xip_amb": results["xip_amb"],
+        "xim_amb": results["xim_amb"],
+        "cov": results["cov"],
+    }
+
+    # PTE matrices
+    if "pte_matrices" in results:
+        for key, matrix in results["pte_matrices"].items():
+            save_dict[f"pte_matrices_{key}"] = matrix
+
+    # Metadata
+    save_dict["npatch"] = np.array(gg.npatch1)
+    if "eb_samples" in results:
+        save_dict["var_method"] = np.array("semi-analytic")
+        save_dict["n_samples"] = np.array(results["eb_samples"].shape[0])
+    else:
+        save_dict["var_method"] = np.array("jackknife")
+
+    np.savez(output_path, **save_dict)
+    print(f"Saved pure E/B results to {output_path}")
+
+
+def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
+    """
+    Save COSEBIs data vectors and covariance to .npz.
+
+    Parameters
+    ----------
+    results : dict
+        COSEBIs results. Either a single-scale-cut dict with keys like
+        'En', 'Bn', 'cov', or a multi-scale-cut dict with tuple keys.
+    output_path : str
+        Output .npz file path
+    fiducial_scale_cut : tuple, optional
+        If results has multiple scale cuts, save only this one.
+        If None and results has multiple scale cuts, saves all.
+    """
+    save_dict = {}
+
+    # Detect multi-scale-cut dict (tuple keys)
+    if isinstance(results, dict) and all(isinstance(k, tuple) for k in results.keys()):
+        if fiducial_scale_cut is not None:
+            key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
+            r = results[key]
+            save_dict.update({
+                "En": r["En"], "Bn": r["Bn"], "cov": r["cov"],
+                "chi2_E": np.array(r["chi2_E"]),
+                "chi2_B": np.array(r["chi2_B"]),
+                "pte_B": np.array(r["pte_B"]),
+                "scale_cut": np.array(key),
+            })
+        else:
+            for sc, r in results.items():
+                tag = f"{sc[0]}_{sc[1]}"
+                save_dict[f"En_{tag}"] = r["En"]
+                save_dict[f"Bn_{tag}"] = r["Bn"]
+                save_dict[f"cov_{tag}"] = r["cov"]
+                save_dict[f"chi2_E_{tag}"] = np.array(r["chi2_E"])
+                save_dict[f"chi2_B_{tag}"] = np.array(r["chi2_B"])
+                save_dict[f"pte_B_{tag}"] = np.array(r["pte_B"])
+            save_dict["scale_cuts"] = np.array(list(results.keys()))
+    else:
+        # Single scale cut
+        save_dict.update({
+            "En": results["En"], "Bn": results["Bn"], "cov": results["cov"],
+            "chi2_E": np.array(results["chi2_E"]),
+            "chi2_B": np.array(results["chi2_B"]),
+            "pte_B": np.array(results["pte_B"]),
+        })
+        if "scale_cut" in results:
+            save_dict["scale_cut"] = np.array(results["scale_cut"])
+
+    np.savez(output_path, **save_dict)
+    print(f"Saved COSEBIs results to {output_path}")
+
+
 def plot_cosebis_covariance_matrix(results, version, var_method, output_path):
     """
     Plot COSEBIs covariance matrix as correlation matrix.
