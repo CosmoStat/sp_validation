@@ -29,7 +29,7 @@ VERSION_LABELS = config["plotting"].get("version_labels", {})
 
 # Filter versions for different analysis types
 # Pure E/B and PTEs only apply to leak-corrected versions
-VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v]
+VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
 
 # All versions needed for per-version data vector plots (both leak-corrected and uncorrected)
 VERSIONS_ALL_FOR_PLOTS = VERSIONS_LEAK_CORR + [v.replace("_leak_corr", "") for v in VERSIONS_LEAK_CORR]
@@ -145,6 +145,7 @@ rule cosebis_version_comparison:
         cov_integration=[_cov_integration_path(ver, "A") for ver in VERSIONS_LEAK_CORR],
     params:
         version_labels=VERSION_LABELS,
+        versions=VERSIONS_LEAK_CORR,
     output:
         evidence=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
         figure_stacked=f"{CLAIMS_DIR}/cosebis_version_comparison/figure_stacked.png",
@@ -288,6 +289,7 @@ rule pure_eb_version_comparison:
         ],
     params:
         version_labels=VERSION_LABELS,
+        versions=VERSIONS_LEAK_CORR,
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_version_comparison/evidence.json",
         figure=f"{CLAIMS_DIR}/pure_eb_version_comparison/figure.png",
@@ -398,6 +400,7 @@ rule cl_version_comparison:
         pseudo_cl_cov=[_pseudo_cl_cov_path(ver) for ver in VERSIONS_LEAK_CORR],
     params:
         version_labels=VERSION_LABELS,
+        versions=VERSIONS_LEAK_CORR,
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:

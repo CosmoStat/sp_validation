@@ -348,6 +348,10 @@ class CosmologyValidation:
 
         os.makedirs(cc["paths"]["output"], exist_ok=True)
 
+        # B-mode results storage for summarize_bmodes()
+        self._pure_eb_results = {}
+        self._cosebis_results = {}
+
     def get_redshift(self, version):
         """Load redshift distribution for a catalog version.
 
@@ -707,11 +711,11 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if not ('mask' in self.cc[ver]['shear'].keys()):
+            if 'mask' not in self.cc[ver]:
                 print("Mask not found in config file, calculating area from binned catalog")
                 area[ver] = self.calculate_area_from_binned_catalog(ver)
             else:
-                mask = hp.read_map(self.cc[ver]['shear']['mask'], verbose=False)
+                mask = hp.read_map(self.cc[ver]['mask'], verbose=False)
                 nside_mask = hp.get_nside(mask)
                 print(f"nside_mask = {nside_mask}")
                 area[ver] = np.sum(mask) * hp.nside2pixarea(nside_mask, degrees=True)
@@ -2216,6 +2220,7 @@ class CosmologyValidation:
             plot_integration_vs_reporting,
             plot_pte_2d_heatmaps,
             plot_pure_eb_correlations,
+            save_pure_eb_results,
         )
 
         # Use instance defaults for unspecified parameters
@@ -2324,6 +2329,10 @@ class CosmologyValidation:
                 version
             )
 
+            # Save data products and store on instance
+            save_pure_eb_results(version_results, out_stub + "_data.npz")
+            self._pure_eb_results[version] = version_results
+
     def calculate_cosebis(
         self,
         version,
@@ -2333,6 +2342,7 @@ class CosmologyValidation:
         npatch=None,
         nmodes=10,
         cov_path=None,
+        scale_cuts=None,
         evaluate_all_scale_cuts=False,
         min_sep=None,
         max_sep=None,
@@ -2366,10 +2376,13 @@ class CosmologyValidation:
         cov_path : str, optional
             Path to theoretical covariance matrix. When provided, enables analytic
             covariance calculation.
+        scale_cuts : list of tuples, optional
+            Explicit list of (min_theta, max_theta) scale cuts to evaluate.
+            Overrides evaluate_all_scale_cuts when provided.
         evaluate_all_scale_cuts : bool, optional
             If True, evaluates COSEBIs for all possible scale cut combinations
-            using the reporting binning parameters. If False, uses the full
-            integration range as a single scale cut. Defaults to False.
+            using the reporting binning parameters. Ignored when scale_cuts is
+            provided. Defaults to False.
         min_sep : float, optional
             Minimum separation for reporting binning (only used when
             evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["min_sep"].
@@ -2383,14 +2396,10 @@ class CosmologyValidation:
         Returns
         -------
         dict
-            When evaluate_all_scale_cuts=False: Dictionary containing COSEBIs results
-            with E/B modes, covariances, and statistics for the full range.
-            When evaluate_all_scale_cuts=True: Dictionary with scale cut tuples as
-            keys and results dictionaries as values, containing results for all
-            possible scale cut combinations.
-
-        Notes
-        -----
+            When a single scale cut: Dictionary containing COSEBIs results
+            with E/B modes, covariances, and statistics.
+            When multiple scale cuts: Dictionary with scale cut tuples as
+            keys and results dictionaries as values.
         """
         from .b_modes import calculate_cosebis
 
@@ -2414,7 +2423,13 @@ class CosmologyValidation:
         )
         gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
 
-        if evaluate_all_scale_cuts:
+        if scale_cuts is not None:
+            # Explicit scale cuts provided
+            print(f"Evaluating {len(scale_cuts)} explicit scale cuts")
+            results = calculate_cosebis(
+                gg=gg, nmodes=nmodes, scale_cuts=scale_cuts, cov_path=cov_path
+            )
+        elif evaluate_all_scale_cuts:
             # Use reporting binning parameters or inherit from class config
             min_sep = min_sep or self.treecorr_config["min_sep"]
             max_sep = max_sep or self.treecorr_config["max_sep"]
@@ -2422,17 +2437,17 @@ class CosmologyValidation:
 
             # Generate scale cuts using np.geomspace (no TreeCorr needed)
             bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
-            scale_cuts = [
+            generated_cuts = [
                 (bin_edges[start], bin_edges[stop])
                 for start in range(nbins)
                 for stop in range(start+1, nbins+1)
             ]
 
-            print(f"Evaluating {len(scale_cuts)} scale cut combinations")
+            print(f"Evaluating {len(generated_cuts)} scale cut combinations")
 
             # Call b_modes function with scale cuts list
             results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=scale_cuts, cov_path=cov_path
+                gg=gg, nmodes=nmodes, scale_cuts=generated_cuts, cov_path=cov_path
             )
         else:
             # Single scale cut behavior: use full range
@@ -2450,7 +2465,8 @@ class CosmologyValidation:
         output_dir=None,
         min_sep_int=0.5, max_sep_int=500, nbins_int=1000,  # Integration binning
         npatch=None, nmodes=10, cov_path=None,
-        evaluate_all_scale_cuts=False,                     # New parameter
+        scale_cuts=None,                                   # Explicit scale cuts
+        evaluate_all_scale_cuts=False,                     # Grid-based scale cuts
         min_sep=None, max_sep=None, nbins=None,           # Reporting binning
         fiducial_scale_cut=None,                          # For plotting reference
         results=None,
@@ -2478,32 +2494,26 @@ class CosmologyValidation:
         cov_path : str, optional
             Path to theoretical covariance matrix. When provided, analytic
             covariance is used.
+        scale_cuts : list of tuples, optional
+            Explicit list of (min_theta, max_theta) scale cuts to evaluate.
+            Overrides evaluate_all_scale_cuts when provided.
         evaluate_all_scale_cuts : bool
-            Whether to evaluate all scale cuts (default: False)
+            Whether to evaluate all scale cuts from reporting binning grid
+            (default: False). Ignored when scale_cuts is provided.
         min_sep, max_sep, nbins : float, float, int, optional
             Reporting binning parameters. Only used when evaluate_all_scale_cuts=True.
         fiducial_scale_cut : tuple, optional
-            (min_scale, max_scale) reference scale cut for plotting when
-            evaluate_all_scale_cuts=True
+            (min_scale, max_scale) reference scale cut for plotting
         results : dict, optional
             Precalculated results to avoid recomputation. If None (default),
             results will be calculated using calculate_cosebis.
-
-        Notes
-        -----
-        This function orchestrates the full COSEBIs analysis workflow:
-        - Uses instance configuration as defaults for unspecified parameters
-        - Calculates COSEBIs for the version using the updated parameter interface
-        - Generates mode plots and covariance visualization
-        - Output files are named with analysis parameters for reproducibility
-        - When evaluate_all_scale_cuts=True, results contain multiple scale cuts;
-          fiducial_scale_cut determines which one is used for plotting
         """
         from .b_modes import (
             find_conservative_scale_cut_key,
             plot_cosebis_covariance_matrix,
             plot_cosebis_modes,
             plot_cosebis_scale_cut_heatmap,
+            save_cosebis_results,
         )
 
         # Use instance defaults if not specified
@@ -2525,9 +2535,6 @@ class CosmologyValidation:
         if fiducial_scale_cut is not None:
             out_stub += f"_scalecut={fiducial_scale_cut[0]}-{fiducial_scale_cut[1]}"
 
-        # if evaluate_all_scale_cuts:
-        #     out_stub += f"_allcuts_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
-
         # Get or calculate results for this version
         if results is None:
             # Calculate COSEBIs using instance method
@@ -2539,6 +2546,7 @@ class CosmologyValidation:
                 npatch=npatch,
                 nmodes=nmodes,
                 cov_path=cov_path,
+                scale_cuts=scale_cuts,
                 evaluate_all_scale_cuts=evaluate_all_scale_cuts,
                 min_sep=min_sep,
                 max_sep=max_sep,
@@ -2599,6 +2607,10 @@ class CosmologyValidation:
                 out_stub + "_scalecut_ptes.png",
                 fiducial_scale_cut=fiducial_scale_cut
             )
+
+        # Save data products and store on instance
+        save_cosebis_results(results, out_stub + "_data.npz", fiducial_scale_cut)
+        self._cosebis_results[version] = results
 
 
     def get_namaster_bin(self, lmin, lmax, b_lmax):
@@ -2877,8 +2889,8 @@ class CosmologyValidation:
                 self._load_onecovariance_cov(out_dir, ver)
             else:
 
-                mask_path = self.cc[ver]['shear']['mask']
-                redshift_distr_path = os.path.join(self.data_base_dir, self.cc[ver]['shear']['redshift_distr'])
+                mask_path = self.cc[ver]['mask']
+                redshift_distr_path = self.cc[ver]['shear']['redshift_path']
 
                 config_path = os.path.join(out_dir, f"config_onecov_{ver}.ini")
 
@@ -3390,3 +3402,132 @@ class CosmologyValidation:
         plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
+
+        # Print C_l^BB PTE for each version and save BB data
+        from scipy import stats as sp_stats
+        print("\nC_l^BB PTE summary:")
+        for ver in self.versions:
+            cl_bb = self.pseudo_cls[ver]['pseudo_cl']["BB"]
+            cov_bb = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+            chi2_bb = float(cl_bb @ np.linalg.solve(cov_bb, cl_bb))
+            pte_bb = sp_stats.chi2.sf(chi2_bb, len(cl_bb))
+            print(
+                f"  {ver}: C_l^BB PTE = {pte_bb:.4f} "
+                f"(chi2/dof = {chi2_bb:.1f}/{len(cl_bb)})"
+            )
+
+            # Save BB data + covariance to .npz
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            bb_out = os.path.abspath(
+                f"{self.cc['paths']['output']}/{ver}_cell_bb_data.npz"
+            )
+            np.savez(
+                bb_out,
+                ell=ell, cl_bb=cl_bb, cov_bb=cov_bb,
+                chi2_bb=np.array(chi2_bb), pte_bb=np.array(pte_bb),
+            )
+            print(f"  Saved BB data to {bb_out}")
+
+    def summarize_bmodes(self, fiducial_scale_cut=(12, 83), versions=None):
+        """Print and return B-mode PTE summary across all statistics.
+
+        Collects PTEs from pure E/B, COSEBIs, and pseudo-Cl at the specified
+        fiducial scale cut. Statistics that haven't been computed show '--'.
+
+        Parameters
+        ----------
+        fiducial_scale_cut : tuple, optional
+            (min_theta, max_theta) for extracting PTEs (default: (12, 83)).
+        versions : list, optional
+            Versions to summarize. Uses self.versions if None.
+
+        Returns
+        -------
+        dict
+            ``{version: {statistic: pte_value, ...}, ...}``
+        """
+        from scipy import stats as sp_stats
+        from .b_modes import _get_pte_from_scale_cut, find_conservative_scale_cut_key
+
+        versions = versions or self.versions
+        summary = {}
+        cov_methods = set()
+
+        for ver in versions:
+            row = {}
+
+            # Pure E/B PTEs from stored results
+            if ver in self._pure_eb_results:
+                res = self._pure_eb_results[ver]
+                gg = res["gg"]
+                try:
+                    row["xip_B"] = _get_pte_from_scale_cut(
+                        res["pte_matrices"]["xip_B"], gg, fiducial_scale_cut
+                    )
+                    row["xim_B"] = _get_pte_from_scale_cut(
+                        res["pte_matrices"]["xim_B"], gg, fiducial_scale_cut
+                    )
+                    row["combined"] = _get_pte_from_scale_cut(
+                        res["pte_matrices"]["combined"], gg, fiducial_scale_cut
+                    )
+                except (KeyError, RuntimeError):
+                    pass
+                cov_methods.add(
+                    "semi-analytic" if "eb_samples" in res
+                    else f"jackknife ({gg.npatch1} patches)"
+                )
+
+            # COSEBIs PTE from stored results
+            if ver in self._cosebis_results:
+                cosebis_res = self._cosebis_results[ver]
+                if (isinstance(cosebis_res, dict)
+                        and all(isinstance(k, tuple) for k in cosebis_res.keys())):
+                    key = find_conservative_scale_cut_key(
+                        cosebis_res, fiducial_scale_cut
+                    )
+                    row["COSEBIS"] = cosebis_res[key]["pte_B"]
+                elif isinstance(cosebis_res, dict) and "pte_B" in cosebis_res:
+                    row["COSEBIS"] = cosebis_res["pte_B"]
+
+            # Pseudo-Cl BB PTE
+            if hasattr(self, "_pseudo_cls") and ver in self._pseudo_cls:
+                try:
+                    cl_bb = self.pseudo_cls[ver]['pseudo_cl']["BB"]
+                    cov_bb = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+                    chi2_bb = float(cl_bb @ np.linalg.solve(cov_bb, cl_bb))
+                    row["C_l_BB"] = sp_stats.chi2.sf(chi2_bb, len(cl_bb))
+                    cov_methods.add("Gaussian (NaMaster)")
+                except (KeyError, AttributeError):
+                    pass
+
+            summary[ver] = row
+
+        # Print summary table
+        stats_order = ["xip_B", "xim_B", "combined", "COSEBIS", "C_l_BB"]
+        headers = [r"xi+B", r"xi-B", "Combined", "COSEBIS", "C_l^BB"]
+
+        sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
+        print(f"\nB-mode summary {sc_label}")
+        sep = "\u2500" * 70
+        print(sep)
+
+        header_line = f"{'Version':<28s}"
+        for h in headers:
+            header_line += f"{h:>10s}"
+        print(header_line)
+        print(sep)
+
+        for ver in versions:
+            row = summary[ver]
+            line = f"{ver:<28s}"
+            for stat in stats_order:
+                val = row.get(stat)
+                line += f"{'--':>10s}" if val is None else f"{val:>10.4f}"
+            print(line)
+
+        print(sep)
+        if cov_methods:
+            print(f"Covariance: {', '.join(sorted(cov_methods))}")
+        print()
+
+        return summary
