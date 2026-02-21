@@ -536,7 +536,7 @@ SP_v1.4.6.3:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
-    redshift_distr: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
