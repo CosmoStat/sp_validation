@@ -1,6 +1,6 @@
 versions: [
   "SP_v1.4.5", "SP_v1.4.5_leak_corr",
-  "SP_v1.4.6", "SP_v1.4.6_leak_corr",
+  "SP_v1.4.6.3", "SP_v1.4.6.3_leak_corr",
   "SP_v1.4.6_ecut07", "SP_v1.4.6_ecut07_leak_corr",
   "SP_v1.4.8", "SP_v1.4.8_leak_corr",
   "SP_v1.4.11.3", "SP_v1.4.11.3_leak_corr",
@@ -22,14 +22,14 @@ nbins_int: [100, 200, 300, 500]
 
 # fiducial parameters
 fiducial:
-  version: SP_v1.4.6_leak_corr
+  version: SP_v1.4.6.3_leak_corr
   blind: A
   npatch: 1
   min_sep: 1.0
   max_sep: 250.0
   nbins: 20
 
-  mock_version: SP_v1.4.6
+  mock_version: SP_v1.4.6.3
 
   min_sep_int: 0.5
   max_sep_int: 300.0
@@ -50,7 +50,7 @@ fiducial:
   fiducial_xip_scale_cut: [12, 83]
   fiducial_xim_scale_cut: [12, 83]
 
-  chain: SP_v1.4.6_leak_corr_C_sc_10_150_new_ia
+  chain: SP_v1.4.6.3_leak_corr_C_sc_10_150_new_ia
 
 
 var_method: jackknife
@@ -101,11 +101,11 @@ plotting:
   # Human-readable version labels for plots
   version_labels:
     SP_v1.4.5_leak_corr: "Initial"
-    SP_v1.4.6_leak_corr: "Size cuts"
+    SP_v1.4.6.3_leak_corr: "Size cuts"
     SP_v1.4.8_leak_corr: "Masking"
     SP_v1.4.11.3_leak_corr: "Relaxed flags"
   # Which version's value is drawn as the fiducial reference line in version comparison plots
-  fiducial_for_comparison: "SP_v1.4.6_leak_corr"
+  fiducial_for_comparison: "SP_v1.4.6.3_leak_corr"
   # Version box styling
   version_box:
     edge_color: "0.3"
@@ -137,13 +137,13 @@ tools:
 # Ellipticity cut investigation
 ecut:
   versions_for_comparison:
-    - SP_v1.4.6_leak_corr
+    - SP_v1.4.6.3_leak_corr
     - SP_v1.4.6_ecut07_leak_corr
     - SP_v1.4.11.3_leak_corr
     - SP_v1.4.11.3_ecut07_leak_corr
   version_labels:
-    SP_v1.4.6_leak_corr: "v1.4.6"
+    SP_v1.4.6.3_leak_corr: "v1.4.6.3"
     SP_v1.4.6_ecut07_leak_corr: "v1.4.6 $|e|<0.7$"
     SP_v1.4.11.3_leak_corr: "v1.4.11.3"
     SP_v1.4.11.3_ecut07_leak_corr: "v1.4.11.3 $|e|<0.7$"
-  fiducial_for_comparison: "SP_v1.4.6_leak_corr"
+  fiducial_for_comparison: "SP_v1.4.6.3_leak_corr"
