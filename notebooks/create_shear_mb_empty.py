@@ -39,7 +39,7 @@ obj = sp_joint.BaseCat()
 # Set parameters
 base = "unions_shapepipe_comprehensive_struc"
 year = 2024
-ver = "v1.5.c"
+ver = "v1.6.c"
 
 obj._params = {}
 

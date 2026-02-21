@@ -1143,7 +1143,7 @@ class CalibrateCat(BaseCat):
         except:
             print(f"Error while reading file {fpath}")
             raise
-   
+
         if verbose:
             print(
                 f"Found {len(dat)} (~{util.millify(len(dat))}) objects"
@@ -1565,6 +1565,10 @@ def compute_weights_gatti(
     mask_combined,
     mask_metacal,
     num_bins=20,
+    snr_min=10,
+    snr_max=500,
+    size_ratio_min=0.707,
+    size_ratio_max=3,
 ):
     """Compute Weights Gatti.
     
@@ -1581,7 +1585,14 @@ def compute_weights_gatti(
         purpose="weights"
     )
 
-    cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
+    cat_gal["w_des"] = calibration.get_w_des(
+        cat_gal,
+        num_bins,
+        snr_min=snr_min,
+        snr_max=snr_max,
+        size_ratio_min=size_ratio_min,
+        size_ratio_max=size_ratio_max,
+    )
 
 
 def compute_PSF_leakage(

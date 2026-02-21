@@ -1,5 +1,5 @@
-# Config file for masking and calibration.
-# Standard cuts without halo masks, type v1.X.6.
+# Config file to create mask file from comprehensive catalogue.
+# Standard cuts without halo masks, including deblended objects, type v1.X.11
 
 # General parameters (can also given on command line)
 params:
@@ -11,11 +11,6 @@ params:
 # Masks
 ## Using columns in 'dat' group (ShapePipe flags)
 dat:
-  # SExtractor flags
-  - col_name: FLAGS
-    label: SE FLAGS
-    kind: equal
-    value: 0
 
   # Duplicate objects
   - col_name: overlap
@@ -23,39 +18,11 @@ dat:
     kind: equal
     value: True
 
-  # ShapePipe flags
-  - col_name: IMAFLAGS_ISO
-    label: SP mask
-    kind: equal
-    value: 0
-
   # Number of epochs
   - col_name: N_EPOCH
     label: r"$n_{\rm epoch}$"
     kind: greater_equal
     value: 2
-
-  # Magnitude range
-  - col_name: mag
-    label: r
-    kind: range
-    value: [15, 30]
-
-  # ngmix flags
-  - col_name: NGMIX_MOM_FAIL
-    label: "ngmix moments failure"
-    kind: equal
-    value: 0
-
-  # invalid PSF ellipticities
-  - col_name: NGMIX_ELL_PSFo_NOSHEAR_0
-    label: "bad PSF ellipticity comp 1"
-    kind: not_equal
-    value: -10
-  - col_name: NGMIX_ELL_PSFo_NOSHEAR_1
-    label: "bad PSF ellipticity comp 2"
-    kind: not_equal
-    value: -10
 
 ## Using columns in 'dat_ext' group (post-processing flags)
 dat_ext:
@@ -108,3 +75,14 @@ metacal:
 
   # Weight for global response matrix, None for unweighted mean
   global_R_weight: w
+
+# Binned footprint mask
+binned_mask:
+  # Resolution
+  nside: 8196
+
+  # Mask value for "good region (observed)
+  good: False
+
+  # Output file path base
+  output_base: "footprint_binned"
