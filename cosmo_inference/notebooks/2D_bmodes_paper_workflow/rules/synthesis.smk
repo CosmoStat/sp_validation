@@ -118,7 +118,7 @@ rule bmodes_paper_spec:
             "id": "bmodes_paper",
             "generated": datetime.now().isoformat(),
             "evidence": {"type": "synthesis"},
-            "artifacts": {},
+            "output": {},
         }
         with open(output.evidence, "w") as f:
             json.dump(evidence, f, indent=2)

@@ -14,7 +14,7 @@ from pathlib import Path
 
 # Version number to word mapping for TeX-safe macro names
 # (avoids cleveref/siunitx conflict with numeric names)
-VERSION_WORDS = {"5": "Five", "6": "Six", "8": "Eight", "11.2": "ElevenTwo", "11.3": "ElevenThree"}
+VERSION_WORDS = {"5": "Five", "6": "Six", "6.3": "SixThree", "8": "Eight", "11.2": "ElevenTwo", "11.3": "ElevenThree"}
 
 
 def _parse_version_short(version: str) -> str:
@@ -486,7 +486,7 @@ def generate_evidence(
             "description": "Aggregates quantitative claims for paper reporting",
             "dependencies_summary": summary,
         },
-        "artifacts": {"macros": "claims_macros.tex"},
+        "output": {"macros": "claims_macros.tex"},
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

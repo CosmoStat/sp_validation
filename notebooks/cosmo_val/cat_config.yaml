@@ -212,9 +212,9 @@ SP_v1.4.5:
   marker: d
   cov_th:
     A: 2894.0303815287743
-    n_e: 6.477062501504286
+    n_e: 6.477062501504287
     n_psf: 0.4973044366748657
-    sigma_e: 0.39740419232655605
+    sigma_e: 0.39740419232655594
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
@@ -223,7 +223,7 @@ SP_v1.4.5:
     star_flag: FLAG_STAR_HSM
     star_size: SIGMA_STAR_HSM
     hdu: 1
-    path: unions_shapepipe_psf_2024_v1.4.a.fits
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
     ra_col: RA
     dec_col: Dec
     e1_PSF_col: E1_PSF_HSM
@@ -247,7 +247,7 @@ SP_v1.4.5:
     dec_col: Dec
     e1_col: e1
     e2_col: e2
-    path: unions_shapepipe_star_2024_v1.4.a.fits
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
 SP_v1.4.5.A:
   subdir: /n17data/guinot/CFIS_3500_cat/catalogues_SPv1_v1.4.5
   pipeline: SP
@@ -512,11 +512,12 @@ SP_v1.4.6.3:
   getdist_colour: 0.0, 0.5, 1.0
   ls: dotted
   marker: ^
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   cov_th:
-    A: 2405.3892055695346
-    n_e: 6.128201234871523
+    A: 2894.0303815287743
+    n_e: 4.957279270321334
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.3783979556382064
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -524,7 +525,7 @@ SP_v1.4.6.3:
     star_flag: FLAG_STAR_HSM
     star_size: SIGMA_STAR_HSM
     hdu: 1
-    path: unions_shapepipe_psf_2024_v1.4.a.fits
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
     ra_col: RA
     dec_col: Dec
     e1_PSF_col: E1_PSF_HSM
@@ -534,9 +535,8 @@ SP_v1.4.6.3:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
-    redshift_distr: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
-    mask: v1.4.6/footprint_binned_8192.fits
+    path: /n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
@@ -549,7 +549,7 @@ SP_v1.4.6.3:
     dec_col: Dec
     e1_col: e1
     e2_col: e2
-    path: unions_shapepipe_star_2024_v1.4.a.fits
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
 SSP_v1.4.6_msel:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -753,7 +753,7 @@ SP_v1.4.8:
     star_flag: FLAG_STAR_HSM
     star_size: SIGMA_STAR_HSM
     hdu: 1
-    path: unions_shapepipe_psf_2024_v1.4.a.fits
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits
     ra_col: RA
     dec_col: Dec
     e1_PSF_col: E1_PSF_HSM
@@ -763,7 +763,7 @@ SP_v1.4.8:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
+    path: /n17data/UNIONS/WL/v1.4.x/v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
     redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.8/nz_SP_v1.4.8_A.txt
     w_col: w_des
     e1_col: e1
@@ -777,7 +777,7 @@ SP_v1.4.8:
     dec_col: Dec
     e1_col: e1
     e2_col: e2
-    path: unions_shapepipe_star_2024_v1.4.a.fits
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
 SP_v1.4.11.2:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -787,7 +787,7 @@ SP_v1.4.11.2:
   marker: s
   cov_th:
     A: 2894.0303815287743
-    n_e: 6.25812596800506
+    n_e: 6.2581259680050625
     n_psf: 0.752316232272063
     sigma_e: 0.380499698062307
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
@@ -822,7 +822,7 @@ SP_v1.4.11.2:
     dec_col: Dec
     e1_col: e1
     e2_col: e2
-    path: unions_shapepipe_star_2024_v1.4.a.fits
+    path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
 SP_v1.4.11.3:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -831,11 +831,11 @@ SP_v1.4.11.3:
   ls: dashdot
   marker: v
   cov_th:
-    A: 2405.3892055695346
-    n_e: 6.128201234871523
+    A: 2894.0303815287743
+    n_e: 6.2581259680050625
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+    sigma_e: 0.380499698062307
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -853,7 +853,7 @@ SP_v1.4.11.3:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: v1.4.11.3/unions_shapepipe_cut_struc_2024_v1.4.11.3.fits
+    path: /n17data/UNIONS/WL/v1.4.x/v1.4.11.3/unions_shapepipe_cut_struc_2024_v1.4.11.3.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
     e1_col: e1

@@ -307,7 +307,7 @@ def main():
             "nmodes": nmodes,
             "versions": evidence_versions,
         },
-        "artifacts": {"figure_stacked": fig_name},
+        "output": {"figure_stacked": fig_name},
     }
 
     evidence_path = Path(snakemake.output["evidence"])

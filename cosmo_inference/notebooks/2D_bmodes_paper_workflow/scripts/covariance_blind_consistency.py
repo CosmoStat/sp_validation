@@ -129,7 +129,7 @@ def main(snakemake):
             "pass_1pct": pass_1pct,
             "pass_10pct": pass_10pct,
         },
-        "artifacts": {
+        "output": {
             "figure": Path(snakemake.output.figure).name,
         },
     }

@@ -381,7 +381,7 @@ def main():
             "blind": fiducial_blind,
             "versions": {},
         },
-        "artifacts": {
+        "output": {
             "figure_fiducial": Path(snakemake.output["figure_fiducial"]).name,
             "figure_appendix": Path(snakemake.output["figure_appendix"]).name,
         },

@@ -2,22 +2,22 @@
 from IPython import get_ipython
 
 ipython = get_ipython()
-
-# enable autoreload for interactive sessions
 if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import matplotlib.pyplot as plt  # noqa: E402, F401
-import numpy as np  # noqa: E402, F401
+import matplotlib.pyplot as plt
+import numpy as np
+
 from sp_validation.cosmo_val import CosmologyValidation  # noqa: E402
 
-# enable inline plotting for interactive sessions
-# (must be done *after* importing package that sets agg backend)
+# Must follow sp_validation import (which sets agg backend)
 if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # %%
+FIDUCIAL_SCALE_CUT = (12, 83)
+
 cv = CosmologyValidation(
     versions=[
         "SP_v1.4.6_leak_corr",
@@ -33,14 +33,12 @@ cv = CosmologyValidation(
     nrandom_cell=100,
     cell_method="catalog",
     nside_mask=8192,
-    path_onecovariance="/home/guerrini/OneCovariance/"
+    path_onecovariance="/home/guerrini/OneCovariance/",
 )
 
-# %%
-# cv.calculate_pseudo_cl_g_ng_cov()  # requires OneCovariance + hmf (not in container)
-
-# %%
+# %% PSF diagnostics
 cv.plot_footprints()
+
 # %%
 cv.plot_rho_stats()
 
@@ -51,20 +49,14 @@ cv.plot_tau_stats()
 if cv.rho_tau_method != "none":
     cv.plot_rho_tau_fits()
 
-# %%
-#cv.plot_footprints()
-
-# %%
-#cv.plot_scale_dependent_leakage()
-
-# %%
+# %% Shear diagnostics
 cv.plot_objectwise_leakage()
 
 # %%
-# cv.plot_objectwise_leakage_aux()  # method doesn't exist
+# cv.plot_scale_dependent_leakage()
 
 # %%
-#cv.plot_ellipticity()
+# cv.plot_ellipticity()
 
 # %%
 cv.plot_weights()
@@ -72,33 +64,31 @@ cv.plot_weights()
 # %%
 cv.calculate_additive_bias()
 
-# %%
+# %% Two-point correlation functions
 cv.plot_2pcf()
 
 # %%
 cv.plot_ratio_xi_sys_xi(offset=0.1)
 
-# %%
-#cv.plot_aperture_mass_dispersion()
-
-# %%
+# %% Pseudo-C_ell
 cv.plot_pseudo_cl()
 
 # %%
+# cv.plot_aperture_mass_dispersion()
+
+# %% Pure E/B modes
 cv.plot_pure_eb(
     min_sep_int=0.08,
     max_sep_int=300,
     nbins_int=1000,
-    npatch=100,
-    var_method="jackknife",
-    fiducial_xip_scale_cut=(12, 83),
-    fiducial_xim_scale_cut=(12, 83),
+    fiducial_xip_scale_cut=FIDUCIAL_SCALE_CUT,
+    fiducial_xim_scale_cut=FIDUCIAL_SCALE_CUT,
 )
 
-# %%
+# %% COSEBIs
 cv.plot_cosebis(
     min_sep_int=0.9,
-    max_sep_int=250,
+    max_sep_int=300,
     nbins_int=2000,
     npatch=100,
     nmodes=20,
@@ -107,13 +97,13 @@ cv.plot_cosebis(
         (2, 250),
         (5, 250),
         (10, 250),
-        (12, 83),
+        FIDUCIAL_SCALE_CUT,
         (15, 250),
         (20, 250),
     ],
-    fiducial_scale_cut=(12, 83),
+    fiducial_scale_cut=FIDUCIAL_SCALE_CUT,
 )
 
-# %%
-cv.summarize_bmodes(fiducial_scale_cut=(12, 83))
+# %% B-mode summary
+cv.summarize_bmodes(fiducial_scale_cut=FIDUCIAL_SCALE_CUT)
 

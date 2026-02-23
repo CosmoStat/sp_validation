@@ -3461,35 +3461,33 @@ class CosmologyValidation:
                 res = self._pure_eb_results[ver]
                 gg = res["gg"]
                 try:
-                    row["xip_B"] = _get_pte_from_scale_cut(
-                        res["pte_matrices"]["xip_B"], gg, fiducial_scale_cut
-                    )
-                    row["xim_B"] = _get_pte_from_scale_cut(
-                        res["pte_matrices"]["xim_B"], gg, fiducial_scale_cut
-                    )
-                    row["combined"] = _get_pte_from_scale_cut(
-                        res["pte_matrices"]["combined"], gg, fiducial_scale_cut
-                    )
+                    for stat in ("xip_B", "xim_B", "combined"):
+                        row[stat] = _get_pte_from_scale_cut(
+                            res["pte_matrices"][stat], gg, fiducial_scale_cut
+                        )
                 except (KeyError, RuntimeError):
                     pass
-                cov_methods.add(
-                    "semi-analytic" if "eb_samples" in res
-                    else f"jackknife ({gg.npatch1} patches)"
-                )
+                if "eb_samples" in res:
+                    cov_methods.add("semi-analytic")
+                else:
+                    cov_methods.add(f"jackknife ({gg.npatch1} patches)")
 
             # COSEBIs PTE from stored results
             if ver in self._cosebis_results:
                 cosebis_res = self._cosebis_results[ver]
-                if (isinstance(cosebis_res, dict)
-                        and all(isinstance(k, tuple) for k in cosebis_res.keys())):
+                has_multi_scale_cuts = all(
+                    isinstance(k, tuple) for k in cosebis_res
+                )
+                if has_multi_scale_cuts:
                     key = find_conservative_scale_cut_key(
                         cosebis_res, fiducial_scale_cut
                     )
                     row["COSEBIS"] = cosebis_res[key]["pte_B"]
-                elif isinstance(cosebis_res, dict) and "pte_B" in cosebis_res:
+                elif "pte_B" in cosebis_res:
                     row["COSEBIS"] = cosebis_res["pte_B"]
 
-            # Pseudo-Cl BB PTE
+            # Pseudo-Cl BB PTE (_pseudo_cls is lazy; check existence without
+            # triggering computation)
             if hasattr(self, "_pseudo_cls") and ver in self._pseudo_cls:
                 try:
                     cl_bb = self.pseudo_cls[ver]['pseudo_cl']["BB"]
@@ -3503,27 +3501,33 @@ class CosmologyValidation:
             summary[ver] = row
 
         # Print summary table
-        stats_order = ["xip_B", "xim_B", "combined", "COSEBIS", "C_l_BB"]
-        headers = [r"xi+B", r"xi-B", "Combined", "COSEBIS", "C_l^BB"]
+        col_labels = {
+            "xip_B": r"xi+B",
+            "xim_B": r"xi-B",
+            "combined": "Combined",
+            "COSEBIS": "COSEBIS",
+            "C_l_BB": "C_l^BB",
+        }
+        stats_order = list(col_labels)
 
         sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
-        print(f"\nB-mode summary {sc_label}")
         sep = "\u2500" * 70
-        print(sep)
+        header = f"{'Version':<28s}" + "".join(
+            f"{label:>10s}" for label in col_labels.values()
+        )
 
-        header_line = f"{'Version':<28s}"
-        for h in headers:
-            header_line += f"{h:>10s}"
-        print(header_line)
+        print(f"\nB-mode summary {sc_label}")
+        print(sep)
+        print(header)
         print(sep)
 
         for ver in versions:
             row = summary[ver]
-            line = f"{ver:<28s}"
-            for stat in stats_order:
-                val = row.get(stat)
-                line += f"{'--':>10s}" if val is None else f"{val:>10.4f}"
-            print(line)
+            cells = "".join(
+                f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}"
+                for s in stats_order
+            )
+            print(f"{ver:<28s}{cells}")
 
         print(sep)
         if cov_methods:

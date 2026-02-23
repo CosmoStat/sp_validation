@@ -285,7 +285,7 @@ def main():
         "evidence": {
             "versions": evidence_versions,
         },
-        "artifacts": {
+        "output": {
             "figure": fig_path.name,
         },
     }

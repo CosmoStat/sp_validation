@@ -176,7 +176,7 @@ def main():
                 "This is a sampling limitation, not a code error."
             ),
         },
-        "artifacts": {
+        "output": {
             "figure": Path(output_figure).name,
         },
     }

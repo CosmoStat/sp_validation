@@ -27,6 +27,10 @@ FIDUCIAL_BINNING = {
 # VERSION_LABELS from config for passing to plotting scripts
 VERSION_LABELS = config["plotting"].get("version_labels", {})
 
+# Shorthand for fiducial and mock version strings (used in path construction)
+FIDUCIAL_VERSION = FIDUCIAL["version"]
+MOCK_VERSION = f"{FIDUCIAL['mock_version']}_leak_corr"
+
 # Filter versions for different analysis types
 # Pure E/B and PTEs only apply to leak-corrected versions
 VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
@@ -61,13 +65,6 @@ def _per_version_figure_outputs(claim_dir):
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Path Helper Functions
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-def _covariance_path(version, min_sep, max_sep, nbins, blind=None, gaussian="g"):
-    """Construct covariance file path using centralized covariance_path() from Snakefile."""
-    if blind is None:
-        blind = FIDUCIAL["blind"]
-    return covariance_path(version, blind, gaussian=gaussian, min_sep=min_sep, max_sep=max_sep, nbins=nbins)
-
 
 def _reporting_cov_path(version, blind):
     """Path to reporting-scale covariance (non-Gaussian, masked)."""
@@ -316,7 +313,7 @@ rule pure_eb_covariance:
             f"{CONFIG_DIR}/2d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL['version']}_A_pure_eb_semianalytic.npz",
+        pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_A_pure_eb_semianalytic.npz",
     output:
         evidence=f"{CLAIMS_DIR}/pure_eb_covariance/evidence.json",
         figure=f"{CLAIMS_DIR}/pure_eb_covariance/figure.png",
@@ -344,7 +341,7 @@ rule calculate_pure_eb_ptes:
         blind=r"[ABC]",
     params:
         version="{version}",
-        npatch=config["fiducial"]["npatch"],
+        npatch=FIDUCIAL["npatch"],
         n_samples=config["covariance"]["n_samples"],
     resources:
         mem_mb=16000,
@@ -460,11 +457,11 @@ rule config_space_pte_matrices:
         # Data inputs (fiducial blind only)
         # Pure E/B and COSEBIs PTEs only for leak-corrected versions
         pure_eb_pte=[
-            f"results/paper_plots/intermediate/{ver}_{config['fiducial']['blind']}_pure_eb_ptes.npz"
+            f"results/paper_plots/intermediate/{ver}_{FIDUCIAL['blind']}_pure_eb_ptes.npz"
             for ver in VERSIONS_LEAK_CORR
         ],
         cosebis_pte_files=[
-            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{config['fiducial']['blind']}/pte_{i:03d}_{j:03d}.json"
+            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{FIDUCIAL['blind']}/pte_{i:03d}_{j:03d}.json"
             for ver in VERSIONS_LEAK_CORR
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
@@ -496,7 +493,7 @@ rule harmonic_space_pte_matrices:
         # Harmonic PTE matrices only for leak-corrected versions
         pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_LEAK_CORR],
         pseudo_cl_cov=[
-            _pseudo_cl_cov_path(ver, blind=config["fiducial"]["blind"])
+            _pseudo_cl_cov_path(ver, blind=FIDUCIAL["blind"])
             for ver in VERSIONS_LEAK_CORR
         ],
     params:
@@ -533,22 +530,17 @@ rule bb_covariance_blind_independence:
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         # Per-blind MC-propagated pure E/B covariances (using mock_version for all blinds)
-        pure_eb_A=f"results/paper_plots/intermediate/{config['fiducial']['mock_version']}_leak_corr_A_pure_eb_semianalytic.npz",
-        pure_eb_B=f"results/paper_plots/intermediate/{config['fiducial']['mock_version']}_leak_corr_B_pure_eb_semianalytic.npz",
-        pure_eb_C=f"results/paper_plots/intermediate/{config['fiducial']['mock_version']}_leak_corr_C_pure_eb_semianalytic.npz",
+        **{f"pure_eb_{b}": f"results/paper_plots/intermediate/{MOCK_VERSION}_{b}_pure_eb_semianalytic.npz"
+           for b in BLINDS},
         # COSEBIS: xi integration file (shared) + per-blind config-space covariances
-        xi_integration=_xi_integration_path(f"{config['fiducial']['mock_version']}_leak_corr"),
-        cov_integration_A=_cov_integration_path(f"{config['fiducial']['mock_version']}_leak_corr", "A"),
-        cov_integration_B=_cov_integration_path(f"{config['fiducial']['mock_version']}_leak_corr", "B"),
-        cov_integration_C=_cov_integration_path(f"{config['fiducial']['mock_version']}_leak_corr", "C"),
+        xi_integration=_xi_integration_path(MOCK_VERSION),
+        **{f"cov_integration_{b}": _cov_integration_path(MOCK_VERSION, b) for b in BLINDS},
         # Per-blind harmonic covariances
-        harmonic_A=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "A"),
-        harmonic_B=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "B"),
-        harmonic_C=_pseudo_cl_cov_path(f"{config['fiducial']['mock_version']}_leak_corr", "C"),
+        **{f"harmonic_{b}": _pseudo_cl_cov_path(MOCK_VERSION, b) for b in BLINDS},
         # Pseudo-Cl data vector (blind A only) for ell bin centers
-        pseudo_cl=_pseudo_cl_path(f"{config['fiducial']['mock_version']}_leak_corr", "A"),
+        pseudo_cl=_pseudo_cl_path(MOCK_VERSION, "A"),
     params:
-        nmodes=config["fiducial"]["nmodes"],
+        nmodes=FIDUCIAL["nmodes"],
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
     output:
@@ -566,7 +558,7 @@ _COSEBIS_NBINS = config["cl"].get("cosebis_nbins", 32)
 
 _COSEBIS_ANGULAR_RANGES = {
     "full": (float(config["cosebis"]["theta_min"]), float(config["cosebis"]["theta_max"])),
-    "fiducial": (float(config["fiducial"]["fiducial_min_scale"]), float(config["fiducial"]["fiducial_max_scale"])),
+    "fiducial": (float(FIDUCIAL["fiducial_min_scale"]), float(FIDUCIAL["fiducial_max_scale"])),
 }
 
 rule harmonic_config_cosebis_comparison:
@@ -604,8 +596,6 @@ rule harmonic_config_cosebis_comparison:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # COSEBIS Filter Overlay
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-FIDUCIAL_VERSION = config["fiducial"]["version"]
 
 rule cosebis_filter_overlay:
     """W_n(ell) filter functions overlaid on 32-bin BB bandpower data.

@@ -199,7 +199,7 @@ def main():
             "version": version,
             "blind": config["fiducial"]["blind"],
         },
-        "artifacts": {
+        "output": {
             "figure": "figure.png",
         },
     }
