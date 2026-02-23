@@ -1102,6 +1102,7 @@ def _cosebis_result_to_dict(r, suffix=""):
     }
 
 
+
 def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
     """
     Save COSEBIs data vectors and covariance to .npz.
