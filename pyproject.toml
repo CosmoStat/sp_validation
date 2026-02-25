@@ -35,7 +35,11 @@ dependencies = [
     "lenspack",
     "lmfit",
     "numexpr",
+<<<<<<< Updated upstream
     "numpy>=1.14",
+=======
+    "numpy>=1.26",
+>>>>>>> Stashed changes
     "opencv-python-headless",
     "pyccl",
     "pyarrow",
