@@ -173,4 +173,12 @@ notebooks/demo_add_bands.ipynb
 
 cosmo_inference/cosmosis_config/cosmosis_pipeline_S*.ini
 cosmo_inference/cosmosis_config/priors_S*.ini
+cosmo_inference/cosmosis_config/values_S*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mocks_v0*.ini
+
+# Ban any cluster/output file
+*.png
+*.out
+*.err
+*.sh
+*.fits
