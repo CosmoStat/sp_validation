@@ -170,11 +170,13 @@ notebooks/demo_check_footprint.ipynb
 notebooks/demo_calibrate_minimal_cat.ipynb
 notebooks/leakage_minimal.ipynb
 notebooks/demo_add_bands.ipynb
+/notebooks/cosmo_val/harmonic_covariance_gaussian_sims*
 
 cosmo_inference/cosmosis_config/cosmosis_pipeline_S*.ini
 cosmo_inference/cosmosis_config/priors_S*.ini
 cosmo_inference/cosmosis_config/values_S*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mocks_v0*.ini
+cosmo_inference/cosmosis_config/glass_mocks_v*
 
 # Ban any cluster/output file
 *.png
