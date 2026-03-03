@@ -287,7 +287,7 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         hartlap_factor = 1  # Not defined for analytic covariances
     else:
         cov_xipm = gg.cov
-        hartlap_factor = (gg.npatch - 2 * nmodes - 2) / (gg.npatch - 1)
+        hartlap_factor = (gg.npatch1 - 2 * nmodes - 2) / (gg.npatch1 - 1)
 
     all_results = {}
 

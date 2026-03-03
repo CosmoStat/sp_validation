@@ -45,7 +45,7 @@ class CosmologyValidation:
         ylim_alpha=[-0.005, 0.05],
         ylim_xi_sys_ratio=[-0.02, 0.5],
         nside=1024,
-        nside_mask = 2**12,
+        nside_mask = 2**13,
         binning="powspace",
         power=1 / 2,
         n_ell_bins=32,
@@ -312,6 +312,19 @@ class CosmologyValidation:
             self.calculate_pseudo_cl_onecovariance()
         return self._pseudo_cls_onecov
 
+    def _get_binned_catalog_mask(self, ver):
+        with self.results[ver].temporarily_read_data():
+            ra = self.results[ver].dat_shear["RA"]
+            dec = self.results[ver].dat_shear["Dec"]
+            hsp_map = hp.ang2pix(
+            self.nside_mask,
+                np.radians(90 - dec),
+                np.radians(ra),
+                lonlat=False,
+            )
+            mask = np.bincount(hsp_map, minlength=hp.nside2npix(self.nside_mask)) > 0
+        return mask
+
     def calculate_area(self):
         self.print_start("Calculating area")
         area = {}
@@ -333,19 +346,10 @@ class CosmologyValidation:
     
     def calculate_area_from_binned_catalog(self, ver):
         print(f"nside_mask = {self.nside_mask}")
-        with self.results[ver].temporarily_read_data():
-            ra = self.results[ver].dat_shear["RA"]
-            dec = self.results[ver].dat_shear["Dec"]
-            hsp_map = hp.ang2pix(
-            self.nside_mask,
-                np.radians(90 - dec),
-                np.radians(ra),
-                lonlat=False,
-            )
-            mask = np.bincount(hsp_map, minlength=hp.nside2npix(self.nside_mask)) > 0
+        mask = self._get_binned_catalog_mask(ver)
 
-            area = np.sum(mask) * hp.nside2pixarea(self.nside_mask, degrees=True)
-            print(f"Area = {area:.2f} deg^2")
+        area = np.sum(mask) * hp.nside2pixarea(self.nside_mask, degrees=True)
+        print(f"Area = {area:.2f} deg^2")
 
         return area
 
@@ -2461,6 +2465,12 @@ class CosmologyValidation:
             else:
 
                 mask_path = self.cc[ver]['shear']['mask']
+                if not os.path.exists(mask_path):
+                    print("Mask file does not exist")
+                    print("Computing the mask from the binned catalog and saving...")
+                    mask = self._get_binned_catalog_mask(ver)
+                    hp.write_map(mask_path, mask, overwrite=True)
+                    
                 redshift_distr_path = os.path.join(self.data_base_dir, self.cc[ver]['shear']['redshift_distr'])
 
                 config_path = os.path.join(out_dir, f"config_onecov_{ver}.ini")
