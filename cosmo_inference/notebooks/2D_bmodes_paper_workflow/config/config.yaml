@@ -1,0 +1,116 @@
+versions: ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
+ellipticity_suffix: "_leak_corrected"
+
+# grid search parameters
+npatches: [120]
+
+min_seps: [1]
+max_seps: [250]
+nbins: [20]
+
+min_seps_int : [0.1]
+max_seps_int: [500]
+nbins_int: [100, 200, 300, 500]
+
+# fiducial parameters
+fiducial:
+  version: SP_v1.4.6_leak_corr
+  blind: A
+  npatch: 1
+  min_sep: 1.0
+  max_sep: 250.0
+  nbins: 20
+
+  mock_version: SP_v1.4.6
+
+  min_sep_int: 0.5
+  max_sep_int: 500.0
+  nbins_int: 1000
+
+  # COSEBIS parameters
+  # Compute 20 modes, evaluate PTEs for both 6 and 20
+  nmodes: 20
+  
+  # Unified fiducial scale cut for all B-mode analyses (arcmin)
+  # Matches Paper IV (Goh et al.): [12, 83] for both xi+ and xi-
+  # COSEBIs use unified cuts since they cannot have separate xi+/xi- ranges
+  fiducial_min_scale: 12
+  fiducial_max_scale: 83
+
+  # Pure E/B mode fiducial scale cuts for plots (arcmin)
+  # From Paper IV: [12, 83] for both (most conservative choice)
+  fiducial_xip_scale_cut: [12, 83]
+  fiducial_xim_scale_cut: [12, 83]
+
+  chain: SP_v1.4.6_leak_corr_C_sc_10_150_new_ia
+
+
+var_method: jackknife
+
+# covariance settings for semi-analytical E/B mode covariance
+covariance:
+  # Use masked covariance by default when true
+  default_masked: true
+  # Enable semi-analytical covariance propagation
+  use_semianalytic: true
+  # Number of Monte Carlo samples for covariance propagation (used by pure E/B mode analysis)
+  n_samples: 2000
+  # CosmoCov cosmological parameters (KiDS-Legacy fiducial values)
+  cosmology:
+    Omega_m: 0.326
+    sigma_8: 0.786
+    n_s: 0.960
+    h: 0.670
+    Omega_b: 0.050
+  mask_cls_files:
+    v1.4.5: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.5_nside_8192_norm.txt"
+    v1.4.6: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.6_nside_8192_norm.txt"
+    v1.4.7: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.7_nside_8192_norm.txt"
+    v1.4.8: "/home/guerrini/sp_validation/cosmo_inference/data/mask/mask_cls_v1.4.8_nside_8192_norm.txt"
+
+pseudo_cl_files:
+  SP_v1.4.6: "/automnt/n17data/sguerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6.fits"
+  SP_v1.4.6_leak_corr: "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6_leak_corr.fits"
+
+# Harmonic-space (C_l) analysis parameters
+cl:
+  # Full range for B-mode null tests
+  ell_min: 50
+  ell_max: 2000
+  n_ell_bins: 32
+  # Fiducial scale cuts for cosmological inference (from Paper II, Goh et al.)
+  fiducial_ell_min: 300
+  fiducial_ell_max: 1600
+
+# COSEBIS calculation parameters
+cosebis:
+  theta_min: 1.0      # arcmin, angular scale range
+  theta_max: 250.0    # arcmin, matches max_sep for consistency
+  nmodes: 20          # number of COSEBIS modes to calculate
+  mode_subsets: [6, 20]  # mode counts for PTE evaluation
+
+# Statistical thresholds
+statistics:
+  pte_healthy_range: [0.05, 0.95]  # 2σ equivalent bounds
+
+# Plotting defaults
+plotting:
+  palette: "colorblind"  # seaborn palette
+  version_alpha:
+    fiducial: 1.0
+    comparison: 0.4
+  markers:
+    style: "unfilled"
+    linewidth: 1.5
+    capsize: 3
+  x_offsets: [-0.15, 0, 0.15]  # prevent overlap in comparisons
+
+# pixel mask processing for survey geometry and CosmoCov integration
+pixel_mask:
+  # Target nside values for downgrading (balance accuracy vs computational cost)
+  target_nsides: [2048, 4096, 8192]
+
+# GLASS mock covariance computation
+glass_mocks:
+  version: "v0"
+  seed_range: [1, 350]

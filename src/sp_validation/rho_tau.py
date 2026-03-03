@@ -1,5 +1,6 @@
 import os
 import time
+from pathlib import Path
 
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
@@ -69,6 +70,11 @@ not_square_size = [
 ]
 
 
+def _extract_xip(correlations):
+    """Return flattened array of xip values from a list of correlations."""
+    return np.array([corr.xip for corr in correlations]).flatten()
+
+
 def get_params_rho_tau(cat, survey="other"):
 
     # Set parameters
@@ -111,42 +117,59 @@ def get_params_rho_tau(cat, survey="other"):
     return params
 
 
-def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method, cov_rho=False):
-    """
-    Method to compute the covariance matrices of rho and tau-statistics of a given list of versions in cosmo_val.
-    Also computes rho and tau-statistics.
-
-    Parameters
-    ----------
-    versions : list
-        List of versions to compute the covariance matrices for.
-    method : str
-        Method to compute the covariance matrices. Options are 'jk' or 'th'.
-    """
+def get_rho_tau_w_cov(
+    config,
+    version,
+    treecorr_config,
+    outdir,
+    base,
+    method,
+    cov_rho=False,
+    npatch=None,
+):
+    """Compute rho/tau statistics and, if requested, their covariance."""
     if method == "th":
         nbin_ang, nbin_rad = 100, 200
         rho_stat_handler, tau_stat_handler = get_rho_tau(
-            config, version, treecorr_config, outdir, cov_rho=cov_rho
+            config,
+            version,
+            treecorr_config,
+            outdir,
+            base,
+            cov_rho=cov_rho,
         )
         get_theory_cov(
             config,
             version,
             treecorr_config,
             outdir,
+            base,
             nbin_ang=nbin_ang,
             nbin_rad=nbin_rad,
         )
         return rho_stat_handler, tau_stat_handler
     elif method == "jk":
-        return get_jackknife_cov(config, version, treecorr_config, outdir)
+        return get_jackknife_cov(
+            config,
+            version,
+            treecorr_config,
+            outdir,
+            base,
+            npatch=npatch,
+        )
     elif method == "sim":
-        if os.path.exists(outdir + "/cov_tau_" + version + "_th.npy"):
-            print(
-                f"Covariance from simulation available at the following file: {outdir+'/cov_tau_'+version+'_th.npy'}"
-            )
-            print(f"Computing rho and tau statistics for the version: {version}")
+        tau_cov_path = Path(outdir) / f"cov_tau_{base}_th.npy"
+
+        if tau_cov_path.exists():
+            print(f"Found existing covariance at {tau_cov_path}")
+            print(f"Computing rho/tau statistics for {version}")
             return get_rho_tau(
-                config, version, treecorr_config, outdir, cov_rho=cov_rho
+                config,
+                version,
+                treecorr_config,
+                outdir,
+                base,
+                cov_rho=cov_rho,
             )
         else:
             raise ValueError(
@@ -156,7 +179,15 @@ def get_rho_tau_w_cov(config, version, treecorr_config, outdir, method, cov_rho=
         raise ValueError("Method must be either 'jk' or 'th' or 'sim'.")
 
 
-def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
+def get_rho_tau(
+    config,
+    version,
+    treecorr_config,
+    outdir,
+    base,
+    cov_rho=False,
+    npatch=None,
+):
     """
     Compute rho and tau statistics for a given version of the catalogue.
 
@@ -167,7 +198,7 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
     version : str
         Version of the catalogue to use.
     treecorr_config : dict
-        Configuraion for treecorr.
+        TreeCorr configuration (must include 'min_sep', 'max_sep', and 'nbins').
     outdir : str
         Output directory.
     """
@@ -177,27 +208,32 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
     print("Compute Rho and Tau statistics for the version: ", version)
     start_time = time.time()
 
-    out_base = f"rho_stats_{version}.fits"
-    out_path = f"{outdir}/{out_base}"
+    outdir_path = Path(outdir)
+    rho_path = outdir_path / f"rho_stats_{base}.fits"
+    catalog_id = f"{base}_jk" if cov_rho else base
+    cov_rho_path = (
+        outdir_path / f"cov_rho_{catalog_id}.npy"
+        if cov_rho
+        else None
+    )
 
     rho_stat_handler = RhoStat(
         output=outdir, treecorr_config=treecorr_config, verbose=True
     )
 
-    if os.path.exists(out_path):
-        print(f"Skipping rho statistics computation, file {out_path} already exists.")
-        rho_stat_handler.load_rho_stats(out_base)
-    else:
+    rho_stats_exists = rho_path.exists()
+    cov_exists = True if not cov_rho else cov_rho_path.exists()
+    need_compute = (not rho_stats_exists) or (not cov_exists)
 
+    if need_compute:
         rho_stat_handler.catalogs.set_params(params, outdir)
 
         mask = version != "DES"
         square_size = params["square_size"]
 
-        # Build catalogues
         rho_stat_handler.build_cat_to_compute_rho(
             config[version]["psf"]["path"],
-            catalog_id=version,
+            catalog_id=catalog_id,
             square_size=square_size,
             mask=mask,
             hdu=(
@@ -207,21 +243,19 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
             ),
         )
 
-        if cov_rho:
-            if not os.path.exists(outdir + "/cov_rho_" + version + ".npy"):
-                only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
-                rho_stat_handler.compute_rho_stats(
-                    version,
-                    out_base,
-                    save_cov=True,
-                    func=only_p,
-                    var_method="jackknife",
-                )
-        else:
-            rho_stat_handler.compute_rho_stats(version, out_base, var_method=None)
+        rho_stat_handler.compute_rho_stats(
+            catalog_id,
+            rho_path.name,
+            save_cov=cov_rho,
+            func=_extract_xip if cov_rho else None,
+            var_method="jackknife" if cov_rho else None,
+        )
+        rho_stat_handler.load_rho_stats(rho_path.name)
+    else:
+        print(f"Skipping rho statistics computation, file {rho_path} already exists.")
+        rho_stat_handler.load_rho_stats(rho_path.name)
 
-    out_base = f"tau_stats_{version}.fits"
-    out_path = f"{outdir}/{out_base}"
+    tau_path = outdir_path / f"tau_stats_{base}.fits"
 
     tau_stat_handler = TauStat(
         catalogs=rho_stat_handler.catalogs,
@@ -230,9 +264,9 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
         verbose=True,
     )
 
-    if os.path.exists(out_path):
-        print(f"Skipping tau statistics computation, file {out_path} already exists.")
-        tau_stat_handler.load_tau_stats(out_base)
+    if tau_path.exists():
+        print(f"Skipping tau statistics computation, file {tau_path} already exists.")
+        tau_stat_handler.load_tau_stats(tau_path.name)
     else:
 
         tau_stat_handler.catalogs.set_params(params, outdir)
@@ -266,14 +300,20 @@ def get_rho_tau(config, version, treecorr_config, outdir, cov_rho=False):
         )
 
         # function to extract the tau_+
-        tau_stat_handler.compute_tau_stats(version, out_base, var_method=None)
+        tau_stat_handler.compute_tau_stats(version, tau_path.name, var_method=None)
 
     print(f"Time to compute rho and tau statistics: {time.time() - start_time:.2f} s")
     return rho_stat_handler, tau_stat_handler
 
 
 def get_theory_cov(
-    config, version, treecorr_config, outdir, nbin_ang=100, nbin_rad=100
+    config,
+    version,
+    treecorr_config,
+    outdir,
+    base,
+    nbin_ang=100,
+    nbin_rad=100,
 ):
     """
     Compute an analytical estimate of the covariance matrix of rho and tau-statistics.
@@ -290,14 +330,16 @@ def get_theory_cov(
     path_psf = info["psf"]["path"]
     hdu_psf = info["psf"]["hdu"]
 
-    print("Computing the covariance matrix for the version: ", version)
-    start_time = time.time()
+    target_cov = Path(outdir) / f"cov_tau_{base}_th.npy"
 
-    if os.path.exists(outdir + "/cov_tau_" + version + "_th.npy"):
+    if target_cov.exists():
         print(
-            f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_th.npy'} already exists."
+            f"Skipping covariance computation, file {target_cov} already exists."
         )
         return
+
+    print("Computing the covariance matrix for the version: ", version)
+    start_time = time.time()
 
     cov_tau_th = CovTauTh(
         path_gal=path_gal,
@@ -310,28 +352,39 @@ def get_theory_cov(
         params=params,
     )
 
-    print(
-        "--- Computation of the rho and tau statistics for the covariance %s seconds ---"
-        % (time.time() - start_time)
-    )
+    elapsed = time.time() - start_time
+    print(f"--- Rho/tau statistics for covariance computed in {elapsed:.2f}s ---")
 
     cov = cov_tau_th.build_cov(nbin_ang=nbin_ang, nbin_rad=nbin_rad)
-    print("--- Covariance computation %s seconds ---" % (time.time() - start_time))
-    np.save(outdir + "/cov_tau_" + version + "_th.npy", cov)
+    print(f"--- Covariance matrix assembled in {time.time() - start_time:.2f}s ---")
+    target_cov.parent.mkdir(parents=True, exist_ok=True)
+    np.save(target_cov, cov)
     print("Saved covariance matrix of version: ", version)
     del cov_tau_th
     return
 
 
-def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
+def get_jackknife_cov(
+    config,
+    version,
+    treecorr_config,
+    outdir,
+    base,
+    npatch,
+    ncov=100,
+):
     """
     Compute the covariance matrix of rho and tau-statistics using the jackknife method.
     Also compute rho and tau-statistics.
     """
 
-    if os.path.exists(outdir + "/cov_tau_" + version + "_jk.npy"):
+    rho_filename = f"rho_stats_{base}.fits"
+    tau_filename = f"tau_stats_{base}.fits"
+    tau_cov_path = Path(outdir) / f"cov_tau_{base}_jk.npy"
+
+    if tau_cov_path.exists():
         print(
-            f"Skipping covariance computation, file {outdir+'/cov_tau_'+version+'_jk.npy'} already exists."
+            f"Skipping covariance computation, file {tau_cov_path} already exists."
         )
         rho_stat_handler = RhoStat(
             output=outdir, treecorr_config=treecorr_config, verbose=False
@@ -344,19 +397,22 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
             verbose=True,
         )
 
+        rho_path = Path(outdir) / rho_filename
+        tau_path = Path(outdir) / tau_filename
+        if rho_path.exists():
+            rho_stat_handler.load_rho_stats(rho_path.name)
+        if tau_path.exists():
+            tau_stat_handler.load_tau_stats(tau_path.name)
         return rho_stat_handler, tau_stat_handler
-    
+
     params = get_params_rho_tau(config[version], survey=version)
 
     rho_stat_handler = RhoStat(
         output=outdir, treecorr_config=treecorr_config, verbose=False
     )
 
-    out_base = f"rho_stats_{version}.fits"
-
     rho_stat_handler.catalogs.set_params(params, outdir)
 
-    mask = version != "DES"
     square_size = params["square_size"]
 
     tau_stat_handler = TauStat(
@@ -366,25 +422,18 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
         verbose=True,
     )
 
-    out_base = f"tau_stats_{version}.fits"
-
     tau_stat_handler.catalogs.set_params(params, outdir)
 
     for i in range(ncov):
 
-        if not (
-            os.path.exists(outdir + "/cov_tau_" + version + str(i) + ".npy")
-            and os.path.exists(outdir + "/cov_rho_" + version + str(i) + ".npy")
-        ):   
-
+        tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
+        rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
+        if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
             print(
-                f"Computing rho-statistics of version {version} for jackknife patch {i+1}/{ncov}"
+                f"Computing rho-statistics for {version} (patch {i+1}/{ncov})"
             )
 
-            if (
-                f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict.keys()
-            ):
-                
+            if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
                 # Build catalogues
                 rho_stat_handler.build_cat_to_compute_rho(
                     config[version]["psf"]["path"],
@@ -394,7 +443,9 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
                     hdu=config[version]["psf"]["hdu"],
                 )
 
-                tau_stat_handler.catalogs.catalogs_dict = rho_stat_handler.catalogs.catalogs_dict
+                tau_stat_handler.catalogs.catalogs_dict = (
+                    rho_stat_handler.catalogs.catalogs_dict
+                )
 
                 # Build the catalog of galaxies. PSF was computed above
                 tau_stat_handler.build_cat_to_compute_tau(
@@ -411,45 +462,48 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
                 )
 
                 npatch = rho_stat_handler.catalogs._params["patch_number"]
-                field = rho_stat_handler.catalogs.catalogs_dict[f"psf_{version}{i}"].getNField(max_top=int.bit_length(npatch)-1, coords='spherical')
+                field = rho_stat_handler.catalogs.catalogs_dict[
+                    f"psf_{version}{i}"
+                ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
                 patch, centers = field.run_kmeans(npatch)
 
                 #Update the patch centers of the catalogs
                 for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
                     cat._centers = centers
-                    field = cat.getNField(max_top=int.bit_length(npatch)-1, coords='spherical')
+                    field = cat.getNField(
+                        max_top=int.bit_length(npatch) - 1, coords="spherical"
+                    )
                     cat._patch = field.kmeans_assign_patches(centers)
-                    
-
-            out_base = f"rho_stats_{version}.fits"
 
             # Compute and save rho stats
-            only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
             rho_stat_handler.compute_rho_stats(
                 version + str(i),
-                out_base,
+                rho_filename,
                 save_cov=True,
-                func=only_p,
+                func=_extract_xip,
                 var_method="jackknife",
             )
 
-            out_base = f"tau_stats_{version}.fits"
-
             # function to extract the tau_+
-            only_p = lambda corrs: np.array([corr.xip for corr in corrs]).flatten()
             tau_stat_handler.compute_tau_stats(
                 version + str(i),
-                out_base,
+                tau_filename,
                 save_cov=True,
-                func=only_p,
+                func=_extract_xip,
                 var_method="jackknife",
             )
 
             #Update the keys in the dictionaries
-            rho_stat_handler.catalogs.catalogs_dict[f"psf_{version}{i+1}"] = rho_stat_handler.catalogs.catalogs_dict.pop(f"psf_{version}{i}")
-            rho_stat_handler.catalogs.catalogs_dict[f"psf_error_{version}{i+1}"] = rho_stat_handler.catalogs.catalogs_dict.pop(f"psf_error_{version}{i}")
-            rho_stat_handler.catalogs.catalogs_dict[f"psf_size_error_{version}{i+1}"] = rho_stat_handler.catalogs.catalogs_dict.pop(f"psf_size_error_{version}{i}")
-            tau_stat_handler.catalogs.catalogs_dict[f"gal_{version}{i+1}"] = tau_stat_handler.catalogs.catalogs_dict.pop(f"gal_{version}{i}")
+            rho_dict = rho_stat_handler.catalogs.catalogs_dict
+            tau_dict = tau_stat_handler.catalogs.catalogs_dict
+            rho_dict[f"psf_{version}{i+1}"] = rho_dict.pop(f"psf_{version}{i}")
+            rho_dict[f"psf_error_{version}{i+1}"] = rho_dict.pop(
+                f"psf_error_{version}{i}"
+            )
+            rho_dict[f"psf_size_error_{version}{i+1}"] = rho_dict.pop(
+                f"psf_size_error_{version}{i}"
+            )
+            tau_dict[f"gal_{version}{i+1}"] = tau_dict.pop(f"gal_{version}{i}")
 
     cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{version}0.npy"))
     cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{version}0.npy"))
@@ -462,122 +516,162 @@ def get_jackknife_cov(config, version, treecorr_config, outdir, ncov=100):
     cov_tau = cov_tau_loc / ncov
     cov_rho = cov_rho_loc / ncov
 
-    np.save(outdir + "/cov_tau_" + version + "_jk.npy", cov_tau)
-    np.save(outdir + "/cov_rho_" + version + ".npy", cov_rho)
+    tau_cov_path.parent.mkdir(parents=True, exist_ok=True)
+    np.save(tau_cov_path, cov_tau)
+
+    cov_rho_path = Path(outdir) / f"cov_rho_{base}_jk.npy"
+    cov_rho_path.parent.mkdir(parents=True, exist_ok=True)
+    np.save(cov_rho_path, cov_rho)
 
     return rho_stat_handler, tau_stat_handler
 
 
-def get_samples(psf_fitter, version, cov_type="jk", apply_debias=None, sampler="emcee"):
-    """
-    Samples (alpha, beta, eta) using the sampler 'emcee' or 'lsq'
+def get_samples(
+    psf_fitter,
+    version,
+    base,
+    cov_type="jk",
+    apply_debias=None,
+    sampler="emcee",
+):
+    """Return (alpha, beta, eta) samples using ``emcee`` or least squares.
 
     Parameters
     ----------
     psf_fitter : PSFFitter
-        Instance of PSFFitter.
+        PSF fitter instance that provides ``load_*`` helpers.
     version : str
-        Version of the catalogue to use.
-    cov_type : str
-        Type of covariance matrix to use. Options are 'jk' or 'th' or 'sim'.
-    apply_debias : int
-        If not None, apply debiasing to the least square method.
-    sampler : str
-        Sampler to use. Options are 'emcee' or 'lsq'. (Default: 'emcee')
+        Catalog identifier whose rho/tau statistics are sampled.
+    base : str
+        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for filenames.
+    cov_type : str, optional
+        Covariance label (``'jk'``, ``'th'``, or ``'sim'``). Defaults to ``'jk'``.
+    apply_debias : int or None, optional
+        Jackknife patch count used to debias samples. Disabled when ``None``.
+    sampler : str, optional
+        ``'emcee'`` for MCMC sampling, ``'lsq'`` for least squares
+        (default ``'emcee'``).
     """
     if sampler == "emcee":
         return get_samples_emcee(
-            psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias
+            psf_fitter,
+            version,
+            base,
+            cov_type=cov_type,
+            apply_debias=apply_debias,
         )
     elif sampler == "lsq":
         return get_samples_lsq(
-            psf_fitter, version, cov_type=cov_type, apply_debias=apply_debias
+            psf_fitter,
+            version,
+            base,
+            cov_type=cov_type,
+            apply_debias=apply_debias,
         )
     else:
         raise ValueError("Sampler must be either 'emcee' or 'lsq'.")
 
 
 def get_samples_emcee(
-    psf_fitter, version, nwalkers=124, nsamples=10000, cov_type="jk", apply_debias=None
+    psf_fitter,
+    version,
+    base,
+    nwalkers=124,
+    nsamples=10000,
+    cov_type="jk",
+    apply_debias=None,
 ):
-    """
-    Samples (alpha, beta, eta) using the covariance of the tau statistics and emcee.
+    """Draw (alpha, beta, eta) samples using ``emcee`` and the tau covariance.
 
     Parameters
     ----------
     psf_fitter : PSFFitter
-        Instance of PSFFitter.
+        PSF fitter instance managing rho/tau statistics and covariances.
     version : str
-        Version of the catalogue to use.
-    nwalkers : int
-        Number of walkers to use in the MCMC. (Default: 124)
-    nsamples : int
-        Number of samples to draw from the MCMC. (Default 10000)
-    cov_type : str
-        Type of covariance matrix to use. Options are 'jk' or 'th' or 'sim'. (Default: 'jk')
+        Catalog identifier whose rho/tau statistics are sampled.
+    base : str
+        Precomputed basename for locating statistics/covariance files.
+    nwalkers : int, optional
+        Number of walkers for the MCMC run (default ``124``).
+    nsamples : int, optional
+        Number of samples drawn per walker (default ``10000``).
+    cov_type : str, optional
+        Covariance label (``'jk'``/``'th'``/``'sim'``). Defaults to ``'jk'``.
+    apply_debias : int or None, optional
+        Jackknife patch count applied during debiasing. Disabled when ``None``.
     """
     # Load rho and tau stats
-    psf_fitter.load_rho_stat("rho_stats_" + version + ".fits")
-    psf_fitter.load_tau_stat("tau_stats_" + version + ".fits")
+    psf_fitter.load_rho_stat(f"rho_stats_{base}.fits")
+    psf_fitter.load_tau_stat(f"tau_stats_{base}.fits")
 
-    # Check if the path exists
-    sample_file_path = psf_fitter.get_sample_file_path(version)
+    # Check if the path exists (use base for cache key to account for different TreeCorr configs)
+    sample_file_path = psf_fitter.get_sample_file_path(base)
     if os.path.exists(sample_file_path):
-        print(f"Skipping sample computation, file {sample_file_path} already exists.")
-        flat_samples = psf_fitter.load_samples(version)
-        mcmc_result, q = psf_fitter.get_mcmc_from_samples(version)
+        print(f"Skipping sampling; {sample_file_path} exists.")
+        flat_samples = psf_fitter.load_samples(base)
+        mcmc_result, q = psf_fitter.get_mcmc_from_samples(base)
         print(mcmc_result)
     # Or run MCMC
     else:
         print("MCMC sampling")
-        psf_fitter.load_covariance("cov_tau_" + version + "_" + cov_type + ".npy")
+        cov_filename = f"cov_tau_{base}_{cov_type}.npy"
+        psf_fitter.load_covariance(cov_filename, cov_type="tau")
 
-        npatch = apply_debias if (apply_debias is not None) else None
+        debias_npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.run_chain(
             nwalkers=nwalkers,
             nsamples=nsamples,
-            npatch=npatch,
-            apply_debias=npatch is not None,
+            npatch=debias_npatch,
+            apply_debias=debias_npatch is not None,
             savefig="mcmc_samples_" + version + ".png",
         )
-        psf_fitter.save_samples(flat_samples, version)
+        psf_fitter.save_samples(flat_samples, base)
     return flat_samples, mcmc_result, q
 
 
-def get_samples_lsq(psf_fitter, version, apply_debias=None, cov_type="jk"):
-    """
-    Samples (alpha, beta, eta) using the covariance of the tau statistics and least square method.
+def get_samples_lsq(
+    psf_fitter,
+    version,
+    base,
+    apply_debias=None,
+    cov_type="jk",
+):
+    """Compute least-squares samples of (alpha, beta, eta) using the tau covariance.
 
     Parameters
     ----------
     psf_fitter : PSFFitter
-        Instance of PSFFitter.
+        PSF fitter instance managing rho/tau statistics and covariances.
     version : str
-        Version of the catalogue to use.
-    apply_debias : int
-        If not None, apply debiasing to the least square method. (Default: None)
+        Catalog identifier whose rho/tau statistics are sampled.
+    base : str
+        Precomputed basename for locating statistics/covariance files.
+    apply_debias : int or None, optional
+        Jackknife patch count applied during debiasing. Disabled when ``None``.
+    cov_type : str, optional
+        Covariance label (defaults to ``'jk'``).
     """
     # Load rho and tau stats
-    psf_fitter.load_rho_stat("rho_stats_" + version + ".fits")
-    psf_fitter.load_tau_stat("tau_stats_" + version + ".fits")
+    psf_fitter.load_rho_stat(f"rho_stats_{base}.fits")
+    psf_fitter.load_tau_stat(f"tau_stats_{base}.fits")
 
-    # Check if the path exists
-    sample_file_path = psf_fitter.get_sample_path(version)
+    # Check if the path exists (use base for cache key to account for different TreeCorr configs)
+    sample_file_path = psf_fitter.get_sample_path(base)
     if os.path.exists(sample_file_path):
-        print(f"Skipping sample computation, file {sample_file_path} already exists.")
-        flat_samples = psf_fitter.load_samples(version)
+        print(f"Skipping sampling; {sample_file_path} exists.")
+        flat_samples = psf_fitter.load_samples(base)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
     # Or run MCMC
     else:
         print("Least square sampling")
-        psf_fitter.load_covariance(
-            "cov_tau_" + version + "_" + cov_type + ".npy", cov_type="tau"
-        )
-        psf_fitter.load_covariance("cov_rho_" + version + ".npy", cov_type="rho")
-        npatch = apply_debias if (apply_debias is not None) else None
+        tau_covariance = f"cov_tau_{base}_{cov_type}.npy"
+        rho_covariance = f"cov_rho_{base}_jk.npy"
+        psf_fitter.load_covariance(tau_covariance, cov_type="tau")
+        psf_fitter.load_covariance(rho_covariance, cov_type="rho")
+        debias_npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.get_least_squares_params_samples(
-            npatch=npatch, apply_debias=(npatch is not None)
+            npatch=debias_npatch, apply_debias=(debias_npatch is not None)
         )
-        psf_fitter.save_samples(flat_samples, version)
+        psf_fitter.save_samples(flat_samples, base)
     return flat_samples, mcmc_result, q
