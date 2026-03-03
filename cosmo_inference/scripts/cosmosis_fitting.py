@@ -55,11 +55,11 @@ def nz_to_fits(filename):
     line = np.loadtxt(filename, max_rows=1)
     nbins = len(line) - 1
 
-    z_low = np.loadtxt(filename, usecols=0)
+    z_mid = np.loadtxt(filename, usecols=0)
     nstep = z_low[1] - z_low[0]
 
-    z_mid = z_low + nstep / 2
-    z_high = np.append(z_low[1:], z_low[-1] + nstep)
+    z_low = z_mid - nstep / 2
+    z_high = z_mid + nstep / 2
 
     col1 = fits.Column(name="Z_LOW", format="D", array=z_low)
     col2 = fits.Column(name="Z_MID", format="D", array=z_mid)
