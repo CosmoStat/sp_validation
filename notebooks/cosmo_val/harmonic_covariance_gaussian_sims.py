@@ -17,8 +17,8 @@ warnings.filterwarnings("ignore", category=Warning)
 sys.path.append(os.path.abspath('/home/guerrini/UNIONS_forward_model'))
 
 out_dir = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463_C'
-setup_file = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/precomputed_setup.npz'
-wsp_file = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/wsp_harmony_covariance.fits'
+setup_file = out_dir +'/precomputed_setup.npz'
+wsp_file = out_dir+'/wsp_harmony_covariance.fits'
 path_redshift_distr = '/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_C.txt'
 
 def get_fiducial(nside, lmax, redshift_distr):
@@ -31,13 +31,32 @@ def get_fiducial(nside, lmax, redshift_distr):
     Oc = Om - Ob
     ns = 0.965
     As = 2.1e-9
+    sigma8 = 0.8102
     m_nu = 0.06
     w = -1
+    log_T_AGN = 7.8
     
     pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
     Onu = pars.omeganu
     Oc = Om - Ob - Onu
     pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
+
+    pars.NonLinearModel.set_params(
+        halofit_version='mead2020_feedback',
+        HMCode_logT_AGN=log_T_AGN,
+    )
+
+    pars.set_matter_power(
+        nonlinear=True,
+        kmax=20
+    )
+
+    sigma8_temp = camb.get_results(pars).get_sigma8_0()
+    As *= (sigma8 / sigma8_temp)**2
+
+    init_power_scaled = camb.InitialPowerLaw()
+    init_power_scaled.set_params(As=As, ns=ns)
+    pars.InitPower = init_power_scaled
 
     z, dndz = np.loadtxt(redshift_distr, unpack=True)
 
@@ -153,6 +172,7 @@ if __name__ == "__main__":
     e2_col = 'e2_leak_corrected'
     w_col = 'w_des'
 
+    os.makedirs(out_dir, exist_ok=True)
     if rank == 0:
         if os.path.exists(setup_file) and os.path.exists(wsp_file):
             print("Precomputed setup and workspace already exist. Skipping setup.")
