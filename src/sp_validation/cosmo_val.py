@@ -724,7 +724,7 @@ class CosmologyValidation:
                 print("Mask not found in config file, calculating area from binned catalog")
                 area[ver] = self.calculate_area_from_binned_catalog(ver)
             else:
-                mask = hp.read_map(self.cc[ver]['shear']['mask'], verbose=False)
+                mask = hp.read_map(self.cc[ver]['mask'], verbose=False)
                 nside_mask = hp.get_nside(mask)
                 print(f"nside_mask = {nside_mask}")
                 area[ver] = np.sum(mask) * hp.nside2pixarea(nside_mask, degrees=True)
@@ -2694,6 +2694,7 @@ class CosmologyValidation:
                 pw = pw[1:len(ell)+1]
 
                 # Load redshift distribution and calculate theory C_ell
+                path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
                 z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
                 ell = np.arange(1, lmax + 1)
                 fiducial_cl = (
@@ -2701,10 +2702,10 @@ class CosmologyValidation:
                         ell=ell,
                         z=z,
                         nz=dndz,
-                        backend="camb",
+                        backend="ccl",
                         cosmo=self.cosmo,
                     )
-                    * pw[1:]**2
+                    * pw**2
                 )
 
                 self.print_cyan("Getting a binning, n_gal_map, field and workspace.")
@@ -2875,14 +2876,14 @@ class CosmologyValidation:
                 self._load_onecovariance_cov(out_dir, ver)
             else:
 
-                mask_path = self.cc[ver]['shear']['mask']
+                mask_path = self.cc[ver]['mask']
                 if not os.path.exists(mask_path):
                     print("Mask file does not exist")
                     print("Computing the mask from the binned catalog and saving...")
                     mask = self._get_binned_catalog_mask(ver)
                     hp.write_map(mask_path, mask, overwrite=True)
                     
-                redshift_distr_path = os.path.join(self.data_base_dir, self.cc[ver]['shear']['redshift_distr'])
+                redshift_distr_path = os.path.join(self.cc[ver]['shear']['redshift_path'])
 
                 config_path = os.path.join(out_dir, f"config_onecov_{ver}.ini")
 
