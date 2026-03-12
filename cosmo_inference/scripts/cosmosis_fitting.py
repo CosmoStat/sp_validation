@@ -58,8 +58,8 @@ def nz_to_fits(filename):
     z_mid = np.loadtxt(filename, usecols=0)
     nstep = z_mid[1] - z_mid[0]
 
-    z_low = z_low - nstep / 2
-    z_high = z_low + nstep / 2
+    z_low = z_mid - nstep / 2
+    z_high = z_mid + nstep / 2
 
     col1 = fits.Column(name="Z_LOW", format="D", array=z_low)
     col2 = fits.Column(name="Z_MID", format="D", array=z_mid)
@@ -678,6 +678,9 @@ if __name__ == "__main__":
             raise ValueError("--cl-file is required when --cov-cl is provided")
 
         os.makedirs(args.data_dir, exist_ok=True)
+        cov_hdu = None
+        xip_hdu = None
+        xim_hdu = None
         if args.xi:
             print("Loading xi correlation functions...")
             if args.mock:
@@ -738,7 +741,11 @@ if __name__ == "__main__":
         pri_hdu = fits.PrimaryHDU(header=pri_hdr)
 
         print("Assembling FITS file...")
-        hdu_list = [pri_hdu, cov_hdu, nz_hdu]
+        hdu_list = [pri_hdu, nz_hdu]
+        if cov_hdu is not None:
+            hdu_list.append(cov_hdu)
+        else:
+            cov_cl_hdu.header["EXTNAME"] = "COVMAT" # If no xi use covmat for the extname of the cl cov
         if cov_cl_hdu is not None:
             hdu_list.append(cov_cl_hdu)
         if args.xi:
