@@ -20,7 +20,7 @@ existing rules — ecut versions are just new entries in `config["versions"]` an
 - Filtered catalogs exist at `results/ecut/SP_v1.4.{6,11.3}_ecut07.fits`
 - `cat_config.yaml` has correct (non-zero) n_e and sigma_e for both ecut versions
 - Existing version comparison rules accept a `{comparison}` wildcard in the output path
-  (e.g., `results/claims/{comparison}_pure_eb_version_comparison/`), with an input
+  (e.g., `results/tapestry/{comparison}_pure_eb_version_comparison/`), with an input
   function mapping `paper` → current versions, `ecut` → ecut versions
 - `snakemake paper_pure_eb_version_comparison --dry-run` still works (backward compat via convenience target or alias)
 

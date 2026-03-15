@@ -108,6 +108,10 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     ax.set_xlabel("COSEBIS mode $n$")
     ax.set_xlim(0.5, nmodes + 0.5)
     ax.set_xticks(np.arange(1, nmodes + 1))
+    ax.set_xticklabels(
+        [str(i) for i in range(1, nmodes + 1)],
+        rotation=45, ha="right", rotation_mode="anchor",
+    )
     ax.tick_params(axis="both", width=0.5, length=3)
 
     if title:

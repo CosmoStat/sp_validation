@@ -30,7 +30,7 @@ def _load_snakemake():
         from snakemake_helpers import snakemake_interactive
 
         return snakemake_interactive(
-            "results/claims/harmonic_space_pte_matrices/evidence.json",
+            "results/tapestry/harmonic_space_pte_matrices/evidence.json",
             str(Path.cwd()),
         )
     from snakemake.script import snakemake
@@ -119,7 +119,8 @@ def compute_pte_matrix(pseudo_cl_path, pseudo_cl_cov_path, fiducial_ell_min=None
 
 
 def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
-                      show_xlabel=True, show_ylabel=True):
+                      show_xlabel=True, show_ylabel=True,
+                      fid_i_min=None, fid_i_max=None):
     """Plot a single Cl PTE heatmap panel.
 
     Parameters
@@ -157,10 +158,11 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
         cmap=pte_cmap, vmin=0, vmax=1, extent=[0, n_ell, 0, n_ell],
     )
 
-    # Mark full ell range (black square, no hatching for cleaner look)
-    ax.add_patch(
-        Rectangle((0, 0), 1, 1, fill=False, edgecolor="black", linewidth=1.5)
-    )
+    # Mark fiducial ell cut (black square)
+    if fid_i_min is not None and fid_i_max is not None:
+        ax.add_patch(
+            Rectangle((fid_i_min, fid_i_max), 1, 1, fill=False, edgecolor="black", linewidth=1.5)
+        )
 
     # Tick positioning: x-axis at left edge of bins, y-axis at top edge
     tick_step = max(1, n_ell // 5)  # Fewer ticks for cleaner labels
@@ -172,8 +174,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
     ax.set_yticks(tick_indices + 1)
 
     if show_xlabel:
-        ax.set_xticklabels([f"{ell[i]:.0f}" for i in tick_indices],
-                          rotation=45, ha="right", fontsize=7)
+        ax.set_xticklabels([f"{ell[i]:.0f}" for i in tick_indices], fontsize=7)
     else:
         ax.set_xticklabels([])
 
@@ -193,11 +194,12 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
     return im
 
 
-def create_single_panel(pte_matrix, ell):
+def create_single_panel(pte_matrix, ell, fid_i_min=None, fid_i_max=None):
     """Create single-panel figure for fiducial version."""
     fig, ax = plt.subplots(1, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE))
 
-    plot_cl_pte_panel(ax, pte_matrix, ell, "", show_colorbar=True)
+    plot_cl_pte_panel(ax, pte_matrix, ell, "", show_colorbar=True,
+                      fid_i_min=fid_i_min, fid_i_max=fid_i_max)
 
     ax.set_xlabel(r"$\ell_{\mathrm{min}}$")
     ax.set_ylabel(r"$\ell_{\mathrm{max}}$")
@@ -206,7 +208,7 @@ def create_single_panel(pte_matrix, ell):
     return fig
 
 
-def create_npanel_composite(matrices, ells, panel_labels):
+def create_npanel_composite(matrices, ells, panel_labels, fid_indices=None):
     """Create N-panel composite for appendix versions.
 
     Parameters
@@ -224,36 +226,57 @@ def create_npanel_composite(matrices, ells, panel_labels):
         The composite figure.
     """
     n_panels = len(matrices)
-    panel_width = 3.5
-    fig_width = panel_width * n_panels + 0.5  # Extra for colorbar
-    fig_height = 2.8
+    gs_left, gs_right = 0.08, 0.94
+    gs_bottom, gs_top = 0.28, 0.92
+    wspace_val = 0.08
+    cbar_ratio = 0.04
+    fig_width = 7.0
+
+    # Compute fig_height so panels are exactly square — no vertical whitespace
+    total_width_units = n_panels + cbar_ratio + n_panels * wspace_val
+    panel_frac = (gs_right - gs_left) / total_width_units
+    panel_in = panel_frac * fig_width
+    fig_height = panel_in / (gs_top - gs_bottom)
 
     fig = plt.figure(figsize=(fig_width, fig_height))
-    width_ratios = [1] * n_panels + [0.05]
+    width_ratios = [1] * n_panels + [cbar_ratio]
     gs = fig.add_gridspec(
         1, n_panels + 1,
         width_ratios=width_ratios,
-        wspace=0.08,
-        left=0.06, right=0.95,
-        bottom=0.15, top=0.88
+        wspace=wspace_val,
+        left=gs_left, right=gs_right,
+        bottom=gs_bottom, top=gs_top,
     )
 
     axes = [fig.add_subplot(gs[i]) for i in range(n_panels)]
-    cax = fig.add_subplot(gs[n_panels])
+    cax_placeholder = fig.add_subplot(gs[n_panels])  # position reference
 
     for i, (ax, matrix, ell, label) in enumerate(zip(axes, matrices, ells, panel_labels)):
-        im = plot_cl_pte_panel(ax, matrix, ell, "", show_ylabel=(i == 0))
-        ax.set_title(label)
+        fi = fid_indices[i] if fid_indices else (None, None)
+        im = plot_cl_pte_panel(ax, matrix, ell, "", show_ylabel=(i == 0),
+                               fid_i_min=fi[0], fid_i_max=fi[1])
+        # Version label inside panel (bottom-right)
+        ax.text(0.95, 0.05, label, transform=ax.transAxes,
+                ha="right", va="bottom", fontsize=8,
+                bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
 
-    # Shared colorbar (use last image)
+    # Draw first to get actual panel positions after aspect="equal" constraint
+    fig.canvas.draw()
+    ax0_pos = axes[0].get_position()
+    cax_pos = cax_placeholder.get_position()
+    fig.delaxes(cax_placeholder)
+
+    # Colorbar at exact rendered panel height
+    cax = fig.add_axes([cax_pos.x0, ax0_pos.y0, cax_pos.width, ax0_pos.height])
     cbar = fig.colorbar(im, cax=cax)
     cbar.set_label("PTE", fontsize=9)
     cbar.ax.tick_params(labelsize=7)
 
     # Common axis labels
-    fig.text(0.5, 0.02, r"$\ell_{\mathrm{min}}$", ha="center")
-    fig.text(0.02, 0.53, r"$\ell_{\mathrm{max}}$",
-             va="center", rotation="vertical")
+    fig.text(0.5 * (gs_left + gs_right), 0.4 * gs_bottom,
+             r"$\ell_{\mathrm{min}}$", ha="center", va="center")
+    fig.text(0.25 * gs_left, 0.5 * (gs_bottom + gs_top),
+             r"$\ell_{\mathrm{max}}$", va="center", ha="center", rotation="vertical")
 
     return fig
 
@@ -334,11 +357,21 @@ def main():
     # Get version labels from params
     version_labels = snakemake.params.version_labels
 
+    # Compute fiducial ell indices per version (ell grids may differ)
+    version_fid_indices = {}
+    for version, ell in all_ells.items():
+        i_min = int(np.argmin(np.abs(ell - fiducial_ell_min)))
+        i_max = int(np.argmin(np.abs(ell - fiducial_ell_max)))
+        version_fid_indices[version] = (i_min, i_max)
+
     # Create fiducial single-panel figure
     if fiducial_version in all_matrices:
+        fi_fid = version_fid_indices.get(fiducial_version, (None, None))
         fig_fiducial = create_single_panel(
             all_matrices[fiducial_version],
             all_ells[fiducial_version],
+            fid_i_min=fi_fid[0],
+            fid_i_max=fi_fid[1],
         )
 
         fig_path = Path(snakemake.output["figure_fiducial"])
@@ -358,7 +391,8 @@ def main():
         ells = [all_ells[v] for v in appendix_versions]
         labels = [version_labels.get(v, v) for v in appendix_versions]
 
-        fig_appendix = create_npanel_composite(matrices, ells, labels)
+        fid_indices = [version_fid_indices.get(v, (None, None)) for v in appendix_versions]
+        fig_appendix = create_npanel_composite(matrices, ells, labels, fid_indices=fid_indices)
 
         fig_path = Path(snakemake.output["figure_appendix"])
         fig_appendix.savefig(fig_path, dpi=300, bbox_inches="tight", facecolor="white")

@@ -65,15 +65,16 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
     if x_offset_factors is None:
         x_offset_factors = [0.92, 0.97, 1.03, 1.08]
 
-    # Create figure with custom height ratios: top row 2x height of bottom
-    # Bottom row shares y-axis
+    # Create figure with custom height ratios: B row is 2/3 of top row
+    # Both rows share y-axis across columns
     fig, axes = plt.subplots(
         2, 2,
-        figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.5),
+        figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.55),
         sharex=True,
-        gridspec_kw={"height_ratios": [2, 1]},
+        gridspec_kw={"height_ratios": [3, 2]},
     )
-    # Share y-axis for bottom row
+    # Share y-axis across columns for both rows
+    axes[0, 1].sharey(axes[0, 0])
     axes[1, 1].sharey(axes[1, 0])
 
     scale_factor = 1e-4
@@ -200,7 +201,6 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
         ax.set_xscale("log")
         ax.set_xlim(1, 250)
         ax.set_xlabel(r"$\theta$ [arcmin]")
-        ax.set_title(title)
 
         if col == 0:
             ax.set_ylabel(r"$\xi^B / \sigma$")
@@ -224,6 +224,10 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
             ax.axvspan(xlim[0], cut[0], alpha=0.1, color="gray", zorder=0)
             # Shade above upper scale cut
             ax.axvspan(cut[1], xlim[1], alpha=0.1, color="gray", zorder=0)
+
+    # Hide y-tick labels on right column (shared y-axis)
+    for row in range(2):
+        axes[row, 1].tick_params(labelleft=False)
 
     plt.tight_layout()
     return fig

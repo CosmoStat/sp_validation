@@ -97,7 +97,7 @@ plotting:
     style: "unfilled"
     linewidth: 1.5
     capsize: 3
-  x_offsets: [-0.12, -0.04, 0.04, 0.12]  # prevent overlap in comparisons (4 versions), tighter spacing
+  x_offsets: [-0.132, -0.044, 0.044, 0.132]  # prevent overlap in comparisons (4 versions), tighter spacing
   # Human-readable version labels for plots
   version_labels:
     SP_v1.4.5_leak_corr: "Initial"

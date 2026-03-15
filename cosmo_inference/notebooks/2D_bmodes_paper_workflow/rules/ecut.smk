@@ -124,9 +124,9 @@ rule pure_eb_comparison:
         versions=lambda w: _comparison_versions(w.comparison),
         fiducial_for_comparison=lambda w: _comparison_fiducial(w.comparison),
     output:
-        evidence=f"{CLAIMS_DIR}/{{comparison}}_pure_eb_version_comparison/evidence.json",
-        figure=f"{CLAIMS_DIR}/{{comparison}}_pure_eb_version_comparison/figure.png",
-        paper_figure=f"{CLAIMS_DIR}/{{comparison}}_pure_eb_version_comparison/paper_figure.pdf",
+        evidence=f"{TAPESTRY_DIR}/{{comparison}}_pure_eb_version_comparison/evidence.json",
+        figure=f"{TAPESTRY_DIR}/{{comparison}}_pure_eb_version_comparison/figure.png",
+        paper_figure=f"{TAPESTRY_DIR}/{{comparison}}_pure_eb_version_comparison/paper_figure.pdf",
     wildcard_constraints:
         comparison=r"(paper|ecut)",
     script:
@@ -158,9 +158,9 @@ rule cosebis_comparison:
         versions=lambda w: _comparison_versions(w.comparison),
         fiducial_for_comparison=lambda w: _comparison_fiducial(w.comparison),
     output:
-        evidence=f"{CLAIMS_DIR}/{{comparison}}_cosebis_version_comparison/evidence.json",
-        figure_stacked=f"{CLAIMS_DIR}/{{comparison}}_cosebis_version_comparison/figure_stacked.png",
-        paper_stacked=f"{CLAIMS_DIR}/{{comparison}}_cosebis_version_comparison/paper_figure.pdf",
+        evidence=f"{TAPESTRY_DIR}/{{comparison}}_cosebis_version_comparison/evidence.json",
+        figure_stacked=f"{TAPESTRY_DIR}/{{comparison}}_cosebis_version_comparison/figure_stacked.png",
+        paper_stacked=f"{TAPESTRY_DIR}/{{comparison}}_cosebis_version_comparison/paper_figure.pdf",
     wildcard_constraints:
         comparison=r"(paper|ecut)",
     script:
@@ -194,9 +194,9 @@ rule cl_comparison:
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
-        evidence=f"{CLAIMS_DIR}/{{comparison}}_cl_version_comparison/evidence.json",
-        figure=f"{CLAIMS_DIR}/{{comparison}}_cl_version_comparison/figure.png",
-        paper_figure=f"{CLAIMS_DIR}/{{comparison}}_cl_version_comparison/paper_figure.pdf",
+        evidence=f"{TAPESTRY_DIR}/{{comparison}}_cl_version_comparison/evidence.json",
+        figure=f"{TAPESTRY_DIR}/{{comparison}}_cl_version_comparison/figure.png",
+        paper_figure=f"{TAPESTRY_DIR}/{{comparison}}_cl_version_comparison/paper_figure.pdf",
     wildcard_constraints:
         comparison=r"(paper|ecut)",
     script:

@@ -497,7 +497,7 @@ def generate_evidence(
 
 if __name__ == "__main__":
     # When run via snakemake
-    claims_dir = Path(snakemake.params.claims_dir)  # noqa: F821
+    tapestry_dir = Path(snakemake.params.tapestry_dir)  # noqa: F821
     config = snakemake.config  # noqa: F821
     fiducial_version = config["fiducial"]["version"]
     versions = config["versions"]
@@ -508,14 +508,14 @@ if __name__ == "__main__":
     macro_file = [Path(p) for p in snakemake.output if p.endswith("claims_macros.tex")]  # noqa: F821
     evidence_outputs = [Path(p) for p in snakemake.output if p.endswith("evidence.json")]  # noqa: F821
 
-    print(f"Generating macros from {claims_dir}")
-    generate_macros(claims_dir, macro_file, fiducial_version)
+    print(f"Generating macros from {tapestry_dir}")
+    generate_macros(tapestry_dir, macro_file, fiducial_version)
 
     # Generate PTE tables (separate files, not macro content)
     if macro_file:
         paper_dir = macro_file[0].parent
         print(f"Generating PTE tables to {paper_dir}")
-        generate_pte_tables(claims_dir, paper_dir, fiducial_version, versions, version_labels, config)
+        generate_pte_tables(tapestry_dir, paper_dir, fiducial_version, versions, version_labels, config)
 
     # Generate evidence.json if requested
     # Dependencies derived from snakemake inputs (rules.X.output declarations)
@@ -529,6 +529,6 @@ if __name__ == "__main__":
             spec_id=spec_id,
             spec_path=f"workflow/config/{spec_id}.md",
             depends_on=depends_on,
-            claims_dir=claims_dir,
+            claims_dir=tapestry_dir,
             output_path=evidence_path,
         )

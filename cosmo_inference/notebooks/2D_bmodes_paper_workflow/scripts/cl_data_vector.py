@@ -68,7 +68,7 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
         ell_max_cut: Upper scale cut for shading excluded region
         title: Optional title for the figure (None for paper figure)
     """
-    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 1.0), sharex=True)
+    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.75), sharex=True)
 
     color_bb = "#2c5f8a"   # dark blue (distinct harmonic-space scheme)
     color_eb = "#c45a2c"   # burnt orange
@@ -87,8 +87,7 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
     ax_bb.axhline(0, color="black", linestyle="-", linewidth=1.0, alpha=0.8)
     ax_bb.set_xscale("squareroot")
     ax_bb.set_ylabel(r"$C_\ell / \sigma$")
-    ax_bb.grid(True, which="major", axis="both", alpha=0.3)
-    ax_bb.legend(loc="upper left", framealpha=0.9)
+    ax_bb.legend(loc="lower left", framealpha=0.9)
 
     # EB panel
     eb_label = r"$C_\ell^{EB}$"
@@ -103,8 +102,10 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
     ax_eb.set_xscale("squareroot")
     ax_eb.set_xlabel(r"$\ell$")
     ax_eb.set_ylabel(r"$C_\ell / \sigma$")
-    ax_eb.grid(True, which="major", axis="both", alpha=0.3)
-    ax_eb.legend(loc="upper left", framealpha=0.9)
+    ax_eb.legend(loc="lower left", framealpha=0.9)
+
+    # Match y-axis range between panels (use BB range)
+    ax_eb.set_ylim(ax_bb.get_ylim())
 
     # Apply shading and ticks to both panels
     for ax in [ax_bb, ax_eb]:

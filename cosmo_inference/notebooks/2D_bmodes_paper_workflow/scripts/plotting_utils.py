@@ -28,9 +28,9 @@ ERRORBAR_DEFAULTS = {
 # Default version box styling
 VERSION_BOX_DEFAULTS = {
     "edge_color": "black",
-    "edge_linewidth": 0.8,
+    "edge_linewidth": 1.8,
     "fiducial_line_color": "black",
-    "fiducial_line_width": 1.0,
+    "fiducial_line_width": 2.0,
 }
 
 

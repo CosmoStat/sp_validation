@@ -10,7 +10,7 @@ import os
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# CONFIG_DIR, CLAIMS_DIR defined in Snakefile
+# CONFIG_DIR, TAPESTRY_DIR defined in Snakefile
 SKILL_PATH = os.path.expanduser("~/.claude/skills/conducting-research/templates")
 
 # Method specs — foundational techniques, plot types, analysis methods
@@ -28,7 +28,7 @@ rule method_spec_evidence:
     input:
         spec=f"{CONFIG_DIR}/{{method_spec}}.md",
     output:
-        evidence=f"{CLAIMS_DIR}/{{method_spec}}/evidence.json",
+        evidence=f"{TAPESTRY_DIR}/{{method_spec}}/evidence.json",
     wildcard_constraints:
         method_spec="|".join(METHOD_SPECS),
     script:
@@ -38,4 +38,4 @@ rule method_spec_evidence:
 rule all_method_specs:
     """Build all method spec evidence files."""
     input:
-        expand(f"{CLAIMS_DIR}/{{spec}}/evidence.json", spec=METHOD_SPECS),
+        expand(f"{TAPESTRY_DIR}/{{spec}}/evidence.json", spec=METHOD_SPECS),

@@ -139,21 +139,20 @@ def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cut, config):
     return r["En"], r["Bn"], r["cov"]
 
 
-def _shade_unreliable(ax, nmodes, reliable_mode_max=6):
-    """Shade the unreliable region (modes > reliable_mode_max) with gray band."""
-    ax.axvspan(reliable_mode_max + 0.5, nmodes + 0.5, color="0.90", alpha=0.5, zorder=0)
+def _shade_reliable(ax, reliable_mode_max=6):
+    """Shade the reliable region (modes 1 to reliable_mode_max) with gray band."""
+    ax.axvspan(0.5, reliable_mode_max + 0.5, color="0.95", alpha=0.5, zorder=0)
 
 
 def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=None, reliable_mode_max=6):
-    """Data vector figure: E and B from both methods.
+    """Data vector figure: E and B from both methods (single scale cut).
 
-    Two rows (E-modes, B-modes), full angular range only.
+    Two rows (E-modes, B-modes).
     E-modes in raw units. B-modes in B_n/sigma units.
-    Gray band over unreliable modes.
+    Gray band over reliable modes (1 to reliable_mode_max).
     """
     modes = np.arange(1, nmodes + 1)
-    colors = sns.color_palette("colorblind", 2)
-    c_cfg, c_harm = colors[0], colors[1]
+    c_cfg, c_harm = sns.color_palette("Dark2", 2)
 
     ce_config, cb_config, cov_config = config_data
     sigma_config_E = np.sqrt(np.clip(np.diag(cov_config[:nmodes, :nmodes]), 0, None))
@@ -174,12 +173,12 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     )
     ax_e.errorbar(
         modes + 0.1, ce_harm * e_scale, yerr=sigma_harm_E * e_scale,
-        fmt="o", color=c_harm, mfc="white", ms=4, alpha=0.8,
+        fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
         capsize=2, capthick=0.8, elinewidth=0.8, label="Harmonic-space",
     )
 
     ax_e.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-    _shade_unreliable(ax_e, nmodes, reliable_mode_max)
+    _shade_reliable(ax_e, reliable_mode_max)
     ax_e.set_ylabel(r"$E_n \times 10^{10}$")
     ax_e.set_xlim(0.5, nmodes + 0.5)
     ax_e.tick_params(axis="both", width=0.5, length=3)
@@ -195,12 +194,12 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     )
     ax_b.errorbar(
         modes + 0.1, cb_harm / sigma_harm_B, yerr=np.ones(nmodes),
-        fmt="o", color=c_harm, mfc="white", ms=4, alpha=0.8,
+        fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
         capsize=2, capthick=0.8, elinewidth=0.8,
     )
 
     ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-    _shade_unreliable(ax_b, nmodes, reliable_mode_max)
+    _shade_reliable(ax_b, reliable_mode_max)
     ax_b.set_ylabel(r"$B_n / \sigma_n$")
     ax_b.set_xlabel("COSEBIS mode $n$")
     ax_b.set_xticks(np.arange(1, nmodes + 1))
@@ -219,6 +218,101 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     return fig
 
 
+def _make_combined_data_vector_figure(harm_data_full, config_data_full,
+                                       harm_data_fid, config_data_fid,
+                                       nmodes, scale_cut_full, scale_cut_fid,
+                                       title=None, reliable_mode_max=6):
+    """Combined 2x2 data vector figure: rows=E/B, columns=full/fiducial.
+
+    Column titles show the theta range. Gray band over reliable modes (1-6).
+    Dark2 palette, filled circles for config-space, open squares for harmonic.
+    """
+    modes = np.arange(1, nmodes + 1)
+    c_cfg = "#2c5f8a"   # steel blue (config-space)
+    c_harm = "#c45a2c"  # burnt orange (harmonic-space)
+
+    fig, axes = plt.subplots(2, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.4),
+                             sharex=True, sharey="row")
+
+    datasets = [
+        (config_data_full, harm_data_full, scale_cut_full),
+        (config_data_fid, harm_data_fid, scale_cut_fid),
+    ]
+
+    e_scale = 1e10
+
+    for col, (cfg_data, h_data, sc) in enumerate(datasets):
+        ce_cfg, cb_cfg, cov_cfg = cfg_data
+        sigma_cfg_E = np.sqrt(np.clip(np.diag(cov_cfg[:nmodes, :nmodes]), 0, None))
+        sigma_cfg_B = _safe_sigma(np.diag(cov_cfg[nmodes:, nmodes:]))
+        ce_h, cb_h = h_data["En"], h_data["Bn"]
+        sigma_h_E = h_data["sigma_E"]
+        sigma_h_B = np.where(h_data["sigma_B"] > 0, h_data["sigma_B"], 1.0)
+
+        # Column title
+        axes[0, col].set_title(rf"$\theta = {sc[0]:.0f}$--${sc[1]:.0f}'$")
+
+        # E-modes
+        ax_e = axes[0, col]
+        ax_e.errorbar(
+            modes - 0.1, ce_cfg * e_scale, yerr=sigma_cfg_E * e_scale,
+            fmt="o", color=c_cfg, mfc=c_cfg, ms=4, alpha=0.8,
+            capsize=2, capthick=0.8, elinewidth=0.8,
+            label="Config-space" if col == 0 else None,
+        )
+        ax_e.errorbar(
+            modes + 0.1, ce_h * e_scale, yerr=sigma_h_E * e_scale,
+            fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
+            capsize=2, capthick=0.8, elinewidth=0.8,
+            label="Harmonic-space" if col == 0 else None,
+        )
+        ax_e.axhline(0.0, color="black", lw=0.8, alpha=0.6)
+        _shade_reliable(ax_e, reliable_mode_max)
+        ax_e.set_xlim(0.5, nmodes + 0.5)
+        ax_e.tick_params(axis="both", width=0.5, length=3)
+
+        # B-modes
+        ax_b = axes[1, col]
+        ax_b.errorbar(
+            modes - 0.1, cb_cfg / sigma_cfg_B, yerr=np.ones(nmodes),
+            fmt="o", color=c_cfg, mfc=c_cfg, ms=4, alpha=0.8,
+            capsize=2, capthick=0.8, elinewidth=0.8,
+        )
+        ax_b.errorbar(
+            modes + 0.1, cb_h / sigma_h_B, yerr=np.ones(nmodes),
+            fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
+            capsize=2, capthick=0.8, elinewidth=0.8,
+        )
+        ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
+        _shade_reliable(ax_b, reliable_mode_max)
+        ax_b.set_xlabel("COSEBIS mode $n$")
+        ax_b.set_xticks(np.arange(1, nmodes + 1))
+        ax_b.set_xticklabels(
+            [str(i) for i in range(1, nmodes + 1)],
+            rotation=45, ha="right", rotation_mode="anchor",
+        )
+        ax_b.set_xlim(0.5, nmodes + 0.5)
+        ax_b.tick_params(axis="both", width=0.5, length=3)
+
+    # Fix B_n/sigma y-range (same for both columns, independent of E_n)
+    for col in range(2):
+        axes[1, col].set_ylim(-2.5, 5.0)
+
+    # Row labels on left column only
+    axes[0, 0].set_ylabel(r"$E_n \times 10^{10}$")
+    axes[1, 0].set_ylabel(r"$B_n / \sigma_n$")
+
+    # Legend in top-left panel
+    axes[0, 0].legend(loc="upper center", framealpha=0.9)
+
+    if title:
+        fig.suptitle(title)
+
+    plt.tight_layout()
+    plt.subplots_adjust(hspace=0.15, wspace=0.08)
+    return fig
+
+
 def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version_labels_map, reliable_mode_max=6):
     """Version comparison: all versions, both methods, B-modes in B_n/sigma.
 
@@ -227,7 +321,7 @@ def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version
     """
     modes = np.arange(1, nmodes + 1)
     n_versions = len(all_version_data)
-    colors = sns.color_palette("colorblind", n_versions)
+    colors = sns.color_palette("Dark2", n_versions)
 
     fig, ax = plt.subplots(figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.35))
     x_offsets = np.linspace(-0.2, 0.2, n_versions)
@@ -257,7 +351,7 @@ def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version
         )
 
     ax.axhline(0.0, color="black", lw=0.8, alpha=0.6)
-    _shade_unreliable(ax, nmodes, reliable_mode_max)
+    _shade_reliable(ax, reliable_mode_max)
     ax.set_ylabel(r"$B_n / \sigma_n$")
     ax.set_xlabel("COSEBIS mode $n$")
     ax.set_xticks(np.arange(1, nmodes + 1))
@@ -358,12 +452,56 @@ def main():
 
         output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
 
-        # Copy paper figure
+        # For the paper figure, produce a combined 2x2 (both scale cuts)
         if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
+            # Compute the other scale cut for the combined figure
+            scale_cut_full = (
+                float(config["cosebis"]["theta_min"]),
+                float(config["cosebis"]["theta_max"]),
+            )
+            scale_cut_fid = (
+                float(config["fiducial"]["fiducial_min_scale"]),
+                float(config["fiducial"]["fiducial_max_scale"]),
+            )
+            # Determine which is "this" and which is "other"
+            if scale_cut == scale_cut_full:
+                other_cut = scale_cut_fid
+            else:
+                other_cut = scale_cut_full
+
+            # Compute COSEBIS at the other scale cut for this version
+            ce_cfg_other, cb_cfg_other, cov_cfg_other = _compute_config_cosebis(
+                xi_paths[xi_key], cov_paths[cov_key], nmodes, other_cut, config,
+            )
+            ce_h_other, cb_h_other, cov_h_other = _compute_harmonic_cosebis(
+                pseudo_cl_paths[pseudo_cl_key], pseudo_cov_paths[pseudo_cov_key],
+                nmodes, other_cut[0], other_cut[1],
+            )
+            harm_other = {
+                "En": ce_h_other, "Bn": cb_h_other,
+                "sigma_E": np.sqrt(np.clip(np.diag(cov_h_other[:nmodes, :nmodes]), 0, None)),
+                "sigma_B": np.sqrt(np.clip(np.diag(cov_h_other[nmodes:, nmodes:]), 0, None)),
+            }
+
+            # Arrange: full on left, fiducial on right
+            if scale_cut == scale_cut_full:
+                harm_full, cfg_full = harm, (ce_cfg, cb_cfg, cov_cfg)
+                harm_fid, cfg_fid = harm_other, (ce_cfg_other, cb_cfg_other, cov_cfg_other)
+            else:
+                harm_fid, cfg_fid = harm, (ce_cfg, cb_cfg, cov_cfg)
+                harm_full, cfg_full = harm_other, (ce_cfg_other, cb_cfg_other, cov_cfg_other)
+
+            fig_combined = _make_combined_data_vector_figure(
+                harm_full, cfg_full, harm_fid, cfg_fid,
+                nmodes, scale_cut_full, scale_cut_fid,
+                title=fig_spec["title"] if fig_spec["title"] else None,
+                reliable_mode_max=reliable_mode_max,
+            )
             paper_path = Path(snakemake.output["paper_figure"])
             paper_path.parent.mkdir(parents=True, exist_ok=True)
-            fig.savefig(paper_path, bbox_inches="tight")
-            print(f"  Saved {paper_path}")
+            fig_combined.savefig(paper_path, bbox_inches="tight")
+            print(f"  Saved combined paper figure {paper_path}")
+            plt.close(fig_combined)
 
         # Compute B-mode PTEs for leak-corrected versions
         if fig_spec["leak_corrected"] and ver not in harmonic_ptes:

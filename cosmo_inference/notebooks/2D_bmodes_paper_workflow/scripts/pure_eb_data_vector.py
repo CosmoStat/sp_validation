@@ -116,7 +116,7 @@ def _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
         ylabel_text and ax.set_ylabel(ylabel_text)
 
     # Create 1x2 figure
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.48), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.36), sharey=True)
 
     # Left panel: xi+ decomposition
     ax = axes[0]

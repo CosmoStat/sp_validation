@@ -130,11 +130,6 @@ def main():
         aspect="equal",
     )
 
-    # Add block boundaries at all 6 block edges
-    for i in range(1, 6):
-        ax.axhline(i * nbins - 0.5, color="black", linewidth=1.5, alpha=0.7)
-        ax.axvline(i * nbins - 0.5, color="black", linewidth=1.5, alpha=0.7)
-
     # 6 block labels (matching v1 epistemics style)
     block_labels = [
         r"$\xi_+^{\mathrm{E}}$",
@@ -152,7 +147,7 @@ def main():
 
     # Set ticks at block centers with labels (no axis labels, tick labels only)
     ax.set_xticks(centers)
-    ax.set_xticklabels(block_labels, rotation=45, ha="right")
+    ax.set_xticklabels(block_labels)
     ax.set_yticks(centers)
     ax.set_yticklabels(block_labels, rotation=0)
 

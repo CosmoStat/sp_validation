@@ -27,7 +27,7 @@ def _load_snakemake():
         from snakemake_helpers import snakemake_interactive
 
         return snakemake_interactive(
-            "results/claims/config_space_pte_matrices/evidence.json",
+            "results/tapestry/config_space_pte_matrices/evidence.json",
             str(Path.cwd()),
         )
     from snakemake.script import snakemake
@@ -245,7 +245,7 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     ax.set_yticks(tick_indices + 1)
 
     if show_xticklabels:
-        ax.set_xticklabels(x_tick_labels, fontsize=7)
+        ax.set_xticklabels(x_tick_labels, rotation=45, ha="right", rotation_mode="anchor", fontsize=7)
     else:
         ax.set_xticklabels([])
 
@@ -382,10 +382,10 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
 
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
-        1, 4,
-        width_ratios=[1, 1, 1, 0.04],
+        1, 3,
+        width_ratios=[1, 1, 1],
         wspace=0.03, hspace=0.03,
-        left=0.08, right=0.95,
+        left=0.08, right=0.92,
         bottom=0.15, top=0.90
     )
 
@@ -438,8 +438,10 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
         show_xticklabels=True, show_yticklabels=False
     )
 
-    # Shared colorbar on rightmost column
-    cax = fig.add_subplot(gs[0, 3])
+    # Colorbar at exact height of rendered panels (accounts for aspect="equal")
+    fig.canvas.draw()
+    ax_pos = ax_cosebis.get_position()
+    cax = fig.add_axes([ax_pos.x1 + 0.01, ax_pos.y0, 0.02, ax_pos.height])
     cbar = fig.colorbar(im_cosebis, cax=cax)
     cbar.set_label("PTE", fontsize=9)
     cbar.ax.tick_params(labelsize=7)
@@ -495,19 +497,20 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     """
     n_versions = len(versions)
     fig_width = 6.5
-    fig_height = 2.2 * n_versions
+    fig_height = 2.2 * n_versions * 0.90
 
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
-        n_versions, 4,
-        width_ratios=[1, 1, 1, 0.04],
-        wspace=0.03, hspace=0.08,
-        left=0.10, right=0.88,
+        n_versions, 3,
+        width_ratios=[1, 1, 1],
+        wspace=0.03, hspace=0.04,
+        left=0.10, right=0.85,
         bottom=0.08, top=0.94
     )
 
     all_stats = {}
     all_full_range_ptes = {}
+    cosebis_axes = []
 
     for row_idx, version in enumerate(versions):
         # Load all PTE data for this version
@@ -541,11 +544,11 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         show_yticklabels = True
         show_xticklabels = (row_idx == n_versions - 1)
 
-        # Plot titles: version label on top row panels
+        # Plot titles: version label + stat name on every row's panels
         version_label = version_labels.get(version, version)
-        xip_title = rf"{version_label}: $\xi_+^{{\mathrm{{B}}}}$" if row_idx == 0 else ""
-        xim_title = r"$\xi_-^{\mathrm{B}}$" if row_idx == 0 else ""
-        cosebis_title = r"COSEBIS $B_n$" if row_idx == 0 else ""
+        xip_title = rf"{version_label}: $\xi_+^{{\mathrm{{B}}}}$"
+        xim_title = rf"{version_label}: $\xi_-^{{\mathrm{{B}}}}$"
+        cosebis_title = rf"{version_label}: $B_n$"
 
         # Plot panels
         plot_pte_panel(
@@ -554,8 +557,6 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
             xip_title,
             show_xticklabels=show_xticklabels, show_yticklabels=show_yticklabels
         )
-        # Add y-axis label to leftmost panel of each row
-        ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
         plot_pte_panel(
             ax_xim, pte_xim_B, theta_pure_eb,
@@ -570,12 +571,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
             cosebis_title,
             show_xticklabels=show_xticklabels, show_yticklabels=False
         )
-
-        # Add version label to the right of each row
-        ax_cosebis.annotate(
-            version_label, xy=(1.02, 0.5), xycoords="axes fraction",
-            fontsize=9, weight="bold", va="center", ha="left", rotation=-90
-        )
+        cosebis_axes.append(ax_cosebis)
 
         # Compute statistics
         stats = {
@@ -591,15 +587,22 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         full_range_ptes = extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version)
         all_full_range_ptes[version] = full_range_ptes
 
-    # Shared colorbar on rightmost column
-    cax = fig.add_subplot(gs[:, 3])
+    # Colorbar: use actual rendered positions after aspect="equal" constraint
+    fig.canvas.draw()
+    first_ax = fig.axes[0]
+    last_ax = fig.axes[(n_versions - 1) * 3]
+    y_top = first_ax.get_position().y1
+    y_bot = last_ax.get_position().y0
+    cbar_height = (y_top - y_bot) * 1.005
+    cbar_y0 = y_bot - (y_top - y_bot) * 0.0025
+    cax = fig.add_axes([0.87, cbar_y0, 0.0225, cbar_height])
     cbar = fig.colorbar(im_cosebis, cax=cax)
     cbar.set_label("PTE", fontsize=9)
     cbar.ax.tick_params(labelsize=7)
 
-    # Common x-axis label
-    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center")
+    # Common axis labels
+    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]", ha="center")
+    fig.text(0.02, 0.51, r"$\theta_{\max}$ [arcmin]", va="center", rotation="vertical")
 
     return fig, all_stats, all_full_range_ptes
 

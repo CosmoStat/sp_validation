@@ -37,11 +37,11 @@ Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper sh
 | Config-space PTE (all versions) | `config_space_pte_matrices` | `config_space_pte_composite_appendix.png` | Appendix A | `fig:pte_appendix` |
 | Harmonic PTE (all versions) | `harmonic_space_pte_matrices` | `cl_pte_composite_appendix.png` | Appendix A | `fig:pte_cl_appendix` |
 
-Figures copy from `results/claims/{claim}/` to `docs/unions_release/unions_bmodes/Figures/`.
+Figures copy from `results/tapestry/{claim}/` to `docs/unions_release/unions_bmodes/Figures/`.
 
 ## Pure E/B Covariance
 
-Evidence: `results/claims/pure_eb_covariance/evidence.json`
+Evidence: `results/tapestry/pure_eb_covariance/evidence.json`
 
 ### Block Structure
 

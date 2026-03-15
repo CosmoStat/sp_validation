@@ -7,6 +7,12 @@ container: "/n17data/cdaley/containers/containers"
 envvars:
     "PYTHONUNBUFFERED",
 
+import os
+# Host OpenMPI libs for MPI rules inside the container.
+# Apptainer passes APPTAINERENV_* vars into the container as their unprefixed names.
+# Only affects rules that import mpi4py; safe for all other rules.
+os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8/lib"
+
 from pathlib import Path
 import json
 import re
@@ -39,7 +45,7 @@ COSMO_INFERENCE = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_
 
 # Workflow directories
 CONFIG_DIR = "workflow/config"
-CLAIMS_DIR = "results/claims"
+TAPESTRY_DIR = "results/tapestry"
 PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
 
 # Catalog config path (also loaded as configfile above, but scripts need the path)
@@ -182,6 +188,39 @@ rule xi:
         runtime=360,
     script:
         "scripts/run_2pcf.py"
+
+rule xi_highres:
+    """High-resolution ξ± for COSEBIS integration (10,000 bins, MPI TreeCorr).
+
+    Asgari et al. 2017 establishes 10,000 bins as minimum for accurate COSEBIS
+    mode integration (E_7 at 0.5% accuracy). Uses MPI to distribute patch-pair
+    correlations across tasks; each task uses cpus_per_task OpenMP threads.
+
+    container: None because mpiexec must run OUTSIDE the container, with each
+    MPI task launching its own apptainer instance. srun doesn't work (PMIx
+    can't reach through the container boundary); mpiexec uses its own PMI.
+    """
+    container: None
+    output:
+        txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
+        xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
+        xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
+    resources:
+        tasks=30,
+        cpus_per_task=12,
+        nodes=6,
+        mem_mb_per_cpu=2000,
+        runtime=2880,
+        slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
+        mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
+    shell:
+        "{resources.mpi} -n {resources.tasks} "
+        "apptainer exec "
+        "--bind /home,/n09data,/n17data,/n23data1,/softs "
+        "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
+        "/n17data/cdaley/containers/containers "
+        "python /automnt/n17data/cdaley/unions/pure_eb/workflow/scripts/run_2pcf_highres.py"
+
 
 rule run_cosmo_val:
     """Full CosmoVal diagnostic suite: 2PCF, pseudo-Cl, pure E/B, COSEBIS for all versions."""
