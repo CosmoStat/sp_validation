@@ -22,7 +22,7 @@ def _load_snakemake():
         from snakemake_helpers import snakemake_interactive
 
         return snakemake_interactive(
-            "results/claims/config_space_pte_matrices/pte_values/SP_v1.4.6_leak_corr/pte_000_005.json",
+            "results/tapestry/config_space_pte_matrices/pte_values/SP_v1.4.6_leak_corr/pte_000_005.json",
             str(Path.cwd()),
         )
     from snakemake.script import snakemake
@@ -61,13 +61,35 @@ def main():
     theta_max = theta_grid[i_max]
 
     # Compute COSEBIS for this single scale cut with full 20 modes
+    # polyroots can stochastically fail (sympy NoConvergence) for certain
+    # scale-cut / nmodes combinations — write NaN PTEs so other jobs aren't killed.
     t0 = time.time()
-    results = calculate_cosebis(
-        gg,
-        nmodes=nmodes,
-        scale_cuts=[(theta_min, theta_max)],
-        cov_path=snakemake.input.cov_integration,
-    )
+    try:
+        results = calculate_cosebis(
+            gg,
+            nmodes=nmodes,
+            scale_cuts=[(theta_min, theta_max)],
+            cov_path=snakemake.input.cov_integration,
+        )
+    except Exception as e:
+        if "NoConvergence" in str(type(e).__name__) or "NoConvergence" in str(e):
+            print(f"WARNING: polyroots convergence failure for ({i_min}, {i_max}), writing NaN PTEs")
+            nan = float("nan")
+            output = {
+                "i_min": i_min, "i_max": i_max,
+                "theta_min": float(theta_min), "theta_max": float(theta_max),
+                "En": [], "Bn": [],
+                "nmodes_6": {"chi2_E": nan, "chi2_B": nan, "pte_E": nan, "pte_B": nan},
+                "nmodes_20": {"chi2_E": nan, "chi2_B": nan, "pte_E": nan, "pte_B": nan},
+                "pte_B": nan, "chi2_B": nan, "chi2_E": nan,
+                "convergence_failure": True,
+            }
+            output_path = Path(snakemake.output.pte_json)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "w") as f:
+                json.dump(output, f, indent=2)
+            return
+        raise
     print(f"[TIMING] calculate_cosebis (nmodes={nmodes}): {time.time() - t0:.2f}s")
 
     # Extract result for this scale cut

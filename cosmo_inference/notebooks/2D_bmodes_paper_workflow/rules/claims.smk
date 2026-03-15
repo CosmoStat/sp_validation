@@ -8,7 +8,7 @@ Claims depend on methods (for technique definitions) and compute outputs (for da
 # Configuration
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# CONFIG_DIR, CLAIMS_DIR, PAPER_FIGURES_DIR, BLINDS, FIDUCIAL, PLANCK18 defined in Snakefile
+# CONFIG_DIR, TAPESTRY_DIR, PAPER_FIGURES_DIR, BLINDS, FIDUCIAL, PLANCK18 defined in Snakefile
 # COSMO_VAL, COSMO_INFERENCE, covariance_path() defined in Snakefile
 COSMO_VAL_OUTPUT = str(COSMO_VAL)  # String version for f-string interpolation
 
@@ -98,10 +98,12 @@ def _cov_integration_path(version, blind):
 def _pte_scale_cut_pairs():
     """Return list of (i_min, i_max) index pairs for PTE matrix.
 
-    Note: (9, 10) excluded due to numerical instability in cosmo_numba
-    polynomial root finding with nmodes=20.
+    Note: Several pairs excluded due to numerical instability in cosmo_numba
+    polynomial root finding (sympy polyroots NoConvergence) with nmodes=20.
+    All involve high modes (>=9) that are beyond our analysis range.
     """
-    return [(i, j) for i in range(20) for j in range(i + 1, 21) if (i, j) != (9, 10)]
+    unstable = {(9, 10), (10, 11), (11, 12), (13, 14)}
+    return [(i, j) for i in range(20) for j in range(i + 1, 21) if (i, j) not in unstable]
 
 
 # Pre-compute PTE scale cut pairs (called multiple times in rule inputs)
@@ -144,8 +146,8 @@ rule cosebis_version_comparison:
         version_labels=VERSION_LABELS,
         versions=VERSIONS_LEAK_CORR,
     output:
-        evidence=f"{CLAIMS_DIR}/cosebis_version_comparison/evidence.json",
-        figure_stacked=f"{CLAIMS_DIR}/cosebis_version_comparison/figure_stacked.png",
+        evidence=f"{TAPESTRY_DIR}/cosebis_version_comparison/evidence.json",
+        figure_stacked=f"{TAPESTRY_DIR}/cosebis_version_comparison/figure_stacked.png",
         paper_stacked=f"{PAPER_FIGURES_DIR}/cosebis_bmode_stacked.pdf",
     script:
         "../scripts/cosebis_version_comparison.py"
@@ -175,11 +177,35 @@ rule cosebis_data_vector:
     params:
         cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
-        evidence=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
+        evidence=f"{TAPESTRY_DIR}/cosebis_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/cosebis_data_vector.pdf",
-        **_per_version_figure_outputs(f"{CLAIMS_DIR}/cosebis_data_vector"),
+        **_per_version_figure_outputs(f"{TAPESTRY_DIR}/cosebis_data_vector"),
     script:
         "../scripts/cosebis_data_vector.py"
+
+
+rule cosebis_binning_comparison:
+    """COSEBIS angular binning convergence: 1,000 vs 10,000 ξ± bins.
+
+    Tests whether the numerical integration of T±n(θ) × ξ±(θ) is converged
+    at 1,000 bins by comparing B_n values and PTEs against 10,000-bin results.
+    Uses the 1,000-bin COSEBIS covariance for both (integration-independent
+    if converged). Ref: Asgari et al. 2017.
+    """
+    input:
+        xi_1k=_xi_integration_path(FIDUCIAL_VERSION),
+        xi_10k=(
+            f"{COSMO_VAL_OUTPUT}/{FIDUCIAL_VERSION}_xi_minsep={FIDUCIAL['min_sep_int']}"
+            f"_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch={FIDUCIAL['npatch']}.txt"
+        ),
+        cov_1k=_cov_integration_path(FIDUCIAL_VERSION, "A"),
+    output:
+        evidence=f"{TAPESTRY_DIR}/cosebis_binning_comparison/evidence.json",
+        figure=f"{TAPESTRY_DIR}/cosebis_binning_comparison/figure.png",
+    resources:
+        mem_mb=8000,
+    script:
+        "../scripts/cosebis_binning_comparison.py"
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -259,9 +285,9 @@ rule pure_eb_data_vector:
         **{f"cov_{ver}": _reporting_cov_path(ver, FIDUCIAL["blind"])
            for ver in VERSIONS_ALL_FOR_PLOTS},
     output:
-        evidence=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
+        evidence=f"{TAPESTRY_DIR}/pure_eb_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.pdf",
-        **_per_version_figure_outputs(f"{CLAIMS_DIR}/pure_eb_data_vector"),
+        **_per_version_figure_outputs(f"{TAPESTRY_DIR}/pure_eb_data_vector"),
     script:
         "../scripts/pure_eb_data_vector.py"
 
@@ -288,8 +314,8 @@ rule pure_eb_version_comparison:
         version_labels=VERSION_LABELS,
         versions=VERSIONS_LEAK_CORR,
     output:
-        evidence=f"{CLAIMS_DIR}/pure_eb_version_comparison/evidence.json",
-        figure=f"{CLAIMS_DIR}/pure_eb_version_comparison/figure.png",
+        evidence=f"{TAPESTRY_DIR}/pure_eb_version_comparison/evidence.json",
+        figure=f"{TAPESTRY_DIR}/pure_eb_version_comparison/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_versions.pdf",
     script:
         "../scripts/pure_eb_version_comparison.py"
@@ -315,8 +341,8 @@ rule pure_eb_covariance:
         config=f"{CONFIG_DIR}/config.yaml",
         pure_eb_data=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_A_pure_eb_semianalytic.npz",
     output:
-        evidence=f"{CLAIMS_DIR}/pure_eb_covariance/evidence.json",
-        figure=f"{CLAIMS_DIR}/pure_eb_covariance/figure.png",
+        evidence=f"{TAPESTRY_DIR}/pure_eb_covariance/evidence.json",
+        figure=f"{TAPESTRY_DIR}/pure_eb_covariance/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/eb_covariance.pdf",
     script:
         "../scripts/pure_eb_covariance.py"
@@ -375,9 +401,9 @@ rule cl_data_vector:
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
-        evidence=f"{CLAIMS_DIR}/cl_data_vector/evidence.json",
+        evidence=f"{TAPESTRY_DIR}/cl_data_vector/evidence.json",
         paper_figure=f"{PAPER_FIGURES_DIR}/cl_data_vector.pdf",
-        **_per_version_figure_outputs(f"{CLAIMS_DIR}/cl_data_vector"),
+        **_per_version_figure_outputs(f"{TAPESTRY_DIR}/cl_data_vector"),
     script:
         "../scripts/cl_data_vector.py"
 
@@ -401,8 +427,8 @@ rule cl_version_comparison:
         ell_min_cut=config["cl"]["fiducial_ell_min"],
         ell_max_cut=config["cl"]["fiducial_ell_max"],
     output:
-        evidence=f"{CLAIMS_DIR}/cl_version_comparison/evidence.json",
-        figure=f"{CLAIMS_DIR}/cl_version_comparison/figure.png",
+        evidence=f"{TAPESTRY_DIR}/cl_version_comparison/evidence.json",
+        figure=f"{TAPESTRY_DIR}/cl_version_comparison/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/cl_versions.pdf",
     script:
         "../scripts/cl_version_comparison.py"
@@ -418,7 +444,7 @@ rule compute_cosebis_pte:
         xi_integration=lambda w: _xi_integration_path(w.version),
         cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
     output:
-        pte_json=f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{{version}}/{{blind}}/pte_{{i_min}}_{{i_max}}.json",
+        pte_json=f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{{version}}/{{blind}}/pte_{{i_min}}_{{i_max}}.json",
     params:
         nmodes=FIDUCIAL["nmodes"],
     wildcard_constraints:
@@ -452,8 +478,8 @@ rule config_space_pte_matrices:
         ],
         config=f"{CONFIG_DIR}/config.yaml",
         # Claim dependencies
-        pure_eb_data_vector=f"{CLAIMS_DIR}/pure_eb_data_vector/evidence.json",
-        cosebis_data_vector=f"{CLAIMS_DIR}/cosebis_data_vector/evidence.json",
+        pure_eb_data_vector=f"{TAPESTRY_DIR}/pure_eb_data_vector/evidence.json",
+        cosebis_data_vector=f"{TAPESTRY_DIR}/cosebis_data_vector/evidence.json",
         # Data inputs (fiducial blind only)
         # Pure E/B and COSEBIs PTEs only for leak-corrected versions
         pure_eb_pte=[
@@ -461,14 +487,14 @@ rule config_space_pte_matrices:
             for ver in VERSIONS_LEAK_CORR
         ],
         cosebis_pte_files=[
-            f"{CLAIMS_DIR}/cosebis_pte_matrix/pte_values/{ver}/{FIDUCIAL['blind']}/pte_{i:03d}_{j:03d}.json"
+            f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{ver}/{FIDUCIAL['blind']}/pte_{i:03d}_{j:03d}.json"
             for ver in VERSIONS_LEAK_CORR
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
     output:
-        evidence=f"{CLAIMS_DIR}/config_space_pte_matrices/evidence.json",
-        figure_fiducial=f"{CLAIMS_DIR}/config_space_pte_matrices/figure_fiducial.png",
-        figure_appendix=f"{CLAIMS_DIR}/config_space_pte_matrices/figure_appendix.png",
+        evidence=f"{TAPESTRY_DIR}/config_space_pte_matrices/evidence.json",
+        figure_fiducial=f"{TAPESTRY_DIR}/config_space_pte_matrices/figure_fiducial.png",
+        figure_appendix=f"{TAPESTRY_DIR}/config_space_pte_matrices/figure_appendix.png",
         paper_figure_fiducial=f"{PAPER_FIGURES_DIR}/config_space_pte_fiducial.pdf",
         paper_figure_appendix=f"{PAPER_FIGURES_DIR}/config_space_pte_composite_appendix.pdf",
     script:
@@ -499,9 +525,9 @@ rule harmonic_space_pte_matrices:
     params:
         version_labels=VERSION_LABELS,
     output:
-        evidence=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/evidence.json",
-        figure_fiducial=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/figure_fiducial.png",
-        figure_appendix=f"{CLAIMS_DIR}/harmonic_space_pte_matrices/figure_appendix.png",
+        evidence=f"{TAPESTRY_DIR}/harmonic_space_pte_matrices/evidence.json",
+        figure_fiducial=f"{TAPESTRY_DIR}/harmonic_space_pte_matrices/figure_fiducial.png",
+        figure_appendix=f"{TAPESTRY_DIR}/harmonic_space_pte_matrices/figure_appendix.png",
         paper_figure_fiducial=f"{PAPER_FIGURES_DIR}/cl_pte_heatmap.pdf",
         paper_figure_appendix=f"{PAPER_FIGURES_DIR}/cl_pte_composite_appendix.pdf",
     script:
@@ -544,8 +570,8 @@ rule bb_covariance_blind_independence:
         theta_min=config["cosebis"]["theta_min"],
         theta_max=config["cosebis"]["theta_max"],
     output:
-        evidence=f"{CLAIMS_DIR}/bb_covariance_blind_independence/evidence.json",
-        figure=f"{CLAIMS_DIR}/bb_covariance_blind_independence/figure.png",
+        evidence=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/evidence.json",
+        figure=f"{TAPESTRY_DIR}/bb_covariance_blind_independence/figure.png",
     script:
         "../scripts/bb_covariance_blind_independence.py"
 
@@ -585,10 +611,10 @@ rule harmonic_config_cosebis_comparison:
     params:
         scale_cut=lambda wildcards: _COSEBIS_ANGULAR_RANGES[wildcards.angular_range],
     output:
-        evidence=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/evidence.json",
-        figure_versions=f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/figure_versions.png",
+        evidence=f"{TAPESTRY_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/evidence.json",
+        figure_versions=f"{TAPESTRY_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}/figure_versions.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/harmonic_config_cosebis_{{angular_range}}.pdf",
-        **_per_version_figure_outputs(f"{CLAIMS_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}"),
+        **_per_version_figure_outputs(f"{TAPESTRY_DIR}/harmonic_config_cosebis_comparison_{{angular_range}}"),
     script:
         "../scripts/harmonic_config_cosebis_comparison.py"
 
@@ -613,8 +639,8 @@ rule cosebis_filter_overlay:
         pseudo_cl=_pseudo_cl_path(FIDUCIAL_VERSION),
         pseudo_cl_cov=_pseudo_cl_cov_path(FIDUCIAL_VERSION),
     output:
-        evidence=f"{CLAIMS_DIR}/cosebis_filter_overlay/evidence.json",
-        figure=f"{CLAIMS_DIR}/cosebis_filter_overlay/figure.png",
+        evidence=f"{TAPESTRY_DIR}/cosebis_filter_overlay/evidence.json",
+        figure=f"{TAPESTRY_DIR}/cosebis_filter_overlay/figure.png",
     script:
         "../scripts/plot_cosebis_filter_overlay.py"
 
