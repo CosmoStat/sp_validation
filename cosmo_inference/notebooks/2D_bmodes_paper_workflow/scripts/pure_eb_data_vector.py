@@ -159,11 +159,10 @@ def _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
     ax.text(0.05, 0.95, panel_label, transform=ax.transAxes,
             ha="left", va="top", fontsize=10,
             bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"))
-    handles, labels = axes[0].get_legend_handles_labels()
-    ax.legend(handles, labels, loc="upper center", fontsize="small")
-
     axes[0].set_ylim(ylim)
     fig.tight_layout()
+    handles, labels = axes[0].get_legend_handles_labels()
+    axes[1].legend(handles, labels, loc=(0.13, 0.55), fontsize="small")
     return fig
 
 

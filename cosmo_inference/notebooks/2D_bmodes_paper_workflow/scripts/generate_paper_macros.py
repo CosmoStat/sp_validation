@@ -389,7 +389,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         # Column layout: Scale | COSEBIS n≤6 | COSEBIS n≤20 || ξ+^B | ξ-^B | ξ_tot^B ||| C_ℓ^BB
         results_table.append(r"\begin{tabular}{l cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         results_table.append(r"    \hline")
-        results_table.append(r"    & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
+        results_table.append(r"    & \multicolumn{2}{c}{COSEBIs} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
         results_table.append(r"    \cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(l){7-7}")
         results_table.append(r"    Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\")
         results_table.append(r"    \hline")
@@ -419,7 +419,7 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         appendix_table.append(r"% Wrap in table*/table environment in main tex for float control")
         appendix_table.append(r"\begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         appendix_table.append(r"    \hline")
-        appendix_table.append(r"    & & \multicolumn{2}{c}{COSEBIS} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
+        appendix_table.append(r"    & & \multicolumn{2}{c}{COSEBIs} & \multicolumn{3}{c}{Pure E/B} & Pseudo-$C_\ell$ \\")
         appendix_table.append(r"    \cmidrule(lr){3-4} \cmidrule(lr){5-7} \cmidrule(l){8-8}")
         appendix_table.append(r"    Version & Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\")
         appendix_table.append(r"    \hline")

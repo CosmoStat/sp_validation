@@ -19,7 +19,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from astropy.io import fits
 
-from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE, compute_chi2_pte, make_pte_colormap
+from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE, compute_chi2_pte, format_pte_colorbar, make_pte_colormap, make_pte_norm
 
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -147,6 +147,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
 
     # Discrete colormap: solid blue below 0.05, solid red above 0.95, gradient between
     pte_cmap = make_pte_colormap()
+    pte_norm = make_pte_norm()
 
     # pte_matrix[i_min, i_max] -> transpose so rows=i_max, cols=i_min
     # With origin="lower", row 0 is at bottom (small i_max), row n-1 at top (large i_max)
@@ -155,7 +156,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
 
     im = ax.imshow(
         pte_plot, origin="lower", aspect="equal",
-        cmap=pte_cmap, vmin=0, vmax=1, extent=[0, n_ell, 0, n_ell],
+        cmap=pte_cmap, norm=pte_norm, extent=[0, n_ell, 0, n_ell],
     )
 
     # Mark fiducial ell cut (black square)
@@ -174,7 +175,13 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
     ax.set_yticks(tick_indices + 1)
 
     if show_xlabel:
-        ax.set_xticklabels([f"{ell[i]:.0f}" for i in tick_indices], fontsize=7)
+        ax.set_xticklabels(
+            [f"{ell[i]:.0f}" for i in tick_indices],
+            fontsize=7,
+            rotation=45,
+            ha="right",
+            rotation_mode="anchor",
+        )
     else:
         ax.set_xticklabels([])
 
@@ -187,7 +194,8 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
     if show_colorbar:
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.05)
-        cbar = plt.colorbar(im, cax=cax)
+        cbar = plt.colorbar(im, cax=cax, spacing="proportional")
+        format_pte_colorbar(cbar)
         cbar.set_label("PTE", fontsize=9)
         cbar.ax.tick_params(labelsize=7)
 
@@ -268,7 +276,8 @@ def create_npanel_composite(matrices, ells, panel_labels, fid_indices=None):
 
     # Colorbar at exact rendered panel height
     cax = fig.add_axes([cax_pos.x0, ax0_pos.y0, cax_pos.width, ax0_pos.height])
-    cbar = fig.colorbar(im, cax=cax)
+    cbar = fig.colorbar(im, cax=cax, spacing="proportional")
+    format_pte_colorbar(cbar)
     cbar.set_label("PTE", fontsize=9)
     cbar.ax.tick_params(labelsize=7)
 
@@ -283,7 +292,7 @@ def create_npanel_composite(matrices, ells, panel_labels, fid_indices=None):
 
 def main():
     config = snakemake.config
-    versions = [v for v in config["versions"] if "_leak_corr" in v]
+    versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
     fiducial_blind = config["fiducial"]["blind"]
 

@@ -35,8 +35,14 @@ MOCK_VERSION = f"{FIDUCIAL['mock_version']}_leak_corr"
 # Pure E/B and PTEs only apply to leak-corrected versions
 VERSIONS_LEAK_CORR = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
 
+# Uncorrected counterparts (bare catalog, no leakage correction)
+VERSIONS_UNCORRECTED = [v.replace("_leak_corr", "") for v in VERSIONS_LEAK_CORR]
+
 # All versions needed for per-version data vector plots (both leak-corrected and uncorrected)
-VERSIONS_ALL_FOR_PLOTS = VERSIONS_LEAK_CORR + [v.replace("_leak_corr", "") for v in VERSIONS_LEAK_CORR]
+VERSIONS_ALL_FOR_PLOTS = VERSIONS_LEAK_CORR + VERSIONS_UNCORRECTED
+
+# Config-space PTE matrices: both corrected and uncorrected (no pseudo-Cl for uncorrected)
+VERSIONS_CONFIG_SPACE_PTES = VERSIONS_LEAK_CORR + VERSIONS_UNCORRECTED
 
 
 def _extract_version_number(version_string):
@@ -481,14 +487,14 @@ rule config_space_pte_matrices:
         pure_eb_data_vector=f"{TAPESTRY_DIR}/pure_eb_data_vector/evidence.json",
         cosebis_data_vector=f"{TAPESTRY_DIR}/cosebis_data_vector/evidence.json",
         # Data inputs (fiducial blind only)
-        # Pure E/B and COSEBIs PTEs only for leak-corrected versions
+        # Pure E/B and COSEBIs PTEs for both corrected and uncorrected versions
         pure_eb_pte=[
             f"results/paper_plots/intermediate/{ver}_{FIDUCIAL['blind']}_pure_eb_ptes.npz"
-            for ver in VERSIONS_LEAK_CORR
+            for ver in VERSIONS_CONFIG_SPACE_PTES
         ],
         cosebis_pte_files=[
             f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values/{ver}/{FIDUCIAL['blind']}/pte_{i:03d}_{j:03d}.json"
-            for ver in VERSIONS_LEAK_CORR
+            for ver in VERSIONS_CONFIG_SPACE_PTES
             for i, j in PTE_SCALE_CUT_PAIRS
         ],
     output:
@@ -516,11 +522,11 @@ rule harmonic_space_pte_matrices:
             f"{CONFIG_DIR}/2d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
-        # Harmonic PTE matrices only for leak-corrected versions
-        pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_LEAK_CORR],
+        # Harmonic PTE matrices for both corrected and uncorrected versions
+        pseudo_cl=[_pseudo_cl_path(ver) for ver in VERSIONS_CONFIG_SPACE_PTES],
         pseudo_cl_cov=[
             _pseudo_cl_cov_path(ver, blind=FIDUCIAL["blind"])
-            for ver in VERSIONS_LEAK_CORR
+            for ver in VERSIONS_CONFIG_SPACE_PTES
         ],
     params:
         version_labels=VERSION_LABELS,

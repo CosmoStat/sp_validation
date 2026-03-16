@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
 
-from plotting_utils import PAPER_MPLSTYLE, make_pte_colormap
+from plotting_utils import PAPER_MPLSTYLE, format_pte_colorbar, make_pte_colormap, make_pte_norm
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -204,6 +204,7 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
 
     # Discrete colormap: solid blue below 0.05, solid red above 0.95, gradient between
     pte_cmap = make_pte_colormap()
+    pte_norm = make_pte_norm()
 
     # Plot heatmap (no contours - colormap provides visual threshold distinction)
     im = ax.imshow(
@@ -211,8 +212,7 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
         origin="lower",
         aspect="equal",
         cmap=pte_cmap,
-        vmin=0,
-        vmax=1,
+        norm=pte_norm,
         extent=[0, n_theta, 0, n_theta],
     )
 
@@ -442,7 +442,8 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     fig.canvas.draw()
     ax_pos = ax_cosebis.get_position()
     cax = fig.add_axes([ax_pos.x1 + 0.01, ax_pos.y0, 0.02, ax_pos.height])
-    cbar = fig.colorbar(im_cosebis, cax=cax)
+    cbar = fig.colorbar(im_cosebis, cax=cax, spacing="proportional")
+    format_pte_colorbar(cbar)
     cbar.set_label("PTE", fontsize=9)
     cbar.ax.tick_params(labelsize=7)
 
@@ -596,7 +597,8 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
     cbar_height = (y_top - y_bot) * 1.005
     cbar_y0 = y_bot - (y_top - y_bot) * 0.0025
     cax = fig.add_axes([0.87, cbar_y0, 0.0225, cbar_height])
-    cbar = fig.colorbar(im_cosebis, cax=cax)
+    cbar = fig.colorbar(im_cosebis, cax=cax, spacing="proportional")
+    format_pte_colorbar(cbar)
     cbar.set_label("PTE", fontsize=9)
     cbar.ax.tick_params(labelsize=7)
 
@@ -609,8 +611,8 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
 def main():
     config = snakemake.config
-    # Only leak-corrected versions have PTE files computed
-    versions = [v for v in config["versions"] if "_leak_corr" in v]
+    # Both corrected and uncorrected versions (exclude ecut variants)
+    versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
 
     # Scale cuts from config
@@ -712,6 +714,44 @@ def main():
         print("  ERROR creating appendix composite:", flush=True)
         traceback.print_exc()
         raise
+
+    # Compute PTEs for uncorrected versions (no figures, evidence only)
+    paper_version_labels = config["plotting"]["version_labels"]
+    uncorrected_versions = [v for v in versions if v not in paper_version_labels and v != fiducial_version]
+    if uncorrected_versions:
+        print(f"\n--- Computing PTEs for uncorrected versions: {uncorrected_versions} ---", flush=True)
+        for version in uncorrected_versions:
+            try:
+                matrices = _load_version_pte_data(
+                    pure_eb_pte_files, cosebis_pte_files, version, config
+                )
+                theta_pe = matrices["theta_pure_eb"]
+                theta_co = matrices["theta_cosebis"]
+                xip_start = np.argmin(np.abs(theta_pe - xip_fid[0]))
+                xip_stop = np.argmin(np.abs(theta_pe - xip_fid[1]))
+                xim_start = np.argmin(np.abs(theta_pe - xim_fid[0]))
+                xim_stop = np.argmin(np.abs(theta_pe - xim_fid[1]))
+                cos_start = np.argmin(np.abs(theta_co[:-1] - cosebis_fid[0]))
+                cos_stop = np.argmin(np.abs(theta_co[1:] - cosebis_fid[1])) + 1
+
+                stats = {
+                    "xip": compute_stats(matrices["pte_xip_B"], xip_start, xip_stop),
+                    "xim": compute_stats(matrices["pte_xim_B"], xim_start, xim_stop),
+                    "combined": compute_stats(matrices["pte_combined"], xip_start, xip_stop) if matrices["pte_combined"] is not None else {"pte_at_fiducial": float("nan")},
+                    "cosebis": compute_stats(matrices["pte_cosebis"], cos_start, cos_stop),
+                    "cosebis_20": compute_stats(matrices["pte_cosebis_20"], cos_start, cos_stop),
+                }
+                full_range_ptes = extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version)
+
+                all_stats[version] = stats
+                all_full_range_ptes[version] = full_range_ptes
+                print(f"  {version}: xip_fid={stats['xip']['pte_at_fiducial']:.3f}, "
+                      f"xim_fid={stats['xim']['pte_at_fiducial']:.3f}, "
+                      f"cosebis_fid={stats['cosebis']['pte_at_fiducial']:.4f}", flush=True)
+            except Exception:
+                import traceback
+                print(f"  WARNING: Could not compute PTEs for {version}:", flush=True)
+                traceback.print_exc()
 
     # Build evidence
     spec_paths = snakemake.input["specs"]
