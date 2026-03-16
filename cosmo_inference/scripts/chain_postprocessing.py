@@ -200,3 +200,85 @@ def compute_best_fit(path_ini_files, best_fit, root, is_harmonic, blind=None, in
     with open(ini_file_root, 'w') as configfile:
         config.write(configfile)
 
+def compute_best_fit_xi_from_cell(output_folder, root, best_fit_params, theta_rad):
+    
+    ell = np.loadtxt(output_folder + '{}/best_fit/shear_cl/ell.txt'.format(root))
+    shear_cl = np.loadtxt(output_folder + '{}/best_fit/shear_cl/bin_1_1.txt'.format(root))
+    
+    import pyccl as ccl
+    cosmo = ccl.Cosmology(Omega_c=best_fit_params['omch2']/(best_fit_params['h0']/100)**2, 
+                          Omega_b=best_fit_params['ombh2']/(best_fit_params['h0']/100)**2, 
+                          h=best_fit_params['h0']/100, 
+                          n_s=best_fit_params['n_s'], 
+                          sigma8=best_fit_params['SIGMA_8'],
+                          baryonic_effects=None,
+                          extra_parameters = {"camb": {"halofit_version": "mead2020_feedback",
+                             "HMCode_logT_AGN": best_fit_params['logt_agn']}})
+
+    theta_deg = np.rad2deg(theta_rad)
+    xi_p = ccl.correlation(cosmo, ell=ell, C_ell=shear_cl, theta=theta_deg, type='GG+')
+    xi_m = ccl.correlation(cosmo, ell=ell, C_ell=shear_cl, theta=theta_deg, type='GG-')
+    
+    os.makedirs(output_folder + '{}/best_fit/shear_xi_minus'.format(root), exist_ok=True)
+    os.makedirs(output_folder + '{}/best_fit/shear_xi_plus'.format(root), exist_ok=True)
+    
+    np.savetxt(output_folder + '{}/best_fit/shear_xi_plus/bin_1_1.txt'.format(root), xi_p)
+    np.savetxt(output_folder + '{}/best_fit/shear_xi_minus/bin_1_1.txt'.format(root), xi_m)
+    np.savetxt(output_folder + '{}/best_fit/shear_xi_plus/theta.txt'.format(root), theta_rad)
+    np.savetxt(output_folder + '{}/best_fit/shear_xi_minus/theta.txt'.format(root), theta_rad)
+    
+    print(f"Best fit xi+ and xi- from Cl's computed and saved in {output_folder + '{}/best_fit/shear_xi_plus'.format(root)} and {output_folder + '{}/best_fit/shear_xi_minus'.format(root)}")
+
+def adjust_paramname_chain(chain, current_name, target_name, label):
+    """
+    Adjusts the parameter name and label in a GetDist chain.
+    """
+    param_names = chain.getParamNames()
+    par = param_names.parWithName(current_name)
+
+    par.label = label
+    par.name = target_name
+
+    chain.setParamNames(param_names)
+
+    p = chain.paramNames.parWithName(target_name)
+
+def derive_parameter_S8(chain):
+    """
+    Derives the S_8 parameter from Omega_m and Sigma_8 in a GetDist chain.
+    S_8 = Sigma_8 * (Omega_m / 0.3) ** 0.5
+    """
+    omega_m = chain.getParams().OMEGA_M
+    sigma_8 = chain.getParams().SIGMA_8
+
+    s_8 = sigma_8 * (omega_m / 0.3) ** 0.5
+
+    chain.addDerived(s_8, name='S_8', label=r'S_8')
+
+    p = chain.paramNames.parWithName('S_8')
+
+    return chain
+
+def derive_parameter_Om(chain):
+    """
+    Derives the Omega_m parameter from omch2 and h0 in a GetDist chain.
+    """
+    omch2 = chain.getParams().omch2
+    h0 = chain.getParams().h0
+
+    omega_m = omch2 / (h0 / 100) ** 2
+
+    chain.addDerived(omega_m, name='OMEGA_M', label=r'\Omega_{\rm m}')
+
+    
+    p = chain.paramNames.parWithName('OMEGA_M')
+
+    return chain
+
+def get_sigma_tension(mean1, low1, high1, mean2, low2, high2):
+    sigma1 = 0.5 * (high1 + low1)
+    sigma2 = 0.5 * (high2 + low2)
+    delta_mean = np.abs(mean1 - mean2)
+    sigma_tension = delta_mean / np.sqrt(sigma1**2 + sigma2**2)
+    sign = 1 if mean1 > mean2 else -1
+    return sigma_tension * sign

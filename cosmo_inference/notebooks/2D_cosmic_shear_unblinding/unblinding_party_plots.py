@@ -64,7 +64,8 @@ blind = "A" # Options are "A", "B", or "C"
 catalog_version = "SP_v1.4.6.3"
 fiducial_root_cell = f"SP_v1.4.6.3_leak_corr_{blind}"
 label_fiducial_cell = r"UNIONS $C_{\ell}$"
-fiducial_root_xi = f"SP_v1.4.6.3_{blind}_fiducial_config"
+fiducial_root_xi_data = f"SP_v1.4.6.3_leak_corr_{blind}_masked"
+fiducial_root_xi_chains = f"SP_v1.4.6.3_{blind}_fiducial_config"
 label_fiducial_xi = r"UNIONS $\xi_{\pm}$"
 
 # Path to the ini files used
@@ -83,7 +84,7 @@ display(
 # 1. Plot the datavectors without best-fit
 display(
     Markdown(
-        "### 1. Plot the datavectors without best-fit"
+        "### 1.a. Plot the datavectors without best-fit"
     )
 )
 
@@ -156,6 +157,95 @@ plt.show()
 # Plots xi_+ and xi_-
 
 #TODO: add the plot for xi_+ and xi_-
+display(
+    Markdown(
+        r"### 1.b. Plot the datavectors without best-fit ($\xi_\pm$)"
+    )
+)
+
+# Plot xi_pm's
+data = fits.open(
+    os.path.join(
+        path_datavectors,
+        f"SP_v1.4.6.3_config/SP_v1.4.6.3_{blind}/cosmosis_{fiducial_root_xi_data}.fits"
+    )
+)
+xi_p_data = data['XI_PLUS'].data
+xi_m_data = data['XI_MINUS'].data
+cov_mat = data['COVMAT'].data
+
+# Plot hyperparameter
+loc_legend = "lower center"
+bbox_to_anchor_xip = (0.685, 0.03)
+bbox_to_anchor_xim = (0.3, 0.65)
+
+fig, [ax,ax2] = plt.subplots(2, 1, figsize=(8, 9))
+
+theta, xi_p = xi_p_data['ANG'], xi_p_data['VALUE']
+ax.errorbar(theta, theta*xi_p, yerr=theta*np.sqrt(np.diag(cov_mat[:len(theta),:len(theta)])), fmt='o', label=r"UNIONS $\xi_+$ data", color='black', capsize=2)
+
+# Plot the scale cuts for different k_max
+ax.axvline(x=3.2, color='black', linestyle='--', alpha=0.3)
+
+ymin = ax.get_ylim()[0]
+ymax = ax.get_ylim()[1]
+# Shadowing cut scaled
+ax.fill_betweenx(y=[ymin, ymax], x1=0, x2=12, color='gray', alpha=0.2, label=r'$B$-mode informed scale cut')
+ax.fill_betweenx(y=[ymin, ymax], x1=83, x2=250, color='gray', alpha=0.2)
+
+ax.set_ylim(ymin, ymax)
+
+# Add labels directly under the tick
+ax.text(3,  1e-4,
+        r"$k_\mathrm{max} = 1 h$ Mpc$^{-1}$",
+        # transform=ax.get_xaxis_transform(),
+        ha='center', va='top', fontsize=10, rotation=90)
+
+ax.set_ylabel(r'$\theta \xi_+$', fontsize=16)
+# ax.set_xlabel('$\theta$', fontsize=16)
+# ax.set_xlim([theta.min()-0.1, theta.max()+20])
+ax.set_xscale('log')
+ax.set_xticks(np.array([1, 10, 100]))
+ax.tick_params(axis="x", which="minor", length=2, width=0.8)
+ax.tick_params(axis='both', which='major', labelsize=14)
+ax.tick_params(axis='both', which='minor', labelsize=10)
+ax.yaxis.get_offset_text().set_fontsize(14)
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+ax.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xip, fontsize=12)
+
+theta, xi_m = xi_p_data['ANG'], xi_m_data['VALUE']
+ax2.errorbar(theta, theta*xi_m, yerr=theta*np.sqrt(np.diag(cov_mat[len(theta):2*len(theta),len(theta):2*len(theta)])), fmt='o', label=r"UNIONS $\xi_-$ data", color='black', capsize=2)
+
+# Plot the scale cuts for different k_max
+ax2.axvline(x=24, color='black', linestyle='--', alpha=0.3)
+
+ymin = ax2.get_ylim()[0]
+ymax = ax2.get_ylim()[1]
+# Shadowing cut scaled
+ax2.fill_betweenx(y=[ymin, ymax], x1=0, x2=12, color='gray', alpha=0.2, label=r'$B$-mode informed scale cut')
+ax2.fill_betweenx(y=[ymin, ymax], x1=83, x2=250, color='gray', alpha=0.2)
+
+ax2.set_ylim(ymin, ymax)
+
+# Add labels directly under the tick
+ax2.text(22.3,  9e-5,
+        r"$k_\mathrm{max} = 1 h$ Mpc$^{-1}$",
+        # transform=ax.get_xaxis_transform(),
+        ha='center', va='top', fontsize=10, rotation=90)
+
+ax2.set_ylabel(r'$\theta÷ \xi_-$', fontsize=16)
+ax2.set_xlabel('$\theta$', fontsize=16)
+ax2.set_xlim([theta.min()-0.1, theta.max()+20])
+ax2.set_xscale('log')
+ax2.set_xticks(np.array([1, 10, 100]))
+ax2.tick_params(axis="x", which="minor", length=2, width=0.8)
+ax2.tick_params(axis='both', which='major', labelsize=14)
+ax2.tick_params(axis='both', which='minor', labelsize=10)
+ax2.yaxis.get_offset_text().set_fontsize(14)
+ax2.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+ax2.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xim, fontsize=12)
+
+plt.show()
 
 # %%
 # 2. Plot the best-fit datavectors
@@ -196,13 +286,13 @@ cp.compute_best_fit(
 # Perform the computation for the fiducial of xi
 path_samples_fiducial_xi = os.path.join(
     path_output_chains,
-    fiducial_root_xi,
-    f"samples_{fiducial_root_xi}.txt"
+    fiducial_root_xi_chains,
+    f"samples_{fiducial_root_xi_chains}.txt"
 )
 path_gd_fiducial_xi = os.path.join(
     path_output_chains,
-    fiducial_root_xi,
-    f"getdist_{fiducial_root_xi}"
+    fiducial_root_xi_chains,
+    f"getdist_{fiducial_root_xi_chains}"
 )
 cp.load_samples_and_write_paramnames(path_samples_fiducial_xi, path_gd_fiducial_xi+".paramnames")
 cp.write_samples_getdist_format(path_samples_fiducial_xi, path_gd_fiducial_xi+".txt", chain_type='polychord')
@@ -218,7 +308,7 @@ ini_file_root = os.path.join(
 cp.compute_best_fit(
     path_ini_files,
     best_fit_params_fiducial_xi,
-    fiducial_root_xi,
+    fiducial_root_xi_chains,
     is_harmonic=False,
     blind=blind,
     ini_file_root=ini_file_root
@@ -228,7 +318,7 @@ cp.compute_best_fit(
 # Make the plot for the best-fit datavector for Cell EE
 root_to_plot = [
     fiducial_root_cell,
-    fiducial_root_xi
+    fiducial_root_xi_chains
 ]
 
 labels = [
@@ -244,11 +334,27 @@ line_args = [
 properties = {}
 
 properties = utils.update_properties_w_roots(properties, fiducial_root_cell, path_ini_files, with_configuration=False)
-properties = utils.update_properties_w_roots(properties, fiducial_root_xi, path_ini_files, with_configuration=True, path_to_this_ini=ini_file_root)
+properties = utils.update_properties_w_roots(properties, fiducial_root_xi_chains, path_ini_files, with_configuration=True, path_to_this_ini=ini_file_root)
 
 utils.plot_best_fit(fiducial_root_cell, root_to_plot, path_output_chains, line_args, savefile=None, labels=labels, loc_legend=loc_legend, bbox_to_anchor=bbox_to_anchor, properties=properties)
 
 # TODO: add the plot for xi
+# %%
+# Plot best-fit xi_+ and xi_- (also from C_ell's)
+
+path_best_fit_xi_theta = os.path.join(
+    path_output_chains,
+    fiducial_root_xi_chains,
+    "best_fit/shear_xi_plus/"
+    f"theta.txt"
+)
+theta_rad = np.loadtxt(path_best_fit_xi_theta)
+
+cp.compute_best_fit_xi_from_cell(path_output_chains, fiducial_root_cell, best_fit_params_fiducial_cell, theta_rad)
+
+
+xi_data_path = os.path.join(path_datavectors,f"SP_v1.4.6.3_config/SP_v1.4.6.3_{blind}/cosmosis_{fiducial_root_xi_data}.fits")
+utils.plot_best_fit_config(xi_data_path, root_to_plot, path_output_chains, line_args, savefile=None, labels=labels, loc_legend=loc_legend, bbox_to_anchor_xip=bbox_to_anchor_xip, bbox_to_anchor_xim=bbox_to_anchor_xim, properties=properties)
 
 # %%
 # 3. Do a whisker plot with external experiments and our constraints
