@@ -17,10 +17,10 @@ plt.style.use(
     '/home/guerrini/matplotlib_config/paper.mplstyle'
 )
 plt.rcParams['text.usetex'] = True
-sns.set_palette("husl")
+sns.set_palette("Dark2")
 
 # %%
-path_redshift_distr = "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt"
+path_redshift_distr = "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt"
 
 z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
 n_z = interp1d(z, dndz, bounds_error=False, fill_value=0)
