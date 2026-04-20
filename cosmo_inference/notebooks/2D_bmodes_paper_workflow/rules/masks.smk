@@ -1,24 +1,24 @@
 """
 Snakemake rules for UNIONS pixel mask processing and analysis.
 
+NOTE: This subsystem is exploratory/infrastructure. The outputs are NOT currently
+wired into the main covariance workflow, which uses pre-computed mask Cls from
+MASK_CLS_FILES in covariance.smk. See covariance.md spec for details.
+
 This file contains rules for:
 - Processing HealSparse masks to individual nside values (parallelizable)
-- Calculating effective survey areas  
+- Calculating effective survey areas
 - Computing mask power spectra for CosmoCov integration
 - Generating comparison plots and analysis
-
-Author: Claude Code
-Date: 2025-08-18
 """
+from datetime import datetime
 
-# Wildcard constraints for mask processing
-wildcard_constraints:
-    nside=r"\d+"
+# Wildcard constraints centralized in Snakefile
 
-# Define paths directly in Snakefile 
-SOURCE_MASK_FILE = "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
+# Paths from config and Snakefile
+SOURCE_MASK_FILE = config["pixel_mask"]["source_file"]
 MASK_OUTPUT_DIR = "output/masks"
-COSMOCOV_MASK_DIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/masks"
+COSMOCOV_MASK_DIR = str(COSMO_INFERENCE / "data/masks")
 
 # Get target nside values from config (no fallbacks)
 target_nsides = config["pixel_mask"]["target_nsides"]
@@ -68,7 +68,7 @@ rule combine_area_summaries:
         combined_data = {
             "mask_processing_summary": {
                 "source_mask": "UNIONS HealSparse mask",
-                "processing_date": "2025-08-18",
+                "processing_date": datetime.now().strftime("%Y-%m-%d"),
                 "masks": {}
             }
         }
@@ -90,51 +90,21 @@ rule combine_area_summaries:
 
 
 rule mask_power_spectrum:
-    """
-    Calculate angular power spectrum for a single mask.
-    
-    This rule:
-    1. Loads the downgraded HEALPix mask
-    2. Calculates power spectrum C_ℓ using healpy.anafast
-    3. Exports power spectrum for CosmoCov integration
+    """Calculate angular power spectrum for a single mask.
+
+    Loads downgraded HEALPix mask, computes C_ell, exports for CosmoCov.
     """
     input:
         mask=f"{MASK_OUTPUT_DIR}/mask_nside{{nside}}.fits"
     output:
         power_spectrum=f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt"
-    params:
-        nside=lambda wildcards: int(wildcards.nside),
-        target_nsides=target_nsides,
-        output_dir=MASK_OUTPUT_DIR
     threads: 1
     resources:
         mem_mb=4000,
         disk_mb=500,
-        runtime=10    # minutes
-    script:
-        "../scripts/analyze_mask_power_spectrum.py"
-
-
-rule mask_power_spectra_comparison:
-    """
-    Create comparison plots and convergence analysis across all nside values.
-    """
-    input:
-        masks=expand(f"{MASK_OUTPUT_DIR}/mask_nside{{nside}}.fits", nside=target_nsides),
-        power_spectra=expand(f"{MASK_OUTPUT_DIR}/power_spectra/cl_mask_nside{{nside}}.txt", nside=target_nsides),
-        summary=f"{MASK_OUTPUT_DIR}/effective_areas.yaml"
-    output:
-        comparison_plot=f"{MASK_OUTPUT_DIR}/mask_power_spectra_comparison.png"
-    params:
-        target_nsides=target_nsides,
-        output_dir=MASK_OUTPUT_DIR
-    threads: 1
-    resources:
-        mem_mb=4000,
-        disk_mb=1000,
         runtime=10
     script:
-        "../scripts/create_mask_comparison_plots.py"
+        "../scripts/analyze_mask_power_spectrum.py"
 
 
 rule effective_area_comparison:
@@ -161,7 +131,7 @@ rule effective_area_comparison:
         import yaml
         import numpy as np
         from pathlib import Path
-        
+
         # Load effective area summary
         with open(input.summary, 'r') as f:
             summary_data = yaml.safe_load(f)
@@ -249,7 +219,7 @@ rule effective_area_comparison:
         ])
         
         # Write report
-        os.makedirs(os.path.dirname(output.report), exist_ok=True)
+        Path(output.report).parent.mkdir(parents=True, exist_ok=True)
         with open(output.report, 'w') as f:
             f.write('\n'.join(report_content))
         
@@ -267,7 +237,6 @@ rule masks_full_analysis:
     """Complete mask processing and analysis pipeline."""
     input:
         f"{MASK_OUTPUT_DIR}/effective_areas.yaml",
-        f"{MASK_OUTPUT_DIR}/mask_power_spectra_comparison.png",
         f"{MASK_OUTPUT_DIR}/area_comparison_report.md"
 
 
@@ -311,7 +280,7 @@ rule prepare_mask_for_cosmocov:
         # Create integration status file
         with open(output.cosmocov_ready, 'w') as f:
             f.write("UNIONS Mask Power Spectra - CosmoCov Integration Ready\n")
-            f.write(f"Generated: 2025-08-18\n")
+            f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d')}\n")
             f.write(f"Source: {MASK_OUTPUT_DIR}\n")
             f.write(f"Destination: {params.cosmocov_mask_dir}\n")
             f.write("\nCopied files:\n")
@@ -321,3 +290,12 @@ rule prepare_mask_for_cosmocov:
             f.write("Set c_footprint_file parameter to the appropriate power spectrum file path.\n")
         
         print(f"CosmoCov integration prepared: {output.cosmocov_ready}")
+
+
+# Fast rules that don't need cluster resources
+localrules:
+    combine_area_summaries,
+    effective_area_comparison,
+    prepare_mask_for_cosmocov,
+    masks_only,
+    masks_full_analysis,

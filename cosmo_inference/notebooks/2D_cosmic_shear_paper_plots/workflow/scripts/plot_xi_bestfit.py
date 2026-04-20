@@ -20,8 +20,9 @@ plt.style.use(snakemake.config["plot_style"])
 
 # Fiducial scale cuts from Paper IV (main.tex Sect. 5.5)
 # Based on B-modes, PSF leakage, and nonlinear modelling
-scale_cut_xip = [9, 83]  # arcmin
-scale_cut_xim = [16, 83]  # arcmin
+# [12, 83] for both xi+/xi- with v1.4.6.3 fiducial
+scale_cut_xip = [12, 83]  # arcmin
+scale_cut_xim = [12, 83]  # arcmin
 
 # --- Load data ξ± ---
 data = np.loadtxt(snakemake.input.xi_data, comments="#")

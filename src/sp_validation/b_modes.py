@@ -18,6 +18,8 @@ from scipy import sparse, stats
 
 from .cosmology import get_theo_xi
 
+_EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
+
 
 def find_conservative_scale_cut_key(results, requested_scale_cut):
     """
@@ -157,13 +159,12 @@ def calculate_pure_eb_correlation(
         return get_pure_EB_modes(
             theta=gg.meanr, xip=gg.xip, xim=gg.xim,
             theta_int=gg_int.meanr, xip_int=gg_int.xip, xim_int=gg_int.xim,
-            tmin=min_sep, tmax=max_sep
+            tmin=min_sep, tmax=max_sep, parallel=True
         )
 
     # Initialize results dictionary with basic E/B mode data
-    eb_keys = ["xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb"]
     results = {"gg": gg, "gg_int": gg_int}
-    results.update(dict(zip(eb_keys, pure_EB([gg, gg_int]))))
+    results.update(dict(zip(_EB_KEYS, pure_EB([gg, gg_int]))))
 
     if cov_path_int is not None:
         # Use semi-analytical covariance propagation
@@ -216,7 +217,7 @@ def calculate_pure_eb_correlation(
                 theta=gg.meanr, theta_int=gg_int.meanr,
                 xip=samples_rep_xip[i], xim=samples_rep_xim[i],
                 xip_int=samples_int_xip[i], xim_int=samples_int_xim[i],
-                tmin=min_sep, tmax=max_sep
+                tmin=min_sep, tmax=max_sep, parallel=True
             ))
             for i in tqdm.tqdm(range(n_samples), desc="MC samples")
         ]
@@ -277,7 +278,6 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         scale_cuts = [(gg.left_edges[0], gg.right_edges[-1])]
 
     # Pre-compute values that don't change across scale cuts
-    dtheta = gg.right_edges - gg.left_edges
     nbins = len(gg.meanr)
 
     # Load covariance matrix and calculate Hartlap factor once
@@ -287,7 +287,7 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         hartlap_factor = 1  # Not defined for analytic covariances
     else:
         cov_xipm = gg.cov
-        hartlap_factor = (gg.npatch - 2 * nmodes - 2) / (gg.npatch - 1)
+        hartlap_factor = (gg.npatch1 - 2 * nmodes - 2) / (gg.npatch1 - 1)
 
     all_results = {}
 
@@ -299,22 +299,25 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         start_bin, stop_bin = scale_cut_to_bins(gg, min_theta, max_theta)
         inds = np.arange(start_bin, stop_bin)
 
-        theta_cut, dtheta_cut, xip_cut, xim_cut = [
-            arr[inds] for arr in [gg.meanr, dtheta, gg.xip, gg.xim]
+        theta_cut, xip_cut, xim_cut = [
+            arr[inds] for arr in [gg.meanr, gg.xip, gg.xim]
         ]
 
-        # Calculate COSEBIs E/B modes using exact bin edges from indices
+        # Calculate COSEBIs E/B modes using actual theta range (per Axel's recommendation)
+        # Use precision=120 (vs default 80) to avoid sympy root convergence failures
+        # for high modes (11+). The error "try n < 80 or maxsteps > 50" requires higher precision.
         cosebis = COSEBIS(
-            theta_min=gg.left_edges[inds][0],
-            theta_max=gg.right_edges[inds][-1],
-            N_max=nmodes
+            theta_min=np.min(theta_cut),
+            theta_max=np.max(theta_cut),
+            N_max=nmodes,
+            precision=120,
         )
-        En, Bn = cosebis.cosebis_from_xipm(theta_cut, dtheta_cut, xip_cut, xim_cut)
+        En, Bn = cosebis.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
 
         # Extract covariance and transform to COSEBIs space
         cov_inds = np.concatenate([inds, inds + nbins])
         cov_cosebis = cosebis.cosebis_covariance_from_xipm_covariance(
-            theta_cut, dtheta_cut, cov_xipm[cov_inds[:, None], cov_inds]
+            theta_cut, cov_xipm[cov_inds[:, None], cov_inds]
         )
         cov_E, cov_B = cov_cosebis[:nmodes, :nmodes], cov_cosebis[nmodes:, nmodes:]
         chi2_E, chi2_B = [
@@ -372,9 +375,8 @@ def calculate_eb_statistics(
     n_eff = n_samples if cov_path_int is not None else npatch
 
     # Extract covariance blocks and standard deviations
-    eb_keys = ["xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb"]
     cov = results["cov"]
-    for i, key in enumerate(eb_keys):
+    for i, key in enumerate(_EB_KEYS):
         start, end = nbins * i, nbins * (i + 1)
         cov_block = cov[start:end, start:end]
         results[f"cov_{key}"] = cov_block
@@ -1052,6 +1054,91 @@ def plot_cosebis_modes(
 
     plt.title(f"{version} COSEBIs E/B-modes{scale_info}")
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
+
+
+def save_pure_eb_results(results, output_path):
+    """
+    Save pure E/B mode data vectors and covariance to .npz.
+
+    Parameters
+    ----------
+    results : dict
+        Results dictionary from calculate_eb_statistics
+    output_path : str
+        Output .npz file path
+    """
+    gg = results["gg"]
+
+    # Data vectors and covariance
+    save_dict = {"theta": gg.meanr, "cov": results["cov"]}
+    for key in _EB_KEYS:
+        save_dict[key] = results[key]
+
+    # PTE matrices
+    for key, matrix in results.get("pte_matrices", {}).items():
+        save_dict[f"pte_matrices_{key}"] = matrix
+
+    # Metadata
+    save_dict["npatch"] = np.array(gg.npatch1)
+    if "eb_samples" in results:
+        save_dict["var_method"] = np.array("semi-analytic")
+        save_dict["n_samples"] = np.array(results["eb_samples"].shape[0])
+    else:
+        save_dict["var_method"] = np.array("jackknife")
+
+    np.savez(output_path, **save_dict)
+    print(f"Saved pure E/B results to {output_path}")
+
+
+def _cosebis_result_to_dict(r, suffix=""):
+    """Build save dict entries from a single COSEBIs result."""
+    return {
+        f"En{suffix}": r["En"],
+        f"Bn{suffix}": r["Bn"],
+        f"cov{suffix}": r["cov"],
+        f"chi2_E{suffix}": np.array(r["chi2_E"]),
+        f"chi2_B{suffix}": np.array(r["chi2_B"]),
+        f"pte_B{suffix}": np.array(r["pte_B"]),
+    }
+
+
+
+def save_cosebis_results(results, output_path, fiducial_scale_cut=None):
+    """
+    Save COSEBIs data vectors and covariance to .npz.
+
+    Parameters
+    ----------
+    results : dict
+        COSEBIs results. Either a single-scale-cut dict with keys like
+        'En', 'Bn', 'cov', or a multi-scale-cut dict with tuple keys.
+    output_path : str
+        Output .npz file path
+    fiducial_scale_cut : tuple, optional
+        If results has multiple scale cuts, save only this one.
+        If None and results has multiple scale cuts, saves all.
+    """
+    is_multi = all(isinstance(k, tuple) for k in results)
+
+    if is_multi and fiducial_scale_cut is not None:
+        # Select the single best-matching scale cut
+        key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
+        save_dict = _cosebis_result_to_dict(results[key])
+        save_dict["scale_cut"] = np.array(key)
+    elif is_multi:
+        # Save all scale cuts with tagged keys
+        save_dict = {}
+        for sc, r in results.items():
+            save_dict.update(_cosebis_result_to_dict(r, f"_{sc[0]}_{sc[1]}"))
+        save_dict["scale_cuts"] = np.array(list(results.keys()))
+    else:
+        # Single scale cut
+        save_dict = _cosebis_result_to_dict(results)
+        if "scale_cut" in results:
+            save_dict["scale_cut"] = np.array(results["scale_cut"])
+
+    np.savez(output_path, **save_dict)
+    print(f"Saved COSEBIs results to {output_path}")
 
 
 def plot_cosebis_covariance_matrix(results, version, var_method, output_path):

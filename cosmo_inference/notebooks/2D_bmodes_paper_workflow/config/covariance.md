@@ -16,16 +16,12 @@ Gaussian-only approximation: non-Gaussian contributions computationally prohibit
 
 ## Config References
 
-| Parameter | Config Key | Description |
-|-----------|------------|-------------|
-| Samples | `covariance.n_samples` | MC samples for propagation (default 2000) |
-| Ω_m | `covariance.cosmology.Omega_m` | Matter density |
-| σ_8 | `covariance.cosmology.sigma_8` | Amplitude of fluctuations |
-| n_s | `covariance.cosmology.n_s` | Spectral index |
-| h | `covariance.cosmology.h` | Hubble parameter |
-| Ω_b | `covariance.cosmology.Omega_b` | Baryon density |
-| Mask Cls | `covariance.mask_cls_files` | Per-version mask power spectra |
-| Use masked | `covariance.default_masked` | Whether to use masked covariance |
+| Parameter | Source | Description |
+|-----------|--------|-------------|
+| Samples | `config.yaml: covariance.n_samples` | MC samples for propagation (default 2000) |
+| Use masked | `config.yaml: covariance.default_masked` | Whether to use masked covariance |
+| Cosmology | `Snakefile: PLANCK18` | astropy Planck18 via sp_validation.cosmology |
+| Mask Cls | `covariance.smk: MASK_CLS_FILES` | Per-version mask power spectra |
 
 ## Survey Properties
 
@@ -52,28 +48,9 @@ covariance_{version}_{blind}_{gaussian}_minsep={min}_maxsep={max}_nbins={n}{mask
 - `gaussian`: g (Gaussian-only) or ng (non-Gaussian)
 - `mask_suffix`: empty or `_masked`
 
-## Multi-Blind Strategy
+## Blind Handling
 
-All B-mode claims compute statistics for each blind (A, B, C) and report the **minimum PTE** — the most conservative value. This ensures robustness to n(z) variations between blinds.
-
-Requires covariances for all three blinds at both:
-- **Reporting binning** (20 bins) — for PTE calculation
-- **Integration binning** (1000 bins) — for COSEBIS/pure E/B propagation
-
-### Covariance Sensitivity
-
-Covariance diagonals shift by ~10% between blinds due to n(z) dependence of the lensing kernel. See [Covariance Blind Consistency](covariance_blind_consistency.md) for validation.
-
-### PTE Stability
-
-Despite ~10% covariance shifts, PTEs remain stable:
-
-| Statistic | PTE variation (absolute) | Notes |
-|-----------|-------------------------|-------|
-| COSEBIS B_n | <0.001 | Effectively zero; B-mode signal identical across blinds |
-| Pure-mode ξ±^B | ~0.06 | 6 percentage points; covariance-driven, not signal |
-
-The COSEBIS stability confirms that B-mode signal is blind-invariant. Pure-mode variation is larger because per-blind covariances affect the chi-squared normalization, not the data vector.
+B-mode claims use the fiducial blind from `config["fiducial"]["blind"]`. Covariances are computed for the fiducial blind only.
 
 ## Covariance Usage Policy
 
@@ -89,9 +66,20 @@ Official results use specific covariance sources for consistency and correctness
 - TreeCorr jackknife covariance — too noisy for official results
 - NPZ `cov_xip_xim` field — deprecated (was jackknife)
 
-### Why Gaussian for E/B propagation?
+### Footprint Masks
 
-Non-Gaussian covariance at 1000-bin integration scale is computationally prohibitive. Using Gaussian-only **underestimates** the E/B covariance, which **overestimates** B-mode significance. This is conservative for a null test: if B-modes pass with underestimated errors, they would also pass with correct errors.
+Two footprint masks at nside=4096, generated from the comprehensive catalog with
+only spatially-structured cuts (no galaxy selection cuts):
+
+| Mask | Area | Used by |
+|------|------|---------|
+| Standard footprint | 2894 deg² | v1.4.5, v1.4.6, v1.4.11.3 (and ecut variants) |
+| Star-halo footprint | 2517 deg² | v1.4.8 |
+
+Each version gets its own covariance from its own survey properties (A, n_e, sigma_e).
+`resolve_covariance_version()` is the identity function — no cross-version covariance sharing.
+`MASK_CLS_FILES` (covariance.smk) maps to two mask power spectrum files based on whether
+the version is in `STARHALO_VERSIONS`.
 
 ## Related Specs
 

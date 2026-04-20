@@ -26,7 +26,6 @@ Computed separately for ξ+ and ξ- blocks.
 | Version | `fiducial.version` |
 | Scale range | `fiducial.min_sep` to `fiducial.max_sep` |
 | Bins | `fiducial.nbins` |
-| Use masked | `covariance.default_masked` |
 
 ## Outputs
 

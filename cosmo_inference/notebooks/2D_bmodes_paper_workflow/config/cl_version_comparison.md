@@ -6,7 +6,7 @@ Plotting: [2D Plots](2d_plots.md)
 
 ## Claim
 
-B-mode power spectra C_ell^BB are consistent with zero for v1.4.6 and v1.4.8, while v1.4.5 shows marginal tension. Unlike configuration-space statistics, harmonic methods average over localized B-modes, explaining why v1.4.8 passes here but fails Pure E/B and COSEBIS tests.
+B-mode power spectra C_ell^BB are consistent with zero for all leak-corrected versions.
 
 ## Config References
 
@@ -14,7 +14,6 @@ B-mode power spectra C_ell^BB are consistent with zero for v1.4.6 and v1.4.8, wh
 |-----------|------------|
 | Versions | `versions` |
 | ell bins | `cl.n_ell_bins` |
-| ell range | `cl.ell_min`, `cl.ell_max` |
 | PTE healthy range | `statistics.pte_healthy_range` |
 
 ## Evidence

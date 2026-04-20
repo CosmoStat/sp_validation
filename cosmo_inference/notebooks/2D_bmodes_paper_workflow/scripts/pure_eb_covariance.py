@@ -15,12 +15,12 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
+import seaborn as sns  # Registers seaborn colormaps (icefire, etc.) with matplotlib
+
+from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
 
 
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _analyze_block(covariance, start_idx, end_idx, name):
@@ -93,7 +93,7 @@ def main():
     # Matrix is 6*nbins x 6*nbins:
     # Block structure: [E+, E-, B+, B-, amb+, amb-]
     # Each block is nbins x nbins
-    assert cov_pure_eb.shape == (6*nbins, 6*nbins), f"Expected (120, 120), got {cov_pure_eb.shape}"
+    assert cov_pure_eb.shape == (6*nbins, 6*nbins), f"Expected ({6*nbins}, {6*nbins}), got {cov_pure_eb.shape}"
 
     # Analyze full matrix
     eigenvalues = np.linalg.eigvalsh(cov_pure_eb)
@@ -119,7 +119,7 @@ def main():
     correlation = _cov_to_corr(cov_pure_eb)
 
     # Create figure (matching v1 epistemics style)
-    fig, ax = plt.subplots(figsize=(7.24, 5.79))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.8))
 
     # Plot correlation matrix (no origin="lower" so y increases downward like v1)
     im = ax.imshow(
@@ -130,19 +130,14 @@ def main():
         aspect="equal",
     )
 
-    # Add block boundaries at all 6 block edges
-    for i in range(1, 6):
-        ax.axhline(i * nbins - 0.5, color="black", linewidth=1.5, alpha=0.7)
-        ax.axvline(i * nbins - 0.5, color="black", linewidth=1.5, alpha=0.7)
-
     # 6 block labels (matching v1 epistemics style)
     block_labels = [
-        r"$\xi_+^E$",
-        r"$\xi_-^E$",
-        r"$\xi_+^B$",
-        r"$\xi_-^B$",
-        r"$\xi_+^\mathrm{amb}$",
-        r"$\xi_-^\mathrm{amb}$",
+        r"$\xi_+^{\mathrm{E}}$",
+        r"$\xi_-^{\mathrm{E}}$",
+        r"$\xi_+^{\mathrm{B}}$",
+        r"$\xi_-^{\mathrm{B}}$",
+        r"$\xi_+^{\mathrm{amb}}$",
+        r"$\xi_-^{\mathrm{amb}}$",
     ]
 
     # Compute block boundaries and centers
@@ -152,7 +147,7 @@ def main():
 
     # Set ticks at block centers with labels (no axis labels, tick labels only)
     ax.set_xticks(centers)
-    ax.set_xticklabels(block_labels, rotation=45, ha="right")
+    ax.set_xticklabels(block_labels)
     ax.set_yticks(centers)
     ax.set_yticklabels(block_labels, rotation=0)
 
@@ -199,7 +194,7 @@ def main():
             "version": version,
             "blind": config["fiducial"]["blind"],
         },
-        "artifacts": {
+        "output": {
             "figure": "figure.png",
         },
     }

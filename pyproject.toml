@@ -1,13 +1,15 @@
 [project]
 name = "sp_validation"
-version = "0.5.0"
+version = "0.6.0"
 description = "Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by ShapePipe"
 authors = [
-    {name = "Martin Kilbinger", email = "martin.kilbinger@cea.fr"}
+    {name = "Martin Kilbinger", email = "martin.kilbinger@cea.fr"},
+    {name = "Cail Daley", email = "cail.daley@cea.fr"},
+    {name = "Sacha Guerrini", email = "sacha.guerrini@cea.fr"},
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.6,<3.12"
+requires-python = ">=3.11"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -20,7 +22,6 @@ dependencies = [
     "camb",
     "clmm",
     "colorama",
-    "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba",
     "cs_util>=0.1.5",
     "emcee",
     "getdist @ git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
@@ -35,11 +36,7 @@ dependencies = [
     "lenspack",
     "lmfit",
     "numexpr",
-<<<<<<< Updated upstream
-    "numpy>=1.14",
-=======
-    "numpy>=1.26",
->>>>>>> Stashed changes
+    "numpy>=2.0",
     "opencv-python-headless",
     "pyccl",
     "pyarrow",
@@ -48,8 +45,8 @@ dependencies = [
     "reproject",
     "scipy",
     "seaborn",
-    "skyproj",
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
+    "skyproj",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",

@@ -31,7 +31,7 @@ dat:
 
   # Number of epochs
   - col_name: N_EPOCH
-    label: $n_{\rm epoch}$
+    label: r"$n_{\rm epoch}$"
     kind: greater_equal
     value: 2
 
@@ -86,7 +86,7 @@ dat_ext:
 
   # Rough pointing coverage
   - col_name: npoint3
-    label: $n_{\rm pointing}$
+    label: r"$n_{\rm pointing}$"
     kind: greater_equal
     value: 3
 
