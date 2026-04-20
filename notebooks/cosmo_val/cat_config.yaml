@@ -726,14 +726,11 @@ SP_v1.4.8:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2024_v1.4.a.fits
-<<<<<<< Updated upstream
-
-# For additive bias only
-SP_v1.4.6_uncal:
+SP_v1.4.6.3_uncal:
    pipeline: SP
    subdir: /n17data/UNIONS/WL/v1.4.x
    shear:
-      path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       ra_col: RA
       dec_col: Dec
@@ -746,11 +743,11 @@ SP_v1.4.6_uncal:
       hdu: 1
    patch_number: 100
 
-SP_v1.4.6_uncal_w_iv:
+SP_v1.4.6.3_uncal_w_iv:
    pipeline: SP
    subdir: /n17data/UNIONS/WL/v1.4.x
    shear:
-      path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       ra_col: RA
       dec_col: Dec
@@ -763,11 +760,11 @@ SP_v1.4.6_uncal_w_iv:
       hdu: 1
    patch_number: 100
 
-SP_v1.4.6_uncal_w_1:
+SP_v1.4.6.3_uncal_w_1:
    pipeline: SP
    subdir: /n17data/UNIONS/WL/v1.4.x
    shear:
-      path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
+      path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
       covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
       ra_col: RA
       dec_col: Dec
@@ -779,59 +776,6 @@ SP_v1.4.6_uncal_w_1:
       path: unions_shapepipe_psf_2024_v1.4.a.fits
       hdu: 1
    patch_number: 100
-
-SP_v1.4.5_uncal:
-   pipeline: SP
-   subdir: /n17data/UNIONS/WL/v1.4.x
-   shear:
-      path: v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
-      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      ra_col: RA
-      dec_col: Dec
-      e1_col: e1_uncal
-      e2_col: e2_uncal
-      w_col: w_des
-      R: 1.0
-   psf:
-      path: unions_shapepipe_psf_2024_v1.4.a.fits
-      hdu: 1
-   patch_number: 100
-
-SP_v1.4.7_uncal:
-   pipeline: SP
-   subdir: /n17data/UNIONS/WL/v1.4.x
-   shear:
-      path: v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
-      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      ra_col: RA
-      dec_col: Dec
-      e1_col: e1_uncal
-      e2_col: e2_uncal
-      w_col: w_des
-      R: 1.0
-   psf:
-      path: unions_shapepipe_psf_2024_v1.4.a.fits
-      hdu: 1
-   patch_number: 100
-
-SP_v1.4.8_uncal:
-   pipeline: SP
-   subdir: /n17data/UNIONS/WL/v1.4.x
-   shear:
-      path: v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
-      covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-      ra_col: RA
-      dec_col: Dec
-      e1_col: e1_uncal
-      e2_col: e2_uncal
-      w_col: w_des
-      R: 1.0
-   psf:
-      path: unions_shapepipe_psf_2024_v1.4.a.fits
-      hdu: 1
-   patch_number: 100
-   
-=======
 SP_v1.4.11.2:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
@@ -1105,7 +1049,6 @@ SP_v1.4.6.3_uncal_w_1:
     path: unions_shapepipe_psf_2024_v1.4.a.fits
     hdu: 1
   patch_number: 100
->>>>>>> Stashed changes
 SP_v1.4_LFmask_8k:
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/SP_LFmask
   pipeline: SP
