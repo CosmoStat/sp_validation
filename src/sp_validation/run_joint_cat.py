@@ -1318,6 +1318,8 @@ class Mask():
         
         # Get column
         col_data = dat[self._col_name]
+        if self._kind == "not_equal_zband":
+            col_data2 = dat[self._col_name+"2"]
         
         if self._kind == "equal":
             self._mask = ne.evaluate("col_data == value", local_dict={"col_data": col_data, "value": self._value})
@@ -1329,6 +1331,8 @@ class Mask():
             self._mask = ne.evaluate("col_data <= value", local_dict={"col_data": col_data, "value": self._value})
         elif self._kind == "range":
             self._mask = ne.evaluate("(col_data >= low) & (col_data <= high)", local_dict={"col_data": col_data, "low": self._value[0], "high": self._value[1]})
+        elif self._kind == "not_equal_2bands":
+            self._mask = ne.evaluate("(col_data != value) | (col_data2 != value)", local_dict={"col_data": col_data, "col_data2": col_data2, "value": self._value})
         else:
             raise ValueError(f"Invalid kind {self._kind}")
 
@@ -1415,6 +1419,8 @@ class Mask():
             descr = f"{sign}{self._value}"
         if self._kind == "range":
             descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+        if self._kind == "not_equal_2bands":
+            descr = "special, not equal to OR mask"
         self._descr = descr
     
         # Create description for FITS header
@@ -1545,6 +1551,7 @@ def get_masks_from_config(
                     )
 
                 # Create mask instance and append to list
+                
                 my_mask = Mask(**mask_params, dat=dat_source, verbose=verbose)
                 masks.append(my_mask)
                 labels[my_mask._col_name] = idx
