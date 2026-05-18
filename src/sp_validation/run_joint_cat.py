@@ -1318,7 +1318,7 @@ class Mask():
         
         # Get column
         col_data = dat[self._col_name]
-        if self._kind == "not_equal_zband":
+        if self._kind == "not_equal_2bands":
             col_data2 = dat[self._col_name+"2"]
         
         if self._kind == "equal":
