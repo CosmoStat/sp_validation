@@ -23,6 +23,8 @@ from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
+    ell_bin_mask,
+    get_powspace_bin_edges,
     iter_version_figures,
 )
 
@@ -31,8 +33,12 @@ plt.style.use(PAPER_MPLSTYLE)
 
 
 def _compute_pte_with_cuts(data, covariance, ell, ell_min, ell_max):
-    """Compute PTE for B-mode null test with scale cuts."""
-    mask = (ell >= ell_min) & (ell <= ell_max)
+    """Compute PTE for B-mode null test with scale cuts.
+
+    A bin is included only if its full multipole range falls within
+    [ell_min, ell_max] (lower edge >= ell_min AND upper edge <= ell_max).
+    """
+    mask = ell_bin_mask(ell, ell_min, ell_max)
     data_cut = data[mask]
     cov_cut = covariance[np.ix_(mask, mask)]
     chi2, pte, dof = compute_chi2_pte(data_cut, cov_cut)
@@ -87,7 +93,7 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
     ax_bb.axhline(0, color="black", linestyle="-", linewidth=1.0, alpha=0.8)
     ax_bb.set_xscale("squareroot")
     ax_bb.set_ylabel(r"$C_\ell / \sigma$")
-    ax_bb.legend(loc="lower left", framealpha=0.9)
+    ax_bb.legend(loc="upper left", framealpha=0.9)
 
     # EB panel
     eb_label = r"$C_\ell^{EB}$"
@@ -102,20 +108,26 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
     ax_eb.set_xscale("squareroot")
     ax_eb.set_xlabel(r"$\ell$")
     ax_eb.set_ylabel(r"$C_\ell / \sigma$")
-    ax_eb.legend(loc="lower left", framealpha=0.9)
+    ax_eb.legend(loc="upper left", framealpha=0.9)
 
     # Match y-axis range between panels (use BB range)
     ax_eb.set_ylim(ax_bb.get_ylim())
 
-    # Apply shading and ticks to both panels
+    # Shade excluded bins using actual bin edges
+    ell_low, ell_high = get_powspace_bin_edges(ell)
+    mask = ell_bin_mask(ell, ell_min_cut, ell_max_cut)
+    included = np.where(mask)[0]
+    shade_low = ell_low[included[0]]    # lower edge of first included bin
+    shade_high = ell_high[included[-1]]  # upper edge of last included bin
+
     for ax in [ax_bb, ax_eb]:
         ell_min_data = ell.min()
         ell_max_data = ell.max()
         ax.set_xlim(ell_min_data * 0.95, ell_max_data * 1.05)
 
         xlim = ax.get_xlim()
-        ax.axvspan(xlim[0], ell_min_cut, alpha=0.1, color="gray", zorder=0)
-        ax.axvspan(ell_max_cut, xlim[1], alpha=0.1, color="gray", zorder=0)
+        ax.axvspan(xlim[0], shade_low, alpha=0.1, color="gray", zorder=0)
+        ax.axvspan(shade_high, xlim[1], alpha=0.1, color="gray", zorder=0)
         ax.set_xlim(xlim)
 
         ax.set_xticks(np.array([100, 400, 900, 1600]))

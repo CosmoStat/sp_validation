@@ -19,7 +19,15 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from astropy.io import fits
 
-from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE, compute_chi2_pte, format_pte_colorbar, make_pte_colormap, make_pte_norm
+from plotting_utils import (
+    FIG_WIDTH_SINGLE,
+    PAPER_MPLSTYLE,
+    compute_chi2_pte,
+    ell_bin_index,
+    format_pte_colorbar,
+    make_pte_colormap,
+    make_pte_norm,
+)
 
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -108,9 +116,9 @@ def compute_pte_matrix(pseudo_cl_path, pseudo_cl_cov_path, fiducial_ell_min=None
     }
 
     # Compute PTE at fiducial ell cuts if provided
+    # Use bin edges: include only bins fully within [ell_min, ell_max]
     if fiducial_ell_min is not None and fiducial_ell_max is not None:
-        i_fid_min = np.argmin(np.abs(ell - fiducial_ell_min))
-        i_fid_max = np.argmin(np.abs(ell - fiducial_ell_max))
+        i_fid_min, i_fid_max = ell_bin_index(ell, fiducial_ell_min, fiducial_ell_max)
         pte_fiducial = pte_matrix[i_fid_min, i_fid_max]
         stats_out["pte_at_fiducial"] = float(pte_fiducial)
         stats_out["fiducial_ell_range"] = [fiducial_ell_min, fiducial_ell_max]
@@ -177,7 +185,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
     if show_xlabel:
         ax.set_xticklabels(
             [f"{ell[i]:.0f}" for i in tick_indices],
-            fontsize=7,
+            fontsize=9,
             rotation=45,
             ha="right",
             rotation_mode="anchor",
@@ -187,7 +195,7 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
 
     if show_ylabel:
         y_tick_labels = [f"{ell[min(i + 1, n_ell - 1)]:.0f}" for i in tick_indices]
-        ax.set_yticklabels(y_tick_labels, fontsize=7)
+        ax.set_yticklabels(y_tick_labels, fontsize=9)
     else:
         ax.set_yticklabels([])
 
@@ -196,8 +204,11 @@ def plot_cl_pte_panel(ax, pte_matrix, ell, title, show_colorbar=False,
         cax = divider.append_axes("right", size="5%", pad=0.05)
         cbar = plt.colorbar(im, cax=cax, spacing="proportional")
         format_pte_colorbar(cbar)
-        cbar.set_label("PTE", fontsize=9)
-        cbar.ax.tick_params(labelsize=7)
+        # Drop "1" tick to avoid overlap with 0.95
+        cbar.set_ticks([0.05, 0.5, 0.95])
+        cbar.set_ticklabels(["0.05", "0.5", "0.95"])
+        cbar.set_label("PTE", fontsize=10)
+        cbar.ax.tick_params(labelsize=9)
 
     return im
 
@@ -278,8 +289,11 @@ def create_npanel_composite(matrices, ells, panel_labels, fid_indices=None):
     cax = fig.add_axes([cax_pos.x0, ax0_pos.y0, cax_pos.width, ax0_pos.height])
     cbar = fig.colorbar(im, cax=cax, spacing="proportional")
     format_pte_colorbar(cbar)
-    cbar.set_label("PTE", fontsize=9)
-    cbar.ax.tick_params(labelsize=7)
+    # Drop "1" tick to avoid overlap with 0.95
+    cbar.set_ticks([0.05, 0.5, 0.95])
+    cbar.set_ticklabels(["0.05", "0.5", "0.95"])
+    cbar.set_label("PTE", fontsize=10)
+    cbar.ax.tick_params(labelsize=9)
 
     # Common axis labels
     fig.text(0.5 * (gs_left + gs_right), 0.4 * gs_bottom,
@@ -366,12 +380,10 @@ def main():
     # Get version labels from params
     version_labels = snakemake.params.version_labels
 
-    # Compute fiducial ell indices per version (ell grids may differ)
+    # Compute fiducial ell indices per version using bin edges
     version_fid_indices = {}
     for version, ell in all_ells.items():
-        i_min = int(np.argmin(np.abs(ell - fiducial_ell_min)))
-        i_max = int(np.argmin(np.abs(ell - fiducial_ell_max)))
-        version_fid_indices[version] = (i_min, i_max)
+        version_fid_indices[version] = ell_bin_index(ell, fiducial_ell_min, fiducial_ell_max)
 
     # Create fiducial single-panel figure
     if fiducial_version in all_matrices:

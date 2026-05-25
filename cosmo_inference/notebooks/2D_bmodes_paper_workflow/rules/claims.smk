@@ -588,9 +588,12 @@ rule bb_covariance_blind_independence:
 
 _COSEBIS_NBINS = config["cl"].get("cosebis_nbins", 32)
 
+# Use the same theta-grid bin edges as config_space_pte_matrices so that
+# fiducial COSEBI PTEs are consistent across the two computations.
+# geomspace(1, 250, 21)[9] = 250^(9/20) ≈ 11.997, [16] = 250^(16/20) ≈ 82.861
 _COSEBIS_ANGULAR_RANGES = {
     "full": (float(config["cosebis"]["theta_min"]), float(config["cosebis"]["theta_max"])),
-    "fiducial": (float(FIDUCIAL["fiducial_min_scale"]), float(FIDUCIAL["fiducial_max_scale"])),
+    "fiducial": (250.0 ** (9 / 20), 250.0 ** (16 / 20)),
 }
 
 rule harmonic_config_cosebis_comparison:
