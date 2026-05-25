@@ -6,13 +6,13 @@ Depends on: [pure_eb_data_vector](pure_eb_data_vector.md), [cosebis_version_comp
 
 ## Scope
 
-This spec defines what B-mode evidence appears in Paper II (Goh et al.). Paper III (Daley et al.) contains the full version comparison and methodological details.
+This spec defines what B-mode evidence appears in the config-space paper (Goh et al.). The B-modes paper (Daley et al.) contains the full version comparison and methodological details.
 
 ## Reporting Choices
 
 ### Catalog Version
 
-Report only the **fiducial catalog** (with leakage correction, see `fiducial.version` in config). Version comparisons belong in Paper III.
+Report only the **fiducial catalog** (with leakage correction, see `fiducial.version` in config). Version comparisons belong in the B-modes paper.
 
 ### COSEBIS Mode Count
 
@@ -51,7 +51,7 @@ Scale cuts from config (`fiducial.fiducial_xip_scale_cut`, `fiducial.fiducial_xi
 The E/B mode section should:
 1. State that significant B-modes appear at extreme scales (motivating scale cuts)
 2. Report passing PTEs at fiducial scale cuts
-3. Reference Paper III for methodology and version comparison
+3. Reference the B-modes paper for methodology and version comparison
 4. Use auto-generated macros (never hardcode values)
 
 ## Blinding and Covariance

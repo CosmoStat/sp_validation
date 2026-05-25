@@ -13,7 +13,7 @@ The fiducial catalog shows B-mode power spectra consistent with zero across all 
 |-----------|------------|
 | Fiducial version | `fiducial.version` |
 | ell bins | `cl.n_ell_bins` |
-| Scale cuts | `cl.fiducial_ell_min`, `cl.fiducial_ell_max` (from Paper V, Goh et al.) |
+| Scale cuts | `cl.fiducial_ell_min`, `cl.fiducial_ell_max` (from the harmonic paper, Guerrini et al.) |
 
 ## Evidence
 
