@@ -35,10 +35,11 @@ from plotting_utils import (
 
 plt.style.use(PAPER_MPLSTYLE)
 
-# At 32 bins, modes > 6 are unreliable. At 96+ bins, modes 1-7 are recovered
-# to <0.3% (harmonic ceiling). Mode 8 is marginal (0.8%); modes 9+ diverge
-# due to W_n(ell) numerical precision at ~10^-14 amplitudes, not binning.
-_RELIABLE_MODE_MAX_BY_NBINS = {32: 6, 96: 8}
+# At 32 bins, modes > 6 are unreliable. At 96 bins, modes 1-6 are recovered
+# to <0.3% on GLASS mocks. Higher modes are progressively less reliable due
+# to W_n(ell) oscillation resolution. We use 6 to match the mode range used
+# for cosmological inference throughout the paper.
+_RELIABLE_MODE_MAX_BY_NBINS = {32: 6, 96: 6}
 
 
 def _safe_sigma(covariance_diag):
@@ -201,7 +202,7 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
     _shade_reliable(ax_b, reliable_mode_max)
     ax_b.set_ylabel(r"$B_n / \sigma_n$")
-    ax_b.set_xlabel("COSEBIS mode $n$")
+    ax_b.set_xlabel("COSEBI mode $n$")
     ax_b.set_xticks(np.arange(1, nmodes + 1))
     ax_b.set_xlim(0.5, nmodes + 0.5)
     ax_b.tick_params(axis="both", width=0.5, length=3)
@@ -232,7 +233,7 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
     c_harm = "#c45a2c"  # burnt orange (harmonic-space)
 
     fig, axes = plt.subplots(2, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.4),
-                             sharex=True, sharey="row")
+                             sharex=True)
 
     datasets = [
         (config_data_full, harm_data_full, scale_cut_full),
@@ -250,7 +251,8 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
         sigma_h_B = np.where(h_data["sigma_B"] > 0, h_data["sigma_B"], 1.0)
 
         # Column title
-        axes[0, col].set_title(rf"$\theta = {sc[0]:.0f}$--${sc[1]:.0f}'$")
+        col_titles = ["All scales", "Fiducial scale cuts"]
+        axes[0, col].set_title(col_titles[col])
 
         # E-modes
         ax_e = axes[0, col]
@@ -285,7 +287,7 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
         )
         ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
         _shade_reliable(ax_b, reliable_mode_max)
-        ax_b.set_xlabel("COSEBIS mode $n$")
+        ax_b.set_xlabel("COSEBI mode $n$")
         ax_b.set_xticks(np.arange(1, nmodes + 1))
         ax_b.set_xticklabels(
             [str(i) for i in range(1, nmodes + 1)],
@@ -296,7 +298,8 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
 
     # Fix B_n/sigma y-range (same for both columns, independent of E_n)
     for col in range(2):
-        axes[1, col].set_ylim(-2.5, 5.0)
+        axes[1, col].set_ylim(-3.5, 5.5)
+        axes[1, col].set_yticks([0, 3])
 
     # Row labels on left column only
     axes[0, 0].set_ylabel(r"$E_n \times 10^{10}$")
@@ -309,7 +312,7 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
         fig.suptitle(title)
 
     plt.tight_layout()
-    plt.subplots_adjust(hspace=0.15, wspace=0.08)
+    plt.subplots_adjust(hspace=0.15, wspace=0.13)
     return fig
 
 
@@ -353,7 +356,7 @@ def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version
     ax.axhline(0.0, color="black", lw=0.8, alpha=0.6)
     _shade_reliable(ax, reliable_mode_max)
     ax.set_ylabel(r"$B_n / \sigma_n$")
-    ax.set_xlabel("COSEBIS mode $n$")
+    ax.set_xlabel("COSEBI mode $n$")
     ax.set_xticks(np.arange(1, nmodes + 1))
     ax.set_xlim(0.5, nmodes + 0.5)
     ax.tick_params(axis="both", width=0.5, length=3)
