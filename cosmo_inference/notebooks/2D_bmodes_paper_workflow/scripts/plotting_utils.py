@@ -3,7 +3,7 @@
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
@@ -34,45 +34,52 @@ VERSION_BOX_DEFAULTS = {
 }
 
 
-def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85)):
-    """Create discrete colormap with sharp breaks at significance thresholds.
+PTE_GRADIENT_LEVELS = 4096
+PTE_COLORBAR_TICKS = [0.0, 0.05, 0.5, 0.95, 1.0]
+PTE_COLORBAR_TICKLABELS = ["0", "0.05", "0.5", "0.95", "1"]
 
-    Provides clear visual distinction between passing (middle) and failing
-    (extreme) PTE regions without requiring contour overlays.
 
-    Parameters
-    ----------
-    low, high : float
-        PTE thresholds. Solid blue below `low`, solid red above `high`.
-    gradient_range : tuple
-        Range of vlag colormap (0-1) to use for the gradient portion.
-        Narrower range = shallower gradient = sharper contrast at boundaries.
+def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85),
+                      n_gradient=PTE_GRADIENT_LEVELS):
+    """Create a discrete PTE colormap with exact threshold breaks.
 
-    Returns
-    -------
-    cmap : LinearSegmentedColormap
-        Discrete colormap with sharp breaks at thresholds.
+    Values below `low` and above `high` remain solid colors. The interval
+    between them uses a high-resolution gradient so the threshold boundary is
+    precise without losing the discrete fail/pass cue.
     """
     vlag = sns.color_palette("vlag", as_cmap=True)
-
-    # Solid regions use extreme vlag colors for sharp contrast
     solid_blue = vlag(0.0)
     solid_red = vlag(1.0)
-
-    # Build colormap: [0, low] solid blue, [low, high] compressed gradient, [high, 1] solid red
-    n_total = 256
-    n_low = int(low * n_total)
-    n_high = int((1 - high) * n_total)
-    n_mid = n_total - n_low - n_high
-
-    # Gradient samples from compressed range of vlag
     g_lo, g_hi = gradient_range
-    gradient_colors = [vlag(g_lo + (g_hi - g_lo) * i / (n_mid - 1)) for i in range(n_mid)]
-
-    all_colors = [solid_blue] * n_low + gradient_colors + [solid_red] * n_high
-    cmap = LinearSegmentedColormap.from_list("pte_discrete", all_colors, N=256)
+    gradient_colors = [
+        vlag(val) for val in np.linspace(g_lo, g_hi, n_gradient)
+    ]
+    cmap = ListedColormap(
+        [solid_blue] + gradient_colors + [solid_red],
+        name="pte_threshold",
+    )
     cmap.set_bad(color="lightgray")
     return cmap
+
+
+def make_pte_norm(low=0.05, high=0.95, n_gradient=PTE_GRADIENT_LEVELS):
+    """Create exact threshold normalization for PTE heatmaps."""
+    boundaries = np.concatenate((
+        [0.0],
+        np.linspace(low, high, n_gradient + 1),
+        [1.0],
+    ))
+    return BoundaryNorm(boundaries, ncolors=n_gradient + 2, clip=True)
+
+
+def format_pte_colorbar(cbar):
+    """Apply consistent threshold-focused styling to PTE colorbars."""
+    cbar.set_ticks(PTE_COLORBAR_TICKS)
+    cbar.set_ticklabels(PTE_COLORBAR_TICKLABELS)
+    cbar.minorticks_off()
+    if cbar.solids is not None:
+        cbar.solids.set_edgecolor("face")
+        cbar.solids.set_linewidth(0.0)
 
 
 def compute_chi2_pte(data, covariance, n_samples=None):
@@ -106,6 +113,92 @@ def compute_chi2_pte(data, covariance, n_samples=None):
         chi2 *= hartlap_factor
     pte = stats.chi2.sf(chi2, dof)
     return chi2, pte, dof
+
+
+def get_powspace_bin_edges(ell_eff, lmin=8, lmax=2048, power=0.5):
+    """Reconstruct NaMaster powspace bin edges from effective ells.
+
+    Reproduces the binning logic in CosmologyValidation.get_namaster_bin():
+    edges are placed at ell^power linspace, then each multipole is assigned
+    to a bin via np.digitize.
+
+    Parameters
+    ----------
+    ell_eff : array_like
+        Effective (mean) ell per bin, as stored in pseudo-Cl FITS files.
+    lmin, lmax : int
+        Multipole range used in the NaMaster binning.
+    power : float
+        Exponent for power-law spacing (0.5 = sqrt).
+
+    Returns
+    -------
+    ell_low : ndarray
+        Lower multipole edge (inclusive) for each bin.
+    ell_high : ndarray
+        Upper multipole edge (inclusive) for each bin.
+    """
+    n_ell_bins = len(ell_eff)
+    ells = np.arange(lmin, lmax + 1)
+    start = np.power(lmin, power)
+    end = np.power(lmax, power)
+    bins_ell = np.power(
+        np.linspace(start, end, n_ell_bins + 1), 1 / power
+    )
+    bpws = np.digitize(ells.astype(float), bins_ell) - 1
+    bpws[0] = 0
+    bpws[-1] = n_ell_bins - 1
+
+    ell_low = np.array([ells[bpws == i][0] for i in range(n_ell_bins)])
+    ell_high = np.array([ells[bpws == i][-1] for i in range(n_ell_bins)])
+    return ell_low, ell_high
+
+
+def ell_bin_mask(ell_eff, ell_min, ell_max, **kwargs):
+    """Return boolean mask selecting bins fully within [ell_min, ell_max].
+
+    A bin is included only if its lower edge >= ell_min AND its upper
+    edge <= ell_max.
+
+    Parameters
+    ----------
+    ell_eff : array_like
+        Effective ell per bin.
+    ell_min, ell_max : float
+        Scale cut boundaries.
+    **kwargs
+        Passed to get_powspace_bin_edges.
+
+    Returns
+    -------
+    mask : ndarray of bool
+    """
+    ell_low, ell_high = get_powspace_bin_edges(ell_eff, **kwargs)
+    return (ell_low >= ell_min) & (ell_high <= ell_max)
+
+
+def ell_bin_index(ell_eff, ell_min, ell_max, **kwargs):
+    """Return (i_min, i_max) indices of first/last bins fully within cut.
+
+    Semantics match the PTE matrix convention: pte_matrix[i_min, i_max]
+    uses slice(i_min, i_max + 1), so i_max is inclusive.
+
+    Parameters
+    ----------
+    ell_eff : array_like
+        Effective ell per bin.
+    ell_min, ell_max : float
+        Scale cut boundaries.
+    **kwargs
+        Passed to get_powspace_bin_edges.
+
+    Returns
+    -------
+    i_min, i_max : int
+    """
+    mask = ell_bin_mask(ell_eff, ell_min, ell_max, **kwargs)
+    indices = np.where(mask)[0]
+    return int(indices[0]), int(indices[-1])
 
 
 class SquareRootScale(mscale.ScaleBase):

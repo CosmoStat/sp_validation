@@ -105,7 +105,7 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     ax.axhline(0, color="black", linewidth=0.8, alpha=0.6)
     ax.axvspan(0.5, 6.5, color="0.95", alpha=0.5, zorder=0)
     ax.set_ylabel(r"$B_n / \sigma_n$")
-    ax.set_xlabel("COSEBIS mode $n$")
+    ax.set_xlabel("COSEBI mode $n$")
     ax.set_xlim(0.5, nmodes + 0.5)
     ax.set_xticks(np.arange(1, nmodes + 1))
     ax.set_xticklabels(
@@ -115,7 +115,7 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     ax.tick_params(axis="both", width=0.5, length=3)
 
     if title:
-        ax.set_title(f"COSEBIS B-modes ({title})")
+        ax.set_title(f"COSEBI B-modes ({title})")
 
     # Compute y-limits from data
     all_y = []

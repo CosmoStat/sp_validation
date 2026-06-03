@@ -6,7 +6,7 @@
 # or bypass the MCM — these rules run the full pipeline on mock catalogs.
 
 GLASS_MOCK_DIR = "/n09data/guerrini/glass_mock_v1.4.6/results"
-GLASS_MOCK_IDS = [f"{i:05d}" for i in range(1, 6)]
+GLASS_MOCK_IDS = [f"{i:05d}" for i in range(1, 101)]
 MOCK_RESULTS = "results/glass_mock"
 
 wildcard_constraints:
@@ -27,10 +27,10 @@ rule glass_mock_xi_fine:
         min_sep=0.5,
         max_sep=500.0,
         nbins=1000,
-    threads: 48
+    threads: 24
     resources:
-        mem_mb=30000,
-        runtime=120,
+        mem_mb=20000,
+        runtime=180,
     script:
         "../scripts/run_glass_mock_2pcf.py"
 
@@ -86,7 +86,56 @@ rule glass_mock_validation:
         rules.glass_mock_all_pseudo_cl.input,
 
 
+rule mock_cosebis_scatter:
+    """Scatter: compute COSEBIS E_n/B_n for one GLASS mock.
+
+    Reads fine-binned ξ±, applies scale cuts, computes COSEBIS modes.
+    Byte-order conversion for numba compatibility handled internally.
+    """
+    input:
+        xi=f"{MOCK_RESULTS}/gg_glass_mock_{{mock_id}}_nbins=1000.fits",
+    params:
+        nmodes=config["fiducial"]["nmodes"],
+        theta_min=config["cosebis"]["theta_min"],
+        theta_max=config["cosebis"]["theta_max"],
+    output:
+        cosebis=f"{MOCK_RESULTS}/cosebis_glass_mock_{{mock_id}}.npz",
+    resources:
+        runtime=30,
+    script:
+        "../scripts/mock_cosebis_scatter.py"
+
+
+rule mock_cosebis_bias_test:
+    """Gather: 25-mock COSEBIS bias test figure + evidence.
+
+    Collects per-mock COSEBIS from scatter jobs, propagates CosmoCov ξ±
+    covariance to COSEBIS space, tests mean B_n = 0 at σ/√N precision.
+    """
+    input:
+        cosebis=expand(
+            f"{MOCK_RESULTS}/cosebis_glass_mock_{{mock_id}}.npz",
+            mock_id=GLASS_MOCK_IDS,
+        ),
+        xi_ref=f"{MOCK_RESULTS}/gg_glass_mock_00001_nbins=1000.fits",
+        cov=str(
+            Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance")
+            / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked"
+            / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked_processed.txt"
+        ),
+    params:
+        nmodes=config["fiducial"]["nmodes"],
+        theta_min=config["cosebis"]["theta_min"],
+        theta_max=config["cosebis"]["theta_max"],
+    output:
+        figure="results/tapestry/mock_cosebis_bias_test/figure.png",
+        evidence="results/tapestry/mock_cosebis_bias_test/evidence.json",
+    script:
+        "../scripts/mock_cosebis_bias_test.py"
+
+
 localrules:
     glass_mock_all_xi,
     glass_mock_all_pseudo_cl,
     glass_mock_validation,
+    mock_cosebis_bias_test,

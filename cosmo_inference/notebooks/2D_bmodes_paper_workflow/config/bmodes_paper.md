@@ -1,6 +1,6 @@
 # B-modes Paper
 
-Paper III (Daley et al.) — B-mode validation for UNIONS cosmic shear.
+The B-modes paper (Daley et al.) — B-mode validation for UNIONS cosmic shear.
 
 Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [pure_eb_version_comparison](pure_eb_version_comparison.md), [cosebis_version_comparison](cosebis_version_comparison.md) (incl. `paper_stacked` output), [cosebis_data_vector](cosebis_data_vector.md), [cl_data_vector](cl_data_vector.md), [cl_version_comparison](cl_version_comparison.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md), [bb_covariance_blind_independence](bb_covariance_blind_independence.md), [covariance_blind_consistency](covariance_blind_consistency.md)
 
@@ -8,7 +8,7 @@ Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](p
 
 Three statistics, multiple catalog versions (from `config.versions`), one question: are B-modes consistent with noise?
 
-Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper shows the work — methodology, version comparison, scale cut selection.
+The config-space paper (Goh et al.) reports the answer for the fiducial catalog. This paper shows the work — methodology, version comparison, scale cut selection.
 
 ## Figure Mapping
 
