@@ -29,6 +29,7 @@ matplotlib.use("agg")
 import matplotlib.pylab as plt
 import healsparse as hsp
 
+from cs_util.plots import FootprintPlotter
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import cosmo_val
 # -
@@ -92,7 +93,7 @@ for label in paths:
 map_comb = cosmo_val.hsp_map_logical_or(hsp_maps, verbose=obj._params["verbose"])
 
 # +
-fp = cosmo_val.FootprintPlotter()
+fp = FootprintPlotter()
 nside = 512
 
 for idx, label in enumerate(paths):

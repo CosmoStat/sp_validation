@@ -75,7 +75,7 @@ docs = [
 develop = ["sp_validation[test,docs]"]
 
 [tool.pytest.ini_options]
-testpaths = ["sp_validation"]
+testpaths = ["src/sp_validation/tests"]
 addopts = [
     "--verbose",
     "--cov=sp_validation",

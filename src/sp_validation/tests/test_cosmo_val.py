@@ -97,6 +97,7 @@ class TestCosmologyValidation:
         }
         return params, base_version
 
+    @pytest.mark.slow
     def test_additive_bias_base_columns(self, base_config):
         """Test additive bias calculation using base ellipticity columns.
 
@@ -132,6 +133,7 @@ class TestCosmologyValidation:
         assert isinstance(cv.c1[version], float)
         assert isinstance(cv.c2[version], float)
 
+    @pytest.mark.slow
     def test_additive_bias_leak_corrected_columns(self, base_config):
         """Test additive bias calculation using leak-corrected columns.
 
@@ -187,6 +189,7 @@ class TestCosmologyValidation:
         candidate_path = Path(candidate)
         return candidate_path if candidate_path.is_absolute() else base / candidate_path
 
+    @pytest.mark.slow
     def test_catalog_paths_exist(self, base_config):
         """Verify that catalog paths for active versions exist on disk.
 
@@ -205,7 +208,15 @@ class TestCosmologyValidation:
 
         config = yaml.safe_load(Path(catalog_config_path).read_text())
 
-        missing = defaultdict(set)
+        # This integrity check needs the real catalogs on disk (cluster only).
+        # Skip where the data directories aren't mounted — e.g. CI running
+        # inside the docker image, which has cat_config.yaml but no catalogs.
+        if not any(
+            Path(entry["subdir"]).is_dir()
+            for _, entry in self._iter_catalog_entries(config)
+        ):
+            pytest.skip("catalog data directories not present (not on cluster)")
+
         working = []
         nonfunctional = defaultdict(set)
 

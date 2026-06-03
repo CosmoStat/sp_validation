@@ -19,7 +19,6 @@ import skyproj
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from cs_util import plots
-from cs_util.plots import FootprintPlotter
 from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation.plot_style import *
