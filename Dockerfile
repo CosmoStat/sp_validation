@@ -12,10 +12,13 @@ RUN apt-get update -y --quiet --fix-missing && \
         npm \
         tmux
 
-RUN pip install --no-cache-dir \
+# The base image runs out of a uv venv (VIRTUAL_ENV=/app/.venv, where shapepipe
+# lives); bare `pip` falls through to /usr/local and installs into the wrong
+# interpreter. Use `uv pip` so packages land in the venv that `python` resolves to.
+RUN uv pip install --no-cache-dir \
     snakemake
 
 WORKDIR /sp_validation
 COPY . /sp_validation
 
-RUN pip install --no-cache-dir -e .
+RUN uv pip install --no-cache-dir -e .
