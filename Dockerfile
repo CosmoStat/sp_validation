@@ -4,6 +4,10 @@ FROM ghcr.io/cosmostat/shapepipe:develop
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
     apt-get install -y --quiet \
+        autoconf \
+        automake \
+        libtool \
+        pkg-config \
         htop \
         npm \
         tmux
