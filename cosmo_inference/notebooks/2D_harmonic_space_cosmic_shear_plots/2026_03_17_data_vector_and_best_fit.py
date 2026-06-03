@@ -154,7 +154,7 @@ for i, root in enumerate(root_to_plot):
 
     # Get the bestfit parameters
     best_fit = cp.extract_best_fit_params(chain, best_fit_method=best_fit_method)
-    
+    print(best_fit['S_8'])
     # Get the datavector for the best fit
     if analysis_type_i == "harmonic":
         cp.compute_best_fit(
