@@ -13,19 +13,19 @@ These steps are carried out as follows:
 
 ### 1. Extract information, run basic diagnostics, create catalogues.
 
-This is performed (currently both for pre- and post-v1.4.1 versions) with the series of notebooks
-in `sp_validation/notebooks` or the `ipython` script `validation.py` generated thereof.
+This is performed (version > v1.4.1, < v2.0) with the python script `extract_info.py` in `sp_validation/notebooks`.
 
-This script creates plots, diagnostics, and three shear catalogue FITS files:
+This script creates three shear catalogues in FITS format:
 - _Basic_ catalogue containing
-  positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, patch ID. Masking and galaxy selection are applied.
+  positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, patch ID. Masking and galaxy selection are applied.  
 - _Extended_ catalogue containing **in addition**
   uncalibrated shapes inverse-variance weights, shear response matrices, SNR, flux, size, PSF quantities. Masking and galaxy selection are applied.  
 - _Comprehensive_ catalogue containing **in addition**
   metacal information (measured sheared quantities), mask information (`shapepipe` pre-processing). Masking and galaxy selection is not applied.
-  This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.
+  This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.  
+  This is the main output catalogue that will be processed further.
 
-This step is carried out per patch.
+This step is carried out per patch. Parameters have to be set via the python configuration file `params.py`.
 
 ### 2. Merge catalogues
 
@@ -39,7 +39,9 @@ Code for this step is developed in the library file `run_calibrate_joint.py`.
 ### 4. Mask, select, and calibrate
 
 The steps of masking, galaxy sample selection, and calibration are carried out jointly using the notebook
-`calibrate_comprehensive_cat.ipynb`.
+`calibrate_comprehensive_cat.py`.
+
+Masking parameters have to be set via a configuration file `config_mask.yaml`. Examples can be found in `sp_validation/config/calibration`.
 
 ---
 
