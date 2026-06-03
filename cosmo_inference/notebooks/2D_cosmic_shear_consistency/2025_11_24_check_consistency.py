@@ -546,7 +546,7 @@ sns.histplot(
     kde=False,
     bins=bin_edges,
     stat='density',
-    label="Difference (Config - Harm)",
+    label=r"$\Delta S_8$ in \texttt{GLASS} mocks",
     color='blue',
     alpha=0.3
 )
@@ -564,7 +564,7 @@ else:
 
 print(f"P-value for delta S8 = {delta_S8_analysis}: {p_value}")
 
-plt.axvline(delta_S8_analysis, color="red", linestyle="--", label="Difference in the analysis")
+plt.axvline(delta_S8_analysis, color="red", linestyle="--", label=r"$\Delta S_8$ in the analysis")
 
 mantissa, exponent = f"{p_value:.1e}".split("e")
 exponent = int(exponent)
@@ -605,7 +605,7 @@ plt.text(
     color='black',
     fontsize=12,
 )
-plt.xlabel(r"$\Delta S_8$ estimated from mocks")
+plt.xlabel(r"$\Delta S_8 =S_{8, {\rm config}} - S_{8, {\rm harm}}$")
 plt.legend(fontsize=11, framealpha=1.0)
 plt.savefig(f"{output_fig_path}/S8_difference_config_harm_{best_fit_method}.png", dpi=300)
 #Save PDF

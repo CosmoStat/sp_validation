@@ -337,7 +337,7 @@ p_value = np.sum(counts[bin_index:]) * np.diff(bin_edges)[0]
 
 print(f"P-value: {p_value}")
 
-plt.axvline(chi2_fiducial, color='red', label=r'$\chi^2$ of the fiducial')
+plt.axvline(chi2_fiducial, color='red', ls='--', label=r'$\chi^2$ of the fiducial')
 
 mantissa, exponent = np.frexp(p_value)
 pte_string = rf"${{\rm PTE}} = {mantissa:.2f} \times 10^{{{exponent}}}$" if exponent != 0 else rf"${{\rm PTE}} = {p_value:.2f}$"

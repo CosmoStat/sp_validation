@@ -309,12 +309,12 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
             theta_max=gg.right_edges[inds][-1],
             N_max=nmodes
         )
-        En, Bn = cosebis.cosebis_from_xipm(theta_cut, dtheta_cut, xip_cut, xim_cut)
+        En, Bn = cosebis.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
 
         # Extract covariance and transform to COSEBIs space
         cov_inds = np.concatenate([inds, inds + nbins])
         cov_cosebis = cosebis.cosebis_covariance_from_xipm_covariance(
-            theta_cut, dtheta_cut, cov_xipm[cov_inds[:, None], cov_inds]
+            theta_cut, cov_xipm[cov_inds[:, None], cov_inds]
         )
         cov_E, cov_B = cov_cosebis[:nmodes, :nmodes], cov_cosebis[nmodes:, nmodes:]
         chi2_E, chi2_B = [

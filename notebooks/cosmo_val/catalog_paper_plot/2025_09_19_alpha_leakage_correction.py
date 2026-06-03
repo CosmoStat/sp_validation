@@ -26,7 +26,7 @@ sns.set_palette("husl")
 if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
-path_cat = "/n17data/sguerrini/unions_shapepipe_cut_struc_2024_v1.4.5_rerun.fits"
+path_cat = "/n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits"
 
 num_bins = 20
 # %%
@@ -130,11 +130,12 @@ vmin, vmax = np.min(alpha), np.max(alpha)
 vmin, vmax = -np.max([np.abs(vmin), np.abs(vmax)]), np.max([np.abs(vmin), np.abs(vmax)])
 
 cset1 = ax.scatter(SNR_bins_val, R_bins_val, c=alpha, cmap='coolwarm', vmin=vmin, vmax=vmax)
-ax.set_xlabel("SNR")
-ax.set_ylabel(r"$\mathcal{R}$")
+ax.set_xlabel("SNR", fontsize=15)
+ax.set_ylabel(r"$\mathcal{R}$", fontsize=15)
 ax.set_xscale('log')
 ax.set_ylim(max(R_bins_val)+0.01, min(R_bins_val)-0.01)
 cbar = fig.colorbar(cset1, ax=ax)
+cbar.set_label(r"$\alpha$", fontsize=15)
 
 plt.savefig("./plots/alpha_leakage_bin.png", dpi=300)
 plt.show()

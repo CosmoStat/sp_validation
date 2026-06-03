@@ -16,10 +16,10 @@ warnings.filterwarnings("ignore", category=Warning)
 
 sys.path.append(os.path.abspath('/home/guerrini/UNIONS_forward_model'))
 
-out_dir = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463_C'
+out_dir = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463_A'
 setup_file = out_dir +'/precomputed_setup.npz'
 wsp_file = out_dir+'/wsp_harmony_covariance.fits'
-path_redshift_distr = '/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_C.txt'
+path_redshift_distr = '/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt'
 
 def get_fiducial(nside, lmax, redshift_distr):
 

@@ -60,7 +60,7 @@ g.settings.legend_fontsize = 40
 root_dir = "/n09data/guerrini/output_chains"
 
 # THE BLIND TO USE FOR THE PLOTS
-blind = "A" # Options are "A", "B", or "C"
+blind = "B" # Options are "A", "B", or "C"
 catalog_version = "SP_v1.4.6.3"
 fiducial_root_cell = f"SP_v1.4.6.3_leak_corr_{blind}"
 label_fiducial_cell = r"UNIONS $C_{\ell}$"
