@@ -140,4 +140,4 @@ intersphinx_mapping = {
 
 # -- BibTeX Setting  ----------------------------------------------
 
-bibtex_bibfiles = ['refs.bib', 'my_ref.bib']
+bibtex_bibfiles = ['refs.bib']

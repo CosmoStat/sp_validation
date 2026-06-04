@@ -1,0 +1,60 @@
+name: Build and deploy API documentation
+
+# Build the Sphinx docs inside the published image — which already carries the
+# full scientific stack autodoc must import — installing the *checked-out*
+# package on top so the docs reflect the code under review, not the code baked
+# into the image.
+#
+#   pull_request → build only, as a check (no deploy)
+#   push: develop → build + deploy to GitHub Pages
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  docs:
+    name: Build and deploy API documentation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+
+    container:
+      image: ghcr.io/cosmostat/sp_validation:develop
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install documentation dependencies
+        run: uv pip install --no-cache-dir '.[docs]'
+
+      # Builds on every event; a failing build fails the PR check. Deploy is
+      # gated to develop pushes below.
+      - name: Build API documentation
+        run: |
+          sphinx-apidoc -t docs/_templates -feTMo docs/source src/sp_validation
+          sphinx-build -b html docs/source docs/_build
+
+      # Upload the rendered HTML so it can be downloaded from the run summary —
+      # the only way to preview the docs on a PR, where the deploy is skipped.
+      - name: Upload built docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: docs/_build
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/_build
