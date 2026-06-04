@@ -37,7 +37,7 @@ dat:
 
   # Magnitude range
   - col_name: mag
-    label: mag range
+    label: r
     kind: range
     value: [15, 30]
 

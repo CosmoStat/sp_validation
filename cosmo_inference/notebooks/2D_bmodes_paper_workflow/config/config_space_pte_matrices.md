@@ -6,15 +6,13 @@ Plotting: [2D Plots](2d_plots.md)
 
 ## Claim
 
-Fiducial angular scale cuts are justified by PTE heatmaps across all (theta_min, theta_max) combinations. The main text presents a 1x3 composite for the fiducial version showing xi+^B, xi-^B, and COSEBIS B_n. The appendix presents a 3x3 composite showing all catalog versions (v1.4.5, v1.4.6, v1.4.8) with each of the three B-mode statistics. Rows represent versions, columns represent statistics.
+Fiducial angular scale cuts are justified by PTE heatmaps across all (theta_min, theta_max) combinations. The main text presents a 1x3 composite for the fiducial version showing xi+^B, xi-^B, and COSEBIS B_n. The appendix presents an Nx3 composite showing all catalog versions (from `config.versions`) with each of the three B-mode statistics. Rows represent versions (labeled via `config.plotting.version_labels`), columns represent statistics.
 
-Scale cuts: [12, 83] arcmin for both xi+ and xi-, matching Paper IV (Goh et al.). COSEBIS uses the same unified range.
+Scale cuts from `fiducial.fiducial_xip_scale_cut` and `fiducial.fiducial_xim_scale_cut`. COSEBIS uses the same unified range.
 
 ## Blind Handling
 
-Data vectors (ξ+^B, ξ-^B, COSEBIS B_n) are identical across blinds A, B, C. Covariances vary with blind via n(z)-dependent theoretical predictions.
-
-**Report minimum PTE across blinds** — the most conservative value. This ensures reported PTEs remain valid regardless of which blind is unblinded.
+Uses fiducial blind from `config["fiducial"]["blind"]`. Data vectors (ξ+^B, ξ-^B, COSEBIS B_n) are identical across blinds; covariances vary with blind via n(z)-dependent theoretical predictions.
 
 ## Config References
 
@@ -47,11 +45,11 @@ Per-version statistics for each statistic:
   - Y-axis label on leftmost panel
   - Single shared colorbar on right
 
-- `figure_appendix.png` — 3x3 composite for all versions (appendix)
-  - Rows: v1.4.5 (Initial), v1.4.6 (Fiducial), v1.4.8 (Masked)
+- `figure_appendix.png` — Nx3 composite for all versions (appendix)
+  - Rows: All versions from `config.versions` with labels from `config.plotting.version_labels`
   - Columns: xi+^B, xi-^B, COSEBIS B_n
   - Y-axis label on each row's leftmost panel
   - Version labels on right side of each row
   - Single shared colorbar on right
 
-Each panel uses vlag colormap [0, 1] with contours at 0.05/0.95. Fiducial scale cut marked with hatched rectangle.
+Each panel uses a discrete PTE colormap (`make_pte_colormap` from `plotting_utils.py`) with solid blue below 0.05, solid red above 0.95, and a gradient between. No contour overlays. Fiducial scale cut marked with a plain black-edged rectangle (no hatching).

@@ -348,6 +348,10 @@ class CosmologyValidation:
 
         os.makedirs(cc["paths"]["output"], exist_ok=True)
 
+        # B-mode results storage for summarize_bmodes()
+        self._pure_eb_results = {}
+        self._cosebis_results = {}
+
     def get_redshift(self, version):
         """Load redshift distribution for a catalog version.
 
@@ -720,7 +724,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            if not ('mask' in self.cc[ver]['shear'].keys()):
+            if 'mask' not in self.cc[ver]:
                 print("Mask not found in config file, calculating area from binned catalog")
                 area[ver] = self.calculate_area_from_binned_catalog(ver)
             else:
@@ -1335,7 +1339,7 @@ class CosmologyValidation:
             self.print_start("Computing ellipticity histograms:")
 
             fig, axs = plt.subplots(1, 2, figsize=(22, 7))
-            bins = np.linspace(-1.5, 1.5, nbins + 1)
+            bins = np.linspace(-1.1, 1.1, nbins + 1)
             for ver in self.versions:
                 self.print_magenta(ver)
                 R = self.cc[ver]["shear"]["R"]
@@ -1351,7 +1355,7 @@ class CosmologyValidation:
                     axs[0].hist(
                         e1,
                         bins=bins,
-                        density=False,
+                        density=True,
                         histtype="step",
                         weights=w,
                         label=ver,
@@ -1360,7 +1364,7 @@ class CosmologyValidation:
                     axs[1].hist(
                         e2,
                         bins=bins,
-                        density=False,
+                        density=True,
                         histtype="step",
                         weights=w,
                         label=ver,
@@ -1369,7 +1373,7 @@ class CosmologyValidation:
 
             for idx in (0, 1):
                 axs[idx].set_xlabel(f"$e_{idx}$")
-                axs[idx].set_ylabel("frequency")
+                axs[idx].set_ylabel("normalised count")
                 axs[idx].legend()
                 axs[idx].set_xlim([-1.5, 1.5])
             cs_plots.savefig(out_path, close_fig=False)
@@ -1665,7 +1669,7 @@ class CosmologyValidation:
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
                 self.cat_ggs[ver].xip,
                 yerr=np.sqrt(self.cat_ggs[ver].varxip),
                 label=ver,
@@ -1688,7 +1692,7 @@ class CosmologyValidation:
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
                 self.cat_ggs[ver].xim,
                 yerr=np.sqrt(self.cat_ggs[ver].varxim),
                 label=ver,
@@ -1802,8 +1806,8 @@ class CosmologyValidation:
 
         fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
 
-
         for idx, ver in enumerate(self.versions):
+            self.calculate_2pcf(ver)
             xi_psf_sys = self.xi_psf_sys[ver]
             gg = self.cat_ggs[ver]
 
@@ -1971,7 +1975,7 @@ class CosmologyValidation:
                 labels=labels,
                 xlog=True,
                 xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=[-1e-6, 2e-5],
+                ylim=[-2e-6, 5e-6],
                 colors=colors,
                 linestyles=linestyles,
                 shift_x=True,
@@ -2004,7 +2008,7 @@ class CosmologyValidation:
                 xlog=True,
                 ylog=True,
                 xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=[1e-9, 3e-5],
+                ylim=[1e-8, 1e-5],
                 colors=colors,
                 linestyles=linestyles,
                 shift_x=True,
@@ -2220,6 +2224,7 @@ class CosmologyValidation:
             plot_integration_vs_reporting,
             plot_pte_2d_heatmaps,
             plot_pure_eb_correlations,
+            save_pure_eb_results,
         )
 
         # Use instance defaults for unspecified parameters
@@ -2328,6 +2333,10 @@ class CosmologyValidation:
                 version
             )
 
+            # Save data products and store on instance
+            save_pure_eb_results(version_results, out_stub + "_data.npz")
+            self._pure_eb_results[version] = version_results
+
     def calculate_cosebis(
         self,
         version,
@@ -2337,6 +2346,7 @@ class CosmologyValidation:
         npatch=None,
         nmodes=10,
         cov_path=None,
+        scale_cuts=None,
         evaluate_all_scale_cuts=False,
         min_sep=None,
         max_sep=None,
@@ -2370,10 +2380,13 @@ class CosmologyValidation:
         cov_path : str, optional
             Path to theoretical covariance matrix. When provided, enables analytic
             covariance calculation.
+        scale_cuts : list of tuples, optional
+            Explicit list of (min_theta, max_theta) scale cuts to evaluate.
+            Overrides evaluate_all_scale_cuts when provided.
         evaluate_all_scale_cuts : bool, optional
             If True, evaluates COSEBIs for all possible scale cut combinations
-            using the reporting binning parameters. If False, uses the full
-            integration range as a single scale cut. Defaults to False.
+            using the reporting binning parameters. Ignored when scale_cuts is
+            provided. Defaults to False.
         min_sep : float, optional
             Minimum separation for reporting binning (only used when
             evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["min_sep"].
@@ -2387,14 +2400,10 @@ class CosmologyValidation:
         Returns
         -------
         dict
-            When evaluate_all_scale_cuts=False: Dictionary containing COSEBIs results
-            with E/B modes, covariances, and statistics for the full range.
-            When evaluate_all_scale_cuts=True: Dictionary with scale cut tuples as
-            keys and results dictionaries as values, containing results for all
-            possible scale cut combinations.
-
-        Notes
-        -----
+            When a single scale cut: Dictionary containing COSEBIs results
+            with E/B modes, covariances, and statistics.
+            When multiple scale cuts: Dictionary with scale cut tuples as
+            keys and results dictionaries as values.
         """
         from .b_modes import calculate_cosebis
 
@@ -2418,7 +2427,13 @@ class CosmologyValidation:
         )
         gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
 
-        if evaluate_all_scale_cuts:
+        if scale_cuts is not None:
+            # Explicit scale cuts provided
+            print(f"Evaluating {len(scale_cuts)} explicit scale cuts")
+            results = calculate_cosebis(
+                gg=gg, nmodes=nmodes, scale_cuts=scale_cuts, cov_path=cov_path
+            )
+        elif evaluate_all_scale_cuts:
             # Use reporting binning parameters or inherit from class config
             min_sep = min_sep or self.treecorr_config["min_sep"]
             max_sep = max_sep or self.treecorr_config["max_sep"]
@@ -2426,17 +2441,17 @@ class CosmologyValidation:
 
             # Generate scale cuts using np.geomspace (no TreeCorr needed)
             bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
-            scale_cuts = [
+            generated_cuts = [
                 (bin_edges[start], bin_edges[stop])
                 for start in range(nbins)
                 for stop in range(start+1, nbins+1)
             ]
 
-            print(f"Evaluating {len(scale_cuts)} scale cut combinations")
+            print(f"Evaluating {len(generated_cuts)} scale cut combinations")
 
             # Call b_modes function with scale cuts list
             results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=scale_cuts, cov_path=cov_path
+                gg=gg, nmodes=nmodes, scale_cuts=generated_cuts, cov_path=cov_path
             )
         else:
             # Single scale cut behavior: use full range
@@ -2454,7 +2469,8 @@ class CosmologyValidation:
         output_dir=None,
         min_sep_int=0.5, max_sep_int=500, nbins_int=1000,  # Integration binning
         npatch=None, nmodes=10, cov_path=None,
-        evaluate_all_scale_cuts=False,                     # New parameter
+        scale_cuts=None,                                   # Explicit scale cuts
+        evaluate_all_scale_cuts=False,                     # Grid-based scale cuts
         min_sep=None, max_sep=None, nbins=None,           # Reporting binning
         fiducial_scale_cut=None,                          # For plotting reference
         results=None,
@@ -2482,32 +2498,26 @@ class CosmologyValidation:
         cov_path : str, optional
             Path to theoretical covariance matrix. When provided, analytic
             covariance is used.
+        scale_cuts : list of tuples, optional
+            Explicit list of (min_theta, max_theta) scale cuts to evaluate.
+            Overrides evaluate_all_scale_cuts when provided.
         evaluate_all_scale_cuts : bool
-            Whether to evaluate all scale cuts (default: False)
+            Whether to evaluate all scale cuts from reporting binning grid
+            (default: False). Ignored when scale_cuts is provided.
         min_sep, max_sep, nbins : float, float, int, optional
             Reporting binning parameters. Only used when evaluate_all_scale_cuts=True.
         fiducial_scale_cut : tuple, optional
-            (min_scale, max_scale) reference scale cut for plotting when
-            evaluate_all_scale_cuts=True
+            (min_scale, max_scale) reference scale cut for plotting
         results : dict, optional
             Precalculated results to avoid recomputation. If None (default),
             results will be calculated using calculate_cosebis.
-
-        Notes
-        -----
-        This function orchestrates the full COSEBIs analysis workflow:
-        - Uses instance configuration as defaults for unspecified parameters
-        - Calculates COSEBIs for the version using the updated parameter interface
-        - Generates mode plots and covariance visualization
-        - Output files are named with analysis parameters for reproducibility
-        - When evaluate_all_scale_cuts=True, results contain multiple scale cuts;
-          fiducial_scale_cut determines which one is used for plotting
         """
         from .b_modes import (
             find_conservative_scale_cut_key,
             plot_cosebis_covariance_matrix,
             plot_cosebis_modes,
             plot_cosebis_scale_cut_heatmap,
+            save_cosebis_results,
         )
 
         # Use instance defaults if not specified
@@ -2529,9 +2539,6 @@ class CosmologyValidation:
         if fiducial_scale_cut is not None:
             out_stub += f"_scalecut={fiducial_scale_cut[0]}-{fiducial_scale_cut[1]}"
 
-        # if evaluate_all_scale_cuts:
-        #     out_stub += f"_allcuts_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}"
-
         # Get or calculate results for this version
         if results is None:
             # Calculate COSEBIs using instance method
@@ -2543,6 +2550,7 @@ class CosmologyValidation:
                 npatch=npatch,
                 nmodes=nmodes,
                 cov_path=cov_path,
+                scale_cuts=scale_cuts,
                 evaluate_all_scale_cuts=evaluate_all_scale_cuts,
                 min_sep=min_sep,
                 max_sep=max_sep,
@@ -2604,26 +2612,55 @@ class CosmologyValidation:
                 fiducial_scale_cut=fiducial_scale_cut
             )
 
+        # Save data products and store on instance
+        save_cosebis_results(results, out_stub + "_data.npz", fiducial_scale_cut)
+        self._cosebis_results[version] = results
+
 
     def get_namaster_bin(self, lmin, lmax, b_lmax):
+        """Build NaMaster binning object.
+
+        Parameters
+        ----------
+        lmin, lmax : int
+            Multipole range.
+        b_lmax : int
+            Maximum multipole for the NmtBin object.
+
+        Returns
+        -------
+        nmt.NmtBin
+        """
+        ells = np.arange(lmin, lmax + 1)
 
         if self.binning == 'linear':
-            # To be implemented correctly
-            step = 10
-            b = nmt.NmtBin.from_nside_linear(self.nside, step)
+            bpws = (ells - lmin) // self.ell_step
+            bpws = np.minimum(bpws, bpws[-1])
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        elif self.binning == 'logspace':
+            # Start geomspace at ell_min_log (>= lmin) to avoid
+            # sub-multipole bins at low ell that destabilize the MCM.
+            # All ell below ell_min_log go into bin 0 as padding.
+            ell_min_log = max(lmin, 50)
+            bins_ell = np.geomspace(ell_min_log, lmax, self.n_ell_bins + 1)
+            bpws = np.digitize(ells.astype(float), bins_ell) - 1
+            bpws = np.clip(bpws, 0, self.n_ell_bins - 1)
+            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
         elif self.binning == 'powspace':
-            ells = np.arange(lmin, lmax+1)
-
             start = np.power(lmin, self.power)
             end = np.power(lmax, self.power)
-            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-            #Get bandpowers
+            bins_ell = np.power(
+                np.linspace(start, end, self.n_ell_bins + 1), 1 / self.power
+            )
             bpws = np.digitize(ells.astype(float), bins_ell) - 1
             bpws[0] = 0
-            bpws[-1] = self.n_ell_bins-1
-
+            bpws[-1] = self.n_ell_bins - 1
             b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        else:
+            raise ValueError(
+                f"Unknown binning '{self.binning}'. "
+                "Choose from 'linear', 'logspace', 'powspace'."
+            )
 
         return b
 
@@ -2714,24 +2751,7 @@ class CosmologyValidation:
                 lmax = 2*self.nside
                 b_lmax = lmax - 1
 
-                ells = np.arange(lmin, lmax+1)
-
-                if self.binning == 'linear':
-                    # Linear bands of width ell_step, respecting actual lmax
-                    bpws = (ells - lmin) // self.ell_step
-                    bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
-                    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-                elif self.binning == 'powspace':
-                    start = np.power(lmin, self.power)
-                    end = np.power(lmax, self.power)
-                    bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-                    #Get bandpowers
-                    bpws = np.digitize(ells.astype(float), bins_ell) - 1
-                    bpws[0] = 0
-                    bpws[-1] = self.n_ell_bins-1
-
-                    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+                b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
                 #Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
@@ -3168,24 +3188,7 @@ class CosmologyValidation:
         lmax = 2*self.nside
         b_lmax = lmax - 1
 
-        ells = np.arange(lmin, lmax+1)
-
-        if self.binning == 'linear':
-            # Linear bands of width ell_step, respecting actual lmax
-            bpws = (ells - lmin) // self.ell_step
-            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-        elif self.binning == 'powspace':
-            start = np.power(lmin, self.power)
-            end = np.power(lmax, self.power)
-            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-            #Get bandpowers
-            bpws = np.digitize(ells.astype(float), bins_ell) - 1
-            bpws[0] = 0
-            bpws[-1] = self.n_ell_bins-1
-
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
         ell_eff = b.get_effective_ells()
 
@@ -3209,24 +3212,7 @@ class CosmologyValidation:
         lmax = 2*self.nside
         b_lmax = lmax - 1
 
-        ells = np.arange(lmin, lmax+1)
-
-        if self.binning == 'linear':
-            # Linear bands of width ell_step, respecting actual lmax
-            bpws = (ells - lmin) // self.ell_step
-            bpws = np.minimum(bpws, bpws[-1])  # Ensure last bin captures all
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-        elif self.binning == 'powspace':
-            start = np.power(lmin, self.power)
-            end = np.power(lmax, self.power)
-            bins_ell = np.power(np.linspace(start, end, self.n_ell_bins+1), 1/self.power)
-
-            #Get bandpowers
-            bpws = np.digitize(ells.astype(float), bins_ell) - 1
-            bpws[0] = 0
-            bpws[-1] = self.n_ell_bins-1
-
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+        b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
         ell_eff = b.get_effective_ells()
 
@@ -3429,3 +3415,136 @@ class CosmologyValidation:
         plt.suptitle('Pseudo-Cl BB (Gaussian covariance)')
         plt.legend()
         plt.savefig(out_path)
+
+        # Print C_l^BB PTE for each version and save BB data
+        from scipy import stats as sp_stats
+        print("\nC_l^BB PTE summary:")
+        for ver in self.versions:
+            cl_bb = self.pseudo_cls[ver]['pseudo_cl']["BB"]
+            cov_bb = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+            chi2_bb = float(cl_bb @ np.linalg.solve(cov_bb, cl_bb))
+            pte_bb = sp_stats.chi2.sf(chi2_bb, len(cl_bb))
+            print(
+                f"  {ver}: C_l^BB PTE = {pte_bb:.4f} "
+                f"(chi2/dof = {chi2_bb:.1f}/{len(cl_bb)})"
+            )
+
+            # Save BB data + covariance to .npz
+            ell = self.pseudo_cls[ver]['pseudo_cl']["ELL"]
+            bb_out = os.path.abspath(
+                f"{self.cc['paths']['output']}/{ver}_cell_bb_data.npz"
+            )
+            np.savez(
+                bb_out,
+                ell=ell, cl_bb=cl_bb, cov_bb=cov_bb,
+                chi2_bb=np.array(chi2_bb), pte_bb=np.array(pte_bb),
+            )
+            print(f"  Saved BB data to {bb_out}")
+
+    def summarize_bmodes(self, fiducial_scale_cut=(12, 83), versions=None):
+        """Print and return B-mode PTE summary across all statistics.
+
+        Collects PTEs from pure E/B, COSEBIs, and pseudo-Cl at the specified
+        fiducial scale cut. Statistics that haven't been computed show '--'.
+
+        Parameters
+        ----------
+        fiducial_scale_cut : tuple, optional
+            (min_theta, max_theta) for extracting PTEs (default: (12, 83)).
+        versions : list, optional
+            Versions to summarize. Uses self.versions if None.
+
+        Returns
+        -------
+        dict
+            ``{version: {statistic: pte_value, ...}, ...}``
+        """
+        from scipy import stats as sp_stats
+        from .b_modes import _get_pte_from_scale_cut, find_conservative_scale_cut_key
+
+        versions = versions or self.versions
+        summary = {}
+        cov_methods = set()
+
+        for ver in versions:
+            row = {}
+
+            # Pure E/B PTEs from stored results
+            if ver in self._pure_eb_results:
+                res = self._pure_eb_results[ver]
+                gg = res["gg"]
+                try:
+                    for stat in ("xip_B", "xim_B", "combined"):
+                        row[stat] = _get_pte_from_scale_cut(
+                            res["pte_matrices"][stat], gg, fiducial_scale_cut
+                        )
+                except (KeyError, RuntimeError):
+                    pass
+                if "eb_samples" in res:
+                    cov_methods.add("semi-analytic")
+                else:
+                    cov_methods.add(f"jackknife ({gg.npatch1} patches)")
+
+            # COSEBIs PTE from stored results
+            if ver in self._cosebis_results:
+                cosebis_res = self._cosebis_results[ver]
+                has_multi_scale_cuts = all(
+                    isinstance(k, tuple) for k in cosebis_res
+                )
+                if has_multi_scale_cuts:
+                    key = find_conservative_scale_cut_key(
+                        cosebis_res, fiducial_scale_cut
+                    )
+                    row["COSEBIS"] = cosebis_res[key]["pte_B"]
+                elif "pte_B" in cosebis_res:
+                    row["COSEBIS"] = cosebis_res["pte_B"]
+
+            # Pseudo-Cl BB PTE (_pseudo_cls is lazy; check existence without
+            # triggering computation)
+            if hasattr(self, "_pseudo_cls") and ver in self._pseudo_cls:
+                try:
+                    cl_bb = self.pseudo_cls[ver]['pseudo_cl']["BB"]
+                    cov_bb = self.pseudo_cls[ver]['cov']["COVAR_BB_BB"].data
+                    chi2_bb = float(cl_bb @ np.linalg.solve(cov_bb, cl_bb))
+                    row["C_l_BB"] = sp_stats.chi2.sf(chi2_bb, len(cl_bb))
+                    cov_methods.add("Gaussian (NaMaster)")
+                except (KeyError, AttributeError):
+                    pass
+
+            summary[ver] = row
+
+        # Print summary table
+        col_labels = {
+            "xip_B": r"xi+B",
+            "xim_B": r"xi-B",
+            "combined": "Combined",
+            "COSEBIS": "COSEBIS",
+            "C_l_BB": "C_l^BB",
+        }
+        stats_order = list(col_labels)
+
+        sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
+        sep = "\u2500" * 70
+        header = f"{'Version':<28s}" + "".join(
+            f"{label:>10s}" for label in col_labels.values()
+        )
+
+        print(f"\nB-mode summary {sc_label}")
+        print(sep)
+        print(header)
+        print(sep)
+
+        for ver in versions:
+            row = summary[ver]
+            cells = "".join(
+                f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}"
+                for s in stats_order
+            )
+            print(f"{ver:<28s}{cells}")
+
+        print(sep)
+        if cov_methods:
+            print(f"Covariance: {', '.join(sorted(cov_methods))}")
+        print()
+
+        return summary

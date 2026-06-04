@@ -1,123 +1,93 @@
 """Harmonic-space C_ell^BB version comparison.
 
-Claim: B-mode power spectra consistent with zero for v1.4.6 and v1.4.8,
-while v1.4.5 shows marginal tension.
-
+Compares B-mode power spectra across configured catalog versions.
 Visualizes C_ell^BB and C_ell^EB normalized by error bars (C_ell / sigma).
 Statistical PTEs reported separately in evidence.json.
 """
 
 import json
 import shutil
-import sys
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import matplotlib.scale as mscale
-import matplotlib.ticker as mticker
-import matplotlib.transforms as mtransforms
 import numpy as np
 import seaborn as sns
 from astropy.io import fits
-from scipy import stats
 
-
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
+from plotting_utils import (
+    ERRORBAR_DEFAULTS,
+    FIG_WIDTH_FULL,
+    MARKER_STYLES,
+    PAPER_MPLSTYLE,
+    compute_chi2_pte,
+    draw_normalized_boxes_ell_scale,
+    ell_bin_mask,
+    find_fiducial_index,
+    get_version_alpha,
+    version_label,
 )
-
-# Scale cuts from harmonic space paper (Guerrini et al.)
-ELL_MIN_CUT = 300
-ELL_MAX_CUT = 1600
+# Import to register SquareRootScale
+import plotting_utils  # noqa: F401
 
 
-# SquareRootScale for x-axis
-class SquareRootScale(mscale.ScaleBase):
-    name = "squareroot"
-
-    def __init__(self, axis, **kwargs):
-        mscale.ScaleBase.__init__(self, axis, **kwargs)
-
-    def set_default_locators_and_formatters(self, axis):
-        axis.set_major_locator(mticker.AutoLocator())
-        axis.set_major_formatter(mticker.ScalarFormatter(useMathText=True))
-        axis.set_minor_locator(mticker.NullLocator())
-        axis.set_minor_formatter(mticker.NullFormatter())
-
-    def limit_range_for_scale(self, vmin, vmax, minpos):
-        return max(0.0, vmin), vmax
-
-    class SquareRootTransform(mtransforms.Transform):
-        input_dims = 1
-        output_dims = 1
-        is_separable = True
-
-        def transform_non_affine(self, a):
-            return np.array(a) ** 0.5
-
-        def inverted(self):
-            return SquareRootScale.InvertedSquareRootTransform()
-
-    class InvertedSquareRootTransform(mtransforms.Transform):
-        input_dims = 1
-        output_dims = 1
-        is_separable = True
-
-        def transform_non_affine(self, a):
-            return np.array(a) ** 2
-
-        def inverted(self):
-            return SquareRootScale.SquareRootTransform()
-
-    def get_transform(self):
-        return self.SquareRootTransform()
+plt.style.use(PAPER_MPLSTYLE)
 
 
-mscale.register_scale(SquareRootScale)
-
-
-DEFAULT_VERSION_ALPHA = {
-    "SP_v1.4.5_leak_corr": 0.4,
-    "SP_v1.4.6_leak_corr": 1.0,
-    "SP_v1.4.8_leak_corr": 0.4,
-}
-
-
-VERSION_LABELS = {
-    "SP_v1.4.5_leak_corr": "Initial",
-    "SP_v1.4.6_leak_corr": "Fiducial",
-    "SP_v1.4.8_leak_corr": "Masked",
-}
-
-
-def _version_label(version):
-    return VERSION_LABELS.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
-
-
-def _compute_pte(data, covariance):
-    chi2 = float(data @ np.linalg.solve(covariance, data))
-    dof = len(data)
-    pte = stats.chi2.sf(chi2, dof)
-    return pte, chi2, dof
 
 
 def main():
-    from snakemake.script import snakemake
-
     # Read config
     import yaml
     with open(snakemake.input["config"]) as f:
         config = yaml.safe_load(f)
 
-    versions = config["versions"]
-    version_alpha = DEFAULT_VERSION_ALPHA
+    # Scale cuts from params (passed from rule, originally Guerrini et al.)
+    ell_min_cut = int(snakemake.params.ell_min_cut)
+    ell_max_cut = int(snakemake.params.ell_max_cut)
+
+    version_labels = snakemake.params.version_labels
+    # Version list: from params if provided (ecut comparison), else from config
+    versions = getattr(snakemake.params, "versions", None)
+    if versions is None:
+        versions = [v for v in config["versions"] if "_leak_corr" in v]
+    plotting_config = config["plotting"]
+
+    # Which version gets the fiducial reference line in boxes
+    fiducial_for_comparison = getattr(
+        snakemake.params, "fiducial_for_comparison",
+        plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"]),
+    )
+    box_style = plotting_config.get("version_box", {})
 
     # Load data for all versions
     datasets = []
-    colors = sns.color_palette("colorblind", len(versions))
+
+    # Color/marker assignment: pair by parent version if ecut versions present
+    has_ecut = any("_ecut" in v for v in versions)
+    if has_ecut:
+        # Group by parent: same color, filled=uncut / open=cut
+        parents = []
+        for v in versions:
+            parent = v.split("_ecut")[0].replace("_leak_corr", "")
+            if parent not in parents:
+                parents.append(parent)
+        parent_colors = sns.husl_palette(len(parents), l=0.4)
+        parent_color_map = dict(zip(parents, parent_colors))
 
     for i, version in enumerate(versions):
+        if has_ecut:
+            parent = version.split("_ecut")[0].replace("_leak_corr", "")
+            color = parent_color_map[parent]
+            is_cut = "_ecut" in version
+            marker = "o" if not is_cut else "D"
+            fillstyle = "full" if not is_cut else "none"
+        else:
+            colors = sns.husl_palette(len(versions), l=0.4)
+            color = colors[i]
+            marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            fillstyle = "full"
+
         hdu = fits.open(snakemake.input["pseudo_cl"][i])
         data = hdu["PSEUDO_CELL"].data
         hdu.close()
@@ -134,14 +104,27 @@ def main():
         sigma_bb = np.sqrt(np.diag(cov_bb))
         sigma_eb = np.sqrt(np.diag(cov_eb))
 
-        pte_bb, chi2_bb, dof_bb = _compute_pte(cl_bb, cov_bb)
-        pte_eb, chi2_eb, dof_eb = _compute_pte(cl_eb, cov_eb)
+        # Full-range PTEs
+        chi2_bb, pte_bb, dof_bb = compute_chi2_pte(cl_bb, cov_bb)
+        chi2_eb, pte_eb, dof_eb = compute_chi2_pte(cl_eb, cov_eb)
+
+        # Scale-cut PTEs (bin included only if full ell range within cuts)
+        cut_mask = ell_bin_mask(ell, ell_min_cut, ell_max_cut)
+        idx = np.where(cut_mask)[0]
+        cl_bb_cut = cl_bb[idx]
+        cl_eb_cut = cl_eb[idx]
+        cov_bb_cut = cov_bb[np.ix_(idx, idx)]
+        cov_eb_cut = cov_eb[np.ix_(idx, idx)]
+        chi2_bb_cut, pte_bb_cut, dof_bb_cut = compute_chi2_pte(cl_bb_cut, cov_bb_cut)
+        chi2_eb_cut, pte_eb_cut, dof_eb_cut = compute_chi2_pte(cl_eb_cut, cov_eb_cut)
 
         datasets.append({
             "version": version,
-            "label": _version_label(version),
-            "color": colors[i],
-            "alpha": version_alpha.get(version, 1.0),
+            "label": version_label(version, version_labels),
+            "color": color,
+            "marker": marker,
+            "fillstyle": fillstyle,
+            "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
             "ell": ell,
             "cl_bb": cl_bb,
             "cl_eb": cl_eb,
@@ -153,20 +136,40 @@ def main():
             "pte_eb": pte_eb,
             "chi2_eb": chi2_eb,
             "dof_eb": dof_eb,
+            "pte_bb_cut": pte_bb_cut,
+            "chi2_bb_cut": chi2_bb_cut,
+            "dof_bb_cut": dof_bb_cut,
+            "pte_eb_cut": pte_eb_cut,
+            "chi2_eb_cut": chi2_eb_cut,
+            "dof_eb_cut": dof_eb_cut,
         })
 
     # Two-panel figure: BB (top) and EB (bottom)
-    # Full-width figure (7.24 inches for two-column A&A format)
-    fig_width = 7.24
-    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(fig_width, fig_width * 0.6), sharex=True)
+    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.45), sharex=True)
 
     ell_ref = datasets[0]["ell"]
     ell_widths = np.diff(ell_ref)
     ell_widths = np.append(ell_widths, ell_widths[-1])
     jitter_fraction = 0.15
 
-    # Marker styles matching cosebis_version_comparison
-    marker_styles = ["o", "s", "D"]
+    fiducial_idx = find_fiducial_index(datasets, fiducial_for_comparison)
+
+    # Pre-compute normalized values for box drawing
+    for data in datasets:
+        data["cl_bb_normalized"] = data["cl_bb"] / data["sigma_bb"]
+        data["cl_eb_normalized"] = data["cl_eb"] / data["sigma_eb"]
+
+    # Draw version spread boxes (before data points)
+    draw_normalized_boxes_ell_scale(
+        ax_bb, ell_ref, ell_widths, datasets,
+        y_norm_key="cl_bb_normalized", fiducial_idx=fiducial_idx,
+        jitter_fraction=jitter_fraction, n_versions=len(datasets), box_style=box_style
+    )
+    draw_normalized_boxes_ell_scale(
+        ax_eb, ell_ref, ell_widths, datasets,
+        y_norm_key="cl_eb_normalized", fiducial_idx=fiducial_idx,
+        jitter_fraction=jitter_fraction, n_versions=len(datasets), box_style=box_style
+    )
 
     legend_handles = []
     legend_labels = []
@@ -178,24 +181,27 @@ def main():
         color = data["color"]
         label = data["label"]
         alpha = data["alpha"]
-        marker = marker_styles[i] if i < len(marker_styles) else "o"
+        marker = data["marker"]
+        fillstyle = data["fillstyle"]
+        mfc = color if fillstyle == "full" else "none"
 
-        # Normalize by error: C_ell / sigma
-        cl_bb_normalized = data["cl_bb"] / data["sigma_bb"]
-        cl_eb_normalized = data["cl_eb"] / data["sigma_eb"]
+        cl_bb_normalized = data["cl_bb_normalized"]
+        cl_eb_normalized = data["cl_eb_normalized"]
 
         line_bb = ax_bb.errorbar(
             ell_jittered, cl_bb_normalized, yerr=np.ones_like(cl_bb_normalized),
             fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=color, markeredgecolor="white", markeredgewidth=0.5,
-            markersize=4, capsize=2, capthick=0.8, linewidth=0.8, elinewidth=0.8,
+            markerfacecolor=mfc, markeredgecolor=color,
+            **ERRORBAR_DEFAULTS,
+            zorder=2,
         )
 
         ax_eb.errorbar(
             ell_jittered, cl_eb_normalized, yerr=np.ones_like(cl_eb_normalized),
             fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=color, markeredgecolor="white", markeredgewidth=0.5,
-            markersize=4, capsize=2, capthick=0.8, linewidth=0.8, elinewidth=0.8,
+            markerfacecolor=mfc, markeredgecolor=color,
+            **ERRORBAR_DEFAULTS,
+            zorder=2,
         )
 
         # Collect legend handles from BB panel only
@@ -213,10 +219,10 @@ def main():
         ax.set_xscale("squareroot")
         ax.set_xlim(ell_min, ell_max)
 
-        # Shade excluded regions (matching cl_fiducial)
+        # Shade excluded regions (matching cl_data_vector)
         xlim = ax.get_xlim()
-        ax.axvspan(xlim[0], ELL_MIN_CUT, alpha=0.1, color="gray", zorder=0)
-        ax.axvspan(ELL_MAX_CUT, xlim[1], alpha=0.1, color="gray", zorder=0)
+        ax.axvspan(xlim[0], ell_min_cut, alpha=0.1, color="gray", zorder=0)
+        ax.axvspan(ell_max_cut, xlim[1], alpha=0.1, color="gray", zorder=0)
         ax.set_xlim(xlim)  # Restore limits after shading
 
         ax.set_xticks(major_ticks)
@@ -225,12 +231,12 @@ def main():
         ax.tick_params(axis="x", which="minor", length=2, width=0.8)
         ax.set_ylabel(ylabel)
 
-    # Legend only on upper panel, single row with three columns, at bottom
+    # Legend only on upper panel, single row with four columns, at bottom
     ax_bb.legend(
         legend_handles,
         legend_labels,
         loc="lower center",
-        ncol=3,
+        ncol=4,
         frameon=True,
         framealpha=0.9,
     )
@@ -249,22 +255,27 @@ def main():
 
     paper_path = Path(snakemake.output["paper_figure"])
     paper_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(fig_path, paper_path)
-    print(f"Copied to {paper_path}")
+    fig.savefig(paper_path, bbox_inches="tight")
+    print(f"Saved {paper_path}")
 
     plt.close(fig)
 
     # Build evidence
     evidence_versions = {}
     for data in datasets:
-        evidence_versions[data["version"]] = {
-            "pte_bb": float(data["pte_bb"]),
-            "chi2_bb": float(data["chi2_bb"]),
-            "dof_bb": int(data["dof_bb"]),
-            "pte_eb": float(data["pte_eb"]),
-            "chi2_eb": float(data["chi2_eb"]),
-            "dof_eb": int(data["dof_eb"]),
-        }
+        v = data["version"]
+        evidence_versions[f"{v}_pte_bb"] = float(data["pte_bb"])
+        evidence_versions[f"{v}_chi2_bb"] = float(data["chi2_bb"])
+        evidence_versions[f"{v}_dof_bb"] = int(data["dof_bb"])
+        evidence_versions[f"{v}_pte_eb"] = float(data["pte_eb"])
+        evidence_versions[f"{v}_chi2_eb"] = float(data["chi2_eb"])
+        evidence_versions[f"{v}_dof_eb"] = int(data["dof_eb"])
+        evidence_versions[f"{v}_pte_bb_cut"] = float(data["pte_bb_cut"])
+        evidence_versions[f"{v}_chi2_bb_cut"] = float(data["chi2_bb_cut"])
+        evidence_versions[f"{v}_dof_bb_cut"] = int(data["dof_bb_cut"])
+        evidence_versions[f"{v}_pte_eb_cut"] = float(data["pte_eb_cut"])
+        evidence_versions[f"{v}_chi2_eb_cut"] = float(data["chi2_eb_cut"])
+        evidence_versions[f"{v}_dof_eb_cut"] = int(data["dof_eb_cut"])
 
     spec_paths = snakemake.input["specs"]
 
@@ -274,11 +285,8 @@ def main():
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": evidence_versions,
-            "ell_min": float(datasets[0]["ell"].min()),
-            "ell_max": float(datasets[0]["ell"].max()),
-            "n_ell_bins": int(len(datasets[0]["ell"])),
         },
-        "artifacts": {
+        "output": {
             "figure": fig_path.name,
         },
     }

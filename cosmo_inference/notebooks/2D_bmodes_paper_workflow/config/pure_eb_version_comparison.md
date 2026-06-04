@@ -19,7 +19,7 @@ B-mode correlation functions $\xi_{\pm}^B$ are consistent with zero across catal
 
 ## Evidence
 
-This claim produces visualizations only. Statistical evidence (PTEs) is in [Pure E/B PTE Matrix](pure_eb_pte_matrix.md) and [Config Space PTE Matrices](config_space_pte_matrices.md).
+This claim produces visualizations only. Statistical evidence (PTEs) is in [Config Space PTE Matrices](config_space_pte_matrices.md).
 
 | Metric | Description |
 |--------|-------------|
@@ -28,8 +28,11 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [Pure
 
 ## Outputs
 
-- `figure.png` — Four-panel figure with asymmetric row heights
+Main figure shows leak_corr catalog versions from `config.versions` for catalog evolution comparison.
+
+- `figure.png` — Four-panel figure with asymmetric row heights (catalog evolution)
   - Top row (2/3 height): $\xi_+$ (left), $\xi_-$ (right) as $\theta \xi \times 10^4$
   - Bottom row (1/3 height): $\xi_+^B / \sigma$ (left), $\xi_-^B / \sigma$ (right)
   - Data outside fiducial scale cuts shown greyed out
   - B-mode error bars are unity by construction (normalized)
+  - Legend labels from `config.version_labels`

@@ -93,7 +93,7 @@ class BaseCat(object):
                 
         return config
 
-    def read_cat(self, load_into_memory=False, mode="r", hdu=1):
+    def read_cat(self, load_into_memory=False, mode="r", hdu=1, name="data"):
         """Read Cat.
 
         Read input catalogue, either FITS or HDF5.
@@ -107,6 +107,8 @@ class BaseCat(object):
             HDF5 read mode, default is "r"
         hdu: int, optional
             HDU number (for FITS file); default is 1
+        name: str, optional
+            dataset name, default is 'data'
 
         Returns
         -------
@@ -136,7 +138,7 @@ class BaseCat(object):
 
             self._hd5file = h5py.File(fpath, mode)
             try:
-                dat = self._hd5file["data"]
+                dat = self._hd5file[name]
             except:
                 print(f"Error while reading file {fpath}")
                 raise
@@ -1141,7 +1143,7 @@ class CalibrateCat(BaseCat):
         except:
             print(f"Error while reading file {fpath}")
             raise
-   
+
         if verbose:
             print(
                 f"Found {len(dat)} (~{util.millify(len(dat))}) objects"
@@ -1180,89 +1182,6 @@ class CalibrateCat(BaseCat):
         Main processing function.
 
         """
-
-def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
-    """Sky Plots.
-        
-    Plot sky regions with different masks.
-    
-    Parameters
-    ----------
-    masks : list
-        masks to be applied
-    labels : dict
-        labels for masks
-    zoom_ra : list
-        min and max R.A. for zoom-in plot
-    zoom_dec : list
-        min and max Dec. for zoom-in plot
-    
-    """
-    ra = dat["RA"][:]
-    dec = dat["Dec"][:]
-        
-    zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
-    zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
-    zoom = zoom_ra & zoom_dec
-
-    # No mask        
-    plot_area_mask(ra, dec, zoom)
-        
-    # SExtractor and SP flags
-    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
-    plot_area_mask(ra, dec, zoom, mask=m_flags)
-        
-    # Overlap regions
-    m_over = masks[labels["overlap"]]._mask & m_flags
-    plot_area_mask(ra, dec, zoom, mask=m_over)
-        
-    # Coverage mask
-    m_point = masks[labels["npoint3"]]._mask & m_over
-    plot_area_mask(ra, dec, zoom, mask=m_point)
-
-    # Maximask
-    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point        
-    plot_area_mask(ra, dec, zoom, mask=m_maxi)
-        
-    m_comb = mask_combined._mask
-    plot_area_mask(ra, dec, zoom, mask=m_comb)
-        
-    m_man = m_maxi & masks[labels["8_Manual"]]._mask
-    plot_area_mask(ra, dec, zoom, mask=m_man)
-        
-    m_halos = (
-        m_maxi
-        & masks[labels['1_Faint_star_halos']]._mask
-        & masks[labels['2_Bright_star_halos']]._mask
-    )
-    plot_area_mask(ra, dec, zoom, mask=m_halos)
-        
-
-def plot_area_mask(ra, dec, zoom, mask=None):
-    """Plot Area Mask.
-    
-    Create sky plot of objects.
-    
-    Parameters
-    ----------
-    ra : list
-        R.A. coordinates
-    dec : list
-        Dec. coordinates
-    zoom : TBD
-    mask: TBD, optional
-    
-    """
-    if mask is None:
-        mask == np.ones_like(ra)
-
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30,15))
-    axes[0].hexbin(ra[mask], dec[mask], gridsize=100)
-    axes[1].hexbin(ra[mask & zoom], dec[mask & zoom], gridsize=200)
-    for idx in (0, 1):
-        axes[idx].set_xlabel("R.A. [deg]")
-        axes[idx].set_ylabel("Dec [deg]")
-
 
 def confusion_matrix(mask, confidence_level=0.9):
 
@@ -1361,7 +1280,7 @@ class Mask():
 
     """
 
-    def __init__(self, col_name, label, kind="equal", value=0, dat=None, verbose=False):
+    def __init__(self, col_name, label, kind=None, value=0, dat=None, verbose=False):
         
         self._col_name = col_name
         self._label = label
@@ -1439,8 +1358,7 @@ class Mask():
         print(msg)
         if f_out:
             print(msg, file=f_out)
-
-        
+ 
     def print_stats(self, num_obj, f_out=None):
         if self._num_ok is None:
             self._num_ok = sum(self._mask)
@@ -1449,29 +1367,37 @@ class Mask():
         sf = f"{self._num_ok/num_obj:10.2%}"
         self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
 
-    def get_sign(self):
+    def get_sign(self, latex=False):
         
         sign = None
-        if self._kind =="equal":
-            sign = "="
-        elif self._kind =="not_equal":
-            sign = "!="
-        elif self._kind =="greater_equal":
-            sign = ">="
-        elif self._kind =="smaller_equal":
-            sign = "<="
+        if self._kind == "equal":
+            sign = "$=$" if latex else "="
+        elif self._kind == "not_equal":
+            sign = "$\ne$" if latex else "!="
+        elif self._kind in ("greater_equal", "range"):
+            sign = "$\leq$" if latex else ">="
+        elif self._kind == "smaller_equal":
+            sign = "$\geq$" if latex else "<="
         return sign
+
+    def print_condition(self, f_out, latex=False):
+
+        if self._value is None:
+            return ""
+
+        sign = self.get_sign(latex=latex)
         
-    def print_summary(self, f_out):
-        print(f"[{self._label}]\t\t\t", file=f_out, end="")
-        
-        sign = self.get_sign()
+        name = self._label if latex else self._col_name
 
         if sign is not None:
-            print(f"{self._col_name} {sign} {self._value}", file=f_out)
-            
+            print(f"{name} {sign} {self._value}", file=f_out)
+
         if self._kind == "range":
-            print(f"{self._value[0]} <= {self._col_name} <= {self._value[1]}", file=f_out)
+            print(f"{self._value[0]} {sign} {name} {sign} {self._value[1]}", file=f_out)
+
+    def print_summary(self, f_out):
+        print(f"[{self._label}]\t\t\t", file=f_out, end="")
+        self.print_condition(f_out)
 
     def create_descr(self):
         """Create Descr.
@@ -1639,6 +1565,10 @@ def compute_weights_gatti(
     mask_combined,
     mask_metacal,
     num_bins=20,
+    snr_min=10,
+    snr_max=500,
+    size_ratio_min=0.707,
+    size_ratio_max=3,
 ):
     """Compute Weights Gatti.
     
@@ -1655,7 +1585,14 @@ def compute_weights_gatti(
         purpose="weights"
     )
 
-    cat_gal["w_des"] = calibration.get_w_des(cat_gal, num_bins)
+    cat_gal["w_des"] = calibration.get_w_des(
+        cat_gal,
+        num_bins,
+        snr_min=snr_min,
+        snr_max=snr_max,
+        size_ratio_min=size_ratio_min,
+        size_ratio_max=size_ratio_max,
+    )
 
 
 def compute_PSF_leakage(

@@ -472,6 +472,8 @@ class FootprintPlotter:
         projection=None,
         outpath=None,
         title=None,
+        colorbar=True,
+        colorbar_label="Coverage depth",
     ):
         """Plot Area.
 
@@ -494,6 +496,10 @@ class FootprintPlotter:
             output path, default is ``None``
         title : str, optional
             print title if not ``None`` (default)
+        colorbar : bool, optional
+            add colorbar; default is ``True``
+        colorbar_label : str, optional
+            colorbar label; default is "Coverage depth"
 
         Returns
         --------
@@ -520,8 +526,9 @@ class FootprintPlotter:
         else:
             ax = None
 
+        im = None
         try:
-            _ = projection.draw_hspmap(
+            im, lon_raster, lat_raster, values_raster = projection.draw_hspmap(
                 hsp_map, lon_range=extend[0:2], lat_range=extend[2:]
             )
         except ValueError:
@@ -531,6 +538,10 @@ class FootprintPlotter:
 
         projection.draw_milky_way(width=25, linewidth=1.5, color="black", linestyle="-")
 
+        # Add colorbar if requested and image was drawn
+        if colorbar and im is not None:
+            plt.colorbar(im, ax=ax if ax else projection.ax, label=colorbar_label)
+
         if title:
             plt.title(title, pad=5)
 
@@ -539,8 +550,36 @@ class FootprintPlotter:
 
         return projection, ax
 
-    def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None):
+    def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None, colorbar=True, colorbar_label="Coverage depth"):
+        """Plot Region.
 
+        Plot catalogue in a predefined region on the sky.
+
+        Parameters
+        ----------
+        hsp_map : hsp_HealSparseMap
+            input map
+        region : dict
+            region dictionary with keys 'ra_0', 'extend', 'vmax'
+        projection : skyproj.McBrydeSkyproj, optional
+            if ``None`` (default), a new plot is created
+        outpath : str, optional
+            output path, default is ``None``
+        title : str, optional
+            print title if not ``None`` (default)
+        colorbar : bool, optional
+            add colorbar; default is ``True``
+        colorbar_label : str, optional
+            colorbar label; default is "Coverage depth"
+
+        Returns
+        --------
+        skyproj.McBrydeSkyproj
+            projection instance
+        plt.axes.Axes
+            axes instance
+
+        """
         return self.plot_area(
             hsp_map,
             region["ra_0"],
@@ -549,6 +588,8 @@ class FootprintPlotter:
             projection=projection,
             outpath=outpath,
             title=title,
+            colorbar=colorbar,
+            colorbar_label=colorbar_label,
         )
 
     def plot_all_regions(self, hsp_map, outbase=None):
@@ -669,3 +710,86 @@ def hsp_map_logical_or(maps, verbose=False):
             )
 
     return map_comb
+
+
+def plot_area_mask(ra, dec, zoom, mask=None):                                    
+    """Plot Area Mask.                                                           
+                                                                                 
+    Create sky plot of objects.                                                  
+                                                                                 
+    Parameters                                                                   
+    ----------                                                                   
+    ra : list                                                                    
+        R.A. coordinates                                                         
+    dec : list                                                                   
+        Dec. coordinates                                                         
+    zoom : TBD                                                                   
+    mask: TBD, optional                                                          
+                                                                                 
+    """                                                                          
+    if mask is None:                                                             
+        mask == np.ones_like(ra)                                                 
+                                                                                 
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30,15))                  
+    axes[0].hexbin(ra[mask], dec[mask], gridsize=100)                            
+    axes[1].hexbin(ra[mask & zoom], dec[mask & zoom], gridsize=200)              
+    for idx in (0, 1):                                                           
+        axes[idx].set_xlabel("R.A. [deg]")                                       
+        axes[idx].set_ylabel("Dec [deg]")
+
+
+def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):                            
+    """Sky Plots.                                                                
+                                                                                 
+    Plot sky regions with different masks.                                       
+                                                                                 
+    Parameters                                                                   
+    ----------                                                                   
+    masks : list                                                                 
+        masks to be applied                                                      
+    labels : dict                                                                
+        labels for masks                                                         
+    zoom_ra : list                                                               
+        min and max R.A. for zoom-in plot                                        
+    zoom_dec : list                                                              
+        min and max Dec. for zoom-in plot                                        
+                                                                                 
+    """                                                                          
+    ra = dat["RA"][:]                                                            
+    dec = dat["Dec"][:]                                                          
+                                                                                 
+    zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])                
+    zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])           
+    zoom = zoom_ra & zoom_dec                                                    
+                                                                                 
+    # No mask                                                                    
+    plot_area_mask(ra, dec, zoom)                                                
+                                                                                 
+    # SExtractor and SP flags                                                    
+    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask 
+    plot_area_mask(ra, dec, zoom, mask=m_flags)                                  
+                                                                                 
+    # Overlap regions                                                            
+    m_over = masks[labels["overlap"]]._mask & m_flags                            
+    plot_area_mask(ra, dec, zoom, mask=m_over)                                   
+                                                                                 
+    # Coverage mask                                                              
+    m_point = masks[labels["npoint3"]]._mask & m_over                            
+    plot_area_mask(ra, dec, zoom, mask=m_point)                                  
+                                                                                 
+    # Maximask                                                                   
+    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point                      
+    plot_area_mask(ra, dec, zoom, mask=m_maxi)                                   
+                                                                                 
+    m_comb = mask_combined._mask                                                 
+    plot_area_mask(ra, dec, zoom, mask=m_comb)                                   
+                                                                                 
+    m_man = m_maxi & masks[labels["8_Manual"]]._mask                             
+    plot_area_mask(ra, dec, zoom, mask=m_man)                                    
+                                                                                 
+    m_halos = (                                                                  
+        m_maxi                                                                   
+        & masks[labels['1_Faint_star_halos']]._mask                              
+        & masks[labels['2_Bright_star_halos']]._mask                             
+    )                                                                            
+    plot_area_mask(ra, dec, zoom, mask=m_halos) 

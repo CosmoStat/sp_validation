@@ -1,14 +1,15 @@
-version: SP_v1.4.6
-chain: SP_v1.4.6_leak_corr_C_10_80
+version: SP_v1.4.6.3_leak_corr
+# chain: SP_v1.4.6.3_leak_corr_?_12_83  # TODO: update when v1.4.6.3 chains available
 
 # Data paths
-xi_data: /n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/data/xi_pm_SP_v1.4.6.txt
+xi_data: /n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/SP_v1.4.6.3_leak_corr_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.txt
+# bestfit_dir: TODO — waiting for v1.4.6.3 inference chains from Lisa
 bestfit_dir: /n09data/guerrini/output_chains/SP_v1.4.6_leak_corr_C_10_80/best_fit/SP_v1.4.6_leak_corr_C_10_80
-pure_eb_data: /n17data/cdaley/unions/pure_eb/results/paper_plots/intermediate/SP_v1.4.6_leak_corr_C_pure_eb_semianalytic.npz
+pure_eb_data: /n17data/cdaley/unions/pure_eb/results/paper_plots/intermediate/SP_v1.4.6.3_leak_corr_A_pure_eb_semianalytic.npz
 
-# Scale cuts (arcmin)
-scale_min: 10
-scale_max: 80
+# Scale cuts (arcmin) — fiducial: [12, 83] for both xi+ and xi-
+scale_min: 12
+scale_max: 83
 
 # Plot style
 plot_style: /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle

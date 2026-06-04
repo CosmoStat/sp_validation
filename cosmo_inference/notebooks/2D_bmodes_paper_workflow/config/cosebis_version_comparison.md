@@ -18,7 +18,7 @@ B-mode COSEBIS magnitudes are small relative to measurement uncertainty across c
 
 ## Evidence
 
-This claim produces visualizations only. Statistical evidence (PTEs) is in [COSEBIS PTE Matrix](cosebis_pte_matrix.md).
+This claim produces visualizations only. Statistical evidence (PTEs) is in [Config-Space PTE Matrices](config_space_pte_matrices.md).
 
 | Metric | Description |
 |--------|-------------|
@@ -27,7 +27,10 @@ This claim produces visualizations only. Statistical evidence (PTEs) is in [COSE
 
 ## Outputs
 
-- `figure_stacked.png` — Two-panel figure showing $B_n / \sigma_n$
+Main figure shows leak_corr catalog versions from `config.versions` for catalog evolution comparison.
+
+- `figure_stacked.png` — Two-panel figure showing $B_n / \sigma_n$ (catalog evolution)
   - Top: Full range (no scale cuts)
   - Bottom: Fiducial scale cut
   - Error bars are unity by construction (normalized)
+  - Legend labels from `config.version_labels`

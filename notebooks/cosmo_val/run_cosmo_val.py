@@ -2,20 +2,18 @@
 from IPython import get_ipython
 
 ipython = get_ipython()
-
-# enable autoreload for interactive sessions
 if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import matplotlib.pyplot as plt  # noqa: E402, F401
-import numpy as np  # noqa: E402, F401
+import matplotlib.pyplot as plt
+import numpy as np
+
 from sp_validation.cosmo_val import CosmologyValidation  # noqa: E402
 from sp_validation.cosmology import get_cosmo
 from astropy.cosmology import Planck18  # noqa: E402, F401
 
-# enable inline plotting for interactive sessions
-# (must be done *after* importing package that sets agg backend)
+# Must follow sp_validation import (which sets agg backend)
 if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
@@ -84,6 +82,7 @@ cv = CosmologyValidation(
 
 # %%
 cv.plot_footprints()
+
 # %%
 cv.plot_rho_stats()
 
@@ -94,30 +93,23 @@ cv.plot_tau_stats()
 if cv.rho_tau_method != "none":
     cv.plot_rho_tau_fits()
 
-# %%
-#cv.plot_footprints()
-
-# %%
-#cv.plot_scale_dependent_leakage()
+# %% Shear diagnostics
+cv.plot_objectwise_leakage()
 
 # %%
 #cv.plot_objectwise_leakage()
 
 # %%
-#cv.plot_ellipticity()
+# cv.plot_ellipticity()
 
 # %%
 cv.plot_weights()
 
 # %%
-cv.plot_separation()
+cv.calculate_additive_bias()
 
-# %%
-cv.npatch = 1
-cv.treecorr_config["var_method"] = "shot"
+# %% Two-point correlation functions
 cv.plot_2pcf()
-cv.treecorr_config["var_method"] = "jackknife"
-cv.npatch = 100
 
 # %%
 cv.plot_ratio_xi_sys_xi(offset=0.1)
@@ -149,18 +141,16 @@ scv.plot_cosebis(
     scale_cuts=[
         (1, 250),
         (2, 250),
-        (3, 250),
-        (4, 250),
         (5, 250),
-        (6, 250),
-        (7, 250),
-        (8, 250),
-        (9, 250),
         (10, 250),
+        FIDUCIAL_SCALE_CUT,
         (15, 250),
         (20, 250),
     ],
     fiducial_scale_cut=(10, 250),
 ) 
 """
+
+# %% B-mode summary
+cv.summarize_bmodes(fiducial_scale_cut=FIDUCIAL_SCALE_CUT)
 

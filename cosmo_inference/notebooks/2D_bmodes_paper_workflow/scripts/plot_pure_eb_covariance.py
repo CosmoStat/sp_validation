@@ -10,24 +10,14 @@ import numpy as np
 import seaborn as sns
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from IPython import get_ipython
+from plotting_utils import PAPER_MPLSTYLE
 
-ipython = get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-else:
-    sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
-
-if ipython is not None:
-    ipython.run_line_magic("matplotlib", "inline")
+# Unbuffered output for Snakemake log streaming
+sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
+sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
 
 # Apply paper style
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
-)
+plt.style.use(PAPER_MPLSTYLE)
 
 
 def _load_snakemake():
@@ -71,8 +61,8 @@ def main():
     # Configure tick labels for E/B modes
     tick_positions = np.arange(nbins / 2, nbins * 6, nbins)
     tick_labels = [
-        r"$\xi_+^{E}$", r"$\xi_-^{E}$", r"$\xi_+^{B}$",
-        r"$\xi_-^{B}$", r"$\xi_+^{\rm amb}$", r"$\xi_-^{\rm amb}$"
+        r"$\xi_+^{\mathrm{E}}$", r"$\xi_-^{\mathrm{E}}$", r"$\xi_+^{\mathrm{B}}$",
+        r"$\xi_-^{\mathrm{B}}$", r"$\xi_+^{\mathrm{amb}}$", r"$\xi_-^{\mathrm{amb}}$"
     ]
 
     for ticks in (plt.xticks, plt.yticks):

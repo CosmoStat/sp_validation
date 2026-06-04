@@ -1,40 +1,47 @@
 # B-modes Paper
 
-Paper III (Daley et al.) — B-mode validation for UNIONS cosmic shear.
+The B-modes paper (Daley et al.) — B-mode validation for UNIONS cosmic shear.
 
-Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [cosebis_version_comparison](cosebis_version_comparison.md), [cl_fiducial](cl_fiducial.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md)
+Depends on: [pure_eb_covariance](pure_eb_covariance.md), [pure_eb_data_vector](pure_eb_data_vector.md), [pure_eb_version_comparison](pure_eb_version_comparison.md), [cosebis_version_comparison](cosebis_version_comparison.md) (incl. `paper_stacked` output), [cosebis_data_vector](cosebis_data_vector.md), [cl_data_vector](cl_data_vector.md), [cl_version_comparison](cl_version_comparison.md), [config_space_pte_matrices](config_space_pte_matrices.md), [harmonic_space_pte_matrices](harmonic_space_pte_matrices.md), [bb_covariance_blind_independence](bb_covariance_blind_independence.md), [covariance_blind_consistency](covariance_blind_consistency.md)
 
 ## Scope
 
-Three statistics, three catalog versions, one question: are B-modes consistent with noise?
+Three statistics, multiple catalog versions (from `config.versions`), one question: are B-modes consistent with noise?
 
-Paper II (Goh et al.) reports the answer for the fiducial catalog. This paper shows the work — methodology, version comparison, scale cut selection.
+The config-space paper (Goh et al.) reports the answer for the fiducial catalog. This paper shows the work — methodology, version comparison, scale cut selection.
 
 ## Figure Mapping
 
-### Main Text (Results)
+### Main Text — Methods
 
-| Figure | Claim | Output | Section | Label |
-|--------|-------|--------|---------|-------|
-| Pure E/B covariance | `pure_eb_covariance` | `figure.png` | §2.4 | `fig:eb_covariance` |
-| Pure E/B data vector | `pure_eb_data_vector` | `paper_figure` | §2.3 | `fig:pure_eb_data_vector` |
-| Harmonic fiducial | `cl_fiducial` | `paper_figure` | §2.3 | `fig:cl_fiducial` |
-| Config-space PTE composite | `config_space_pte_matrices` | `paper_figure_fiducial` | Results | `fig:pte_config_space` |
-| Harmonic PTE matrix | `harmonic_space_pte_matrices` | `paper_figure_fiducial` | Results | `fig:pte_cl` |
+| Figure | Claim | File | Section | Label |
+|--------|-------|------|---------|-------|
+| Pure E/B decomposition | `pure_eb_data_vector` | `pure_eb_data_vector.png` | §2.3 | `fig:pure_eb_decomposition` |
+| COSEBIS B-modes | `cosebis_data_vector` | `cosebis_data_vector.png` | §2.3 | `fig:cosebis_fiducial` |
+| Harmonic fiducial | `cl_data_vector` | `cl_fiducial.png` | §2.3 | `fig:cl_fiducial` |
+| Pure E/B covariance | `pure_eb_covariance` | `eb_covariance.png` | §2.4 | `fig:eb_covariance` |
+
+### Main Text — Results
+
+| Figure | Claim | File | Section | Label |
+|--------|-------|------|---------|-------|
+| Config-space PTE heatmaps | `config_space_pte_matrices` | `config_space_pte_fiducial.png` | §3 | `fig:pte_heatmaps` |
+| Harmonic PTE heatmap | `harmonic_space_pte_matrices` | `cl_pte_heatmap.png` | §3 | `fig:pte_cl` |
+| Pure E/B version comparison | `pure_eb_version_comparison` | `pure_eb_versions.png` | §3.1 | `fig:pure_eb_versions` |
+| Harmonic version comparison | `cl_version_comparison` | `cl_versions.png` | §3.1 | `fig:cl_versions` |
 
 ### Appendix
 
-| Figure | Claim | Output | Section | Label |
-|--------|-------|--------|---------|-------|
-| Config-space PTE v1.4.5 | `config_space_pte_matrices` | `paper_figure_v145` | Appendix | `fig:pte_config_v145` |
-| Config-space PTE v1.4.8 | `config_space_pte_matrices` | `paper_figure_v148` | Appendix | `fig:pte_config_v148` |
-| Harmonic PTE appendix | `harmonic_space_pte_matrices` | `paper_figure_appendix` | Appendix | `fig:pte_cl_appendix` |
+| Figure | Claim | File | Section | Label |
+|--------|-------|------|---------|-------|
+| Config-space PTE (all versions) | `config_space_pte_matrices` | `config_space_pte_composite_appendix.png` | Appendix A | `fig:pte_appendix` |
+| Harmonic PTE (all versions) | `harmonic_space_pte_matrices` | `cl_pte_composite_appendix.png` | Appendix A | `fig:pte_cl_appendix` |
 
-Figures copy from `results/claims/{claim}/` to `docs/unions_release/unions_bmodes/Figures/`.
+Figures copy from `results/tapestry/{claim}/` to `docs/unions_release/unions_bmodes/Figures/`.
 
 ## Pure E/B Covariance
 
-Evidence: `results/claims/pure_eb_covariance/evidence.json`
+Evidence: `results/tapestry/pure_eb_covariance/evidence.json`
 
 ### Block Structure
 
@@ -73,16 +80,25 @@ Example structure (values populated from evidence):
 
 | Version | ξ+^B | ξ-^B | Joint |
 |---------|------|------|-------|
-| v1.4.5 | `pure_eb_data_vector.evidence.v145...` | ... | ... |
-| v1.4.6 | `pure_eb_data_vector.evidence.fiducial...` | ... | ... |
+| v1.4.X | `config_space_pte_matrices.evidence.versions[ver].xip_stats...` | ... | ... |
 
-### Conservative Reporting
+Note: Per-version PTEs come from `config_space_pte_matrices`, not `pure_eb_data_vector`.
 
-All PTEs are minimum across blinds (A, B, C). This ensures validity regardless of which blind is unblinded.
+### Blind Handling
 
-## Macros
+PTEs report the **minimum across blinds** (`pte_joint_min`) as the conservative estimate. This ensures reported values remain valid regardless of which blind is eventually unblinded. The fiducial blind `config["fiducial"]["blind"]` determines covariance matrix selection.
 
-Generated by `paper_macros` rule → `docs/unions_release/unions_bmodes/claims_macros.tex`
+## Macros and Tables
+
+Generated by `paper_macros` rule:
+
+| Output | Purpose |
+|--------|---------|
+| `claims_macros.tex` | LaTeX macro definitions (`\ebfiducialPte`, etc.) |
+| `pte_table_results.tex` | PTE results table for main text |
+| `pte_table_appendix.tex` | PTE table for appendix (all versions) |
+
+All outputs written to `docs/unions_release/unions_bmodes/`.
 
 ### Pure E/B Covariance
 
@@ -107,8 +123,8 @@ Generated by `paper_macros` rule → `docs/unions_release/unions_bmodes/claims_m
 
 | Macro | Evidence Path |
 |-------|---------------|
-| `\cosebisfiducialPte` | `cosebis_version_comparison` → `fiducial.versions.SP_v1.4.6_leak_corr.pte_6_min` |
-| `\cosebisfullPte` | `cosebis_version_comparison` → `full.versions.SP_v1.4.6_leak_corr.pte_6_min` |
+| `\cosebisfiducialPte` | `cosebis_version_comparison` → `fiducial.versions.{fiducial_version}.pte_6_min` |
+| `\cosebisfullPte` | `cosebis_version_comparison` → `full.versions.{fiducial_version}.pte_6_min` |
 | `\cosebisthetaMin`, `\cosebisthetaMax` | `cosebis_version_comparison` → `fiducial.scale_cut_arcmin` |
 
 ### Covariance Consistency

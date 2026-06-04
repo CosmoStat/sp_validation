@@ -1,8 +1,12 @@
 """COSEBIs data vector claim.
 
-Single-panel figure showing B-mode COSEBIS for fiducial version (v1.4.6).
+Single-panel figure showing B-mode COSEBIS for each catalog version.
 Overplots fiducial and full angular range scale cuts.
-Paper figure for main text B-mode validation.
+
+Produces 9 figures:
+- figure.png: fiducial version, leak-corrected, no title (paper)
+- figure_v{X.Y.Z}.png: version X.Y.Z, leak-corrected, with title
+- figure_v{X.Y.Z}_uncorrected.png: version X.Y.Z, uncorrected, with title
 """
 
 import json
@@ -18,20 +22,48 @@ import treecorr
 
 from sp_validation.b_modes import calculate_cosebis
 
-
-plt.style.use(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
+from plotting_utils import (
+    FIG_WIDTH_SINGLE,
+    PAPER_MPLSTYLE,
+    iter_version_figures,
 )
 
 
-def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts):
+plt.style.use(PAPER_MPLSTYLE)
+
+
+def _compute_cosebis_datasets(gg, cov_path, nmodes, scale_cuts):
+    """Compute COSEBIS B-modes for given scale cuts.
+
+    Returns dict with normalized B_n / sigma_n for each scale cut.
+    """
+    datasets = {}
+    for scale_key, scale_cut in scale_cuts.items():
+        results = calculate_cosebis(
+            gg,
+            nmodes=nmodes,
+            scale_cuts=[scale_cut],
+            cov_path=cov_path,
+        )
+        cosebis_result = results[scale_cut]
+        Bn = cosebis_result["Bn"]
+        cov = cosebis_result["cov"]
+        cov_B = cov[nmodes:, nmodes:]
+        sigma_B = np.sqrt(np.diag(cov_B))
+        datasets[scale_key] = {"Bn_normalized": Bn / sigma_B}
+    return datasets
+
+
+def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     """Create a single-panel B-mode COSEBIS figure.
 
     Plots B_n / sigma_n (dimensionless, in units of standard deviation).
     Both scale cuts overplotted with horizontal offset and different colors.
+
+    Args:
+        title: Optional title for the figure (None for paper figure).
     """
-    fig_width = 7.24
-    fig, ax = plt.subplots(figsize=(fig_width, fig_width * 0.35))
+    fig, ax = plt.subplots(figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.55))
 
     x_offsets = {"fiducial": -0.15, "full": 0.15}
     modes = np.arange(1, nmodes + 1)
@@ -48,7 +80,7 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts):
         color = scale_colors[scale_key]
         scale_cut = scale_cuts[scale_key]
 
-        label = rf"$\theta \in [{scale_cut[0]:.0f}, {scale_cut[1]:.0f}]'$"
+        label = rf"$\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$"
 
         line = ax.errorbar(
             modes + offset,
@@ -73,10 +105,17 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts):
     ax.axhline(0, color="black", linewidth=0.8, alpha=0.6)
     ax.axvspan(0.5, 6.5, color="0.95", alpha=0.5, zorder=0)
     ax.set_ylabel(r"$B_n / \sigma_n$")
-    ax.set_xlabel("COSEBIS mode $n$")
+    ax.set_xlabel("COSEBI mode $n$")
     ax.set_xlim(0.5, nmodes + 0.5)
     ax.set_xticks(np.arange(1, nmodes + 1))
+    ax.set_xticklabels(
+        [str(i) for i in range(1, nmodes + 1)],
+        rotation=45, ha="right", rotation_mode="anchor",
+    )
     ax.tick_params(axis="both", width=0.5, length=3)
+
+    if title:
+        ax.set_title(f"COSEBI B-modes ({title})")
 
     # Compute y-limits from data
     all_y = []
@@ -102,16 +141,16 @@ def main():
     config = snakemake.config
     version = config["fiducial"]["version"]
     nmodes = config["fiducial"]["nmodes"]
-
-    # Use blind A for plotting (B-modes are same across blinds)
-    blind = "A"
-    cov_base_dir = snakemake.params.cov_base_dir
+    version_labels = config["plotting"]["version_labels"]
 
     fiducial_scale_cut = (
         float(config["fiducial"]["fiducial_min_scale"]),
         float(config["fiducial"]["fiducial_max_scale"]),
     )
-    full_scale_cut = (1.0, 250.0)
+    full_scale_cut = (
+        float(config["cosebis"]["theta_min"]),
+        float(config["cosebis"]["theta_max"]),
+    )
 
     scale_cuts = {
         "fiducial": fiducial_scale_cut,
@@ -122,56 +161,61 @@ def main():
     max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_int = int(config["fiducial"]["nbins_int"])
 
-    # Load 2PCF
-    gg = treecorr.GGCorrelation(
-        min_sep=min_sep_int,
-        max_sep=max_sep_int,
-        nbins=nbins_int,
-        sep_units="arcmin",
-    )
-    gg.read(snakemake.input["xi_integration"])
+    # Build input path lookup from snakemake inputs
+    xi_paths = {k: v for k, v in snakemake.input.items() if k.startswith("xi_")}
+    cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("cov_")}
 
-    # Compute COSEBIS for both scale cuts
-    datasets = {}
-
-    for scale_key, scale_cut in scale_cuts.items():
-        cov_path = snakemake.input["cov_integration"]
-
-        results = calculate_cosebis(
-            gg,
-            nmodes=nmodes,
-            scale_cuts=[scale_cut],
-            cov_path=cov_path,
-        )
-
-        cosebis_result = results[scale_cut]
-        Bn = cosebis_result["Bn"]
-        cov = cosebis_result["cov"]
-        cov_B = cov[nmodes:, nmodes:]
-        sigma_B = np.sqrt(np.diag(cov_B))
-
-        datasets[scale_key] = {
-            "Bn_normalized": Bn / sigma_B,
-        }
-
-    # Create output
+    # Create output directory
     output_dir = Path(snakemake.output["evidence"]).parent
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    fig = _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts)
+    # Track generated artifacts
+    output = {}
 
-    fig_name = "figure.png"
-    fig_path = output_dir / fig_name
-    fig.savefig(fig_path, dpi=300, bbox_inches="tight")
-    print(f"Saved {fig_path}")
+    # Generate all 9 figures
+    for fig_spec in iter_version_figures(version_labels, version):
+        # Determine which input keys to use
+        if fig_spec["leak_corrected"]:
+            xi_key = f"xi_{fig_spec['version_leak_corr']}"
+            cov_key = f"cov_{fig_spec['version_leak_corr']}"
+        else:
+            xi_key = f"xi_{fig_spec['version_uncorr']}"
+            cov_key = f"cov_{fig_spec['version_uncorr']}"
 
-    if "paper_figure" in snakemake.output.keys():
-        paper_path = Path(snakemake.output["paper_figure"])
-        paper_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(fig_path, paper_path)
-        print(f"Copied to {paper_path}")
+        # Load 2PCF for this version
+        gg = treecorr.GGCorrelation(
+            min_sep=min_sep_int,
+            max_sep=max_sep_int,
+            nbins=nbins_int,
+            sep_units="arcmin",
+        )
+        gg.read(xi_paths[xi_key])
 
-    plt.close(fig)
+        # Compute COSEBIS datasets
+        datasets = _compute_cosebis_datasets(
+            gg, cov_paths[cov_key], nmodes, scale_cuts
+        )
+
+        # Create figure with appropriate title
+        fig = _create_single_panel_bmode_figure(
+            datasets, nmodes, scale_cuts, title=fig_spec["title"]
+        )
+
+        # Save figure
+        fig_path = output_dir / fig_spec["filename"]
+        fig.savefig(fig_path, dpi=300, bbox_inches="tight")
+        print(f"Saved {fig_path}")
+        plt.close(fig)
+
+        # Track artifact
+        output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
+
+        # Copy paper figure to paper figures directory
+        if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
+            paper_path = Path(snakemake.output["paper_figure"])
+            paper_path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(paper_path, bbox_inches="tight")
+            print(f"Saved {paper_path}")
 
     # Write evidence
     spec_paths = snakemake.input["specs"]
@@ -187,7 +231,7 @@ def main():
             "nmodes": nmodes,
             "note": "Paper data vector figure. Statistical PTEs in cosebis_pte_matrix claim.",
         },
-        "artifacts": {"figure": fig_name},
+        "output": output,
     }
 
     evidence_path = Path(snakemake.output["evidence"])

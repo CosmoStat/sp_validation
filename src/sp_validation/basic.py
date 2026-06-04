@@ -15,8 +15,6 @@ from scipy.interpolate import interp1d
 from scipy.spatial import cKDTree
 from scipy.special import gamma
 
-import matplotlib.pyplot as plt
-
 from tqdm import tqdm
 import operator as op
 import itertools as itools
@@ -147,6 +145,15 @@ class metacal:
                 ns,
             )
 
+        print("FHP/MK hack using p1 PSF for ns in cuts")
+        indices = np.where(mask)[0]
+        col_noshear = f"{self._prefix}_Tpsf_NOSHEAR"
+        col_1p = f"{self._prefix}_Tpsf_1P"
+        new_psf = data[col_1p][indices]
+
+        # Overwriting incorrect no-shear PSF size to the one from 1p
+        ns["Tpsf"] = new_psf
+
         self.m1 = m1
         self.p1 = p1
         self.m2 = m2
@@ -159,7 +166,7 @@ class metacal:
         Read data from ngmix catalogue.
         
         """
-        
+
         for name_shear, dict_tmp in zip(
             ['1M', '1P', '2M', '2P', 'NOSHEAR'],
             [m1, p1, m2, p2, ns]
@@ -372,10 +379,12 @@ class metacal:
             else:
                 snr_flux = data['flux'] / data['flux_err']
 
+            Tpsf = data['Tpsf']
+
             mask_tmp = (
                 (data['flag'] == 0)
-                & (Tr_tmp / data['Tpsf'] > self._rel_size_min)
-                & (Tr_tmp / data['Tpsf'] < self._rel_size_max)
+                & (Tr_tmp / Tpsf > self._rel_size_min)
+                & (Tr_tmp / Tpsf < self._rel_size_max)
                 & (snr_flux > self._snr_min)
                 & (snr_flux < self._snr_max)
             )
@@ -599,3 +608,29 @@ def jackknif_weighted_average2(
     all_est = np.array(all_est)
 
     return np.mean(all_est), np.std(all_est)
+
+
+def mask_gal_size(T, Tpsf, rel_size_min, rel_size_max, size_corr_ell=False, g1=None, g2=None):
+
+    Tr_tmp = T
+    if size_corr_ell:
+        Tr_tmp *= (
+            (1 - g1 **2 + g2 ** 2) / (1 + g1 ** 2 + g2 **2)
+        )
+
+    mask = (
+        (Tr_tmp / Tpsf > rel_size_min)
+        & (Tr_tmp / Tpsf < rel_size_max)
+    )
+
+    return mask
+
+
+def mask_gal_SNR(SNR, snr_min, snr_max):
+
+    mask = (
+        (SNR > snr_min)
+        & (SNR < snr_max)
+    )
+
+    return mask

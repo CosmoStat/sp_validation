@@ -6,16 +6,9 @@ from pathlib import Path
 
 import numpy as np
 
-from IPython import get_ipython
-
-ipython = get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-else:
-    sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
-    sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
+# Unbuffered output for Snakemake log streaming
+sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
+sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
 
 
 def _load_snakemake():
@@ -23,7 +16,7 @@ def _load_snakemake():
         from snakemake_helpers import snakemake_interactive
 
         return snakemake_interactive(
-            "results/paper_plots/intermediate/SP_v1.4.6_leak_corr_pure_eb_semianalytic.npz",
+            "results/paper_plots/intermediate/SP_v1.4.6_leak_corr_A_pure_eb_semianalytic.npz",
             str(Path.cwd()),
         )
     from snakemake.script import snakemake
@@ -60,11 +53,14 @@ def main():
         "npatch": int(params["npatch"]),
     }
 
+    blind = params.get("blind", "A")
+    print(f"Gathering pure E/B for blind {blind}")
+
     # Load precomputed correlation functions from Snakemake inputs
     gg = _load_xi(snakemake.input["xi_reporting"], numeric_params["nbins"])
     gg_int = _load_xi(snakemake.input["xi_integration"], numeric_params["nbins_int"])
 
-    # Compute pure E/B decomposition directly (covariance comes from MC samples)
+    # Compute data vectors from correlation functions
     eb_results = get_pure_EB_modes(
         theta=gg["meanr"], xip=gg["xip"], xim=gg["xim"],
         theta_int=gg_int["meanr"], xip_int=gg_int["xip"], xim_int=gg_int["xim"],
