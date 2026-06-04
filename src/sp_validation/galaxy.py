@@ -32,7 +32,7 @@ def T_to_fwhm(T):
     """T to fwhm.
 
     Transform from size T to FWHM.
-    This interprets T as the RMS (``sigma'') of a Gaussian.
+    This interprets T as the RMS (``sigma``) of a Gaussian.
 
     Parameters
     ----------
