@@ -573,20 +573,18 @@ Defaults to 1000.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><p>A dictionary containing the following keys:
-- “xip_E”: Pure E-mode correlation function for xi+.
-- “xim_E”: Pure E-mode correlation function for xi-.
-- “xip_B”: Pure B-mode correlation function for xi+.
-- “xim_B”: Pure B-mode correlation function for xi-.
-- “xip_amb”: Ambiguity mode for xi+.
-- “xim_amb”: Ambiguity mode for xi-.
-- “cov”: Covariance matrix for the pure E/B modes.
-- “gg”: The two-point correlation function object for the reporting binning.
-- “gg_int”: The two-point correlation function object for the</p>
-<blockquote>
-<div><p>integration binning.</p>
-</div></blockquote>
+<dd class="field-even"><p><p>A dictionary containing the following keys:</p>
 <ul class="simple">
+<li><p>”xip_E”: Pure E-mode correlation function for xi+.</p></li>
+<li><p>”xim_E”: Pure E-mode correlation function for xi-.</p></li>
+<li><p>”xip_B”: Pure B-mode correlation function for xi+.</p></li>
+<li><p>”xim_B”: Pure B-mode correlation function for xi-.</p></li>
+<li><p>”xip_amb”: Ambiguity mode for xi+.</p></li>
+<li><p>”xim_amb”: Ambiguity mode for xi-.</p></li>
+<li><p>”cov”: Covariance matrix for the pure E/B modes.</p></li>
+<li><p>”gg”: The two-point correlation function object for the reporting binning.</p></li>
+<li><p>”gg_int”: The two-point correlation function object for the
+integration binning.</p></li>
 <li><p>”eb_samples”: (only when using semi-analytical covariance) Semi-analytic
 EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)</p></li>
 </ul>
@@ -598,9 +596,9 @@ EB samples used for covariance calculation. Shape: (n_samples, 6*nbins)</p></li>
 </dl>
 <p class="rubric">Notes</p>
 <ul class="simple">
-<li><p>A shared patch file is used for the reporting and integration binning,</p></li>
+<li><p>A shared patch file is used for the reporting and integration binning,
+and is created if it does not exist.</p></li>
 </ul>
-<p>and is created if it does not exist.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="sp_validation.cosmo_val.CosmologyValidation.plot_pure_eb">
@@ -641,13 +639,11 @@ If None (default), results will be calculated using calculate_pure_eb.</p></li>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
-<p>This function orchestrates the full E/B mode analysis workflow:
-- Uses instance configuration as defaults for unspecified parameters
-- Automatically switches to analytical variance when theoretical</p>
-<blockquote>
-<div><p>covariance provided</p>
-</div></blockquote>
+<p>This function orchestrates the full E/B mode analysis workflow:</p>
 <ul class="simple">
+<li><p>Uses instance configuration as defaults for unspecified parameters</p></li>
+<li><p>Automatically switches to analytical variance when theoretical
+covariance provided</p></li>
 <li><p>Generates standardized output file naming based on all analysis
 parameters</p></li>
 <li><p>Delegates individual plot generation to specialized functions in
