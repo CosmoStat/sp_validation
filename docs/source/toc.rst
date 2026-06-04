@@ -1,4 +1,4 @@
-.. Toctrees define sidebar contents
+.. Toctrees define the sidebar contents
 
 .. toctree::
   :hidden:
@@ -10,13 +10,21 @@
   quickstart
 
 .. toctree::
-   :hidden:
-   :titlesonly:
-   :caption: API Documentation
+  :hidden:
+  :titlesonly:
+  :caption: User Guide
 
-   sp_validation
-   z_ref
-   Leakage_object_Tutorial
+  run_validation
+  post_processing
+  Leakage_object_Tutorial
+
+.. toctree::
+  :hidden:
+  :titlesonly:
+  :caption: API Reference
+
+  sp_validation
+  z_ref
 
 .. toctree::
   :hidden:
@@ -24,4 +32,3 @@
   :caption: Guidelines
 
   contributing
-  citing
