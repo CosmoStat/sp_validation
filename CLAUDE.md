@@ -14,25 +14,30 @@ SP Validation is a Python package for validating weak-lensing catalogues (galaxy
 ## Development Commands
 
 ### Testing
-- Run all tests: `pytest`
-- Run fast tests only (recommended for development): `pytest -m "not slow"`
-- Run tests with coverage: `pytest --cov=sp_validation --cov-report=term --cov-report=xml`
-- Run single test: `pytest src/sp_validation/tests/test_cosmology.py::test_function_name`
-- Test performance: Fast tests ~13s, all tests ~18s (vs 30s originally)
-- Test tolerances: Optimized based on actual agreement levels and physics constraints
+Tests live in `src/sp_validation/tests/` and import the full scientific stack,
+so run them inside the container.
+- Run all tests: `pytest` (collects from `src/sp_validation/tests`; coverage on by default)
+- Skip the slow tests: `pytest -m "not slow"`
+- Run a single test: `pytest src/sp_validation/tests/test_cosmology.py::test_function_name`
+
+CI runs this same suite inside the freshly-built image before publishing it
+(see `.github/workflows/deploy-image.yml`).
 
 ### Linting and Code Quality
 - Check code style: `ruff check`
 - Auto-fix issues: `ruff check --fix`
 - Line length limit: 88 characters
 
-### Installation 
-- Install in development mode: `pip install -e .[develop]`
-- Install test dependencies: `pip install -e .[test]`
+### Installation
+The package is managed with `uv` (see `uv.lock`); the primary runtime environment
+is the container (full scientific stack pre-built). For a local dev environment:
+- Dev install (test + docs extras): `uv pip install -e '.[develop]'`
+- Test extras only: `uv pip install -e '.[test]'`
 
 ## Architecture
 
 ### Core Package Structure (`src/sp_validation/`)
+- `b_modes.py`: Pure E-/B-mode decomposition (COSEBIS, pseudo-Cℓ)
 - `basic.py`: Basic utilities and mathematical functions
 - `calibration.py`: Shear calibration routines
 - `cat.py`: Catalogue handling and manipulation

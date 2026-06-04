@@ -2,19 +2,19 @@
 
 Validation of weak-lensing catalogues (galaxy and star shapes and other parameters) produced by [ShapePipe](https://github.com/CosmoStat/shapepipe).
 
-| Usage | Development | Release |
-| ----- | ----------- | ------- |
-| [![docs](https://img.shields.io/badge/docs-Sphinx-blue)](https://martin.kilbinger.github.io/sp_validation/) | [![build](https://github.com/martin.kilbinger/sp_validation/workflows/CI/badge.svg)](https://github.com/martin.kilbinger/sp_validation/actions?query=workflow%3ACI) | [![release](https://img.shields.io/github/v/release/martin.kilbinger/sp_validation)](https://github.com/martin.kilbinger/sp_validation/releases/latest) |
-| [![license](https://img.shields.io/github/license/martin.kilbinger/sp_validation)](https://github.com/martin.kilbinger/sp_validation/blob/master/LICENCE.txt) | [![deploy](https://github.com/martin.kilbinger/sp_validation/workflows/CD/badge.svg)](https://github.com/martin.kilbinger/sp_validation/actions?query=workflow%3ACD) | [![pypi](https://img.shields.io/pypi/v/sp_validation)](https://pypi.org/project/sp_validation/) |
-| [![wemake-python-styleguide](https://img.shields.io/badge/style-wemake-000000.svg)](https://github.com/wemake-services/wemake-python-styleguide) | [![codecov](https://codecov.io/gh/martin.kilbinger/sp_validation/branch/master/graph/badge.svg?token=XHJIQXV7AX)](https://codecov.io/gh/martin.kilbinger/sp_validation) | [![python](https://img.shields.io/pypi/pyversions/sp_validation)](https://www.python.org/downloads/source/) |
-| [![contribute](https://img.shields.io/badge/contribute-read-lightgrey)](https://github.com/martin.kilbinger/sp_validation/blob/master/CONTRIBUTING.md) | [![CodeFactor](https://www.codefactor.io/repository/github/martin.kilbinger/sp_validation/badge)](https://www.codefactor.io/repository/github/martin.kilbinger/sp_validation) | |
-| [![coc](https://img.shields.io/badge/conduct-read-lightgrey)](https://github.com/martin.kilbinger/sp_validation/blob/master/CODE_OF_CONDUCT.md) | [![Updates](https://pyup.io/repos/github/martin.kilbinger/sp_validation/shield.svg)](https://pyup.io/repos/github/martin.kilbinger/sp_validation/) | |
+[![docs](https://img.shields.io/badge/docs-sphinx-blue)](https://cosmostat.github.io/sp_validation/)
+[![CI](https://github.com/CosmoStat/sp_validation/actions/workflows/deploy-image.yml/badge.svg)](https://github.com/CosmoStat/sp_validation/actions/workflows/deploy-image.yml)
+[![container](https://img.shields.io/badge/container-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation)
+[![python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/CosmoStat/sp_validation/blob/develop/LICENCE.txt)
+[![code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230?logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
+[![contribute](https://img.shields.io/badge/contribute-read-lightgrey)](https://github.com/CosmoStat/sp_validation/blob/develop/CONTRIBUTING.md)
+[![code of conduct](https://img.shields.io/badge/conduct-read-lightgrey)](https://github.com/CosmoStat/sp_validation/blob/develop/CODE_OF_CONDUCT.md)
 
 ---
-> Authors: <a href="www.cosmostat.org" target="_blank" style="text-decoration:none; color: #F08080">CosmoStat</a> lab at CEA Paris-Saclay;
-  Martin Kilbinger, Axel Guinot.  
-> Contributors: Emma Ayçoberry, Lucie Baumont, Clara Bonini, Cail Daley, Samuel Farrens, Sacha Guerrini, Fabian Hervas Peters.</a>  
-> Email: <a href="mailto:martin.kilbinger@cea.fr" style="text-decoration:none; color: #F08080">martin.kilbinger@cea.fr</a>  
+> **Authors:** the [CosmoStat](https://www.cosmostat.org) lab at CEA Paris-Saclay — Martin Kilbinger, Cail Daley, Sacha Guerrini.  
+> **Contributors:** Emma Ayçoberry, Lucie Baumont, Clara Bonini, Samuel Farrens, Lisa Goh, Axel Guinot, Fabian Hervas Peters.  
+> **Contact:** [martin.kilbinger@cea.fr](mailto:martin.kilbinger@cea.fr)
 ---
 
 This package contains a library and several scripts and notebooks. The main
@@ -35,7 +35,7 @@ tasks that can be performed by `sp_validation` are:
 
 ## Container Installation (Recommended)
 
-The easiest way to install sp_validation is via a container. Docker images are automatically built and pushed to the [Github Container Registry (GHCR)](ghcr.io/cosmostat/sp_validation) for each release. This image can be installed and run on most systems (including clusters) with just a few lines of code.
+The easiest way to install sp_validation is via a container. Docker images are automatically built and pushed to the [GitHub Container Registry (GHCR)](https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation) on every push to `develop`. This image can be installed and run on most systems (including clusters) with just a few lines of code.
 
 We recommend running the image with **Apptainer** (formerly Singularity) which is installed on most HPC clusters. To simply run the image, use the following command:
 
@@ -53,10 +53,10 @@ python -c "import sp_validation"
 You can also run the image with **Docker**:
 
 ```bash
-docker run --rm -it ghcr.io/cosmostat/sp_validation:pyproject_docker python -c "import sp_validation"  
+docker run --rm -it ghcr.io/cosmostat/sp_validation:develop python -c "import sp_validation"
 ```
 
-We do not currently build images for Apple Silicon/amr64; however the amd64 images should work on these systems, albeit with reduced performance.
+We do not currently build images for Apple Silicon/arm64; however the amd64 images should work on these systems, albeit with reduced performance.
 
 
 
