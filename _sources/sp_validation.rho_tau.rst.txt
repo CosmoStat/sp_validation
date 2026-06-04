@@ -1,0 +1,7 @@
+sp\_validation.rho\_tau
+-----------------------
+
+.. automodule:: sp_validation.rho_tau
+   :members:
+   :show-inheritance:
+   :undoc-members:

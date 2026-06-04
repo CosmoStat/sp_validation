@@ -1,0 +1,7 @@
+sp\_validation.run\_joint\_cat
+------------------------------
+
+.. automodule:: sp_validation.run_joint_cat
+   :members:
+   :show-inheritance:
+   :undoc-members:

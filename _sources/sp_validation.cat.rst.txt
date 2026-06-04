@@ -3,5 +3,5 @@ sp\_validation.cat
 
 .. automodule:: sp_validation.cat
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

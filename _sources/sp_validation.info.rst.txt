@@ -3,5 +3,5 @@ sp\_validation.info
 
 .. automodule:: sp_validation.info
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

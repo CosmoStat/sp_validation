@@ -3,5 +3,5 @@ sp\_validation.cosmology
 
 .. automodule:: sp_validation.cosmology
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

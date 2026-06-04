@@ -3,5 +3,5 @@ sp\_validation.plot\_style
 
 .. automodule:: sp_validation.plot_style
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

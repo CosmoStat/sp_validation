@@ -1,0 +1,7 @@
+sp\_validation.b\_modes
+-----------------------
+
+.. automodule:: sp_validation.b_modes
+   :members:
+   :show-inheritance:
+   :undoc-members:

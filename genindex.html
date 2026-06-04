@@ -1,43 +1,1149 @@
-
 <!DOCTYPE html>
+<html lang="en" data-content_root="./"
+  x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}"
+  :class="{ 'dark' : darkMode === true }">
 
-<html lang="en">
 <head>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<meta charset="utf-8"/>
-<title>Index | sp_validation v0.3.5</title>
-<link href="_static/pygments.css" rel="stylesheet"/>
-<link href="_static/theme.da0e2e7def0e04be12ba.css" rel="stylesheet"/>
-<link href="search.html" rel="search" title="Search"/>
-<link href="#" rel="index" title="Index"/>
+  <script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#030711" />
+  
+  <title>Index | sp_validation v0.6.0</title>
+  <meta property="og:title" content="Index | sp_validation v0.6.0" />
+  <meta name="twitter:title" content="Index | sp_validation v0.6.0" />
+  <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+  <link rel="stylesheet" type="text/css" href="_static/theme.css?v=979577e3" />
+  <link rel="search" title="Search" href="search.html" />
+  <link rel="index" title="Index" href="#" />
 </head>
-<body class="antialiased text-sm sm:text-base text-gray">
-<div class="h-screen xl:grid xl:grid-layout" data-action="keydown@window-&gt;search#focus" data-controller="sidebar search" id="page">
-<a class="block text-xl bg-white py-4 z-20 absolute top-0 h-18 inset-x-0 text-center transform -translate-y-full focus:translate-y-0 focus:outline-none transition-transform duration-75" href="#index" title="Skip navigation links">Skip to content</a>
-<header class="grid-area-header z-10 h-14 sm:h-18">
-<div class="bg-gray-dark shadow-md flex items-center h-full xl:px-2 relative"><div class="flex items-center">
-<button class="xl:hidden h-14 w-14 sm:h-18 sm:w-18 leading-14 sm:leading-18 text-gray-100 hover:bg-gray-700 hover:text-brand focus:outline-none focus:bg-gray-700 focus:text-brand" data-action="sidebar#open" data-sidebar-target="hamburger">
-<span class="sr-only">Open navigation menu</span>
-<svg aria-hidden="true" class="fill-current h-8 w-8" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"></path></svg>
-</button><a aria-label="Back to homepage" class="hover:bg-gray-700 focus:bg-gray-700 focus:outline-none tooltipped tooltipped-sw" href="index.html"><span class="hidden lg:inline-block flex-shrink-0 font-medium text-gray-100 mx-5 leading-14 sm:leading-18 tracking-wider">sp_validation v0.3.5</span>
-</a></div><div class="flex justify-end items-center flex-1"><form action="search.html" class="flex print:hidden justify-between items-center leading-14 sm:leading-18 md:ml-4 bg-gray-dark text-gray-300 focus-within:bg-gray-50 focus-within:text-gray-800 focus-within:absolute focus-within:inset-x-0 focus-within:top-0 md:focus-within:w-full md:focus-within:static" data-action="click-&gt;search#focusSearchInput" id="searchbox" method="get">
-<button aria-label="Get search results" class="text-inherit h-14 w-14 sm:h-18 sm:w-18" tabindex="-1">
-<svg aria-hidden="true" class="fill-current stroke-current h-8 w-8" stroke-width="0.5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
-</button>
-<input aria-label="Search the docs" class="pr-2 bg-transparent text-inherit focus:outline-none w-0 md:w-auto focus:w-full transition-all duration-100" data-search-target="searchInput" id="search-input" name="q" placeholder="Search the docs" type="search"/>
-</form></div>
-</div>
+
+<body x-data="{ showSidebar: false, showScrollTop: false }"
+  class="min-h-screen font-sans antialiased bg-background text-foreground" :class="{ 'overflow-hidden': showSidebar }"@scroll.window="showScrollTop = pageYOffset > 100">
+  <div x-cloak x-show="showSidebar"
+    class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden"
+    @click.self="showSidebar = false"></div><div id="page" class="relative flex flex-col min-h-screen"><a href="#content"
+      class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+    <div class="hidden mr-4 md:flex">
+      <a href="index.html" class="flex items-center mr-6"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+      </a></div><button
+      class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden"
+      type="button" @click="showSidebar = true">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" aria-hidden="true"
+        fill="currentColor">
+        <path
+          d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z" />
+      </svg>
+      <span class="sr-only">Toggle navigation menu</span>
+    </button>
+    <div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+      <div class="flex-1 w-full md:w-auto md:flex-none"><form id="searchbox"
+      action="search.html"
+      method="get"
+      class="relative flex items-center group"
+      @keydown.k.window.meta="$refs.search.focus()">
+  <input x-ref="search"
+          name="q"
+          id="search-input"
+          type="search"
+          aria-label="Search the docs"
+          placeholder="Search ..."
+          class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" />
+  <kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+    <span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+      </div>
+      <nav class="flex items-center gap-1">
+        <button @click="darkMode = !darkMode"
+          class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
+          type="button"
+          title="Toggle color scheme">
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0">
+            <path
+              d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100">
+            <path
+              d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z" />
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </div>
 </header>
-<button class="fixed bottom-0 right-0 z-20 opacity-0 p-4 m-4 tracking-wide bg-gray-900 text-gray-100 transition transform transform-gpu duration-500 translate-y-full" data-action="search#hideSnackbar" data-search-target="snackbar">
-  Clear highlights
-</button><div class="fixed hidden inset-0 bg-black bg-opacity-50" data-action="click-&gt;sidebar#close" data-sidebar-target="screen">
+
+    <div class="flex-1"><div
+        class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside id="left-sidebar"
+  class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky"
+  :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }">
+
+    <a href="index.html" class="justify-start text-sm md:!hidden bg-background"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+    </a>
+
+    <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+      <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+  <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html">sp_validation.basic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cat.html">sp_validation.cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.run_joint_cat.html">sp_validation.run_joint_cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.util.html">sp_validation.util</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing this Package</a></li>
+</ul>
+
+</nav>
+      </div>
+    </div>
+    <button type="button" @click="showSidebar = false"
+      class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+        stroke="none" class="h-4 w-4">
+        <path
+          d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z" />
+      </svg>
+    </button>
+  </aside>
+          <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs"
+     class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+  <a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground"
+     href="index.html">
+    <span class="hidden md:inline">sp_validation v0.6.0</span>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         height="18"
+         width="18"
+         viewBox="0 96 960 960"
+         aria-label="Home"
+         fill="currentColor"
+         stroke="none"
+         class="md:hidden">
+      <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z" />
+    </svg>
+  </a>
+  
+<div class="mr-1">/</div><span aria-current="page"
+        class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">Index</span>
+</nav>
+
+<div id="content" role="main">
+
+  <h1 id="index">Index</h1>
+  <h2 id="_">_</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._area_from_catalog">_area_from_catalog() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._area_from_mask">_area_from_mask() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology._camb_to_ccl">_camb_to_ccl() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology._ccl_to_camb">_ccl_to_camb() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._compute_calibration">_compute_calibration() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes._cosebis_result_to_dict">_cosebis_result_to_dict() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology._cosmocov_to_ccl">_cosmocov_to_ccl() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau._extract_xip">_extract_xip() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes._get_pte_from_scale_cut">_get_pte_from_scale_cut() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks._labels_struct">_labels_struct (ApplyHspMasks attribute)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._load_onecovariance_cov">_load_onecovariance_cov() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._masking_gal">_masking_gal() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._masking_gal_mom">_masking_gal_mom() (metacal method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._masking_star">_masking_star() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path">_materialize_seed_path() (CosmologyValidation static method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._modify_onecov_config">_modify_onecov_config() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._read_data">_read_data() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._read_data_galsim">_read_data_galsim() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._read_data_ngmix">_read_data_ngmix() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter._regions">_regions (FootprintPlotter attribute)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._return">_return() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._selection_response">_selection_response() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._shear_response">_shear_response() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._shear_response_std">_shear_response_std() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant">_split_seed_variant() (CosmologyValidation static method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._total_response">_total_response() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config">_write_catalog_config() (CosmologyValidation method)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="A">A</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal.add_cuts">add_cuts() (metacal method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.CalibrateCat.add_params_to_FITS_header">add_params_to_FITS_header() (CalibrateCat method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.add_summary_to_FITS_header">add_summary_to_FITS_header() (Mask method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.append_masks">append_masks() (ApplyHspMasks method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.apply">apply() (Mask method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.apply_mask">apply_mask() (ApplyHspMasks method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.apply_random_rotation">apply_random_rotation() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks">ApplyHspMasks (class in sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.area">area (CosmologyValidation property)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="B">B</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat">BaseCat (class in sp_validation.run_joint_cat)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename">basename() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.build_df">build_df() (in module sp_validation.calibration)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="C">C</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.c1">c1 (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.c2">c2 (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.c_ell_to_xi">c_ell_to_xi() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_2pcf">calculate_2pcf() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_additive_bias">calculate_additive_bias() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_aperture_mass_dispersion">calculate_aperture_mass_dispersion() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area">calculate_area() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area_from_binned_catalog">calculate_area_from_binned_catalog() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_cosebis">calculate_cosebis() (CosmologyValidation method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_cosebis">(in module sp_validation.b_modes)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_eb_statistics">calculate_eb_statistics() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_ellipticity_dispersion">calculate_ellipticity_dispersion() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_n_eff_gal">calculate_n_eff_gal() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_objectwise_leakage">calculate_objectwise_leakage() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl">calculate_pseudo_cl() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_catalog">calculate_pseudo_cl_catalog() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_eb_cov">calculate_pseudo_cl_eb_cov() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_g_ng_cov">calculate_pseudo_cl_g_ng_cov() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_map">calculate_pseudo_cl_map() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_onecovariance">calculate_pseudo_cl_onecovariance() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pure_eb">calculate_pure_eb() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_pure_eb_correlation">calculate_pure_eb_correlation() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_fits">calculate_rho_tau_fits() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_stats">calculate_rho_tau_stats() (CosmologyValidation method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_scale_dependent_leakage">calculate_scale_dependent_leakage() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.CalibrateCat">CalibrateCat (class in sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.catalog_config_path">catalog_config_path (CosmologyValidation attribute)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cc">cc (CosmologyValidation attribute)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.check_params">check_params() (ApplyHspMasks method)</a>
+</li>
+      <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_base">classification_galaxy_base() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_galsim">classification_galaxy_galsim() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_ngmix">classification_galaxy_ngmix() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_overlap_ra_dec">classification_galaxy_overlap_ra_dec() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.close_hd5">close_hd5() (BaseCat method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.color_reset">color_reset() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.colors">colors (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.compute_PSF_leakage">compute_PSF_leakage() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.compute_survey_stats">compute_survey_stats() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.compute_weights_gatti">compute_weights_gatti() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.confusion_matrix">confusion_matrix() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.correlation_from_covariance">correlation_from_covariance() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.correlation_matrix">correlation_matrix() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cosmo">cosmo (CosmologyValidation attribute)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation">CosmologyValidation (class in sp_validation.cosmo_val)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.create_bins">create_bins() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.create_descr">create_descr() (Mask method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter.create_hsp_map">create_hsp_map() (FootprintPlotter method)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.cut_to_bins">cut_to_bins() (in module sp_validation.calibration)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="D">D</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.dtype_out">dtype_out() (JointCat method)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="E">E</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.ellipticity_dispersion">ellipticity_dispersion (CosmologyValidation property)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="F">F</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.fill_cat_gal">fill_cat_gal() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.find_conservative_scale_cut_key">find_conservative_scale_cut_key() (in module sp_validation.b_modes)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter">FootprintPlotter (class in sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.from_list">from_list() (Mask class method)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="G">G</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.gamma_T_tc">gamma_T_tc() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_alpha_leakage_per_object">get_alpha_leakage_per_object() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.get_area">get_area() (in module sp_validation.survey)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_calibrate_e_from_cat">get_calibrate_e_from_cat() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_calibrate_no_leakage_e_from_cat">get_calibrate_no_leakage_e_from_cat() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_calibrated_m_c">get_calibrated_m_c() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_calibrated_quantities">get_calibrated_quantities() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.get_clusters">get_clusters() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.get_col_info">get_col_info() (JointCat method)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.get_cosmo">get_cosmo() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_cov_from_onecov">get_cov_from_onecov() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_field_and_workspace_from_map">get_field_and_workspace_from_map() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.get_footprint">get_footprint() (in module sp_validation.survey)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_gaussian_real">get_gaussian_real() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.get_header">get_header() (BaseCat method)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_jackknife_cov">get_jackknife_cov() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.get_label_struct">get_label_struct() (ApplyHspMasks class method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.get_mask">get_mask() (ApplyHspMasks method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.get_mask_col_name">get_mask_col_name() (ApplyHspMasks class method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.get_masks">get_masks() (ApplyHspMasks method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.get_masks_from_config">get_masks_from_config() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_n_gal_map">get_n_gal_map() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.get_n_obj">get_n_obj() (JointCat method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_namaster_bin">get_namaster_bin() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_params_rho_tau">get_params_rho_tau() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.get_patches">get_patches() (JointCat method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.get_paths_bit_masks">get_paths_bit_masks() (ApplyHspMasks method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_pseudo_cls_catalog">get_pseudo_cls_catalog() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_pseudo_cls_map">get_pseudo_cls_map() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_quantities_binned">get_quantities_binned() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_redshift">get_redshift() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau">get_rho_tau() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau_w_cov">get_rho_tau_w_cov() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_sample">get_sample() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples">get_samples() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples_emcee">get_samples_emcee() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples_lsq">get_samples_lsq() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.get_sign">get_sign() (Mask method)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.get_theo_c_ell">get_theo_c_ell() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.get_theo_xi">get_theo_xi() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_theory_cov">get_theory_cov() (in module sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.get_ticks">get_ticks() (in module sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.get_transform">get_transform() (SquareRootScale method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal.get_variance_ivweights">get_variance_ivweights() (metacal static method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_variance_map">get_variance_map() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_w_des">get_w_des() (in module sp_validation.calibration)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="H">H</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.has_inverse">has_inverse (SquareRootScale.InvertedSquareRootTransform attribute)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.has_inverse">(SquareRootScale.SquareRootTransform attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter.hp_pixel_centers">hp_pixel_centers() (FootprintPlotter class method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.hsp_map_logical_or">hsp_map_logical_or() (in module sp_validation.plots)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="I">I</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.init_data">init_data() (JointCat method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results">init_results() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.input_dims">input_dims (SquareRootScale.InvertedSquareRootTransform attribute)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.input_dims">(SquareRootScale.SquareRootTransform attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.inverted">inverted() (SquareRootScale.InvertedSquareRootTransform method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.inverted">(SquareRootScale.SquareRootTransform method)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.is_separable">is_separable (SquareRootScale.InvertedSquareRootTransform attribute)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.is_separable">(SquareRootScale.SquareRootTransform attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="J">J</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.basic.html#sp_validation.basic.jackknif_weighted_average2">jackknif_weighted_average2() (in module sp_validation.basic)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat">JointCat (class in sp_validation.run_joint_cat)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="L">L</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.limit_range_for_scale">limit_range_for_scale() (SquareRootScale method)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="M">M</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.io.html#sp_validation.io.make_out_dirs">make_out_dirs() (in module sp_validation.io)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.map2">map2 (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask">Mask (class in sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.mask_gal_size">mask_gal_size() (in module sp_validation.basic)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.mask_gal_SNR">mask_gal_SNR() (in module sp_validation.basic)</a>
+</li>
+      <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.mask_overlap">mask_overlap() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.merge_catalogues">merge_catalogues() (JointCat method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal">metacal (class in sp_validation.basic)</a>
+</li>
+      <li><a href="sp_validation.util.html#sp_validation.util.millify">millify() (in module sp_validation.util)</a>
+</li>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.missing_tiles">missing_tiles() (in module sp_validation.survey)</a>
+</li>
+      <li>
+    module
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.html#module-sp_validation">sp_validation</a>
+</li>
+        <li><a href="sp_validation.b_modes.html#module-sp_validation.b_modes">sp_validation.b_modes</a>
+</li>
+        <li><a href="sp_validation.basic.html#module-sp_validation.basic">sp_validation.basic</a>
+</li>
+        <li><a href="sp_validation.calibration.html#module-sp_validation.calibration">sp_validation.calibration</a>
+</li>
+        <li><a href="sp_validation.cat.html#module-sp_validation.cat">sp_validation.cat</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.html#module-sp_validation.cosmo_val">sp_validation.cosmo_val</a>
+</li>
+        <li><a href="sp_validation.cosmology.html#module-sp_validation.cosmology">sp_validation.cosmology</a>
+</li>
+        <li><a href="sp_validation.galaxy.html#module-sp_validation.galaxy">sp_validation.galaxy</a>
+</li>
+        <li><a href="sp_validation.info.html#module-sp_validation.info">sp_validation.info</a>
+</li>
+        <li><a href="sp_validation.io.html#module-sp_validation.io">sp_validation.io</a>
+</li>
+        <li><a href="sp_validation.plot_style.html#module-sp_validation.plot_style">sp_validation.plot_style</a>
+</li>
+        <li><a href="sp_validation.plots.html#module-sp_validation.plots">sp_validation.plots</a>
+</li>
+        <li><a href="sp_validation.rho_tau.html#module-sp_validation.rho_tau">sp_validation.rho_tau</a>
+</li>
+        <li><a href="sp_validation.run_joint_cat.html#module-sp_validation.run_joint_cat">sp_validation.run_joint_cat</a>
+</li>
+        <li><a href="sp_validation.survey.html#module-sp_validation.survey">sp_validation.survey</a>
+</li>
+        <li><a href="sp_validation.util.html#module-sp_validation.util">sp_validation.util</a>
+</li>
+        <li><a href="sp_validation.version.html#module-sp_validation.version">sp_validation.version</a>
+</li>
+      </ul></li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="N">N</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.n_eff_gal">n_eff_gal (CosmologyValidation property)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.name">name (SquareRootScale attribute)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="O">O</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.io.html#sp_validation.io.open_stats_file">open_stats_file() (in module sp_validation.io)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.output_dims">output_dims (SquareRootScale.InvertedSquareRootTransform attribute)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.output_dims">(SquareRootScale.SquareRootTransform attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="P">P</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.params_default">params_default() (ApplyHspMasks method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.CalibrateCat.params_default">(CalibrateCat method)</a>
+</li>
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.params_default">(JointCat method)</a>
+</li>
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ReadCat.params_default">(ReadCat method)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_2pcf">plot_2pcf() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_all_regions">plot_all_regions() (FootprintPlotter method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_aperture_mass_dispersion">plot_aperture_mass_dispersion() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_area">plot_area() (FootprintPlotter method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.plot_area_mask">plot_area_mask() (in module sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.plot_binned">plot_binned() (in module sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.plot_binned_one">plot_binned_one() (in module sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_cosebis">plot_cosebis() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_cosebis_covariance_matrix">plot_cosebis_covariance_matrix() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_cosebis_modes">plot_cosebis_modes() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_cosebis_scale_cut_heatmap">plot_cosebis_scale_cut_heatmap() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_eb_covariance_matrix">plot_eb_covariance_matrix() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_ellipticity">plot_ellipticity() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_footprint_as_hp">plot_footprint_as_hp() (FootprintPlotter class method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_footprints">plot_footprints() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_integration_vs_reporting">plot_integration_vs_reporting() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.plot_map">plot_map() (in module sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.plot_map_stacked">plot_map_stacked() (in module sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_objectwise_leakage">plot_objectwise_leakage() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_pseudo_cl">plot_pseudo_cl() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_pte_2d_heatmaps">plot_pte_2d_heatmaps() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_pure_eb">plot_pure_eb() (CosmologyValidation method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_pure_eb_correlations">plot_pure_eb_correlations() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_ratio_xi_sys_xi">plot_ratio_xi_sys_xi() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_region">plot_region() (FootprintPlotter method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_rho_stats">plot_rho_stats() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_rho_tau_fits">plot_rho_tau_fits() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_scale_dependent_leakage">plot_scale_dependent_leakage() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_separation">plot_separation() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.plot_spatial_density">plot_spatial_density() (in module sp_validation.plots)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_tau_stats">plot_tau_stats() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_weights">plot_weights() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_blue">print_blue() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.print_condition">print_condition() (Mask method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_cyan">print_cyan() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_done">print_done() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_green">print_green() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_magenta">print_magenta() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.print_mask_stats">print_mask_stats() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.util.html#sp_validation.util.print_millified">print_millified() (in module sp_validation.util)</a>
+</li>
+      <li><a href="sp_validation.io.html#sp_validation.io.print_ratio">print_ratio() (in module sp_validation.io)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_start">print_start() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.io.html#sp_validation.io.print_stats">print_stats() (in module sp_validation.io)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.print_stats">(Mask method)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.print_strings">print_strings() (Mask class method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.print_summary">print_summary() (Mask method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.pseudo_cls">pseudo_cls (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.pseudo_cls_onecov">pseudo_cls_onecov (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.psf_fitter">psf_fitter (CosmologyValidation property)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="R">R</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.io.html#sp_validation.io.read_binned_quantity">read_binned_quantity() (in module sp_validation.io)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.read_cat">read_cat() (BaseCat method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.CalibrateCat.read_cat">(CalibrateCat method)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.read_config_set_params">read_config_set_params() (BaseCat method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ReadCat">ReadCat (class in sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results">results (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise">results_objectwise (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.reverse_bit_list">reverse_bit_list() (ApplyHspMasks method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.rho_stat_handler">rho_stat_handler (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.rho_tau_fits">rho_tau_fits (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.run">run() (ApplyHspMasks method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.CalibrateCat.run">(CalibrateCat method)</a>
+</li>
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.run">(JointCat method)</a>
+</li>
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ReadCat.run">(ReadCat method)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.run_apply_hsp_masks">run_apply_hsp_masks() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.run_calibrate_comprehensive_cat">run_calibrate_comprehensive_cat() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.run_joint_comprehensive_cat">run_joint_comprehensive_cat() (in module sp_validation.run_joint_cat)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="S">S</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.save_cosebis_results">save_cosebis_results() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.save_pseudo_cl">save_pseudo_cl() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.save_pure_eb_results">save_pure_eb_results() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.scale_cut_to_bins">scale_cut_to_bins() (in module sp_validation.b_modes)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.set_default_locators_and_formatters">set_default_locators_and_formatters() (SquareRootScale method)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.set_params_from_command_line">set_params_from_command_line() (BaseCat method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.set_params_from_command_line">(JointCat method)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_leakage_object">set_params_leakage_object() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_leakage_scale">set_params_leakage_scale() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_rho_tau">set_params_rho_tau() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.sigma_to_fwhm">sigma_to_fwhm() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.plots.html#sp_validation.plots.sky_plots">sky_plots() (in module sp_validation.plots)</a>
+</li>
+      <li>
+    sp_validation
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.html#module-sp_validation">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.b_modes
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.b_modes.html#module-sp_validation.b_modes">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.basic
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.basic.html#module-sp_validation.basic">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.calibration
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.calibration.html#module-sp_validation.calibration">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cat
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cat.html#module-sp_validation.cat">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cosmo_val
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.html#module-sp_validation.cosmo_val">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cosmology
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmology.html#module-sp_validation.cosmology">module</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li>
+    sp_validation.galaxy
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.galaxy.html#module-sp_validation.galaxy">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.info
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.info.html#module-sp_validation.info">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.io
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.io.html#module-sp_validation.io">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.plot_style
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.plot_style.html#module-sp_validation.plot_style">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.plots
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.plots.html#module-sp_validation.plots">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.rho_tau
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.rho_tau.html#module-sp_validation.rho_tau">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.run_joint_cat
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#module-sp_validation.run_joint_cat">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.survey
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.survey.html#module-sp_validation.survey">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.util
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.util.html#module-sp_validation.util">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.version
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.version.html#module-sp_validation.version">module</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale">SquareRootScale (class in sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform">SquareRootScale.InvertedSquareRootTransform (class in sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.SquareRootTransform">SquareRootScale.SquareRootTransform (class in sp_validation.rho_tau)</a>
+</li>
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.stack_mm3">stack_mm3() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.summarize_bmodes">summarize_bmodes() (CosmologyValidation method)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="T">T</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.T_to_fwhm">T_to_fwhm() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.tau_stat_handler">tau_stat_handler (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.to_bool">to_bool() (Mask method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.transform">transform() (SquareRootScale.InvertedSquareRootTransform method)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.transform_non_affine">transform_non_affine() (SquareRootScale.SquareRootTransform method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.treecorr_config">treecorr_config (CosmologyValidation attribute)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="U">U</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.update_params">update_params() (ApplyHspMasks method)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="V">V</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.versions">versions (CosmologyValidation attribute)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="W">W</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.io.html#sp_validation.io.write_binned_quantity">write_binned_quantity() (in module sp_validation.io)</a>
+</li>
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.write_hdf5_file">write_hdf5_file() (ApplyHspMasks method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.write_hdf5_file">(BaseCat method)</a>
+</li>
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.write_hdf5_file">(JointCat method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.write_hdf5_header">write_hdf5_header() (ApplyHspMasks method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.write_hdf5_header">(BaseCat method)</a>
+</li>
+        <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.write_hdf5_header">(JointCat method)</a>
+</li>
+      </ul></li>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.write_tile_id_gal_counts">write_tile_id_gal_counts() (in module sp_validation.survey)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+  <h2 id="X">X</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.xi_gal_gal_tc">xi_gal_gal_tc() (in module sp_validation.cosmology)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.xi_psf_sys">xi_psf_sys (CosmologyValidation property)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
+
+</div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+</div></div>
+<aside id="right-sidebar" class="hidden text-sm xl:block">
+<div class="sticky top-16 -mt-10 max-h-[calc(var(--vh)-4rem)] overflow-y-auto pt-6 space-y-2">
+<a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#_">_</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#A">A</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#B">B</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#C">C</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#D">D</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#E">E</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#F">F</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#G">G</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#H">H</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#I">I</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#J">J</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#L">L</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#M">M</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#N">N</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#O">O</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#P">P</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#R">R</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#S">S</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#T">T</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#U">U</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#V">V</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#W">W</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#X">X</a>
+</div>
+</aside>
+          </main>
+        </div>
+      </div><footer class="py-6 border-t border-border md:py-0">
+    <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 04 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+    href="https://www.sphinx-doc.org"
+    rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
-<script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-<script src="_static/jquery.js"></script>
-<script src="_static/underscore.js"></script>
-<script src="_static/doctools.js"></script>
-<script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
-<script src="_static/theme.3666d2347a4c66e5d7a8.js"></script>
+</footer>
+    </div><button id="scrolltop"
+        x-cloak
+        @click="window.scrollTo({top: 0, behavior: 'smooth'})"
+        class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950"
+        :class="{'opacity-0 invisible' : !showScrollTop}"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       height="14"
+       viewBox="0 96 960 960"
+       width="14"
+       class="inline fill-current mb-[2px]"
+       aria-hidden="true">
+    <path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z" />
+  </svg>
+  Back to top
+</button>
+    
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script defer="defer" src="_static/theme.js?v=d6a9845b"></script>
+    
 </body>
+
 </html>
