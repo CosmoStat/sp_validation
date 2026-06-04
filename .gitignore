@@ -186,5 +186,8 @@ cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mocks_v0*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_0*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_v0*.ini
 
-CLAUDE.md
-AGENTS.md
+# felt — track the fiber records (engineering decisions & findings); skip only
+# the regenerable index and runtime locks.
+.felt/*.db
+.felt/*.lock
+.felt/index-sync.*
