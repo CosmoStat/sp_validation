@@ -4,30 +4,31 @@ sp_validation
 .. Include table of contents (defines the left-sidebar navigation)
 .. include:: toc.rst
 
-``sp_validation`` validates the weak-lensing catalogues — galaxy and star
-shapes, and the many quantities derived from them — produced by the
-`ShapePipe <https://github.com/CosmoStat/shapepipe>`_ pipeline. It is developed
-by the `CosmoStat <https://www.cosmostat.org>`_ lab at CEA Paris-Saclay and is
-used to prepare and vet the shear catalogues behind the `UNIONS
+``sp_validation`` validates the weak-lensing catalogues that the
+`ShapePipe <https://github.com/CosmoStat/shapepipe>`_ pipeline produces: galaxy
+and star shapes, and the many quantities derived from them.
+The `CosmoStat <https://www.cosmostat.org>`_ lab at CEA Paris-Saclay develops it
+to prepare and vet the shear catalogues behind the `UNIONS
 <https://www.skysurvey.cc>`_ cosmic-shear analyses.
 
-The package bundles a Python library together with the scripts and notebooks
-that drive a validation campaign — taking a raw ShapePipe catalogue through to
-the calibrated, science-ready shear catalogue and the diagnostics a cosmology
-analysis depends on.
+The package bundles a Python library with the scripts and notebooks that drive a
+validation campaign.
+Together they carry a raw ShapePipe catalogue through to the calibrated,
+science-ready shear catalogue and the diagnostics a cosmology analysis depends
+on.
 
 What it does
 ------------
 
-``sp_validation`` performs four main tasks, typically run in sequence:
+Four main tasks make up a run, usually in sequence:
 
 #. **Shear validation.** Take a shear catalogue carrying metacalibration
    information, apply the shear calibration, and run diagnostic tests such as
-   PSF leakage. A calibrated shear catalogue is produced on output. See
+   PSF leakage. The output is a calibrated shear catalogue. See
    :doc:`run_validation`.
-#. **Post-processing.** Further process the calibrated catalogue into
-   science-ready catalogues — masking, galaxy-sample selection, and merging of
-   per-patch catalogues. See :doc:`post_processing`.
+#. **Post-processing.** Turn the calibrated catalogue into science-ready
+   catalogues: masking, galaxy-sample selection, and merging of per-patch
+   catalogues. See :doc:`post_processing`.
 #. **Cosmology validation.** Run detailed diagnostics on the calibrated
    catalogue: rho- and tau-statistics, E-/B-mode decomposition, and comparison
    plots across catalogue versions.
