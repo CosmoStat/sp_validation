@@ -72,7 +72,7 @@ docs = [
 develop = ["sp_validation[test,docs]"]
 
 [tool.pytest.ini_options]
-testpaths = ["sp_validation"]
+testpaths = ["src/sp_validation/tests"]
 addopts = [
     "--verbose",
     "--cov=sp_validation",
@@ -87,7 +87,7 @@ markers = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py38"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [

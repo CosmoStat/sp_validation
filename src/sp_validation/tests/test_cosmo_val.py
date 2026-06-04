@@ -18,6 +18,14 @@ import yaml
 
 from sp_validation.cosmo_val import CosmologyValidation
 
+# These tests load real UNIONS catalogues from the cluster filesystem. Skip them
+# when that data isn't mounted (e.g. in CI / off-cluster) so the suite still runs
+# its environment-independent unit tests; on a cluster node they run as normal.
+requires_catalog_data = pytest.mark.skipif(
+    not Path("/n17data").exists(),
+    reason="UNIONS catalog data (/n17data) not mounted — running off-cluster",
+)
+
 
 class TestCosmologyValidation:
     """Test CosmologyValidation initialization and additive bias calculation."""
@@ -97,6 +105,7 @@ class TestCosmologyValidation:
         }
         return params, base_version
 
+    @requires_catalog_data
     def test_additive_bias_base_columns(self, base_config):
         """Test additive bias calculation using base ellipticity columns.
 
@@ -132,6 +141,7 @@ class TestCosmologyValidation:
         assert isinstance(cv.c1[version], float)
         assert isinstance(cv.c2[version], float)
 
+    @requires_catalog_data
     def test_additive_bias_leak_corrected_columns(self, base_config):
         """Test additive bias calculation using leak-corrected columns.
 
@@ -187,6 +197,7 @@ class TestCosmologyValidation:
         candidate_path = Path(candidate)
         return candidate_path if candidate_path.is_absolute() else base / candidate_path
 
+    @requires_catalog_data
     def test_catalog_paths_exist(self, base_config):
         """Verify that catalog paths for active versions exist on disk.
 
@@ -205,7 +216,6 @@ class TestCosmologyValidation:
 
         config = yaml.safe_load(Path(catalog_config_path).read_text())
 
-        missing = defaultdict(set)
         working = []
         nonfunctional = defaultdict(set)
 

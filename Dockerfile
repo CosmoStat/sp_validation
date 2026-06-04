@@ -21,4 +21,4 @@ RUN uv pip install --no-cache-dir \
 WORKDIR /sp_validation
 COPY . /sp_validation
 
-RUN uv pip install --no-cache-dir -e .
+RUN uv pip install --no-cache-dir -e '.[test]'
