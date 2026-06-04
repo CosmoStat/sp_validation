@@ -1101,47 +1101,6 @@ SP_v1.4_LFmask_8k_noalpha:
     e1_col: e1
     e2_col: e2
     path: unions_shapepipe_star_2022_v1.4.0_mtheli8k.fits
-SP_v1.5.4:
-  subdir: /n17data/UNIONS/WL/v1.5.x
-  pipeline: SP
-  colour: green
-  getdist_colour: 0.0, 0.5, 1.0
-  ls: dashed
-  marker: d
-  cov_th:
-    A: 2420.2651014497287
-    n_e: 7.040818382014773
-    n_psf: 0.752316232272063
-    sigma_e: 0.30961528707207325
-  psf:
-    PSF_flag: FLAG_PSF_HSM
-    PSF_size: SIGMA_PSF_HSM
-    square_size: true
-    star_flag: FLAG_STAR_HSM
-    star_size: SIGMA_STAR_HSM
-    hdu: 1
-    path: unions_shapepipe_psf_2024_v1.5.a.fits
-    ra_col: RA
-    dec_col: Dec
-    e1_PSF_col: E1_PSF_HSM
-    e1_star_col: E1_STAR_HSM
-    e2_PSF_col: E2_PSF_HSM
-    e2_star_col: E2_STAR_HSM
-  shear:
-    R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: v1.5.4/unions_shapepipe_cut_struc_2024_v1.5.4.fits
-    w_col: w_iv
-    e1_col: e1
-    e1_PSF_col: e1_PSF
-    e2_col: e2
-    e2_PSF_col: e2_PSF
-  star:
-    ra_col: RA
-    dec_col: Dec
-    e1_col: e1
-    e2_col: e2
-    path: unions_shapepipe_star_2024_v1.5.a.fits
 nz:
   subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/nz
   dndz:
