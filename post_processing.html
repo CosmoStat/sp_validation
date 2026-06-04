@@ -21,13 +21,15 @@
 <meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
 <meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Science-ready catalogue production | sp_validation v0.6.0</title>
-<meta content="Science-ready catalogue production | sp_validation v0.6.0" property="og:title"/>
-<meta content="Science-ready catalogue production | sp_validation v0.6.0" name="twitter:title"/>
+<title>Post-processing | sp_validation v0.6.0</title>
+<meta content="Post-processing | sp_validation v0.6.0" property="og:title"/>
+<meta content="Post-processing | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
 <link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
+<link href="Leakage_object_Tutorial.html" rel="next" title="Leakage_object Tutorial"/>
+<link href="run_validation.html" rel="prev" title="Running shear validation"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
 <div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
@@ -72,9 +74,15 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -96,12 +104,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing this Package</a></li>
 </ul>
 </nav>
 </div>
@@ -121,11 +127,13 @@
 <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
 </svg>
 </a>
-<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">Science-ready catalogue production</span>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">Post-processing</span>
 </nav>
 <div id="content" role="main">
+<section id="post-processing">
+<h1>Post-processing<a class="headerlink" href="#post-processing" title="Link to this heading">¶</a></h1>
 <section id="science-ready-catalogue-production">
-<h1>Science-ready catalogue production<a class="headerlink" href="#science-ready-catalogue-production" title="Link to this heading">¶</a></h1>
+<h2>Science-ready catalogue production<a class="headerlink" href="#science-ready-catalogue-production" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#science-ready-catalogue-production'">¶</a></h2>
 <p>Processing steps of <code class="docutils literal notranslate"><span class="pre">ShapePipe</span></code> output catalogues carried out by the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> package to produce science-ready catalogues are:</p>
 <ol class="arabic simple">
 <li><p>Extract relevant information from a final <code class="docutils literal notranslate"><span class="pre">ShapePipe</span></code> output catalogue per patch; run basic diagnostic tests, create pre-calibration shear catalogues.</p></li>
@@ -138,7 +146,7 @@ c. Calibrate the shear estimates with the <code class="docutils literal notransl
 </ol>
 <p>These steps are carried out as follows:</p>
 <section id="extract-information-run-basic-diagnostics-create-catalogues">
-<h2>1. Extract information, run basic diagnostics, create catalogues.<a class="headerlink" href="#extract-information-run-basic-diagnostics-create-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#extract-information-run-basic-diagnostics-create-catalogues'">¶</a></h2>
+<h3>1. Extract information, run basic diagnostics, create catalogues.<a class="headerlink" href="#extract-information-run-basic-diagnostics-create-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#extract-information-run-basic-diagnostics-create-catalogues'">¶</a></h3>
 <p>This is performed (version &gt; v1.4.1, &lt; v2.0) with the python script <code class="docutils literal notranslate"><span class="pre">extract_info.py</span></code> in <code class="docutils literal notranslate"><span class="pre">sp_validation/notebooks</span></code>.</p>
 <p>This script creates three shear catalogues in FITS format:</p>
 <ul class="simple">
@@ -154,16 +162,16 @@ This is the main output catalogue that will be processed further.</p></li>
 <p>This step is carried out per patch. Parameters have to be set via the python configuration file <code class="docutils literal notranslate"><span class="pre">params.py</span></code>.</p>
 </section>
 <section id="merge-catalogues">
-<h2>2. Merge catalogues<a class="headerlink" href="#merge-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#merge-catalogues'">¶</a></h2>
+<h3>2. Merge catalogues<a class="headerlink" href="#merge-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#merge-catalogues'">¶</a></h3>
 <p>The patch-wise comprehensive catalogues extracted in the previous step are merged using the script <code class="docutils literal notranslate"><span class="pre">create_joint_comprehensive_cat.py</span></code>, which is a front-end
 of the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> library class <code class="docutils literal notranslate"><span class="pre">run_joint_cat:JointCat</span></code>.</p>
 </section>
 <section id="apply-external-masks">
-<h2>3. Apply external masks<a class="headerlink" href="#apply-external-masks" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#apply-external-masks'">¶</a></h2>
+<h3>3. Apply external masks<a class="headerlink" href="#apply-external-masks" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#apply-external-masks'">¶</a></h3>
 <p>Code for this step is developed in the library file <code class="docutils literal notranslate"><span class="pre">run_calibrate_joint.py</span></code>.</p>
 </section>
 <section id="mask-select-and-calibrate">
-<h2>4. Mask, select, and calibrate<a class="headerlink" href="#mask-select-and-calibrate" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#mask-select-and-calibrate'">¶</a></h2>
+<h3>4. Mask, select, and calibrate<a class="headerlink" href="#mask-select-and-calibrate" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#mask-select-and-calibrate'">¶</a></h3>
 <p>The steps of masking, galaxy sample selection, and calibration are carried out jointly using the notebook
 <code class="docutils literal notranslate"><span class="pre">calibrate_comprehensive_cat.py</span></code>.</p>
 <p>Masking parameters have to be set via a configuration file <code class="docutils literal notranslate"><span class="pre">config_mask.yaml</span></code>. Examples can be found in <code class="docutils literal notranslate"><span class="pre">sp_validation/config/calibration</span></code>.</p>
@@ -171,10 +179,10 @@ of the <code class="docutils literal notranslate"><span class="pre">sp_validatio
 <p>The following describes the pre-v1.4.2 method to create a joint, calibrated shear catalogue.</p>
 </section>
 <section id="combine-shear-validation-run-output-catalogues">
-<h2>Combine shear validation run output catalogues<a class="headerlink" href="#combine-shear-validation-run-output-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#combine-shear-validation-run-output-catalogues'">¶</a></h2>
+<h3>Combine shear validation run output catalogues<a class="headerlink" href="#combine-shear-validation-run-output-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#combine-shear-validation-run-output-catalogues'">¶</a></h3>
 </section>
 <section id="combine-shear-validation-run-statistics">
-<h2>Combine shear validation run statistics<a class="headerlink" href="#combine-shear-validation-run-statistics" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#combine-shear-validation-run-statistics'">¶</a></h2>
+<h3>Combine shear validation run statistics<a class="headerlink" href="#combine-shear-validation-run-statistics" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#combine-shear-validation-run-statistics'">¶</a></h3>
 <p>Summary statistics created by shear validation runs of sub-areas of a survey
 can be combined to create joint summary statistics. This is useful in cases
 where the galaxy catalogue of an entire survey is too large to process, and
@@ -196,10 +204,10 @@ with the combined multiplicative and additive biases, respectively.</p>
 <p>At the moment (ShapePipe catalogues v1.4.1 and older), this script needs to
 be run to write summary statistics output files before creating the joint
 shear catalogue with <code class="docutils literal notranslate"><span class="pre">create_joint_shape_cat.py</span></code>, see
-<a class="reference internal" href="#create-combined-calibrated-shear-catalogue"><span class="xref myst">here</span></a>.</p>
+<a class="reference internal" href="#create-combined-calibrated-shear-catalogue">here</a>.</p>
 </section>
 <section id="create-combined-calibrated-shear-catalogue">
-<h2>Create combined calibrated shear catalogue<a class="headerlink" href="#create-combined-calibrated-shear-catalogue" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#create-combined-calibrated-shear-catalogue'">¶</a></h2>
+<span id="id1"></span><h3>Create combined calibrated shear catalogue<a class="headerlink" href="#create-combined-calibrated-shear-catalogue" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#create-combined-calibrated-shear-catalogue'">¶</a></h3>
 <p>After creating the combined statistics results described above, the global
 calibration outputs can be used to create a combined, globally calibrated shear
 catalogue. The calibration is obtained from the files <code class="docutils literal notranslate"><span class="pre">R.txt</span></code> and <code class="docutils literal notranslate"><span class="pre">c.txt</span></code>
@@ -214,10 +222,28 @@ created above.</p>
 <code class="docutils literal notranslate"><span class="pre">{survey}_{pipeline}_extended_{year}_v{version}.fits</span></code>.</p>
 </section>
 </section>
+</section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+<div class="mr-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="run_validation.html">
+<svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+        Running shear validation
+      </a>
+</div>
+<div class="ml-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="Leakage_object_Tutorial.html">
+        Leakage_object Tutorial
+        <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="9 18 15 12 9 6"></polyline>
+</svg>
+</a>
+</div>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
+<li><a :data-current="activeSection === '#science-ready-catalogue-production'" class="reference internal" href="#science-ready-catalogue-production">Science-ready catalogue production</a><ul>
 <li><a :data-current="activeSection === '#extract-information-run-basic-diagnostics-create-catalogues'" class="reference internal" href="#extract-information-run-basic-diagnostics-create-catalogues">1. Extract information, run basic diagnostics, create catalogues.</a></li>
 <li><a :data-current="activeSection === '#merge-catalogues'" class="reference internal" href="#merge-catalogues">2. Merge catalogues</a></li>
 <li><a :data-current="activeSection === '#apply-external-masks'" class="reference internal" href="#apply-external-masks">3. Apply external masks</a></li>
@@ -225,6 +251,8 @@ created above.</p>
 <li><a :data-current="activeSection === '#combine-shear-validation-run-output-catalogues'" class="reference internal" href="#combine-shear-validation-run-output-catalogues">Combine shear validation run output catalogues</a></li>
 <li><a :data-current="activeSection === '#combine-shear-validation-run-statistics'" class="reference internal" href="#combine-shear-validation-run-statistics">Combine shear validation run statistics</a></li>
 <li><a :data-current="activeSection === '#create-combined-calibrated-shear-catalogue'" class="reference internal" href="#create-combined-calibrated-shear-catalogue">Create combined calibrated shear catalogue</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </aside>

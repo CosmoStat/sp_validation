@@ -28,7 +28,7 @@
 <link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="quickstart.html" rel="next" title="Quickstart Tutorial"/>
+<link href="quickstart.html" rel="next" title="Quickstart"/>
 <link href="about.html" rel="prev" title="About"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -74,9 +74,15 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -98,12 +104,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing this Package</a></li>
 </ul>
 </nav>
 </div>
@@ -128,29 +132,48 @@
 <div id="content" role="main">
 <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> is <strong>not</strong> distributed on PyPI.
+Install it from a pre-built container, or check out the source with <code class="docutils literal notranslate"><span class="pre">uv</span></code> when you need to edit it.</p>
+<section id="container-recommended">
+<h2>Container (recommended)<a class="headerlink" href="#container-recommended" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#container-recommended'">¶</a></h2>
+<p>Every push to <code class="docutils literal notranslate"><span class="pre">develop</span></code> builds an image carrying the full scientific stack and pushes it to the <a class="reference external" href="https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation">GitHub Container Registry (GHCR)</a>.
+The image runs on most systems, including HPC clusters, with no further setup.</p>
+<p><a class="reference external" href="https://apptainer.org">Apptainer</a> (formerly Singularity) is installed on most clusters and is the path we recommend:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="c1"># Build a writeable "sandbox" container in the current directory.</span>
+</span><span id="line-2"><span class="c1"># ./sp_validation is a directory that behaves like a small VM.</span>
+</span><span id="line-3">apptainer<span class="w"> </span>build<span class="w"> </span>--sandbox<span class="w"> </span>sp_validation<span class="w"> </span>docker://ghcr.io/cosmostat/sp_validation:develop
+</span><span id="line-4">
+</span><span id="line-5"><span class="c1"># Open a shell in the container, then confirm the install works.</span>
+</span><span id="line-6">apptainer<span class="w"> </span>shell<span class="w"> </span>--writable<span class="w"> </span>sp_validation
+</span><span id="line-7">python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import sp_validation"</span>
+</span></code></pre></div>
+</div>
+<p>The image also runs under Docker:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span>ghcr.io/cosmostat/sp_validation:develop<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import sp_validation"</span>
+</span></code></pre></div>
+</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>If your package name on PyPi differs from the default package name you
-will need to update the URL in <code class="docutils literal notranslate"><span class="pre">installation.rst</span></code> accordingly.</p>
-</div>
-<section id="users">
-<h2>Users<a class="headerlink" href="#users" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#users'">¶</a></h2>
-<p>You can install the latest release from <a class="reference external" href="https://pypi.org/project/sp_validation/">PyPi</a>
-as follows:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">pip<span class="w"> </span>install<span class="w"> </span>sp_validation
-</span></code></pre></div>
-</div>
-<p>Alternatively clone the repository and build the package locally as follows:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">pip<span class="w"> </span>install<span class="w"> </span>.
-</span></code></pre></div>
+<p>We do not build images for Apple Silicon / arm64.
+The amd64 images run on these machines under emulation, more slowly.</p>
 </div>
 </section>
-<section id="developers">
-<h2>Developers<a class="headerlink" href="#developers" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#developers'">¶</a></h2>
-<p>Developers are recommend to clone the repository and build the package locally
-in development mode with testing and documentation packages as follows:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[develop]"</span>
+<section id="development-install">
+<h2>Development install<a class="headerlink" href="#development-install" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#development-install'">¶</a></h2>
+<p>To run the test suite or build these docs, clone the repository and install it in editable mode.
+The package is managed with <a class="reference external" href="https://docs.astral.sh/uv/">uv</a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">git<span class="w"> </span>clone<span class="w"> </span>https://github.com/CosmoStat/sp_validation.git
+</span><span id="line-2"><span class="nb">cd</span><span class="w"> </span>sp_validation
+</span><span id="line-3">uv<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s1">'.[develop]'</span>
 </span></code></pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">develop</span></code> extra pulls in both the testing and documentation dependencies.
+For a narrower install, <code class="docutils literal notranslate"><span class="pre">.[test]</span></code> adds only the test extras and <code class="docutils literal notranslate"><span class="pre">.[docs]</span></code> only the Sphinx stack.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> requires Python 3.11 or newer and pulls in a large scientific stack: <code class="docutils literal notranslate"><span class="pre">treecorr</span></code>, <code class="docutils literal notranslate"><span class="pre">pyccl</span></code>, <code class="docutils literal notranslate"><span class="pre">healpy</span></code>, <code class="docutils literal notranslate"><span class="pre">pymaster</span></code>, and others.
+A bare development install builds these from source, which is slow and platform-sensitive.
+For most users the container is the more reliable path.</p>
 </div>
 </section>
 </section>
@@ -165,7 +188,7 @@ in development mode with testing and documentation packages as follows:</p>
 </div>
 <div class="ml-auto">
 <a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="quickstart.html">
-        Quickstart Tutorial
+        Quickstart
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
@@ -174,8 +197,8 @@ in development mode with testing and documentation packages as follows:</p>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
-<li><a :data-current="activeSection === '#users'" class="reference internal" href="#users">Users</a></li>
-<li><a :data-current="activeSection === '#developers'" class="reference internal" href="#developers">Developers</a></li>
+<li><a :data-current="activeSection === '#container-recommended'" class="reference internal" href="#container-recommended">Container (recommended)</a></li>
+<li><a :data-current="activeSection === '#development-install'" class="reference internal" href="#development-install">Development install</a></li>
 </ul>
 </div>
 </aside>

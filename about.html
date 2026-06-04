@@ -29,7 +29,7 @@
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="installation.html" rel="next" title="Installation"/>
-<link href="index.html" rel="prev" title="Package Documentation"/>
+<link href="index.html" rel="prev" title="sp_validation"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
 <div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
@@ -74,9 +74,15 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -98,12 +104,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing this Package</a></li>
 </ul>
 </nav>
 </div>
@@ -128,11 +132,34 @@
 <div id="content" role="main">
 <section id="about">
 <h1>About<a class="headerlink" href="#about" title="Link to this heading">¶</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>In <code class="docutils literal notranslate"><span class="pre">about.rst</span></code> you can add some more details about your package/project
-and/or yourself.</p>
-</div>
+<p><code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> is developed by the <a class="reference external" href="https://www.cosmostat.org">CosmoStat</a> lab at CEA Paris-Saclay.
+It sits between <a class="reference external" href="https://github.com/CosmoStat/shapepipe">ShapePipe</a>, the weak-lensing measurement pipeline, and the cosmology analyses of the <a class="reference external" href="https://www.skysurvey.cc">UNIONS</a> survey.</p>
+<section id="what-it-does">
+<h2>What it does<a class="headerlink" href="#what-it-does" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#what-it-does'">¶</a></h2>
+<p>Raw shape measurements carry calibration biases, residual PSF leakage, and selection effects.
+<code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> characterises and corrects these before the catalogue reaches a cosmology analysis.
+It calibrates the shear estimates, runs the diagnostic null tests (rho/tau statistics, E-/B-mode decomposition, PSF-leakage fits), and produces the science-ready catalogues and two-point statistics that feed cosmological inference.</p>
+</section>
+<section id="authors-and-contributors">
+<h2>Authors and contributors<a class="headerlink" href="#authors-and-contributors" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#authors-and-contributors'">¶</a></h2>
+<dl class="simple">
+<dt><strong>Authors</strong></dt><dd><p>Martin Kilbinger, Cail Daley, Sacha Guerrini.</p>
+</dd>
+<dt><strong>Contributors</strong></dt><dd><p>Emma Ayçoberry, Lucie Baumont, Clara Bonini, Samuel Farrens, Lisa Goh,
+Axel Guinot, Fabian Hervas Peters.</p>
+</dd>
+</dl>
+<p>The cosmology-inference pipeline (<code class="docutils literal notranslate"><span class="pre">cosmo_inference/</span></code>) is developed by Lisa Goh and Sacha Guerrini.</p>
+</section>
+<section id="contact">
+<h2>Contact<a class="headerlink" href="#contact" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#contact'">¶</a></h2>
+<p>For questions about the package, contact Martin Kilbinger (<a class="reference external" href="mailto:martin.kilbinger%40cea.fr">martin<span>.</span>kilbinger<span>@</span>cea<span>.</span>fr</a>).
+Bug reports and contributions are welcome through the <a class="reference external" href="https://github.com/CosmoStat/sp_validation">GitHub repository</a>; see <a class="reference internal" href="contributing.html"><span class="doc">Contributing</span></a> for guidelines.</p>
+</section>
+<section id="license">
+<h2>License<a class="headerlink" href="#license" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#license'">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> is released under the MIT License.</p>
+</section>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -140,7 +167,7 @@ and/or yourself.</p>
 <svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="15 18 9 12 15 6"></polyline>
 </svg>
-        Package Documentation
+        sp_validation
       </a>
 </div>
 <div class="ml-auto">
@@ -151,7 +178,16 @@ and/or yourself.</p>
 </svg>
 </a>
 </div>
-</div></div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#what-it-does'" class="reference internal" href="#what-it-does">What it does</a></li>
+<li><a :data-current="activeSection === '#authors-and-contributors'" class="reference internal" href="#authors-and-contributors">Authors and contributors</a></li>
+<li><a :data-current="activeSection === '#contact'" class="reference internal" href="#contact">Contact</a></li>
+<li><a :data-current="activeSection === '#license'" class="reference internal" href="#license">License</a></li>
+</ul>
+</div>
+</aside>
 </main>
 </div>
 </div><footer class="py-6 border-t border-border md:py-0">

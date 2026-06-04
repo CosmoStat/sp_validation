@@ -21,14 +21,14 @@
 <meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
 <meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Quickstart Tutorial | sp_validation v0.6.0</title>
-<meta content="Quickstart Tutorial | sp_validation v0.6.0" property="og:title"/>
-<meta content="Quickstart Tutorial | sp_validation v0.6.0" name="twitter:title"/>
+<title>Quickstart | sp_validation v0.6.0</title>
+<meta content="Quickstart | sp_validation v0.6.0" property="og:title"/>
+<meta content="Quickstart | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
 <link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.html" rel="next" title="sp_validation"/>
+<link href="run_validation.html" rel="next" title="Running shear validation"/>
 <link href="installation.html" rel="prev" title="Installation"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -74,9 +74,15 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart Tutorial</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -98,12 +104,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing this Package</a></li>
 </ul>
 </nav>
 </div>
@@ -123,20 +127,27 @@
 <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
 </svg>
 </a>
-<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">Quickstart Tutorial</span>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">Quickstart</span>
 </nav>
 <div id="content" role="main">
-<section id="quickstart-tutorial">
-<h1>Quickstart Tutorial<a class="headerlink" href="#quickstart-tutorial" title="Link to this heading">¶</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>In <code class="docutils literal notranslate"><span class="pre">quickstart.rst</span></code> you can provide some basic step-by-step instructions
-on how to get started using your package.</p>
-</div>
-<p><em>e.g.</em> You can import the package as follows:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="kn">import</span><span class="w"> </span><span class="nn">sp_validation</span>
-</span></code></pre></div>
-</div>
+<section id="quickstart">
+<h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h1>
+<p>This page outlines a first run; each stage links to its full guide.
+It assumes <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> is installed (see <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>) and that you have a
+ShapePipe shear catalogue to validate.</p>
+<p>Validation proceeds in four stages.</p>
+<ol class="arabic simple">
+<li><p><strong>Configure.</strong> Set the inputs for a run (catalogue paths, field name, optional masks)
+in <code class="docutils literal notranslate"><span class="pre">notebooks/params.py</span></code>.</p></li>
+<li><p><strong>Shear validation.</strong> Extract shape information and run the basic diagnostics,
+producing the pre-calibration catalogues. See <a class="reference internal" href="run_validation.html"><span class="doc">Running shear validation</span></a>.</p></li>
+<li><p><strong>Post-processing.</strong> Mask, select, and calibrate into a science-ready shear catalogue.
+See <a class="reference internal" href="post_processing.html"><span class="doc">Post-processing</span></a>.</p></li>
+<li><p><strong>Cosmology inference.</strong> Measure the two-point correlation functions, then run the
+CosmoSIS / CosmoCov pipeline in <code class="docutils literal notranslate"><span class="pre">cosmo_inference/</span></code> to derive cosmological constraints.</p></li>
+</ol>
+<p>The <strong>User Guide</strong> in the sidebar expands each stage, and the <strong>API Reference</strong> documents
+the library modules you call from your own scripts and notebooks.</p>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -148,8 +159,8 @@ on how to get started using your package.</p>
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.html">
-        sp_validation
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="run_validation.html">
+        Running shear validation
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>

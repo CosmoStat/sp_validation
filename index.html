@@ -21,9 +21,9 @@
 <meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
 <meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Package Documentation | sp_validation v0.6.0</title>
-<meta content="Package Documentation | sp_validation v0.6.0" property="og:title"/>
-<meta content="Package Documentation | sp_validation v0.6.0" name="twitter:title"/>
+<title>sp_validation | sp_validation v0.6.0</title>
+<meta content="sp_validation | sp_validation v0.6.0" property="og:title"/>
+<meta content="sp_validation | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
 <link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
@@ -73,9 +73,15 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">API Documentation</span></p>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
@@ -97,12 +103,10 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="citing.html">Citing this Package</a></li>
 </ul>
 </nav>
 </div>
@@ -116,44 +120,61 @@
 <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
 <div class="w-full min-w-0 mx-auto">
 <div id="content" role="main">
-<section id="package-documentation">
-<h1>Package Documentation<a class="headerlink" href="#package-documentation" title="Link to this heading">¶</a></h1>
+<section id="sp-validation">
+<h1>sp_validation<a class="headerlink" href="#sp-validation" title="Link to this heading">¶</a></h1>
 
 
 
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>In <code class="docutils literal notranslate"><span class="pre">index.rst</span></code> you should put some introductory information about your
-package.</p>
-<p>The table of contents (<em>i.e.</em> left sidebar content) is defined in
-<code class="docutils literal notranslate"><span class="pre">toc.rst</span></code>.</p>
-<p>Keep in mind when writing your documentation you can take advantage of some
-special features (see <a class="reference external" href="https://sphinxawesome.xyz/">Sphinx awesome theme</a>
-for details). Below are few things you can use.</p>
-</div>
-<section id="admonitions">
-<h2>Admonitions<a class="headerlink" href="#admonitions" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#admonitions'">¶</a></h2>
-<p>You can tips, notes, cautions, warnings <em>etc.</em></p>
-<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="p">..</span> <span class="ow">tip</span><span class="p">::</span>
-</span><span id="line-2">
-</span><span id="line-3">   This is how a tip appears.
-</span></code></pre></div>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>This is how a tip appears.</p>
-</div>
+
+<p><code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> validates the weak-lensing catalogues that the
+<a class="reference external" href="https://github.com/CosmoStat/shapepipe">ShapePipe</a> pipeline produces: galaxy
+and star shapes, and the many quantities derived from them.
+The <a class="reference external" href="https://www.cosmostat.org">CosmoStat</a> lab at CEA Paris-Saclay develops it
+to prepare and vet the shear catalogues behind the <a class="reference external" href="https://www.skysurvey.cc">UNIONS</a> cosmic-shear analyses.</p>
+<p>The package bundles a Python library with the scripts and notebooks that drive a
+validation campaign.
+Together they carry a raw ShapePipe catalogue through to the calibrated,
+science-ready shear catalogue and the diagnostics a cosmology analysis depends
+on.</p>
+<section id="what-it-does">
+<h2>What it does<a class="headerlink" href="#what-it-does" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#what-it-does'">¶</a></h2>
+<p>Four main tasks make up a run, usually in sequence:</p>
+<ol class="arabic simple">
+<li><p><strong>Shear validation.</strong> Take a shear catalogue carrying metacalibration
+information, apply the shear calibration, and run diagnostic tests such as
+PSF leakage. The output is a calibrated shear catalogue. See
+<a class="reference internal" href="run_validation.html"><span class="doc">Running shear validation</span></a>.</p></li>
+<li><p><strong>Post-processing.</strong> Turn the calibrated catalogue into science-ready
+catalogues: masking, galaxy-sample selection, and merging of per-patch
+catalogues. See <a class="reference internal" href="post_processing.html"><span class="doc">Post-processing</span></a>.</p></li>
+<li><p><strong>Cosmology validation.</strong> Run detailed diagnostics on the calibrated
+catalogue: rho- and tau-statistics, E-/B-mode decomposition, and comparison
+plots across catalogue versions.</p></li>
+<li><p><strong>Cosmology inference.</strong> Measure the two-point shear correlation functions
+and feed a CosmoSIS / CosmoCov pipeline to derive cosmological constraints.</p></li>
+</ol>
+<p>The flow chart below illustrates the path from ShapePipe output products to
+calibrated, well-selected galaxy catalogues.</p>
+<figure class="align-default" id="id1">
+<a class="reference internal image-reference" href="_images/flow_chart.png"><img alt="sp_validation processing flow chart" src="_images/flow_chart.png" style="width: 100%;"/>
+</a>
+<figcaption>
+<p><span class="caption-text">From ShapePipe output products to calibrated and selected galaxy catalogues.</span><a class="headerlink" href="#id1" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
 </section>
-<section id="code-blocks">
-<h2>Code Blocks<a class="headerlink" href="#code-blocks" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#code-blocks'">¶</a></h2>
-<div class="highlight-rst notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="p">..</span> <span class="ow">code-block</span><span class="p">::</span> python
-</span><span id="line-2">
-</span><span id="line-3">   import numpy as np
-</span></code></pre></div>
-</div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span></code></pre></div>
-</div>
+<section id="where-to-go-next">
+<h2>Where to go next<a class="headerlink" href="#where-to-go-next" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#where-to-go-next'">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="installation.html"><span class="doc">Installation</span></a> — install via container (recommended) or a development
+checkout.</p></li>
+<li><p><a class="reference internal" href="quickstart.html"><span class="doc">Quickstart</span></a> — an orientation to the four stages of a validation run.</p></li>
+<li><p><a class="reference internal" href="about.html"><span class="doc">About</span></a> — the package in its CosmoStat / UNIONS context, with authors and
+contact.</p></li>
+<li><p>The <strong>User Guide</strong> in the sidebar walks through each stage: running shear
+validation, post-processing, and the PSF-leakage diagnostics.</p></li>
+<li><p>The <strong>API Reference</strong> documents every module of the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> library.</p></li>
+</ul>
 </section>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -168,8 +189,8 @@ for details). Below are few things you can use.</p>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
-<li><a :data-current="activeSection === '#admonitions'" class="reference internal" href="#admonitions">Admonitions</a></li>
-<li><a :data-current="activeSection === '#code-blocks'" class="reference internal" href="#code-blocks">Code Blocks</a></li>
+<li><a :data-current="activeSection === '#what-it-does'" class="reference internal" href="#what-it-does">What it does</a></li>
+<li><a :data-current="activeSection === '#where-to-go-next'" class="reference internal" href="#where-to-go-next">Where to go next</a></li>
 </ul>
 </div>
 </aside>
