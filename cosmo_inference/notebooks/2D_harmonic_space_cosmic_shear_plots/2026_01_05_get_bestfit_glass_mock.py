@@ -1,7 +1,12 @@
 # %%
 import os
+import sys
 import configparser
 import subprocess
+
+sys.path.append(
+    "/home/guerrini/sp_validation/cosmo_inference/scripts/"
+)
 
 from IPython import get_ipython
 
@@ -20,6 +25,7 @@ import seaborn as sns
 from tqdm import tqdm
 
 from getdist import plots, MCSamples
+import chain_postprocessing as cp
 
 plt.style.use(
     './matplotlib_config/paper.mplstyle'
@@ -38,20 +44,26 @@ g.settings.legend_fontsize = 40
 
 # %%
 root_dir = "/n09data/guerrini/glass_mock_chains/"
-chain_version = "v2" # choose v0 or v1
-assert chain_version in ["v0", "v1", "v2"], "Invalid chain version"
+chain_version = "v6" # choose v0 or v1
 
 #Path to the ini config files
 path_ini_files = f'/home/guerrini/sp_validation/cosmo_inference/cosmosis_config/glass_mocks_{chain_version}/'
 
 # Create the list of mocks
-max_sim = 200
-roots = [f"glass_mock_{chain_version}_{str(i).zfill(5)}" for i in range(1, max_sim + 1)]
+max_sim = 350
+failed_simulations = [
+    82, 83, 281, 282, 283,284, 285, 286, 287
+]
+roots = []
+for i in range(1, max_sim + 1):
+    if i in failed_simulations:
+        continue
+    roots.append(f"glass_mock_{chain_version}_{str(i).zfill(5)}")
+
 lower_boud_cell_ee = 300.0
 upper_bound_cell_ee = 1600.0
 
-run_best_fit_type = "map" # should be in ["map", "average"]
-assert run_best_fit_type in ["map", "average"], "Invalid best fit type"
+run_best_fit_type = "2Dkde" 
 
 # %%
 # Retrieve the chains
@@ -104,49 +116,10 @@ best_fit = {}
 
 for root, chain in zip(roots, chains):
     print(root)
-    likestats = chain.getLikeStats()
-    bestfit_idx = np.argmax(chain.loglikes)
-    maxlike = chain.loglikes[bestfit_idx]
-    print(f"Maximum Likelihood: {maxlike:.5g}")
-    best_fit[root] = {
-        'likelihood': maxlike
-    }
-    margestats = chain.getMargeStats()
-    s8_stats = margestats.parWithName('S_8')
-    sigma8_stats = margestats.parWithName('SIGMA_8')
-    omegam_stats = margestats.parWithName('OMEGA_M')
-    a_ia_stats = margestats.parWithName('a')
-
-    best_fit[root].update({
-        'S_8_mean': s8_stats.mean,
-        'S_8_lower': s8_stats.mean - s8_stats.limits[0].lower,
-        'S_8_upper': s8_stats.limits[0].upper - s8_stats.mean,
-        'sigma_8_mean': sigma8_stats.mean,
-        'sigma_8_lower': sigma8_stats.mean - sigma8_stats.limits[0].lower,
-        'sigma_8_upper': sigma8_stats.limits[0].upper - sigma8_stats.mean,
-        'omega_m_mean': omegam_stats.mean,
-        'omega_m_lower': omegam_stats.mean - omegam_stats.limits[0].lower,
-        'omega_m_upper': omegam_stats.limits[0].upper - omegam_stats.mean,
-        'A_IA_mean': a_ia_stats.mean,
-        'A_IA_lower': a_ia_stats.mean - a_ia_stats.limits[0].lower,
-        'A_IA_upper': a_ia_stats.limits[0].upper - a_ia_stats.mean
-    })
-    try:
-        t_agn_stats = margestats.parWithName('logt_agn')
-        best_fit[root].update({
-            'logt_agn_mean': t_agn_stats.mean,
-            'logt_agn_lower': t_agn_stats.mean - t_agn_stats.limits[0].lower,
-            'logt_agn_upper': t_agn_stats.limits[0].upper - t_agn_stats.mean
-        })
-    except:
-        pass
-    for i, par in enumerate(likestats.names):
-        if run_best_fit_type == "average":
-            best_fit[root].update({par.name: np.average(chain.samples[:, i], weights=chain.weights)})
-        elif run_best_fit_type == "map":
-            best_fit[root].update({par.name: chain.samples[:, i][bestfit_idx]})
-        else:
-            raise ValueError("Invalid run_best_fit_type")
+    best_fit[root] = cp.extract_best_fit_params(
+        chain,
+        best_fit_method=run_best_fit_type,
+    )
 
 
 
@@ -218,18 +191,13 @@ for idx, root in enumerate(roots):
     #Modify the ini file to run in test mode at the best fit
     config = configparser.ConfigParser()
     config.optionxform = str  # Preserve case sensitivity of option names
-    config_file_path = path_ini_files+f'/cosmosis_pipeline_glass_mocks_{chain_version}_glass_mock_{str(idx+1).zfill(5)}_cell.ini'
+    config_file_path = path_ini_files+f'/cosmosis_pipeline_glass_mocks_{chain_version}_glass_mock_{root[-5:]}_cell.ini'
     config.read(config_file_path)
     sampler = config['runtime']['sampler']
     config['runtime']['sampler'] = 'test'
     values = config['pipeline']['values']
     config['pipeline']['values'] = path_ini_files + '/values_empty.ini'
-    if run_best_fit_type == "map":
-        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell_map"
-    elif run_best_fit_type == "average":
-        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell"
-    else:
-        raise ValueError("Invalid run_best_fit_type")
+    config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell_{run_best_fit_type}"
 
 
     with open(config_file_path, 'w') as configfile:
@@ -248,8 +216,7 @@ for idx, root in enumerate(roots):
     #Modify the ini file to the previous one
     config['pipeline']['values'] = values
     config['runtime']['sampler'] = sampler
-    if run_best_fit_type == "map":
-        config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell"
+    config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell"
 
     with open(config_file_path, 'w') as configfile:
         config.write(configfile)

@@ -297,7 +297,7 @@ def get_kappa_kaiser_squire(gamma_1, gamma_2):
 
 
 # %%
-path_cat_gal = "/n17data/UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits"
+path_cat_gal = "/n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits"
 path_cat_star = "/n17data/UNIONS/WL/v1.4.x/full_starcat-0000000.fits"
 
 cat_gal = fits.getdata(path_cat_gal)

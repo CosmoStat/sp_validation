@@ -33,7 +33,7 @@ plt.style.use(
 
 plt.rcParams["text.usetex"] = True
 
-sns.set_palette("husl")
+sns.set_palette("Dark2")
 
 #Matplotlib inline if in jupyter
 if ipython is not None:
@@ -193,7 +193,7 @@ plt.show()
 #Same plot with EB and BB modes only of v1.4.6
 fig, (ax1, ax2) = plt.subplots(ncols=1, nrows=2, figsize= (8, 6), sharex=True)
 
-version_paper_plot = ["SP_v1.4.6", "SP_v1.4.6_leak_corr"]
+version_paper_plot = ["SP_v1.4.6.3_A", "SP_v1.4.6.3_leak_corr_A"]
 labels = ["W/o leakage correction", "With leakage correction"]
 colors = ["C0", "C1"]
 markers = ["o", "h"]

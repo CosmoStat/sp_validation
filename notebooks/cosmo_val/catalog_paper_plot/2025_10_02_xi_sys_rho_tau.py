@@ -29,7 +29,7 @@ if ipython is not None:
 base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/"
 
 # %%
-versions = ["SP_v1.4.6", "SP_v1.4.6_leak_corr"]
+versions = ["SP_v1.4.6.3_A", "SP_v1.4.6.3_leak_corr_A"]
 labels = ["Fiducial sample", "Fiducial sample w/ leakage corr."]
 colors = [f"C{i}" for i in range(len(versions))]
 
@@ -170,7 +170,7 @@ plt.xscale('log')
 plt.xlabel(r'$\vartheta\ [\mathrm{arcmin}]$')
 plt.ylabel(r'$[\xi_\mathrm{sys}/\xi_+](\vartheta)$')
 plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-plt.legend()
+plt.legend(fontsize=12)
 plt.savefig('./plots/xi_sys_over_xi_plus.pdf')
 
 plt.show()

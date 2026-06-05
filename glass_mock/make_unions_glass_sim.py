@@ -39,8 +39,8 @@ def get_parser():
     parser.add_argument("-t", "--test", help="Test run", action="store_true")
     parser.add_argument("-sg", "--sigmae", help="Set sigma of intrinsic ellipticity", type=float, default=0.2684)
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
-    parser.add_argument("-nz", "--pathnz", help="Path to the n(z) file", type=str, default='/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt')
-    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/n09data/guerrini/glass_mock_v1.4.6/mask_nside4096.fits')
+    parser.add_argument("-nz", "--pathnz", help="Path to the n(z) file", type=str, default='/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt')
+    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits')
     parser.add_argument("-ia", "--ia_bias", help="Intrinsic alignment bias for CCL", type=float, default=None)
     return parser
 
@@ -75,8 +75,10 @@ class Sky:
         self.Om = planck.Om0
         self.Ob = planck.Ob0
         self.Oc = self.Om - self.Ob
-        self.ns = 0.965
-        self.As = 2.1e-9
+        self.ns = 0.9665
+        self.As = 2.1e-9 #Temporary As before rescaling
+        self.sigma8 = 0.8102
+        self.log_T_AGN = 7.8
         self.dx = 200.0
         self.zmax = 3.0
         #get variables from parser
@@ -119,27 +121,79 @@ class Sky:
             os.makedirs(self.root)
             print("A new directory" + str(self.root)+"is created!")
 
-        self.pars = camb.set_params(H0=100*self.h, omch2=self.Oc*self.h**2, ombh2=self.Ob*self.h**2, As=self.As, ns=self.ns,
-                                    NonLinear=camb.model.NonLinear_both, WantTransfer=True)
-        Onu = self.pars.omeganu
-        self.Oc = self.Om - self.Ob - Onu
-        self.pars = camb.set_params(H0=100*self.h, omch2=self.Oc*self.h**2, ombh2=self.Ob*self.h**2, As=self.As, ns=self.ns,
-                                    NonLinear=camb.model.NonLinear_both, WantTransfer=True)
+        # Setup CAMB parameters
+        self.pars = camb.CAMBparams()
+
+        # Set the cosmology
+        self.pars.set_cosmology(
+            H0=100*self.h,
+            omch2=self.Oc*self.h**2,
+            ombh2=self.Ob*self.h**2,
+            mnu=0.06,
+        )
+
+        Omeganu = self.pars.omeganu
+        self.Oc = self.Oc - Omeganu
+
+        self.pars.set_cosmology(
+            H0=100*self.h,
+            omch2=self.Oc*self.h**2,
+            ombh2=self.Ob*self.h**2,
+            mnu=0.06,
+        )
+
+
+        # Set the initial power spectrum parameters
+        self.pars.InitPower.set_params(As=self.As, ns=self.ns)
+
+        self.pars.WantTransfer = True
+
+        # Set the non-linear model to HMCode with AGN feedback
+        self.pars.NonLinear = camb.model.NonLinear_both
+        self.pars.NonLinearModel.set_params(
+            halofit_version="mead2020_feedback",
+            HMCode_logT_AGN=self.log_T_AGN
+        )
+
+        # Set the maximum multipole for the matter power spectrum
+        self.pars.set_matter_power(
+            nonlinear=True,
+            kmax=20
+        )
+
+        # Rescale As to match the desired sigma8
+        results = camb.get_results(self.pars)
+        sigma8_temp = results.get_sigma8_0()
+        self.As *= (self.sigma8 / sigma8_temp) ** 2
+
+        init_power_scaled = camb.InitialPowerLaw()
+        init_power_scaled.set_params(As=self.As, ns=self.ns)
+
+        self.pars.InitPower = init_power_scaled
+
+        #Check the rescaling worked as expected
+        assert np.isclose(self.sigma8, float(camb.get_results(self.pars).get_sigma8_0())), f"Rescaling of As did not work as expected. Input sigma8: {self.sigma8}, output sigma8: {camb.get_results(self.pars).get_sigma8_0()}"
         
+        # Print Camb parameters
+        print("-"*66)
+        print(self.pars)
+        print("-"*66)
+
         params_dict = vars(self.pars)
-        print("------------------------------------------------------------------")
+        print("-"*66)
         print("Parameters used for the simulation:")
         print(f"H0: {self.pars.H0}")
         print(f"omch2: {self.pars.omch2}")
         print(f"ombh2: {self.pars.ombh2}")
         print(f"n_s: {self.pars.InitPower.ns}")
+        print(f"As: {self.pars.InitPower.As}")
         results = camb.get_results(self.pars)
         sigma8 = results.get_sigma8()
         print(f"sigma_8: {sigma8}")
         print(f"Omega_m: {self.pars.omegam}")
         print(f"S8: {sigma8*np.sqrt(self.pars.omegam/0.3)}")
         print(f"ia_bias: {self.ia_bias}")
-        print("------------------------------------------------------------------")
+        print("-"*66)
         
         #Initialize the variables for the functions
         self.z = None

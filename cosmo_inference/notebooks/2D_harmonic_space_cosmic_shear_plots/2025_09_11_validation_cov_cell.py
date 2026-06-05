@@ -33,14 +33,15 @@ plt.style.use(
     './matplotlib_config/paper.mplstyle'
 )
 
-sns.set_palette("husl")
+sns.set_palette("Dark2")
 
 if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # %%
-path_cov_namaster = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.6_leak_corr_A.fits"
-path_glass_sims_output = "/n09data/guerrini/glass_mock_v1.4.6_rerun/results/"
+blind = "B"
+path_cov_namaster = f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.6.3_{blind}_leak_corr.fits"
+path_glass_sims_output = "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results/"
 
 cov_namaster = fits.open(path_cov_namaster)
 
@@ -82,7 +83,7 @@ def get_cov_from_one_cov(cov_one_cov, gaussian=True):
 ell_eff = cls[0]
 
 # %%
-cov_one_cov = np.genfromtxt("/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6_leak_corr_A/covariance_list_3x2pt_pure_Cell.dat")
+cov_one_cov = np.genfromtxt(f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6.3_{blind}_leak_corr/covariance_list_3x2pt_pure_Cell.dat")
 
 gaussian_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=True)
 all_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=False)
@@ -378,8 +379,8 @@ ax2.plot(ell, relative_error_inka_gaussian - 1, label="iNKA (Gaussian only)", co
 ax2.axhline(0, color='C1', linestyle='-')
 
 #Set ticks and scales for the y-axis
-ax2.set_yticks([-0.2, -0.1, 0.0, 0.1, 0.2])
-ax2.set_ylim(-0.2, 0.2)
+ax2.set_yticks([-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3])
+ax2.set_ylim(-0.3, 0.3)
 ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
 ax2.set_xlabel(r"Multipole $\ell$")
 
@@ -392,30 +393,36 @@ plt.show()
 
 #Validation against Gaussian simulations
 
-path_gaussian_sims = "/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/"
+path_gaussian_sims = "/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463"
 
 n_sims = 10_000
-cls_all_gaussian = np.array([]).reshape((0, 4, 32))
-cls_noise_gaussian = np.array([]).reshape((0, 4, 32))
+covs = {}
 
-for i in tqdm(range(n_sims)):
-    try:
-        cls = np.load(f"{path_gaussian_sims}/sample_{i}.npz")
-        cls_all_gaussian = np.vstack((cls_all_gaussian, cls['cl_all'][None, ...]))
-        cls_noise_gaussian = np.vstack((cls_noise_gaussian, cls['cl_noise'][None, ...]))
-    except Exception as e:
-        print(f"Error loading {i}: {e}")
-# %%
-cls_all_gaussian = cls_all_gaussian - np.mean(cls_noise_gaussian, axis=0)
-# %%
-n_sims = cls_all_gaussian.shape[0]
-cls_all_gaussian = cls_all_gaussian.reshape((n_sims, -1))
+for blind in ['A', 'B', 'C']:
+    path_folder = path_gaussian_sims+"_"+blind
+    cls_all_gaussian = np.array([]).reshape((0, 4, 32)) 
+    cls_noise_gaussian = np.array([]).reshape((0, 4, 32))
+    for i in tqdm(range(n_sims)):
+        try:
+            cls = np.load(f"{path_folder}/sample_{i}.npz")
+            cls_all_gaussian = np.vstack((cls_all_gaussian, cls['cl_all'][None, ...]))
+            cls_noise_gaussian = np.vstack((cls_noise_gaussian, cls['cl_noise'][None, ...]))
+        except Exception as e:
+            print(f"Error loading {i}: {e}")
+    cls_all_gaussian = cls_all_gaussian - np.mean(cls_noise_gaussian, axis=0)
+    cls_all_gaussian = cls_all_gaussian.reshape((n_sims, -1))
+    cov_gaussian = np.cov(cls_all_gaussian.T)
+    covs[blind] = {}
+    covs[blind]['cov_gaussian'] = cov_gaussian
+    covs[blind]['diag_EE'] = np.sqrt(np.diag(cov_gaussian[:32, :32]))
+    covs[blind]['diag_BB'] = np.sqrt(np.diag(cov_gaussian[96:, 96:]))
+    covs[blind]['diag_EB'] = np.sqrt(np.diag(cov_gaussian[64:96, 64:96]))
 
-cov_sim_gaussian = np.cov(cls_all_gaussian.T)
 # %%
-diag_ee = np.sqrt(np.diag(cov_sim_gaussian[:32, :32]))
-diag_bb = np.sqrt(np.diag(cov_sim_gaussian[96:, 96:]))
-diag_eb = np.sqrt(np.diag(cov_sim_gaussian[64:96, 64:96]))
+diag_ee = covs['A']['diag_EE']
+diag_bb = covs['A']['diag_BB']
+diag_eb = covs['A']['diag_EB']
+
 # %%
 plt.figure()
 
@@ -608,111 +615,110 @@ plt.savefig("./plots/paper_plot_errorbar_validation_BB_EB.pdf", bbox_inches='tig
 plt.show()
 
 # %%
+# Plotting the covariance for the 3 blinds for the BB
+# Make a paperplot of Gaussian simulations vs NaMaster
+fig = plt.figure()
+
+gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.0)
+
+ax1 = fig.add_subplot(gs[0])
+ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+for blind in ['A', 'B', 'C']:
+    diag_bb = covs[blind]['diag_BB']
+    ax1.plot(ell, diag_bb, label=f"Blind {blind}")
+
+#Set ticks and scales for the x-axis
+ax1.set_xscale('squareroot')
+ax1.set_xticks(np.array([100, 400, 900, 1600]))
+ax1.minorticks_on()
+ax1.tick_params(axis='x', which='minor', length=2, width=0.8)
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+ax1.set_xticks(minor_ticks, minor=True)
+
+# Set ticks and scale for the y-axis
+ax1.set_yscale('log')
+ax1.set_yticks([1e-11, 1e-11, 1e-10, 1e-9])
+ax1.tick_params(axis='y', which='minor', length=2, width=0.8)
+minor_ticks = [i * 1e-11 for i in range(1, 10)] + [i * 1e-10 for i in range(1, 10)] + [i * 1e-9 for i in range(1, 8)]
+ax1.set_yticks(minor_ticks, minor=True)
+
+# Set labels and legend
+ax1.set_ylabel(r"$\sigma(C_\ell^{BB})$")
+ax1.legend(fontsize=10)
+
+baseline = covs['A']['diag_BB']
+
+for blind in ['A', 'B', 'C']:
+    diag_bb = covs[blind]['diag_BB']
+    relative_error = diag_bb / baseline
+    ax2.plot(ell, relative_error - 1, label=f"Blind {blind}")
+
+#Set ticks and scales for the y-axis
+ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
+ax2.set_ylim(-0.1, 0.1)
+ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
+ax2.set_xlabel(r"Multipole $\ell$")
+
+plt.savefig("./plots/paper_plot_errorbar_validation_BB_blind_comparison.png", dpi=300, bbox_inches='tight')
+# Save PDF
+plt.savefig("./plots/paper_plot_errorbar_validation_BB_blind_comparison.pdf", bbox_inches='tight')
+plt.show()
+
+# %%
+fig = plt.figure()
+
+gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.0)
+
+ax1 = fig.add_subplot(gs[0])
+ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+for blind in ['A', 'B', 'C']:
+    diag_bb = covs[blind]['diag_EE']
+    ax1.plot(ell, diag_bb, label=f"Blind {blind}")
+
+#Set ticks and scales for the x-axis
+ax1.set_xscale('squareroot')
+ax1.set_xticks(np.array([100, 400, 900, 1600]))
+ax1.minorticks_on()
+ax1.tick_params(axis='x', which='minor', length=2, width=0.8)
+minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
+ax1.set_xticks(minor_ticks, minor=True)
+
+# Set ticks and scale for the y-axis
+ax1.set_yscale('log')
+ax1.set_yticks([1e-11, 1e-11, 1e-10, 1e-9])
+ax1.tick_params(axis='y', which='minor', length=2, width=0.8)
+minor_ticks = [i * 1e-11 for i in range(1, 10)] + [i * 1e-10 for i in range(1, 10)] + [i * 1e-9 for i in range(1, 8)]
+ax1.set_yticks(minor_ticks, minor=True)
+
+# Set labels and legend
+ax1.set_ylabel(r"$\sigma(C_\ell^{EE})$")
+ax1.legend(fontsize=10)
+
+baseline = covs['A']['diag_EE']
+
+for blind in ['A', 'B', 'C']:
+    diag_bb = covs[blind]['diag_EE']
+    relative_error = diag_bb / baseline
+    ax2.plot(ell, relative_error - 1, label=f"Blind {blind}")
+
+#Set ticks and scales for the y-axis
+ax2.set_yticks([-0.1, -0.05, 0.0, 0.05, 0.1])
+ax2.set_ylim(-0.1, 0.1)
+ax2.set_ylabel(r"$ \Delta \hat{\sigma} / \sigma$")
+ax2.set_xlabel(r"Multipole $\ell$")
+
+plt.savefig("./plots/paper_plot_errorbar_validation_EE_blind_comparison.png", dpi=300, bbox_inches='tight')
+# Save PDF
+plt.savefig("./plots/paper_plot_errorbar_validation_EE_blind_comparison.pdf", bbox_inches='tight')
+plt.show()
+
+# %%
 # Save gaussian simulation covariance for bb
 cov_gaussian_bb = cov_sim_gaussian[96:, 96:]
 np.save("/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_BB.npy", cov_gaussian_bb)
 cov_gaussian_eb = cov_sim_gaussian[64:96, 64:96]
 np.save("/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_EB.npy", cov_gaussian_eb)
-
-# %%
-plt.figure()
-
-plt.plot(ell, diag_ee/np.sqrt(np.diag(cov_namaster["COVAR_EE_EE"].data)) - 1, label="EE from Gaussian sims")
-
-plt.xscale('squareroot')
-plt.xticks(np.array([100, 400, 900, 1600]))
-plt.minorticks_on()
-plt.tick_params(axis='x', which='minor', length=2, width=0.8)
-minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
-plt.xticks(minor_ticks, minor=True)
-plt.ylabel(r"$\Delta \sigma(C_\ell^{EE})$/$\sigma(C_\ell^{EE})_{NaMaster}$")
-plt.xlabel(r"$\ell$")
-plt.axhline(0, color='k', linestyle='--')
-plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-plt.legend()
-
-plt.show()
-# %%
-plt.figure()
-
-plt.plot(ell, diag_bb/np.sqrt(np.diag(cov_namaster["COVAR_BB_BB"].data)) - 1, label="BB from Gaussian sims")
-
-plt.xscale('squareroot')
-plt.xticks(np.array([100, 400, 900, 1600]))
-plt.minorticks_on()
-plt.tick_params(axis='x', which='minor', length=2, width=0.8)
-minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
-plt.xticks(minor_ticks, minor=True)
-plt.ylabel(r"$\Delta \sigma(C_\ell^{BB})$/$\sigma(C_\ell^{BB})_{NaMaster}$")
-plt.xlabel(r"$\ell$")
-plt.axhline(0, color='k', linestyle='--')
-plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-plt.legend()
-plt.show()
-# %%
-# Plot comparison iNKA errorbars between versions
-base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/"
-versions = ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
-labels = ["v1.4.5 w/ leakage corr.", "v1.4.6 w/ leakage corr.", "v1.4.6 w/ leakage corr."]
-colors = ["C0", "C1", "C2"]
-
-plt.figure()
-
-for i, ver in enumerate(versions):
-    cov_cell = fits.open(f"{base_dir}/pseudo_cl_cov_g_ng_iNKA_{ver}.fits")
-    cov = cov_cell["COVAR_FULL"].data
-
-    plt.plot(
-        ell,
-        np.sqrt(np.diag(cov)),
-        label=labels[i],
-        color=colors[i]
-    )
-
-plt.xscale('squareroot')
-plt.xticks(np.array([100, 400, 900, 1600]))
-plt.minorticks_on()
-plt.tick_params(axis='x', which='minor', length=2, width=0.8)
-minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
-plt.xticks(minor_ticks, minor=True)
-plt.yscale('log')
-plt.ylabel(r"$\sigma(C_\ell^{EE})$")
-plt.xlabel(r"$\ell$")
-plt.legend()
-
-plt.savefig("./plots/errorbar_iNKA_versions_comparison", dpi=300, bbox_inches='tight')
-plt.show()
-# %%
-#Plot relative errorbars w.r.t 1.4.5
-plt.figure()
-
-cov_cell_145 = fits.open(f"{base_dir}/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.5_leak_corr.fits")
-cov_145 = cov_cell_145["COVAR_FULL"].data
-
-for i, ver in enumerate(versions):
-    cov_cell = fits.open(f"{base_dir}/pseudo_cl_cov_g_ng_iNKA_{ver}.fits")
-    cov = cov_cell["COVAR_FULL"].data
-
-    plt.plot(
-        ell,
-        np.sqrt(np.diag(cov))/np.sqrt(np.diag(cov_145)),
-        label=labels[i],
-        color=colors[i]
-    )
-
-plt.xscale('squareroot')
-plt.xticks(np.array([100, 400, 900, 1600]))
-plt.minorticks_on()
-plt.tick_params(axis='x', which='minor', length=2, width=0.8)
-minor_ticks = [i*10 for i in range(1, 10)] + [i*100 for i in range(1, 21)]
-plt.xticks(minor_ticks, minor=True)
-#plt.yscale('log')
-plt.ylabel(r"$\sigma(C_\ell^{EE})$/$\sigma(C_\ell^{EE})_{v1.4.5}$")
-plt.xlabel(r"$\ell$")
-plt.legend()
-
-plt.savefig("./plots/relative_errorbar_iNKA_versions_comparison", dpi=300, bbox_inches='tight')
-plt.show()
-
 
 # %%

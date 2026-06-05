@@ -10,6 +10,11 @@ if ipython is not None:
 import os
 import copy
 from tqdm import tqdm
+import sys
+
+sys.path.append(
+    "/home/guerrini/sp_validation/cosmo_inference/scripts/"
+)
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -17,6 +22,7 @@ import numpy as np
 import healpy as hp
 import seaborn as sns
 from astropy.io import fits
+import chain_postprocessing as cpp
 
 from getdist import plots, MCSamples
 
@@ -41,7 +47,7 @@ if ipython is not None:
 root_dir = '/n09data/guerrini/glass_mock_chains/'
 
 failed_simulations = [
-    
+    82, 83, 281, 282, 283,284, 285, 286, 287
 ]
 
 weird_simulations = [
@@ -54,9 +60,9 @@ weird_simulations_v1 = [
 
 weird_simulations_v2 = [
 ]
-
+version = "v6"
 roots = [
-    f"glass_mock_v2_{i+1:05d}" for i in range(200)
+    f"glass_mock_{version}_{i+1:05d}" for i in range(350)
 ]
 
 # %%
@@ -70,17 +76,7 @@ def load_samples_and_write_paramames(root_dir, root, chain_type="configuration")
         path_samples = root_dir + '{}/{}/samples_{}_cell.txt'.format('/'+root, root, root)
         path_paramnames = root_dir + '{}/{}/getdist_{}_cell.paramnames'.format('/'+root, root, root)
     
-    with open(path_samples, 'r') as file:
-        params = file.readline()[1:].split('\t')[:-4]
-        file.close()
-
-    with open(path_paramnames, 'w') as file:
-        for i in range(len(params)):
-            if len(params[i].split('--')) > 1:
-                file.write(params[i].split('--')[1] + '\n')
-            else:
-                file.write(params[i].split('--')[0] + '\n')
-        file.close()
+    cpp.load_samples_and_write_paramnames(path_samples, path_paramnames)
 
 def write_samples_getdist_format(root_dir, root, chain_type="configuration"):
     assert chain_type in ["configuration", "harmonic"], "chain_type must be 'configuration' or 'harmonic'"
@@ -94,14 +90,8 @@ def write_samples_getdist_format(root_dir, root, chain_type="configuration"):
         path_gd_samples = root_dir + '{}/{}/getdist_{}_cell.txt'.format('/'+root, root, root)
         path_gd = root_dir + '{}/{}/getdist_{}_cell'.format(root,root,root)
     
-    samples = np.loadtxt(
-        path_samples,
-    )
-    if 'nautilus' in root:
-        samples = np.column_stack((np.exp(samples[:,-3]),samples[:,-1]-samples[:,-2],samples[:,0:-3]))
-    else:
-        samples = np.column_stack((samples[:,-1],samples[:,-3],samples[:,0:-4]))
-    np.savetxt(path_gd_samples, samples)
+    sampler_type = 'nautilus' if 'nautilus' in root else 'polychord'
+    cpp.write_samples_getdist_format(path_samples, path_gd_samples, chain_type=sampler_type)
 
     chain = g.samples_for_root(
         path_gd,
@@ -116,22 +106,25 @@ def write_samples_getdist_format(root_dir, root, chain_type="configuration"):
     return chain
 
 def extract_param_chain(chain, param_names):
-    margestats = chain.getMargeStats()
-    likestats = chain.getLikeStats()
-
     param_values = {}
     for param_name in param_names:
         if param_name not in chain.getParamNames().list():
             raise ValueError(f"Parameter {param_name} not found in chain.")
         
-        param_stats = margestats.parWithName(param_name)
+        mean = cpp.compute_average(chain, param_name)
+        limi_68_upper, limi_68_lower, limi_95_upper, limi_95_lower = cpp.compute_limits(chain, param_name)
+        map_1D = cpp.compute_map_1D(chain, param_name)
         param_values[param_name] = {
-            'mean': param_stats.mean,
-            '1sigma_minus': param_stats.mean - param_stats.limits[0].lower,
-            '1sigma_plus': param_stats.limits[0].upper - param_stats.mean,
-            '2sigma_minus': param_stats.mean - param_stats.limits[1].lower,
-            '2sigma_plus': param_stats.limits[1].upper - param_stats.mean,
+            'mean': mean,
+            '1sigma_minus': limi_68_lower,
+            '1sigma_plus': limi_68_upper,
+            '2sigma_minus': limi_95_lower,
+            '2sigma_plus': limi_95_upper,
+            'map_1D': map_1D
         }
+        if param_name == 'S_8' or param_name == 'OMEGA_M':
+            s8_map_2D, omega_m_map_2D = cpp.compute_map_2D(chain, 'S_8', 'OMEGA_M')
+            param_values[param_name]['map_2D'] = s8_map_2D if param_name == 'S_8' else omega_m_map_2D
 
     return param_values
 
@@ -147,8 +140,12 @@ def concatenate_param_stats(name, param_values, verbose=False):
             param_stat['1sigma_minus'],
             param_stat['1sigma_plus'],
             param_stat['2sigma_minus'],
-            param_stat['2sigma_plus']
+            param_stat['2sigma_plus'],
+            param_stat['map_1D']
         ]
+
+        if key == 'S_8' or key == 'OMEGA_M':
+            param_list.append(param_stat['map_2D'])
 
         output += param_list
 
@@ -180,12 +177,23 @@ def concatenate_merge_params(name, merged_params, verbose=False):
             param_config['1sigma_plus'],
             param_config['2sigma_minus'],
             param_config['2sigma_plus'],
+            param_config['map_1D'],
+        ]
+
+        if key == 'S_8' or key == 'OMEGA_M':
+            param_list.append(param_config['map_2D'])
+
+        param_list += [
             param_harm['mean'],
             param_harm['1sigma_minus'],
             param_harm['1sigma_plus'],
             param_harm['2sigma_minus'],
-            param_harm['2sigma_plus']
+            param_harm['2sigma_plus'],
+            param_harm['map_1D']
         ]
+
+        if key == 'S_8' or key == 'OMEGA_M':
+            param_list.append(param_harm['map_2D'])
 
         output += param_list
 
@@ -243,9 +251,9 @@ for i, root in enumerate(tqdm(roots)):
 param_names = ['S_8', 'OMEGA_M', 'SIGMA_8']
 
 output_mocks_config = np.array([
-    "Name", "S8_mean", "S8_1sigma_minus", "S8_1sigma_plus", "S8_2sigma_minus", "S8_2sigma_plus",
-    "OMEGA_M_mean", "OMEGA_M_1sigma_minus", "OMEGA_M_1sigma_plus", "OMEGA_M_2sigma_minus", "OMEGA_M_2sigma_plus",
-    "SIGMA_8_mean", "SIGMA_8_1sigma_minus", "SIGMA_8_1sigma_plus", "SIGMA_8_2sigma_minus", "SIGMA_8_2sigma_plus"
+    "Name", "S8_mean", "S8_1sigma_minus", "S8_1sigma_plus", "S8_2sigma_minus", "S8_2sigma_plus", "S8_map_1D", "S8_map_2D",
+    "OMEGA_M_mean", "OMEGA_M_1sigma_minus", "OMEGA_M_1sigma_plus", "OMEGA_M_2sigma_minus", "OMEGA_M_2sigma_plus", "OMEGA_M_map_1D", "OMEGA_M_map_2D",
+    "SIGMA_8_mean", "SIGMA_8_1sigma_minus", "SIGMA_8_1sigma_plus", "SIGMA_8_2sigma_minus", "SIGMA_8_2sigma_plus", "SIGMA_8_map_1D"
 ])
 
 
@@ -254,21 +262,21 @@ output_mocks_harm = copy.deepcopy(output_mocks_config)
 
 output_mocks_merged = np.array([
     "Name",
-    "S8_config_mean", "S8_config_1sigma_minus", "S8_config_1sigma_plus", "S8_config_2sigma_minus", "S8_config_2sigma_plus",
-    "S8_harm_mean", "S8_harm_1sigma_minus", "S8_harm_1sigma_plus", "S8_harm_2sigma_minus", "S8_harm_2sigma_plus",
-    "OMEGA_M_config_mean", "OMEGA_M_config_1sigma_minus", "OMEGA_M_config_1sigma_plus", "OMEGA_M_config_2sigma_minus", "OMEGA_M_config_2sigma_plus",
-    "OMEGA_M_harm_mean", "OMEGA_M_harm_1sigma_minus", "OMEGA_M_harm_1sigma_plus", "OMEGA_M_harm_2sigma_minus", "OMEGA_M_harm_2sigma_plus",
-    "SIGMA_8_config_mean", "SIGMA_8_config_1sigma_minus", "SIGMA_8_config_1sigma_plus", "SIGMA_8_config_2sigma_minus", "SIGMA_8_config_2sigma_plus",
-    "SIGMA_8_harm_mean", "SIGMA_8_harm_1sigma_minus", "SIGMA_8_harm_1sigma_plus", "SIGMA_8_harm_2sigma_minus", "SIGMA_8_harm_2sigma_plus"
+    "S8_config_mean", "S8_config_1sigma_minus", "S8_config_1sigma_plus", "S8_config_2sigma_minus", "S8_config_2sigma_plus", "S8_config_map_1D", "S8_config_map_2D",
+    "S8_harm_mean", "S8_harm_1sigma_minus", "S8_harm_1sigma_plus", "S8_harm_2sigma_minus", "S8_harm_2sigma_plus", "S8_harm_map_1D", "S8_harm_map_2D",
+    "OMEGA_M_config_mean", "OMEGA_M_config_1sigma_minus", "OMEGA_M_config_1sigma_plus", "OMEGA_M_config_2sigma_minus", "OMEGA_M_config_2sigma_plus", "OMEGA_M_config_map_1D", "OMEGA_M_config_map_2D",
+    "OMEGA_M_harm_mean", "OMEGA_M_harm_1sigma_minus", "OMEGA_M_harm_1sigma_plus", "OMEGA_M_harm_2sigma_minus", "OMEGA_M_harm_2sigma_plus", "OMEGA_M_harm_map_1D", "OMEGA_M_harm_map_2D",
+    "SIGMA_8_config_mean", "SIGMA_8_config_1sigma_minus", "SIGMA_8_config_1sigma_plus", "SIGMA_8_config_2sigma_minus", "SIGMA_8_config_2sigma_plus", "SIGMA_8_config_map_1D",
+    "SIGMA_8_harm_mean", "SIGMA_8_harm_1sigma_minus", "SIGMA_8_harm_1sigma_plus", "SIGMA_8_harm_2sigma_minus", "SIGMA_8_harm_2sigma_plus", "SIGMA_8_harm_map_1D"
 ])
 
 for i, root in enumerate(tqdm(roots)):
     if chain_configuration[i] == 'ERROR' or chain_harmonic[i] == 'ERROR':
         param = [
-            root ] + [ np.nan for _ in range(len(param_names)*5)
+            root ] + [ np.nan for _ in range(output_mocks_config.shape[1] - 1)
         ]
         param_merged = [
-            root ] + [ np.nan for _ in range(len(param_names)*10)
+            root ] + [ np.nan for _ in range(output_mocks_merged.shape[1] - 1)
         ]
         output_mocks_merged = np.vstack((output_mocks_merged, param_merged))
         output_mocks_config = np.vstack((output_mocks_config, param))
@@ -287,8 +295,8 @@ for i, root in enumerate(tqdm(roots)):
     output_mocks_harm = np.vstack((output_mocks_harm, param_harm))
     output_mocks_merged = np.vstack((output_mocks_merged, param_merged))
 
-np.savetxt(f"{root_dir}/summary_parameter_constraints_configuration_space_v2.txt", output_mocks_config, fmt='%s', delimiter=';')
-np.savetxt(f"{root_dir}/summary_parameter_constraints_harmonic_space_v2.txt", output_mocks_harm, fmt='%s', delimiter=';')
-np.savetxt(f"{root_dir}/summary_parameter_constraints_merged_v2.txt", output_mocks_merged, fmt='%s', delimiter=';')
+np.savetxt(f"{root_dir}/summary_parameter_constraints_configuration_space_{version}.txt", output_mocks_config, fmt='%s', delimiter=';')
+np.savetxt(f"{root_dir}/summary_parameter_constraints_harmonic_space_{version}.txt", output_mocks_harm, fmt='%s', delimiter=';')
+np.savetxt(f"{root_dir}/summary_parameter_constraints_merged_{version}.txt", output_mocks_merged, fmt='%s', delimiter=';')
 
 # %%
