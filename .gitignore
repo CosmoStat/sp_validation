@@ -73,6 +73,7 @@ instance/
 docs/_build/
 docs/source/fortuna.*
 docs/source/scripts.*
+docs/source/sp_validation.*
 docs/source/*.nblink
 
 # PyBuilder
@@ -116,6 +117,12 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# uv: container is the canonical runtime (see CLAUDE.md); uv is a dev convenience
+# and the lockfile has never been tracked. Ignore it rather than commit a
+# pinned-dep reproducibility promise the project hasn't made. Flip to tracked
+# if we decide to pin deps via uv.
+uv.lock
 
 # Spyder project settings
 .spyderproject
