@@ -12,6 +12,7 @@
 
 import numpy as np
 import pyccl as ccl
+import camb
 
 # For correlation function calculations
 import treecorr
@@ -64,7 +65,6 @@ def _ccl_to_camb(cosmo):
     dict
         CAMB parameters dictionary with As properly set
     """
-    import camb
 
     h = cosmo["h"]
     camb_params = {
@@ -203,10 +203,12 @@ def get_cosmo(
     ns=None,
     w0=None,
     wa=None,
+    mnu=None,
     transfer_function="boltzmann_camb",
     matter_power_spectrum="halofit",
     cosmocov_params=None,
     camb_params=None,
+    extra_params=None,
 ):
     """Get CCL cosmology object with user-specified parameters.
 
@@ -229,6 +231,8 @@ def get_cosmo(
         Dark energy equation of state parameter (defaults to -1.0)
     wa : float, default=None
         Dark energy equation of state evolution parameter (defaults to 0.0)
+    mnu : float, default=None
+        Total neutrino mass in eV (defaults to 0.06 eV)
     transfer_function : str, default='boltzmann_camb'
         Transfer function to use
     matter_power_spectrum : str, default='halofit'
@@ -241,6 +245,8 @@ def get_cosmo(
         Parameters in CAMB format (H0, ombh2, omch2, ns, sigma8)
         If provided, entries override above parameters. Mutually exclusive with
         cosmocov_params.
+    extra_params : dict, optional
+        Additional parameters to pass to CCL (e.g., for CAMB non-linear settings)
 
     Returns
     -------
@@ -272,20 +278,35 @@ def get_cosmo(
         "ns": PLANCK18["n_s"],
         "w0": PLANCK18["w0"],
         "wa": PLANCK18["wa"],
+        "mnu": PLANCK18["m_nu"],
     }
+
+    mnu = ccl_params.get("mnu", mnu or planck_defaults["mnu"])
+    h = ccl_params.get("h", h or planck_defaults["h"])
+    pars = camb.CAMBparams()
+
+    pars.set_cosmology(
+        mnu=mnu,
+        H0=h * 100,
+    )
+
+    Omega_nu = pars.omeganu
 
     combined_params = {
         "Omega_c": ccl_params.get(
             "Omega_c",
             (Omega_m or planck_defaults["Omega_m"])
-            - (Omega_b or planck_defaults["Omega_b"]),
+            - (Omega_b or planck_defaults["Omega_b"])
+            - Omega_nu,
         ),
         "Omega_b": ccl_params.get("Omega_b", Omega_b or planck_defaults["Omega_b"]),
-        "h": ccl_params.get("h", h or planck_defaults["h"]),
+        "h": h,
         "sigma8": ccl_params.get("sigma8", sig8 or planck_defaults["sig8"]),
         "n_s": ccl_params.get("n_s", ns or planck_defaults["ns"]),
         "w0": ccl_params.get("w0", w0 or planck_defaults["w0"]),
         "wa": ccl_params.get("wa", wa or planck_defaults["wa"]),
+        "m_nu": mnu,
+        "extra_parameters": extra_params
     }
 
     return ccl.Cosmology(

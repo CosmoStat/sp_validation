@@ -74,8 +74,8 @@ ax1.text(
     f"Mean: {np.mean(res_e1):.2e}\n"
     f"Std: {np.std(res_e1):.2e}",
     transform=ax1.transAxes,
-    fontsize=16,
-    color='C0'
+    fontsize=18,
+    color='k'
 )
 
 ax2.hist(
@@ -93,8 +93,8 @@ ax2.text(
     f"Mean: {np.mean(res_e2):.2e}\n"
     f"Std: {np.std(res_e2):.2e}",
     transform=ax2.transAxes,
-    fontsize=16,
-    color='C0'
+    fontsize=18,
+    color='k'
 )
 
 ax3.hist(
@@ -104,15 +104,15 @@ ax3.hist(
     density=True,
     alpha=0.7,
     histtype=histtype,
-    label=r"$\delta T / T$",
+    label=r"$\delta r_{\rm hlr} / r_{\rm hlr}$",
 )
 ax3.text(
     0.05, 0.7,
     f"Mean: {np.mean(res_T):.2e}\n"
     f"Std: {np.std(res_T):.2e}",
     transform=ax3.transAxes,
-    fontsize=16,
-    color='C0'
+    fontsize=18,
+    color='k'
 )
 
 ax4.hist(
@@ -130,8 +130,8 @@ ax4.text(
     f"Mean: {np.mean(res_M4_1[mask]):.2e}\n"
     f"Std: {np.std(res_M4_1[mask]):.2e}",
     transform=ax4.transAxes,
-    fontsize=16,
-    color='C0'
+    fontsize=18,
+    color='k'
 )
 
 ax5.hist(
@@ -149,40 +149,40 @@ ax5.text(
     f"Mean: {np.mean(res_M4_2[mask]):.2e}\n"
     f"Std: {np.std(res_M4_2[mask]):.2e}",
     transform=ax5.transAxes,
-    fontsize=16,
-    color='C0'
+    fontsize=18,
+    color='k'
 )
 
-ax1.set_ylabel("Density", fontsize=18)
+ax1.set_ylabel("Density", fontsize=20)
 ax1.minorticks_on()
-ax2.set_ylabel("Density", fontsize=18)
+ax2.set_ylabel("Density", fontsize=20)
 ax2.minorticks_on()
-ax3.set_ylabel("Density", fontsize=18)
+ax3.set_ylabel("Density", fontsize=20)
 ax3.minorticks_on()
 ax4.minorticks_on()
 ax5.minorticks_on()
 
 ax1.tick_params(
-    axis='both', which='both', labelsize=16
+    axis='both', which='both', labelsize=20
 )
 ax2.tick_params(
-    axis='both', which='both', labelsize=16
+    axis='both', which='both', labelsize=20
 )
 ax3.tick_params(
-    axis='both', which='both', labelsize=16
+    axis='both', which='both', labelsize=20
 )
 ax4.tick_params(
-    axis='both', which='both', labelsize=16
+    axis='both', which='both', labelsize=20
 )
 ax5.tick_params(
-    axis='both', which='both', labelsize=16
+    axis='both', which='both', labelsize=20
 )
 
-ax1.set_title(r"$\delta e_1$", fontsize=18)
-ax2.set_title(r"$\delta e_2$", fontsize=18)
-ax3.set_title(r"$\delta T / T$", fontsize=18)
-ax4.set_title(r"$\delta M_{4,1}$", fontsize=18)
-ax5.set_title(r"$\delta M_{4,2}$", fontsize=18)
+ax1.set_title(r"$\delta e_1$", fontsize=22)
+ax2.set_title(r"$\delta e_2$", fontsize=22)
+ax3.set_title(r"$\delta r_{\rm hlr} / r_{\rm hlr}$", fontsize=22)
+ax4.set_title(r"$\delta M_{4,1}$", fontsize=22)
+ax5.set_title(r"$\delta M_{4,2}$", fontsize=22)
 
 plt.tight_layout()
 

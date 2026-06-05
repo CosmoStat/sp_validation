@@ -22,7 +22,8 @@ if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # %%
-path_redshift_distribution = "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt"
+blind = "B"
+path_redshift_distribution = f"/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_{blind}.txt"
 redshift_distribution = np.loadtxt(path_redshift_distribution)
 
 

@@ -51,8 +51,8 @@ titles = [
 
 y_labels = [
     r"$\tau_0(\vartheta)$",
-    r"$\vartheta \, \tau_1(\vartheta)$",
     r"$\vartheta \, \tau_2(\vartheta)$",
+    r"$\vartheta \, \tau_5(\vartheta)$",
 ]
 
 dict_index_tau = {
@@ -98,6 +98,14 @@ fig.legend(
     frameon=False,
     fontsize=16
 )
+
+fig.canvas.draw()
+
+# Get the offset text for each axis
+for i in range(3):
+    text_offset_axis = axs[i].yaxis.get_offset_text().get_text()
+    axs[i].yaxis.offsetText.set_visible(False)
+    axs[i].set_ylabel(y_labels[i]+text_offset_axis)
 
 plt.tight_layout()
 

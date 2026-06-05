@@ -16,9 +16,10 @@ warnings.filterwarnings("ignore", category=Warning)
 
 sys.path.append(os.path.abspath('/home/guerrini/UNIONS_forward_model'))
 
-out_dir = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims'
-setup_file = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/precomputed_setup.npz'
-wsp_file = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/wsp_harmony_covariance.fits'
+out_dir = '/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463_A'
+setup_file = out_dir +'/precomputed_setup.npz'
+wsp_file = out_dir+'/wsp_harmony_covariance.fits'
+path_redshift_distr = '/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt'
 
 def get_fiducial(nside, lmax, redshift_distr):
 
@@ -30,13 +31,32 @@ def get_fiducial(nside, lmax, redshift_distr):
     Oc = Om - Ob
     ns = 0.965
     As = 2.1e-9
+    sigma8 = 0.8102
     m_nu = 0.06
     w = -1
+    log_T_AGN = 7.8
     
     pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
     Onu = pars.omeganu
     Oc = Om - Ob - Onu
     pars = camb.set_params(H0=100*h, omch2=Oc*h**2, ombh2=Ob*h**2, ns=ns, mnu=m_nu, w=w, As=As, WantTransfer=True, NonLinear=camb.model.NonLinear_both)
+
+    pars.NonLinearModel.set_params(
+        halofit_version='mead2020_feedback',
+        HMCode_logT_AGN=log_T_AGN,
+    )
+
+    pars.set_matter_power(
+        nonlinear=True,
+        kmax=20
+    )
+
+    sigma8_temp = camb.get_results(pars).get_sigma8_0()
+    As *= (sigma8 / sigma8_temp)**2
+
+    init_power_scaled = camb.InitialPowerLaw()
+    init_power_scaled.set_params(As=As, ns=ns)
+    pars.InitPower = init_power_scaled
 
     z, dndz = np.loadtxt(redshift_distr, unpack=True)
 
@@ -152,6 +172,7 @@ if __name__ == "__main__":
     e2_col = 'e2_leak_corrected'
     w_col = 'w_des'
 
+    os.makedirs(out_dir, exist_ok=True)
     if rank == 0:
         if os.path.exists(setup_file) and os.path.exists(wsp_file):
             print("Precomputed setup and workspace already exist. Skipping setup.")
@@ -187,7 +208,6 @@ if __name__ == "__main__":
             mask = n_gal != 0
 
             print("Getting fiducial Cl...")
-            path_redshift_distr = '/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt'
             pw = hp.pixwin(nside, lmax=lmax)
             cl_ee = get_fiducial(nside, lmax, path_redshift_distr) * pw**2
 
@@ -247,41 +267,3 @@ if __name__ == "__main__":
     comm.Barrier()
     if rank == 0:
         print("All simulations completed ✅")
-
-    """ run_count = 0
-    n_sims = 1000
-    while run_count < n_sims:
-        if (run_count + comm.rank) < n_sims:
-            print(f"Hello! I am process {comm.rank+1} out of {comm.size} and I am working on simulation {run_count + comm.rank}")
-            try:
-                if not os.path.exists(f'/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/sample_{run_count + comm.rank}.npz'):
-                    data = np.load("/n17data/sguerrini/sp_validation/notebooks/cosmo_val/precomputed_setup.npz", allow_pickle=True)
-
-                    n_gal = data['n_gal']
-                    unique_pix = data['unique_pix']
-                    idx_rep = data['idx_rep']
-                    mask = data['mask']
-                    e1_col = data['e1_col']
-                    e2_col = data['e2_col']
-                    w = data['w']
-                    cl_ee = data['cl_ee']
-
-                    nside = 1024
-                    lmax = 2*nside
-                    lmin = 8
-                    b_lmax = lmax - 1
-
-                    wsp = nmt.NmtWorkspace()
-                    wsp.read_from('/n17data/sguerrini/sp_validation/notebooks/cosmo_val/wsp_harmony_covariance.fits')
-
-                    sample_all, sample_noise = get_sample(nside, b_lmax, cl_ee, n_gal, mask, unique_pix, idx_rep, wsp=wsp, w=w, e1_col=e1_col, e2_col=e2_col)
-                    np.savez_compressed(f'/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/sample_{run_count + comm.rank}.npz', cl_all=sample_all, cl_noise=sample_noise)
-                    print(f"Process {comm.rank} finished simulation {run_count + comm.rank}")
-                else:
-                    print(f"Process {comm.rank} found that simulation {run_count + comm.rank} already exists. Skipping.")
-            except Exception as e:
-                print(f"Process {comm.rank} failed on simulation {run_count + comm.rank} with error {e}")
-        run_count += comm.size
-        comm.bcast(run_count, root=0)
-        comm.Barrier() """
-

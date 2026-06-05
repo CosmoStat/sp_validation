@@ -158,7 +158,7 @@ def compute_two_point_cl_map(cat):
     shear_map_e2[mask] /= n_gal_map[mask]
 
     f_all = nmt.NmtField(
-        mask=mask,
+        mask=n_gal_map,
         maps=[shear_map_e1, factor * shear_map_e2],
         lmax=b_lmax
     )

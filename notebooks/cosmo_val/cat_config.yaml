@@ -550,7 +550,52 @@ SP_v1.4.6.3:
     e1_col: e1
     e2_col: e2
     path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_star_2024_v1.4.a.fits
-SSP_v1.4.6_msel:
+SP_v1.3.6:
+  subdir: /n17data/UNIONS/WL/v1.3.x
+  pipeline: SP
+  colour: green
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dashed
+  marker: d
+  cov_th:
+    A: 2405.3892055695346
+    n_e: 6.128201234871523
+    n_psf: 0.752316232272063
+    sigma_e: 0.379587601488189
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  psf:
+    PSF_flag: FLAG_PSF_HSM
+    PSF_size: SIGMA_PSF_HSM
+    square_size: true
+    star_flag: FLAG_STAR_HSM
+    star_size: SIGMA_STAR_HSM
+    hdu: 1
+    path: unions_shapepipe_psf_2022_v1.3.a.fits
+    ra_col: RA
+    dec_col: Dec
+    e1_PSF_col: E1_PSF_HSM
+    e1_star_col: E1_STAR_HSM
+    e2_PSF_col: E2_PSF_HSM
+    e2_star_col: E2_STAR_HSM
+  shear:
+    R: 1.0
+    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+    path: v1.3.6/unions_shapepipe_cut_struc_2022_v1.3.6.fits
+    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: unions_shapepipe_star_2022_v1.0.3.fits
+SP_v1.4.6:
   subdir: /n17data/UNIONS/WL/v1.4.x
   pipeline: SP
   colour: green
@@ -581,7 +626,142 @@ SSP_v1.4.6_msel:
     R: 0.92
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
-    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
+    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: unions_shapepipe_star_2024_v1.4.a.fits
+SP_v1.4.6.3_B:
+  subdir: /n17data/UNIONS/WL/v1.4.x
+  pipeline: SP
+  colour: green
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dashed
+  marker: d
+  cov_th:
+    A: 2405.3892055695346
+    n_e: 6.128201234871523
+    n_psf: 0.752316232272063
+    sigma_e: 0.379587601488189
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  psf:
+    PSF_flag: FLAG_PSF_HSM
+    PSF_size: SIGMA_PSF_HSM
+    square_size: true
+    star_flag: FLAG_STAR_HSM
+    star_size: SIGMA_STAR_HSM
+    hdu: 1
+    path: unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: Dec
+    e1_PSF_col: E1_PSF_HSM
+    e1_star_col: E1_STAR_HSM
+    e2_PSF_col: E2_PSF_HSM
+    e2_star_col: E2_STAR_HSM
+  shear:
+    R: 1.0
+    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+    path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: unions_shapepipe_star_2024_v1.4.a.fits
+SP_v1.4.6.3_C:
+  subdir: /n17data/UNIONS/WL/v1.4.x
+  pipeline: SP
+  colour: green
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dashed
+  marker: d
+  cov_th:
+    A: 2405.3892055695346
+    n_e: 6.128201234871523
+    n_psf: 0.752316232272063
+    sigma_e: 0.379587601488189
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  psf:
+    PSF_flag: FLAG_PSF_HSM
+    PSF_size: SIGMA_PSF_HSM
+    square_size: true
+    star_flag: FLAG_STAR_HSM
+    star_size: SIGMA_STAR_HSM
+    hdu: 1
+    path: unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: Dec
+    e1_PSF_col: E1_PSF_HSM
+    e1_star_col: E1_STAR_HSM
+    e2_PSF_col: E2_PSF_HSM
+    e2_star_col: E2_STAR_HSM
+  shear:
+    R: 1.0
+    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+    path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_C.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: unions_shapepipe_star_2024_v1.4.a.fits
+SP_v1.4.6.3_A:
+  subdir: /n17data/UNIONS/WL/v1.4.x
+  pipeline: SP
+  colour: green
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dashed
+  marker: d
+  cov_th:
+    A: 2405.3892055695346
+    n_e: 6.128201234871523
+    n_psf: 0.752316232272063
+    sigma_e: 0.379587601488189
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  psf:
+    PSF_flag: FLAG_PSF_HSM
+    PSF_size: SIGMA_PSF_HSM
+    square_size: true
+    star_flag: FLAG_STAR_HSM
+    star_size: SIGMA_STAR_HSM
+    hdu: 1
+    path: unions_shapepipe_psf_2024_v1.4.a.fits
+    ra_col: RA
+    dec_col: Dec
+    e1_PSF_col: E1_PSF_HSM
+    e1_star_col: E1_STAR_HSM
+    e2_PSF_col: E2_PSF_HSM
+    e2_star_col: E2_STAR_HSM
+  shear:
+    R: 1.0
+    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
+    path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
+    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected
@@ -763,8 +943,8 @@ SP_v1.4.8:
   shear:
     R: 1.0
     covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
-    path: /n17data/UNIONS/WL/v1.4.x/v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
-    redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.8/nz_SP_v1.4.8_A.txt
+    path: v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
+    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
     e1_col: e1
     e1_col_corrected: e1_leak_corrected

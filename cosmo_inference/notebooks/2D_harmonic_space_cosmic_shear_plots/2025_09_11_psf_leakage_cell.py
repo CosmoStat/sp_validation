@@ -33,7 +33,7 @@ plt.style.use(
 )
 plt.rcParams['text.usetex'] = True
 
-sns.set_palette("husl")
+sns.set_palette("Dark2")
 
 if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
@@ -41,14 +41,14 @@ if ipython is not None:
 # %%
 #Import galaxy and star catalogs
 cat_gal = fits.getdata(
-    "/n17data/UNIONS/WL/v1.4.x/v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits"
+    "/n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits"
 )
 
 cat_star = fits.getdata(
     "/n17data/UNIONS/WL/v1.4.x/unions_shapepipe_psf_2024_v1.4.a.fits"
 )
 
-glass_root_dir = "/n09data/guerrini/glass_mock_v1.4.6/results/"
+glass_root_dir = "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results/"
 
 # %%
 def get_shape_noise(e1, e2, w):

@@ -30,9 +30,10 @@ for blind in ["A", "B", "C"]:
 
     print("zmin = ", min(z))
     print("zmax = ", max(z))
-
-    np.savetxt(f"/n17data/sguerrini/UNIONS/WL/nz/{root}/nz_SP_{root}_{blind}.txt", np.column_stack((bins[:-1], n)))
-
+    
+    # Take the middle of the bin as the redshift value for the text file
+    z_mid = (bins[:-1] + bins[1:]) / 2
+    np.savetxt(f"/n17data/sguerrini/UNIONS/WL/nz/{root}/nz_SP_{root}_{blind}.txt", np.column_stack((z_mid, n)))
 plt.legend()
 plt.xlabel("Redshift z")
 plt.ylabel("n(z)")
