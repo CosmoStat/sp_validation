@@ -278,6 +278,7 @@ def get_cosmo(
         "ns": PLANCK18["n_s"],
         "w0": PLANCK18["w0"],
         "wa": PLANCK18["wa"],
+        "mnu": PLANCK18["m_nu"],
     }
 
     mnu = ccl_params.get("mnu", mnu or planck_defaults["mnu"])
