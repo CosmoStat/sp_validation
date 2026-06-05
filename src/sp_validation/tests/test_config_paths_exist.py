@@ -115,8 +115,16 @@ def _iter_ini_paths(config_path: Path) -> Iterator[tuple[Path, str, str, Path | 
     except configparser.MissingSectionHeaderError:
         yield from _iter_colon_config_paths(config_path)
         return
+    for key, value in parser.defaults().items():
+        stripped = value.strip()
+        if _non_path_key(key):
+            continue
+        if (_pathish_key(key) or _pathish_value(stripped)) and _pathish_value(stripped):
+            yield config_path, f"DEFAULT.{key}", stripped, None
     for section in parser.sections():
-        for key, value in parser.items(section):
+        for key, value in parser._sections[section].items():
+            if key == "__name__":
+                continue
             stripped = value.strip()
             if _non_path_key(key):
                 continue
@@ -168,6 +176,11 @@ def _candidate_paths() -> list[tuple[Path, str, Path]]:
                 resolved = expanded
             elif base_dir is not None:
                 resolved = base_dir / expanded
+            elif (
+                config_path.suffix == ".ini"
+                and root / "cosmo_inference" in config_path.parents
+            ):
+                resolved = root / "cosmo_inference" / expanded
             else:
                 resolved = source.parent / expanded
             candidates.append((source.relative_to(root), key, resolved))
@@ -176,9 +189,9 @@ def _candidate_paths() -> list[tuple[Path, str, Path]]:
 
 @pytest.mark.xfail(
     reason=(
-        "Candide baseline has 862 missing configured paths out of 2301 checked "
+        "Candide baseline has 67 missing configured paths out of 425 checked "
         "(cat_config cov_th/covmat paths, calibration input_path files, and "
-        "tracked CosmoSIS/CosmoCov data/library paths)"
+        "legacy CosmoSIS/CosmoCov data/library paths)"
     ),
     strict=True,
 )
