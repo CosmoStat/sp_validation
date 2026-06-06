@@ -3,7 +3,7 @@
 
 # General parameters (can also given on command line)
 params:
-  input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
+  input_path: /n17data/UNIONS/WL/v1.4.x/unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
   cmatrices: False
   sky_regions: False
   verbose: True

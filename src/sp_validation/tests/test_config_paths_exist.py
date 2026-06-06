@@ -24,6 +24,7 @@ PATH_KEY_PARTS = (
     "catalogue",
 )
 NON_PATH_KEYS = ("extra_output",)
+PATH_PREFIX_KEYS = ("nz.dndz.path",)
 TEXT_SUFFIXES = (
     ".fits",
     ".fits.gz",
@@ -69,6 +70,10 @@ def _non_path_key(key: str) -> bool:
     return key.lower().endswith(NON_PATH_KEYS)
 
 
+def _path_prefix_key(key: str) -> bool:
+    return key.lower() in PATH_PREFIX_KEYS
+
+
 def _pathish_value(value: str) -> bool:
     if not value or any(part in value for part in SKIP_VALUE_PARTS):
         return False
@@ -93,10 +98,14 @@ def _walk_yaml(
     elif isinstance(value, list):
         for index, child in enumerate(value):
             yield from _walk_yaml(child, trail + (str(index),), base_dir)
-    elif isinstance(value, str) and not _non_path_key(".".join(trail)) and (
-        _pathish_key(".".join(trail)) or _pathish_value(value)
-    ):
-        yield ".".join(trail), value, base_dir
+    elif isinstance(value, str):
+        key = ".".join(trail)
+        if (
+            not _non_path_key(key)
+            and not _path_prefix_key(key)
+            and (_pathish_key(key) or _pathish_value(value))
+        ):
+            yield key, value, base_dir
 
 
 def _iter_yaml_paths(config_path: Path) -> Iterator[tuple[Path, str, str, Path | None]]:
@@ -187,14 +196,6 @@ def _candidate_paths() -> list[tuple[Path, str, Path]]:
     return candidates
 
 
-@pytest.mark.xfail(
-    reason=(
-        "Candide baseline has 67 missing configured paths out of 425 checked "
-        "(cat_config cov_th/covmat paths, calibration input_path files, and "
-        "legacy CosmoSIS/CosmoCov data/library paths)"
-    ),
-    strict=True,
-)
 def test_configured_paths_exist_on_candide():
     """Every extracted path-shaped config value points at something real."""
     if not _on_candide():

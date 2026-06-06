@@ -10,10 +10,6 @@ DES:
     n_e: 5.67
     n_psf: 3.8
     sigma_e: 0.29
-    path_rho: rho_stats_DES.fits
-    path_tau: tau_stats_DES.fits
-    path_xi_plus: xi_plus_DES.fits
-    path_xi_minus: xi_minus_DES.fits
   psf:
     PSF_size: piff_T
     square_size: false
@@ -30,7 +26,6 @@ DES:
     R: 1.0
     R11: R11
     R22: R22
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: DES_Y3_cut.fits
     w_col: w
     e1_col: e1
@@ -56,10 +51,6 @@ SP_axel_v0.0:
     n_e: 6.47
     n_psf: 0.47
     sigma_e: 0.3
-    path_rho: rho_stats_SP_v0.0.fits
-    path_tau: tau_stats_SP_v0.0.fits
-    path_xi_plus: xi_plus_SP_v0.0.fits
-    path_xi_minus: xi_minus_SP_v0.0.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -145,7 +136,6 @@ SP_v1.3:
     label: SP_LFmask_psf
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: unions_shapepipe_extended_2022_v1.3.fits
     w_col: w
     e1_col: e1
@@ -187,7 +177,6 @@ SP_v1.3.6:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.3.6/unions_shapepipe_cut_struc_2022_v1.3.6.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -232,7 +221,6 @@ SP_v1.4.5:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n17data/sguerrini/unions_shapepipe_cut_struc_2024_v1.4.5_rerun.fits
     redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.5/nz_SP_v1.4.5_A.txt
     w_col: w_des
@@ -276,7 +264,6 @@ SP_v1.4.5.A:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: shapepipe_SPv1.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w
@@ -318,7 +305,6 @@ SP_v1.4.5_bright:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: unions_shapepipe_cut_struc_2024_v1.4.5_bright.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -360,7 +346,6 @@ SP_v1.4.5_faint:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: unions_shapepipe_cut_struc_2024_v1.4.5_faint.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -403,7 +388,6 @@ SP_v1.4.6_glass_mock:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n09data/guerrini/glass_mock_v1.4.6/results/unions_glass_sim_00001_4096.fits
     path_template: /n09data/guerrini/glass_mock_v1.4.6/results/unions_glass_sim_{seed:05d}_4096.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
@@ -446,7 +430,6 @@ SP_v1.4.5_intermediate:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: unions_shapepipe_cut_struc_2024_v1.4.5_intermediate.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -488,7 +471,6 @@ SP_v1.4.6:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
     redshift_distr: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
     mask: v1.4.6/footprint_binned_8192.fits
@@ -534,7 +516,6 @@ SP_v1.4.6.3:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
     redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
     w_col: w_des
@@ -579,7 +560,6 @@ SP_v1.3.6:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.3.6/unions_shapepipe_cut_struc_2022_v1.3.6.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -624,7 +604,6 @@ SP_v1.4.6:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 0.92
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -669,7 +648,6 @@ SP_v1.4.6.3_B:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
     redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_B.txt
     w_col: w_des
@@ -714,7 +692,6 @@ SP_v1.4.6.3_C:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
     redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_C.txt
     w_col: w_des
@@ -759,7 +736,6 @@ SP_v1.4.6.3_A:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits
     redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
     w_col: w_des
@@ -804,7 +780,6 @@ SP_v1.4.6_ecut07:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n17data/cdaley/unions/pure_eb/results/ecut/SP_v1.4.6_ecut07.fits
     redshift_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt
     w_col: w_des
@@ -849,7 +824,6 @@ SP_v1.4.6.1:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.6.1/unions_shapepipe_cut_struc_2024_v1.4.6.1.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -895,7 +869,6 @@ SP_v1.4.7:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     ra_col: RA
@@ -942,7 +915,6 @@ SP_v1.4.8:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -987,7 +959,6 @@ SP_v1.4.11.2:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n17data/UNIONS/WL/v1.4.x/v1.4.11.2/unions_shapepipe_cut_struc_2024_v1.4.11.2.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -1032,7 +1003,6 @@ SP_v1.4.11.3:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n17data/UNIONS/WL/v1.4.x/v1.4.11.3/unions_shapepipe_cut_struc_2024_v1.4.11.3.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -1077,7 +1047,6 @@ SP_v1.4.11.3_ecut07:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: /n17data/cdaley/unions/pure_eb/results/ecut/SP_v1.4.11.3_ecut07.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
@@ -1098,7 +1067,6 @@ SP_v1.4.6_uncal:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1114,7 +1082,6 @@ SP_v1.4.6_uncal_w_iv:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1130,7 +1097,6 @@ SP_v1.4.6_uncal_w_1:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.6/unions_shapepipe_cut_struc_2024_v1.4.6.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1146,7 +1112,6 @@ SP_v1.4.5_uncal:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.5/unions_shapepipe_cut_struc_2024_v1.4.5.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1162,7 +1127,6 @@ SP_v1.4.7_uncal:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.7/unions_shapepipe_cut_struc_2024_v1.4.7.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1178,7 +1142,6 @@ SP_v1.4.8_uncal:
   subdir: /n17data/UNIONS/WL/v1.4.x
   shear:
     path: v1.4.8/unions_shapepipe_cut_struc_2024_v1.4.8.fits
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     ra_col: RA
     dec_col: Dec
     e1_col: e1_uncal
@@ -1201,10 +1164,6 @@ SP_v1.4_LFmask_8k:
     n_e: 7.976462506484096
     n_psf: 0.5434016250405327
     sigma_e: 0.31509572849714534
-    path_rho: rho_stats_SP_v1.4.fits
-    path_tau: tau_stats_SP_v1.4.fits
-    path_xi_plus: xi_plus_SP_v1.4.fits
-    path_xi_minus: xi_minus_SP_v1.4.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -1222,7 +1181,6 @@ SP_v1.4_LFmask_8k:
     label: SP_LFmask_psf
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: unions_shapepipe_extended_2022_v1.4.0_mtheli8k.fits
     w_col: w
     e1_col: e1
@@ -1247,10 +1205,6 @@ SP_v1.4_LFmask_8k_noalpha:
     n_e: 7.976462506484096
     n_psf: 0.5434016250405327
     sigma_e: 0.31509572849714534
-    path_rho: rho_stats_SP_v1.4.fits
-    path_tau: tau_stats_SP_v1.4.fits
-    path_xi_plus: xi_plus_SP_v1.4.fits
-    path_xi_minus: xi_minus_SP_v1.4.fits
   psf:
     PSF_flag: FLAG_PSF_HSM
     PSF_size: SIGMA_PSF_HSM
@@ -1268,7 +1222,6 @@ SP_v1.4_LFmask_8k_noalpha:
     label: SP_LFmask_psf
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: unions_shapepipe_extended_rmalpha_2022_v1.4.0_mtheli8k.fits
     w_col: w
     e1_col: e1_cor
@@ -1317,7 +1270,6 @@ SP_v1.6.6:
     e2_star_col: E2_STAR_HSM
   shear:
     R: 1.0
-    covmat_file: ./covs/shapepipe_A/cov_shapepipe_A.txt
     path: v1.6.6/unions_shapepipe_cut_struc_2024_v1.6.6.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
