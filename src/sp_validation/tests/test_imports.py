@@ -59,19 +59,6 @@ def _package_modules() -> list[str]:
     return sorted(names)
 
 
-# Scripts with a *pre-existing* dangling first-party import (broken before any
-# reorg, surfaced by this guard on its first run). Marked xfail(strict=True) so
-# the baseline stays honestly green, yet the moment one is fixed or deleted the
-# strict-xfail flips to a failure and forces the entry to be cleaned up. Triage
-# (fix or delete) belongs to the scripts/ curation pass of the restructuring.
-KNOWN_BROKEN_SCRIPTS = {
-    "plot_leakage.py": (
-        "imports `from sp_validation.correlation import *`, a module that has "
-        "never existed in this tree — dead import in an old LF-leakage script"
-    ),
-}
-
-
 def _script_paths() -> list[Path]:
     """Every standalone script under ``scripts/`` (excluding ``__init__``)."""
     scripts_dir = _repo_root() / "scripts"
@@ -79,12 +66,8 @@ def _script_paths() -> list[Path]:
 
 
 def _script_param(path: Path):
-    """Parametrize entry for a script, xfail-marked if known pre-existing broken."""
-    reason = KNOWN_BROKEN_SCRIPTS.get(path.name)
-    marks = (
-        [pytest.mark.xfail(reason=reason, strict=True)] if reason is not None else []
-    )
-    return pytest.param(path, id=path.name, marks=marks)
+    """Parametrize entry for a script with a readable test ID."""
+    return pytest.param(path, id=path.name)
 
 
 def _first_party_import_targets(path: Path) -> set[str]:
@@ -113,13 +96,6 @@ def test_package_module_inventory_nonempty():
     """Guard the guard: a glob that silently finds nothing is a false green."""
     assert PACKAGE_MODULES, "no sp_validation submodules discovered"
     assert SCRIPT_PATHS, "no scripts discovered under scripts/"
-
-
-def test_known_broken_scripts_still_exist():
-    """No stale KNOWN_BROKEN entries: every listed script must still be present."""
-    discovered = {p.name for p in SCRIPT_PATHS}
-    stale = set(KNOWN_BROKEN_SCRIPTS) - discovered
-    assert not stale, f"KNOWN_BROKEN_SCRIPTS references missing scripts: {stale}"
 
 
 @pytest.mark.parametrize("module_name", PACKAGE_MODULES)

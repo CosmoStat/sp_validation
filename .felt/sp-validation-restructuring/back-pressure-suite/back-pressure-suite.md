@@ -8,7 +8,7 @@ tags:
     - reorg
     - shuttle
 created-at: 2026-06-05T21:15:56.629448647+02:00
-outcome: 'Back-pressure guards are green with one intentional legacy import xfail: 45 passed, 1 skipped, 1 xfailed. Config paths, tracked symlinks, and B-modes workflow dry-run now pass; remaining xfail is plot_leakage.py importing a historical LF leakage helper that never existed in this tree.'
+outcome: 'Back-pressure guard suite fully green: 45 passed, 1 skipped, 0 xfailed. Config paths resolve, tracked symlinks resolve, B-modes workflow dry-runs all_tapestry, and script/package imports resolve. The only skip is the dormant move-map guard until moves are registered.'
 shuttle:
     enabled: true
     kind: oneshot
