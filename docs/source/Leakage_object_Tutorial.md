@@ -131,7 +131,7 @@ leakage_object.py -i /path/unions_shapepipe_extended_2022.fits -o Leakage --PSF_
 
 - - - -
 ## Functions imported from `leakage.py` library module  
-#### PSF Leakage fit functions:  
+### PSF Leakage fit functions:  
 For 2d correlation :  
 * `corr_2d(...)` : computes and plots 2D linear and quadratic correlations of (y1, y2) as function of (x1, x2)  
 For 1d linear correlation:  
@@ -139,7 +139,7 @@ For 1d linear correlation:
 * `affine_corr(...)`: computes and  plots  affine correlation of y(n) as function of x (use `func_bias_lin_1d()` and  `loss_bias_lin_1d()`  for the computation of linear model)  
 
 
-#### Obs_Leakage Linear fit functions:  
+### Obs_Leakage Linear fit functions:  
 *  `corr_any_quant(dat,param,stats_file,label_quant,ratio)` : In function of the options — —linear or — —quadratic in the command line, computes the linear or the quadratic best fit for the n quantities of the array label_quant and/or  the ratio, with the fits  functions `affine_corr_n_quant()` and `quad_corr_n_quant()`  
 * `affine_corr_n_quant(...)`  : edited version of `affine_corr_n()` which extracts the slopes with the errors and the names associate from the function `affine_corr_quant()`and plots a recap of the slopes as a function of the quantity. (Cf Output)  
 *  `affine_corr_quant(...)` :  edited version of `affine_corr()` which computes the best linear fit for each quantity for all the values and plot the binned ellipticity of galaxies as a function of the quantities and return the slope, the error and the name for each quantity (use `func_bias_lin_1d()` and  `loss_bias_lin_1d()`  for the computation of linear model)  

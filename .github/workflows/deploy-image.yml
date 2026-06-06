@@ -44,6 +44,10 @@ jobs:
       - name: Import smoke test
         run: docker run --rm ${{ steps.meta.outputs.tags }} python -c "import sp_validation"
 
+      # Run the fast test suite against the freshly-built image *before*
+      # pushing, so a failing suite blocks publication. The image carries the
+      # full stack and the test files (COPY . + editable install), so this
+      # needs no extra setup.
       - name: Run unit tests
         run: docker run --rm ${{ steps.meta.outputs.tags }} python -m pytest src/sp_validation/tests -m "not slow"
 

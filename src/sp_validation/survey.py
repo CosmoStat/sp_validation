@@ -1,7 +1,7 @@
 """SURVEY.
 
 :Description: This file contains methods to deal with the survey geometry.
-Some methods are UNIONS-/CFIS-specific.
+    Some methods are UNIONS-/CFIS-specific.
 
 :Author: Martin Kilbinger <martin.kilbinger@cea.fr>
 

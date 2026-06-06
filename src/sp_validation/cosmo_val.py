@@ -2073,6 +2073,7 @@ class CosmologyValidation:
         -------
         dict
             A dictionary containing the following keys:
+
             - "xip_E": Pure E-mode correlation function for xi+.
             - "xim_E": Pure E-mode correlation function for xi-.
             - "xip_B": Pure B-mode correlation function for xi+.
@@ -2089,7 +2090,7 @@ class CosmologyValidation:
         Notes
         -----
         - A shared patch file is used for the reporting and integration binning,
-        and is created if it does not exist.
+          and is created if it does not exist.
         """
         from .b_modes import calculate_pure_eb_correlation
 
@@ -2205,6 +2206,7 @@ class CosmologyValidation:
         Notes
         -----
         This function orchestrates the full E/B mode analysis workflow:
+
         - Uses instance configuration as defaults for unspecified parameters
         - Automatically switches to analytical variance when theoretical
           covariance provided
