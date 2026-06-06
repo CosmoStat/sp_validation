@@ -20,7 +20,6 @@ from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
 from .cosmology import get_cosmo, get_theo_c_ell
-from .plots import FootprintPlotter
 from .rho_tau import (
     get_params_rho_tau,
     get_rho_tau_w_cov,
@@ -1008,7 +1007,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            fp = FootprintPlotter()
+            fp = cs_plots.FootprintPlotter()
 
             for region in fp._regions:
                 out_path = os.path.abspath(

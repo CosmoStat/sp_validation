@@ -21,4 +21,5 @@ RUN uv pip install --no-cache-dir \
 WORKDIR /sp_validation
 COPY . /sp_validation
 
+# Install with the test extra so the image can run the unit suite in CI.
 RUN uv pip install --no-cache-dir -e '.[test]'
