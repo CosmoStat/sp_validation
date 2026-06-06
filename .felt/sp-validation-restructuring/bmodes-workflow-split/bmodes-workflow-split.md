@@ -8,7 +8,7 @@ tags:
     - reorg
     - shuttle
 created-at: 2026-06-06T01:18:01.913028797+02:00
-outcome: 'Long-running codex agent: execute the designed bmodes split behind green guards.'
+outcome: 'Steps 1-2 landed on cleanup/restructuring. The B-modes workflow now has common.py for shared constants/helpers and rules/twopoint.smk for xi/rho-tau/pseudo-Cl generation; Snakefile is slimmer but still in-place. Full guard net green at checkpoint: 45 passed, 1 skipped. Next step: slim Snakefile further / prepare top-level workflow move.'
 shuttle:
     enabled: false
     kind: oneshot
