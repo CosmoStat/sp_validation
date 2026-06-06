@@ -8,7 +8,7 @@ tags:
     - reorg
     - shuttle
 created-at: 2026-06-05T21:15:56.629448647+02:00
-outcome: 'Config-path guard driven to green: 0 missing / 373 checked, xfail removed. Fixed real path clusters (Guerrini harmonic FITS, v1.4.x comprehensive calibration catalog, v6 glass mock chain), removed orphaned SP_v1.4_A CosmoSIS config, pruned unused cat_config covmat_file and cov_th path_* metadata, and taught guard that nz.dndz.path is a prefix.'
+outcome: 'Back-pressure guards are green with one intentional legacy import xfail: 45 passed, 1 skipped, 1 xfailed. Config paths, tracked symlinks, and B-modes workflow dry-run now pass; remaining xfail is plot_leakage.py importing a historical LF leakage helper that never existed in this tree.'
 shuttle:
     enabled: true
     kind: oneshot

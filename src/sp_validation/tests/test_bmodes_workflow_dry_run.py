@@ -8,13 +8,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
-
-DRY_RUN_XFAIL_REASON = (
-    "bmodes workflow dry-run is pre-existing broken: Snakefile line 24 opens "
-    "missing results/cosmology/planck18.json before DAG construction"
-)
-
 
 def _repo_root() -> Path:
     for parent in Path(__file__).resolve().parents:
@@ -23,7 +16,6 @@ def _repo_root() -> Path:
     raise RuntimeError("could not locate repo root (no pyproject.toml above test)")
 
 
-@pytest.mark.xfail(reason=DRY_RUN_XFAIL_REASON, strict=True)
 def test_bmodes_workflow_dry_runs():
     """The paper B-mode workflow must still parse and dry-run cleanly."""
     workflow_dir = (
@@ -35,6 +27,7 @@ def test_bmodes_workflow_dry_runs():
             "python3.12",
             "-m",
             "snakemake",
+            "all_tapestry",
             "--dry-run",
             "--cores",
             "1",

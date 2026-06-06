@@ -1,5 +1,5 @@
 
-configfile: "workflow/config/config.yaml"
+configfile: "config/config.yaml"
 configfile: "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
 
 container: "/n17data/cdaley/containers/containers"
@@ -44,7 +44,7 @@ COSMO_VAL = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/co
 COSMO_INFERENCE = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference")
 
 # Workflow directories
-CONFIG_DIR = "workflow/config"
+CONFIG_DIR = "config"
 TAPESTRY_DIR = "results/tapestry"
 PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
 
