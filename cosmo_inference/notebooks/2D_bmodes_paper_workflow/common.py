@@ -1,0 +1,151 @@
+"""Shared helpers for the B-modes Snakemake workflow."""
+
+import re
+from pathlib import Path
+
+COSMO_VAL = Path(
+    "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output"
+)
+COSMO_INFERENCE = Path(
+    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference"
+)
+CAT_CONFIG = (
+    "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/"
+    "cat_config.yaml"
+)
+BLINDS = ["A", "B", "C"]
+BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
+
+FIDUCIAL = None
+DEFAULT_MASK_SUFFIX = ""
+CATALOG_CONFIG = None
+
+
+def configure(workflow_config):
+    """Install config-derived values after Snakemake has loaded configfiles."""
+    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL
+    CATALOG_CONFIG = workflow_config
+    FIDUCIAL = workflow_config["fiducial"]
+    DEFAULT_MASK_SUFFIX = (
+        "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
+    )
+
+
+def fiducial_binning_suffix(fiducial=None):
+    """Return binning suffix for fiducial parameters."""
+    fiducial = fiducial or FIDUCIAL
+    return (
+        f"_minsep={fiducial['min_sep']}_maxsep={fiducial['max_sep']}"
+        f"_nbins={fiducial['nbins']}_npatch={fiducial['npatch']}"
+    )
+
+
+def resolve_covariance_version(version):
+    """Map version to its covariance version."""
+    return version
+
+
+def covariance_base(
+    version,
+    blind,
+    gaussian="ng",
+    min_sep=None,
+    max_sep=None,
+    nbins=None,
+    mask_suffix=None,
+    resolve_version=True,
+    fiducial=None,
+    default_mask_suffix=None,
+):
+    """Construct covariance base name."""
+    fiducial = fiducial or FIDUCIAL
+    min_sep = min_sep if min_sep is not None else fiducial["min_sep"]
+    max_sep = max_sep if max_sep is not None else fiducial["max_sep"]
+    nbins = nbins if nbins is not None else fiducial["nbins"]
+    mask_suffix = (
+        mask_suffix
+        if mask_suffix is not None
+        else (
+            DEFAULT_MASK_SUFFIX
+            if default_mask_suffix is None
+            else default_mask_suffix
+        )
+    )
+    cov_version = resolve_covariance_version(version) if resolve_version else version
+    return (
+        f"covariance_{cov_version}_{blind}_{gaussian}"
+        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
+    )
+
+
+def covariance_dir(
+    version,
+    blind,
+    gaussian="ng",
+    min_sep=None,
+    max_sep=None,
+    nbins=None,
+    mask_suffix=None,
+    resolve_version=True,
+):
+    """Construct covariance directory path."""
+    base = covariance_base(
+        version,
+        blind,
+        gaussian,
+        min_sep,
+        max_sep,
+        nbins,
+        mask_suffix,
+        resolve_version=resolve_version,
+    )
+    return str(COSMO_INFERENCE / f"data/covariance/{base}")
+
+
+def covariance_path(
+    version,
+    blind,
+    gaussian="ng",
+    min_sep=None,
+    max_sep=None,
+    nbins=None,
+    mask_suffix=None,
+    suffix="_processed.txt",
+    resolve_version=True,
+):
+    """Construct covariance file path."""
+    base = covariance_base(
+        version,
+        blind,
+        gaussian,
+        min_sep,
+        max_sep,
+        nbins,
+        mask_suffix,
+        resolve_version=resolve_version,
+    )
+    return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
+
+
+def build_redshift_path(version, blind):
+    """Construct n(z) filepath for given catalog version and blind."""
+    base_version = re.sub(r"_leak_corr$", "", version)
+    base_version = re.sub(r"_ecut\d+", "", base_version)
+    if "v1.4.11" in base_version:
+        base_version = "SP_v1.4.6"
+    version_dir = base_version.replace("SP_", "")
+    return (
+        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/"
+        f"nz_{base_version}_{blind}.txt"
+    )
+
+
+def get_shear_catalog(wildcards):
+    """Resolve shear catalog path from config for a given version."""
+    base_version = wildcards.version.replace("_leak_corr", "")
+    cat_config = CATALOG_CONFIG[base_version]
+    shear_path = cat_config["shear"]["path"]
+    if shear_path.startswith("/"):
+        return shear_path
+    subdir = cat_config.get("subdir", "")
+    return str(Path(subdir) / shear_path)

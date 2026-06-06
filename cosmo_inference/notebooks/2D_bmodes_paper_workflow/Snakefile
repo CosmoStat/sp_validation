@@ -15,7 +15,7 @@ os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8
 
 from pathlib import Path
 import json
-import re
+import common
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
 # Source of truth: sp_validation.cosmology.PLANCK18
@@ -23,6 +23,9 @@ import re
 COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 with open(COSMOLOGY_PARAMS) as _f:
     PLANCK18 = json.load(_f)
+
+common.configure(config)
+from common import *
 
 # Wildcard constraints — centralized here, not in individual rule files
 # Patterns must match all expected values; overly restrictive patterns cause silent failures
@@ -39,133 +42,10 @@ wildcard_constraints:
     mock_id=r"\d{5}",
     nside=r"\d+",
 
-# Common paths
-COSMO_VAL = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output")
-COSMO_INFERENCE = Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference")
-
 # Workflow directories
 CONFIG_DIR = "config"
 TAPESTRY_DIR = "results/tapestry"
 PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
-
-# Catalog config path (also loaded as configfile above, but scripts need the path)
-CAT_CONFIG = "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
-
-# All three blinds (for rules that need all, e.g. bb_covariance_blind_independence)
-# Single-blind operations use config["fiducial"]["blind"] instead
-BLINDS = ["A", "B", "C"]
-
-# Fiducial parameters shorthand - avoids repeated config["fiducial"]["X"] access
-FIDUCIAL = config["fiducial"]
-
-# Default mask suffix from config
-DEFAULT_MASK_SUFFIX = "_masked" if config["covariance"].get("default_masked", False) else ""
-
-# CosmoCov block indices: (symbol, CosmoCov block_i argument)
-# ++: xi+ x xi+, --: xi- x xi-, +-: xi+ x xi-
-BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
-
-
-def fiducial_binning_suffix():
-    """Return binning suffix for fiducial parameters.
-
-    Used by multiple rules across covariance.smk and inference.smk.
-    """
-    return f"_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}"
-
-
-def resolve_covariance_version(version):
-    """Map version to its covariance version.
-
-    With footprint masks (nside=4096, spatial cuts only from comprehensive
-    catalog), each version gets its own covariance. No cross-version sharing.
-    """
-    return version
-
-
-def covariance_base(version, blind, gaussian="ng", min_sep=None, max_sep=None, nbins=None,
-                    mask_suffix=None, resolve_version=True):
-    """Construct covariance base name (used for dir and file prefix).
-
-    Args:
-        version: Catalog version
-        blind: Blind letter (A, B, C)
-        gaussian: "g" or "ng" (non-Gaussian)
-        min_sep, max_sep, nbins: Binning params (default to fiducial)
-        mask_suffix: "_masked" or "" (default from config)
-        resolve_version: If True, map v1.4.10.1 → v1.4.6 (for reading existing cov).
-                        If False, use version as-is (for generating new cov).
-
-    Returns:
-        Base name string (e.g., "covariance_SP_v1.4.6_leak_corr_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked")
-    """
-    min_sep = min_sep if min_sep is not None else FIDUCIAL["min_sep"]
-    max_sep = max_sep if max_sep is not None else FIDUCIAL["max_sep"]
-    nbins = nbins if nbins is not None else FIDUCIAL["nbins"]
-    mask_suffix = mask_suffix if mask_suffix is not None else DEFAULT_MASK_SUFFIX
-    cov_version = resolve_covariance_version(version) if resolve_version else version
-    return (
-        f"covariance_{cov_version}_{blind}_{gaussian}"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
-    )
-
-
-def covariance_dir(version, blind, gaussian="ng", min_sep=None, max_sep=None, nbins=None,
-                   mask_suffix=None, resolve_version=True):
-    """Construct covariance directory path."""
-    base = covariance_base(version, blind, gaussian, min_sep, max_sep, nbins, mask_suffix,
-                           resolve_version=resolve_version)
-    return str(COSMO_INFERENCE / f"data/covariance/{base}")
-
-
-def covariance_path(version, blind, gaussian="ng", min_sep=None, max_sep=None, nbins=None,
-                    mask_suffix=None, suffix="_processed.txt", resolve_version=True):
-    """Construct covariance file path. Single source of truth for covariance paths.
-
-    Args:
-        version: Catalog version
-        blind: Blind letter (A, B, C)
-        gaussian: "g" or "ng" (non-Gaussian)
-        min_sep, max_sep, nbins: Binning params (default to fiducial)
-        mask_suffix: "_masked" or "" (default from config)
-        suffix: File suffix (default "_processed.txt")
-        resolve_version: If True, map v1.4.10.1 → v1.4.6 (default for reading)
-
-    Returns:
-        Full path to covariance file
-    """
-    base = covariance_base(version, blind, gaussian, min_sep, max_sep, nbins, mask_suffix,
-                           resolve_version=resolve_version)
-    return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
-
-
-def build_redshift_path(version, blind):
-    """Construct n(z) filepath for given catalog version and blind.
-
-    v1.4.11.x uses v1.4.6's N(z):
-    - v1.4.11.3: PSF size fix (replaces v1.4.11.2), n(z) not yet available
-    """
-    base_version = re.sub(r'_leak_corr$', '', version)
-    base_version = re.sub(r'_ecut\d+', '', base_version)
-    # Versions derived from v1.4.6 footprint - use same N(z)
-    if 'v1.4.11' in base_version:
-        base_version = 'SP_v1.4.6'
-    version_dir = base_version.replace('SP_', '')
-    return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
-
-
-def get_shear_catalog(wildcards):
-    """Resolve shear catalog path from config for a given version."""
-    # Strip _leak_corr suffix - those versions use same catalog with different columns
-    base_version = wildcards.version.replace('_leak_corr', '')
-    cat_config = config[base_version]
-    shear_path = cat_config['shear']['path']
-    # Return absolute paths directly; join relative paths with subdir
-    if shear_path.startswith('/'):
-        return shear_path
-    subdir = cat_config.get('subdir', '')
-    return str(Path(subdir) / shear_path)
-
 
 rule xi:
     input:
