@@ -1,4 +1,5 @@
 ---
+id: 01KTCHX02BFAABNBRKN0RNN0E3
 name: 'Docs deploy modernized: gh-pages CI + Sphinx 8'
 tags:
     - docs

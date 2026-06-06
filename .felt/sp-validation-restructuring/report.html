@@ -66,21 +66,92 @@
   ol.seq > li.here::before { background: var(--cinnabar); }
   ol.seq .who { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); margin-left: 8px; }
   ol.seq .here-tag { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cinnabar); margin-left: 8px; }
+
+  .status { background: var(--rag); border: 1px solid var(--rule); border-left: 3px solid var(--teal); border-radius: 4px; padding: 18px 22px 6px; }
+  .status p { font-size: 16.5px; line-height: 1.5; }
+  .status pre.code { font-size: 12.5px; margin: 4px 0 15px; }
+  .status .blocker { border-left: 2px solid var(--cinnabar); padding-left: 14px; }
+  .status .blocker strong:first-child { color: var(--cinnabar); }
+  .status .next strong:first-child { color: var(--teal); }
+  .status .aside { font-size: 15px; color: var(--ink-muted); border-top: 1px solid var(--rule); padding-top: 13px; margin-top: 4px; }
+  .status .aside code { color: var(--ink); }
 </style>
 </head>
 <body>
 <main class="page">
 
   <div class="stamp">
-    <span class="dot"></span><span>2026 · 06 · 02</span>
+    <span class="dot"></span><span>2026 · 06 · 05</span>
     <span class="sep">·</span><span>sp_validation</span>
-    <span class="sep">·</span><span>restructuring proposal</span>
+    <span class="sep">·</span><span>restructuring · autonomous checkpoint</span>
   </div>
 
   <h1>Restructuring sp_validation.</h1>
   <p class="lede">One organizing principle — <em>the things you run live at the top</em> — a clean three-way split between analysis, papers, and scratch, and a modular workflow built for more than one person.</p>
 
   <hr>
+
+  <section>
+    <div class="section-mark">§ Current state · interactive session · 2026 · 06 · 05</div>
+    <h2>Decisions settled; the rest of the suite is on a Codex shuttle.</h2>
+    <div class="status" style="border-left-color: var(--cobalt); margin-bottom: 24px;">
+      <p><strong>Cail attached and we did the testing pass together.</strong> The decisions below are made (see &sect; Decisions); the four remaining back-pressure guards (②③⑤⑥) are dispatched to an autonomous <strong>Codex shuttle</strong> — the <code>back-pressure-suite</code> child fiber — so the live session stays free for design (workflow modularity, Phase-2 move sequencing). The Codex worker shares this tree but is constrained to add-only test files; the driver stays hands-off-git while it runs. <strong>Phase 2 (the moves) begins once the suite lands and we tidy the branch.</strong></p>
+    </div>
+    <div class="status">
+      <p>Foundation folded + back-pressure begun (the autonomous checkpoint that opened this session): branch <code>cleanup/restructuring</code> is pushed; <strong>PR #188 is reopened</strong> and carries the real implementation (its branch <code>restructuring/proposal</code> was fast-forwarded to it). <code>develop</code> is untouched — propose-never-commit held.</p>
+<pre class="code"><span class="c"># cleanup/restructuring — 5 commits on top of develop (574f4bf)</span>
+e993b9c  test: back-pressure guard #1 — imports / first-party resolution
+fdd9008  chore: restore glass-mock cosmosis-config ignores dropped in merge
+1a8b786  chore: gitignore generated apidoc stubs and uv.lock
+d14fc07  fix: add mnu to planck_defaults so bare get_cosmo() resolves
+dd8fc68  Merge sachaguer/develop foundation (PR #192 head, c22f075)</pre>
+      <p class="next"><strong>Foundation (item 1) — in.</strong> Sacha's <code>sachaguer:develop</code> (120 files: paper plots, harmonic configs, the <code>cosmo_val.py</code>/<code>cosmology.py</code> library changes) is merged. The lone blocker — <code>cosmology.py</code> <code>KeyError: 'mnu'</code> (<code>planck_defaults</code> had no <code>mnu</code> key, killing every bare <code>get_cosmo()</code>) — is fixed by one line, and <strong><code>test_cosmology.py</code> passes 26/26</strong> in the container. The <code>.gitignore</code> conflict was resolved toward <code>develop</code>: sacha's broad bans (<code>*.png *.sh *.fits *.out *.err</code>) were rejected, not adopted.</p>
+      <p class="next"><strong>Back-pressure guard #1 (your #1) — green.</strong> <code>tests/test_imports.py</code>: <strong>42 passed, 1 xfailed</strong> in the container. It imports every library module for real and resolves every <code>sp_validation.*</code> import named by the standalone <code>scripts/</code> (via <code>ast</code>, no execution — several scripts run work at import, one isn't even a valid module name). This is the first thing to go red on a bad <code>git&nbsp;mv</code>.</p>
+      <p class="aside"><strong>Clean base.</strong> Generated apidoc stubs (<code>docs/source/sp_validation.*</code>) and the never-tracked <code>uv.lock</code> are now gitignored; the merge had silently un-ignored ~700 generated glass-mock cosmosis configs (sacha dropped develop's patterns) — restored. Working tree matches <code>develop</code>'s baseline.</p>
+    </div>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Findings</div>
+    <h2>What the guards and the survey turned up.</h2>
+    <ul>
+      <li><strong>A dead script, caught immediately.</strong> <code>scripts/plot_leakage.py</code> does <code>from sp_validation.correlation import *</code> — a module that has never existed in this tree. Guard #1 flagged it on first run; marked <code>xfail(strict=True)</code> so the baseline is honest and the marker flips the moment it's fixed or deleted. Triage (fix vs delete) belongs to the <code>scripts/</code> curation pass.</li>
+      <li><strong>Path breakage is this reorg's dominant risk.</strong> <code>117</code> hardcoded absolute paths (<code>/home/…</code>, <code>/n17data/…</code>, <code>/automnt/…</code>) live in tracked <code>.py</code>/<code>.yaml</code>/<code>.ini</code> — concentrated in the paper-plot dirs (<code>catalog_paper_plot</code>, <code>2D_harmonic_space…</code>, <code>2D_bmodes_paper_workflow/scripts</code>) and <code>scripts/</code>. (Up from the ~35 the plan estimated — Sacha's folded code added more.) <strong>Cail's call: we don't rewrite these to repo-relative — they stay messy.</strong> The realistic guard is the Candide-local existence checker (③): assert the paths <em>exist</em> where this runs, rather than chasing a clean <code>results/</code>.</li>
+      <li><strong>No console-scripts.</strong> <code>pyproject.toml</code> declares no <code>[project.scripts]</code>, so invariant #2 (entry-point resolution) is a no-op here — folded into guard #1's coverage rather than built separately.</li>
+    </ul>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Back-pressure suite · finalized with Cail</div>
+    <h2>One guard green; four more on a Codex shuttle, before a file moves.</h2>
+    <p>The principle (yours): write characterization guards that are green on the <em>pre-reorg</em> tree, then do the move in small <code>git&nbsp;mv</code> steps keeping every guard green. The suite was refined live — simpler and more honest than the first sketch:</p>
+    <ul>
+      <li><strong>① Imports / first-party resolution — <span style="color:var(--teal)">GREEN</span>, done.</strong> <code>tests/test_imports.py</code> walks the package <em>and</em> <code>scripts/</code>. The model for the rest.</li>
+      <li><strong>② Snakemake dry-run passes — <span style="color:var(--cobalt)">on the shuttle</span>.</strong> Not a golden/identity test — just <code>snakemake -n</code> exits 0. We don't care about the weather; it's fine if rules change. (Codex probes first — bmodes may be broken or slow; if so that's signal, reported not hidden.)</li>
+      <li><strong>③ Config-path existence (Candide-local) — <span style="color:var(--cobalt)">on the shuttle</span>.</strong> The reframe of the dead path-translation idea: load every config, assert each referenced path exists <em>on this machine</em>. Skips cleanly off-host.</li>
+      <li><strong>⑤ Symlink integrity — <span style="color:var(--cobalt)">on the shuttle</span>.</strong> Every tracked symlink resolves. Cheap; moves silently break these.</li>
+      <li><strong>⑥ Dangling-reference grep — <span style="color:var(--cobalt)">on the shuttle</span> (harness).</strong> Parameterised by a move-map that's empty now (trivially green); activates the moment moves begin.</li>
+    </ul>
+    <p style="color:var(--ink-muted); font-size:16px;"><strong>Dropped, with reasons:</strong> entry-point resolution (no <code>[project.scripts]</code>); <em>no-work-lost</em> content manifest (too strong — brutal deletes); package-install (CI already builds the image + runs pytest); output-schema/value invariance (needs cluster data, reference run unreliable, &ldquo;tests specific code&rdquo; — deferred until that code changes).</p>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Decisions — settled this session</div>
+    <h2>The three open calls, made; branch tidy deferred on purpose.</h2>
+    <ul>
+      <li><strong>Branch topology — deferred until the tests land.</strong> <code>cleanup/restructuring</code> and <code>restructuring/proposal</code> are duplicate names for one line of work (#188's head is <code>restructuring/proposal</code>). Cail wants <em>one clean branch = Sacha's merge + restructuring on top, no work lost</em>; names don't matter. Doing it now would break the Codex shuttle's branch, so it waits. Then: collapse to one, close <strong>#189</strong> (foundation stub, superseded by folding into #188), keep <strong>#190/#191</strong> as tomography stubs.</li>
+      <li><strong>uv.lock — left gitignored.</strong> Cail lukewarm; container is canonical. One-line flip later if we want pinned-dep reproducibility.</li>
+      <li><strong>Paths — existence-checker, not translation.</strong> The 117-absolute-path sweep is off; they stay messy; guard ③ checks existence on Candide instead.</li>
+    </ul>
+  </section>
+
+  <hr class="short">
 
   <section>
     <div class="section-mark">§ The shape</div>
@@ -167,12 +238,12 @@
     <div class="section-mark">§ The milestone</div>
     <h2>A suite of PRs, in sequence.</h2>
     <ol class="seq">
-      <li>Foundation — merge pending local code into <code>develop</code>. <span class="who">Sacha</span></li>
-      <li class="here">Restructuring — this proposal. <span class="here-tag">this PR · draft, no implementation yet</span></li>
-      <li>Glass mocks → tomography.</li>
-      <li>Input pipeline → tomography.</li>
+      <li>Foundation — Sacha's pending code. <span class="who">folded into #188</span></li>
+      <li class="here">Restructuring — proposal <em>and</em> implementation. <span class="here-tag">this PR · #188 · foundation in, guard #1 green</span></li>
+      <li>Glass mocks → tomography. <span class="who">#190 · stub</span></li>
+      <li>Input pipeline → tomography. <span class="who">#191 · stub</span></li>
     </ol>
-    <p style="color:var(--ink-muted); margin-top:18px;">This PR is the proposal only. Implementation follows once the foundation merge lands and the shape is agreed.</p>
+    <p style="color:var(--ink-muted); margin-top:18px;">#188 is no longer proposal-only: the foundation is folded in and the back-pressure suite has started. The remaining moves (Phase 2) proceed in small <code>git&nbsp;mv</code> steps behind green guards, and were deliberately <em>not</em> forced unattended — see the open questions above.</p>
   </section>
 
 </main>

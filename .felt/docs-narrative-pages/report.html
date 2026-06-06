@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Report — docs-narrative-pages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --parchment: #EDE2CE;
+    --rag: #FBF6E9;
+    --ink: #1B1611;
+    --ink-muted: #7A6F5C;
+    --cinnabar: #BC4538;
+    --cinnabar-faint: rgba(188, 69, 56, 0.10);
+    --teal: #3F8278;
+    --cobalt: #3D5BA0;
+    --ochre: #C49333;
+    --rule: #C5B89E;
+    --tooth: rgba(197, 184, 158, 0.45);
+    --serif: 'EB Garamond', Georgia, serif;
+    --mono: 'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+  }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--parchment);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 880px; margin: 0 auto; padding: 56px 32px 72px; }
+  .stamp { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 20px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .stamp .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+  .stamp .sep { color: var(--rule); }
+  h1 { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 44px; line-height: 1.1; margin: 0 0 16px; }
+  section { margin-top: 48px; }
+  .section-mark { font-family: var(--mono); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--cinnabar); margin-bottom: 8px; }
+  h2 { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 30px; line-height: 1.2; margin: 0 0 20px; }
+  h3 { font-family: var(--mono); font-weight: 500; font-size: 14px; letter-spacing: 0.04em; margin: 28px 0 10px; color: var(--cobalt); }
+  p { margin: 0 0 16px; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 10px; }
+  code { font-family: var(--mono); font-size: 0.88em; background: rgba(196, 147, 51, 0.14); padding: 1px 5px; border-radius: 2px; }
+  hr { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+  hr.short { width: 80px; margin: 32px 0; border-top-width: 2px; border-top-color: var(--cinnabar); }
+  blockquote { margin: 16px 0; padding-left: 20px; border-left: 2px solid var(--ochre); font-style: italic; }
+  .ok { color: var(--teal); font-weight: 600; }
+  .q { background: var(--rag); border: 1px solid var(--rule); border-left: 3px solid var(--cinnabar); border-radius: 3px; padding: 16px 20px; margin: 0 0 18px; }
+  .q .qhead { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cinnabar); margin-bottom: 6px; }
+  .pillbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 20px; }
+  .pill { font-family: var(--mono); font-size: 12px; padding: 3px 10px; border-radius: 12px; background: rgba(63, 130, 120, 0.14); color: var(--teal); border: 1px solid rgba(63,130,120,0.3); }
+  .muted { color: var(--ink-muted); }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <div class="stamp">
+    <span class="dot"></span>
+    <span>2026 · 06 · 04</span>
+    <span class="sep">·</span>
+    <span>docs-narrative-pages</span>
+    <span class="sep">·</span>
+    <span>shipped · live on gh-pages</span>
+  </div>
+
+  <h1>Real docs pages — shipped, polished, and live.</h1>
+
+  <div class="pillbar">
+    <span class="pill">PR #196: merged → develop (574f4bf)</span>
+    <span class="pill">build: clean · 0 content warnings</span>
+    <span class="pill">live: cosmostat.github.io/sp_validation</span>
+  </div>
+
+  <hr>
+
+  <section>
+    <div class="section-mark">§ Current state</div>
+    <h2>Shipped. The real pages are live.</h2>
+
+    <p>PR #196 is merged to <code>develop</code> (<code>574f4bf</code>) and the
+    deploy published to gh-pages — <a href="https://cosmostat.github.io/sp_validation/"><code>cosmostat.github.io/sp_validation</code></a>
+    now serves real content. Verified live: the landing page shows the
+    writing-pass prose, the four nav sections render, and the template
+    boilerplate (and the about-page philosophizing) are gone. The four
+    template-stub pages carry real grounded prose, the existing guides are woven
+    into the navigation, and the build is warning-free.</p>
+
+    <h3>What each page says now</h3>
+    <ul>
+      <li><strong>index.rst</strong> — a true landing page: what
+      <code>sp_validation</code> is (validation of weak-lensing galaxy/star-shape
+      catalogues from ShapePipe), the four tasks run in sequence (shear
+      validation → post-processing → cosmology validation → inference), the
+      pipeline flow-chart figure, and a "where to go next" nav block. The
+      template <code>note</code> and the Admonitions/Code-Blocks demo sections are
+      gone.</li>
+      <li><strong>about.rst</strong> — CosmoStat / UNIONS context, a "problem it
+      solves" paragraph (a shear catalogue is only as good as its validation),
+      authors + contributors (from the README), contact, MIT license.</li>
+      <li><strong>installation.rst</strong> — container/Apptainer first
+      (recommended), Docker alternative, then the <code>uv pip install -e
+      '.[develop]'</code> dev path. The false <code>pip install sp_validation</code>
+      PyPI claim is removed and replaced with an explicit "not on PyPI" note.</li>
+      <li><strong>quickstart.rst</strong> — deliberately light: the four stages
+      of a run (configure <code>params.py</code> → shear validation →
+      post-processing → cosmology inference) as orientation, each linking to its
+      guide. Kept vague on purpose — the inference orchestration detail
+      (<code>pipeline.sh</code> vs Snakemake) is left out pending the upcoming
+      docs rework.</li>
+    </ul>
+
+    <p><strong>Removed:</strong> <code>citing.rst</code> (and its placeholder
+    <code>my_ref.bib</code>) — nothing substantive to cite yet, so the stub is
+    gone rather than left as debris.</p>
+
+    <h3>Navigation &amp; weaving</h3>
+    <p>The sidebar is regrouped into <em>Getting Started</em> / <em>User
+    Guide</em> / <em>API Reference</em> / <em>Guidelines</em>. The previously
+    orphaned <code>run_validation.md</code> and <code>post_processing.md</code>
+    (and the Leakage tutorial, moved out of "API Documentation") now live under
+    <em>User Guide</em> — so the "stray .md not in any toctree" warnings are gone.</p>
+
+    <h3>Build verification</h3>
+    <p>Built the way CI does — <code>sphinx-apidoc</code> + <code>sphinx-build</code>
+    inside the <code>sp_validation</code> container (sphinx 8.2.3, full scientific
+    stack). <span class="ok">Build succeeded.</span> Confirmed in the rendered
+    HTML: the landing page shows real content, the four nav sections render, the
+    API pages populate with documented members and <code>[source]</code> links
+    (autodoc imports all succeed — no empty pages), and the false PyPI line is
+    absent. <span class="ok">Zero content warnings.</span> The only warnings left
+    (5) are pre-existing RST-formatting issues in package docstrings
+    (<code>cosmo_val.py</code>, <code>galaxy.py</code>, <code>survey.py</code>) —
+    source-code fixes, out of scope, present on the live site today too.</p>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Findings</div>
+    <h2>What's worth naming.</h2>
+
+    <ul>
+      <li><strong>It was a content job, exactly as the constitution framed.</strong>
+      The wiring is fully functional — apidoc + autodoc populate every module
+      page, the awesome theme renders, gh-pages deploys. The "blank" symptom was
+      purely the four template placeholders.</li>
+      <li><strong>Most of it was porting, not inventing.</strong> The README's
+      four-task summary, author list, and container walkthrough carried directly
+      into <code>index</code>/<code>about</code>/<code>installation</code>; the
+      quickstart entry points came from <code>CLAUDE.md</code> and the actual
+      scripts.</li>
+      <li><strong>Header-level fix for the woven .md guides.</strong>
+      <code>run_validation.md</code> and <code>post_processing.md</code> started
+      at H2 with no page title; I added an H1 to each so the toctree entries
+      render cleanly and the "headings start at H2" warnings clear. Also fixed
+      <code>post_processing</code>'s one broken internal cross-reference with an
+      explicit MyST anchor.</li>
+      <li><strong>Adjacent honesty fix (flagging, since unnamed).</strong>
+      <code>contributing.rst</code> still pointed at
+      <code>github.com/martin.kilbinger/sp_validation</code> on <code>master</code>
+      — the same dead-link class front-page-makeover fixed in the README badges.
+      I redirected both links to <code>CosmoStat/sp_validation</code> on
+      <code>develop</code> (both target files exist there). Easy to revert if you
+      want that page left untouched.</li>
+    </ul>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Resolved this pass</div>
+    <h2>Your direction, applied.</h2>
+
+    <ul>
+      <li><strong>Quickstart left vague</strong> (Q1 + Q2). Trimmed to a light
+      four-stage orientation; dropped the speculative <code>pipeline.sh</code>
+      flag list so we're not baking in the inference-orchestration story before
+      the upcoming rework.</li>
+      <li><strong>citing.rst removed</strong> (Q3). Nothing substantive to cite
+      yet, so the page and its placeholder <code>my_ref.bib</code> are gone
+      (also dropped from <code>conf.py</code>'s <code>bibtex_bibfiles</code>).</li>
+      <li><strong>Leakage header warnings fixed</strong> (Q4). The two H2→H4
+      jumps are now H2→H3 — the content build is fully warning-free.</li>
+      <li><strong>Flow chart kept</strong> on the landing page (Q5).</li>
+    </ul>
+
+    <p>Build re-verified clean after these edits: <span class="ok">build
+    succeeded, zero content warnings</span> (only the 5 pre-existing
+    package-docstring RST warnings remain — source code, out of scope).</p>
+  </section>
+
+  <hr class="short">
+
+  <section>
+    <div class="section-mark">§ Where it stands</div>
+    <h2>Pushed; PR open for your review.</h2>
+
+    <p>Committed and pushed on <code>chore/docs-narrative-pages</code>, PR open
+    against <code>develop</code> — <strong>not merged</strong>. The bigger docs
+    rework you mentioned is the natural follow-up; this PR just stands up the
+    structure and replaces the placeholders.</p>
+
+    <p><strong>Docs CI added.</strong> A new <code>deploy-docs.yml</code> builds
+    the docs on every PR (as a check) and deploys to gh-pages only on
+    <code>develop</code> pushes — closing the gap where a broken docs build never
+    surfaced before merge. It runs inside the published image and installs the
+    checked-out package via <code>.[docs]</code>, so it documents the code under
+    review. The redundant docs job was removed from <code>deploy-image.yml</code>.
+    The new check <span class="ok">self-tested green on this PR</span> (build
+    succeeded; the deploy step correctly skipped on a pull request).</p>
+
+    <p>Note on viewing: the gh-pages deploy only fires on merge to
+    <code>develop</code> (the <code>deploy-docs</code> CI job is gated to that
+    branch), so the PR won't auto-publish a preview. The built HTML is on candide
+    at <code>docs/_build/index.html</code>; I can rebuild or serve it on request.</p>
+  </section>
+
+</main>
+</body>
+</html>

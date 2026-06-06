@@ -1,21 +1,20 @@
 ---
 id: 01KTCKDA2N1VEPZJRBF04ZZ6VW
 name: Back-pressure test suite for the reorg
-status: closed
+status: active
 tags:
-  - constitution
-  - sp-validation
-  - reorg
-  - shuttle
+    - constitution
+    - sp-validation
+    - reorg
+    - shuttle
 created-at: 2026-06-05T21:15:56.629448647+02:00
-outcome: |-
-  Guards ②③⑤⑥ landed on cleanup/restructuring. Suite exits 0 with honest baseline: bmodes dry-run xfails on missing results/cosmology/planck18.json, config paths xfail at 862/2301 missing on Candide, tracked symlinks xfail on two B-modes dashboard links, move-map harness dormant-skips.
+outcome: 'Config-path guard driven to green: 0 missing / 373 checked, xfail removed. Fixed real path clusters (Guerrini harmonic FITS, v1.4.x comprehensive calibration catalog, v6 glass mock chain), removed orphaned SP_v1.4_A CosmoSIS config, pruned unused cat_config covmat_file and cov_th path_* metadata, and taught guard that nz.dndz.path is a prefix.'
 shuttle:
-  enabled: true
-  kind: oneshot
-  host: candide
-  project_dir: /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation
-  agent: codex
+    enabled: true
+    kind: oneshot
+    host: candide
+    project_dir: /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation
+    agent: codex
 ---
 
 ## Desired State
