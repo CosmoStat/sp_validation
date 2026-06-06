@@ -239,114 +239,6 @@
 <dt class="sig sig-object py" id="sp_validation.plots.plot_binned">
 <span class="sig-name descname"><span class="pre">plot_binned</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quantities</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_edges_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bin_edges_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title_base</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#plot_binned"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.plot_binned" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.plot_binned'">¶</a></dt>
 <dd></dd></dl>
-<dl class="py class">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">FootprintPlotter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside_coverage</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside_map</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2048</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#FootprintPlotter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.FootprintPlotter" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter'">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Class to create footprint plots.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>nside_coverage</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – basic resolution of map; default is 32</p></li>
-<li><p><strong>nside_map</strong> – fine resolution for plotting; default is 2048</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter._regions">
-<span class="sig-name descname"><span class="pre">_regions</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'NGC':</span> <span class="pre">{'extend':</span> <span class="pre">[120,</span> <span class="pre">270,</span> <span class="pre">20,</span> <span class="pre">70],</span> <span class="pre">'ra_0':</span> <span class="pre">180,</span> <span class="pre">'vmax':</span> <span class="pre">60},</span> <span class="pre">'SGC':</span> <span class="pre">{'extend':</span> <span class="pre">[-20,</span> <span class="pre">45,</span> <span class="pre">20,</span> <span class="pre">45],</span> <span class="pre">'ra_0':</span> <span class="pre">15,</span> <span class="pre">'vmax':</span> <span class="pre">60},</span> <span class="pre">'fullsky':</span> <span class="pre">{'extend':</span> <span class="pre">[0,</span> <span class="pre">360,</span> <span class="pre">-90,</span> <span class="pre">90],</span> <span class="pre">'ra_0':</span> <span class="pre">150,</span> <span class="pre">'vmax':</span> <span class="pre">60}}</span></span><a class="headerlink" href="#sp_validation.plots.FootprintPlotter._regions" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter._regions'">¶</a></dt>
-<dd></dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter.create_hsp_map">
-<span class="sig-name descname"><span class="pre">create_hsp_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#FootprintPlotter.create_hsp_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.FootprintPlotter.create_hsp_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter.create_hsp_map'">¶</a></dt>
-<dd><p>Create Hsp Map.</p>
-<p>Create healsparse map.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ra</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – right ascension values</p></li>
-<li><p><strong>dec</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – declination values</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>map</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>hsp.HealSparseMap</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter.plot_area">
-<span class="sig-name descname"><span class="pre">plot_area</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hsp_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[120,</span> <span class="pre">270,</span> <span class="pre">29,</span> <span class="pre">70]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outpath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorbar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorbar_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Coverage</span> <span class="pre">depth'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#FootprintPlotter.plot_area"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.FootprintPlotter.plot_area" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter.plot_area'">¶</a></dt>
-<dd><p>Plot Area.</p>
-<p>Plot catalogue in an area on the sky.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>hsp_map</strong> (<em>hsp_HealSparseMap</em>) – input map</p></li>
-<li><p><strong>ra_0</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – anchor point in R.A.; default is 0</p></li>
-<li><p><strong>extend</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – sky region, extend=[ra_low, ra_high, dec_low, dec_high];
-default is [120, 270, 29, 70]</p></li>
-<li><p><strong>vmax</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – maximum pixel value to plot with color; default is 60</p></li>
-<li><p><strong>projection</strong> (<em>skyproj.McBrydeSkyproj</em>) – if <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), a new plot is created</p></li>
-<li><p><strong>outpath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – output path, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – print title if not <code class="docutils literal notranslate"><span class="pre">None</span></code> (default)</p></li>
-<li><p><strong>colorbar</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – add colorbar; default is <code class="docutils literal notranslate"><span class="pre">True</span></code></p></li>
-<li><p><strong>colorbar_label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – colorbar label; default is “Coverage depth”</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><em>skyproj.McBrydeSkyproj</em> – projection instance</p></li>
-<li><p><em>plt.axes.Axes</em> – axes instance</p></li>
-</ul>
-</p>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if no object found in region</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter.plot_region">
-<span class="sig-name descname"><span class="pre">plot_region</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hsp_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projection</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outpath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorbar</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colorbar_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Coverage</span> <span class="pre">depth'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#FootprintPlotter.plot_region"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.FootprintPlotter.plot_region" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter.plot_region'">¶</a></dt>
-<dd><p>Plot Region.</p>
-<p>Plot catalogue in a predefined region on the sky.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>hsp_map</strong> (<em>hsp_HealSparseMap</em>) – input map</p></li>
-<li><p><strong>region</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – region dictionary with keys ‘ra_0’, ‘extend’, ‘vmax’</p></li>
-<li><p><strong>projection</strong> (<em>skyproj.McBrydeSkyproj</em><em>, </em><em>optional</em>) – if <code class="docutils literal notranslate"><span class="pre">None</span></code> (default), a new plot is created</p></li>
-<li><p><strong>outpath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – output path, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – print title if not <code class="docutils literal notranslate"><span class="pre">None</span></code> (default)</p></li>
-<li><p><strong>colorbar</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – add colorbar; default is <code class="docutils literal notranslate"><span class="pre">True</span></code></p></li>
-<li><p><strong>colorbar_label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – colorbar label; default is “Coverage depth”</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><em>skyproj.McBrydeSkyproj</em> – projection instance</p></li>
-<li><p><em>plt.axes.Axes</em> – axes instance</p></li>
-</ul>
-</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter.plot_all_regions">
-<span class="sig-name descname"><span class="pre">plot_all_regions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hsp_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outbase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#FootprintPlotter.plot_all_regions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.FootprintPlotter.plot_all_regions" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter.plot_all_regions'">¶</a></dt>
-<dd></dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter.hp_pixel_centers">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">hp_pixel_centers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nest</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#FootprintPlotter.hp_pixel_centers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.FootprintPlotter.hp_pixel_centers" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter.hp_pixel_centers'">¶</a></dt>
-<dd></dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.plots.FootprintPlotter.plot_footprint_as_hp">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">plot_footprint_as_hp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hsp_map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outpath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#FootprintPlotter.plot_footprint_as_hp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.FootprintPlotter.plot_footprint_as_hp" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.FootprintPlotter.plot_footprint_as_hp'">¶</a></dt>
-<dd></dd></dl>
-</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.plots.hsp_map_logical_or">
 <span class="sig-name descname"><span class="pre">hsp_map_logical_or</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#hsp_map_logical_or"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.hsp_map_logical_or" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.hsp_map_logical_or'">¶</a></dt>
@@ -412,16 +304,6 @@ default is [120, 270, 29, 70]</p></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.plot_map_stacked'" class="reference internal" href="#sp_validation.plots.plot_map_stacked"><code class="docutils literal notranslate"><span class="pre">plot_map_stacked()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.plot_binned_one'" class="reference internal" href="#sp_validation.plots.plot_binned_one"><code class="docutils literal notranslate"><span class="pre">plot_binned_one()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.plot_binned'" class="reference internal" href="#sp_validation.plots.plot_binned"><code class="docutils literal notranslate"><span class="pre">plot_binned()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter'" class="reference internal" href="#sp_validation.plots.FootprintPlotter"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter</span></code></a><ul>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter._regions'" class="reference internal" href="#sp_validation.plots.FootprintPlotter._regions"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter._regions</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter.create_hsp_map'" class="reference internal" href="#sp_validation.plots.FootprintPlotter.create_hsp_map"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter.create_hsp_map()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter.plot_area'" class="reference internal" href="#sp_validation.plots.FootprintPlotter.plot_area"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter.plot_area()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter.plot_region'" class="reference internal" href="#sp_validation.plots.FootprintPlotter.plot_region"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter.plot_region()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter.plot_all_regions'" class="reference internal" href="#sp_validation.plots.FootprintPlotter.plot_all_regions"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter.plot_all_regions()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter.hp_pixel_centers'" class="reference internal" href="#sp_validation.plots.FootprintPlotter.hp_pixel_centers"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter.hp_pixel_centers()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.FootprintPlotter.plot_footprint_as_hp'" class="reference internal" href="#sp_validation.plots.FootprintPlotter.plot_footprint_as_hp"><code class="docutils literal notranslate"><span class="pre">FootprintPlotter.plot_footprint_as_hp()</span></code></a></li>
-</ul>
-</li>
 <li><a :data-current="activeSection === '#sp_validation.plots.hsp_map_logical_or'" class="reference internal" href="#sp_validation.plots.hsp_map_logical_or"><code class="docutils literal notranslate"><span class="pre">hsp_map_logical_or()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.plot_area_mask'" class="reference internal" href="#sp_validation.plots.plot_area_mask"><code class="docutils literal notranslate"><span class="pre">plot_area_mask()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.sky_plots'" class="reference internal" href="#sp_validation.plots.sky_plots"><code class="docutils literal notranslate"><span class="pre">sky_plots()</span></code></a></li>
@@ -433,7 +315,7 @@ default is [120, 270, 29, 70]</p></li>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 04 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 06 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

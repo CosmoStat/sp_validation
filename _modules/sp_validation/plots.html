@@ -601,429 +601,136 @@
 
 </span><span id="line-400">
 </span><span id="line-401">
-<div class="viewcode-block" id="FootprintPlotter">
-<a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.FootprintPlotter">[docs]</a>
-</span><span id="line-402"><span class="k">class</span><span class="w"> </span><span class="nc">FootprintPlotter</span><span class="p">:</span>
-</span><span id="line-403"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Class to create footprint plots.</span>
-</span><span id="line-404">
-</span><span id="line-405"><span class="sd">    Parameters</span>
-</span><span id="line-406"><span class="sd">    -----------</span>
-</span><span id="line-407"><span class="sd">    nside_coverage: int, optional</span>
-</span><span id="line-408"><span class="sd">        basic resolution of map; default is 32</span>
-</span><span id="line-409"><span class="sd">    nside_map:</span>
-</span><span id="line-410"><span class="sd">        fine resolution for plotting; default is 2048</span>
-</span><span id="line-411">
-</span><span id="line-412"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-413">
-</span><span id="line-414">    <span class="c1"># Dictionary storing region parameters</span>
-</span><span id="line-415">    <span class="n">_regions</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-416">        <span class="s2">&quot;NGC&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;ra_0&quot;</span><span class="p">:</span> <span class="mi">180</span><span class="p">,</span> <span class="s2">&quot;extend&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">120</span><span class="p">,</span> <span class="mi">270</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span> <span class="s2">&quot;vmax&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
-</span><span id="line-417">        <span class="s2">&quot;SGC&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;ra_0&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span> <span class="s2">&quot;extend&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mi">20</span><span class="p">,</span> <span class="mi">45</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">45</span><span class="p">],</span> <span class="s2">&quot;vmax&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
-</span><span id="line-418">        <span class="s2">&quot;fullsky&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;ra_0&quot;</span><span class="p">:</span> <span class="mi">150</span><span class="p">,</span> <span class="s2">&quot;extend&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">360</span><span class="p">,</span> <span class="o">-</span><span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">],</span> <span class="s2">&quot;vmax&quot;</span><span class="p">:</span> <span class="mi">60</span><span class="p">},</span>
-</span><span id="line-419">    <span class="p">}</span>
-</span><span id="line-420">
-</span><span id="line-421">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nside_coverage</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">nside_map</span><span class="o">=</span><span class="mi">2048</span><span class="p">):</span>
-</span><span id="line-422">
-</span><span id="line-423">        <span class="bp">self</span><span class="o">.</span><span class="n">_nside_coverage</span> <span class="o">=</span> <span class="n">nside_coverage</span>
-</span><span id="line-424">        <span class="bp">self</span><span class="o">.</span><span class="n">_nside_map</span> <span class="o">=</span> <span class="n">nside_map</span>
-</span><span id="line-425">
-<div class="viewcode-block" id="FootprintPlotter.create_hsp_map">
-<a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.FootprintPlotter.create_hsp_map">[docs]</a>
-</span><span id="line-426">    <span class="k">def</span><span class="w"> </span><span class="nf">create_hsp_map</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
-</span><span id="line-427"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Create Hsp Map.</span>
-</span><span id="line-428">
-</span><span id="line-429"><span class="sd">        Create healsparse map.</span>
-</span><span id="line-430">
-</span><span id="line-431"><span class="sd">        Parameters</span>
-</span><span id="line-432"><span class="sd">        ----------</span>
-</span><span id="line-433"><span class="sd">        ra : numpy.ndarray</span>
-</span><span id="line-434"><span class="sd">            right ascension values</span>
-</span><span id="line-435"><span class="sd">        dec : numpy.ndarray</span>
-</span><span id="line-436"><span class="sd">            declination values</span>
-</span><span id="line-437">
-</span><span id="line-438"><span class="sd">        Returns</span>
-</span><span id="line-439"><span class="sd">        -------</span>
-</span><span id="line-440"><span class="sd">        hsp.HealSparseMap</span>
-</span><span id="line-441"><span class="sd">            map</span>
-</span><span id="line-442">
-</span><span id="line-443"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-444">        <span class="c1"># Create empty map</span>
-</span><span id="line-445">        <span class="n">hsp_map</span> <span class="o">=</span> <span class="n">hsp</span><span class="o">.</span><span class="n">HealSparseMap</span><span class="o">.</span><span class="n">make_empty</span><span class="p">(</span>
-</span><span id="line-446">            <span class="bp">self</span><span class="o">.</span><span class="n">_nside_coverage</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nside_map</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">sentinel</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-</span><span id="line-447">        <span class="p">)</span>
-</span><span id="line-448">
-</span><span id="line-449">        <span class="c1"># Get pixel list corresponding to coordinates</span>
-</span><span id="line-450">        <span class="n">hpix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_nside_map</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">nest</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-451">
-</span><span id="line-452">        <span class="c1"># Get count of objects per pixel</span>
-</span><span id="line-453">        <span class="n">pixel_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">hpix</span><span class="p">)</span>
-</span><span id="line-454">
-</span><span id="line-455">        <span class="c1"># List of unique pixels</span>
-</span><span id="line-456">        <span class="n">unique_hpix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pixel_counts</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
-</span><span id="line-457">
-</span><span id="line-458">        <span class="c1"># Number of objects</span>
-</span><span id="line-459">        <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pixel_counts</span><span class="o">.</span><span class="n">values</span><span class="p">()),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-</span><span id="line-460">
-</span><span id="line-461">        <span class="c1"># Create maps with numbers per pixel</span>
-</span><span id="line-462">        <span class="n">hsp_map</span><span class="p">[</span><span class="n">unique_hpix</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
-</span><span id="line-463">
-</span><span id="line-464">        <span class="k">return</span> <span class="n">hsp_map</span></div>
-
-</span><span id="line-465">
-<div class="viewcode-block" id="FootprintPlotter.plot_area">
-<a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_area">[docs]</a>
-</span><span id="line-466">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_area</span><span class="p">(</span>
-</span><span id="line-467">        <span class="bp">self</span><span class="p">,</span>
-</span><span id="line-468">        <span class="n">hsp_map</span><span class="p">,</span>
-</span><span id="line-469">        <span class="n">ra_0</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-</span><span id="line-470">        <span class="n">extend</span><span class="o">=</span><span class="p">[</span><span class="mi">120</span><span class="p">,</span> <span class="mi">270</span><span class="p">,</span> <span class="mi">29</span><span class="p">,</span> <span class="mi">70</span><span class="p">],</span>
-</span><span id="line-471">        <span class="n">vmax</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
-</span><span id="line-472">        <span class="n">projection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-473">        <span class="n">outpath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-474">        <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-475">        <span class="n">colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-476">        <span class="n">colorbar_label</span><span class="o">=</span><span class="s2">&quot;Coverage depth&quot;</span><span class="p">,</span>
-</span><span id="line-477">    <span class="p">):</span>
-</span><span id="line-478"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot Area.</span>
-</span><span id="line-479">
-</span><span id="line-480"><span class="sd">        Plot catalogue in an area on the sky.</span>
-</span><span id="line-481">
-</span><span id="line-482"><span class="sd">        Parameters</span>
-</span><span id="line-483"><span class="sd">        ----------</span>
-</span><span id="line-484"><span class="sd">        hsp_map : hsp_HealSparseMap</span>
-</span><span id="line-485"><span class="sd">            input map</span>
-</span><span id="line-486"><span class="sd">        ra_0 : float, optional</span>
-</span><span id="line-487"><span class="sd">            anchor point in R.A.; default is 0</span>
-</span><span id="line-488"><span class="sd">        extend : list, optional</span>
-</span><span id="line-489"><span class="sd">            sky region, extend=[ra_low, ra_high, dec_low, dec_high];</span>
-</span><span id="line-490"><span class="sd">            default is [120, 270, 29, 70]</span>
-</span><span id="line-491"><span class="sd">        vmax : float, optional</span>
-</span><span id="line-492"><span class="sd">            maximum pixel value to plot with color; default is 60</span>
-</span><span id="line-493"><span class="sd">        projection : skyproj.McBrydeSkyproj</span>
-</span><span id="line-494"><span class="sd">            if ``None`` (default), a new plot is created</span>
-</span><span id="line-495"><span class="sd">        outpath : str, optional</span>
-</span><span id="line-496"><span class="sd">            output path, default is ``None``</span>
-</span><span id="line-497"><span class="sd">        title : str, optional</span>
-</span><span id="line-498"><span class="sd">            print title if not ``None`` (default)</span>
-</span><span id="line-499"><span class="sd">        colorbar : bool, optional</span>
-</span><span id="line-500"><span class="sd">            add colorbar; default is ``True``</span>
-</span><span id="line-501"><span class="sd">        colorbar_label : str, optional</span>
-</span><span id="line-502"><span class="sd">            colorbar label; default is &quot;Coverage depth&quot;</span>
-</span><span id="line-503">
-</span><span id="line-504"><span class="sd">        Returns</span>
-</span><span id="line-505"><span class="sd">        --------</span>
-</span><span id="line-506"><span class="sd">        skyproj.McBrydeSkyproj</span>
-</span><span id="line-507"><span class="sd">            projection instance</span>
-</span><span id="line-508"><span class="sd">        plt.axes.Axes</span>
-</span><span id="line-509"><span class="sd">            axes instance</span>
-</span><span id="line-510">
-</span><span id="line-511"><span class="sd">        Raises</span>
-</span><span id="line-512"><span class="sd">        ------</span>
-</span><span id="line-513"><span class="sd">        ValueError</span>
-</span><span id="line-514"><span class="sd">            if no object found in region</span>
-</span><span id="line-515">
-</span><span id="line-516"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-517">        <span class="k">if</span> <span class="ow">not</span> <span class="n">projection</span><span class="p">:</span>
-</span><span id="line-518">
-</span><span id="line-519">            <span class="c1"># Create new figure and axes</span>
-</span><span id="line-520">            <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
-</span><span id="line-521">
-</span><span id="line-522">            <span class="c1"># Create new projection</span>
-</span><span id="line-523">            <span class="n">projection</span> <span class="o">=</span> <span class="n">skyproj</span><span class="o">.</span><span class="n">McBrydeSkyproj</span><span class="p">(</span>
-</span><span id="line-524">                <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">lon_0</span><span class="o">=</span><span class="n">ra_0</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extend</span><span class="p">,</span> <span class="n">autorescale</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">vmax</span><span class="o">=</span><span class="n">vmax</span>
-</span><span id="line-525">            <span class="p">)</span>
-</span><span id="line-526">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-527">            <span class="n">ax</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-528">
-</span><span id="line-529">        <span class="n">im</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-530">        <span class="k">try</span><span class="p">:</span>
-</span><span id="line-531">            <span class="n">im</span><span class="p">,</span> <span class="n">lon_raster</span><span class="p">,</span> <span class="n">lat_raster</span><span class="p">,</span> <span class="n">values_raster</span> <span class="o">=</span> <span class="n">projection</span><span class="o">.</span><span class="n">draw_hspmap</span><span class="p">(</span>
-</span><span id="line-532">                <span class="n">hsp_map</span><span class="p">,</span> <span class="n">lon_range</span><span class="o">=</span><span class="n">extend</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">lat_range</span><span class="o">=</span><span class="n">extend</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
-</span><span id="line-533">            <span class="p">)</span>
-</span><span id="line-534">        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-</span><span id="line-535">            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;No object found in region to draw&quot;</span>
-</span><span id="line-536">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">, continuing...&quot;</span><span class="p">)</span>
-</span><span id="line-537">            <span class="c1"># raise ValueError(msg)</span>
-</span><span id="line-538">
-</span><span id="line-539">        <span class="n">projection</span><span class="o">.</span><span class="n">draw_milky_way</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">)</span>
-</span><span id="line-540">
-</span><span id="line-541">        <span class="c1"># Add colorbar if requested and image was drawn</span>
-</span><span id="line-542">        <span class="k">if</span> <span class="n">colorbar</span> <span class="ow">and</span> <span class="n">im</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-543">            <span class="n">plt</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span> <span class="k">if</span> <span class="n">ax</span> <span class="k">else</span> <span class="n">projection</span><span class="o">.</span><span class="n">ax</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">colorbar_label</span><span class="p">)</span>
-</span><span id="line-544">
-</span><span id="line-545">        <span class="k">if</span> <span class="n">title</span><span class="p">:</span>
-</span><span id="line-546">            <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-</span><span id="line-547">
-</span><span id="line-548">        <span class="k">if</span> <span class="n">outpath</span><span class="p">:</span>
-</span><span id="line-549">            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
-</span><span id="line-550">
-</span><span id="line-551">        <span class="k">return</span> <span class="n">projection</span><span class="p">,</span> <span class="n">ax</span></div>
-
-</span><span id="line-552">
-<div class="viewcode-block" id="FootprintPlotter.plot_region">
-<a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_region">[docs]</a>
-</span><span id="line-553">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_region</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hsp_map</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outpath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">colorbar_label</span><span class="o">=</span><span class="s2">&quot;Coverage depth&quot;</span><span class="p">):</span>
-</span><span id="line-554"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Plot Region.</span>
-</span><span id="line-555">
-</span><span id="line-556"><span class="sd">        Plot catalogue in a predefined region on the sky.</span>
-</span><span id="line-557">
-</span><span id="line-558"><span class="sd">        Parameters</span>
-</span><span id="line-559"><span class="sd">        ----------</span>
-</span><span id="line-560"><span class="sd">        hsp_map : hsp_HealSparseMap</span>
-</span><span id="line-561"><span class="sd">            input map</span>
-</span><span id="line-562"><span class="sd">        region : dict</span>
-</span><span id="line-563"><span class="sd">            region dictionary with keys &#39;ra_0&#39;, &#39;extend&#39;, &#39;vmax&#39;</span>
-</span><span id="line-564"><span class="sd">        projection : skyproj.McBrydeSkyproj, optional</span>
-</span><span id="line-565"><span class="sd">            if ``None`` (default), a new plot is created</span>
-</span><span id="line-566"><span class="sd">        outpath : str, optional</span>
-</span><span id="line-567"><span class="sd">            output path, default is ``None``</span>
-</span><span id="line-568"><span class="sd">        title : str, optional</span>
-</span><span id="line-569"><span class="sd">            print title if not ``None`` (default)</span>
-</span><span id="line-570"><span class="sd">        colorbar : bool, optional</span>
-</span><span id="line-571"><span class="sd">            add colorbar; default is ``True``</span>
-</span><span id="line-572"><span class="sd">        colorbar_label : str, optional</span>
-</span><span id="line-573"><span class="sd">            colorbar label; default is &quot;Coverage depth&quot;</span>
-</span><span id="line-574">
-</span><span id="line-575"><span class="sd">        Returns</span>
-</span><span id="line-576"><span class="sd">        --------</span>
-</span><span id="line-577"><span class="sd">        skyproj.McBrydeSkyproj</span>
-</span><span id="line-578"><span class="sd">            projection instance</span>
-</span><span id="line-579"><span class="sd">        plt.axes.Axes</span>
-</span><span id="line-580"><span class="sd">            axes instance</span>
-</span><span id="line-581">
-</span><span id="line-582"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-583">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">plot_area</span><span class="p">(</span>
-</span><span id="line-584">            <span class="n">hsp_map</span><span class="p">,</span>
-</span><span id="line-585">            <span class="n">region</span><span class="p">[</span><span class="s2">&quot;ra_0&quot;</span><span class="p">],</span>
-</span><span id="line-586">            <span class="n">region</span><span class="p">[</span><span class="s2">&quot;extend&quot;</span><span class="p">],</span>
-</span><span id="line-587">            <span class="n">region</span><span class="p">[</span><span class="s2">&quot;vmax&quot;</span><span class="p">],</span>
-</span><span id="line-588">            <span class="n">projection</span><span class="o">=</span><span class="n">projection</span><span class="p">,</span>
-</span><span id="line-589">            <span class="n">outpath</span><span class="o">=</span><span class="n">outpath</span><span class="p">,</span>
-</span><span id="line-590">            <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span>
-</span><span id="line-591">            <span class="n">colorbar</span><span class="o">=</span><span class="n">colorbar</span><span class="p">,</span>
-</span><span id="line-592">            <span class="n">colorbar_label</span><span class="o">=</span><span class="n">colorbar_label</span><span class="p">,</span>
-</span><span id="line-593">        <span class="p">)</span></div>
-
-</span><span id="line-594">
-<div class="viewcode-block" id="FootprintPlotter.plot_all_regions">
-<a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_all_regions">[docs]</a>
-</span><span id="line-595">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_all_regions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hsp_map</span><span class="p">,</span> <span class="n">outbase</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-596">
-</span><span id="line-597">        <span class="k">for</span> <span class="n">region</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_regions</span><span class="p">:</span>
-</span><span id="line-598">            <span class="k">if</span> <span class="n">outbase</span><span class="p">:</span>
-</span><span id="line-599">                <span class="n">outpath</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">outbase</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">region</span><span class="si">}</span><span class="s2">.png&quot;</span>
-</span><span id="line-600">            <span class="k">else</span><span class="p">:</span>
-</span><span id="line-601">                <span class="n">outpath</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-602">            <span class="bp">self</span><span class="o">.</span><span class="n">plot_region</span><span class="p">(</span><span class="n">hsp_map</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_regions</span><span class="p">[</span><span class="n">region</span><span class="p">],</span> <span class="n">outpath</span><span class="o">=</span><span class="n">outpath</span><span class="p">)</span></div>
-
-</span><span id="line-603">
-<div class="viewcode-block" id="FootprintPlotter.hp_pixel_centers">
-<a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.FootprintPlotter.hp_pixel_centers">[docs]</a>
-</span><span id="line-604">    <span class="nd">@classmethod</span>
-</span><span id="line-605">    <span class="k">def</span><span class="w"> </span><span class="nf">hp_pixel_centers</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">nside</span><span class="p">,</span> <span class="n">nest</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-606">
-</span><span id="line-607">        <span class="c1"># Get number of pixels for given nside</span>
-</span><span id="line-608">        <span class="n">npix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
-</span><span id="line-609">
-</span><span id="line-610">        <span class="c1"># Get pixel indices</span>
-</span><span id="line-611">        <span class="n">pix_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">npix</span><span class="p">)</span>
-</span><span id="line-612">
-</span><span id="line-613">        <span class="c1"># Get coordinates of pixel centers</span>
-</span><span id="line-614">        <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">pix2ang</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">pix_indices</span><span class="p">,</span> <span class="n">nest</span><span class="o">=</span><span class="n">nest</span><span class="p">,</span> <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-615">
-</span><span id="line-616">        <span class="k">return</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">npix</span></div>
-
-</span><span id="line-617">
-<div class="viewcode-block" id="FootprintPlotter.plot_footprint_as_hp">
-<a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.FootprintPlotter.plot_footprint_as_hp">[docs]</a>
-</span><span id="line-618">    <span class="nd">@classmethod</span>
-</span><span id="line-619">    <span class="k">def</span><span class="w"> </span><span class="nf">plot_footprint_as_hp</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">hsp_map</span><span class="p">,</span> <span class="n">nside</span><span class="p">,</span> <span class="n">outpath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-</span><span id="line-620">
-</span><span id="line-621">        <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">npix</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">hp_pixel_centers</span><span class="p">(</span><span class="n">nside</span><span class="p">)</span>
-</span><span id="line-622">
-</span><span id="line-623">        <span class="c1"># Create an empty HEALPix map</span>
-</span><span id="line-624">        <span class="n">m</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">npix</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
-</span><span id="line-625">
-</span><span id="line-626">        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
-</span><span id="line-627">
-</span><span id="line-628">        <span class="c1"># Plot the HEALPix grid</span>
-</span><span id="line-629">        <span class="n">hp</span><span class="o">.</span><span class="n">mollview</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">coord</span><span class="o">=</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="n">notext</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">rot</span><span class="o">=</span><span class="p">(</span><span class="mi">180</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
-</span><span id="line-630">
-</span><span id="line-631">        <span class="c1"># Define the Galactic Plane: l = [0, 360], b = 0°</span>
-</span><span id="line-632">        <span class="k">for</span> <span class="n">l0</span><span class="p">,</span> <span class="n">ls</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">((</span><span class="o">-</span><span class="mi">5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;:&quot;</span><span class="p">)):</span>
-</span><span id="line-633">            <span class="n">l_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">360</span><span class="p">,</span> <span class="mi">500</span><span class="p">)</span>  <span class="c1"># 500 points along the plane</span>
-</span><span id="line-634">            <span class="n">b_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">l_values</span><span class="p">)</span>  <span class="c1"># Galactic latitude is 0 (the plane)</span>
-</span><span id="line-635">
-</span><span id="line-636">            <span class="c1"># Convert (l, b) to (λ, β) - Ecliptic coordinates</span>
-</span><span id="line-637">            <span class="n">coords</span> <span class="o">=</span> <span class="n">SkyCoord</span><span class="p">(</span>
-</span><span id="line-638">                <span class="n">l</span><span class="o">=</span><span class="n">l_values</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="n">b_values</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">degree</span><span class="p">,</span> <span class="n">frame</span><span class="o">=</span><span class="s2">&quot;galactic&quot;</span>
-</span><span id="line-639">            <span class="p">)</span>
-</span><span id="line-640">            <span class="n">ecl_coords</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">transform_to</span><span class="p">(</span>
-</span><span id="line-641">                <span class="s2">&quot;barycentrictrueecliptic&quot;</span>
-</span><span id="line-642">            <span class="p">)</span>  <span class="c1"># Ecliptic frame</span>
-</span><span id="line-643">
-</span><span id="line-644">            <span class="c1"># Extract Ecliptic longitude (λ) and latitude (β)</span>
-</span><span id="line-645">            <span class="n">lambda_ecl</span> <span class="o">=</span> <span class="n">ecl_coords</span><span class="o">.</span><span class="n">lon</span><span class="o">.</span><span class="n">deg</span>  <span class="c1"># Ecliptic longitude</span>
-</span><span id="line-646">            <span class="n">beta_ecl</span> <span class="o">=</span> <span class="n">ecl_coords</span><span class="o">.</span><span class="n">lat</span><span class="o">.</span><span class="n">deg</span>  <span class="c1"># Ecliptic latitude</span>
-</span><span id="line-647">
-</span><span id="line-648">            <span class="c1"># Convert to HEALPix projection coordinates (colatitude, longitude)</span>
-</span><span id="line-649">            <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mi">90</span> <span class="o">-</span> <span class="n">beta_ecl</span><span class="p">)</span>  <span class="c1"># HEALPix uses colatitude</span>
-</span><span id="line-650">            <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">lambda_ecl</span><span class="p">)</span>  <span class="c1"># HEALPix uses longitude</span>
-</span><span id="line-651">
-</span><span id="line-652">            <span class="c1"># Create a healpy Mollweide projection in Ecliptic coordinates</span>
-</span><span id="line-653">            <span class="n">hp</span><span class="o">.</span><span class="n">projplot</span><span class="p">(</span>
-</span><span id="line-654">                <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="n">ls</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">1</span>
-</span><span id="line-655">            <span class="p">)</span>  <span class="c1"># Plot the outline</span>
-</span><span id="line-656">
-</span><span id="line-657">        <span class="c1"># Apply mask</span>
-</span><span id="line-658">        <span class="n">mask_values</span> <span class="o">=</span> <span class="n">hsp_map</span><span class="o">.</span><span class="n">get_values_pos</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">valid_mask</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-659">
-</span><span id="line-660">        <span class="n">ok</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_values</span> <span class="o">==</span> <span class="kc">False</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="line-661">        <span class="c1"># nok = np.where(mask_values == False)[0]</span>
-</span><span id="line-662">
-</span><span id="line-663">        <span class="n">hp</span><span class="o">.</span><span class="n">projscatter</span><span class="p">(</span><span class="n">ra</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">dec</span><span class="p">[</span><span class="n">ok</span><span class="p">],</span> <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;green&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-</span><span id="line-664">        <span class="c1"># hp.projscatter(ra[nok], dec[nok], lonlat=True, color=&quot;red&quot;, s=1, marker=&quot;.&quot;)</span>
-</span><span id="line-665">
-</span><span id="line-666">        <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-</span><span id="line-667">
-</span><span id="line-668">        <span class="k">if</span> <span class="n">outpath</span><span class="p">:</span>
-</span><span id="line-669">            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
-</span><span id="line-670">
-</span><span id="line-671">        <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></div>
-</div>
-
-</span><span id="line-672">
-</span><span id="line-673">
 <div class="viewcode-block" id="hsp_map_logical_or">
 <a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.hsp_map_logical_or">[docs]</a>
-</span><span id="line-674"><span class="k">def</span><span class="w"> </span><span class="nf">hsp_map_logical_or</span><span class="p">(</span><span class="n">maps</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-675"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="line-676"><span class="sd">    Hsp Map Logical Or.</span>
-</span><span id="line-677">
-</span><span id="line-678"><span class="sd">    Logical AND of HealSparseMaps.</span>
-</span><span id="line-679">
-</span><span id="line-680"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-681">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-682">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Combine all maps...&quot;</span><span class="p">)</span>
-</span><span id="line-683">
-</span><span id="line-684">    <span class="c1"># Ensure consistency in coverage and data type</span>
-</span><span id="line-685">    <span class="n">nside_coverage</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">nside_coverage</span>
-</span><span id="line-686">    <span class="n">nside_sparse</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">nside_sparse</span>
-</span><span id="line-687">    <span class="n">dtype</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
-</span><span id="line-688">
-</span><span id="line-689">    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">maps</span><span class="p">:</span>
-</span><span id="line-690">        <span class="c1"># MKDEBUG TODO: Change nside if possible</span>
-</span><span id="line-691">        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">nside_coverage</span> <span class="o">!=</span> <span class="n">nside_coverage</span><span class="p">:</span>
-</span><span id="line-692">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-693">                <span class="sa">f</span><span class="s2">&quot;Coverage nside=</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">nside_coverage</span><span class="si">}</span><span class="s2"> does not match </span><span class="si">{</span><span class="n">nside_coverage</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-694">            <span class="p">)</span>
-</span><span id="line-695">        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">dtype</span><span class="p">:</span>
-</span><span id="line-696">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data type </span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2"> does not match </span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-697">
-</span><span id="line-698">    <span class="c1"># Create an empty HealSparse map</span>
-</span><span id="line-699">    <span class="n">map_comb</span> <span class="o">=</span> <span class="n">hsp</span><span class="o">.</span><span class="n">HealSparseMap</span><span class="o">.</span><span class="n">make_empty</span><span class="p">(</span><span class="n">nside_coverage</span><span class="p">,</span> <span class="n">nside_sparse</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
-</span><span id="line-700">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">maps</span><span class="p">):</span>
-</span><span id="line-701">        <span class="n">map_comb</span> <span class="o">|=</span> <span class="n">m</span>
-</span><span id="line-702">
-</span><span id="line-703">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-704">            <span class="n">valid_pixels</span> <span class="o">=</span> <span class="n">map_comb</span><span class="o">.</span><span class="n">valid_pixels</span>
-</span><span id="line-705">            <span class="n">n_tot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_pixels</span><span class="p">)</span>
-</span><span id="line-706">            <span class="n">n_true</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">valid_pixels</span><span class="p">)</span>
-</span><span id="line-707">            <span class="n">n_false</span> <span class="o">=</span> <span class="n">n_tot</span> <span class="o">-</span> <span class="n">n_true</span>
-</span><span id="line-708">            <span class="nb">print</span><span class="p">(</span>
-</span><span id="line-709">                <span class="sa">f</span><span class="s2">&quot;after map </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">: frac_true=</span><span class="si">{</span><span class="n">n_true</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_tot</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, frac_false=</span><span class="si">{</span><span class="n">n_false</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_tot</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span>
-</span><span id="line-710">            <span class="p">)</span>
-</span><span id="line-711">
-</span><span id="line-712">    <span class="k">return</span> <span class="n">map_comb</span></div>
+</span><span id="line-402"><span class="k">def</span><span class="w"> </span><span class="nf">hsp_map_logical_or</span><span class="p">(</span><span class="n">maps</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-403"><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-404"><span class="sd">    Hsp Map Logical Or.</span>
+</span><span id="line-405">
+</span><span id="line-406"><span class="sd">    Logical AND of HealSparseMaps.</span>
+</span><span id="line-407">
+</span><span id="line-408"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-409">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-410">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Combine all maps...&quot;</span><span class="p">)</span>
+</span><span id="line-411">
+</span><span id="line-412">    <span class="c1"># Ensure consistency in coverage and data type</span>
+</span><span id="line-413">    <span class="n">nside_coverage</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">nside_coverage</span>
+</span><span id="line-414">    <span class="n">nside_sparse</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">nside_sparse</span>
+</span><span id="line-415">    <span class="n">dtype</span> <span class="o">=</span> <span class="n">maps</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
+</span><span id="line-416">
+</span><span id="line-417">    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">maps</span><span class="p">:</span>
+</span><span id="line-418">        <span class="c1"># MKDEBUG TODO: Change nside if possible</span>
+</span><span id="line-419">        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">nside_coverage</span> <span class="o">!=</span> <span class="n">nside_coverage</span><span class="p">:</span>
+</span><span id="line-420">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-421">                <span class="sa">f</span><span class="s2">&quot;Coverage nside=</span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">nside_coverage</span><span class="si">}</span><span class="s2"> does not match </span><span class="si">{</span><span class="n">nside_coverage</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-422">            <span class="p">)</span>
+</span><span id="line-423">        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">dtype</span><span class="p">:</span>
+</span><span id="line-424">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data type </span><span class="si">{</span><span class="n">m</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2"> does not match </span><span class="si">{</span><span class="n">dtype</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-425">
+</span><span id="line-426">    <span class="c1"># Create an empty HealSparse map</span>
+</span><span id="line-427">    <span class="n">map_comb</span> <span class="o">=</span> <span class="n">hsp</span><span class="o">.</span><span class="n">HealSparseMap</span><span class="o">.</span><span class="n">make_empty</span><span class="p">(</span><span class="n">nside_coverage</span><span class="p">,</span> <span class="n">nside_sparse</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+</span><span id="line-428">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">maps</span><span class="p">):</span>
+</span><span id="line-429">        <span class="n">map_comb</span> <span class="o">|=</span> <span class="n">m</span>
+</span><span id="line-430">
+</span><span id="line-431">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-432">            <span class="n">valid_pixels</span> <span class="o">=</span> <span class="n">map_comb</span><span class="o">.</span><span class="n">valid_pixels</span>
+</span><span id="line-433">            <span class="n">n_tot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">valid_pixels</span><span class="p">)</span>
+</span><span id="line-434">            <span class="n">n_true</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">valid_pixels</span><span class="p">)</span>
+</span><span id="line-435">            <span class="n">n_false</span> <span class="o">=</span> <span class="n">n_tot</span> <span class="o">-</span> <span class="n">n_true</span>
+</span><span id="line-436">            <span class="nb">print</span><span class="p">(</span>
+</span><span id="line-437">                <span class="sa">f</span><span class="s2">&quot;after map </span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">: frac_true=</span><span class="si">{</span><span class="n">n_true</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_tot</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">, frac_false=</span><span class="si">{</span><span class="n">n_false</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_tot</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-438">            <span class="p">)</span>
+</span><span id="line-439">
+</span><span id="line-440">    <span class="k">return</span> <span class="n">map_comb</span></div>
 
-</span><span id="line-713">
-</span><span id="line-714">
+</span><span id="line-441">
+</span><span id="line-442">
 <div class="viewcode-block" id="plot_area_mask">
 <a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.plot_area_mask">[docs]</a>
-</span><span id="line-715"><span class="k">def</span><span class="w"> </span><span class="nf">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>                                    
-</span><span id="line-716"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot Area Mask.                                                           </span>
-</span><span id="line-717"><span class="sd">                                                                                 </span>
-</span><span id="line-718"><span class="sd">    Create sky plot of objects.                                                  </span>
-</span><span id="line-719"><span class="sd">                                                                                 </span>
-</span><span id="line-720"><span class="sd">    Parameters                                                                   </span>
-</span><span id="line-721"><span class="sd">    ----------                                                                   </span>
-</span><span id="line-722"><span class="sd">    ra : list                                                                    </span>
-</span><span id="line-723"><span class="sd">        R.A. coordinates                                                         </span>
-</span><span id="line-724"><span class="sd">    dec : list                                                                   </span>
-</span><span id="line-725"><span class="sd">        Dec. coordinates                                                         </span>
-</span><span id="line-726"><span class="sd">    zoom : TBD                                                                   </span>
-</span><span id="line-727"><span class="sd">    mask: TBD, optional                                                          </span>
-</span><span id="line-728"><span class="sd">                                                                                 </span>
-</span><span id="line-729"><span class="sd">    &quot;&quot;&quot;</span>                                                                          
-</span><span id="line-730">    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>                                                             
-</span><span id="line-731">        <span class="n">mask</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra</span><span class="p">)</span>                                                 
-</span><span id="line-732">                                                                                 
-</span><span id="line-733">    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">15</span><span class="p">))</span>                  
-</span><span id="line-734">    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">hexbin</span><span class="p">(</span><span class="n">ra</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">dec</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">gridsize</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>                            
-</span><span id="line-735">    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">hexbin</span><span class="p">(</span><span class="n">ra</span><span class="p">[</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="n">zoom</span><span class="p">],</span> <span class="n">dec</span><span class="p">[</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="n">zoom</span><span class="p">],</span> <span class="n">gridsize</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>              
-</span><span id="line-736">    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>                                                           
-</span><span id="line-737">        <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;R.A. [deg]&quot;</span><span class="p">)</span>                                       
-</span><span id="line-738">        <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Dec [deg]&quot;</span><span class="p">)</span></div>
+</span><span id="line-443"><span class="k">def</span><span class="w"> </span><span class="nf">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>                                    
+</span><span id="line-444"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Plot Area Mask.                                                           </span>
+</span><span id="line-445"><span class="sd">                                                                                 </span>
+</span><span id="line-446"><span class="sd">    Create sky plot of objects.                                                  </span>
+</span><span id="line-447"><span class="sd">                                                                                 </span>
+</span><span id="line-448"><span class="sd">    Parameters                                                                   </span>
+</span><span id="line-449"><span class="sd">    ----------                                                                   </span>
+</span><span id="line-450"><span class="sd">    ra : list                                                                    </span>
+</span><span id="line-451"><span class="sd">        R.A. coordinates                                                         </span>
+</span><span id="line-452"><span class="sd">    dec : list                                                                   </span>
+</span><span id="line-453"><span class="sd">        Dec. coordinates                                                         </span>
+</span><span id="line-454"><span class="sd">    zoom : TBD                                                                   </span>
+</span><span id="line-455"><span class="sd">    mask: TBD, optional                                                          </span>
+</span><span id="line-456"><span class="sd">                                                                                 </span>
+</span><span id="line-457"><span class="sd">    &quot;&quot;&quot;</span>                                                                          
+</span><span id="line-458">    <span class="k">if</span> <span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>                                                             
+</span><span id="line-459">        <span class="n">mask</span> <span class="o">==</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra</span><span class="p">)</span>                                                 
+</span><span id="line-460">                                                                                 
+</span><span id="line-461">    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">nrows</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ncols</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span><span class="mi">15</span><span class="p">))</span>                  
+</span><span id="line-462">    <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">hexbin</span><span class="p">(</span><span class="n">ra</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">dec</span><span class="p">[</span><span class="n">mask</span><span class="p">],</span> <span class="n">gridsize</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>                            
+</span><span id="line-463">    <span class="n">axes</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">hexbin</span><span class="p">(</span><span class="n">ra</span><span class="p">[</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="n">zoom</span><span class="p">],</span> <span class="n">dec</span><span class="p">[</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="n">zoom</span><span class="p">],</span> <span class="n">gridsize</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>              
+</span><span id="line-464">    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>                                                           
+</span><span id="line-465">        <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;R.A. [deg]&quot;</span><span class="p">)</span>                                       
+</span><span id="line-466">        <span class="n">axes</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Dec [deg]&quot;</span><span class="p">)</span></div>
 
-</span><span id="line-739">
-</span><span id="line-740">
+</span><span id="line-467">
+</span><span id="line-468">
 <div class="viewcode-block" id="sky_plots">
 <a class="viewcode-back" href="../../sp_validation.plots.html#sp_validation.plots.sky_plots">[docs]</a>
-</span><span id="line-741"><span class="k">def</span><span class="w"> </span><span class="nf">sky_plots</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">zoom_ra</span><span class="p">,</span> <span class="n">zoom_dec</span><span class="p">):</span>                            
-</span><span id="line-742"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sky Plots.                                                                </span>
-</span><span id="line-743"><span class="sd">                                                                                 </span>
-</span><span id="line-744"><span class="sd">    Plot sky regions with different masks.                                       </span>
-</span><span id="line-745"><span class="sd">                                                                                 </span>
-</span><span id="line-746"><span class="sd">    Parameters                                                                   </span>
-</span><span id="line-747"><span class="sd">    ----------                                                                   </span>
-</span><span id="line-748"><span class="sd">    masks : list                                                                 </span>
-</span><span id="line-749"><span class="sd">        masks to be applied                                                      </span>
-</span><span id="line-750"><span class="sd">    labels : dict                                                                </span>
-</span><span id="line-751"><span class="sd">        labels for masks                                                         </span>
-</span><span id="line-752"><span class="sd">    zoom_ra : list                                                               </span>
-</span><span id="line-753"><span class="sd">        min and max R.A. for zoom-in plot                                        </span>
-</span><span id="line-754"><span class="sd">    zoom_dec : list                                                              </span>
-</span><span id="line-755"><span class="sd">        min and max Dec. for zoom-in plot                                        </span>
-</span><span id="line-756"><span class="sd">                                                                                 </span>
-</span><span id="line-757"><span class="sd">    &quot;&quot;&quot;</span>                                                                          
-</span><span id="line-758">    <span class="n">ra</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;RA&quot;</span><span class="p">][:]</span>                                                            
-</span><span id="line-759">    <span class="n">dec</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;Dec&quot;</span><span class="p">][:]</span>                                                          
-</span><span id="line-760">                                                                                 
-</span><span id="line-761">    <span class="n">zoom_ra</span> <span class="o">=</span> <span class="p">(</span><span class="n">room_ra</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;RA&quot;</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="s2">&quot;RA&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">zoom_ra</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>                
-</span><span id="line-762">    <span class="n">zoom_dec</span> <span class="o">=</span> <span class="p">(</span><span class="n">zoom_dec</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;Dec&quot;</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="s2">&quot;Dec&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">zoom_dec</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>           
-</span><span id="line-763">    <span class="n">zoom</span> <span class="o">=</span> <span class="n">zoom_ra</span> <span class="o">&amp;</span> <span class="n">zoom_dec</span>                                                    
-</span><span id="line-764">                                                                                 
-</span><span id="line-765">    <span class="c1"># No mask                                                                    </span>
-</span><span id="line-766">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">)</span>                                                
-</span><span id="line-767">                                                                                 
-</span><span id="line-768">    <span class="c1"># SExtractor and SP flags                                                    </span>
-</span><span id="line-769">    <span class="n">m_flags</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;FLAGS&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;IMAFLAGS_ISO&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> 
-</span><span id="line-770">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_flags</span><span class="p">)</span>                                  
-</span><span id="line-771">                                                                                 
-</span><span id="line-772">    <span class="c1"># Overlap regions                                                            </span>
-</span><span id="line-773">    <span class="n">m_over</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;overlap&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">m_flags</span>                            
-</span><span id="line-774">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_over</span><span class="p">)</span>                                   
-</span><span id="line-775">                                                                                 
-</span><span id="line-776">    <span class="c1"># Coverage mask                                                              </span>
-</span><span id="line-777">    <span class="n">m_point</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;npoint3&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">m_over</span>                            
-</span><span id="line-778">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_point</span><span class="p">)</span>                                  
-</span><span id="line-779">                                                                                 
-</span><span id="line-780">    <span class="c1"># Maximask                                                                   </span>
-</span><span id="line-781">    <span class="n">m_maxi</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;1024_Maximask&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">m_point</span>                      
-</span><span id="line-782">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_maxi</span><span class="p">)</span>                                   
-</span><span id="line-783">                                                                                 
-</span><span id="line-784">    <span class="n">m_comb</span> <span class="o">=</span> <span class="n">mask_combined</span><span class="o">.</span><span class="n">_mask</span>                                                 
-</span><span id="line-785">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_comb</span><span class="p">)</span>                                   
-</span><span id="line-786">                                                                                 
-</span><span id="line-787">    <span class="n">m_man</span> <span class="o">=</span> <span class="n">m_maxi</span> <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;8_Manual&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span>                             
-</span><span id="line-788">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_man</span><span class="p">)</span>                                    
-</span><span id="line-789">                                                                                 
-</span><span id="line-790">    <span class="n">m_halos</span> <span class="o">=</span> <span class="p">(</span>                                                                  
-</span><span id="line-791">        <span class="n">m_maxi</span>                                                                   
-</span><span id="line-792">        <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s1">&#39;1_Faint_star_halos&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span>                              
-</span><span id="line-793">        <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s1">&#39;2_Bright_star_halos&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span>                             
-</span><span id="line-794">    <span class="p">)</span>                                                                            
-</span><span id="line-795">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_halos</span><span class="p">)</span> </div>
+</span><span id="line-469"><span class="k">def</span><span class="w"> </span><span class="nf">sky_plots</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">zoom_ra</span><span class="p">,</span> <span class="n">zoom_dec</span><span class="p">):</span>                            
+</span><span id="line-470"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sky Plots.                                                                </span>
+</span><span id="line-471"><span class="sd">                                                                                 </span>
+</span><span id="line-472"><span class="sd">    Plot sky regions with different masks.                                       </span>
+</span><span id="line-473"><span class="sd">                                                                                 </span>
+</span><span id="line-474"><span class="sd">    Parameters                                                                   </span>
+</span><span id="line-475"><span class="sd">    ----------                                                                   </span>
+</span><span id="line-476"><span class="sd">    masks : list                                                                 </span>
+</span><span id="line-477"><span class="sd">        masks to be applied                                                      </span>
+</span><span id="line-478"><span class="sd">    labels : dict                                                                </span>
+</span><span id="line-479"><span class="sd">        labels for masks                                                         </span>
+</span><span id="line-480"><span class="sd">    zoom_ra : list                                                               </span>
+</span><span id="line-481"><span class="sd">        min and max R.A. for zoom-in plot                                        </span>
+</span><span id="line-482"><span class="sd">    zoom_dec : list                                                              </span>
+</span><span id="line-483"><span class="sd">        min and max Dec. for zoom-in plot                                        </span>
+</span><span id="line-484"><span class="sd">                                                                                 </span>
+</span><span id="line-485"><span class="sd">    &quot;&quot;&quot;</span>                                                                          
+</span><span id="line-486">    <span class="n">ra</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;RA&quot;</span><span class="p">][:]</span>                                                            
+</span><span id="line-487">    <span class="n">dec</span> <span class="o">=</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;Dec&quot;</span><span class="p">][:]</span>                                                          
+</span><span id="line-488">                                                                                 
+</span><span id="line-489">    <span class="n">zoom_ra</span> <span class="o">=</span> <span class="p">(</span><span class="n">room_ra</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;RA&quot;</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="s2">&quot;RA&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">zoom_ra</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>                
+</span><span id="line-490">    <span class="n">zoom_dec</span> <span class="o">=</span> <span class="p">(</span><span class="n">zoom_dec</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">dat</span><span class="p">[</span><span class="s2">&quot;Dec&quot;</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="s2">&quot;Dec&quot;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">zoom_dec</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>           
+</span><span id="line-491">    <span class="n">zoom</span> <span class="o">=</span> <span class="n">zoom_ra</span> <span class="o">&amp;</span> <span class="n">zoom_dec</span>                                                    
+</span><span id="line-492">                                                                                 
+</span><span id="line-493">    <span class="c1"># No mask                                                                    </span>
+</span><span id="line-494">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">)</span>                                                
+</span><span id="line-495">                                                                                 
+</span><span id="line-496">    <span class="c1"># SExtractor and SP flags                                                    </span>
+</span><span id="line-497">    <span class="n">m_flags</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;FLAGS&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;IMAFLAGS_ISO&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> 
+</span><span id="line-498">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_flags</span><span class="p">)</span>                                  
+</span><span id="line-499">                                                                                 
+</span><span id="line-500">    <span class="c1"># Overlap regions                                                            </span>
+</span><span id="line-501">    <span class="n">m_over</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;overlap&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">m_flags</span>                            
+</span><span id="line-502">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_over</span><span class="p">)</span>                                   
+</span><span id="line-503">                                                                                 
+</span><span id="line-504">    <span class="c1"># Coverage mask                                                              </span>
+</span><span id="line-505">    <span class="n">m_point</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;npoint3&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">m_over</span>                            
+</span><span id="line-506">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_point</span><span class="p">)</span>                                  
+</span><span id="line-507">                                                                                 
+</span><span id="line-508">    <span class="c1"># Maximask                                                                   </span>
+</span><span id="line-509">    <span class="n">m_maxi</span> <span class="o">=</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;1024_Maximask&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span> <span class="o">&amp;</span> <span class="n">m_point</span>                      
+</span><span id="line-510">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_maxi</span><span class="p">)</span>                                   
+</span><span id="line-511">                                                                                 
+</span><span id="line-512">    <span class="n">m_comb</span> <span class="o">=</span> <span class="n">mask_combined</span><span class="o">.</span><span class="n">_mask</span>                                                 
+</span><span id="line-513">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_comb</span><span class="p">)</span>                                   
+</span><span id="line-514">                                                                                 
+</span><span id="line-515">    <span class="n">m_man</span> <span class="o">=</span> <span class="n">m_maxi</span> <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s2">&quot;8_Manual&quot;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span>                             
+</span><span id="line-516">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_man</span><span class="p">)</span>                                    
+</span><span id="line-517">                                                                                 
+</span><span id="line-518">    <span class="n">m_halos</span> <span class="o">=</span> <span class="p">(</span>                                                                  
+</span><span id="line-519">        <span class="n">m_maxi</span>                                                                   
+</span><span id="line-520">        <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s1">&#39;1_Faint_star_halos&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span>                              
+</span><span id="line-521">        <span class="o">&amp;</span> <span class="n">masks</span><span class="p">[</span><span class="n">labels</span><span class="p">[</span><span class="s1">&#39;2_Bright_star_halos&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">_mask</span>                             
+</span><span id="line-522">    <span class="p">)</span>                                                                            
+</span><span id="line-523">    <span class="n">plot_area_mask</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">m_halos</span><span class="p">)</span> </div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -1033,7 +740,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 04 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 06 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
