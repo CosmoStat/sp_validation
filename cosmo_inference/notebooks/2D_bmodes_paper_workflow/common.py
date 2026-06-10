@@ -1,5 +1,6 @@
 """Shared helpers for the B-modes Snakemake workflow."""
 
+import json
 import re
 from pathlib import Path
 
@@ -16,19 +17,45 @@ CAT_CONFIG = (
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
+# Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
+# Source of truth: sp_validation.cosmology.PLANCK18
+# Regenerate with: snakemake results/cosmology/planck18.json
+# Resolved relative to the run directory at configure() time.
+COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
+
+# Wildcard constraints shared by every Snakefile that composes these rules.
+# Patterns must match all expected values; overly restrictive patterns cause
+# silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
+WILDCARD_CONSTRAINTS = {
+    "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
+    "blind": r"[ABC]",
+    "nbins": r"\d+",
+    "min_sep": r"[0-9.]+",
+    "max_sep": r"[0-9.]+",
+    "gaussian": r"(g|ng)",
+    "block_pm": r"(\+\+|--|\+-)",
+    "block_i": r"[123]",
+    "mask_suffix": r"(_masked)?",
+    "mock_id": r"\d{5}",
+    "nside": r"\d+",
+}
+
 FIDUCIAL = None
 DEFAULT_MASK_SUFFIX = ""
 CATALOG_CONFIG = None
+PLANCK18 = None
 
 
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
-    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL
+    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     CATALOG_CONFIG = workflow_config
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
     )
+    with open(COSMOLOGY_PARAMS) as f:
+        PLANCK18 = json.load(f)
 
 
 def fiducial_binning_suffix(fiducial=None):
