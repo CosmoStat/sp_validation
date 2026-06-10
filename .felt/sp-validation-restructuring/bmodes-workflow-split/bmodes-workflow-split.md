@@ -1,7 +1,7 @@
 ---
 id: 01KTD18JXS7VK50ECJX3GRWS9W
 name: 'Codex reorg: split bmodes into modular workflow/ + papers/bmodes/'
-status: active
+status: open
 tags:
     - constitution
     - sp-validation

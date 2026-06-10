@@ -1,11 +1,13 @@
 ---
 id: 01KTCHX02BFAABNBRKN0RNN0E3
 name: 'Docs deploy modernized: gh-pages CI + Sphinx 8'
+status: closed
 tags:
     - docs
     - ci
 created-at: 2026-06-04T00:47:23.328929872+02:00
-outcome: Replaced the dead master/py3.8/conda cd-build.yml with a deploy-docs job in deploy-image.yml that builds inside the freshly-published container image and pushes API docs to gh-pages on develop. Modernized the docs stack and conf.py for Sphinx 8+/9.
+closed-at: 2026-06-10T17:13:38.595662941+02:00
+outcome: Dead cd-build.yml replaced by deploy-docs job building inside the freshly-published container image; sphinx/myst modernized; gh-pages deploy on develop. Live.
 ---
 
 The old `cd-build.yml` was a relic of the pre-uv era: triggered on `master`, set up py3.8 via conda, ran `setup.py test`, and deployed Sphinx API docs to gh-pages. Fully dead since the move to `develop`/uv and the container CI. Removed it; the image build + tests now live in `deploy-image.yml` (see [[docker-build-uv-venv-base]]).

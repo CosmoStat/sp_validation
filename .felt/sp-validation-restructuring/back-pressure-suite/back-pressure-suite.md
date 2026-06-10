@@ -1,7 +1,7 @@
 ---
 id: 01KTCKDA2N1VEPZJRBF04ZZ6VW
 name: Back-pressure test suite for the reorg
-status: active
+status: open
 tags:
     - constitution
     - sp-validation

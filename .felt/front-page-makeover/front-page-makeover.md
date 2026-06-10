@@ -1,11 +1,13 @@
 ---
 id: 01KTCHX03YS1ANPKJ5WTRGTZ3E
 name: 'Front-page makeover: badges, CI, contributor docs'
+status: closed
 tags:
     - ci
     - docs
 created-at: 2026-06-04T02:53:52.875583891+02:00
-outcome: Replaced 13 mostly-dead README badges (pointed at impossible user martin.kilbinger/...) with 8 honest ones on CosmoStat/sp_validation; turned the empty 'CI' into a real pytest-in-container gate; fixed a testpaths bug and the contributor docs.
+closed-at: 2026-06-10T17:13:38.530640596+02:00
+outcome: 'PR #195 merged 2026-06-04: badges 13→8 pointing at CosmoStat/sp_validation, real CI gate (pytest in image before publish), testpaths fixed, authorship reconciled, GitHub Pages live.'
 ---
 
 Cleanup of the `sp_validation` repo front page, committed as `2db5cbc` on branch

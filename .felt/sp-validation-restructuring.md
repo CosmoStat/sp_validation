@@ -1,7 +1,7 @@
 ---
 id: 01KTCHX03Y3PVZYS5QHFWZRF5N
 name: SP Validation Restructuring
-status: active
+status: open
 tags:
     - constitution
     - sp-validation
@@ -11,7 +11,6 @@ created-at: 0001-01-01T00:00:00Z
 outcome: 'Interactive session live with Cail. Decisions settled: paths stay messy (existence-checker, not translation); DAG guard simplified to "snakemake -n passes" (no golden); suite finalized to ①②③⑤⑥ (dropped no-work-lost, package-install, output-schema, entry-point N/A); branch cleanup DEFERRED until tests land (target: one branch = Sacha merge + restructuring on top, close #189); uv.lock left gitignored. Back-pressure guards ②③⑤⑥ dispatched as the [[back-pressure-suite]] Codex shuttle (idle→dispatching; same-tree, driver hands-off-git while it runs, session work backed up to /tmp). Guard ① still green. Phase 2 (the moves) starts once the suite lands. Fiber active; driver attached.'
 horizon: now
 shuttle:
-    enabled: true
     kind: oneshot
     interactive: true
     host: candide
