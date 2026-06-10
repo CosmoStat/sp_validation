@@ -21,7 +21,7 @@ rule xi:
         disk_mb=20000,
         runtime=360,
     script:
-        "scripts/run_2pcf.py"
+        "../scripts/run_2pcf.py"
 
 
 rule xi_highres:
@@ -81,7 +81,7 @@ rule rho_tau_stats:
         mem_mb=30000,
         disk_mb=20000,
     script:
-        "scripts/run_rho_tau.py"
+        "../scripts/run_rho_tau.py"
 
 
 # Pseudo-Cl generation for harmonic-space data vectors and COSEBIS validation.
