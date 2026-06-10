@@ -167,7 +167,7 @@ def _config_files() -> list[Path]:
         check=True,
     ).stdout.splitlines()
     return [
-        root / "cosmo_inference/notebooks/2D_bmodes_paper_workflow/config/config.yaml",
+        root / "papers/bmodes/config/config.yaml",
         root / "notebooks/cosmo_val/cat_config.yaml",
         *sorted((root / "config/calibration").glob("*.yaml")),
         *(root / name for name in sorted(ini_files)),

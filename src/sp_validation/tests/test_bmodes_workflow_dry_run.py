@@ -18,9 +18,7 @@ def _repo_root() -> Path:
 
 def test_bmodes_workflow_dry_runs():
     """The paper B-mode workflow must still parse and dry-run cleanly."""
-    workflow_dir = (
-        _repo_root() / "cosmo_inference/notebooks/2D_bmodes_paper_workflow"
-    )
+    workflow_dir = _repo_root() / "papers/bmodes"
     env = os.environ | {"PYTHONNOUSERSITE": "1"}
     result = subprocess.run(
         [

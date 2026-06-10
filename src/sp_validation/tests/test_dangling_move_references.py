@@ -7,7 +7,9 @@ import pytest
 
 # Add (old_internal_dir, new_location) pairs as the restructuring starts moving
 # directories. Empty pre-reorg by design: the harness is the invariant.
-MOVE_MAP: tuple[tuple[str, str], ...] = ()
+MOVE_MAP: tuple[tuple[str, str], ...] = (
+    ("cosmo_inference/notebooks/2D_bmodes_paper_workflow", "papers/bmodes"),
+)
 EXCLUDED_DIRS = {
     ".git",
     ".felt",
