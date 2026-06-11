@@ -1,3 +1,5 @@
+# UNIONS B-modes paper — the epistemic layer, composed over the generic
+# compute workflow at ../../workflow/.
 
 configfile: "config/config.yaml"
 configfile: "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml"
@@ -8,11 +10,11 @@ envvars:
     "PYTHONUNBUFFERED",
 
 import os
-# Host OpenMPI libs for MPI rules inside the container.
-# Apptainer passes APPTAINERENV_* vars into the container as their unprefixed names.
-# Only affects rules that import mpi4py; safe for all other rules.
-os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8/lib"
+import sys
 
+# Shared helpers from the generic workflow. Snakemake's `module` imports
+# rules, not Python globals — helpers arrive by plain Python import.
+sys.path.insert(0, os.path.join(str(workflow.basedir), "../../workflow"))
 import common
 
 common.configure(config)
@@ -22,17 +24,19 @@ from common import *
 wildcard_constraints:
     **WILDCARD_CONSTRAINTS
 
-# Workflow directories
+# Paper directories
 CONFIG_DIR = "config"
 TAPESTRY_DIR = "results/tapestry"
 PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
 
-# Compute rules (infrastructure — raw outputs, no evidence.json)
-include: "rules/twopoint.smk"
-include: "rules/covariance.smk"
-include: "rules/inference.smk"
-include: "rules/masks.smk"
-include: "rules/glass_mock_validation.smk"
+# Compute rules (infrastructure — raw outputs, no evidence.json),
+# imported as a module so future papers can compose the same workflow
+# with their own config / overrides.
+module analysis:
+    snakefile: "../../workflow/Snakefile"
+    config: config
+
+use rule * from analysis
 
 # Epistemic rules (evidence.json producers, order matters: claims → synthesis)
 include: "rules/claims.smk"

@@ -233,7 +233,7 @@ rule generate_glass_mock_rhotau_samples:
     threads: 1
     shell:
         """
-        python workflow/scripts/generate_glass_mock_rhotau_samples.py \
+        python /n17data/cdaley/unions/pure_eb/code/sp_validation/workflow/scripts/generate_glass_mock_rhotau_samples.py \
             --cov-tau {input.cov_tau} \
             --ref-tau {input.ref_tau} \
             --output-dir {params.output_dir} \

@@ -45,7 +45,7 @@ rule xi_highres:
         "--bind /home,/n09data,/n17data,/n23data1,/softs "
         "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
         "/n17data/cdaley/containers/containers "
-        "python /automnt/n17data/cdaley/unions/pure_eb/workflow/scripts/run_2pcf_highres.py"
+        "python /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation/workflow/scripts/run_2pcf_highres.py"
 
 
 rule run_cosmo_val:

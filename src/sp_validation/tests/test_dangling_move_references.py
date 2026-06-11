@@ -9,6 +9,7 @@ import pytest
 # directories. Empty pre-reorg by design: the harness is the invariant.
 MOVE_MAP: tuple[tuple[str, str], ...] = (
     ("cosmo_inference/notebooks/2D_bmodes_paper_workflow", "papers/bmodes"),
+    ("rules/glass_mock_validation.smk", "workflow/rules/glass_mock.smk"),
 )
 EXCLUDED_DIRS = {
     ".git",
