@@ -60,6 +60,17 @@ ruff check --fix      # auto-fix what it can
 
 Please run `ruff check` before opening a pull request.
 
+## Commit hygiene (notebooks & large files)
+
+The repository's history is heavy from committed notebook outputs; two
+[`pre-commit`](https://pre-commit.com/) hooks guard against more of it:
+`nbstripout` (strips notebook outputs on commit) and a large-file check
+(2 MB). Activate them once per clone:
+
+```bash
+pre-commit install
+```
+
 ## Proposing changes
 
 1. Branch off `develop` (the integration branch — `master` is no longer used):
