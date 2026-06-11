@@ -17,7 +17,9 @@ MOVE_MAP: tuple[tuple[str, str], ...] = (
 EXCLUDED_DIRS = {
     ".git",
     ".felt",
+    ".pytest_cache",
     ".snakemake",
+    ".venv",
     "__pycache__",
     "results",
     "output",
@@ -33,17 +35,30 @@ def _repo_root() -> Path:
 
 
 def _tracked_files() -> list[Path]:
+    """Tracked files via git; full-tree walk where .git is absent.
+
+    The CI image is built from the Git build context — tracked content only,
+    no .git directory — so walking the tree there scans exactly the tracked
+    set and the guard keeps its teeth in-image.
+    """
+    root = _repo_root()
     result = subprocess.run(
         ["git", "ls-files"],
-        cwd=_repo_root(),
+        cwd=root,
         text=True,
         stdout=subprocess.PIPE,
-        check=True,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    candidates = (
+        [root / name for name in result.stdout.splitlines()]
+        if result.returncode == 0
+        else [path for path in root.rglob("*") if path.is_file()]
     )
     test_file = Path(__file__).resolve()
     files = []
-    for name in result.stdout.splitlines():
-        path = (_repo_root() / name).resolve()
+    for candidate in candidates:
+        path = candidate.resolve()
         if path == test_file or any(part in EXCLUDED_DIRS for part in path.parts):
             continue
         files.append(path)

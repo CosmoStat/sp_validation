@@ -12,17 +12,31 @@ def _repo_root() -> Path:
 
 
 def _tracked_symlinks() -> list[Path]:
+    """Tracked symlinks via git; full-tree walk where .git is absent.
+
+    The CI image is built from the Git build context — tracked content only,
+    no .git directory — so walking the tree there finds exactly the tracked
+    symlinks and the guard keeps its teeth in-image.
+    """
+    root = _repo_root()
     result = subprocess.run(
         ["git", "ls-files", "-s"],
-        cwd=_repo_root(),
+        cwd=root,
         text=True,
         stdout=subprocess.PIPE,
-        check=True,
+        stderr=subprocess.DEVNULL,
+        check=False,
     )
+    if result.returncode == 0:
+        return [
+            root / line.split(maxsplit=3)[3]
+            for line in result.stdout.splitlines()
+            if line.startswith("120000 ")
+        ]
     return [
-        _repo_root() / line.split(maxsplit=3)[3]
-        for line in result.stdout.splitlines()
-        if line.startswith("120000 ")
+        path
+        for path in root.rglob("*")
+        if path.is_symlink() and ".git" not in path.parts
     ]
 
 
