@@ -310,7 +310,7 @@ print(f"Chi2 for the fiducial: {chi2_fiducial}")
 
 # %%
 # Make the plot
-output_fig_path = f"/home/guerrini/sp_validation/cosmo_inference/notebooks/2D_harmonic_space_cosmic_shear_plots/plots/"
+output_fig_path = f"/home/guerrini/sp_validation/papers/harmonic/plots/"
 counts, bin_edges = np.histogram(
     chi2_glass_mocks,
     bins=25,

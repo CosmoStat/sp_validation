@@ -43,7 +43,7 @@ import chain_postprocessing as cp
 import utils
 
 plt.style.use(
-    "/home/guerrini/sp_validation/cosmo_inference/notebooks/2D_harmonic_space_cosmic_shear_plots/matplotlib_config/paper.mplstyle"
+    "/home/guerrini/sp_validation/papers/harmonic/matplotlib_config/paper.mplstyle"
 )
 
 plt.rcParams["text.usetex"] = True
