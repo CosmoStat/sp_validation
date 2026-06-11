@@ -38,7 +38,7 @@ class TestCosmologyValidation:
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         )
         catalog_config = os.path.join(
-            repo_root, "notebooks", "cosmo_val", "cat_config.yaml"
+            repo_root, "cosmo_val", "cat_config.yaml"
         )
 
         # Use temporary directory for outputs
@@ -211,7 +211,7 @@ class TestCosmologyValidation:
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         )
         catalog_config_path = os.path.join(
-            repo_root, "notebooks", "cosmo_val", "cat_config.yaml"
+            repo_root, "cosmo_val", "cat_config.yaml"
         )
 
         config = yaml.safe_load(Path(catalog_config_path).read_text())
