@@ -8,6 +8,16 @@ import os
 import subprocess
 from pathlib import Path
 
+import pytest
+
+# The workflow composes a catalog configfile and terminal inputs that live at
+# candide-absolute paths (Snakefile line 5, workflow/common.py), so the dry
+# run can only be constructed on the cluster. Same pattern as test_cosmo_val.
+requires_candide_data = pytest.mark.skipif(
+    not Path("/n17data/cdaley/unions").exists(),
+    reason="candide-local workflow config/data (/n17data) absent — off-cluster",
+)
+
 
 def _repo_root() -> Path:
     for parent in Path(__file__).resolve().parents:
@@ -16,10 +26,13 @@ def _repo_root() -> Path:
     raise RuntimeError("could not locate repo root (no pyproject.toml above test)")
 
 
+@requires_candide_data
 def test_bmodes_workflow_dry_runs():
     """The paper B-mode workflow must still parse and dry-run cleanly."""
     workflow_dir = _repo_root() / "papers/bmodes"
-    env = os.environ | {"PYTHONNOUSERSITE": "1"}
+    # PYTHONUNBUFFERED satisfies the Snakefile's `envvars:` declaration without
+    # depending on the invoking shell's environment.
+    env = os.environ | {"PYTHONNOUSERSITE": "1", "PYTHONUNBUFFERED": "1"}
     result = subprocess.run(
         [
             "python3.12",
