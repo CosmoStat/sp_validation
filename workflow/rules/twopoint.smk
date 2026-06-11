@@ -60,7 +60,7 @@ rule run_cosmo_val:
     shell:
         """
         export PYTHONPATH="/home/cdaley/.local/lib/python3.12/site-packages:${{PYTHONPATH:-}}"
-        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val \
+        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val \
         && python run_cosmo_val.py \
         && touch {output.sentinel}
         """

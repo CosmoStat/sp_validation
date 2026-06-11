@@ -24,7 +24,7 @@ if hasattr(sys, "ps1"):
     from snakemake_helpers import snakemake_interactive
 
     snakemake = snakemake_interactive(
-        "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/SP_v1.4.5_xi_minsep=1_maxsep=250_nbins=20_npatch=1.txt",
+        "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/SP_v1.4.5_xi_minsep=1_maxsep=250_nbins=20_npatch=1.txt",
         "/home/cdaley/n17data/unions/pure_eb",
     )
 else:
@@ -34,7 +34,7 @@ params = snakemake.params  # type: ignore
 params.nbins = int(params["nbins"])
 
 # %%
-os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val")
+os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val")
 print("Starting CosmologyValidation")
 cv = CosmologyValidation(
     versions=[params["ver"]],

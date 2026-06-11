@@ -810,11 +810,11 @@ def _config_from_cli() -> CeremonyConfig:
     )
 
     pseudo_cl_path = _require_path(
-        Path(f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_{chain_prefix}.fits"),
+        Path(f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_{chain_prefix}.fits"),
         f"pseudo-Cl for {chain_prefix} (Guerrini)",
     )
     pseudo_cl_cov_path = _require_path(
-        Path(f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_{chain_prefix}.fits"),
+        Path(f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_{chain_prefix}.fits"),
         f"pseudo-Cl covariance for {chain_prefix} (Guerrini)",
     )
 

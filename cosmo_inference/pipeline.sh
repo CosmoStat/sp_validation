@@ -24,7 +24,7 @@ do
         ;;
     'p') 
         echo "Running cosmo_val.py to calculate 2 point correlation functions";
-        python notebooks/cosmo_val/cosmo_val.py
+        python cosmo_val/cosmo_val.py
         ;;
     'c') 
         read -p 'COVARIANCE FILE: ' covmat_file;

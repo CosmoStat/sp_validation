@@ -93,7 +93,7 @@ b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
 cv = CosmologyValidation(
     versions=["SP_v1.4.5_leak_corr"],
     data_base_dir="/n17data/mkilbing/astro/data/",
-    catalog_config="/home/guerrini/sp_validation/notebooks/cosmo_val/cat_config.yaml"
+    catalog_config="/home/guerrini/sp_validation/cosmo_val/cat_config.yaml"
 )
 # %%
 params = get_params_rho_tau(cv.cc["SP_v1.4.5_leak_corr"], survey="SP_v1.4.5_leak_corr")

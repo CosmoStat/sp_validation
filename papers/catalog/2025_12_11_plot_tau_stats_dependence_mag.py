@@ -172,7 +172,7 @@ plt.show()
 
 # %%
 #Load tau_stats of the whole sample
-path_tau_stats = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/tau_stats_SP_v1.4.6.fits"
+path_tau_stats = "/home/guerrini/sp_validation/cosmo_val/output/rho_tau_stats/tau_stats_SP_v1.4.6.fits"
 
 tau_stats = fits.getdata(path_tau_stats)
 

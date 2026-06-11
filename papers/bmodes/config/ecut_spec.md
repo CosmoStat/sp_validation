@@ -72,7 +72,7 @@ uncorrected columns can't be consistently filtered to guarantee the same rows.
 | What | Where |
 |------|-------|
 | Workflow config | `workflow/config/config.yaml` (search `ecut`) |
-| Catalog config | `code/sp_validation/notebooks/cosmo_val/cat_config.yaml` (search `ecut07`) |
+| Catalog config | `code/sp_validation/cosmo_val/cat_config.yaml` (search `ecut07`) |
 | Pipeline orchestration | `workflow/Snakefile` (wildcard constraints, version resolution functions) |
 | Version comparison rules | `workflow/rules/claims.smk` lines 131, 271, 386 |
 | Version comparison scripts | `workflow/scripts/{pure_eb,cosebis,cl}_version_comparison.py` |

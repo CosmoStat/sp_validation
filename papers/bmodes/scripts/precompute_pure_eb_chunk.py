@@ -113,8 +113,8 @@ def main():
     blind = params.get("blind", "A")
     cv = CosmologyValidation(
         versions=[params["version"]],
-        catalog_config="/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/cat_config.yaml",
-        output_dir="/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output",
+        catalog_config="/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/cat_config.yaml",
+        output_dir="/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output",
     )
     cv.blind = blind
     z, nz = cv.get_redshift(params["version"])

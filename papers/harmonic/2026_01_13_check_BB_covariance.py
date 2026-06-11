@@ -45,7 +45,7 @@ versions = [
     "SP_v1.4.6_leak_corr_A_KiDS"
 ]
 
-path_cosmo_val = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/"
+path_cosmo_val = "/home/guerrini/sp_validation/cosmo_val/output/"
 
 # %%
 plt.figure()

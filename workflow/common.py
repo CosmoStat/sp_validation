@@ -5,13 +5,13 @@ import re
 from pathlib import Path
 
 COSMO_VAL = Path(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output"
+    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output"
 )
 COSMO_INFERENCE = Path(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference"
 )
 CAT_CONFIG = (
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/"
+    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/"
     "cat_config.yaml"
 )
 BLINDS = ["A", "B", "C"]

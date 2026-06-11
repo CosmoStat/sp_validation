@@ -42,7 +42,7 @@ cov_taus = []
 rho_stats = []
 cov_rhos = []
 
-base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/"
+base_dir = "/home/guerrini/sp_validation/cosmo_val/output/rho_tau_stats/"
 
 for ver in versions:
     tau_stats.append(fits.getdata(f"{base_dir}/tau_stats_{ver}.fits"))

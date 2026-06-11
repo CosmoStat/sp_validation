@@ -84,4 +84,4 @@ apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation
 ```
 
 ## Notebook Configuration
-- The CosmologyValidation class must be initialized in notebooks/cosmo_val
+- The CosmologyValidation class must be initialized in cosmo_val

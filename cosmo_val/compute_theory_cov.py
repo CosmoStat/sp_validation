@@ -43,8 +43,8 @@ if __name__ == "__main__":
 
     versions = ['SP_v1.4-P3', 'SP_v1.4-P3_LFmask', 'SP_v1.3_LFmask_8k', 'SP_axel_v0.0', 'DES']
 
-    path_config = '/home/guerrini/sp_validation/notebooks/cosmo_val/cat_config.yaml'
-    output_dir = '/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/'
+    path_config = '/home/guerrini/sp_validation/cosmo_val/cat_config.yaml'
+    output_dir = '/home/guerrini/sp_validation/cosmo_val/output/rho_tau_stats/'
 
     nbin_ang = 100
     nbin_rad = 200

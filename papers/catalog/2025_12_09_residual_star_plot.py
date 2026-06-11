@@ -21,7 +21,7 @@ sns.set_palette("husl", 18)
 if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
-base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/"
+base_dir = "/home/guerrini/sp_validation/cosmo_val/output/rho_tau_stats/"
 
 # %%
 path_star = "/n17data/UNIONS/WL/v1.4.x/full_starcat-0000000.fits"

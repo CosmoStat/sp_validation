@@ -40,7 +40,7 @@ if ipython is not None:
 
 # %%
 blind = "B"
-path_cov_namaster = f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.6.3_{blind}_leak_corr.fits"
+path_cov_namaster = f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_SP_v1.4.6.3_{blind}_leak_corr.fits"
 path_glass_sims_output = "/n09data/guerrini/glass_mock_v1.4.6.3_v2/results/"
 
 cov_namaster = fits.open(path_cov_namaster)
@@ -83,7 +83,7 @@ def get_cov_from_one_cov(cov_one_cov, gaussian=True):
 ell_eff = cls[0]
 
 # %%
-cov_one_cov = np.genfromtxt(f"/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6.3_{blind}_leak_corr/covariance_list_3x2pt_pure_Cell.dat")
+cov_one_cov = np.genfromtxt(f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_onecov_SP_v1.4.6.3_{blind}_leak_corr/covariance_list_3x2pt_pure_Cell.dat")
 
 gaussian_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=True)
 all_one_cov = get_cov_from_one_cov(cov_one_cov, gaussian=False)
@@ -393,7 +393,7 @@ plt.show()
 
 #Validation against Gaussian simulations
 
-path_gaussian_sims = "/n17data/sguerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims_v1463"
+path_gaussian_sims = "/n17data/sguerrini/sp_validation/cosmo_val/harmonic_covariance_gaussian_sims_v1463"
 
 n_sims = 10_000
 covs = {}
@@ -717,8 +717,8 @@ plt.show()
 # %%
 # Save gaussian simulation covariance for bb
 cov_gaussian_bb = cov_sim_gaussian[96:, 96:]
-np.save("/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_BB.npy", cov_gaussian_bb)
+np.save("/home/guerrini/sp_validation/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_BB.npy", cov_gaussian_bb)
 cov_gaussian_eb = cov_sim_gaussian[64:96, 64:96]
-np.save("/home/guerrini/sp_validation/notebooks/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_EB.npy", cov_gaussian_eb)
+np.save("/home/guerrini/sp_validation/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_EB.npy", cov_gaussian_eb)
 
 # %%

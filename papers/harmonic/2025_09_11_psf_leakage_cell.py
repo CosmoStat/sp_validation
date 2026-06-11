@@ -653,8 +653,8 @@ plt.show()
 
 # %%
 #Plot signal with errorbars
-pseudo_cl = fits.getdata("/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.5_leak_corr.fits")
-cov_cl = fits.open("/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_SP_v1.4.5_leak_corr.fits")
+pseudo_cl = fits.getdata("/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_SP_v1.4.5_leak_corr.fits")
+cov_cl = fits.open("/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_SP_v1.4.5_leak_corr.fits")
 
 plt.figure()
 

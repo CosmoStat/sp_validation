@@ -26,7 +26,7 @@ if ipython is not None:
     from snakemake_helpers import snakemake_interactive
 
     snakemake = snakemake_interactive(
-        "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.5.fits",
+        "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.5.fits",
         "/home/cdaley/n17data/unions/pure_eb",
     )
 else:
@@ -35,7 +35,7 @@ else:
 params = snakemake.params  # type: ignore
 
 # %%
-os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val")
+os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val")
 print("Starting CosmologyValidation")
 
 # Use parameters passed from Snakemake rule

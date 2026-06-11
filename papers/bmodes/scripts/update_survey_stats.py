@@ -19,7 +19,7 @@ from astropy.io import fits
 from pathlib import Path
 import yaml
 
-os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val")
+os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val")
 
 
 # Versions that use the standard footprint mask

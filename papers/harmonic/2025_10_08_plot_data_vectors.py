@@ -41,7 +41,7 @@ if ipython is not None:
 
 
 # %%
-base_dir = "/home/guerrini/sp_validation/notebooks/cosmo_val/output/"
+base_dir = "/home/guerrini/sp_validation/cosmo_val/output/"
 
 versions = ["SP_v1.4.5_leak_corr", "SP_v1.4.6_leak_corr", "SP_v1.4.8_leak_corr"]
 labels = ["SP v1.4.5 w/ leakage corr.", "SP v1.4.6 w/ leakage corr.", "SP v1.4.8 w/ leakage corr."]

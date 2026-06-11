@@ -69,7 +69,7 @@ NUM_THREADS = int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 24))
 # Output
 OUTPUT_DIR = (
     "/n17data/cdaley/unions/pure_eb/"
-    "code/sp_validation/notebooks/cosmo_val/output"
+    "code/sp_validation/cosmo_val/output"
 )
 PATCH_FILE = os.path.join(
     OUTPUT_DIR,
