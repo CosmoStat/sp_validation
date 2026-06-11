@@ -12,9 +12,16 @@ envvars:
 import os
 import sys
 
+# The generic workflow, located relative to this file. realpath, because the
+# run directory reaches this Snakefile through a symlink and Snakemake
+# normalizes `..` lexically when resolving includes.
+WORKFLOW_DIR = os.path.normpath(
+    os.path.join(os.path.realpath(str(workflow.basedir)), "../../workflow")
+)
+
 # Shared helpers from the generic workflow. Snakemake's `module` imports
 # rules, not Python globals — helpers arrive by plain Python import.
-sys.path.insert(0, os.path.join(str(workflow.basedir), "../../workflow"))
+sys.path.insert(0, WORKFLOW_DIR)
 import common
 
 common.configure(config)
@@ -33,7 +40,7 @@ PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
 # imported as a module so future papers can compose the same workflow
 # with their own config / overrides.
 module analysis:
-    snakefile: "../../workflow/Snakefile"
+    snakefile: os.path.join(WORKFLOW_DIR, "Snakefile")
     config: config
 
 use rule * from analysis

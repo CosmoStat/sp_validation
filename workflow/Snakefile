@@ -25,7 +25,7 @@ os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8
 # imports rules, not Python globals, so helpers travel by plain Python import;
 # when composed, the paper Snakefile has already imported common and this hits
 # the module cache.
-sys.path.insert(0, str(workflow.basedir))
+sys.path.insert(0, os.path.realpath(str(workflow.basedir)))
 import common
 
 common.configure(config)
