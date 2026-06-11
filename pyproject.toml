@@ -22,7 +22,7 @@ dependencies = [
     "camb",
     "clmm",
     "colorama",
-    "cs_util>=0.1.9",
+    "cs_util>=0.2.1",
     "emcee",
     "getdist @ git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
     "h5py",
@@ -67,7 +67,8 @@ docs = [
     "myst-parser>=4.0",
     "numpydoc>=1.8",
     "sphinxcontrib-bibtex>=2.6",
-    "sphinxawesome-theme>=5.3"
+    # 6.0.3 is a broken wheel on PyPI (dist-info only, no python module)
+    "sphinxawesome-theme>=5.3,!=6.0.3"
 ]
 develop = ["sp_validation[test,docs]"]
 
