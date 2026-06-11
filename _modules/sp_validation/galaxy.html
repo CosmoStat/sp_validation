@@ -208,388 +208,344 @@
 </span><span id="line-24"><span class="kn">from</span><span class="w"> </span><span class="nn">astropy.nddata</span><span class="w"> </span><span class="kn">import</span> <span class="n">bitmask</span>
 </span><span id="line-25">
 </span><span id="line-26"><span class="kn">from</span><span class="w"> </span><span class="nn">cs_util</span><span class="w"> </span><span class="kn">import</span> <span class="n">cfis</span>
-</span><span id="line-27">
-</span><span id="line-28"><span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">io</span>
-</span><span id="line-29">
-</span><span id="line-30">
-<div class="viewcode-block" id="T_to_fwhm">
-<a class="viewcode-back" href="../../sp_validation.galaxy.html#sp_validation.galaxy.T_to_fwhm">[docs]</a>
-</span><span id="line-31"><span class="k">def</span><span class="w"> </span><span class="nf">T_to_fwhm</span><span class="p">(</span><span class="n">T</span><span class="p">):</span>
-</span><span id="line-32"><span class="w">    </span><span class="sd">&quot;&quot;&quot;T to fwhm.</span>
+</span><span id="line-27"><span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.size</span><span class="w"> </span><span class="kn">import</span> <span class="n">T_to_fwhm</span><span class="p">,</span> <span class="n">sigma_to_fwhm</span>  <span class="c1"># noqa: F401  re-exported;</span>
+</span><span id="line-28"><span class="c1"># the previous local T_to_fwhm (T / 1.17741 * 2.355) treated the area</span>
+</span><span id="line-29"><span class="c1"># T = 2 sigma^2 as if it were sigma; the cs_util version carries the</span>
+</span><span id="line-30"><span class="c1"># required square root: FWHM = 2.35482 sqrt(T / 2)</span>
+</span><span id="line-31">
+</span><span id="line-32"><span class="kn">from</span><span class="w"> </span><span class="nn">sp_validation</span><span class="w"> </span><span class="kn">import</span> <span class="n">io</span>
 </span><span id="line-33">
-</span><span id="line-34"><span class="sd">    Transform from size T to FWHM.</span>
-</span><span id="line-35"><span class="sd">    This interprets T as the RMS (``sigma``) of a Gaussian.</span>
-</span><span id="line-36">
-</span><span id="line-37"><span class="sd">    Parameters</span>
-</span><span id="line-38"><span class="sd">    ----------</span>
-</span><span id="line-39"><span class="sd">    T : (array of) float</span>
-</span><span id="line-40"><span class="sd">        input size(s)</span>
-</span><span id="line-41">
-</span><span id="line-42"><span class="sd">    Returns</span>
-</span><span id="line-43"><span class="sd">    -------</span>
-</span><span id="line-44"><span class="sd">    fwhm : (array of) float</span>
-</span><span id="line-45"><span class="sd">        output fwhm(s)</span>
-</span><span id="line-46"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-47">
-</span><span id="line-48">    <span class="c1"># MKDEBUG: Check this equation. Why is FWHM not quadratic in T???</span>
-</span><span id="line-49">    <span class="k">return</span> <span class="n">T</span> <span class="o">/</span> <span class="mf">1.17741</span> <span class="o">*</span> <span class="mf">2.355</span></div>
-
-</span><span id="line-50">
-</span><span id="line-51">
-<div class="viewcode-block" id="sigma_to_fwhm">
-<a class="viewcode-back" href="../../sp_validation.galaxy.html#sp_validation.galaxy.sigma_to_fwhm">[docs]</a>
-</span><span id="line-52"><span class="k">def</span><span class="w"> </span><span class="nf">sigma_to_fwhm</span><span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">pixel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
-</span><span id="line-53"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sigma to fwhm.</span>
-</span><span id="line-54">
-</span><span id="line-55"><span class="sd">    Transform from size sigma to FWHM.</span>
-</span><span id="line-56">
-</span><span id="line-57"><span class="sd">    Parameters</span>
-</span><span id="line-58"><span class="sd">    ----------</span>
-</span><span id="line-59"><span class="sd">    sigma : (array of) float</span>
-</span><span id="line-60"><span class="sd">        input size(s)</span>
-</span><span id="line-61"><span class="sd">    pixel_size : float, optional, default=1</span>
-</span><span id="line-62"><span class="sd">        pixel size in arcsec, set to 1 if no scaling</span>
-</span><span id="line-63"><span class="sd">        required</span>
-</span><span id="line-64">
-</span><span id="line-65"><span class="sd">    Returns</span>
-</span><span id="line-66"><span class="sd">    -------</span>
-</span><span id="line-67"><span class="sd">    fwhm : (array of) float</span>
-</span><span id="line-68"><span class="sd">        output fwhm(s)</span>
-</span><span id="line-69"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-70">    <span class="k">return</span> <span class="n">sigma</span> <span class="o">*</span> <span class="mf">2.355</span> <span class="o">*</span> <span class="n">pixel_size</span></div>
-
-</span><span id="line-71">
-</span><span id="line-72">
+</span><span id="line-34">
 <div class="viewcode-block" id="classification_galaxy_overlap_ra_dec">
 <a class="viewcode-back" href="../../sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_overlap_ra_dec">[docs]</a>
-</span><span id="line-73"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_overlap_ra_dec</span><span class="p">(</span>
-</span><span id="line-74">    <span class="n">dd</span><span class="p">,</span>
-</span><span id="line-75">    <span class="n">ra_key</span><span class="o">=</span><span class="s1">&#39;XWIN_WORLD&#39;</span><span class="p">,</span>
-</span><span id="line-76">    <span class="n">dec_key</span><span class="o">=</span><span class="s1">&#39;YWIN_WORLD&#39;</span>
-</span><span id="line-77"><span class="p">):</span>
-</span><span id="line-78"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Overlap Ra Dec.</span>
+</span><span id="line-35"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_overlap_ra_dec</span><span class="p">(</span>
+</span><span id="line-36">    <span class="n">dd</span><span class="p">,</span>
+</span><span id="line-37">    <span class="n">ra_key</span><span class="o">=</span><span class="s1">&#39;XWIN_WORLD&#39;</span><span class="p">,</span>
+</span><span id="line-38">    <span class="n">dec_key</span><span class="o">=</span><span class="s1">&#39;YWIN_WORLD&#39;</span>
+</span><span id="line-39"><span class="p">):</span>
+</span><span id="line-40"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Overlap Ra Dec.</span>
+</span><span id="line-41">
+</span><span id="line-42"><span class="sd">    Return mask corresponding to non-overlapping tile areas using</span>
+</span><span id="line-43"><span class="sd">    simple cuts in RA and Dec.</span>
+</span><span id="line-44">
+</span><span id="line-45"><span class="sd">    Parameters</span>
+</span><span id="line-46"><span class="sd">    ----------</span>
+</span><span id="line-47"><span class="sd">    dd : FITS.record</span>
+</span><span id="line-48"><span class="sd">        input data</span>
+</span><span id="line-49"><span class="sd">    ra_key : str, optional</span>
+</span><span id="line-50"><span class="sd">        key name for right ascension column, default is &#39;XWIN_WORLD&#39;</span>
+</span><span id="line-51"><span class="sd">    dec_key : str, optional</span>
+</span><span id="line-52"><span class="sd">        key name for declination column, default is &#39;YWIN_WORLD&#39;</span>
+</span><span id="line-53">
+</span><span id="line-54"><span class="sd">    Returns</span>
+</span><span id="line-55"><span class="sd">    -------</span>
+</span><span id="line-56"><span class="sd">    list of bool</span>
+</span><span id="line-57"><span class="sd">        mask where `True` indicates galaxy to retain, and</span>
+</span><span id="line-58"><span class="sd">        `False` being in overlapping region, to remove</span>
+</span><span id="line-59">
+</span><span id="line-60"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-61">    <span class="c1"># Unique set of tile IDs in data</span>
+</span><span id="line-62">    <span class="n">tile_ID_list</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;TILE_ID&#39;</span><span class="p">])</span>
+</span><span id="line-63">
+</span><span id="line-64">    <span class="c1"># Transform to string format</span>
+</span><span id="line-65">    <span class="n">tile_ID_str_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-66">    <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">tile_ID_list</span><span class="p">:</span>
+</span><span id="line-67">        <span class="n">tile_ID_str_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">ID</span><span class="si">:</span><span class="s1">07.3f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+</span><span id="line-68">
+</span><span id="line-69">    <span class="c1"># Extract integer numbers from tile IDs</span>
+</span><span id="line-70">    <span class="n">nix</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-71">    <span class="n">niy</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-72">    <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">tile_ID_str_list</span><span class="p">:</span>
+</span><span id="line-73">        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">get_tile_number</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span>
+</span><span id="line-74">        <span class="n">nix</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</span><span id="line-75">        <span class="n">niy</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+</span><span id="line-76">
+</span><span id="line-77">    <span class="c1"># Get RA and Dec coordinates of tile centers</span>
+</span><span id="line-78">    <span class="n">ra_cen</span><span class="p">,</span> <span class="n">dec_cen</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">get_tile_coord_from_nixy</span><span class="p">(</span><span class="n">nix</span><span class="p">,</span> <span class="n">niy</span><span class="p">)</span>
 </span><span id="line-79">
-</span><span id="line-80"><span class="sd">    Return mask corresponding to non-overlapping tile areas using</span>
-</span><span id="line-81"><span class="sd">    simple cuts in RA and Dec.</span>
-</span><span id="line-82">
-</span><span id="line-83"><span class="sd">    Parameters</span>
-</span><span id="line-84"><span class="sd">    ----------</span>
-</span><span id="line-85"><span class="sd">    dd : FITS.record</span>
-</span><span id="line-86"><span class="sd">        input data</span>
-</span><span id="line-87"><span class="sd">    ra_key : str, optional</span>
-</span><span id="line-88"><span class="sd">        key name for right ascension column, default is &#39;XWIN_WORLD&#39;</span>
-</span><span id="line-89"><span class="sd">    dec_key : str, optional</span>
-</span><span id="line-90"><span class="sd">        key name for declination column, default is &#39;YWIN_WORLD&#39;</span>
-</span><span id="line-91">
-</span><span id="line-92"><span class="sd">    Returns</span>
-</span><span id="line-93"><span class="sd">    -------</span>
-</span><span id="line-94"><span class="sd">    list of bool</span>
-</span><span id="line-95"><span class="sd">        mask where `True` indicates galaxy to retain, and</span>
-</span><span id="line-96"><span class="sd">        `False` being in overlapping region, to remove</span>
-</span><span id="line-97">
-</span><span id="line-98"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-99">    <span class="c1"># Unique set of tile IDs in data</span>
-</span><span id="line-100">    <span class="n">tile_ID_list</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;TILE_ID&#39;</span><span class="p">])</span>
+</span><span id="line-80">    <span class="c1"># Create limits on Dec by adding/subtracting half of the tile size</span>
+</span><span id="line-81">    <span class="n">delta_dec</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">Cfis</span><span class="p">()</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="s1">&#39;tile&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
+</span><span id="line-82">    <span class="n">dec_upper</span> <span class="o">=</span> <span class="n">dec_cen</span> <span class="o">+</span> <span class="n">delta_dec</span>
+</span><span id="line-83">    <span class="n">dec_lower</span> <span class="o">=</span> <span class="n">dec_cen</span> <span class="o">-</span> <span class="n">delta_dec</span>
+</span><span id="line-84">
+</span><span id="line-85">    <span class="c1"># Create mask for Dec coordinates</span>
+</span><span id="line-86">
+</span><span id="line-87">    <span class="c1"># Initialise global Dec mask</span>
+</span><span id="line-88">    <span class="n">mask_dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">),</span> <span class="kc">True</span><span class="p">)</span>
+</span><span id="line-89">
+</span><span id="line-90">    <span class="c1"># Loop over tiles and mask objects outside the Dec limits</span>
+</span><span id="line-91">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">tile_ID</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tile_ID_list</span><span class="p">):</span>
+</span><span id="line-92">
+</span><span id="line-93">        <span class="c1"># Get indices of galaxies on this tile ID</span>
+</span><span id="line-94">        <span class="n">idx_ID</span> <span class="o">=</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;TILE_ID&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">tile_ID</span><span class="p">)</span>
+</span><span id="line-95">
+</span><span id="line-96">        <span class="c1"># Set mask for this tile ID</span>
+</span><span id="line-97">        <span class="n">mask_dec_ID</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-98">            <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">dec_key</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">dec_upper</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</span><span id="line-99">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">dec_key</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">dec_lower</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</span><span id="line-100">        <span class="p">)</span>
 </span><span id="line-101">
-</span><span id="line-102">    <span class="c1"># Transform to string format</span>
-</span><span id="line-103">    <span class="n">tile_ID_str_list</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-104">    <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">tile_ID_list</span><span class="p">:</span>
-</span><span id="line-105">        <span class="n">tile_ID_str_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">ID</span><span class="si">:</span><span class="s1">07.3f</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-</span><span id="line-106">
-</span><span id="line-107">    <span class="c1"># Extract integer numbers from tile IDs</span>
-</span><span id="line-108">    <span class="n">nix</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-109">    <span class="n">niy</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-110">    <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">tile_ID_str_list</span><span class="p">:</span>
-</span><span id="line-111">        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">get_tile_number</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span>
-</span><span id="line-112">        <span class="n">nix</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-</span><span id="line-113">        <span class="n">niy</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
-</span><span id="line-114">
-</span><span id="line-115">    <span class="c1"># Get RA and Dec coordinates of tile centers</span>
-</span><span id="line-116">    <span class="n">ra_cen</span><span class="p">,</span> <span class="n">dec_cen</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">get_tile_coord_from_nixy</span><span class="p">(</span><span class="n">nix</span><span class="p">,</span> <span class="n">niy</span><span class="p">)</span>
-</span><span id="line-117">
-</span><span id="line-118">    <span class="c1"># Create limits on Dec by adding/subtracting half of the tile size</span>
-</span><span id="line-119">    <span class="n">delta_dec</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">Cfis</span><span class="p">()</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="s1">&#39;tile&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
-</span><span id="line-120">    <span class="n">dec_upper</span> <span class="o">=</span> <span class="n">dec_cen</span> <span class="o">+</span> <span class="n">delta_dec</span>
-</span><span id="line-121">    <span class="n">dec_lower</span> <span class="o">=</span> <span class="n">dec_cen</span> <span class="o">-</span> <span class="n">delta_dec</span>
-</span><span id="line-122">
-</span><span id="line-123">    <span class="c1"># Create mask for Dec coordinates</span>
-</span><span id="line-124">
-</span><span id="line-125">    <span class="c1"># Initialise global Dec mask</span>
-</span><span id="line-126">    <span class="n">mask_dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">),</span> <span class="kc">True</span><span class="p">)</span>
-</span><span id="line-127">
-</span><span id="line-128">    <span class="c1"># Loop over tiles and mask objects outside the Dec limits</span>
-</span><span id="line-129">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">tile_ID</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tile_ID_list</span><span class="p">):</span>
-</span><span id="line-130">
-</span><span id="line-131">        <span class="c1"># Get indices of galaxies on this tile ID</span>
-</span><span id="line-132">        <span class="n">idx_ID</span> <span class="o">=</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;TILE_ID&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">tile_ID</span><span class="p">)</span>
+</span><span id="line-102">        <span class="c1"># Apply to global mask</span>
+</span><span id="line-103">        <span class="n">mask_dec</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask_dec_ID</span>
+</span><span id="line-104">
+</span><span id="line-105">    <span class="c1"># Create limits on RA by finding half-point to neigbouring tiles</span>
+</span><span id="line-106">    <span class="n">ra_upper_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-107">    <span class="n">ra_lower_list</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-108">
+</span><span id="line-109">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">tile_ID</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tile_ID_str_list</span><span class="p">):</span>
+</span><span id="line-110">
+</span><span id="line-111">        <span class="c1"># Find tile ID towards increasing RA</span>
+</span><span id="line-112">        <span class="n">ID_upper</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">nix</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">niy</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">&#39;</span>
+</span><span id="line-113">        <span class="k">if</span> <span class="n">ID_upper</span> <span class="ow">in</span> <span class="n">tile_ID_str_list</span><span class="p">:</span>
+</span><span id="line-114">            <span class="c1"># If found: compute halfway RA</span>
+</span><span id="line-115">            <span class="n">idx_upper</span> <span class="o">=</span> <span class="n">tile_ID_str_list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">ID_upper</span><span class="p">)</span>
+</span><span id="line-116">            <span class="n">ra_upper</span> <span class="o">=</span> <span class="p">(</span><span class="n">ra_cen</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="n">ra_cen</span><span class="p">[</span><span class="n">idx_upper</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+</span><span id="line-117">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-118">            <span class="c1"># If not: no cut desired, set to large value</span>
+</span><span id="line-119">            <span class="n">ra_upper</span> <span class="o">=</span> <span class="mi">370</span> <span class="o">*</span> <span class="n">units</span><span class="o">.</span><span class="n">deg</span>
+</span><span id="line-120">
+</span><span id="line-121">        <span class="c1"># Add to list of cuts</span>
+</span><span id="line-122">        <span class="n">ra_upper_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ra_upper</span><span class="p">)</span>
+</span><span id="line-123">
+</span><span id="line-124">        <span class="c1"># Repeat towards decreasing RA</span>
+</span><span id="line-125">        <span class="n">ID_lower</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">nix</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">niy</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">&#39;</span>
+</span><span id="line-126">        <span class="k">if</span> <span class="n">ID_lower</span> <span class="ow">in</span> <span class="n">tile_ID_str_list</span><span class="p">:</span>
+</span><span id="line-127">            <span class="n">idx_lower</span> <span class="o">=</span> <span class="n">tile_ID_str_list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">ID_lower</span><span class="p">)</span>
+</span><span id="line-128">            <span class="n">ra_lower</span> <span class="o">=</span> <span class="p">(</span><span class="n">ra_cen</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="n">ra_cen</span><span class="p">[</span><span class="n">idx_lower</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+</span><span id="line-129">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-130">            <span class="n">ra_lower</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">units</span><span class="o">.</span><span class="n">deg</span>
+</span><span id="line-131">
+</span><span id="line-132">        <span class="n">ra_lower_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ra_lower</span><span class="p">)</span>
 </span><span id="line-133">
-</span><span id="line-134">        <span class="c1"># Set mask for this tile ID</span>
-</span><span id="line-135">        <span class="n">mask_dec_ID</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-136">            <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">dec_key</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">dec_upper</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-</span><span id="line-137">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">dec_key</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">dec_lower</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-</span><span id="line-138">        <span class="p">)</span>
-</span><span id="line-139">
-</span><span id="line-140">        <span class="c1"># Apply to global mask</span>
-</span><span id="line-141">        <span class="n">mask_dec</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask_dec_ID</span>
-</span><span id="line-142">
-</span><span id="line-143">    <span class="c1"># Create limits on RA by finding half-point to neigbouring tiles</span>
-</span><span id="line-144">    <span class="n">ra_upper_list</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-145">    <span class="n">ra_lower_list</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-146">
-</span><span id="line-147">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">tile_ID</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tile_ID_str_list</span><span class="p">):</span>
-</span><span id="line-148">
-</span><span id="line-149">        <span class="c1"># Find tile ID towards increasing RA</span>
-</span><span id="line-150">        <span class="n">ID_upper</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">nix</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">niy</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">&#39;</span>
-</span><span id="line-151">        <span class="k">if</span> <span class="n">ID_upper</span> <span class="ow">in</span> <span class="n">tile_ID_str_list</span><span class="p">:</span>
-</span><span id="line-152">            <span class="c1"># If found: compute halfway RA</span>
-</span><span id="line-153">            <span class="n">idx_upper</span> <span class="o">=</span> <span class="n">tile_ID_str_list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">ID_upper</span><span class="p">)</span>
-</span><span id="line-154">            <span class="n">ra_upper</span> <span class="o">=</span> <span class="p">(</span><span class="n">ra_cen</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="n">ra_cen</span><span class="p">[</span><span class="n">idx_upper</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
-</span><span id="line-155">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-156">            <span class="c1"># If not: no cut desired, set to large value</span>
-</span><span id="line-157">            <span class="n">ra_upper</span> <span class="o">=</span> <span class="mi">370</span> <span class="o">*</span> <span class="n">units</span><span class="o">.</span><span class="n">deg</span>
-</span><span id="line-158">
-</span><span id="line-159">        <span class="c1"># Add to list of cuts</span>
-</span><span id="line-160">        <span class="n">ra_upper_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ra_upper</span><span class="p">)</span>
-</span><span id="line-161">
-</span><span id="line-162">        <span class="c1"># Repeat towards decreasing RA</span>
-</span><span id="line-163">        <span class="n">ID_lower</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">nix</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">niy</span><span class="p">[</span><span class="n">idx</span><span class="p">])</span><span class="si">:</span><span class="s1">03d</span><span class="si">}</span><span class="s1">&#39;</span>
-</span><span id="line-164">        <span class="k">if</span> <span class="n">ID_lower</span> <span class="ow">in</span> <span class="n">tile_ID_str_list</span><span class="p">:</span>
-</span><span id="line-165">            <span class="n">idx_lower</span> <span class="o">=</span> <span class="n">tile_ID_str_list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">ID_lower</span><span class="p">)</span>
-</span><span id="line-166">            <span class="n">ra_lower</span> <span class="o">=</span> <span class="p">(</span><span class="n">ra_cen</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+</span> <span class="n">ra_cen</span><span class="p">[</span><span class="n">idx_lower</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
-</span><span id="line-167">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-168">            <span class="n">ra_lower</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">units</span><span class="o">.</span><span class="n">deg</span>
-</span><span id="line-169">
-</span><span id="line-170">        <span class="n">ra_lower_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ra_lower</span><span class="p">)</span>
-</span><span id="line-171">
-</span><span id="line-172">    <span class="c1"># See above for Dec: Repeat for RA</span>
-</span><span id="line-173">    <span class="n">mask_ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">),</span> <span class="kc">True</span><span class="p">)</span>
-</span><span id="line-174">
-</span><span id="line-175">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">tile_ID</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tile_ID_list</span><span class="p">):</span>
-</span><span id="line-176">        <span class="n">idx_ID</span> <span class="o">=</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;TILE_ID&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">tile_ID</span><span class="p">)</span>
-</span><span id="line-177">        <span class="n">mask_ra_ID</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-178">            <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">ra_key</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">ra_upper_list</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-</span><span id="line-179">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">ra_key</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">ra_lower_list</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-</span><span id="line-180">        <span class="p">)</span>
-</span><span id="line-181">        <span class="n">mask_ra</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask_ra_ID</span>
-</span><span id="line-182">
-</span><span id="line-183">    <span class="k">return</span> <span class="n">mask_dec</span> <span class="o">&amp;</span> <span class="n">mask_ra</span></div>
+</span><span id="line-134">    <span class="c1"># See above for Dec: Repeat for RA</span>
+</span><span id="line-135">    <span class="n">mask_ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">),</span> <span class="kc">True</span><span class="p">)</span>
+</span><span id="line-136">
+</span><span id="line-137">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">tile_ID</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tile_ID_list</span><span class="p">):</span>
+</span><span id="line-138">        <span class="n">idx_ID</span> <span class="o">=</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;TILE_ID&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">tile_ID</span><span class="p">)</span>
+</span><span id="line-139">        <span class="n">mask_ra_ID</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-140">            <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">ra_key</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">ra_upper_list</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</span><span id="line-141">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">][</span><span class="n">ra_key</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">ra_lower_list</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+</span><span id="line-142">        <span class="p">)</span>
+</span><span id="line-143">        <span class="n">mask_ra</span><span class="p">[</span><span class="n">idx_ID</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask_ra_ID</span>
+</span><span id="line-144">
+</span><span id="line-145">    <span class="k">return</span> <span class="n">mask_dec</span> <span class="o">&amp;</span> <span class="n">mask_ra</span></div>
 
-</span><span id="line-184">
-</span><span id="line-185">
+</span><span id="line-146">
+</span><span id="line-147">
 <div class="viewcode-block" id="classification_galaxy_base">
 <a class="viewcode-back" href="../../sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_base">[docs]</a>
-</span><span id="line-186"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_base</span><span class="p">(</span>
-</span><span id="line-187">    <span class="n">dd</span><span class="p">,</span>
-</span><span id="line-188">    <span class="n">cut_overlap</span><span class="p">,</span>
-</span><span id="line-189">    <span class="n">gal_mag_bright</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
-</span><span id="line-190">    <span class="n">gal_mag_faint</span><span class="o">=</span><span class="mi">26</span><span class="p">,</span>
-</span><span id="line-191">    <span class="n">flags_keep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-192">    <span class="n">n_epoch_min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-</span><span id="line-193">    <span class="n">do_spread_model</span><span class="o">=</span><span class="kc">True</span>
-</span><span id="line-194"><span class="p">):</span>
-</span><span id="line-195"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Base.</span>
+</span><span id="line-148"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_base</span><span class="p">(</span>
+</span><span id="line-149">    <span class="n">dd</span><span class="p">,</span>
+</span><span id="line-150">    <span class="n">cut_overlap</span><span class="p">,</span>
+</span><span id="line-151">    <span class="n">gal_mag_bright</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="line-152">    <span class="n">gal_mag_faint</span><span class="o">=</span><span class="mi">26</span><span class="p">,</span>
+</span><span id="line-153">    <span class="n">flags_keep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-154">    <span class="n">n_epoch_min</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="line-155">    <span class="n">do_spread_model</span><span class="o">=</span><span class="kc">True</span>
+</span><span id="line-156"><span class="p">):</span>
+</span><span id="line-157"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Base.</span>
+</span><span id="line-158">
+</span><span id="line-159"><span class="sd">    Return mask corresponding to basic classification for galaxies.</span>
+</span><span id="line-160">
+</span><span id="line-161"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-162">    <span class="k">if</span> <span class="n">do_spread_model</span><span class="p">:</span>
+</span><span id="line-163">        <span class="c1"># spread model class, add two times the uncertainty to be conservative</span>
+</span><span id="line-164">        <span class="n">sm_classif</span> <span class="o">=</span> <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREAD_MODEL&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREADERR_MODEL&#39;</span><span class="p">]</span>
+</span><span id="line-165">        <span class="n">cut_sm</span> <span class="o">=</span> <span class="n">sm_classif</span> <span class="o">&gt;</span> <span class="mf">0.0035</span>
+</span><span id="line-166">
+</span><span id="line-167">        <span class="n">cut_sm_all</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-168">            <span class="n">cut_sm</span>
+</span><span id="line-169">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREAD_MODEL&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="line-170">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREAD_MODEL&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.03</span><span class="p">)</span>
+</span><span id="line-171">        <span class="p">)</span>
+</span><span id="line-172">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-173">        <span class="c1"># Do not use spread model</span>
+</span><span id="line-174">        <span class="n">cut_sm_all</span> <span class="o">=</span> <span class="kc">True</span>
+</span><span id="line-175">
+</span><span id="line-176">    <span class="c1"># SExtractor flags</span>
+</span><span id="line-177">    <span class="c1"># Keep some flags if specified</span>
+</span><span id="line-178">    <span class="k">if</span> <span class="n">flags_keep</span><span class="p">:</span>
+</span><span id="line-179">
+</span><span id="line-180">        <span class="c1"># Check whether flags are powers of 2</span>
+</span><span id="line-181">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="nb">bin</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">flags_keep</span><span class="p">]):</span>
+</span><span id="line-182">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Flag values in &quot;flags_keep&quot; not powers of 2&#39;</span><span class="p">)</span>
+</span><span id="line-183">
+</span><span id="line-184">        <span class="n">cut_flags</span> <span class="o">=</span> <span class="n">bitmask</span><span class="o">.</span><span class="n">bitfield_to_boolean_mask</span><span class="p">(</span>
+</span><span id="line-185">            <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;FLAGS&#39;</span><span class="p">],</span>
+</span><span id="line-186">            <span class="n">good_mask_value</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-187">            <span class="n">ignore_flags</span><span class="o">=</span><span class="n">flags_keep</span><span class="p">,</span>
+</span><span id="line-188">            <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+</span><span id="line-189">        <span class="p">)</span>
+</span><span id="line-190">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-191">        <span class="n">cut_flags</span> <span class="o">=</span> <span class="n">bitmask</span><span class="o">.</span><span class="n">bitfield_to_boolean_mask</span><span class="p">(</span>
+</span><span id="line-192">            <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;FLAGS&#39;</span><span class="p">],</span>
+</span><span id="line-193">            <span class="n">good_mask_value</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-194">            <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+</span><span id="line-195">        <span class="p">)</span>
 </span><span id="line-196">
-</span><span id="line-197"><span class="sd">    Return mask corresponding to basic classification for galaxies.</span>
-</span><span id="line-198">
-</span><span id="line-199"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-200">    <span class="k">if</span> <span class="n">do_spread_model</span><span class="p">:</span>
-</span><span id="line-201">        <span class="c1"># spread model class, add two times the uncertainty to be conservative</span>
-</span><span id="line-202">        <span class="n">sm_classif</span> <span class="o">=</span> <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREAD_MODEL&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREADERR_MODEL&#39;</span><span class="p">]</span>
-</span><span id="line-203">        <span class="n">cut_sm</span> <span class="o">=</span> <span class="n">sm_classif</span> <span class="o">&gt;</span> <span class="mf">0.0035</span>
-</span><span id="line-204">
-</span><span id="line-205">        <span class="n">cut_sm_all</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-206">            <span class="n">cut_sm</span>
-</span><span id="line-207">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREAD_MODEL&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-208">            <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;SPREAD_MODEL&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mf">0.03</span><span class="p">)</span>
-</span><span id="line-209">        <span class="p">)</span>
-</span><span id="line-210">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-211">        <span class="c1"># Do not use spread model</span>
-</span><span id="line-212">        <span class="n">cut_sm_all</span> <span class="o">=</span> <span class="kc">True</span>
-</span><span id="line-213">
-</span><span id="line-214">    <span class="c1"># SExtractor flags</span>
-</span><span id="line-215">    <span class="c1"># Keep some flags if specified</span>
-</span><span id="line-216">    <span class="k">if</span> <span class="n">flags_keep</span><span class="p">:</span>
-</span><span id="line-217">
-</span><span id="line-218">        <span class="c1"># Check whether flags are powers of 2</span>
-</span><span id="line-219">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">([</span><span class="nb">bin</span><span class="p">(</span><span class="n">flag</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">flag</span> <span class="ow">in</span> <span class="n">flags_keep</span><span class="p">]):</span>
-</span><span id="line-220">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;Flag values in &quot;flags_keep&quot; not powers of 2&#39;</span><span class="p">)</span>
-</span><span id="line-221">
-</span><span id="line-222">        <span class="n">cut_flags</span> <span class="o">=</span> <span class="n">bitmask</span><span class="o">.</span><span class="n">bitfield_to_boolean_mask</span><span class="p">(</span>
-</span><span id="line-223">            <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;FLAGS&#39;</span><span class="p">],</span>
-</span><span id="line-224">            <span class="n">good_mask_value</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-225">            <span class="n">ignore_flags</span><span class="o">=</span><span class="n">flags_keep</span><span class="p">,</span>
-</span><span id="line-226">            <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
-</span><span id="line-227">        <span class="p">)</span>
-</span><span id="line-228">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-229">        <span class="n">cut_flags</span> <span class="o">=</span> <span class="n">bitmask</span><span class="o">.</span><span class="n">bitfield_to_boolean_mask</span><span class="p">(</span>
-</span><span id="line-230">            <span class="n">dd</span><span class="p">[</span><span class="s1">&#39;FLAGS&#39;</span><span class="p">],</span>
-</span><span id="line-231">            <span class="n">good_mask_value</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-</span><span id="line-232">            <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
-</span><span id="line-233">        <span class="p">)</span>
-</span><span id="line-234">
-</span><span id="line-235">    <span class="n">cut_common</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-236">        <span class="n">cut_overlap</span>
-</span><span id="line-237">        <span class="o">&amp;</span> <span class="n">cut_flags</span>
-</span><span id="line-238">        <span class="o">&amp;</span> <span class="n">cut_sm_all</span>
-</span><span id="line-239">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;MAG_AUTO&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">gal_mag_faint</span><span class="p">)</span>
-</span><span id="line-240">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;MAG_AUTO&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">gal_mag_bright</span><span class="p">)</span>
-</span><span id="line-241">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;IMAFLAGS_ISO&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-242">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;N_EPOCH&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">n_epoch_min</span><span class="p">)</span>
-</span><span id="line-243">    <span class="p">)</span>
-</span><span id="line-244">
-</span><span id="line-245">    <span class="k">return</span> <span class="n">cut_common</span></div>
+</span><span id="line-197">    <span class="n">cut_common</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-198">        <span class="n">cut_overlap</span>
+</span><span id="line-199">        <span class="o">&amp;</span> <span class="n">cut_flags</span>
+</span><span id="line-200">        <span class="o">&amp;</span> <span class="n">cut_sm_all</span>
+</span><span id="line-201">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;MAG_AUTO&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">gal_mag_faint</span><span class="p">)</span>
+</span><span id="line-202">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;MAG_AUTO&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">gal_mag_bright</span><span class="p">)</span>
+</span><span id="line-203">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;IMAFLAGS_ISO&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="line-204">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;N_EPOCH&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">n_epoch_min</span><span class="p">)</span>
+</span><span id="line-205">    <span class="p">)</span>
+</span><span id="line-206">
+</span><span id="line-207">    <span class="k">return</span> <span class="n">cut_common</span></div>
 
-</span><span id="line-246">
-</span><span id="line-247">
+</span><span id="line-208">
+</span><span id="line-209">
 <div class="viewcode-block" id="classification_galaxy_ngmix">
 <a class="viewcode-back" href="../../sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_ngmix">[docs]</a>
-</span><span id="line-248"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_ngmix</span><span class="p">(</span>
-</span><span id="line-249">    <span class="n">dd</span><span class="p">,</span>
-</span><span id="line-250">    <span class="n">cut_common</span><span class="p">,</span>
-</span><span id="line-251">    <span class="n">stats_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-252">    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-253"><span class="p">):</span>
-</span><span id="line-254"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Ngmx.</span>
-</span><span id="line-255">
-</span><span id="line-256"><span class="sd">    Return mask corresponding to ngmix classification of galaxies</span>
-</span><span id="line-257"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-258">    <span class="n">m_gal_ngmix</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-259">        <span class="n">cut_common</span>
-</span><span id="line-260">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;NGMIX_MCAL_FLAGS&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-261">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;NGMIX_ELL_PSFo_NOSHEAR&#39;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">10</span><span class="p">)</span>
-</span><span id="line-262">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;NGMIX_MOM_FAIL&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
-</span><span id="line-263">    <span class="p">)</span>
-</span><span id="line-264">
-</span><span id="line-265">    <span class="n">n_gal_ngmix</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">m_gal_ngmix</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
-</span><span id="line-266">    <span class="n">n_tot</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">)</span>
-</span><span id="line-267">
-</span><span id="line-268">    <span class="k">if</span> <span class="n">stats_file</span><span class="p">:</span>
-</span><span id="line-269">        <span class="n">io</span><span class="o">.</span><span class="n">print_ratio</span><span class="p">(</span>
-</span><span id="line-270">            <span class="s1">&#39;ngmix: Objects selected as galaxies&#39;</span><span class="p">,</span>
-</span><span id="line-271">            <span class="n">n_gal_ngmix</span><span class="p">,</span>
-</span><span id="line-272">            <span class="n">n_tot</span><span class="p">,</span>
-</span><span id="line-273">            <span class="n">stats_file</span><span class="p">,</span>
-</span><span id="line-274">            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
-</span><span id="line-275">
-</span><span id="line-276">    <span class="k">return</span> <span class="n">m_gal_ngmix</span></div>
+</span><span id="line-210"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_ngmix</span><span class="p">(</span>
+</span><span id="line-211">    <span class="n">dd</span><span class="p">,</span>
+</span><span id="line-212">    <span class="n">cut_common</span><span class="p">,</span>
+</span><span id="line-213">    <span class="n">stats_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-214">    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-215"><span class="p">):</span>
+</span><span id="line-216"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Ngmx.</span>
+</span><span id="line-217">
+</span><span id="line-218"><span class="sd">    Return mask corresponding to ngmix classification of galaxies</span>
+</span><span id="line-219"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-220">    <span class="n">m_gal_ngmix</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-221">        <span class="n">cut_common</span>
+</span><span id="line-222">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;NGMIX_MCAL_FLAGS&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="line-223">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;NGMIX_ELL_PSFo_NOSHEAR&#39;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="line-224">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;NGMIX_MOM_FAIL&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span id="line-225">    <span class="p">)</span>
+</span><span id="line-226">
+</span><span id="line-227">    <span class="n">n_gal_ngmix</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">m_gal_ngmix</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="line-228">    <span class="n">n_tot</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">)</span>
+</span><span id="line-229">
+</span><span id="line-230">    <span class="k">if</span> <span class="n">stats_file</span><span class="p">:</span>
+</span><span id="line-231">        <span class="n">io</span><span class="o">.</span><span class="n">print_ratio</span><span class="p">(</span>
+</span><span id="line-232">            <span class="s1">&#39;ngmix: Objects selected as galaxies&#39;</span><span class="p">,</span>
+</span><span id="line-233">            <span class="n">n_gal_ngmix</span><span class="p">,</span>
+</span><span id="line-234">            <span class="n">n_tot</span><span class="p">,</span>
+</span><span id="line-235">            <span class="n">stats_file</span><span class="p">,</span>
+</span><span id="line-236">            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+</span><span id="line-237">
+</span><span id="line-238">    <span class="k">return</span> <span class="n">m_gal_ngmix</span></div>
 
-</span><span id="line-277">
-</span><span id="line-278">
+</span><span id="line-239">
+</span><span id="line-240">
 <div class="viewcode-block" id="classification_galaxy_galsim">
 <a class="viewcode-back" href="../../sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_galsim">[docs]</a>
-</span><span id="line-279"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_galsim</span><span class="p">(</span><span class="n">dd</span><span class="p">,</span> <span class="n">cut_common</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-280"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Galsim.</span>
-</span><span id="line-281">
-</span><span id="line-282"><span class="sd">    Return mask corresponding to galsim classification of galaxies</span>
-</span><span id="line-283">
-</span><span id="line-284"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-285">    <span class="n">m_gal_galsim</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-286">        <span class="n">cut_common</span>
-</span><span id="line-287">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;GALSIM_PSF_ELL_ORIGINAL_PSF&#39;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">10</span><span class="p">)</span>
-</span><span id="line-288">    <span class="p">)</span>
-</span><span id="line-289">
-</span><span id="line-290">    <span class="n">n_gal_galsim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">m_gal_galsim</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
-</span><span id="line-291">    <span class="n">n_tot</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">)</span>
-</span><span id="line-292">
-</span><span id="line-293">    <span class="n">io</span><span class="o">.</span><span class="n">print_ratio</span><span class="p">(</span>
-</span><span id="line-294">        <span class="s1">&#39;galsim: Objects selected as galaxies&#39;</span><span class="p">,</span>
-</span><span id="line-295">        <span class="n">n_gal_galsim</span><span class="p">,</span>
-</span><span id="line-296">        <span class="n">n_tot</span><span class="p">,</span>
-</span><span id="line-297">        <span class="n">stats_file</span><span class="p">,</span>
-</span><span id="line-298">        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
-</span><span id="line-299">
-</span><span id="line-300">    <span class="k">return</span> <span class="n">m_gal_galsim</span></div>
+</span><span id="line-241"><span class="k">def</span><span class="w"> </span><span class="nf">classification_galaxy_galsim</span><span class="p">(</span><span class="n">dd</span><span class="p">,</span> <span class="n">cut_common</span><span class="p">,</span> <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-242"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Classification Galaxy Galsim.</span>
+</span><span id="line-243">
+</span><span id="line-244"><span class="sd">    Return mask corresponding to galsim classification of galaxies</span>
+</span><span id="line-245">
+</span><span id="line-246"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-247">    <span class="n">m_gal_galsim</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-248">        <span class="n">cut_common</span>
+</span><span id="line-249">        <span class="o">&amp;</span> <span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s1">&#39;GALSIM_PSF_ELL_ORIGINAL_PSF&#39;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="line-250">    <span class="p">)</span>
+</span><span id="line-251">
+</span><span id="line-252">    <span class="n">n_gal_galsim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">m_gal_galsim</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="line-253">    <span class="n">n_tot</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dd</span><span class="p">)</span>
+</span><span id="line-254">
+</span><span id="line-255">    <span class="n">io</span><span class="o">.</span><span class="n">print_ratio</span><span class="p">(</span>
+</span><span id="line-256">        <span class="s1">&#39;galsim: Objects selected as galaxies&#39;</span><span class="p">,</span>
+</span><span id="line-257">        <span class="n">n_gal_galsim</span><span class="p">,</span>
+</span><span id="line-258">        <span class="n">n_tot</span><span class="p">,</span>
+</span><span id="line-259">        <span class="n">stats_file</span><span class="p">,</span>
+</span><span id="line-260">        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+</span><span id="line-261">
+</span><span id="line-262">    <span class="k">return</span> <span class="n">m_gal_galsim</span></div>
 
-</span><span id="line-301">
-</span><span id="line-302">
+</span><span id="line-263">
+</span><span id="line-264">
 <div class="viewcode-block" id="mask_overlap">
 <a class="viewcode-back" href="../../sp_validation.galaxy.html#sp_validation.galaxy.mask_overlap">[docs]</a>
-</span><span id="line-303"><span class="k">def</span><span class="w"> </span><span class="nf">mask_overlap</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">tile_id_in</span><span class="p">,</span> <span class="n">region_file_path</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
-</span><span id="line-304"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Mask Overlap.</span>
-</span><span id="line-305">
-</span><span id="line-306"><span class="sd">    ...</span>
+</span><span id="line-265"><span class="k">def</span><span class="w"> </span><span class="nf">mask_overlap</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">tile_id_in</span><span class="p">,</span> <span class="n">region_file_path</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+</span><span id="line-266"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Mask Overlap.</span>
+</span><span id="line-267">
+</span><span id="line-268"><span class="sd">    ...</span>
+</span><span id="line-269">
+</span><span id="line-270"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-271">
+</span><span id="line-272">    <span class="k">def</span><span class="w"> </span><span class="nf">get_tile_wcs_new</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">):</span>
+</span><span id="line-273"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Get tile WCS.</span>
+</span><span id="line-274">
+</span><span id="line-275"><span class="sd">        Create an astropy.wcs.WCS object from the name of the tile.</span>
+</span><span id="line-276">
+</span><span id="line-277"><span class="sd">        Parameters</span>
+</span><span id="line-278"><span class="sd">        ----------</span>
+</span><span id="line-279"><span class="sd">        xxx : int</span>
+</span><span id="line-280"><span class="sd">            First 3 numbers in the tile name.</span>
+</span><span id="line-281"><span class="sd">        yyy : int</span>
+</span><span id="line-282"><span class="sd">            Last 3 numbers in the tile name.</span>
+</span><span id="line-283">
+</span><span id="line-284"><span class="sd">        Returns</span>
+</span><span id="line-285"><span class="sd">        -------</span>
+</span><span id="line-286"><span class="sd">        astropy.wcs.WCS</span>
+</span><span id="line-287"><span class="sd">            WCS for the tile.</span>
+</span><span id="line-288">
+</span><span id="line-289"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-290">        <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">get_tile_coord_from_nixy</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">)</span>
+</span><span id="line-291">
+</span><span id="line-292">        <span class="n">w</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">naxis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="line-293">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra</span><span class="o">.</span><span class="n">deg</span><span class="p">,</span> <span class="n">dec</span><span class="o">.</span><span class="n">deg</span><span class="p">])</span>
+</span><span id="line-294">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">])</span>
+</span><span id="line-295">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+</span><span id="line-296">            <span class="p">[[</span><span class="mf">0.187</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.187</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">]]</span>
+</span><span id="line-297">        <span class="p">)</span>
+</span><span id="line-298">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">ctype</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;RA---TAN&#39;</span><span class="p">,</span> <span class="s1">&#39;DEC--TAN&#39;</span><span class="p">]</span>
+</span><span id="line-299">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cunit</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;deg&#39;</span><span class="p">,</span> <span class="s1">&#39;deg&#39;</span><span class="p">]</span>
+</span><span id="line-300">        <span class="n">w</span><span class="o">.</span><span class="n">_naxis</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">]</span>
+</span><span id="line-301">
+</span><span id="line-302">        <span class="k">return</span> <span class="n">w</span>
+</span><span id="line-303">
+</span><span id="line-304">    <span class="k">def</span><span class="w"> </span><span class="nf">get_tile_wcs</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">):</span>
+</span><span id="line-305">        <span class="n">dec</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">yyy</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">90</span>
+</span><span id="line-306">        <span class="n">ra</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xxx</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">dec</span><span class="p">))</span>
 </span><span id="line-307">
-</span><span id="line-308"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-309">
-</span><span id="line-310">    <span class="k">def</span><span class="w"> </span><span class="nf">get_tile_wcs_new</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">):</span>
-</span><span id="line-311"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Get tile WCS.</span>
-</span><span id="line-312">
-</span><span id="line-313"><span class="sd">        Create an astropy.wcs.WCS object from the name of the tile.</span>
-</span><span id="line-314">
-</span><span id="line-315"><span class="sd">        Parameters</span>
-</span><span id="line-316"><span class="sd">        ----------</span>
-</span><span id="line-317"><span class="sd">        xxx : int</span>
-</span><span id="line-318"><span class="sd">            First 3 numbers in the tile name.</span>
-</span><span id="line-319"><span class="sd">        yyy : int</span>
-</span><span id="line-320"><span class="sd">            Last 3 numbers in the tile name.</span>
-</span><span id="line-321">
-</span><span id="line-322"><span class="sd">        Returns</span>
-</span><span id="line-323"><span class="sd">        -------</span>
-</span><span id="line-324"><span class="sd">        astropy.wcs.WCS</span>
-</span><span id="line-325"><span class="sd">            WCS for the tile.</span>
-</span><span id="line-326">
-</span><span id="line-327"><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="line-328">        <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span> <span class="o">=</span> <span class="n">cfis</span><span class="o">.</span><span class="n">get_tile_coord_from_nixy</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">)</span>
-</span><span id="line-329">
-</span><span id="line-330">        <span class="n">w</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">naxis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-</span><span id="line-331">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">ra</span><span class="o">.</span><span class="n">deg</span><span class="p">,</span> <span class="n">dec</span><span class="o">.</span><span class="n">deg</span><span class="p">])</span>
-</span><span id="line-332">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">5000</span><span class="p">,</span> <span class="mi">5000</span><span class="p">])</span>
-</span><span id="line-333">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cd</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-</span><span id="line-334">            <span class="p">[[</span><span class="mf">0.187</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.187</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">]]</span>
-</span><span id="line-335">        <span class="p">)</span>
-</span><span id="line-336">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">ctype</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;RA---TAN&#39;</span><span class="p">,</span> <span class="s1">&#39;DEC--TAN&#39;</span><span class="p">]</span>
-</span><span id="line-337">        <span class="n">w</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cunit</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;deg&#39;</span><span class="p">,</span> <span class="s1">&#39;deg&#39;</span><span class="p">]</span>
-</span><span id="line-338">        <span class="n">w</span><span class="o">.</span><span class="n">_naxis</span> <span class="o">=</span> <span class="p">[</span><span class="mi">10000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">]</span>
-</span><span id="line-339">
-</span><span id="line-340">        <span class="k">return</span> <span class="n">w</span>
-</span><span id="line-341">
-</span><span id="line-342">    <span class="k">def</span><span class="w"> </span><span class="nf">get_tile_wcs</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">):</span>
-</span><span id="line-343">        <span class="n">dec</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">yyy</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">90</span>
-</span><span id="line-344">        <span class="n">ra</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">xxx</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">deg2rad</span><span class="p">(</span><span class="n">dec</span><span class="p">))</span>
+</span><span id="line-308">        <span class="n">new_wcs</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">naxis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="line-309">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">ctype</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;RA---TAN&#39;</span><span class="p">,</span> <span class="s1">&#39;DEC--TAN&#39;</span><span class="p">]</span>
+</span><span id="line-310">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cunit</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;deg     &#39;</span><span class="p">,</span> <span class="s1">&#39;deg     &#39;</span><span class="p">]</span>
+</span><span id="line-311">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.000000000000E+03</span><span class="p">,</span> <span class="mf">5.000000000000E+03</span><span class="p">]</span>
+</span><span id="line-312">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">]</span>
+</span><span id="line-313">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cd</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-314">            <span class="p">[</span><span class="o">-</span><span class="mf">5.160234650248E-05</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span>
+</span><span id="line-315">            <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">5.160234650248E-05</span><span class="p">]</span>
+</span><span id="line-316">        <span class="p">]</span>
+</span><span id="line-317">
+</span><span id="line-318">        <span class="k">return</span> <span class="n">new_wcs</span>
+</span><span id="line-319">
+</span><span id="line-320">    <span class="k">def</span><span class="w"> </span><span class="nf">runner</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">all_tiles_id</span><span class="p">,</span> <span class="n">all_tiles_ra</span><span class="p">,</span> <span class="n">all_tiles_dec</span><span class="p">):</span>
+</span><span id="line-321">        <span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d+&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\s&#39;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;text&#39;</span><span class="p">])[</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="line-322">        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">all_tiles_id</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="n">xxx</span><span class="p">)</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">yyy</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
+</span><span id="line-323">        <span class="n">tile_points</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">SkyCoord</span><span class="p">(</span>
+</span><span id="line-324">            <span class="n">all_tiles_ra</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span>
+</span><span id="line-325">            <span class="n">all_tiles_dec</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span>
+</span><span id="line-326">            <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;deg&#39;</span><span class="p">,</span>
+</span><span id="line-327">        <span class="p">)</span>
+</span><span id="line-328">        <span class="n">m_cont</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">tile_points</span><span class="p">,</span> <span class="n">get_tile_wcs</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">))</span>
+</span><span id="line-329">        <span class="n">m_not_cont</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">m_cont</span><span class="p">)</span>
+</span><span id="line-330">
+</span><span id="line-331">        <span class="k">return</span> <span class="n">m_not_cont</span><span class="p">,</span> <span class="n">idx</span>
+</span><span id="line-332">
+</span><span id="line-333">    <span class="n">tile_id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">tile_id_in</span><span class="p">)</span>
+</span><span id="line-334">    <span class="n">tile_ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">ra</span><span class="p">)</span>
+</span><span id="line-335">    <span class="n">tile_dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span>
+</span><span id="line-336">
+</span><span id="line-337">    <span class="n">all_regions</span> <span class="o">=</span> <span class="n">regions</span><span class="o">.</span><span class="n">Regions</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">region_file_path</span><span class="p">)</span>
+</span><span id="line-338">
+</span><span id="line-339">    <span class="n">res</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;loky&#39;</span><span class="p">)(</span><span class="n">delayed</span><span class="p">(</span><span class="n">runner</span><span class="p">)(</span>
+</span><span id="line-340">        <span class="n">r</span><span class="p">,</span>
+</span><span id="line-341">        <span class="n">tile_id</span><span class="p">,</span>
+</span><span id="line-342">        <span class="n">tile_ra</span><span class="p">,</span>
+</span><span id="line-343">        <span class="n">tile_dec</span>
+</span><span id="line-344">    <span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">all_regions</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">all_regions</span><span class="p">)))</span>
 </span><span id="line-345">
-</span><span id="line-346">        <span class="n">new_wcs</span> <span class="o">=</span> <span class="n">WCS</span><span class="p">(</span><span class="n">naxis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-</span><span id="line-347">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">ctype</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;RA---TAN&#39;</span><span class="p">,</span> <span class="s1">&#39;DEC--TAN&#39;</span><span class="p">]</span>
-</span><span id="line-348">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cunit</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;deg     &#39;</span><span class="p">,</span> <span class="s1">&#39;deg     &#39;</span><span class="p">]</span>
-</span><span id="line-349">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crpix</span> <span class="o">=</span> <span class="p">[</span><span class="mf">5.000000000000E+03</span><span class="p">,</span> <span class="mf">5.000000000000E+03</span><span class="p">]</span>
-</span><span id="line-350">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">crval</span> <span class="o">=</span> <span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">]</span>
-</span><span id="line-351">        <span class="n">new_wcs</span><span class="o">.</span><span class="n">wcs</span><span class="o">.</span><span class="n">cd</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-352">            <span class="p">[</span><span class="o">-</span><span class="mf">5.160234650248E-05</span><span class="p">,</span> <span class="mf">0.</span><span class="p">],</span>
-</span><span id="line-353">            <span class="p">[</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">5.160234650248E-05</span><span class="p">]</span>
-</span><span id="line-354">        <span class="p">]</span>
-</span><span id="line-355">
-</span><span id="line-356">        <span class="k">return</span> <span class="n">new_wcs</span>
-</span><span id="line-357">
-</span><span id="line-358">    <span class="k">def</span><span class="w"> </span><span class="nf">runner</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">all_tiles_id</span><span class="p">,</span> <span class="n">all_tiles_ra</span><span class="p">,</span> <span class="n">all_tiles_dec</span><span class="p">):</span>
-</span><span id="line-359">        <span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\d+&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\s&#39;</span><span class="p">,</span> <span class="n">r</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s1">&#39;text&#39;</span><span class="p">])[</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="line-360">        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">all_tiles_id</span> <span class="o">==</span> <span class="nb">float</span><span class="p">(</span><span class="n">xxx</span><span class="p">)</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">yyy</span><span class="p">)</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
-</span><span id="line-361">        <span class="n">tile_points</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">SkyCoord</span><span class="p">(</span>
-</span><span id="line-362">            <span class="n">all_tiles_ra</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span>
-</span><span id="line-363">            <span class="n">all_tiles_dec</span><span class="p">[</span><span class="n">idx</span><span class="p">],</span>
-</span><span id="line-364">            <span class="n">unit</span><span class="o">=</span><span class="s1">&#39;deg&#39;</span><span class="p">,</span>
-</span><span id="line-365">        <span class="p">)</span>
-</span><span id="line-366">        <span class="n">m_cont</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">tile_points</span><span class="p">,</span> <span class="n">get_tile_wcs</span><span class="p">(</span><span class="n">xxx</span><span class="p">,</span> <span class="n">yyy</span><span class="p">))</span>
-</span><span id="line-367">        <span class="n">m_not_cont</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">invert</span><span class="p">(</span><span class="n">m_cont</span><span class="p">)</span>
-</span><span id="line-368">
-</span><span id="line-369">        <span class="k">return</span> <span class="n">m_not_cont</span><span class="p">,</span> <span class="n">idx</span>
-</span><span id="line-370">
-</span><span id="line-371">    <span class="n">tile_id</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">tile_id_in</span><span class="p">)</span>
-</span><span id="line-372">    <span class="n">tile_ra</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">ra</span><span class="p">)</span>
-</span><span id="line-373">    <span class="n">tile_dec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">dec</span><span class="p">)</span>
-</span><span id="line-374">
-</span><span id="line-375">    <span class="n">all_regions</span> <span class="o">=</span> <span class="n">regions</span><span class="o">.</span><span class="n">Regions</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">region_file_path</span><span class="p">)</span>
-</span><span id="line-376">
-</span><span id="line-377">    <span class="n">res</span> <span class="o">=</span> <span class="n">Parallel</span><span class="p">(</span><span class="n">n_jobs</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">,</span> <span class="n">backend</span><span class="o">=</span><span class="s1">&#39;loky&#39;</span><span class="p">)(</span><span class="n">delayed</span><span class="p">(</span><span class="n">runner</span><span class="p">)(</span>
-</span><span id="line-378">        <span class="n">r</span><span class="p">,</span>
-</span><span id="line-379">        <span class="n">tile_id</span><span class="p">,</span>
-</span><span id="line-380">        <span class="n">tile_ra</span><span class="p">,</span>
-</span><span id="line-381">        <span class="n">tile_dec</span>
-</span><span id="line-382">    <span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">all_regions</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">all_regions</span><span class="p">)))</span>
-</span><span id="line-383">
-</span><span id="line-384">    <span class="n">m_over</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tile_id</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
-</span><span id="line-385">    <span class="k">for</span> <span class="n">m_not_cont</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
-</span><span id="line-386">        <span class="n">m_over</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">m_not_cont</span>
-</span><span id="line-387">
-</span><span id="line-388">    <span class="k">return</span> <span class="n">m_over</span></div>
+</span><span id="line-346">    <span class="n">m_over</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tile_id</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+</span><span id="line-347">    <span class="k">for</span> <span class="n">m_not_cont</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">res</span><span class="p">:</span>
+</span><span id="line-348">        <span class="n">m_over</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">m_not_cont</span>
+</span><span id="line-349">
+</span><span id="line-350">    <span class="k">return</span> <span class="n">m_over</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -599,7 +555,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 06 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 11 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>

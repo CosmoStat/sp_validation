@@ -148,45 +148,6 @@ Axel Guinot</p>
 </dd>
 </dl>
 <dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.galaxy.T_to_fwhm">
-<span class="sig-name descname"><span class="pre">T_to_fwhm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/galaxy.html#T_to_fwhm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.galaxy.T_to_fwhm" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.galaxy.T_to_fwhm'">¶</a></dt>
-<dd><p>T to fwhm.</p>
-<p>Transform from size T to FWHM.
-This interprets T as the RMS (<code class="docutils literal notranslate"><span class="pre">sigma</span></code>) of a Gaussian.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>T</strong> (<em>(</em><em>array of</em><em>) </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – input size(s)</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>fwhm</strong> – output fwhm(s)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>(array of) <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.galaxy.sigma_to_fwhm">
-<span class="sig-name descname"><span class="pre">sigma_to_fwhm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pixel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/galaxy.html#sigma_to_fwhm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.galaxy.sigma_to_fwhm" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.galaxy.sigma_to_fwhm'">¶</a></dt>
-<dd><p>Sigma to fwhm.</p>
-<p>Transform from size sigma to FWHM.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>sigma</strong> (<em>(</em><em>array of</em><em>) </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – input size(s)</p></li>
-<li><p><strong>pixel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default=1</em>) – pixel size in arcsec, set to 1 if no scaling
-required</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>fwhm</strong> – output fwhm(s)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>(array of) <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.galaxy.classification_galaxy_overlap_ra_dec">
 <span class="sig-name descname"><span class="pre">classification_galaxy_overlap_ra_dec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dd</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'XWIN_WORLD'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'YWIN_WORLD'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/galaxy.html#classification_galaxy_overlap_ra_dec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.galaxy.classification_galaxy_overlap_ra_dec" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.galaxy.classification_galaxy_overlap_ra_dec'">¶</a></dt>
 <dd><p>Classification Galaxy Overlap Ra Dec.</p>
@@ -254,8 +215,6 @@ simple cuts in RA and Dec.</p>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
-<li><a :data-current="activeSection === '#sp_validation.galaxy.T_to_fwhm'" class="reference internal" href="#sp_validation.galaxy.T_to_fwhm"><code class="docutils literal notranslate"><span class="pre">T_to_fwhm()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.galaxy.sigma_to_fwhm'" class="reference internal" href="#sp_validation.galaxy.sigma_to_fwhm"><code class="docutils literal notranslate"><span class="pre">sigma_to_fwhm()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.galaxy.classification_galaxy_overlap_ra_dec'" class="reference internal" href="#sp_validation.galaxy.classification_galaxy_overlap_ra_dec"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_overlap_ra_dec()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.galaxy.classification_galaxy_base'" class="reference internal" href="#sp_validation.galaxy.classification_galaxy_base"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_base()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.galaxy.classification_galaxy_ngmix'" class="reference internal" href="#sp_validation.galaxy.classification_galaxy_ngmix"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_ngmix()</span></code></a></li>
@@ -269,7 +228,7 @@ simple cuts in RA and Dec.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 06 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
