@@ -8,7 +8,7 @@ tags:
     - reorg
     - shuttle
 created-at: 0001-01-01T00:00:00Z
-outcome: 'Interactive session live with Cail. Decisions settled: paths stay messy (existence-checker, not translation); DAG guard simplified to "snakemake -n passes" (no golden); suite finalized to ①②③⑤⑥ (dropped no-work-lost, package-install, output-schema, entry-point N/A); branch cleanup DEFERRED until tests land (target: one branch = Sacha merge + restructuring on top, close #189); uv.lock left gitignored. Back-pressure guards ②③⑤⑥ dispatched as the [[back-pressure-suite]] Codex shuttle (idle→dispatching; same-tree, driver hands-off-git while it runs, session work backed up to /tmp). Guard ① still green. Phase 2 (the moves) starts once the suite lands. Fiber active; driver attached.'
+outcome: 'Phase 2 — the top-level moves — complete on cleanup/restructuring (PR #197), guard net green throughout (full suite 86 passed, 0 skipped; move-map guard active with 5 registered moves). The tree has the target shape: workflow/ + papers/{bmodes,catalog,harmonic} (bmodes split), cosmo_val/ promoted from notebooks/ with all tracked references swept and on-disk outputs moved along (candide-absolute paths through the pure_eb symlink stay live), tracked scratch/ with conventions README, one top-level results/ (contents gitignored), root output/ ignored, dead hand-listed notebook block dropped from .gitignore. Cleanup begun: defunct/ deleted; nbstripout + 2 MB large-file pre-commit hooks added (CONTRIBUTING documents activation). Remaining: fold glass_mock core into src/ (own pass), curate notebooks/ to official demos (reduction-notebook triage with Martin), branch/milestone tidy (#188/#189) with Cail.'
 horizon: now
 shuttle:
     kind: oneshot

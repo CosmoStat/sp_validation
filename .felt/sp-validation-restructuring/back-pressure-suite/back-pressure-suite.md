@@ -8,7 +8,7 @@ tags:
     - reorg
     - shuttle
 created-at: 2026-06-05T21:15:56.629448647+02:00
-outcome: 'Back-pressure guard suite green: 49 passed, 0 skipped. Config paths resolve, tracked symlinks resolve, B-modes workflow dry-runs all_tapestry from papers/bmodes, script/package imports resolve, and the move-map guard is active with 4 registered moves (bmodes → papers/bmodes + workflow/, glass_mock rename, papers/catalog, papers/harmonic).'
+outcome: 'Back-pressure guard suite green: full tests 86 passed, 0 skipped (guard files alone: 50). Config paths resolve, tracked symlinks resolve, B-modes workflow dry-runs all_tapestry from papers/bmodes, script/package imports resolve, and the move-map guard is active with 5 registered moves (bmodes -> papers/bmodes + workflow/, glass_mock rename, papers/catalog, papers/harmonic, notebooks/cosmo_val -> cosmo_val).'
 shuttle:
     enabled: true
     kind: oneshot
