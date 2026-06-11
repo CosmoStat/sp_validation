@@ -22,7 +22,7 @@ dependencies = [
     "camb",
     "clmm",
     "colorama",
-    "cs_util>=0.1.9",
+    "cs_util>=0.2.1",
     "emcee",
     "getdist @ git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
     "h5py",
