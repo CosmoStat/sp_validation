@@ -5,13 +5,13 @@ import re
 from pathlib import Path
 
 COSMO_VAL = Path(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output"
+    "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
 )
 COSMO_INFERENCE = Path(
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference"
+    "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
 )
 CAT_CONFIG = (
-    "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/"
+    "/n17data/cdaley/unions/code/sp_validation/cosmo_val/"
     "cat_config.yaml"
 )
 BLINDS = ["A", "B", "C"]
@@ -198,7 +198,7 @@ CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
 # reads `./cat_config.yaml` and writes to `./output` by default. Resolved to
 # the live (non-worktree) checkout so rules find the catalog config and share
 # the output tree with interactive runs.
-CV_RUNDIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val"
+CV_RUNDIR = "/n17data/cdaley/unions/code/sp_validation/cosmo_val"
 
 
 def cv_basename(version, fiducial=None):
