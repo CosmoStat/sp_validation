@@ -1,3 +1,12 @@
+# Interactive / exploratory driver for the CosmologyValidation suite.
+#
+# For reproducible, dependency-tracked runs the suite is now a Snakemake
+# workflow: papers/cosmo_val/ composes the generic rules in
+# workflow/rules/cosmo_val.smk, each cv.<method>() call is a rule, and
+# `snakemake all` (run from papers/cosmo_val/) builds the whole validation.
+# This script remains the cell-by-cell scratch entry point for one-off
+# exploration; the workflow is the canonical batch path.
+
 # %%
 from IPython import get_ipython
 

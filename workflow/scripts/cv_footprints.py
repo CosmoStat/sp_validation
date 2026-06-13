@@ -1,0 +1,15 @@
+"""Rule cv_footprints: plot per-version survey footprints.
+
+Leaf rule. Reads the shear catalog (RA/Dec) for each version; writes
+footprint_{version}_{region}.png. Sentinel output keeps the DAG trackable
+because region names are internal to FootprintPlotter.
+"""
+
+from snakemake.script import snakemake
+
+from cv_runner import make_cv, touch_sentinels, _unbuffer_streams
+
+_unbuffer_streams()
+cv = make_cv(snakemake)
+cv.plot_footprints()
+touch_sentinels(snakemake)

@@ -41,3 +41,9 @@ include: "rules/covariance.smk"
 include: "rules/inference.smk"
 include: "rules/masks.smk"
 include: "rules/glass_mock.smk"
+
+# CosmologyValidation diagnostic suite (cosmo_val.py), decomposed rule-by-rule.
+# Only active when the config carries a `cosmo_val` block (papers/cosmo_val);
+# guarded so paper configs without it (e.g. bmodes) don't trip on the lookups.
+if "cosmo_val" in config:
+    include: "rules/cosmo_val.smk"

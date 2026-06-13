@@ -1,0 +1,125 @@
+# UNIONS catalogue cosmology-validation suite — run-specific config.
+#
+# Drives the decomposed CosmologyValidation diagnostics in
+# workflow/rules/cosmo_val.smk. The `cosmo_val:` block holds every parameter
+# the CosmologyValidation constructor and its diagnostic methods need; the
+# remaining top-level keys (fiducial, covariance, cosebis, pixel_mask,
+# glass_mocks, tools, versions) satisfy the parse-time lookups of the shared
+# workflow module this paper composes — they mirror papers/bmodes/config and
+# are not exercised by the cosmo_val rules themselves.
+
+# Catalog versions to validate. Comparison runs overlay the leakage-corrected
+# variant against its parent.
+versions: [
+  "SP_v1.4.6.3",
+  "SP_v1.4.6.3_leak_corr",
+]
+
+# ---------------------------------------------------------------------------
+# CosmologyValidation suite parameters (cosmo_val.py)
+# ---------------------------------------------------------------------------
+cosmo_val:
+  # CosmologyValidation constructor
+  npatch: 100
+  theta_min: 1.0
+  theta_max: 250.0
+  nbins: 20
+  theta_min_plot: 0.8
+  theta_max_plot: 260.0
+  ylim_alpha: [-0.01, 0.05]
+  nrandom_cell: 100
+  cell_method: catalog
+  nside_mask: 8192
+  path_onecovariance: "/home/guerrini/OneCovariance/"
+  rho_tau_method: lsq
+
+  # Fiducial scale cut (arcmin) for B-mode PTE extraction. Paper II: [12, 83].
+  fiducial_scale_cut: [12, 83]
+
+  # Whether the harmonic-space pseudo-Cl BB enters the B-mode summary. The
+  # NaMaster pseudo-Cl step is expensive; off by default (commented out in the
+  # original driver). Set true to add the C_l^BB column.
+  include_pseudo_cl: false
+
+  # Theory cosmology for pseudo-Cl / semi-analytic covariance (astropy Planck18
+  # + CAMB nonlinear settings, matching the original run_cosmo_val.py driver).
+  cosmo_params:
+    Omega_m: 0.30966
+    Omega_b: 0.04897
+    h: 0.6766
+    sig8: 0.8102
+    ns: 0.9665
+    mnu: 0.06
+    extra_params:
+      camb:
+        nonlinear: true
+        halofit_version: mead2020_feedback
+        HMCode_log_T_AGN: 7.8
+        kmax: 20
+        kmax_extrapolate: 500
+
+  # Pure E/B-mode decomposition (config space)
+  pure_eb:
+    min_sep_int: 0.08
+    max_sep_int: 300
+    nbins_int: 1000
+
+  # COSEBIs decomposition (config space, fine integration binning)
+  cosebis:
+    min_sep_int: 0.9
+    max_sep_int: 300
+    nbins_int: 2000
+    npatch: 100
+    nmodes: 20
+    scale_cuts: [
+      [1, 250], [2, 250], [5, 250], [10, 250],
+      [12, 83], [15, 250], [20, 250],
+    ]
+
+# ---------------------------------------------------------------------------
+# Shared-module scaffolding (mirrors papers/bmodes/config). Required so the
+# generic workflow/ Snakefile parses; the cosmo_val rules do not use these.
+# ---------------------------------------------------------------------------
+fiducial:
+  version: SP_v1.4.6.3_leak_corr
+  blind: A
+  npatch: 1
+  min_sep: 1.0
+  max_sep: 250.0
+  nbins: 20
+  min_sep_int: 0.5
+  max_sep_int: 300.0
+  nbins_int: 1000
+  nmodes: 20
+  mock_version: SP_v1.4.6.3
+  fiducial_min_scale: 12
+  fiducial_max_scale: 83
+
+var_method: jackknife
+
+covariance:
+  default_masked: true
+  use_semianalytic: true
+  n_samples: 2000
+
+cl:
+  n_ell_bins: 32
+  cosebis_nbins: 96
+  fiducial_ell_min: 300
+  fiducial_ell_max: 1600
+
+cosebis:
+  theta_min: 1.0
+  theta_max: 250.0
+  mode_subsets: [6, 20]
+
+pixel_mask:
+  target_nsides: [2048, 4096, 8192]
+  source_file: "/n17data/UNIONS/WL/masks/mask_r_nside131072.hsp"
+
+glass_mocks:
+  version: "v0"
+  seed_range: [1, 350]
+
+tools:
+  cosmocov_executable: "/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov"
