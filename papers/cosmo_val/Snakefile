@@ -1,0 +1,52 @@
+# UNIONS catalogue cosmology-validation suite — composes the generic compute
+# workflow at ../../workflow/ and exposes the CosmologyValidation diagnostics
+# (cosmo_val.py) as a linked Snakemake DAG.
+#
+# This supersedes the linear cosmo_val/run_cosmo_val.py driver: every
+# cv.<method>() call is now a rule (workflow/rules/cosmo_val.smk), runnable in
+# isolation or as the whole suite via the default `cosmo_val_all` target.
+
+configfile: "config/config.yaml"
+configfile: "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/cat_config.yaml"
+
+container: "/n17data/cdaley/containers/containers"
+
+envvars:
+    "PYTHONUNBUFFERED",
+
+import os
+import sys
+
+# The generic workflow, located relative to this file. realpath, because the
+# run directory reaches this Snakefile through a symlink and Snakemake
+# normalizes `..` lexically when resolving includes.
+WORKFLOW_DIR = os.path.normpath(
+    os.path.join(os.path.realpath(str(workflow.basedir)), "../../workflow")
+)
+
+# Shared helpers from the generic workflow. Snakemake's `module` imports rules,
+# not Python globals — helpers arrive by plain Python import.
+sys.path.insert(0, WORKFLOW_DIR)
+import common
+
+common.configure(config)
+from common import *
+
+# Wildcard constraints — centralized in common.py, not in individual rule files
+wildcard_constraints:
+    **WILDCARD_CONSTRAINTS
+
+# Compute rules from the generic workflow, imported as a module. The cosmo_val
+# rules activate because this paper's config carries a `cosmo_val` block.
+module analysis:
+    snakefile: os.path.join(WORKFLOW_DIR, "Snakefile")
+    config: config
+
+use rule * from analysis
+
+# The whole suite is the default target. cosmo_val_all is imported above via
+# `use rule * from analysis`, so its inputs are in scope here.
+rule all:
+    input:
+        rules.cosmo_val_all.input,
+    default_target: True

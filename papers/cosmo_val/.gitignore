@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Snakemake
+.snakemake/
+
+# Jupyter/Quarto cache & rendered outputs
+**/.jupyter_cache/
+**/*_files/
+notes/*.html
+
+# Editor
+*.swp
+*~
+.vscode/
+
+# OS
+.DS_Store
