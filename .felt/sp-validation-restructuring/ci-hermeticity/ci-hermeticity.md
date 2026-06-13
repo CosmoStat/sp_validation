@@ -1,13 +1,12 @@
 ---
 id: 01KTT53Y3681X6FTJ6WM4YZRMV
 name: 'CI hermeticity: guards in the git-less image'
+status: closed
 tags:
     - sp-validation
     - finding
 created-at: 2026-06-11T03:35:31.430313054+02:00
-status: closed
-outcome: |-
-    All 7 in-image test failures after the phase-2 moves were environmental, none were real stale references: the Docker image is built from the Git build context (tracked content only, no .git), so `git ls-files` exits 128 there — the dangling-reference and tracked-symlink guards now fall back to a tree walk, which in the image scans exactly the tracked set; the bmodes dry-run guard is candide-bound by design (candide-absolute catalog configfile + cluster data) and skips off-cluster like the test_cosmo_val data guards, while satisfying the Snakefile's `envvars: PYTHONUNBUFFERED` itself. Separately, the docs workflow was red because sphinxawesome-theme 6.0.3 on PyPI is a broken wheel (dist-info only, no python module) — pinned `!=6.0.3` in the docs extra.
+outcome: 'All 7 in-image test failures after the phase-2 moves were environmental, none were real stale references: the Docker image is built from the Git build context (tracked content only, no .git), so `git ls-files` exits 128 there — the dangling-reference and tracked-symlink guards now fall back to a tree walk, which in the image scans exactly the tracked set; the bmodes dry-run guard is candide-bound by design (candide-absolute catalog configfile + cluster data) and skips off-cluster like the test_cosmo_val data guards, while satisfying the Snakefile''s `envvars: PYTHONUNBUFFERED` itself. Separately, the docs workflow was red because sphinxawesome-theme 6.0.3 on PyPI is a broken wheel (dist-info only, no python module) — pinned `!=6.0.3` in the docs extra.'
 horizon: now
 ---
 
