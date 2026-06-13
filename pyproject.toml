@@ -72,11 +72,17 @@ docs = [
 ]
 # GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
 # library and its import guard resolve without GLASS, and the production
-# container does not yet ship it. ``glass.ext.camb`` ships inside ``glass``;
-# ``cosmology`` provides the ``Cosmology`` wrapper GLASS consumes.
+# container does not yet ship it. Pinned set (verified 2026-06-13, fiber
+# glass-cosmology-api-pin): glass 2025.1 is the unique version with the flat API
+# the map path uses AND the legacy ``cosmo.dc``/``xm``/``ef`` interface that
+# ``cosmology`` 2022.10.9 (its newest release) provides — newer glass calls
+# ``comoving_distance``, which no ``cosmology`` release exposes. ``matter_cls``
+# lives in the separate ``glass.ext.camb`` package (absent from glass core
+# >=2024.2), so it is pinned explicitly.
 glass = [
-    "glass",
-    "cosmology",
+    "glass==2025.1",
+    "glass.ext.camb==2023.6",
+    "cosmology==2022.10.9",
 ]
 develop = ["sp_validation[test,docs]"]
 
