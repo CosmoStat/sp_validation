@@ -13,6 +13,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterator, Tuple
 
+import numpy as np
 import pytest
 import yaml
 
@@ -343,3 +344,276 @@ class TestCosmologyValidation:
         path = cv.cc["SP_v1.4.6_glass_mock"]["shear"]["path"]
         assert "unions_glass_sim_00001_4096.fits" in path
         assert "glass_mock_v1.4.6" in path
+
+    # ------------------------------------------------------------------
+    # Synthetic-catalog integration ("glue") tests
+    #
+    # These run the real compute seams end-to-end on a small, deterministic
+    # toy catalog written to disk, asserting that sp_validation wires the
+    # catalog/config/estimator together correctly and that the chain produces
+    # output of the right shape with finite values. They do NOT re-test the
+    # underlying numerical libraries (treecorr, cosmo_numba): no specific
+    # numerical values are asserted. These are the back-pressure that catches
+    # config-path / wiring breakage during restructuring. They can be tightened
+    # to allclose-against-a-committed-reference later for value-drift coverage.
+    #
+    # Environment-independent: the catalog is synthesized in a tmp dir, so no
+    # cluster data is needed. They do require the scientific stack (treecorr,
+    # shear_psf_leakage, cosmo_numba), i.e. they run in the container.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _write_synthetic_catalogs(
+        tmp_path,
+        n_gal=2000,
+        n_star=800,
+        ra_range=(10.0, 14.0),
+        dec_range=(10.0, 14.0),
+        seed=1234,
+        coherent_shear=False,
+        with_psf=False,
+    ):
+        """Write small deterministic FITS catalogs + dndz, return a config dict.
+
+        Builds a synthetic shear catalog (RA/Dec/e1/e2/w), a PSF star catalog
+        with the columns the leakage/rho-tau seams read, and a cs_util-readable
+        dndz file. Returns ``(params, version)`` ready to hand to
+        ``CosmologyValidation``.
+
+        Parameters
+        ----------
+        coherent_shear : bool
+            If True, inject a smooth position-dependent shear pattern on top of
+            shape noise so that xi+/- is smooth (needed for the pure-E/B
+            integral to be numerically well-posed).
+        with_psf : bool
+            If True, add a ``psf`` config block (rho/tau / pseudo-Cl read it via
+            ``get_params_rho_tau``).
+        """
+        from astropy.table import Table
+
+        rng = np.random.default_rng(seed)
+        version = "TestCatalog"
+
+        cat_dir = tmp_path / "catalog"
+        cat_dir.mkdir()
+        nz_dir = tmp_path / "nz"
+        nz_dir.mkdir()
+        output_dir = tmp_path / "output"
+        output_dir.mkdir()
+
+        ra = rng.uniform(*ra_range, n_gal)
+        dec = rng.uniform(*dec_range, n_gal)
+        if coherent_shear:
+            # Smooth E-mode-like pattern so xi+/- is smooth, plus shape noise.
+            e1 = 0.02 * np.cos(np.radians(ra) * 40) + rng.normal(0, 0.05, n_gal)
+            e2 = 0.02 * np.sin(np.radians(dec) * 40) + rng.normal(0, 0.05, n_gal)
+        else:
+            e1 = rng.normal(0, 0.25, n_gal)
+            e2 = rng.normal(0, 0.25, n_gal)
+        w = rng.uniform(0.5, 1.0, n_gal)
+
+        shear_path = cat_dir / "shear.fits"
+        Table(
+            {"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}
+        ).write(shear_path, overwrite=True)
+
+        star_path = cat_dir / "star.fits"
+        Table(
+            {
+                "RA": rng.uniform(*ra_range, n_star),
+                "Dec": rng.uniform(*dec_range, n_star),
+                "E1_PSF_HSM": rng.normal(0, 0.03, n_star),
+                "E2_PSF_HSM": rng.normal(0, 0.03, n_star),
+                "E1_STAR_HSM": rng.normal(0, 0.03, n_star),
+                "E2_STAR_HSM": rng.normal(0, 0.03, n_star),
+                "SIGMA_PSF_HSM": rng.uniform(0.4, 0.6, n_star),
+                "SIGMA_STAR_HSM": rng.uniform(0.4, 0.6, n_star),
+                "FLAG_PSF_HSM": np.zeros(n_star, dtype=int),
+                "FLAG_STAR_HSM": np.zeros(n_star, dtype=int),
+            }
+        ).write(star_path, overwrite=True)
+
+        # dndz in the commented-header format cs_util.read_dndz expects:
+        # column "z" holds bin edges (n+1), "dn_dz" the densities.
+        z_edges = np.linspace(0.05, 3.0, 31)
+        dndz = np.exp(-(((z_edges - 0.7) / 0.3) ** 2))
+        dndz_lines = ["# z dn_dz"] + [
+            f"{zz} {nn}" for zz, nn in zip(z_edges, dndz)
+        ]
+        (nz_dir / "dndz_SP_A.txt").write_text("\n".join(dndz_lines) + "\n")
+
+        shear_cfg = {
+            "path": "shear.fits",
+            "w_col": "w",
+            "e1_col": "e1",
+            "e2_col": "e2",
+            "R": 1.0,
+            "e1_col_corrected": "e1",
+            "e2_col_corrected": "e2",
+        }
+        star_cfg = {
+            "path": "star.fits",
+            "ra_col": "RA",
+            "dec_col": "Dec",
+            "e1_col": "E1_PSF_HSM",
+            "e2_col": "E2_PSF_HSM",
+        }
+        version_cfg = {
+            "subdir": str(cat_dir),
+            "pipeline": "SP",
+            "shear": shear_cfg,
+            "star": star_cfg,
+        }
+        if with_psf:
+            version_cfg["psf"] = {
+                "path": "star.fits",
+                "hdu": 1,
+                "ra_col": "RA",
+                "dec_col": "Dec",
+                "e1_PSF_col": "E1_PSF_HSM",
+                "e2_PSF_col": "E2_PSF_HSM",
+                "e1_star_col": "E1_STAR_HSM",
+                "e2_star_col": "E2_STAR_HSM",
+                "PSF_size": "SIGMA_PSF_HSM",
+                "star_size": "SIGMA_STAR_HSM",
+                "PSF_flag": "FLAG_PSF_HSM",
+                "star_flag": "FLAG_STAR_HSM",
+            }
+
+        config_data = {
+            "nz": {
+                "subdir": str(nz_dir),
+                "dndz": {"blind": "A", "path": "dndz"},
+            },
+            "paths": {"output": str(output_dir)},
+            version: version_cfg,
+        }
+        config_path = tmp_path / "synthetic_config.yaml"
+        config_path.write_text(yaml.dump(config_data, sort_keys=False))
+
+        params = {
+            "catalog_config": str(config_path),
+            "output_dir": str(output_dir),
+        }
+        return params, version
+
+    def test_calculate_2pcf_runs_on_synthetic_catalog(self, tmp_path):
+        """calculate_2pcf wires catalog+config into treecorr GGCorrelation.
+
+        Smoke-integration: assert the xi+/- data vector is computed with the
+        configured number of angular bins and is finite. Numerical values are
+        deliberately not asserted (could be tightened to allclose vs. a
+        committed reference later for value-drift coverage).
+        """
+        pytest.importorskip("treecorr")
+        params, version = self._write_synthetic_catalogs(tmp_path)
+
+        nbins = 8
+        cv = CosmologyValidation(
+            versions=[version],
+            npatch=1,
+            theta_min=5.0,
+            theta_max=100.0,
+            nbins=nbins,
+            **params,
+        )
+
+        gg = cv.calculate_2pcf(version)
+
+        # treecorr GGCorrelation with xi+/- on the configured angular grid
+        assert gg.xip.shape == (nbins,)
+        assert gg.xim.shape == (nbins,)
+        assert np.all(np.isfinite(gg.xip))
+        assert np.all(np.isfinite(gg.xim))
+        # The additive-bias subtraction in the pipeline must have run.
+        assert version in cv.c1 and version in cv.c2
+
+    def test_calculate_scale_dependent_leakage_runs_on_synthetic_catalog(
+        self, tmp_path
+    ):
+        """calculate_scale_dependent_leakage wires shear x PSF into treecorr.
+
+        Smoke-integration: assert the galaxy-PSF and PSF-PSF correlations and
+        the assembled alpha leakage / xi_sys are computed on the configured
+        angular grid and are finite. No numerical values asserted (could be
+        tightened to allclose vs. a committed reference later).
+        """
+        pytest.importorskip("treecorr")
+        params, version = self._write_synthetic_catalogs(tmp_path)
+
+        nbins = 8
+        cv = CosmologyValidation(
+            versions=[version],
+            npatch=1,
+            theta_min=5.0,
+            theta_max=100.0,
+            nbins=nbins,
+            **params,
+        )
+
+        cv.calculate_scale_dependent_leakage()
+
+        res = cv.results[version]
+        # shear x PSF and PSF x PSF correlations on the configured grid
+        assert res.r_corr_gp.xip.shape == (nbins,)
+        assert res.r_corr_pp.xip.shape == (nbins,)
+        assert np.all(np.isfinite(res.r_corr_gp.xip))
+        # alpha leakage and the systematic xi_sys assembled from them
+        assert np.shape(res.alpha_leak) == (nbins,)
+        assert np.all(np.isfinite(res.alpha_leak))
+        assert hasattr(res, "C_sys_p") and hasattr(res, "C_sys_m")
+
+    def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path):
+        """calculate_pure_eb wires xi+/- into cosmo_numba's Schneider E/B split.
+
+        Smoke-integration (the headline B-mode seam): assert the pure E/B/amb
+        decomposition runs end-to-end via cosmo_numba and returns vectors of the
+        configured length with a finite jackknife covariance.
+
+        Finiteness is asserted on the *interior* bins only: the Schneider (2022)
+        estimator is undefined at the extreme reporting bins (the xi_minus-derived
+        modes NaN in the first bin, the xi_plus-derived modes in the last) because
+        the integration kernels reach outside the measured range there. Real
+        analyses always apply a scale cut that drops these edge bins, so this is
+        intrinsic estimator behaviour, not a wiring bug. No numerical values
+        asserted (could be tightened to allclose vs. a committed reference later).
+        """
+        pytest.importorskip("treecorr")
+        pytest.importorskip("cosmo_numba")
+        # Coherent shear -> smooth xi+/-, so the pure-E/B integral is well-posed.
+        params, version = self._write_synthetic_catalogs(
+            tmp_path, n_gal=4000, coherent_shear=True
+        )
+
+        npatch = 8
+        nbins = 6
+        cv = CosmologyValidation(
+            versions=[version],
+            npatch=npatch,
+            theta_min=15.0,
+            theta_max=70.0,
+            nbins=nbins,
+            **params,
+        )
+
+        # Reporting range sits comfortably inside the integration range so only
+        # the extreme reporting bins (dropped below) hit the estimator edges.
+        results = cv.calculate_pure_eb(
+            version,
+            npatch=npatch,
+            min_sep_int=1.0,
+            max_sep_int=250.0,
+            nbins_int=80,
+        )
+
+        for key in ("xip_E", "xim_E", "xip_B", "xim_B"):
+            vec = np.asarray(results[key])
+            assert vec.shape == (nbins,)
+            # Interior bins are the ones any real analysis uses.
+            assert np.all(np.isfinite(vec[1:-1])), f"{key} interior not finite"
+
+        # Jackknife covariance over the 6 stats (xip/xim x E/B/amb) x nbins.
+        cov = np.asarray(results["cov"])
+        assert cov.shape == (6 * nbins, 6 * nbins)
+        assert results["gg"].npatch1 == npatch
