@@ -567,17 +567,43 @@ class TestCosmologyValidation:
     def test_calculate_pure_eb_runs_on_synthetic_catalog(self, tmp_path):
         """calculate_pure_eb wires xi+/- into cosmo_numba's Schneider E/B split.
 
-        Smoke-integration (the headline B-mode seam): assert the pure E/B/amb
+        Integration test of the headline B-mode seam: the pure E/B/amb
         decomposition runs end-to-end via cosmo_numba and returns vectors of the
-        configured length with a finite jackknife covariance.
+        configured length, all bins finite, with a jackknife covariance of the
+        right shape -- AND the deterministic mode vectors match pinned reference
+        values, so a refactor that silently changes the numerical B-modes fails
+        rather than staying green on finiteness alone.
 
-        Finiteness is asserted on the *interior* bins only: the Schneider (2022)
-        estimator is undefined at the extreme reporting bins (the xi_minus-derived
-        modes NaN in the first bin, the xi_plus-derived modes in the last) because
-        the integration kernels reach outside the measured range there. Real
-        analyses always apply a scale cut that drops these edge bins, so this is
-        intrinsic estimator behaviour, not a wiring bug. No numerical values
-        asserted (could be tightened to allclose vs. a committed reference later).
+        Two layers of teeth:
+
+        1. Finiteness on EVERY reporting bin (not just the interior). The
+           Schneider (2022) pure E/B estimator evaluates singular kernel
+           integrals (Eq. 42-43, 55-56) at each reporting theta, integrating the
+           fine ``gg_int`` xi+/- over [tmin, tmax]. At the extreme reporting bins
+           the evaluation point sits at the integration boundary, where the
+           integrand is near-singular; a *coarse* integration grid fails to
+           resolve it and the mode goes NaN. The real bmodes workflow
+           (papers/bmodes/config.yaml) avoids this with a broad-and-fine grid --
+           reporting [1, 250] arcmin, integration [0.5, 300] with nbins_int=1000
+           -- so the integration range brackets the reporting range AND the grid
+           is fine enough that the boundary integrals converge. This test mirrors
+           that: reporting [15, 70] arcmin, integration [1, 300] arcmin (brackets
+           on both ends) with nbins_int=600. Confirmed directly that nbins_int~80
+           over this range NaNs the last xip_E bin and the first xim_E bin, so
+           coarsening the integration grid back toward ~80 reintroduces edge NaNs
+           and fails -- this is the finiteness teeth.
+
+        2. Value-drift pins on the four deterministic mode vectors (xip/xim,
+           E/B). These come from a seeded synthetic catalog -> full-sample
+           treecorr xi+/- (no RNG) -> Schneider linear transform, so they are
+           reproducible. Verified bitwise-stable across two separate container
+           processes to a worst-case relative drift of ~1.4e-11 (pure float64
+           reduction-order noise; absolute drift ~1.5e-17). The pins use
+           rtol=1e-6 / atol=1e-12 -- ~5 orders of magnitude above that float-noise
+           floor (no flakiness margin consumed) yet tight enough that a sub-
+           percent change in any mode bites. The jackknife COVARIANCE depends on
+           treecorr's kmeans patch assignment and is NOT pinned by value -- only
+           its shape is asserted.
         """
         pytest.importorskip("treecorr")
         pytest.importorskip("cosmo_numba")
@@ -597,23 +623,62 @@ class TestCosmologyValidation:
             **params,
         )
 
-        # Reporting range sits comfortably inside the integration range so only
-        # the extreme reporting bins (dropped below) hit the estimator edges.
+        # Integration range strictly brackets the reporting range [15, 70] on
+        # both ends (1 << 15, 300 >> 70) AND uses a fine grid (nbins_int=600), so
+        # the near-singular boundary-bin Schneider integrals converge. This
+        # mirrors the bmodes workflow's broad-and-fine integration grid; every
+        # reporting bin is well-defined (no edge NaNs). nbins_int~80 here would
+        # NaN the edge bins -- confirmed -- which is the finiteness teeth.
         results = cv.calculate_pure_eb(
             version,
             npatch=npatch,
             min_sep_int=1.0,
-            max_sep_int=250.0,
-            nbins_int=80,
+            max_sep_int=300.0,
+            nbins_int=600,
         )
+
+        # Reference mode vectors from the seeded synthetic catalog + Schneider
+        # transform. Deterministic (full-sample treecorr, no RNG); regenerate by
+        # running calculate_pure_eb with the setup above and printing repr() of
+        # results[key]. Tolerances justified in the docstring.
+        expected = {
+            "xip_E": np.array([
+                1.6688018692521218e-06, -1.8392317186434428e-05,
+                1.4170916007248522e-06, 8.1454486560987474e-06,
+                6.2050467269160570e-06, 2.6649478149110497e-06,
+            ]),
+            "xim_E": np.array([
+                -4.4552381788304276e-05, -1.1082898248960663e-04,
+                -9.2495668600755951e-05, -5.8456322151105526e-05,
+                -4.4270469941501174e-05, -2.4236697154723798e-05,
+            ]),
+            "xip_B": np.array([
+                1.8508958599700601e-05, 3.8264056862769537e-05,
+                -1.0482698132038303e-05, -7.3081832089716533e-06,
+                -9.1621105374021936e-06, -6.4075815485457576e-06,
+            ]),
+            "xim_B": np.array([
+                -1.1129938750754923e-04, -4.7967477760986883e-05,
+                -3.4334760596175194e-05, -1.4776328993077835e-05,
+                -4.0078671892721522e-06, -8.3202301900417799e-07,
+            ]),
+        }
 
         for key in ("xip_E", "xim_E", "xip_B", "xim_B"):
             vec = np.asarray(results[key])
             assert vec.shape == (nbins,)
-            # Interior bins are the ones any real analysis uses.
-            assert np.all(np.isfinite(vec[1:-1])), f"{key} interior not finite"
+            # All reporting bins are well-defined under the widened integration
+            # range (no edge NaNs) -- the finiteness teeth.
+            assert np.all(np.isfinite(vec)), f"{key} not finite"
+            # Value-drift pins -- the deterministic-mode teeth.
+            np.testing.assert_allclose(
+                vec, expected[key], rtol=1e-6, atol=1e-12,
+                err_msg=f"{key} drifted from pinned reference",
+            )
 
         # Jackknife covariance over the 6 stats (xip/xim x E/B/amb) x nbins.
+        # Patch (kmeans) assignment isn't guaranteed deterministic, so only the
+        # shape is pinned, not the values.
         cov = np.asarray(results["cov"])
         assert cov.shape == (6 * nbins, 6 * nbins)
         assert results["gg"].npatch1 == npatch
