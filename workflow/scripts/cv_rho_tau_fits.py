@@ -8,9 +8,8 @@ derive from internal handler state. The fitted xi_psf_sys it produces is
 recomputed (not persisted) by the cv_ratio_xi_sys_xi rule.
 """
 
+from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 from snakemake.script import snakemake
-
-from cv_runner import make_cv, touch_sentinels, _unbuffer_streams
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

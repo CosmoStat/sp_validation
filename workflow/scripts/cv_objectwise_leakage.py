@@ -7,9 +7,8 @@ durable artifact) and leakage_coefficients.png. Sentinel-tracked because the
 per-version leakage product paths are built inside shear_psf_leakage.
 """
 
+from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 from snakemake.script import snakemake
-
-from cv_runner import make_cv, touch_sentinels, _unbuffer_streams
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

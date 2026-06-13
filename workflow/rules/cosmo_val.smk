@@ -88,13 +88,18 @@ def cv_pure_eb_npz(version):
 
 def cv_cosebis_npz(version):
     cb = CV["cosebis"]
+    fsc = CV["fiducial_scale_cut"]
+    # Mirror calculate/plot_cosebis out_stub (cosmo_val.py): a distinct schema
+    # from pure_eb — _cosebis_ prefix, integration nbins, plus _nmodes= and
+    # _scalecut= segments. Must match save_cosebis_results exactly or
+    # verify_outputs raises and cv_summarize_bmodes deadlocks on this input.
     return str(
         COSMO_VAL
         / (
-            f"{version}_eb_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_minsepint={cb['min_sep_int']}"
-            f"_maxsepint={cb['max_sep_int']}_nbinsint={cb['nbins_int']}"
-            f"_npatch={cb['npatch']}_varmethod=jackknife_data.npz"
+            f"{version}_cosebis_minsep={cb['min_sep_int']}"
+            f"_maxsep={cb['max_sep_int']}_nbins={cb['nbins_int']}"
+            f"_npatch={cb['npatch']}_varmethod=jackknife_nmodes={cb['nmodes']}"
+            f"_scalecut={fsc[0]}-{fsc[1]}_data.npz"
         )
     )
 

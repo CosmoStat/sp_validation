@@ -9,9 +9,8 @@ shear catalog.
 
 import json
 
+from cv_runner import _unbuffer_streams, make_cv, verify_outputs
 from snakemake.script import snakemake
-
-from cv_runner import make_cv, verify_outputs, _unbuffer_streams
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

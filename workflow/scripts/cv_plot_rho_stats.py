@@ -5,9 +5,8 @@ rho_stats.png into the leakage output dir. Sentinel-tracked because the figure
 lands beside the first version's leakage products, not at a fixed path.
 """
 
+from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 from snakemake.script import snakemake
-
-from cv_runner import make_cv, touch_sentinels, _unbuffer_streams
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

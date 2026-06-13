@@ -5,9 +5,8 @@ for every version (the BB spectrum cv_summarize_bmodes reads) and the cell_ee.pn
 figure. The per-version FITS files are the declared outputs.
 """
 
+from cv_runner import _unbuffer_streams, make_cv, verify_outputs
 from snakemake.script import snakemake
-
-from cv_runner import make_cv, verify_outputs, _unbuffer_streams
 
 _unbuffer_streams()
 cv = make_cv(snakemake)
