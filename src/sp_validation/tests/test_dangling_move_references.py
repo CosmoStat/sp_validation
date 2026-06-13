@@ -7,6 +7,13 @@ import pytest
 
 # Add (old_internal_dir, new_location) pairs as the restructuring starts moving
 # directories. Empty pre-reorg by design: the harness is the invariant.
+#
+# Entries here are *fully retired* paths: the old path string must no longer
+# appear anywhere. Extractions-in-place do NOT belong here. The GLASS-mock
+# generation core was lifted out of ``glass_mock/make_unions_glass_sim.py`` into
+# the library at ``src/sp_validation/glass_mock.py``, but ``glass_mock/`` itself
+# survives (CLI wrapper + postprocessing scripts), so the string ``glass_mock``
+# is still live across cosmo_inference — registering it would be a false move.
 MOVE_MAP: tuple[tuple[str, str], ...] = (
     ("cosmo_inference/notebooks/2D_bmodes_paper_workflow", "papers/bmodes"),
     ("rules/glass_mock_validation.smk", "workflow/rules/glass_mock.smk"),
