@@ -1,91 +1,123 @@
+"""Generate a UNIONS GLASS mock source catalogue.
+
+Thin CLI wrapper around the generation core in
+``sp_validation.glass_mock``: this script owns argument parsing, the mask
+downgrade, galaxy sampling, and FITS catalogue I/O. The reproducibility
+surface — the fixed cosmology, the ``sigma8``-rescaled CAMB power spectrum, and
+the lognormal matter / lensing-map generation — lives in the library and is
+pinned by ``src/sp_validation/tests/test_glass_mock.py``.
+
+Run inside an image that has GLASS installed (the production sp_validation
+container does not yet ship GLASS).
+"""
+
 import argparse
-import numpy as np
+import os
+import time
+
+import astropy.constants as const
+import astropy.units as u
 import camb
 import fitsio
-import healpy as hp
-import os
-from cosmology import Cosmology
-import time
-from astropy.cosmology import Planck18
-import astropy.units as u
-import astropy.constants as const
-import pyccl as ccl
-import scipy as sp
 
+# GLASS modules
+import glass
+import healpy as hp
+import numpy as np
+import scipy as sp
 from tqdm import tqdm
 
-#GLASS modules
-import glass
-import glass.ext.camb
+from sp_validation.glass_mock import (
+    GlassMockConfig,
+    build_camb_params,
+    build_shells,
+    camb_sigma8,
+    matter_shell_cls,
+)
+
 
 def get_parser():
-    """
-    Creates the parser
-    """
+    """Create the argument parser."""
     parser = argparse.ArgumentParser(
-        formatter_class = argparse.RawDescriptionHelpFormatter,
-        description='''
-        Creates a UNIONS simulations using GLASS
-        ''',
-        fromfile_prefix_chars='@'
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description="Creates a UNIONS simulation using GLASS",
+        fromfile_prefix_chars="@",
     )
-
     parser.add_argument("-s", "--seed", help="Random seed", type=int, default=42)
     parser.add_argument("-N", "--number", help="Mock Number", type=int, default=0)
-    parser.add_argument("-n", "--nside", help="Nside for the simulation. Nside=Lmax", type=int, default=32)
-    parser.add_argument("-ne", "--neff", help="Effective number of galaxies per arcmin^2", type=float, default=6.0905)
-    parser.add_argument("-p", "--path", help="Output path to save the mocks", type=str, default='./')
-    parser.add_argument("-c", "--cls", help="Pre-compute and saves the matter shell cls", action="store_true")
+    parser.add_argument(
+        "-n", "--nside",
+        help="Nside for the simulation. Nside=Lmax", type=int, default=32,
+    )
+    parser.add_argument(
+        "-ne", "--neff",
+        help="Effective number of galaxies per arcmin^2", type=float, default=6.0905,
+    )
+    parser.add_argument(
+        "-p", "--path", help="Output path to save the mocks", type=str, default="./",
+    )
+    parser.add_argument(
+        "-c", "--cls",
+        help="Pre-compute and saves the matter shell cls", action="store_true",
+    )
     parser.add_argument("-t", "--test", help="Test run", action="store_true")
-    parser.add_argument("-sg", "--sigmae", help="Set sigma of intrinsic ellipticity", type=float, default=0.2684)
+    parser.add_argument(
+        "-sg", "--sigmae",
+        help="Set sigma of intrinsic ellipticity", type=float, default=0.2684,
+    )
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
-    parser.add_argument("-nz", "--pathnz", help="Path to the n(z) file", type=str, default='/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt')
-    parser.add_argument("-m", "--mask", help="Path to the mask", type=str, default='/n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits')
-    parser.add_argument("-ia", "--ia_bias", help="Intrinsic alignment bias for CCL", type=float, default=None)
+    parser.add_argument(
+        "-nz", "--pathnz",
+        help="Path to the n(z) file", type=str,
+        default="/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt",
+    )
+    parser.add_argument(
+        "-m", "--mask",
+        help="Path to the mask", type=str,
+        default="/n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits",
+    )
+    parser.add_argument(
+        "-ia", "--ia_bias",
+        help="Intrinsic alignment bias for CCL", type=float, default=None,
+    )
     return parser
 
+
 def downgrade_mask(mask, nside):
-    """
-    Downgrades a mask to a lower nside
-    """
+    """Downgrade a HEALPix mask to a lower nside (>=0.75 → 1, else 0)."""
     nside_mask = hp.get_nside(mask)
     if nside_mask == nside:
         return mask
-    else:
-        print(f"[!] Downgrading mask from Nside {nside_mask} to Nside {nside}.")
-        print(f"[!] Pixels with values <0.75 will be set to 0.0")
-        print(f"[!] Pixels with values >0.75 will be set to 1.0")
-        mask_down = hp.ud_grade(mask, nside)
-        mask_down[mask_down < 0.75] = 0.0
-        mask_down[mask_down >= 0.75] = 1.0
-        print(f"[!] Done.")
-        return mask_down
-    
-class Sky:
-    def __init__(self):
-        #set the constants
-        self.nbins = 1 #number of shells
-        #constant bias
-        self.bz = 1.2
-        self.phz_sigma_0 = 0.03
-        #sets up the simulation parameters
-        planck = Planck18
+    print(f"[!] Downgrading mask from Nside {nside_mask} to Nside {nside}.")
+    print("[!] Pixels with values <0.75 will be set to 0.0")
+    print("[!] Pixels with values >=0.75 will be set to 1.0")
+    mask_down = hp.ud_grade(mask, nside)
+    mask_down[mask_down < 0.75] = 0.0
+    mask_down[mask_down >= 0.75] = 1.0
+    print("[!] Done.")
+    return mask_down
 
-        self.h = planck.H0.value/100
-        self.Om = planck.Om0
-        self.Ob = planck.Ob0
-        self.Oc = self.Om - self.Ob
-        self.ns = 0.9665
-        self.As = 2.1e-9 #Temporary As before rescaling
-        self.sigma8 = 0.8102
-        self.log_T_AGN = 7.8
-        self.dx = 200.0
-        self.zmax = 3.0
-        #get variables from parser
+
+class Sky:
+    """Build a UNIONS GLASS mock from a :class:`GlassMockConfig` + CLI args."""
+
+    def __init__(self):
         parser = get_parser()
         args = parser.parse_args()
-        self.n_arcmin2 = args.neff
-        self.nside = args.nside
+
+        # Test mode shrinks the box; otherwise CLI overrides config fields.
+        if args.test:
+            print("[!!!] Running in test mode [!!!]")
+            self.config = GlassMockConfig.from_planck18(
+                nside=32, seed=args.seed, n_arcmin2=0.0824,
+                dx=120.0, zmax=0.5, sigma_e=args.sigmae, ia_bias=args.ia_bias,
+            )
+        else:
+            self.config = GlassMockConfig.from_planck18(
+                nside=args.nside, seed=args.seed, n_arcmin2=args.neff,
+                sigma_e=args.sigmae, ia_bias=args.ia_bias,
+            )
+
         self.test = args.test
         self.camb = args.camb
         self.pre_cls = args.cls
@@ -93,417 +125,212 @@ class Sky:
         self.n_sim = str(args.number).zfill(5)
         self.path = args.path
         self.path_mask = args.mask
-        self.sigma_e = args.sigmae
-        self.ia_bias = args.ia_bias if hasattr(args, 'ia_bias') else None
-
-        #sets the random seed
-        self.rng = np.random.default_rng(args.seed)
-        self.lmax = self.nside
         self.path_nz = args.pathnz
-        if args.test:
-            print("[!!!] Running in test mode [!!!]")
-            self.n_arcmin2 = 0.0824
-            self.nside = 32
-            self.lmax = 32
-            self.dx = 120.0
-            self.zmax = 0.5
+        self.rng = np.random.default_rng(self.config.seed)
 
-        print("------------------------------------------------------------------")
-        print(f"Creating a UNIONS GLASS simulation with NSide = {self.nside}")
+        print("-" * 66)
+        print(f"Creating a UNIONS GLASS simulation with NSide = {self.config.nside}")
         print(f"Mock number: {self.number}")
-        print(f"Random seed: {args.seed}")
-        print(f"Test mode or not: {args.test}")
-        print("------------------------------------------------------------------")
+        print(f"Random seed: {self.config.seed}")
+        print(f"Test mode or not: {self.test}")
+        print("-" * 66)
 
-        #Result folder
-        self.root = f'{self.path}/results'
+        self.root = f"{self.path}/results"
         if not os.path.exists(self.root):
             os.makedirs(self.root)
-            print("A new directory" + str(self.root)+"is created!")
+            print("A new directory " + str(self.root) + " is created!")
 
-        # Setup CAMB parameters
-        self.pars = camb.CAMBparams()
-
-        # Set the cosmology
-        self.pars.set_cosmology(
-            H0=100*self.h,
-            omch2=self.Oc*self.h**2,
-            ombh2=self.Ob*self.h**2,
-            mnu=0.06,
-        )
-
-        Omeganu = self.pars.omeganu
-        self.Oc = self.Oc - Omeganu
-
-        self.pars.set_cosmology(
-            H0=100*self.h,
-            omch2=self.Oc*self.h**2,
-            ombh2=self.Ob*self.h**2,
-            mnu=0.06,
-        )
-
-
-        # Set the initial power spectrum parameters
-        self.pars.InitPower.set_params(As=self.As, ns=self.ns)
-
-        self.pars.WantTransfer = True
-
-        # Set the non-linear model to HMCode with AGN feedback
-        self.pars.NonLinear = camb.model.NonLinear_both
-        self.pars.NonLinearModel.set_params(
-            halofit_version="mead2020_feedback",
-            HMCode_logT_AGN=self.log_T_AGN
-        )
-
-        # Set the maximum multipole for the matter power spectrum
-        self.pars.set_matter_power(
-            nonlinear=True,
-            kmax=20
-        )
-
-        # Rescale As to match the desired sigma8
-        results = camb.get_results(self.pars)
-        sigma8_temp = results.get_sigma8_0()
-        self.As *= (self.sigma8 / sigma8_temp) ** 2
-
-        init_power_scaled = camb.InitialPowerLaw()
-        init_power_scaled.set_params(As=self.As, ns=self.ns)
-
-        self.pars.InitPower = init_power_scaled
-
-        #Check the rescaling worked as expected
-        assert np.isclose(self.sigma8, float(camb.get_results(self.pars).get_sigma8_0())), f"Rescaling of As did not work as expected. Input sigma8: {self.sigma8}, output sigma8: {camb.get_results(self.pars).get_sigma8_0()}"
-        
-        # Print Camb parameters
-        print("-"*66)
-        print(self.pars)
-        print("-"*66)
-
-        params_dict = vars(self.pars)
-        print("-"*66)
+        # Cosmology + CAMB params come from the library core.
+        self.pars = build_camb_params(self.config)
+        print("-" * 66)
         print("Parameters used for the simulation:")
         print(f"H0: {self.pars.H0}")
         print(f"omch2: {self.pars.omch2}")
         print(f"ombh2: {self.pars.ombh2}")
         print(f"n_s: {self.pars.InitPower.ns}")
         print(f"As: {self.pars.InitPower.As}")
-        results = camb.get_results(self.pars)
-        sigma8 = results.get_sigma8()
-        print(f"sigma_8: {sigma8}")
+        print(f"sigma_8: {camb_sigma8(self.pars)}")
         print(f"Omega_m: {self.pars.omegam}")
-        print(f"S8: {sigma8*np.sqrt(self.pars.omegam/0.3)}")
-        print(f"ia_bias: {self.ia_bias}")
-        print("-"*66)
-        
-        #Initialize the variables for the functions
+        print(f"ia_bias: {self.config.ia_bias}")
+        print("-" * 66)
+
         self.z = None
-        self.bin_z = None
+        self.bin_nz = None
         self.camb_cls = None
-        self.numbers = None
-        self.shear = None
-        self.shear_noise = None
-        self.sim_cls = None
-        self.noise_cls = None
-        return
-    
-    #get a simulation of the galaxies in the sky, with ellipticity and redshift
+
     def galaxies_simulation(self):
-        """
-        Creates a UNIONS simulation using GLASS
-        """
-        #reads the parser
-        cosmo = Cosmology.from_camb(self.pars)
+        """Create a UNIONS source catalogue from the GLASS mock maps."""
+        config = self.config
 
-        #reads the mask
+        # Read + downgrade the survey mask.
         unions_mask = hp.read_map(self.path_mask)
-
-        mask_file_name = f'{self.path}/mask_nside{self.nside}.fits'
-
+        mask_file_name = f"{self.path}/mask_nside{config.nside}.fits"
         if not os.path.isfile(mask_file_name):
-            if not os.path.exists(f'{self.path}'):
-                os.makedirs(f'{self.path}')
-            #downgrades the mask to the desired nside
-            unions_mask = downgrade_mask(unions_mask, self.nside)
+            os.makedirs(self.path, exist_ok=True)
+            unions_mask = downgrade_mask(unions_mask, config.nside)
             hp.write_map(mask_file_name, unions_mask, overwrite=True)
         else:
             unions_mask = hp.read_map(mask_file_name).astype(np.float64)
 
-        #Setting up the matter density fields
-        zb = glass.distance_grid(cosmo, 0.0, self.zmax, dx=self.dx)
-        #Shells in comoving distance
-        shells = glass.linear_windows(zb)
+        # Shells + matter spectra from the library core (cached cls on disk).
+        shells = build_shells(config, self.pars)
+        cls_path = f"{self.root}/cls_{config.nside}.npy"
+        try:
+            cls = np.load(cls_path)
+        except FileNotFoundError:
+            print(f"[!] cls file {cls_path} missing; computing matter cls ...")
+            cls = matter_shell_cls(config, self.pars, shells)
+            np.save(cls_path, cls)
+            print("[!] Done.")
 
-        #Gets the matter angular power spectrum from camb
-        if self.pre_cls:
-            cls = self.pre_cls
-            np.save(f'{self.root}/cls_test{self.test}.npy')
-        else:
-            try:
-                cls = np.load(f'{self.root}/cls_{self.nside}.npy')
-            except FileNotFoundError:
-                print(f"[!] The cls file for lmax={self.lmax} does not exist.")
-                print(f"[!] Running the matter density cls calculation ...")
-                cls = glass.ext.camb.matter_cls(self.pars, self.lmax, shells)
-                #cls = self.get_ccl_cls(self.pars, self.lmax, shells, ia_bias=self.ia_bias)
-                np.save(f'{self.root}/cls_{self.nside}.npy', cls)
-                print(f"[!] Done.")
-
-        #Set up lognormal fields for simulations
         fields = glass.lognormal_fields(shells)
-        #Computing the gaussian cls for lognormal fields using 3 correlated shells
         gls = glass.solve_gaussian_spectra(fields, cls)
+        matter = glass.generate(fields, gls, config.nside, ncorr=3, rng=self.rng)
+        convergence = glass.MultiPlaneConvergence(_cosmology(self.pars))
 
-        #Building the generator for the lognormal fields:
-        matter = glass.generate(fields, gls, self.nside, ncorr=3, rng=self.rng)
-
-        #The generator fo the convergence field
-        convergence = glass.MultiPlaneConvergence(cosmo)
-
-        #true redshift distribution from UNIONS nz
+        # n(z) and per-shell galaxy partition.
         nz = np.loadtxt(self.path_nz)
-        nz = nz[nz[:, 0] <= self.zmax]
+        nz = nz[nz[:, 0] <= config.zmax]
         self.z = nz[:, 0]
-        dndz = nz[:, 1]
-        dndz *= self.n_arcmin2
-
-        #compute the galaxy number density for each shell
+        dndz = nz[:, 1] * config.n_arcmin2
         ngal = glass.partition(self.z, dndz, shells)
+        zbins = glass.equal_dens_zbins(self.z, dndz, nbins=config.nbins)
 
-        #Compute bin edges with equal density, assuming photometric redshift errors
-        zbins = glass.equal_dens_zbins(self.z, dndz, nbins=self.nbins)
-
-        #Setting up the output file
-        out_file = f'{self.root}/unions_glass_sim_{self.n_sim}_{self.nside}.fits'
-
-        #creating the catalogue using fits
-        fits = fitsio.FITS(out_file, 'rw', clobber=True)
+        out_file = f"{self.root}/unions_glass_sim_{self.n_sim}_{config.nside}.fits"
+        fits = fitsio.FITS(out_file, "rw", clobber=True)
         fits.write(None)
-        fits.create_table_hdu(names=['RA', 'Dec', 'e1', 'e2', 'w', 'n1', 'n2', 'TOM_BIN_ID', 'TRUE_Z', 'PHOTO_Z'],
-                              formats=['D', 'D', 'E', 'E', 'D', 'E', 'E', 'J', 'D', 'D'],
-                              extname='SOURCE_CATALOGUE')
-        cat_dtype = fits['SOURCE_CATALOGUE'].get_rec_dtype()[0]
+        fits.create_table_hdu(
+            names=["RA", "Dec", "e1", "e2", "w", "n1", "n2",
+                   "TOM_BIN_ID", "TRUE_Z", "PHOTO_Z"],
+            formats=["D", "D", "E", "E", "D", "E", "E", "J", "D", "D"],
+            extname="SOURCE_CATALOGUE",
+        )
+        cat_dtype = fits["SOURCE_CATALOGUE"].get_rec_dtype()[0]
 
-        #Iterate and store the quantities of interest for our mock catalogue
         ngal_tot = 0
         c = 0
-        """ kappa_bar = np.zeros(hp.nside2npix(self.nside))
-        gamm1_bar = np.zeros(hp.nside2npix(self.nside))
-        gamm2_bar = np.zeros(hp.nside2npix(self.nside)) """
-        print("Generating shell ", end='')
+        print("Generating shell ", end="")
         for i, delta_i in tqdm(enumerate(matter)):
-
-            #compute the lensing maps
             convergence.add_window(delta_i, shells[i])
             kappa_i = convergence.kappa
-            if self.ia_bias is not None:
-                kappa_ia = self.ia_kappa(delta_i, shells[i])
-                kappa_i += kappa_ia
+            if config.ia_bias is not None:
+                kappa_i = kappa_i + self.ia_kappa(delta_i, shells[i])
             gamm1_i, gamm2_i = glass.shear_from_convergence(kappa_i)
 
-            """ kappa_bar += ngal[i] * kappa_i
-            gamm1_bar += ngal[i] * gamm1_i
-            gamm2_bar += ngal[i] * gamm2_i """
-
-            #generate the galaxy positions from the matter density field:
-            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(ngal[i], delta_i, self.bz, unions_mask, rng=self.rng):
-
+            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(
+                ngal[i], delta_i, config.bias, unions_mask, rng=self.rng
+            ):
                 ngal_tot += gal_count
-
-                #generate random redshifts given the provided n(z) distribution
                 gal_z = glass.redshifts(gal_count, shells[i], rng=self.rng)
-
-                # generator photometric redshifts using a Gaussian model
-                gal_phz = glass.gaussian_phz(gal_z, self.phz_sigma_0, rng=self.rng)
-
-                # attach tomographic bin IDs to galaxies, based on photometric redshifts
+                gal_phz = glass.gaussian_phz(gal_z, config.phz_sigma_0, rng=self.rng)
                 tomo_id = np.digitize(gal_phz, np.unique(zbins)) - 1
+                gal_ellip = glass.ellipticity_intnorm(
+                    gal_count, config.sigma_e, rng=self.rng
+                )
+                gal_she = glass.galaxy_shear(
+                    gal_lon, gal_lat, gal_ellip, kappa_i, gamm1_i, gamm2_i
+                )
+                noise_she = glass.galaxies.galaxy_shear(
+                    gal_lon, gal_lat, gal_ellip,
+                    np.zeros(np.shape(kappa_i)),
+                    np.zeros(np.shape(gamm1_i)),
+                    np.zeros(np.shape(gamm2_i)),
+                )
 
-                #galaxy ellipticities
-                gal_ellip = glass.ellipticity_intnorm(gal_count, self.sigma_e, rng=self.rng)
-                #galaxy shears:
-                gal_she = glass.galaxy_shear(gal_lon, gal_lat, gal_ellip, kappa_i, gamm1_i, gamm2_i)
-
-                noise_she = glass.galaxies.galaxy_shear(gal_lon, gal_lat, gal_ellip, np.zeros(np.shape(kappa_i)),
-                                                        np.zeros(np.shape(gamm1_i)), np.zeros(np.shape(gamm2_i)))
-            
-                #constructs the catalogue
                 catalogue = np.empty(gal_count, dtype=cat_dtype)
-                catalogue['RA'] = gal_lon
-                catalogue['Dec'] = gal_lat
-                catalogue['e1'] = gal_she.real
-                catalogue['e2'] = -gal_she.imag
-                catalogue['w'] = np.ones_like(gal_lon)
-                catalogue['n1'] = noise_she.real
-                catalogue['n2'] = noise_she.imag
-                catalogue['TOM_BIN_ID'] = tomo_id
-                catalogue['TRUE_Z'] = gal_z
-                catalogue['PHOTO_Z'] = gal_phz
-
-                fits['SOURCE_CATALOGUE'].append(catalogue)
+                catalogue["RA"] = gal_lon
+                catalogue["Dec"] = gal_lat
+                catalogue["e1"] = gal_she.real
+                catalogue["e2"] = -gal_she.imag
+                catalogue["w"] = np.ones_like(gal_lon)
+                catalogue["n1"] = noise_she.real
+                catalogue["n2"] = noise_she.imag
+                catalogue["TOM_BIN_ID"] = tomo_id
+                catalogue["TRUE_Z"] = gal_z
+                catalogue["PHOTO_Z"] = gal_phz
+                fits["SOURCE_CATALOGUE"].append(catalogue)
                 c += 1
 
-        """
-        kappa_bar /= ngal.sum()
-        gamm1_bar /= ngal.sum()
-        gamm2_bar /= ngal.sum()
-        """
-
         print("[DONE] \n")
-        print(f"Total number of galaxies sampled: {ngal_tot} using {c} z-shells for integration")
+        print(f"Total number of galaxies sampled: {ngal_tot} using {c} z-shells")
         fits.close()
         print("Saved simulation to: ", out_file)
 
         if self.camb:
-            dictionary = self.get_camb_cls()
-        return
-    
-    def get_camb_cls(self, sav=True):
-        bin_nz = self.bin_nz
-        z = self.z
-        nbins = self.nbins
-        lmax = self.lmax
+            self.get_camb_cls()
 
-        if bin_nz is None or z is None:
-            print("ERROR: You should run galaxies_simulation() at first to get the necessary parameters")
+    def get_camb_cls(self, sav=True):
+        """Lensing C_ell from CAMB source windows for the mock n(z)."""
+        if self.bin_nz is None or self.z is None:
+            print("ERROR: run galaxies_simulation() first to populate n(z)")
             return None
-        
-        sources = []
-        for i in range(nbins):
-            s = camb.sources.SplinedSourceWindow(z=z, W=bin_nz[i], source_type='lensing')
-            sources.append(s)
+        lmax = self.config.lmax
+        sources = [
+            camb.sources.SplinedSourceWindow(
+                z=self.z, W=self.bin_nz[i], source_type="lensing"
+            )
+            for i in range(self.config.nbins)
+        ]
         self.pars.SourceWindows = sources
         self.pars.InitPower.set_params(As=2.1e-9, ns=0.965)
         results = camb.get_results(self.pars)
         cl_camb = results.get_source_cls_dict(lmax=lmax, raw_cl=True)
 
-        dic = dict()
-        dic['ell'] = np.arange(lmax+1)+1
-        for i, key in enumerate(cl_camb):
-            if 'P' not in key:
-                st = key.replace('W', '').replace('x', '-')
-                a, b = st.split('-')
-                a = str(int(a)-1)
-                b = str(int(b)-1)
-                new_key = a + '-' + b
-                dic[new_key] = cl_camb[key]
-
+        dic = {"ell": np.arange(lmax + 1) + 1}
+        for key in cl_camb:
+            if "P" not in key:
+                a, b = key.replace("W", "").replace("x", "-").split("-")
+                dic[f"{int(a) - 1}-{int(b) - 1}"] = cl_camb[key]
         if sav:
-            out_file_camb_cl = f'{self.root}/camb_cls.fits'
-            fits = fitsio.FITS(out_file_camb_cl, 'rw', clobber=True)
+            out = f"{self.root}/camb_cls.fits"
+            fits = fitsio.FITS(out, "rw", clobber=True)
             fits.write(dic)
             fits.close()
         self.camb_cls = dic
         return dic
 
-    def get_ccl_cls(self, pars, lmax, shells, ia_bias = None):
-        h = pars.h
-        omega_c = pars.omegac
-        omega_b = pars.omegab
-        ns = pars.InitPower.ns
-        sigma8 = float(camb.get_results(pars).get_sigma8())
-        cosmo = ccl.Cosmology(
-            h=h,
-            Omega_c=omega_c,
-            Omega_b=omega_b,
-            n_s=ns,
-            sigma8=sigma8,
-            transfer_function='boltzmann_camb'
-        )
-
-        tracers = []
-        for za, wa, _ in shells:
-            ia_bias_ = None
-            if ia_bias is not None:
-                ia_bias_ = (za, np.ones_like(za) * ia_bias)
-            tracer = ccl.WeakLensingTracer(cosmo, dndz=(za, wa), ia_bias=ia_bias_)
-            tracers.append(tracer)
-        
-        n = len(tracers)
-        cls = []
-        ell = np.arange(lmax + 1)
-        for i in range(n):
-            for j in range(i, -1, -1):
-                tracer_i = tracers[i]
-                tracer_j = tracers[j]
-                cl_ij = ccl.angular_cl(cosmo, tracer_i, tracer_j, ell)
-                cls.append(cl_ij)
-        return cls
-    
     def ia_kappa(self, delta, shell):
-        Om0 = self.Om
-        A_ia = self.ia_bias
+        """Intrinsic-alignment contribution to the convergence (NLA model)."""
+        Om0 = self.config.Om
+        A_ia = self.config.ia_bias
         _, _, z_eff = shell
-        c1 = (5e-14 * (u.Mpc**3.)/(u.solMass))
-        c1_cgs = (c1 * ((1./self.h))**2.).cgs
-        H0 = 100 * self.h * u.km/u.s/u.Mpc
-        H0 = H0.to(u.s**-1)
-        G = const.G * u.m**3/(u.kg * u.s**2)
-        G = G.cgs
+        c1 = 5e-14 * (u.Mpc**3.0) / u.solMass
+        c1_cgs = (c1 * (1.0 / self.config.h) ** 2.0).cgs
+        H0 = (100 * self.config.h * u.km / u.s / u.Mpc).to(u.s**-1)
+        G = (const.G * u.m**3 / (u.kg * u.s**2)).cgs
         rho_crit = 3 * H0**2 / (8 * np.pi * G)
         rho_c1 = (c1_cgs * rho_crit).value
-
-        
-
-        prefactor = - A_ia * rho_c1 * Om0
-        inverse_linear_growth = 1. / self.D_1(z_eff, Om0)
-        return prefactor * inverse_linear_growth * delta
+        prefactor = -A_ia * rho_c1 * Om0
+        return prefactor / self.D_1(z_eff, Om0) * delta
 
     def E_sq(self, z, om0):
-        """
-        A function giving Hubble's law for flat cosmology
-
-        :param z: redshift value
-        :param om0: matter density
-        :return: A value for the Hubble parameter
-        """
+        """Flat-LCDM E^2(z) = H^2(z)/H0^2."""
         return om0 * (1 + z) ** 3 + 1 - om0
 
-
     def f_integrand(self, z, om0):
-        """
-        A function for the redshift integrand in the intrinsic alignment calculation
-
-        :param z: redshift value
-        :param om0: matter density
-        :return: redshift integrand
-        """
+        """Growth-factor redshift integrand."""
         return (z + 1) / (self.E_sq(z, om0)) ** 1.5
 
-
     def D_single(self, z, om0):
-        """
-        Provides the normalised linear growth factor
-
-        :param z: single redshift value
-        :param om0: matter density
-        :return: normalised linear growth factor
-        """
-        first_integral = sp.integrate.quad(self.f_integrand, z, np.inf, args=(om0))[0]
-        second_integral = sp.integrate.quad(self.f_integrand, 0, np.inf, args=(om0))[0]
-
-        return (self.E_sq(z, om0) ** 0.5) * first_integral / second_integral
-
+        """Normalised linear growth factor at a single redshift."""
+        first = sp.integrate.quad(self.f_integrand, z, np.inf, args=(om0))[0]
+        second = sp.integrate.quad(self.f_integrand, 0, np.inf, args=(om0))[0]
+        return (self.E_sq(z, om0) ** 0.5) * first / second
 
     def D_1(self, z, om0):
-        """
-        Normalised linear growth factor (D_plus)
-
-        :param z: single redshift value or array values
-        :param om0: matter density
-        :return: normalised linear growth factor
-        """
-        
-        if (isinstance(z, float)) or (isinstance(z, int)):
-            D_values = self.D_single(z, om0)
-        else:
-            z = list(z)
-            D_values = [self.D_single(z[i], om0) for i in range(len(z))]
-            D_values = np.array(D_values)
-        
-        return D_values
+        """Normalised linear growth factor (scalar or array z)."""
+        if isinstance(z, (float, int)):
+            return self.D_single(z, om0)
+        return np.array([self.D_single(zi, om0) for zi in list(z)])
 
 
-    
+def _cosmology(pars):
+    """GLASS cosmology wrapper from CAMB params (lazy import)."""
+    from cosmology import Cosmology
+
+    return Cosmology.from_camb(pars)
+
+
 if __name__ == "__main__":
     print("Starting the simulation")
     start_time = time.time()

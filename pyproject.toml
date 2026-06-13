@@ -70,6 +70,14 @@ docs = [
     # 6.0.3 is a broken wheel on PyPI (dist-info only, no python module)
     "sphinxawesome-theme>=5.3,!=6.0.3"
 ]
+# GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
+# library and its import guard resolve without GLASS, and the production
+# container does not yet ship it. ``glass.ext.camb`` ships inside ``glass``;
+# ``cosmology`` provides the ``Cosmology`` wrapper GLASS consumes.
+glass = [
+    "glass",
+    "cosmology",
+]
 develop = ["sp_validation[test,docs]"]
 
 [tool.pytest.ini_options]
