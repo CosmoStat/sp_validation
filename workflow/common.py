@@ -176,3 +176,71 @@ def get_shear_catalog(wildcards):
         return shear_path
     subdir = cat_config.get("subdir", "")
     return str(Path(subdir) / shear_path)
+
+
+# ---------------------------------------------------------------------------
+# CosmologyValidation diagnostic suite (cosmo_val.py)
+# ---------------------------------------------------------------------------
+# The diagnostics in `sp_validation.cosmo_val.CosmologyValidation` share one
+# in-memory `cv` object across methods, linked by lazy properties. The
+# Snakemake decomposition (workflow/rules/cosmo_val.smk + papers/cosmo_val)
+# turns each diagnostic into a rule keyed on the real data products it writes
+# under COSMO_VAL. Where a method only emits a figure (no data product), the
+# rule declares a sentinel under CV_SENTINELS so the DAG stays trackable.
+#
+# COSMO_VAL is the cosmo_val/output directory (already defined above), the same
+# location every `cv.*` method writes to via `cc["paths"]["output"]`.
+
+# Sentinel directory for pure-plot leaf rules (no natural data-product output).
+CV_SENTINELS = COSMO_VAL / "snakemake_sentinels"
+
+# Working directory in which `CosmologyValidation` must be instantiated: it
+# reads `./cat_config.yaml` and writes to `./output` by default. Resolved to
+# the live (non-worktree) checkout so rules find the catalog config and share
+# the output tree with interactive runs.
+CV_RUNDIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val"
+
+
+def cv_basename(version, fiducial=None):
+    """Reproduce CosmologyValidation.basename() for a version.
+
+    Mirrors the f-string in cosmo_val.py so rule outputs match exactly what the
+    method writes. Uses fiducial binning (min_sep/max_sep/nbins/npatch).
+    """
+    fiducial = fiducial or FIDUCIAL
+    return (
+        f"{version}_minsep={fiducial['min_sep']}"
+        f"_maxsep={fiducial['max_sep']}"
+        f"_nbins={fiducial['nbins']}"
+        f"_npatch={fiducial['npatch']}"
+    )
+
+
+def cv_init_params(config, version_list=None):
+    """Assemble the CosmologyValidation(...) constructor kwargs from config.
+
+    Centralizes the run-specific instantiation so every cosmo_val rule script
+    builds an identical `cv`. `version_list` overrides config["versions"] (used
+    by per-version rules that pass a single version).
+    """
+    cv = config["cosmo_val"]
+    params = dict(
+        versions=version_list if version_list is not None else config["versions"],
+        npatch=cv["npatch"],
+        theta_min=cv["theta_min"],
+        theta_max=cv["theta_max"],
+        nbins=cv["nbins"],
+        theta_min_plot=cv["theta_min_plot"],
+        theta_max_plot=cv["theta_max_plot"],
+        ylim_alpha=cv["ylim_alpha"],
+        nrandom_cell=cv["nrandom_cell"],
+        cell_method=cv["cell_method"],
+        nside_mask=cv["nside_mask"],
+    )
+    if cv.get("path_onecovariance"):
+        params["path_onecovariance"] = cv["path_onecovariance"]
+    if cv.get("rho_tau_method"):
+        params["rho_tau_method"] = cv["rho_tau_method"]
+    if cv.get("cosmo_params"):
+        params["cosmo_params"] = cv["cosmo_params"]
+    return params
