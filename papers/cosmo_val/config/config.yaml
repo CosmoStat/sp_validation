@@ -36,10 +36,10 @@ cosmo_val:
   # Fiducial scale cut (arcmin) for B-mode PTE extraction. Paper II: [12, 83].
   fiducial_scale_cut: [12, 83]
 
-  # Whether the harmonic-space pseudo-Cl BB enters the B-mode summary. The
-  # NaMaster pseudo-Cl step is expensive; off by default (commented out in the
-  # original driver). Set true to add the C_l^BB column.
-  include_pseudo_cl: false
+  # Whether the harmonic-space pseudo-Cl BB enters the B-mode summary. On by
+  # default — it is no more expensive than the other diagnostics, and the
+  # C_l^BB column belongs in the standard B-mode summary.
+  include_pseudo_cl: true
 
   # Theory cosmology for pseudo-Cl / semi-analytic covariance (astropy Planck18
   # + CAMB nonlinear settings, matching the original run_cosmo_val.py driver).
