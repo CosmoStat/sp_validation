@@ -77,6 +77,26 @@ cl:
   fiducial_ell_min: 300
   fiducial_ell_max: 1600
 
+# Harmonic pseudo-Cl fiducial binning — the tag the producer (twopoint.smk
+# pseudo_cl / pseudo_cl_cov) stamps into the filename, which the inference
+# consumer reconstructs to request the exact file. Canonical: A / powspace / 32.
+harmonic:
+  fiducial:
+    blind: A
+    binning: powspace
+    nbins: 32
+
+# Cosmological inference data-product locations (dormant subsystem). Output
+# products land beside the code (workflow/common.py COSMO_INFERENCE); only the
+# external chain/mock directories are configured here.
+inference:
+  # CosmoSIS chain output root for real-data runs.
+  chains_dir: "/n09data/guerrini/output_chains"
+  # Precomputed GLASS mock xi/Cl products (Sacha's pipeline).
+  glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
+  # CosmoSIS chain output root for GLASS mock runs.
+  glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
+
 # COSEBIS calculation parameters
 cosebis:
   theta_min: 1.0      # arcmin, angular scale range

@@ -1,7 +1,24 @@
 # Imports from Snakefile: FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path, build_redshift_path, fiducial_binning_suffix
-# NOTE: This subsystem is dormant — see fiber pseudo-cl-assets-in-inference-28589160
-COSMO_INFERENCE_PROD = Path("/home/guerrini/sp_validation/cosmo_inference")  # dormant subsystem
-PSEUDO_CL_DIR = COSMO_VAL.parent  # Same directory structure
+# NOTE: dormant subsystem. The file-name plumbing (config-driven paths + the
+# producer-tagged pseudo-Cl names) is fixed and the DAG is valid, but it has not
+# been run end-to-end. Reviving it still needs the FITS-CONTENT plumbing
+# reconciled: cosmosis_fitting.py reads ELL/EE/BB + COVAR_FULL, while the
+# producers write PSEUDO_CELL/ELL + COVAR_BB_BB.
+
+# Output root for CosmoSIS data products + configs. COSMO_INFERENCE (common.py)
+# already resolves to THIS repo's cosmo_inference dir, so the products land
+# beside the code that builds them rather than in a contributor's home.
+COSMO_INFERENCE_PROD = COSMO_INFERENCE
+# Working directory for the cosmosis_fitting.py invocation — the same repo dir.
+COSMO_INFERENCE_RUNDIR = str(COSMO_INFERENCE)
+
+# External chain/mock locations are deployment-specific, so they live in config.
+INFERENCE = config["inference"]
+CHAINS_DIR = INFERENCE["chains_dir"]            # CosmoSIS chain output root (real data)
+GLASS_MOCK_DATA_DIR = INFERENCE["glass_mock_data_dir"]    # precomputed mock xi/Cl products
+GLASS_MOCK_CHAINS_DIR = INFERENCE["glass_mock_chains_dir"]  # mock chain output root
+
+PSEUDO_CL_DIR = COSMO_VAL  # producer (twopoint.smk) writes pseudo_cl* here
 GLASS_MOCK_VERSION = config["glass_mocks"].get("version", "v0")
 GLASS_MOCK_SEED_RANGE = config["glass_mocks"]["seed_range"]
 
@@ -15,10 +32,27 @@ GLASS_MOCK_CONFIG_PATTERN = str(
     / f"cosmosis_config/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
+# Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
+# into the filename. These are NOT inference_prep wildcards, so the consumer
+# reads them from config to reconstruct the exact name the producer emits
+# (canonical: blind=A, powspace, nbins=32 — see twopoint.smk pseudo_cl_all).
+HARMONIC_FIDUCIAL = config["harmonic"]["fiducial"]
+PSEUDO_CL_TAG = (
+    f"blind={HARMONIC_FIDUCIAL['blind']}"
+    f"_{HARMONIC_FIDUCIAL['binning']}"
+    f"_nbins={HARMONIC_FIDUCIAL['nbins']}"
+)
+
+
 def pseudo_cl_assets(version):
-    """Return pseudo-Cl and covariance paths for the requested catalog version."""
-    cl_path = PSEUDO_CL_DIR / f"pseudo_cl_{version}.fits"
-    cov_path = PSEUDO_CL_DIR / f"pseudo_cl_cov_g_ng_iNKA_{version}.fits"
+    """Return pseudo-Cl and covariance paths for the requested catalog version.
+
+    The producer (twopoint.smk rules pseudo_cl / pseudo_cl_cov) writes
+    wildcard-tagged names; the consumer reconstructs them from the fiducial
+    harmonic-binning config so the requested path matches byte-for-byte.
+    """
+    cl_path = PSEUDO_CL_DIR / f"pseudo_cl_{version}_{PSEUDO_CL_TAG}.fits"
+    cov_path = PSEUDO_CL_DIR / f"pseudo_cl_cov_{version}_{PSEUDO_CL_TAG}.fits"
     return str(cl_path), str(cov_path)
 
 rule inference_prep:
@@ -48,7 +82,7 @@ rule inference_prep:
         )
     params:
         cosmosis_root="{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}",
-        data_dir="/n09data/guerrini/output_chains/{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}",
+        data_dir=f"{CHAINS_DIR}/{{version}}_{{blind}}_minsep={{min_sep}}_maxsep={{max_sep}}_nbins={{nbins}}_npatch={{npatch}}",
         output_root=str(COSMO_INFERENCE_PROD),
     threads: 1
     resources:
@@ -56,7 +90,7 @@ rule inference_prep:
         runtime=10,
     shell:
         """
-        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference
+        cd {COSMO_INFERENCE_RUNDIR}
 
         # Run inference preparation step with cosmosis_fitting.py
         python scripts/cosmosis_fitting.py \
@@ -97,7 +131,7 @@ rule inference_glass_mocks:
 
 rule inference_prep_glass_mock:
     input:
-        xi="/n09data/guerrini/glass_mock_v1.4.6/results/xi_glass_mock_{mock_id}_4096_nbins=20.fits",
+        xi=f"{GLASS_MOCK_DATA_DIR}/xi_glass_mock_{{mock_id}}_4096_nbins=20.fits",
         # Use centralized covariance_path() with fiducial mock version
         cov_matrix=covariance_path(FIDUCIAL["mock_version"], "A"),
         # n(z) file
@@ -108,14 +142,14 @@ rule inference_prep_glass_mock:
         # Tau covariance (real data)
         tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
         # C_ell data for dual config generation
-        cl_file="/n09data/guerrini/glass_mock_v1.4.6/results/cl_glass_mock_{mock_id}_4096.npy",
+        cl_file=f"{GLASS_MOCK_DATA_DIR}/cl_glass_mock_{{mock_id}}_4096.npy",
         cl_cov=pseudo_cl_assets(FIDUCIAL["mock_version"])[1],
     output:
         fits_file=GLASS_MOCK_FITS_PATTERN,
         config_file=GLASS_MOCK_CONFIG_PATTERN,
     params:
         cosmosis_root=f"glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
-        data_dir=f"/n09data/guerrini/glass_mock_chains/glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
+        data_dir=f"{GLASS_MOCK_CHAINS_DIR}/glass_mock_{GLASS_MOCK_VERSION}_{{mock_id}}",
         output_root=str(COSMO_INFERENCE_PROD),
         output_basename=f"glass_mocks/{GLASS_MOCK_VERSION}/glass_mock_{{mock_id}}",
     threads: 1
@@ -124,7 +158,7 @@ rule inference_prep_glass_mock:
         runtime=10,
     shell:
         """
-        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference
+        cd {COSMO_INFERENCE_RUNDIR}
 
         mkdir -p {params.data_dir}
 

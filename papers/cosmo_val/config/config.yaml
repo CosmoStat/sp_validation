@@ -108,6 +108,20 @@ cl:
   fiducial_ell_min: 300
   fiducial_ell_max: 1600
 
+# Harmonic pseudo-Cl fiducial binning — the tag the producer (twopoint.smk)
+# stamps into the filename, reconstructed by the inference consumer.
+harmonic:
+  fiducial:
+    blind: A
+    binning: powspace
+    nbins: 32
+
+# Cosmological inference data-product locations (dormant subsystem).
+inference:
+  chains_dir: "/n09data/guerrini/output_chains"
+  glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
+  glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
+
 cosebis:
   theta_min: 1.0
   theta_max: 250.0
