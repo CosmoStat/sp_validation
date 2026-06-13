@@ -3,20 +3,19 @@ id: 01KTD18JXS7VK50ECJX3GRWS9W
 name: 'Codex reorg: split bmodes into modular workflow/ + papers/bmodes/'
 status: closed
 tags:
-    - constitution
-    - sp-validation
-    - reorg
-    - shuttle
+  - constitution
+  - sp-validation
+  - reorg
+  - shuttle
 created-at: 2026-06-06T01:18:01.913028797+02:00
 closed-at: 2026-06-11T02:10:26.498745826+02:00
 outcome: 'Split complete on cleanup/restructuring; guard net green at 49 passed (move-map guard active, 4 entries). The B-modes analysis is now two layers: workflow/ — the generic compute base (pointer Snakefile, common.py helpers incl. PLANCK18 + wildcard constraints via configure(), rules/{twopoint,covariance,inference,masks,glass_mock}.smk, compute scripts) — and papers/bmodes/ — the paper''s epistemic layer (Snakefile composing the workflow via module import + plain-Python common import, config/, rules/{claims,ecut,synthesis,presentation}.smk, paper scripts; plotting_utils.py stays in workflow/scripts with a tracked symlink in papers/bmodes/scripts). Dead specs.smk dropped (in git history). Also landed: catalog_paper_plot → papers/catalog, 2D_harmonic_space_cosmic_shear_plots → papers/harmonic (the /home/guerrini absolute refs updated to the post-move layout). Run dir repointed: pure_eb/workflow → papers/bmodes plus a new pure_eb/config symlink; snakemake -n all_tapestry exits 0 from both papers/bmodes and pure_eb. Load-bearing gotcha: Snakemake normalizes include paths lexically, so reaching the module through the run-dir symlink requires realpath-resolving WORKFLOW_DIR in the paper Snakefile (commit 5a4b926). Remaining (later pass): fold glass_mock core into src/sp_validation; 2D_cosmic_shear_paper_plots no longer exists in the checkout (move moot, but plotting_utils.PAPER_MPLSTYLE still points at its old path — pre-existing dangle).'
 shuttle:
-    enabled: false
-    kind: oneshot
-    interactive: false
-    host: candide
-    project_dir: /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation
-    agent: codex
+  kind: oneshot
+  host: candide
+  project_dir: /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation
+  agent: codex
+tempered: true
 ---
 
 ## Desired State
