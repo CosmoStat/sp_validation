@@ -304,7 +304,8 @@ rule cv_pure_eb:
         max_sep_int=CV["pure_eb"]["max_sep_int"],
         nbins_int=CV["pure_eb"]["nbins_int"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        **cv_params(version_list=["{version}"]),
+        cv_init=lambda w: cv_init_params(config, version_list=[w.version]),
+        rundir=CV_RUNDIR,
     threads: 24
     resources:
         mem_mb=40000,
@@ -328,7 +329,8 @@ rule cv_cosebis:
         nmodes=CV["cosebis"]["nmodes"],
         scale_cuts=CV["cosebis"]["scale_cuts"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        **cv_params(version_list=["{version}"]),
+        cv_init=lambda w: cv_init_params(config, version_list=[w.version]),
+        rundir=CV_RUNDIR,
     threads: 24
     resources:
         mem_mb=48000,
