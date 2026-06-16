@@ -21,7 +21,10 @@ MOVE_MAP: tuple[tuple[str, str], ...] = (
     ("cosmo_inference/notebooks/2D_bmodes_paper_workflow", "papers/bmodes"),
     ("rules/glass_mock_validation.smk", "workflow/rules/glass_mock.smk"),
     ("notebooks/cosmo_val/catalog_paper_plot", "papers/catalog"),
-    ("cosmo_inference/notebooks/2D_harmonic_space_cosmic_shear_plots", "papers/harmonic"),
+    (
+        "cosmo_inference/notebooks/2D_harmonic_space_cosmic_shear_plots",
+        "papers/harmonic",
+    ),
     ("notebooks/cosmo_val", "cosmo_val"),
     ("notebooks/params.py", "scripts/examples/params.py"),
 )
