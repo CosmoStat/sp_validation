@@ -1,40 +1,27 @@
 # %%
 # Plot binned quantities, which are the outputs of leakage_minimal.py
 
-# %%                                                                             
-from IPython import get_ipython                                                  
+# %%
+from IPython import get_ipython
 
-ipython = get_ipython()                                                          
+ipython = get_ipython()
 
-# enable autoreload for interactive sessions                                     
-if ipython is not None:                                                          
-    ipython.run_line_magic("load_ext", "autoreload")                             
-    ipython.run_line_magic("autoreload", "2")   
+# enable autoreload for interactive sessions
+if ipython is not None:
+    ipython.run_line_magic("load_ext", "autoreload")
+    ipython.run_line_magic("autoreload", "2")
 
-# %%                       
-import matplotlib.pyplot as plt                                                  
-import numpy as np  
+# %%
 import numpy as np
-import pandas as pd
 
-import matplotlib.pyplot as plt
+from sp_validation import io, plots
 
-from cs_util import plots as cs_plots
-
-from sp_validation import run_joint_cat as sp_joint
-from sp_validation import cat as sp_cat
-from sp_validation.basic import metacal
-from sp_validation import calibration                                                             
-from sp_validation import io           
-from sp_validation import plots          
-
-    
 ## %%
-## enable inline plotting for interactive sessions                                
-## (must be done *after* importing package that sets agg backend)                 
-#if ipython is not None:         
-#    print("matplotlib inline")                                                 
-#    ipython.run_line_magic("matplotlib", "inline")    
+## enable inline plotting for interactive sessions
+## (must be done *after* importing package that sets agg backend)
+#if ipython is not None:
+#    print("matplotlib inline")
+#    ipython.run_line_magic("matplotlib", "inline")
 
 # %%
 bin_edges = {}
@@ -51,7 +38,7 @@ for key in keys:
         if xy  != "quantity":
             bin_edges[xy] = result[xy]
     quantities[key] = result["quantity"]
-    
+
 xlabel = "SNR"
 ylabel = r"$r / r_{\rm psf}$"
 

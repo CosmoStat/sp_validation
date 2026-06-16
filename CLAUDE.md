@@ -64,7 +64,7 @@ Run via `./pipeline.sh` with flags:
 - `--mcmc_process`: Analyze MCMC chains
 
 ### Configuration
-Main configuration in `notebooks/params.py` with parameters:
+Main configuration in `scripts/examples/params.py` with parameters:
 - `name`: Field/patch identifier
 - `data_dir`: Input data directory
 - `galaxy_cat_path`: Galaxy catalogue path (.fits/.hdf5)

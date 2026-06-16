@@ -23,9 +23,7 @@
 # +
 import os
 import re
-import numpy as np
 import tracemalloc
-import healsparse as hsp
 
 from sp_validation import run_joint_cat as sp_joint
 

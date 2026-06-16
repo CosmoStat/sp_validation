@@ -13,24 +13,22 @@
 # ---
 
 # +
-import os
-import numpy as np
-import healpy as hp
-import healsparse as hs
 import glob
-import matplotlib.pylab as plt
-from astropy.io import fits
-from astropy import wcs
-from astropy import units
-import tqdm
+import os
+
+# -
+import warnings
 from timeit import default_timer as timer
 
-from IPython.display import display, clear_output
+import healpy as hp
+import healsparse as hs
+import matplotlib.pylab as plt
+import numpy as np
+import tqdm
+from astropy import wcs
+from astropy.io import fits
+from IPython.display import clear_output
 
-from sp_validation import plot_style
-# -
-
-import warnings
 warnings.filterwarnings('ignore')
 
 # List of FITS mask files
@@ -43,8 +41,8 @@ nside_coverage = 32  # Define the nside of the coverage map (adjust as needed)
 nside_sparse = 4096  # Define the sparse map resolution
 
 # +
-from scipy.interpolate import griddata
-from scipy.interpolate import RectBivariateSpline
+from scipy.interpolate import RectBivariateSpline, griddata
+
 
 def interpol(ra_step, dec_step, x, y, x_step, y_step):
 
@@ -52,13 +50,13 @@ def interpol(ra_step, dec_step, x, y, x_step, y_step):
     points = np.array([x_step.flatten(), y_step.flatten()]).T
     ra_values = ra_step.flatten()
     dec_values = dec_step.flatten()
-    
+
     # Interpolate RA and Dec values to the fine grid
     ra = griddata(points, ra_values, (x, y), method='cubic')
     dec = griddata(points, dec_values, (x, y), method='cubic')
-    
+
     return ra, dec
-    
+
 def process(fits_mask_file, nside_sparse, nside_coverage, step=1):
 
     # Get data
@@ -111,7 +109,7 @@ def process(fits_mask_file, nside_sparse, nside_coverage, step=1):
     return ra, dec, mask
 
 def update_map(hs_map, ra, dec, mask):
-    
+
     # Add pixels to healsparse map
     #start = timer()
     hs_map.update_values_pos(ra, dec, mask, lonlat=True, operation="or")
@@ -148,7 +146,7 @@ for fits_mask_file in tqdm.tqdm(fits_mask_files, total=len(fits_mask_files), dis
 
     # Check for zero file size
     if os.stat(fits_mask_file).st_size == 0:
-        print(f"File {fits_mask_file} has zero size, continuing")    
+        print(f"File {fits_mask_file} has zero size, continuing")
 
     # Get coordinates of pixel grid
     ra, dec, mask = process(fits_mask_files[0], nside_sparse, nside_coverage, step=step)
@@ -169,7 +167,7 @@ for fits_mask_file in tqdm.tqdm(fits_mask_files, total=len(fits_mask_files), dis
         batch_ra = np.concatenate(batch_ra)
         batch_dec = np.concatenate(batch_dec)
         batch_mask = np.concatenate(batch_mask)
-    
+
         update_map(hs_map, batch_ra, batch_dec, batch_mask)
 
         # Clear batch storage
@@ -185,13 +183,13 @@ for fits_mask_file in tqdm.tqdm(fits_mask_files, total=len(fits_mask_files), dis
             plt.savefig(fname)
 
     idx += 1
-    
+
     if do_plot:
         clear_output(wait=True)
 
         # Create the figure
         plt.figure(figsize=(8, 5))
-    
+
         hp.mollview(hs_map.coverage_mask)
         plt.show()
 # -

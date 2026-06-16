@@ -17,17 +17,17 @@
 # %matplotlib inline
 
 # +
-import numpy as np
+import os
 import re
-import matplotlib.pylab as plt
-import healpy as hp
-import healsparse as hsp
 from collections import Counter
 
+import healpy as hp
+import healsparse as hsp
+import matplotlib.pylab as plt
+import numpy as np
 import skyproj
-
-import os
 from astropy.io import fits
+
 # -
 
 versions = ["v1.4.2", "v1.5.4"]
@@ -59,7 +59,7 @@ def create_sp_map(ra, dec, nside_coverage=32, nside_map=2048):
 
     # Create maps with numbers per pixel
     sp_map[unique_hpix] = values
-    
+
     return sp_map
 
 
@@ -73,7 +73,7 @@ def plot_area(
     vmax=60,
     ax=None,
 ):
-    
+
     if not ax:
         fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -111,7 +111,7 @@ for ver in versions:
 
 
     plt.clf()
-    
+
     plot_area(
         sp_map,
         ra_0=ra_0,
@@ -122,7 +122,7 @@ for ver in versions:
         vmax=vmax,
     )
     plt.savefig(f"footprint_{ver}.png")
-    
+
 
 # -
 

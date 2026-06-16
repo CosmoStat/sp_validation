@@ -15,7 +15,6 @@
 
 # # DES Y3 catalogue
 
-from astropy.io import fits
 
 path = "des.fits"
 

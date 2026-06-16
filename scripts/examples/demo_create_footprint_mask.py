@@ -19,19 +19,17 @@
 
 # +
 import os
-import numpy as np
-import healpy as hp
-
 
 import matplotlib
+
 matplotlib.use("agg")
 
-import matplotlib.pylab as plt
 import healsparse as hsp
-
 from cs_util.plots import FootprintPlotter
-from sp_validation import run_joint_cat as sp_joint
+
 from sp_validation import cosmo_val
+from sp_validation import run_joint_cat as sp_joint
+
 # -
 
 
@@ -62,11 +60,11 @@ auxiliary_masks = []
 auxiliary_labels = []
 for section, mask_list in config_data.items():
     for mask_params in mask_list:
-        
+
         # Check bit-coded masks
         if mask_params["col_name"] in all_masks_bits:
             bits = bits | all_masks_bits[mask_params["col_name"]]
-            
+
         # Check auxiliary masks
         if "npoint3" == mask_params["col_name"]:
             auxiliary_masks.append(obj._params["aux_mask_files"])
@@ -111,7 +109,7 @@ for map in hsp_maps:
     del map
 
 if obj._params["verbose"]:
-    print("Writing combined mask file...")    
+    print("Writing combined mask file...")
 map_comb.write("mask_combined.hsp", clobber=True)
 
 

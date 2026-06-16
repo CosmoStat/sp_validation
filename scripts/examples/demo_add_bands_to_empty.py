@@ -21,14 +21,11 @@
 
 # +
 import os
-import numpy as np
-import numpy.lib.recfunctions as rfn
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from timeit import default_timer as timer
+import numpy as np
 import tqdm
-import healsparse as hsp
 from astropy.io import fits
 
 from sp_validation import run_joint_cat as sp_joint
