@@ -3,6 +3,8 @@ id: 01KV0B16CX053QB9PBQDTCJSDR
 name: Decompose run_cosmo_val into a Snakemake workflow
 status: active
 created-at: 2026-06-13T13:14:19.677661469+02:00
+updated-at: 2026-06-16T14:21:34.940296219Z
+outcome: 'Decomposed run_cosmo_val into a Snakemake workflow (workflow/rules/cosmo_val.smk + cv_*.py + cv_runner harness; papers/cosmo_val composes it). DECISIONS CLOSED: canonical set = SP_v1.4.6.3 ±leak_corr, npatch=100 (confirmed); include_pseudo_cl ON by default (57cb9b7) — DAG + cv_summarize_bmodes honor the flag end-to-end. Validated by snakemake -n (19-job DAG); end-to-end run still pending the container scientific stack.'
 ---
 
 Turned the linear cosmo_val/run_cosmo_val.py driver (one in-memory `cv`, ~13

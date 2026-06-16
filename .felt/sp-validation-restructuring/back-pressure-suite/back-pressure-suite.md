@@ -3,18 +3,18 @@ id: 01KTCKDA2N1VEPZJRBF04ZZ6VW
 name: Back-pressure test suite for the reorg
 status: closed
 tags:
-  - constitution
-  - sp-validation
-  - reorg
-  - shuttle
+    - constitution
+    - sp-validation
+    - reorg
+    - shuttle
 created-at: 2026-06-05T21:15:56.629448647+02:00
 closed-at: 2026-06-11T02:37:16.176902373+02:00
 outcome: 'Suite realized and battle-tested: guards ①②③⑤⑥ green through the ENTIRE phase-2 restructuring (final: 86 passed, 0 skipped — move-map guard activated with 5 entries as moves registered). It caught two real regressions en route (twopoint script-path resolution; test_cosmo_val component-built path invisible to the string sweep). The net is now the repo''s standing structural test suite, not a one-off.'
 shuttle:
-  kind: oneshot
-  host: candide
-  project_dir: /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation
-  agent: codex
+    kind: oneshot
+    host: candide
+    project_dir: /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation
+    agent: codex
 tempered: true
 ---
 
