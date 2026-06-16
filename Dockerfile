@@ -1,5 +1,5 @@
 # Development image with more bells and whistles
-FROM ghcr.io/cosmostat/shapepipe:develop
+FROM ghcr.io/cosmostat/shapepipe:image_sims-dev
 
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
