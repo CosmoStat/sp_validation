@@ -287,6 +287,13 @@ def create_output_file(input_path, output_path, dataset_name, verbose=False):
                     dset_out[start:end] = chunk_out
                     pbar.update(end - start)
 
+            # Copy all other top-level datasets/groups unchanged
+            for key in hf_in.keys():
+                if key != dataset_name:
+                    hf_in.copy(key, hf_out)
+                    if verbose:
+                        print(f"  Copied group/dataset '{key}' unchanged.")
+
     elapsed = timer() - t0
     print(f"  Done in {elapsed:.1f}s\n")
 
@@ -357,8 +364,6 @@ def main(argv=None):
             params["input"], params["output"], dataset_name, verbose=verbose
         )
         checkpoint["output_created"] = True
-        # Invalidate any stale tile_index_map from a previous partial run
-        checkpoint.pop("tile_index_map", None)
         with open(params["checkpoint"], "w") as cf:
             json.dump(checkpoint, cf)
     else:
@@ -384,38 +389,24 @@ def main(argv=None):
                     f"Key '{key}' missing from output dataset — was Phase 1 complete?"
                 )
 
-        # Build TILE_ID → output row indices (scan once; cached in checkpoint)
-        if "tile_index_map" in checkpoint:
-            if verbose:
-                print("  Loading tile→index map from checkpoint...")
-            tile_index_map = {
-                k.encode(): np.array(v, dtype=np.int64)
-                for k, v in checkpoint["tile_index_map"].items()
-            }
-        else:
-            print("  Building tile→index map (scans all rows)...")
-            tile_index_map_lists = defaultdict(list)
-            with tqdm.tqdm(
-                total=n_total, unit="rows", unit_scale=True, desc="  Scanning TILE_ID"
-            ) as pbar:
-                for start in range(0, n_total, SCAN_CHUNK):
-                    end = min(start + SCAN_CHUNK, n_total)
-                    tile_chunk = dset["TILE_ID"][start:end]
-                    for local_i, tid in enumerate(tile_chunk):
-                        tile_index_map_lists[tid].append(start + local_i)
-                    pbar.update(end - start)
+        # Build TILE_ID → output row indices (always scanned; too large for checkpoint)
+        print("  Building tile→index map (scans all rows)...")
+        tile_index_map_lists = defaultdict(list)
+        with tqdm.tqdm(
+            total=n_total, unit="rows", unit_scale=True, desc="  Scanning TILE_ID"
+        ) as pbar:
+            for start in range(0, n_total, SCAN_CHUNK):
+                end = min(start + SCAN_CHUNK, n_total)
+                tile_chunk = dset[start:end]["TILE_ID"]
+                for local_i, tid in enumerate(tile_chunk):
+                    tile_index_map_lists[tid].append(start + local_i)
+                pbar.update(end - start)
 
-            tile_index_map = {
-                tid: np.array(idxs, dtype=np.int64)
-                for tid, idxs in tile_index_map_lists.items()
-            }
-            checkpoint["tile_index_map"] = {
-                tid.decode(): idxs.tolist()
-                for tid, idxs in tile_index_map.items()
-            }
-            with open(params["checkpoint"], "w") as cf:
-                json.dump(checkpoint, cf)
-            print(f"  Map saved: {len(tile_index_map)} unique tiles.")
+        tile_index_map = {
+            tid: np.array(idxs, dtype=np.int64)
+            for tid, idxs in tile_index_map_lists.items()
+        }
+        print(f"  Map built: {len(tile_index_map)} unique tiles.")
 
         unique_tiles = sorted(tile_index_map.keys())
         n_tiles = len(unique_tiles)

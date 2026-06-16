@@ -43,7 +43,7 @@ obj = sp_joint.BaseCat()
 # Set parameters
 base = "unions_shapepipe_comprehensive_struc_empty_ugriz"
 year = 2024
-ver = "v1.5.c"
+ver = "v1.6.c"
 
 obj._params = {}
 
@@ -59,19 +59,20 @@ path_suff = "_SP_ugriz_photoz_ext.cat"
 
 
 bands = ("u", "g", "r", "i", "z", "z2")
-base_keys = ["MAGERR_GAAP", "FLUX_GAAP", "FLUXERR_GAAP", "FLAG_GAAP", "MAG_LIM"]
 keys_mag = [f"MAG_GAAP_0p7_{band}" for band in bands]
-for base_key in base_keys:
-    keys_mag.extend([f"_{base_key}_{band}" for band in bands])
+#base_keys = ["MAGERR_GAAP", "FLUX_GAAP", "FLUXERR_GAAP", "FLAG_GAAP", "MAG_LIM"]
+#for base_key in base_keys:
+    #keys_mag.extend([f"{base_key}_{band}" for band in bands])
+
+# "EXTINCTION",
+#     "MP_NAME",
+# "ODDS",
 
 keys = [
-    "EXTINCTION",
-    "MP_NAME",
     "Z_B",
     "Z_B_MIN",
-    "Z_B_MAX"
+    "Z_B_MAX",
     "T_B",
-    "ODDS",
 ] + keys_mag
 
 hdu_no = 1
