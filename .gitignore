@@ -179,3 +179,7 @@ papers/catalog/plots/*.pdf
 .felt/*.db
 .felt/*.lock
 .felt/index-sync.*
+
+# Claude Code agent worktrees — transient isolated checkouts for background
+# agents; never tracked.
+.claude/worktrees/
