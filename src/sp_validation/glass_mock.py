@@ -4,9 +4,13 @@ The reproducibility surface of the UNIONS GLASS mocks lives here: the fixed
 cosmology (Planck18 + HMCode AGN feedback, ``sigma8``-rescaled CAMB power
 spectrum) and the lognormal matter / lensing-map generation that turns a seed
 into a sky. Galaxy sampling and catalogue I/O are a thin layer downstream
-(``glass_mock/make_unions_glass_sim.py``), so that the load-bearing
+(``scripts/glass_mock/make_unions_glass_sim.py``), so that the load-bearing
 config can be characterized in isolation — see
 ``tests/test_glass_mock.py``.
+
+This module also collects the reusable two-point and PSF-leakage helpers the
+mock post-processing runners in ``scripts/glass_mock/`` share (configuration-
+space ξ±, NaMaster pseudo-Cℓ, harmonic rho/tau, footprint masks).
 
 The ``glass`` dependency is imported lazily inside the map-generation functions
 so that this module — and therefore the import guard — resolves in any
@@ -26,6 +30,17 @@ __all__ = [
     "build_shells",
     "matter_shell_cls",
     "generate_matter_maps",
+    "downgrade_mask",
+    "growth_factor",
+    "ia_convergence",
+    "create_mask_from_catalogue",
+    "powspace_bins",
+    "compute_two_point_xi",
+    "compute_two_point_cl",
+    "compute_two_point_cl_map",
+    "get_n_gal_map",
+    "compute_leakage_harmony",
+    "TREECORR_CONFIG",
 ]
 
 
@@ -211,3 +226,313 @@ def Cosmology_from_camb(pars):
     from cosmology import Cosmology
 
     return Cosmology.from_camb(pars)
+
+
+# --- mask / galaxy-sampling helpers (used by the generation runner) ---------
+
+
+def downgrade_mask(mask, nside):
+    """Downgrade a HEALPix mask to a lower ``nside`` (>=0.75 -> 1, else 0).
+
+    Returns ``mask`` unchanged when it is already at ``nside``.
+    """
+    import healpy as hp
+
+    nside_mask = hp.get_nside(mask)
+    if nside_mask == nside:
+        return mask
+    print(f"[!] Downgrading mask from Nside {nside_mask} to Nside {nside}.")
+    print("[!] Pixels with values <0.75 will be set to 0.0")
+    print("[!] Pixels with values >=0.75 will be set to 1.0")
+    mask_down = hp.ud_grade(mask, nside)
+    mask_down[mask_down < 0.75] = 0.0
+    mask_down[mask_down >= 0.75] = 1.0
+    print("[!] Done.")
+    return mask_down
+
+
+def _growth_E_sq(z, om0):
+    """Flat-LCDM ``E^2(z) = H^2(z)/H0^2``."""
+    return om0 * (1 + z) ** 3 + 1 - om0
+
+
+def _growth_integrand(z, om0):
+    """Growth-factor redshift integrand."""
+    return (z + 1) / (_growth_E_sq(z, om0)) ** 1.5
+
+
+def _growth_factor_single(z, om0):
+    """Normalised linear growth factor at a single redshift."""
+    import scipy as sp
+
+    first = sp.integrate.quad(_growth_integrand, z, np.inf, args=(om0,))[0]
+    second = sp.integrate.quad(_growth_integrand, 0, np.inf, args=(om0,))[0]
+    return (_growth_E_sq(z, om0) ** 0.5) * first / second
+
+
+def growth_factor(z, om0):
+    """Normalised linear growth factor ``D(z)`` (scalar or array ``z``)."""
+    if isinstance(z, (float, int)):
+        return _growth_factor_single(z, om0)
+    return np.array([_growth_factor_single(zi, om0) for zi in list(z)])
+
+
+def ia_convergence(delta, shell, config):
+    """Intrinsic-alignment contribution to the convergence (NLA model).
+
+    Mirrors the production NLA prefactor: ``-A_ia * rho_c1 * Om0 / D(z_eff)``
+    applied to the matter overdensity ``delta`` of one shell.
+    """
+    import astropy.constants as const
+    import astropy.units as u
+
+    Om0 = config.Om
+    A_ia = config.ia_bias
+    _, _, z_eff = shell
+    c1 = 5e-14 * (u.Mpc**3.0) / u.solMass
+    c1_cgs = (c1 * (1.0 / config.h) ** 2.0).cgs
+    H0 = (100 * config.h * u.km / u.s / u.Mpc).to(u.s**-1)
+    G = (const.G * u.m**3 / (u.kg * u.s**2)).cgs
+    rho_crit = 3 * H0**2 / (8 * np.pi * G)
+    rho_c1 = (c1_cgs * rho_crit).value
+    prefactor = -A_ia * rho_c1 * Om0
+    return prefactor / growth_factor(z_eff, Om0) * delta
+
+
+def create_mask_from_catalogue(nside, path, output, ra_col="RA", dec_col="DEC"):
+    """Write a HEALPix footprint mask from the populated pixels of a catalogue.
+
+    Pixels containing at least one object get 1.0, everything else 0.0.
+    """
+    import healpy as hp
+    from astropy.io import fits
+
+    cat_gal = fits.getdata(path)
+    ra = cat_gal[ra_col]
+    dec = cat_gal[dec_col]
+
+    theta = (90.0 - dec) * np.pi / 180.0
+    phi = ra * np.pi / 180.0
+    pix = hp.ang2pix(nside, theta, phi)
+
+    _unique_pix, _idx, idx_rep = np.unique(
+        pix, return_index=True, return_inverse=True
+    )
+    n_gal = np.zeros(hp.nside2npix(nside))
+    n_gal[np.unique(pix)] = np.bincount(idx_rep)
+    mask = n_gal != 0
+
+    hp.write_map(output, mask, dtype=np.float32, overwrite=True)
+
+
+# --- two-point statistics on mock catalogues --------------------------------
+
+# Configuration-space treecorr defaults for the GLASS-mock 2PCF.
+TREECORR_CONFIG = {
+    "ra_units": "degrees",
+    "dec_units": "degrees",
+    "min_sep": 1.0,
+    "max_sep": 250.0,
+    "nbins": 20,
+    "sep_units": "arcmin",
+    "num_threads": 4,
+}
+
+
+def powspace_bins(nside=1024, lmin=8, n_bins=32):
+    """NaMaster powspace bandpower binning used across the mock harmonic stats.
+
+    Returns ``(bin, ell_eff, lmax, b_lmax)``: the NaMaster ``NmtBin`` built on
+    square-root-spaced bandpowers between ``lmin`` and ``lmax = 2 * nside``,
+    plus the effective ells and the two lmax values the callers reuse.
+    """
+    import pymaster as nmt
+
+    lmax = 2 * nside
+    b_lmax = lmax - 1
+
+    ells = np.arange(lmin, lmax + 1)
+    start = np.power(lmin, 1 / 2)
+    end = np.power(lmax, 1 / 2)
+    bins_ell = np.power(np.linspace(start, end, n_bins + 1), 2)
+
+    bpws = np.digitize(ells.astype(float), bins_ell) - 1
+    bpws[0] = 0
+    bpws[-1] = n_bins - 1
+
+    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+    return b, b.get_effective_ells(), lmax, b_lmax
+
+
+def compute_two_point_xi(cat, config=None):
+    """Configuration-space shear 2PCF (treecorr ``GGCorrelation``) for a mock."""
+    import treecorr
+
+    treecorr_config = TREECORR_CONFIG if config is None else config
+    treecorr_cat = treecorr.Catalog(
+        ra=cat["ra"],
+        dec=cat["dec"],
+        g1=cat["e1"],
+        g2=cat["e2"],
+        ra_units="degrees",
+        dec_units="degrees",
+    )
+    gg = treecorr.GGCorrelation(treecorr_config)
+    gg.process(treecorr_cat)
+    return gg
+
+
+def get_n_gal_map(nside, ra, dec):
+    """Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays."""
+    import healpy as hp
+
+    theta = (90.0 - dec) * np.pi / 180.0
+    phi = ra * np.pi / 180.0
+    pix = hp.ang2pix(nside, theta, phi)
+
+    unique_pix, idx, idx_rep = np.unique(
+        pix, return_index=True, return_inverse=True
+    )
+    n_gal = np.zeros(hp.nside2npix(nside))
+    n_gal[unique_pix] = np.bincount(idx_rep)
+    return n_gal, unique_pix, idx, idx_rep
+
+
+def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
+    """Catalogue-based NaMaster pseudo-Cl for a mock shear field.
+
+    Returns ``(cl_coupled, cl_all)``, each with the ell axis prepended.
+    """
+    import pymaster as nmt
+
+    e1 = cat["e1"]
+    e2 = cat["e2"]
+    ra = cat["ra"]
+    dec = cat["dec"]
+    del cat
+
+    ra[ra < 0] += 360
+
+    b, ell_eff, lmax, b_lmax = powspace_bins(nside=nside, lmin=lmin, n_bins=n_bins)
+
+    factor = -1
+    f_all = nmt.NmtFieldCatalog(
+        positions=[ra, dec],
+        weights=np.ones_like(e1),
+        field=[e1, factor * e2],
+        lmax=b_lmax,
+        lmax_mask=b_lmax,
+        spin=2,
+        lonlat=True,
+    )
+
+    wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+    cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
+    cl_all = wsp.decouple_cell(cl_coupled)
+
+    cl_coupled = np.concatenate([np.arange(1, lmax + 1)[np.newaxis, :], cl_coupled])
+    cl_all = np.concatenate([ell_eff[np.newaxis, ...], cl_all])
+    return cl_coupled, cl_all
+
+
+def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
+    """Map-based NaMaster pseudo-Cl for a mock shear field.
+
+    Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)
+    and runs the MCM on the resulting masked field. Returns
+    ``(cl_coupled, cl_all)`` with the ell axis prepended.
+    """
+    import healpy as hp
+    import pymaster as nmt
+
+    e1 = cat["e1"]
+    e2 = cat["e2"]
+    ra = cat["ra"]
+    dec = cat["dec"]
+    del cat
+
+    ra[ra < 0] += 360
+
+    b, ell_eff, lmax, b_lmax = powspace_bins(nside=nside, lmin=lmin, n_bins=n_bins)
+
+    factor = -1
+    n_gal_map, unique_pix, _idx, idx_rep = get_n_gal_map(nside, ra, dec)
+    mask = n_gal_map > 0
+
+    shear_map_e1 = np.zeros(hp.nside2npix(nside))
+    shear_map_e2 = np.zeros(hp.nside2npix(nside))
+    shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1)
+    shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2)
+    shear_map_e1[mask] /= n_gal_map[mask]
+    shear_map_e2[mask] /= n_gal_map[mask]
+
+    f_all = nmt.NmtField(
+        mask=n_gal_map,
+        maps=[shear_map_e1, factor * shear_map_e2],
+        lmax=b_lmax,
+    )
+
+    wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+    cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
+    cl_all = wsp.decouple_cell(cl_coupled)
+
+    cl_coupled = np.concatenate([np.arange(1, lmax + 1)[np.newaxis, :], cl_coupled])
+    cl_all = np.concatenate([ell_eff[np.newaxis, ...], cl_all])
+    return cl_coupled, cl_all
+
+
+def compute_leakage_harmony(cat, cat_star, nside=1024, lmin=8, n_bins=32):
+    """Harmonic-space PSF-leakage rho_0 / tau_0 from galaxy + star catalogues.
+
+    Returns ``(rho_cl, tau_cl)``: the PSF-PSF (rho_0) and galaxy-PSF (tau_0)
+    decoupled pseudo-Cl, each with the effective-ell axis prepended.
+    """
+    import pymaster as nmt
+
+    e1 = cat["e1"]
+    e2 = cat["e2"]
+    e1_psf = cat_star["E1_PSF_HSM"]
+    e2_psf = cat_star["E2_PSF_HSM"]
+
+    ra = cat["ra"]
+    dec = cat["dec"]
+    ra_star = cat_star["RA"]
+    dec_star = cat_star["DEC"]
+    del cat
+
+    ra[ra < 0] += 360
+    ra_star[ra_star < 0] += 360
+
+    b, ell_eff, _lmax, b_lmax = powspace_bins(nside=nside, lmin=lmin, n_bins=n_bins)
+
+    factor = -1
+    f_psf = nmt.NmtFieldCatalog(
+        positions=[ra_star, dec_star],
+        weights=np.ones_like(ra_star),
+        field=[e1_psf, factor * e2_psf],
+        lmax=b_lmax,
+        lmax_mask=b_lmax,
+        spin=2,
+        lonlat=True,
+    )
+    f_gal = nmt.NmtFieldCatalog(
+        positions=[ra, dec],
+        weights=np.ones_like(ra),
+        field=[e1, factor * e2],
+        lmax=b_lmax,
+        lmax_mask=b_lmax,
+        spin=2,
+        lonlat=True,
+    )
+
+    # rho_0: PSF-PSF
+    wsp = nmt.NmtWorkspace.from_fields(f_psf, f_psf, b)
+    rho_cl = wsp.decouple_cell(nmt.compute_coupled_cell(f_psf, f_psf))
+    rho_cl = np.concatenate([ell_eff[np.newaxis, ...], rho_cl])
+
+    # tau_0: galaxy-PSF
+    wsp = nmt.NmtWorkspace.from_fields(f_gal, f_psf, b)
+    tau_cl = wsp.decouple_cell(nmt.compute_coupled_cell(f_gal, f_psf))
+    tau_cl = np.concatenate([ell_eff[np.newaxis, ...], tau_cl])
+
+    return rho_cl, tau_cl
