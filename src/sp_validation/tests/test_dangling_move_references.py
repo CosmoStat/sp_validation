@@ -10,10 +10,13 @@ import pytest
 #
 # Entries here are *fully retired* paths: the old path string must no longer
 # appear anywhere. Extractions-in-place do NOT belong here. The GLASS-mock
-# generation core was lifted out of ``glass_mock/make_unions_glass_sim.py`` into
-# the library at ``src/sp_validation/glass_mock.py``, but ``glass_mock/`` itself
-# survives (CLI wrapper + postprocessing scripts), so the string ``glass_mock``
-# is still live across cosmo_inference — registering it would be a false move.
+# generation core was lifted into the library at ``src/sp_validation/glass_mock.py``
+# and the top-level ``glass_mock/`` runner scripts moved to ``scripts/glass_mock/``.
+# The bare string ``glass_mock`` is still live across the workflow, config
+# (``glass_mocks:``), and data paths (``results/glass_mock``, mock filenames),
+# so registering it would be a false move; the retired path is the top-level
+# directory prefix ``glass_mock/`` only as a leading path component, which is
+# too coarse to encode as a substring here without false positives.
 MOVE_MAP: tuple[tuple[str, str], ...] = (
     ("cosmo_inference/notebooks/2D_bmodes_paper_workflow", "papers/bmodes"),
     ("rules/glass_mock_validation.smk", "workflow/rules/glass_mock.smk"),
