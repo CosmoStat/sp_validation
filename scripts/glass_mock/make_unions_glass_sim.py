@@ -1,11 +1,11 @@
 """Generate a UNIONS GLASS mock source catalogue.
 
-Thin CLI wrapper around the generation core in
-``sp_validation.glass_mock``: this script owns argument parsing, the mask
-downgrade, galaxy sampling, and FITS catalogue I/O. The reproducibility
-surface — the fixed cosmology, the ``sigma8``-rescaled CAMB power spectrum, and
-the lognormal matter / lensing-map generation — lives in the library and is
-pinned by ``src/sp_validation/tests/test_glass_mock.py``.
+Thin CLI wrapper around the generation core in ``sp_validation.glass_mock``:
+this script owns argument parsing, the mask downgrade, galaxy sampling, and FITS
+catalogue I/O. The reproducibility surface — the fixed cosmology, the
+``sigma8``-rescaled CAMB power spectrum, and the lognormal matter / lensing-map
+generation — lives in the library and is pinned by
+``src/sp_validation/tests/test_glass_mock.py``.
 
 Run inside an image that has GLASS installed (the production sp_validation
 container does not yet ship GLASS).
@@ -15,8 +15,6 @@ import argparse
 import os
 import time
 
-import astropy.constants as const
-import astropy.units as u
 import camb
 import fitsio
 
@@ -24,7 +22,6 @@ import fitsio
 import glass
 import healpy as hp
 import numpy as np
-import scipy as sp
 from tqdm import tqdm
 
 from sp_validation.glass_mock import (
@@ -32,6 +29,8 @@ from sp_validation.glass_mock import (
     build_camb_params,
     build_shells,
     camb_sigma8,
+    downgrade_mask,
+    ia_convergence,
     matter_shell_cls,
 )
 
@@ -81,21 +80,6 @@ def get_parser():
         help="Intrinsic alignment bias for CCL", type=float, default=None,
     )
     return parser
-
-
-def downgrade_mask(mask, nside):
-    """Downgrade a HEALPix mask to a lower nside (>=0.75 → 1, else 0)."""
-    nside_mask = hp.get_nside(mask)
-    if nside_mask == nside:
-        return mask
-    print(f"[!] Downgrading mask from Nside {nside_mask} to Nside {nside}.")
-    print("[!] Pixels with values <0.75 will be set to 0.0")
-    print("[!] Pixels with values >=0.75 will be set to 1.0")
-    mask_down = hp.ud_grade(mask, nside)
-    mask_down[mask_down < 0.75] = 0.0
-    mask_down[mask_down >= 0.75] = 1.0
-    print("[!] Done.")
-    return mask_down
 
 
 class Sky:
@@ -214,7 +198,7 @@ class Sky:
             convergence.add_window(delta_i, shells[i])
             kappa_i = convergence.kappa
             if config.ia_bias is not None:
-                kappa_i = kappa_i + self.ia_kappa(delta_i, shells[i])
+                kappa_i = kappa_i + ia_convergence(delta_i, shells[i], config)
             gamm1_i, gamm2_i = glass.shear_from_convergence(kappa_i)
 
             for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(
@@ -288,40 +272,6 @@ class Sky:
             fits.close()
         self.camb_cls = dic
         return dic
-
-    def ia_kappa(self, delta, shell):
-        """Intrinsic-alignment contribution to the convergence (NLA model)."""
-        Om0 = self.config.Om
-        A_ia = self.config.ia_bias
-        _, _, z_eff = shell
-        c1 = 5e-14 * (u.Mpc**3.0) / u.solMass
-        c1_cgs = (c1 * (1.0 / self.config.h) ** 2.0).cgs
-        H0 = (100 * self.config.h * u.km / u.s / u.Mpc).to(u.s**-1)
-        G = (const.G * u.m**3 / (u.kg * u.s**2)).cgs
-        rho_crit = 3 * H0**2 / (8 * np.pi * G)
-        rho_c1 = (c1_cgs * rho_crit).value
-        prefactor = -A_ia * rho_c1 * Om0
-        return prefactor / self.D_1(z_eff, Om0) * delta
-
-    def E_sq(self, z, om0):
-        """Flat-LCDM E^2(z) = H^2(z)/H0^2."""
-        return om0 * (1 + z) ** 3 + 1 - om0
-
-    def f_integrand(self, z, om0):
-        """Growth-factor redshift integrand."""
-        return (z + 1) / (self.E_sq(z, om0)) ** 1.5
-
-    def D_single(self, z, om0):
-        """Normalised linear growth factor at a single redshift."""
-        first = sp.integrate.quad(self.f_integrand, z, np.inf, args=(om0))[0]
-        second = sp.integrate.quad(self.f_integrand, 0, np.inf, args=(om0))[0]
-        return (self.E_sq(z, om0) ** 0.5) * first / second
-
-    def D_1(self, z, om0):
-        """Normalised linear growth factor (scalar or array z)."""
-        if isinstance(z, (float, int)):
-            return self.D_single(z, om0)
-        return np.array([self.D_single(zi, om0) for zi in list(z)])
 
 
 def _cosmology(pars):
