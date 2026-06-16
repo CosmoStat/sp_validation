@@ -1,11 +1,11 @@
 # %%
-from IPython import get_ipython                                                  
+from IPython import get_ipython
 
 # %%
-# enable autoreload for interactive sessions                                     
-ipython = get_ipython()                                                          
-if ipython is not None:                                                          
-    ipython.run_line_magic("load_ext", "autoreload")                             
+# enable autoreload for interactive sessions
+ipython = get_ipython()
+if ipython is not None:
+    ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("load_ext", "log_cell_time")
 # %%
@@ -13,22 +13,15 @@ if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # %%
-import sys
 import os
-import numpy as np
-from astropy.io import fits
-import matplotlib.pylab as plt
-import healpy as hp
-import healsparse as hsp
 
-from cs_util import plots as cs_plots
+import healsparse as hsp
+import matplotlib.pylab as plt
+import numpy as np
 from cs_util import cat as cs_cat
+from cs_util import plots as cs_plots
 
 from sp_validation import run_joint_cat as sp_joint
-from sp_validation import util
-from sp_validation.basic import metacal
-from sp_validation import calibration
-import sp_validation.cat as cat
 
 # %%
 # Initialize calibration class instance (for config and data)
@@ -55,9 +48,9 @@ hsp_obj = sp_joint.ApplyHspMasks()
 
 # %% Mask directory and aux mask file(s)
 hsp_obj._params["mask_dir"] = f"{os.environ['HOME']}/masks"
-hsp_obj._params["aux_mask_files"] = f"{hsp_obj._params['mask_dir']}/mask_r_nside131072_npoint.hsp" 
-hsp_obj._params["aux_mask_labels"] = "npoint3"                                       
-hsp_obj._params["verbose"] = True 
+hsp_obj._params["aux_mask_files"] = f"{hsp_obj._params['mask_dir']}/mask_r_nside131072_npoint.hsp"
+hsp_obj._params["aux_mask_labels"] = "npoint3"
+hsp_obj._params["verbose"] = True
 
 # %%
 # Masks to use
@@ -105,7 +98,7 @@ if label_base_mask != "":
     for mask in masks:
         if mask._col_name != label_base_mask:
             mask._mask = mask._mask & base_mask
-            print(mask._col_name, "#True = ", sum(mask._mask), f"({100*sum(mask._mask)/len(mask._mask):.2f}%)") 
+            print(mask._col_name, "#True = ", sum(mask._mask), f"({100*sum(mask._mask)/len(mask._mask):.2f}%)")
 else:
     print("No base mask applied.")
 
@@ -121,13 +114,13 @@ for mask in masks:
 
     print(f"Mask: {mask._col_name}")
     areas_deg2[mask._col_name] = {}
- 
+
     # Apply mask to positions
     m = mask._mask
 
     ra = dat[key_ra][m]
     dec = dat[key_dec][m]
-    
+
     for nside in nsides:
 
             area_deg2 = cs_cat.get_binned_area(ra, dec, nside=nside)
@@ -152,7 +145,7 @@ def save_areas(areas_deg2, filename):
         for mask_name, area_dict in areas_deg2.items():
             for nside, area in area_dict.items():
                 f.write(f"{mask_name} {nside} {area:.6f}\n")
- 
+
     print(f"Wrote areas to {filename}")
 
 # %%
@@ -172,7 +165,7 @@ if True:
     for bit, path in paths.items():
         print(bit, path)
         hsp_mask = hsp.HealSparseMap.read(path)
-        
+
         if label_base_mask != "":
             # Apply coverage mask
             hsp_mask_wcov = coverage & (~hsp_mask)

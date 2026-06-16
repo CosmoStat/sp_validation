@@ -19,15 +19,15 @@
 
 # +
 import os
+from timeit import default_timer as timer
+
 import numpy as np
 import numpy.lib.recfunctions as rfn
-
-from timeit import default_timer as timer
 import tqdm
-import healsparse as hsp
 from astropy.io import fits
 
 from sp_validation import run_joint_cat as sp_joint
+
 # -
 
 # Create instance of object
@@ -96,44 +96,44 @@ n_rows = len(dat)
 for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=True):
 
     print(idx/len(tile_ID), tile_ID)
-    
+
     src = os.path.join(path_bands, f"{path_base}{tile_ID}", f"{path_base}{tile_ID}{path_suff}")
-    dst = os.path.join(f".", f"{path_base}{tile_ID}{path_suff}")
-    
+    dst = os.path.join(".", f"{path_base}{tile_ID}{path_suff}")
+
     if do_copy:
         if not os.path.exists(src):
             print("  Copy FITS file:", src, end=" ")
             start = timer()
             copyfile(src, dst)
-            end = timer()                                                           
+            end = timer()
             print(f" {end - start:.1f}s")
         else:
             print("  FITS file already exists:", src)
         path = dst
     else:
         path = src
- 
+
     print("  Read data from file:", path, end=" ")
     start = timer()
     hdu_list = fits.open(path)
     dat_mb = hdu_list[hdu_no].data
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
-    
+    end = timer()
+    print(f" {end - start:.1f}s")
+
     print("  Get numbers", end=" ")
     start = timer()
     numbers = dat_mb[key_num]
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
-    
+    end = timer()
+    print(f" {end - start:.1f}s")
+
     print("  Identify matches", end= " ")
     start = timer()
     # Select indices in dat with current tile ID
     w = dat["TILE_ID"] == tile_IDs_raw_list[idx]
     indices = np.where(w)[0]
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
-    
+    end = timer()
+    print(f" {end - start:.1f}s")
+
     # Compute coordinate distances as matching check
     if do_dist_check:
         print("  Compute distance check", end=" ")
@@ -142,36 +142,36 @@ for idx, tile_ID in tqdm.tqdm(enumerate(tile_IDs), total=len(tile_IDs), disable=
             (dat[indices]["RA"] - dat_mb["ALPHA_J2000"]) ** 2
             + (dat[indices]["Dec"] - dat_mb["DELTA_J2000"]) ** 2
         ) / len(dat_mb)
-        end = timer()                                                           
-        print(f" {end - start:.1f}s") 
-    
+        end = timer()
+        print(f" {end - start:.1f}s")
+
     if idx == 0:
         print("  Create new combined array", end=" ")
-        start = timer()    
+        start = timer()
         # Get dtype from multiband keys
         dtype_keys = np.dtype([dt for dt in dat_mb.dtype.descr if dt[0] in keys])
 
         # Create structured array from multi-band columns
-        
+
         # Create new empty array with rows as original data and new multi-band columns
         new_empty = np.zeros(n_rows, dtype=dtype_keys)
-        end = timer()                                                           
-        print(f" {end - start:.1f}s") 
-    
+        end = timer()
+        print(f" {end - start:.1f}s")
+
         print("    Merge empty to original", end=" ")
         start = timer()
         # Combine with original data (slow)
         combined = rfn.merge_arrays([dat, new_empty], flatten=True)
-        end = timer()                                                           
-        print(f" {end - start:.1f}s") 
+        end = timer()
+        print(f" {end - start:.1f}s")
 
     print(  "  Copy mb data to combined array", end=" ")
     start = timer()
     # Copy multi-band values to combined array
     for key in keys:
         combined[indices][key] = dat_mb[key]
-    end = timer()                                                           
-    print(f" {end - start:.1f}s") 
+    end = timer()
+    print(f" {end - start:.1f}s")
 
     hdu_list.close()
 

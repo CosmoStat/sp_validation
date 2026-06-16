@@ -18,17 +18,14 @@
 # %autoreload 2
 
 # +
-import os
-import numpy as np
-import numpy.lib.recfunctions as rfn
-import h5py
-
 from timeit import default_timer as timer
-import tqdm
-import healsparse as hsp
+
+import h5py
+import numpy as np
 from astropy.io import fits
 
 from sp_validation import run_joint_cat as sp_joint
+
 # -
 
 # Create instance of object
@@ -79,20 +76,20 @@ n_rows = len(dat)
 
 
 def get_dtype_keys(keys,path=None, hdu_no=1):
-    
+
     if path is None:
 
-        dtype = np.dtype([(key, np.float32) for key in keys])        
-    
+        dtype = np.dtype([(key, np.float32) for key in keys])
+
     else:
-        
+
         print("  Read data from file:", path, end=" ")
         start = timer()
         hdu_list = fits.open(path)
-        dat_mb = hdu_list[hdu_no].data 
+        dat_mb = hdu_list[hdu_no].data
         dtype = np.dtype([dt for dt in dat_mb.dtype.descr if dt[0] in keys])
-        end = timer()                                                           
-        print(f" {end - start:.1f}s") 
+        end = timer()
+        print(f" {end - start:.1f}s")
 
     return dtype
 
@@ -108,14 +105,14 @@ dtype_keys = get_dtype_keys(keys, path=path, hdu_no=hdu_no)
 
 # -
 
-def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):                         
-    cleaned_fields = []                                                          
-    for name, dt in dat_dtype.descr + dat_ext_dtype.descr:                       
-        # If dt is a tuple (e.g., ('S7', {'h5py_encoding': 'ascii'}))            
-        if isinstance(dt, tuple):                                                
+def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):
+    cleaned_fields = []
+    for name, dt in dat_dtype.descr + dat_ext_dtype.descr:
+        # If dt is a tuple (e.g., ('S7', {'h5py_encoding': 'ascii'}))
+        if isinstance(dt, tuple):
             cleaned_fields.append((name, dt[0]))  # keep only the base dtype string
-        else:                                                                    
-            cleaned_fields.append((name, dt))     # use as-is                    
+        else:
+            cleaned_fields.append((name, dt))     # use as-is
     return cleaned_fields
 
 
@@ -150,8 +147,8 @@ with h5py.File(obj._params["output_path"], "w") as f:
 
 #new_empty = np.full(n_rows, -199, dtype=dtype_keys)
 
-end = timer()                                                           
-print(f" {end - start:.1f}s") 
+end = timer()
+print(f" {end - start:.1f}s")
 
 
 
@@ -161,8 +158,8 @@ print(f" {end - start:.1f}s")
 #print("    Merge empty to original", end=" ")
 #start = timer()
 #combined = rfn.merge_arrays([dat, new_empty], flatten=True)
-#end = timer()                                                           
-#print(f" {end - start:.1f}s") 
+#end = timer()
+#print(f" {end - start:.1f}s")
 # -
 
 # obj.write_hdf5_file(combined)

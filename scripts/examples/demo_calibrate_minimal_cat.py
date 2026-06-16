@@ -114,7 +114,7 @@ gal_metacal = metacal(
 )
 # -
 
-g_corr_mc, g_uncorr, w, nask)metacal, c, c_err = get_calibrated_m_c(gal_metacal)
+g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = get_calibrated_m_c(gal_metacal)
 
 num_ok = len(g_corr_mc[0])
 sp_joint.Mask.print_strings(
@@ -145,8 +145,8 @@ alpha_1, alpha_2 = sp_joint.compute_PSF_leakage(
     dat,
     mask_combined,
     mask_metacal,
-    num_bins=20,    
-}
+    num_bins=20,
+)
 # -
 
 # Compute leakage-corrected ellipticities

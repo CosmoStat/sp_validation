@@ -17,22 +17,14 @@ if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # %%
-import sys
 import os
+
+import healpy as hp
 import numpy as np
 from astropy.io import fits
-import matplotlib.pylab as plt
-import healpy as hp
-import healsparse as hsp
-
-from cs_util import plots as cs_plots
 from cs_util import cat as cs_cat
 
 from sp_validation import run_joint_cat as sp_joint
-from sp_validation import util
-from sp_validation.basic import metacal
-from sp_validation import calibration
-import sp_validation.cat as cat
 
 # %%
 # Initialize calibration class instance (for config and data)

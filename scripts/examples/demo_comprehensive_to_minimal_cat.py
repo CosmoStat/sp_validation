@@ -20,20 +20,15 @@
 # %autoreload 2
 
 # +
-import sys
-import os
 import re
+import sys
 
+import matplotlib.pylab as plt
 import numpy as np
 from astropy.io import fits
-import matplotlib.pylab as plt
-# -
 
+# -
 from sp_validation import run_joint_cat as sp_joint
-from sp_validation import util
-from sp_validation.basic import metacal
-from sp_validation import calibration
-import sp_validation.cat as cat
 
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()
@@ -102,7 +97,7 @@ with open("masks.txt", "w") as f_out:
 
     for my_mask in masks:
         my_mask.print_summary(f_out)
-        
+
     sp_joint.Mask.print_strings(
         "flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}",
         f_out=f_out,

@@ -1,32 +1,23 @@
 # %%
 # Compute binned quantities, see plot_binned_quantities.py
 
-# %%                                                                             
-from IPython import get_ipython                                                  
+# %%
+from IPython import get_ipython
 
-ipython = get_ipython()                                                          
+ipython = get_ipython()
 
-# enable autoreload for interactive sessions                                     
-if ipython is not None:                                                          
-    ipython.run_line_magic("load_ext", "autoreload")                             
+# enable autoreload for interactive sessions
+if ipython is not None:
+    ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("load_ext", "log_cell_time")
 
 # %%
 import os
-import numpy as np
-import pandas as pd
 
-import matplotlib.pyplot as plt
-
-from cs_util import plots as cs_plots
-
+from sp_validation import calibration, io
 from sp_validation import run_joint_cat as sp_joint
-from sp_validation import cat as sp_cat
 from sp_validation.basic import metacal
-from sp_validation import calibration
-from sp_validation import io
-from sp_validation import plots as sp_plots
 
 # %%
 print("pwd:", os.getcwd())
@@ -53,13 +44,13 @@ if n_test > 0:
 use_all_columns = True
 
 if not use_all_columns:
-    
+
     required_columns = set()
     for section, mask_list in config_data.items():
         for mask_params in mask_list:
             required_columns.add(mask_params["col_name"])
 
-    #user_columns = ["NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR", "NGMIX_FLUX_NOSHEAR", "NGMIX_FLUX_ERR_NOSHEAR"]      
+    #user_columns = ["NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR", "NGMIX_FLUX_NOSHEAR", "NGMIX_FLUX_ERR_NOSHEAR"]
     #required_columns.update(user_columns)
 
     print(f"{len(dat.dtype.names)} -> {len(required_columns)}")
@@ -68,7 +59,7 @@ if not use_all_columns:
     #dat = {col: obj._hd5file['data'][col][:] for col in required_columns if col in obj._hd5file['data']}
 
 # %%
-# Look for masks that were already applied to data if this 
+# Look for masks that were already applied to data if this
 # information is in header
 if "applied_masks" in obj._hd5file:
     applied_masks = obj._hd5file["applied_masks"]

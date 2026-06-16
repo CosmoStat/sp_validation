@@ -14,7 +14,6 @@
 
 import numpy as np
 
-
 # Control
 
 ## Verbose output
@@ -117,7 +116,7 @@ add_cols_pre_cal = ["TILE_ID", "NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FL
 add_cols_pre_cal_format = {}
 for key in ("NUMBER", "IMAFLAGS_ISO", "FLAGS", "NGMIX_MCAL_FLAGS", "NGMIX_MOM_FAIL", "N_EPOCH", "NGMIX_N_EPOCH"):
     add_cols_pre_cal_format[key] = "I"
-    
+
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"
 
@@ -128,7 +127,7 @@ centers = ["FLAGS", "ELL", "FLUX", "FLUX_ERR", "T", "T_ERR", "Tpsf"]
 for center in centers:
     for suffix in suffixes:
         add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")
-        
+
 for suffix in suffixes:
     add_cols_pre_cal_format[f"FLAGS_{suffix}"] = "I"
 
@@ -140,15 +139,15 @@ thresh = 0.0002
 
 ## Number of jackknife resamples for additive bias
 ## (0: no jackknife computation).
-## If < 2000 the jackknife mean fluctuates a lot. 
+## If < 2000 the jackknife mean fluctuates a lot.
 n_jack = 0
 
 
 ## Galaxy selection
 
-# Flag to output selected and calibrated galaxy catalogue (<= SP v1.4.1).       
-# If False, only output comprehensive catalogue.                                
-do_selection_calibration = False 
+# Flag to output selected and calibrated galaxy catalogue (<= SP v1.4.1).
+# If False, only output comprehensive catalogue.
+do_selection_calibration = False
 
 ## Magnitude limits
 gal_mag_bright = 15

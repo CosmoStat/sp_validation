@@ -2,32 +2,30 @@
 # Calibrate comprehensive catalogue
 
 # %%
-from IPython import get_ipython                                                  
+from IPython import get_ipython
 
 # %%
-# enable autoreload for interactive sessions                                     
-ipython = get_ipython()                                                          
-if ipython is not None:                                                          
-    ipython.run_line_magic("reload_ext", "autoreload")                             
+# enable autoreload for interactive sessions
+ipython = get_ipython()
+if ipython is not None:
+    ipython.run_line_magic("reload_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("reload_ext", "log_cell_time")
 
 
 # %%
 import sys
-import os
-import numpy as np
-import healpy as hp
-from astropy.io import fits
-import matplotlib.pylab as plt
 
+import healpy as hp
+import matplotlib.pylab as plt
+import numpy as np
+from astropy.io import fits
 from cs_util import cat as cs_cat
 
-from sp_validation import run_joint_cat as sp_joint
-from sp_validation import util
-from sp_validation.basic import metacal
-from sp_validation import calibration
 import sp_validation.cat as cat
+from sp_validation import calibration
+from sp_validation import run_joint_cat as sp_joint
+from sp_validation.basic import metacal
 
 # %%
 # Initialize calibration class instance
@@ -144,7 +142,7 @@ alpha_1, alpha_2 = sp_joint.compute_PSF_leakage(
     dat,
     mask_combined,
     mask_metacal,
-    num_bins=20,    
+    num_bins=20,
 )
 
 # Compute leakage-corrected ellipticities
@@ -207,7 +205,7 @@ for key in add_cols:
 # Keep original NOSHEAR column, override with 1P PSF values (FHP/MK hack)
 print(
     "FHP/MK hack: explicit copying of the metacal no-shear (updated from 1p)"
-    + f" PSF size"
+    + " PSF size"
 )
 add_cols_data["NGMIX_Tpsf_NOSHEAR_orig"] = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
 add_cols_data["NGMIX_Tpsf_NOSHEAR"] = gal_metacal.ns["Tpsf"][mask_metacal]
@@ -284,7 +282,6 @@ if not obj._params["cmatrices"]:
     sys.exit(0)
 
 # %%
-from scipy import stats
 
 all_masks = masks[:-3]
 

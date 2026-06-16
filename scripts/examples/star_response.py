@@ -21,25 +21,20 @@
 # %autoreload 2
 
 # +
-import sys
 import os
+
+import healpy as hp
+import matplotlib.pylab as plt
 import numpy as np
 from astropy.io import fits
-
-import matplotlib.pylab as plt
-import healpy as hp
-
-from cs_util import canfar
-from sp_validation.io import *
-from sp_validation.cat import *
-from sp_validation.survey import *
-from sp_validation.galaxy import *
-from sp_validation.basic import *
-
 from cs_util.plots import plot_histograms
-from cs_util import args
-
 from unions_wl import catalogue as wl_cat
+
+from sp_validation.basic import *
+from sp_validation.cat import *
+from sp_validation.galaxy import *
+from sp_validation.io import *
+from sp_validation.survey import *
 
 print("star_response.py start")
 
@@ -108,15 +103,15 @@ ipix = hp.ang2pix(nside, ddc[col_name_ra], ddc[col_name_dec], nest=nest, lonlat=
 in_footprint = (mask[ipix] == 0)
 
 # Get numbers of pixels in footprint
-ipix_in_footprint = ipix[in_footprint] 
+ipix_in_footprint = ipix[in_footprint]
 
 # Get indices of coordinates in footprint
 idx_np = np.where(in_footprint)[0]
 
-n_in_footprint = len(idx_np)                                             
-print(                                                                   
-    f'{n_in_footprint}/{len(ddc[col_name_ra])} ='                                      
-    + f' {n_in_footprint/len(ddc[col_name_ra]):.2%} objects in footprint'              
+n_in_footprint = len(idx_np)
+print(
+    f'{n_in_footprint}/{len(ddc[col_name_ra])} ='
+    + f' {n_in_footprint/len(ddc[col_name_ra]):.2%} objects in footprint'
 )
 
 # Restrict data to footprint
@@ -148,13 +143,13 @@ def create_mask_stars(ddx):
     """
     # Magnitude range for star selection
     mask_mag = (ddx["MAG_AUTO"] <= 22) & (ddx["MAG_AUTO"] >= 18)
-    
+
     mask_stars = {}
     stars = {}
     mask_stars["all"] = (
         ddx["NGMIX_T_NOSHEAR"] / ddx["NGMIX_Tpsf_NOSHEAR"] < 0.3
     ) & mask_mag
-    
+
     mask_stars["point"] = (
         ddx["NGMIX_T_NOSHEAR"] / ddx["NGMIX_Tpsf_NOSHEAR"] < 0.01
     ) & mask_mag
@@ -285,10 +280,10 @@ for idx in (0, 1):
 
 # +
 # Signal-to-noise distribution
-x_label = f"SNR"
+x_label = "SNR"
 y_label = "frequency"
 n_bin = 100
-out_path = f"hist_SNR.pdf"
+out_path = "hist_SNR.pdf"
 colors = ["blue", "green", "red"]
 linestyles = ["-"] * 3
 title = "Signal-to-noise ratio"
@@ -396,18 +391,18 @@ _ = plt.savefig("size_mag_matched_zoom.png")
 # -
 
 # From sp_validation, added ind_gal
-def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):                                                                        
-    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)    
-    star_coord = coords.SkyCoord(                                                
-        ra=ra_star * u.degree,                                                   
-        dec=dec_star * u.degree,                                                 
-    )                                                                            
-                                                                                 
-    idx, d2d, d3d = coords.match_coordinates_sky(star_coord, gal_coord)              
-    sep_constraint =  d2d.value < thresh                                                              
+def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
+    gal_coord = coords.SkyCoord(ra=ra_gal * u.degree, dec=dec_gal * u.degree)
+    star_coord = coords.SkyCoord(
+        ra=ra_star * u.degree,
+        dec=dec_star * u.degree,
+    )
+
+    idx, d2d, d3d = coords.match_coordinates_sky(star_coord, gal_coord)
+    sep_constraint =  d2d.value < thresh
     ind_stars = idx[sep_constraint]
     ind_gal = sep_constraint
-                                                                                 
+
     return ind_stars, ind_gal
 
 

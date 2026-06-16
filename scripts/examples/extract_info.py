@@ -29,19 +29,19 @@
 # %autoreload 2
 
 # General library imports
-import sys
 import os
+import sys
+
 import numpy as np
 from astropy.io import fits
 
-from cs_util import canfar
-from sp_validation.io import *
 #from sp_validation.cat import *
 from sp_validation import cat as spv_cat
-from sp_validation.survey import *
-from sp_validation.galaxy import *
-from sp_validation.calibration import *
 from sp_validation.basic import *
+from sp_validation.calibration import *
+from sp_validation.galaxy import *
+from sp_validation.io import *
+from sp_validation.survey import *
 
 # ## 1. Set-up
 
@@ -84,7 +84,7 @@ n_tot = spv_cat.print_some_quantities(dd, stats_file, verbose=verbose)
 spv_cat.print_mean_ellipticity(
     dd,
     f'{key_base}_ELL_NOSHEAR',
-    2, 
+    2,
     n_tot,
     stats_file,
     invalid=-10,
@@ -109,11 +109,11 @@ if star_cat_path:
     print_stats('Stars:', stats_file, verbose=verbose)
     n_tot = spv_cat.print_some_quantities(d_star, stats_file, verbose=verbose)
     spv_cat.print_mean_ellipticity(
-        d_star, 
+        d_star,
         ['E1_PSF_HSM', 'E2_PSF_HSM'],
         1,
         n_tot,
-        stats_file, 
+        stats_file,
         invalid=-10,
         verbose=verbose
     )
@@ -167,7 +167,7 @@ ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
 
 # ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
 
-spv_cat.write_PSF_cat(                                         
+spv_cat.write_PSF_cat(
     f'{output_PSF_cat_base}_{shape}.fits',
     ra_star,
     dec_star,
@@ -243,7 +243,7 @@ mag = spv_cat.get_col(dd, "MAG_AUTO", None, None)
 snr = spv_cat.get_snr(shape, dd, None, None)
 g1_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 0]
 g2_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 1]
-    
+
 # Comprehensive catalogue without cuts nor mask applied
 if verbose:
     print("Writing comprehensive catalogue...")
@@ -314,19 +314,19 @@ print_stats(f"common & ngmix = galaxy selection: {n_ok:10d}, {n_ok/n_obj:3.2%}",
 
 # +
 import os
-from uncertainties import ufloat
-
-from lenspack.geometry.projections.gnom import radec2xy
 
 from cs_util.plots import plot_histograms
-# -
+from lenspack.geometry.projections.gnom import radec2xy
+from uncertainties import ufloat
 
+from sp_validation.basic import *
+from sp_validation.calibration import *
+from sp_validation.plot_style import *
+from sp_validation.plots import *
+
+# -
 from sp_validation.survey import *
 from sp_validation.util import *
-from sp_validation.basic import *
-from sp_validation.plots import *
-from sp_validation.plot_style import *
-from sp_validation.calibration import *
 
 # ## metacalibration for galaxies
 
@@ -375,9 +375,9 @@ print_stats(
     stats_file,
     verbose=verbose
 )
-    
+
 # coordinates
-ra = spv_cat.get_col(dd, col_name_ra, m_gal, mask) 
+ra = spv_cat.get_col(dd, col_name_ra, m_gal, mask)
 dec = spv_cat.get_col(dd, col_name_dec, m_gal, mask)
 
 # Modify R.A. for plots if R.A. = 0 in area
@@ -388,9 +388,9 @@ else:
 
 ra_mean = np.mean(ra_wrap)
 dec_mean = np.mean(dec)
-    
+
 print_stats(
-    f'Mean coordinates (ra, dec) ='
+    'Mean coordinates (ra, dec) ='
     + f' ({ra_mean:.3f}, {dec_mean:.3f}) deg,'
     + f' wrap_ra={wrap_ra} deg',
     stats_file,
@@ -399,7 +399,7 @@ print_stats(
 
 # magnitude, from SExtractor
 mag = spv_cat.get_col(dd, "MAG_AUTO", m_gal, mask)
-    
+
 # Keep tile ID if external mask
 if mask_external_path:
     tile_ID = spv_cat.get_col(dd, "TILE_ID", m_gal, mask)
@@ -414,7 +414,7 @@ if add_cols:
     for key in add_cols:
         add_cols_data[key] = dd[key][m_gal][mask]
 else:
-    add_cols_data = None                               
+    add_cols_data = None
 
 # +
 #### Compute coordinates for projection and spatial binning (needed later)
@@ -436,7 +436,7 @@ size_x_deg = np.rad2deg(max_x - min_x)
 size_y_deg = np.rad2deg(max_y - min_y)
 
 print_stats(
-    f'Field size in projected coordinates is (x, y) '
+    'Field size in projected coordinates is (x, y) '
     + f'= ({size_x_deg:.2f}, {size_y_deg:.2f}) deg',
     stats_file,
     verbose=verbose
@@ -465,25 +465,25 @@ fname = f'{output_dir}/tile_id_gal_counts_{shape}.txt'
 detection_IDs = dd['TILE_ID']
 galaxy_IDs = detection_IDs[m_gal]
 shape_IDs = galaxy_IDs[mask]
-write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname) 
+write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname)
 
 # +
 # Add all weights (for combining weighted averages of subpatches)
 
 w_tot = np.sum(w)
-    
+
 print_stats(f'Sum of weights = {w_tot:.1f}', stats_file, verbose=verbose)
 
 # +
 # Effective sample size ESS = 1/sum(w_n^2)
 # The inverse sum over squared normalised weights
 # Range [1; N]
-    
+
 # normalised weights
 wn = w / w_tot
 s = np.sum(wn**2)
 ess = 1/s
-    
+
 print_stats(f'effective sample size, ESS/N = {ess:.1f}/{n_gal} = {ess/n_gal:.3g}',
             stats_file, verbose=verbose)
 # -
@@ -520,7 +520,7 @@ plot_spatial_density(
 
 # All objects without overlap, useful for position-only
 # setting (no shapes)
-title = f'Galaxies (all, no overlap)'
+title = 'Galaxies (all, no overlap)'
 out_path = f'{plot_dir}/galaxy_number_count_all_nooverlap'
 plot_spatial_density(
     ra_wrap_all[cut_overlap],
@@ -532,7 +532,7 @@ plot_spatial_density(
     out_path,
     n_grid=n_grid,
     verbose=verbose
-)   
+)
 # -
 
 # #### Plot galaxy signal-to-noise distribution
@@ -552,14 +552,14 @@ if shape == 'ngmix':
         dd['NGMIX_FLUX_NOSHEAR'][m_gal] / dd['NGMIX_FLUX_ERR_NOSHEAR'][m_gal],
         dd['SNR_WIN'][m_gal]
     ]
-    labels.append([f'$F/\\sigma(F)$'])
+    labels.append(['$F/\\sigma(F)$'])
 
 else:
     raise ValueError(f"Unknown shape measurement method {shape}")
-    
-labels.append(f'SExtractor SNR')
 
-title = f'Galaxies'
+labels.append('SExtractor SNR')
+
+title = 'Galaxies'
 
 out_name = f'hist_SNR_{shape}.pdf'
 out_path = os.path.join(plot_dir, out_name)
@@ -594,12 +594,12 @@ if shape == 'ngmix':
     xs = [
         dd['NGMIX_T_NOSHEAR'][m_gal] / dd['NGMIX_Tpsf_NOSHEAR'][m_gal]
     ]
-    labels.append(f'size ratio')
+    labels.append('size ratio')
 
 else:
     raise ValueError(f"Unknown shape measurement method {shape}")
 
-title = f'Galaxies'
+title = 'Galaxies'
 
 out_name = f'hist_rel_size_{shape}.pdf'
 out_path = os.path.join(plot_dir, out_name)
@@ -646,7 +646,7 @@ print_stats('additive bias', stats_file, verbose=verbose)
 
 # +
 # Compute mean, weighted mean, and (Poisson) error
-    
+
 c = np.zeros(2)
 c_err = np.zeros(2)
 cw = np.zeros(2)
@@ -655,16 +655,16 @@ cw_err = np.zeros(2)
 for comp in (0, 1):
     c[comp] = np.average(g_uncorr[comp])
     c_err[comp] = np.std(g_uncorr[comp])
-        
+
     cw[comp] = np.average(g_uncorr[comp], weights=w)
     variance = np.average((g_uncorr[comp] - cw[comp])**2, weights=w)
     cw_err[comp] = np.sqrt(variance)
 
 for comp in (0, 1):
-    print_stats(f'c_{comp+1} = {c[comp]:.3g}', stats_file, verbose=verbose)        
+    print_stats(f'c_{comp+1} = {c[comp]:.3g}', stats_file, verbose=verbose)
     print_stats(f'cw_{comp+1} = {cw[comp]:.3g}', stats_file, verbose=verbose)
 for comp in (0, 1):
-    print_stats(f'dc_{comp+1} = {c_err[comp]:.3g}', stats_file, verbose=verbose)        
+    print_stats(f'dc_{comp+1} = {c_err[comp]:.3g}', stats_file, verbose=verbose)
     print_stats(f'dcw_{comp+1} = {cw_err[comp]:.3g}', stats_file, verbose=verbose)
 
 # Error of mean: divide by sqrt(N) (TBC whether this is correct)
@@ -680,7 +680,7 @@ for comp in (0, 1):
 # Compute jackknife mean and errors
 
 remove_size = 0.05
-    
+
 cjk = np.zeros(2) * -1
 cjk_err = np.zeros(2) * -1
 
@@ -691,7 +691,7 @@ for comp in (0, 1):
             w,
             remove_size=remove_size,
             n_realization=n_jack
-        )           
+        )
     cjk_dc = ufloat(cjk[comp], cjk_err[comp])
     print_stats(f'cjk_{comp+1} = {cjk_dc:.3eP}', stats_file, verbose=verbose)
 # -
@@ -763,10 +763,10 @@ xs = [
     star_metacal.R_shear[1,1]
 ]
 title = shape
-    
+
 out_name = f'R_{shape}_diag.pdf'
 out_path = os.path.join(plot_dir, out_name)
-    
+
 plot_histograms(
     xs,
     labels,
@@ -803,7 +803,7 @@ plot_histograms(
     title,
     x_label,
     y_label,
-    x_range, 
+    x_range,
     n_bin,
     out_path,
     colors=colors,
@@ -821,7 +821,7 @@ n_bin = 500
 
 labels = ['$e_1$', '$e_2$']
 colors = ['blue', 'red']
-linestyles = ['-', '-'] 
+linestyles = ['-', '-']
 
 # +
 xs = [g_corr[0], g_corr[1]]
@@ -832,16 +832,16 @@ out_name = f'ell_gal_{shape}.pdf'
 out_path = os.path.join(plot_dir, out_name)
 
 plot_histograms(
-    xs, 
-    labels, 
-    title, 
-    x_label, 
-    y_label, 
-    x_range, 
+    xs,
+    labels,
+    title,
+    x_label,
+    y_label,
+    x_range,
     n_bin,
     out_path,
-    weights=weights, 
-    colors=colors, 
+    weights=weights,
+    colors=colors,
     linestyles=linestyles
 )
 
@@ -854,16 +854,16 @@ out_name = f'ell_stars_{shape}.pdf'
 out_path = os.path.join(plot_dir, out_name)
 
 plot_histograms(
-    xs, 
-    labels, 
-    title, 
-    x_label, 
-    y_label, 
-    x_range, 
-    n_bin, 
+    xs,
+    labels,
+    title,
+    x_label,
+    y_label,
+    x_range,
+    n_bin,
     out_path,
-    weights=weights, 
-    colors=colors, 
+    weights=weights,
+    colors=colors,
     linestyles=linestyles
 )
 # -
@@ -882,15 +882,15 @@ out_name = f'ell_PSF_{shape}.pdf'
 out_path = os.path.join(plot_dir, out_name)
 
 plot_histograms(
-    xs, 
-    labels, 
-    title, 
-    x_label, 
-    y_label, 
-    x_range, 
-    n_bin, 
-    out_path,      
-    colors=colors, 
+    xs,
+    labels,
+    title,
+    x_label,
+    y_label,
+    x_range,
+    n_bin,
+    out_path,
+    colors=colors,
     linestyles=linestyles
 )
 # -
@@ -915,15 +915,15 @@ labels = [shape]
 xs = [dd['MAG_AUTO'][m_gal][mask]]
 
 plot_histograms(
-    xs, 
-    labels, 
-    title, 
-    x_label, 
-    y_label, 
-    x_range, 
-    n_bin, 
-    out_path,             
-    colors=colors, 
+    xs,
+    labels,
+    title,
+    x_label,
+    y_label,
+    x_range,
+    n_bin,
+    out_path,
+    colors=colors,
     linestyles=linestyles
 )
 # -
@@ -940,9 +940,8 @@ print_stats('Dispersion of (average) single-component ellipticity = {:.3f} = {:.
 
 import os
 
-from sp_validation.util import *
 from sp_validation.cat import *
-from sp_validation.basic import metacal
+from sp_validation.util import *
 
 # Shear response per galaxy
 R_shear_ind = gal_metacal.R_shear
@@ -1001,7 +1000,7 @@ spv_cat.write_shape_catalog(
     R_g11=R_shear_ind[0, 0],
     R_g12=R_shear_ind[0, 1],
     R_g21=R_shear_ind[1, 0],
-    R_g22=R_shear_ind[1, 1],       
+    R_g22=R_shear_ind[1, 1],
     R=gal_metacal.R,
     R_shear=R_shear,
     R_select=gal_metacal.R_selection,
@@ -1015,9 +1014,9 @@ spv_cat.write_shape_catalog(
 
 if shape == "":
     print('writing random cat (hack)')
-        
+
     ra = dd['RA'][cut_overlap]
     dec = dd['DEC'][cut_overlap]
     tile_id = dd['TILE_ID'][cut_overlap]
     write_galaxy_cat(f'{output_shape_cat_base}.fits', ra, dec, tile_id)
- 
+
