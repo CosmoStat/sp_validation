@@ -152,6 +152,7 @@ cython_debug/
 # legacy output homes that predate the results/ migration.
 /results/*
 !/results/.gitkeep
+!/results/README.md
 /output/
 cosmo_val/output*
 /cosmo_val/harmonic_covariance_gaussian_sims*
