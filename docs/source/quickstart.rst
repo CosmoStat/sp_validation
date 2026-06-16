@@ -8,7 +8,7 @@ ShapePipe shear catalogue to validate.
 Validation proceeds in four stages.
 
 #. **Configure.** Set the inputs for a run (catalogue paths, field name, optional masks)
-   in ``notebooks/params.py``.
+   in ``scripts/examples/params.py``.
 #. **Shear validation.** Extract shape information and run the basic diagnostics,
    producing the pre-calibration catalogues. See :doc:`run_validation`.
 #. **Post-processing.** Mask, select, and calibrate into a science-ready shear catalogue.

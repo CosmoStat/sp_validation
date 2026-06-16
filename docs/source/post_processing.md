@@ -27,7 +27,7 @@ This script creates three shear catalogues in FITS format:
   This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.  
   This is the main output catalogue that will be processed further.
 
-This step is carried out per patch. Parameters have to be set via the python configuration file `params.py`.
+This step is carried out per patch. Parameters have to be set via the python configuration file `params.py` (template at `scripts/examples/params.py`).
 
 ### 2. Merge catalogues
 

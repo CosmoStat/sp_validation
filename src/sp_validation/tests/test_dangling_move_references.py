@@ -20,6 +20,7 @@ MOVE_MAP: tuple[tuple[str, str], ...] = (
     ("notebooks/cosmo_val/catalog_paper_plot", "papers/catalog"),
     ("cosmo_inference/notebooks/2D_harmonic_space_cosmic_shear_plots", "papers/harmonic"),
     ("notebooks/cosmo_val", "cosmo_val"),
+    ("notebooks/params.py", "scripts/examples/params.py"),
 )
 EXCLUDED_DIRS = {
     ".git",
