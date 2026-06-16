@@ -1,12 +1,11 @@
 ---
 id: 01KV8CY7C8J17GRT9BCQTVMAFA
 name: 'Notebooks: delete or convert all to scripts'
-status: closed
+status: active
 tags:
     - reorg
     - sp-validation
 created-at: 2026-06-16T14:21:34.984834681Z
-updated-at: 2026-06-16T14:36:25.61963407Z
-closed-at: 2026-06-16T14:36:25.619633129Z
-outcome: 'DONE on cleanup/restructuring. notebooks/ deleted entirely: 14 .ipynb + 2 junk removed (recoverable from git history); 18 reusable .py promoted to scripts/examples/ (8 demos, reduction utils, params.py template, star_response). Refs swept (CLAUDE.md, docs, prepare_patch_for_spval.sh); MOVE_MAP guard entry added. Net ~-8.7k lines, git-tracked as renames. WATCH: all .ipynb judged not worth converting; demo_calibrate_minimal_cat.py had pre-existing paste-corruption fixed by inferring the unpack.'
+updated-at: 2026-06-16T15:14:13.137292627Z
+outcome: 'REVISITING (Cail 2026-06-16): blanket .ipynb deletion rejected. Manifest of 16 deletions reviewed; restoring a curated keep-set (tutorial_UNIONS_SP_v1.0 at minimum). The 19 .py moves to scripts/examples/ stand. Pending Cail''s keep-list + form (curated notebooks/ vs scripts/).'
 ---
