@@ -52,6 +52,8 @@ Where to go next
 - :doc:`quickstart` — an orientation to the four stages of a validation run.
 - :doc:`about` — the package in its CosmoStat / UNIONS context, with authors and
   contact.
+- :doc:`repository_structure` — how the tree is laid out and where each kind of
+  work belongs.
 - The **User Guide** in the sidebar walks through each stage: running shear
   validation, post-processing, and the PSF-leakage diagnostics.
 - The **API Reference** documents every module of the ``sp_validation`` library.

@@ -8,6 +8,7 @@
   about
   installation
   quickstart
+  repository_structure
 
 .. toctree::
   :hidden:

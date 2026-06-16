@@ -33,6 +33,35 @@ tasks that can be performed by `sp_validation` are:
   a shear validation run and performes cosmology inference using the two-point
   correlation function.
 
+## Repository layout
+
+```
+src/sp_validation/    library code (incl. glass_mock core)
+cosmo_val/            validation: code + config        (promoted from notebooks/)
+cosmo_inference/      inference: code + config         (cosmosis / cosmocov)
+workflow/             ALL analysis — modular Snakemake, multi-person → results/
+papers/               final-figure assembly only (PDF, colour, layout)
+scripts/              real reduction + runner scripts (catalog builders, masking, glass-mock runners)
+scratch/              per-person — ad hoc work + personal workflows (tracked)
+results/              analysis products + diagnostic plots (contents gitignored, dir kept)
+docs/  tests/  config/
+```
+
+The dividing line is the **inputs to a paper figure**. Everything up to that
+point is *analysis* and lives in `workflow/`: generic, reusable, modular
+Snakemake, organized for several people, producing both products and diagnostic
+plots into a single top-level `results/`. The figure itself is *presentation*
+and lives in `papers/<paper>/`: final-figure assembly only — PDF, colour, layout
+— tied to one paper, and free to never touch Snakemake. `scratch/<person>/` is
+personal and ad hoc, tracked because sharing scratch is useful. `cosmo_val/` and
+`cosmo_inference/` are the side-by-side code+config homes for the validation and
+inference stages.
+
+The workflow scales by being modular, not monolithic: Snakemake's `module`
+directive imports the shared rules under each run's own config and an output
+`prefix`, so runs namespace under `results/<name>/` without clobbering one
+another.
+
 ## Container Installation (Recommended)
 
 The easiest way to install sp_validation is via a container. Docker images are automatically built and pushed to the [GitHub Container Registry (GHCR)](https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation) on every push to `develop`. This image can be installed and run on most systems (including clusters) with just a few lines of code.
