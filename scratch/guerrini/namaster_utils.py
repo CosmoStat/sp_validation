@@ -1,3 +1,13 @@
+"""Helper functions for the NaMaster covariance investigation.
+
+Moved from ``cosmo_val/investigation namaster/utils.py`` as part of the repo
+restructuring. The only change relative to the original is a repaired import:
+``SquareRootScale`` is now sourced from ``sp_validation.rho_tau`` (the former
+``sp_validation.utils_cosmo_val`` module no longer exists). Everything else is
+kept verbatim, including the interactive get_ipython magic guard, the hardcoded
+matplotlib style path, and the seaborn palette.
+"""
+
 from IPython import get_ipython
 
 ipython = get_ipython()
@@ -18,7 +28,7 @@ import healpy as hp
 import pymaster as nmt
 import camb
 
-from sp_validation.utils_cosmo_val import SquareRootScale
+from sp_validation.rho_tau import SquareRootScale
 from sp_validation.cosmo_val import CosmologyValidation
 from sp_validation.cosmology import get_theo_c_ell, get_cosmo
 from sp_validation.rho_tau import get_params_rho_tau
@@ -128,7 +138,7 @@ def get_gaussian_real(nside, mask, n_gal, unique_pix, idx_rep, e1, e2, w):
 
     noise_map = noise_map_e1 + 1j * noise_map_e2
     return noise_map
-    
+
 def get_sample(noise_map, mask, lmax, b, wsp=None):
 
     f = nmt.NmtField(mask=mask, maps=[noise_map.real, noise_map.imag], lmax=lmax)
@@ -155,7 +165,7 @@ def get_field_and_workspace_cat(ra, dec, e1, e2, lmax, b, w=None):
         spin=2,
         lonlat=True
     )
-    
+
     wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
 
     return f_all, wsp
@@ -178,7 +188,7 @@ def get_covariance(cl_array, cw, wsp, num_bins):
                                           cl_array,
                                           cl_array,
                                           wsp, wb=wsp).reshape((num_bins, 4, num_bins, 4))
-    
+
     return covar_22_22
 
 def get_covariance_from_glass(root, n_sim, num_bins, lmax, type):
