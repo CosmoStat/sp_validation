@@ -183,3 +183,7 @@ papers/catalog/plots/*.pdf
 # Claude Code agent worktrees — transient isolated checkouts for background
 # agents; never tracked.
 .claude/worktrees/
+
+# TLDR tool artifacts (auto-generated per-directory status/ignore files).
+.tldr/
+.tldrignore
