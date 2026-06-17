@@ -1,11 +1,13 @@
 ---
 id: 01KVAS2NAWA972AQCJ5WH8MMTG
 name: 'Convert cosmo_val notebooks: lib-extract + scratch'
+status: closed
 tags:
     - sp-validation
     - reorg
 created-at: 2026-06-17T12:32:12.124718213Z
-updated-at: 2026-06-17T12:37:18.735012128Z
+updated-at: 2026-06-17T13:47:26.127347991Z
+closed-at: 2026-06-17T13:47:26.127347352Z
 outcome: |-
     5 cosmo_val notebooks resolved by the rule "reasonably-reusable code -> library,
     the rest -> scratch scripts." Three generic helpers lifted into
