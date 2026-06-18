@@ -177,6 +177,8 @@ papers/catalog/plots/*.pdf
 # felt — track the fiber records (engineering decisions & findings); skip only
 # the regenerable index and runtime locks.
 .felt/*.db
+.felt/*.db-shm
+.felt/*.db-wal
 .felt/*.lock
 .felt/index-sync.*
 
