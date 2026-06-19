@@ -20,7 +20,6 @@ from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
 from .cosmology import get_cosmo, get_theo_c_ell
-from .plots import FootprintPlotter
 from .rho_tau import (
     get_params_rho_tau,
     get_rho_tau_w_cov,
@@ -1008,7 +1007,7 @@ class CosmologyValidation:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            fp = FootprintPlotter()
+            fp = cs_plots.FootprintPlotter()
 
             for region in fp._regions:
                 out_path = os.path.abspath(
@@ -2074,6 +2073,7 @@ class CosmologyValidation:
         -------
         dict
             A dictionary containing the following keys:
+
             - "xip_E": Pure E-mode correlation function for xi+.
             - "xim_E": Pure E-mode correlation function for xi-.
             - "xip_B": Pure B-mode correlation function for xi+.
@@ -2090,7 +2090,7 @@ class CosmologyValidation:
         Notes
         -----
         - A shared patch file is used for the reporting and integration binning,
-        and is created if it does not exist.
+          and is created if it does not exist.
         """
         from .b_modes import calculate_pure_eb_correlation
 
@@ -2206,6 +2206,7 @@ class CosmologyValidation:
         Notes
         -----
         This function orchestrates the full E/B mode analysis workflow:
+
         - Uses instance configuration as defaults for unspecified parameters
         - Automatically switches to analytical variance when theoretical
           covariance provided

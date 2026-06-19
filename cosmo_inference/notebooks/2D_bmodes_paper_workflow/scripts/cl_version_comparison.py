@@ -22,6 +22,7 @@ from plotting_utils import (
     PAPER_MPLSTYLE,
     compute_chi2_pte,
     draw_normalized_boxes_ell_scale,
+    ell_bin_mask,
     find_fiducial_index,
     get_version_alpha,
     version_label,
@@ -107,8 +108,8 @@ def main():
         chi2_bb, pte_bb, dof_bb = compute_chi2_pte(cl_bb, cov_bb)
         chi2_eb, pte_eb, dof_eb = compute_chi2_pte(cl_eb, cov_eb)
 
-        # Scale-cut PTEs
-        cut_mask = (ell >= ell_min_cut) & (ell <= ell_max_cut)
+        # Scale-cut PTEs (bin included only if full ell range within cuts)
+        cut_mask = ell_bin_mask(ell, ell_min_cut, ell_max_cut)
         idx = np.where(cut_mask)[0]
         cl_bb_cut = cl_bb[idx]
         cl_eb_cut = cl_eb[idx]

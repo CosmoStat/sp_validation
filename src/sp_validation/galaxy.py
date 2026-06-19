@@ -24,50 +24,12 @@ from astropy.wcs import WCS
 from astropy.nddata import bitmask
 
 from cs_util import cfis
+from cs_util.size import T_to_fwhm, sigma_to_fwhm  # noqa: F401  re-exported;
+# the previous local T_to_fwhm (T / 1.17741 * 2.355) treated the area
+# T = 2 sigma^2 as if it were sigma; the cs_util version carries the
+# required square root: FWHM = 2.35482 sqrt(T / 2)
 
 from sp_validation import io
-
-
-def T_to_fwhm(T):
-    """T to fwhm.
-
-    Transform from size T to FWHM.
-    This interprets T as the RMS (``sigma'') of a Gaussian.
-
-    Parameters
-    ----------
-    T : (array of) float
-        input size(s)
-
-    Returns
-    -------
-    fwhm : (array of) float
-        output fwhm(s)
-    """
-
-    # MKDEBUG: Check this equation. Why is FWHM not quadratic in T???
-    return T / 1.17741 * 2.355
-
-
-def sigma_to_fwhm(sigma, pixel_size=1):
-    """Sigma to fwhm.
-
-    Transform from size sigma to FWHM.
-
-    Parameters
-    ----------
-    sigma : (array of) float
-        input size(s)
-    pixel_size : float, optional, default=1
-        pixel size in arcsec, set to 1 if no scaling
-        required
-
-    Returns
-    -------
-    fwhm : (array of) float
-        output fwhm(s)
-    """
-    return sigma * 2.355 * pixel_size
 
 
 def classification_galaxy_overlap_ra_dec(

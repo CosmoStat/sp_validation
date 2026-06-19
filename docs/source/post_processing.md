@@ -1,3 +1,5 @@
+# Post-processing
+
 ## Science-ready catalogue production
 
 Processing steps of `ShapePipe` output catalogues carried out by the `sp_validation` package to produce science-ready catalogues are:
@@ -79,6 +81,7 @@ shear catalogue with `create_joint_shape_cat.py`, see
 [here](#create-combined-calibrated-shear-catalogue).
 
 
+(create-combined-calibrated-shear-catalogue)=
 ### Create combined calibrated shear catalogue
 
 After creating the combined statistics results described above, the global

@@ -4,6 +4,7 @@
 # Import relevant modules
 import sys
 import os
+import re
 from importlib_metadata import metadata
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -18,10 +19,11 @@ sys.path.insert(0, os.path.abspath('../../scripts'))
 project = 'sp_validation'
 
 mdata = metadata(project)
-author = mdata['Author']
+# PEP 621 stores contributors in 'Author-email' ("Name <email>, ...") rather
+# than the legacy 'Author' field; strip the addresses for a clean author list.
+author = mdata.get('Author') or re.sub(r'\s*<[^>]*>', '', mdata.get('Author-email', 'CosmoStat'))
 version = mdata['Version']
 copyright = '2021, {}'.format(author)
-gh_user = mdata['Home-page']
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '3.3'
@@ -40,10 +42,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
-    'sphinxawesome_theme',
     'sphinxcontrib.bibtex',
-    'nbsphinx',
-    'nbsphinx_link',
+    'myst_parser',
     'numpydoc',
 ]
 
@@ -57,7 +57,7 @@ autoclass_content = 'class'
 autodoc_member_order = 'bysource'
 
 # Include private class methods
-autodoc_default_flags = ['members', 'private-members']
+autodoc_default_options = {'members': True, 'private-members': True}
 
 # Generate summaries
 autosummary_generate = True
@@ -93,12 +93,10 @@ html_theme = 'sphinxawesome_theme'
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "nav_include_hidden": True,
-    "show_nav": True,
-    "show_breadcrumbs": False,
-    "breadcrumbs_separator": "/"
+    "show_prev_next": True,
+    "show_scrolltop": True,
+    "globaltoc_includehidden": True,
 }
-html_collapsible_definitions = True
 
 
 # The name for this set of Sphinx documents.  If None, it defaults to
@@ -121,93 +119,14 @@ html_title = '{0} v{1}'.format(project, version)
 # using the given strftime format.
 html_last_updated_fmt = '%d %b, %Y'
 
-# If true, SmartyPants will be used to convert quotes and dashes to
-# typographically correct entities.
-html_use_smartypants = True
+# Convert quotes and dashes to typographically correct entities.
+smartquotes = True
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 html_show_sphinx = True
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
 html_show_copyright = True
-
-# -- Options for nbshpinx output ------------------------------------------
-
-
-# # Custom fucntion to find notebooks, create .nblink files and update the
-# # notebooks.rst file
-# def add_notebooks(nb_path='../../notebooks'):
-#
-#     print('Looking for notebooks')
-#     nb_ext = '.ipynb'
-#     nb_rst_file_name = 'notebooks.rst'
-#     nb_link_format = '{{\n   "path": "{0}/{1}"\n}}'
-#
-#     nbs = sorted([nb for nb in os.listdir(nb_path) if nb.endswith(nb_ext)])
-#
-#     for list_pos, nb in enumerate(nbs):
-#
-#         nb_name = nb.rstrip(nb_ext)
-#
-#         nb_link_file_name = nb_name + '.nblink'
-#         print('Writing {0}'.format(nb_link_file_name))
-#         with open(nb_link_file_name, 'w') as nb_link_file:
-#             nb_link_file.write(nb_link_format.format(nb_path, nb))
-#
-#         print('Looking for {0} in {1}'.format(nb_name, nb_rst_file_name))
-#         with open(nb_rst_file_name, 'r') as nb_rst_file:
-#             check_name = nb_name not in nb_rst_file.read()
-#
-#         if check_name:
-#             print('Adding {0} to {1}'.format(nb_name, nb_rst_file_name))
-#             with open(nb_rst_file_name, 'a') as nb_rst_file:
-#                 if list_pos == 0:
-#                     nb_rst_file.write('\n')
-#                 nb_rst_file.write('   {0}\n'.format(nb_name))
-#
-#     return nbs
-#
-#
-# # Add notebooks
-# add_notebooks()
-#
-# binder = 'https://mybinder.org/v2/gh'
-# binder_badge = 'https://mybinder.org/badge_logo.svg'
-# github = 'https://github.com/'
-# github_badge = 'https://badgen.net/badge/icon/github?icon=github&label'
-#
-# # Remove promts and add binder badge
-# nb_header_pt1 = r'''
-# {% if env.metadata[env.docname]['nbsphinx-link-target'] %}
-# {% set docpath = env.metadata[env.docname]['nbsphinx-link-target'] %}
-# {% else %}
-# {% set docpath = env.doc2path(env.docname, base='docs/source/') %}
-# {% endif %}
-#
-# .. raw:: html
-#
-#     <style>
-#         .nbinput .prompt,
-#         .nboutput .prompt {
-#             display: none;
-#         }
-#     </style>
-#
-# '''
-# nb_header_pt2 = (
-#     r'''    <p><div class="inline-block">'''
-#     r'''<a href="{0}/{1}/{2}/'''.format(binder, gh_user, project) +
-#     r'''master?filepath={{ docpath }}">''' +
-#     r'''<img alt="Binder badge" src="{0}" '''.format(binder_badge) +
-#     r'''style="vertical-align:text-bottom"></a></div>'''
-#     r'''<div class="inline-block"><a href=''' +
-#     r'''"{0}/{1}/{2}/blob/master/'''.format(github, gh_user, project) +
-#     r'''{{ docpath }}"><img alt="GitHub badge" ''' +
-#     r'''src="{0}" style="vertical-align:text-bottom">'''.format(github_badge) +
-#     r'''</a></div></p>'''
-# )
-#
-# nbsphinx_prolog = nb_header_pt1 + nb_header_pt2
 
 # -- Intersphinx Mapping ----------------------------------------------
 
@@ -221,4 +140,4 @@ intersphinx_mapping = {
 
 # -- BibTeX Setting  ----------------------------------------------
 
-bibtex_bibfiles = ['refs.bib', 'my_ref.bib']
+bibtex_bibfiles = ['refs.bib']

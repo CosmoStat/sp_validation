@@ -6,7 +6,7 @@ import re
 import numpy as np
 from astropy.table import Table
 import matplotlib.pyplot as plt
-from sp_validation.plots import FootprintPlotter
+from cs_util.plots import FootprintPlotter
 
 
 def load_gaia_fits(file_path):
