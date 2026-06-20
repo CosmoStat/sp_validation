@@ -18,7 +18,7 @@ from astropy.io import fits
 
 from ..cosmology import get_theo_c_ell
 from ..rho_tau import get_params_rho_tau
-from ..statistics import cov_from_one_covariance
+from ..statistics import chi2_and_pte, cov_from_one_covariance
 
 
 class PseudoClMixin:
@@ -925,14 +925,12 @@ class PseudoClMixin:
         plt.savefig(out_path)
 
         # Print C_l^BB PTE for each version and save BB data
-        from scipy import stats as sp_stats
-
         print("\nC_l^BB PTE summary:")
         for ver in self.versions:
             cl_bb = self.pseudo_cls[ver]["pseudo_cl"]["BB"]
             cov_bb = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            chi2_bb = float(cl_bb @ np.linalg.solve(cov_bb, cl_bb))
-            pte_bb = sp_stats.chi2.sf(chi2_bb, len(cl_bb))
+            chi2_bb, _, pte_bb = chi2_and_pte(cl_bb, cov_bb)
+            chi2_bb = float(chi2_bb)
             print(
                 f"  {ver}: C_l^BB PTE = {pte_bb:.4f} "
                 f"(chi2/dof = {chi2_bb:.1f}/{len(cl_bb)})"

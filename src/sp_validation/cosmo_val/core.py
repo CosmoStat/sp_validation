@@ -14,6 +14,7 @@ from ..b_modes import (
     find_conservative_scale_cut_key,
 )
 from ..cosmology import get_cosmo
+from ..statistics import chi2_and_pte
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
 from .pseudo_cl import PseudoClMixin
@@ -505,8 +506,6 @@ class CosmologyValidation(
         dict
             ``{version: {statistic: pte_value, ...}, ...}``
         """
-        from scipy import stats as sp_stats
-
         versions = versions or self.versions
         summary = {}
         cov_methods = set()
@@ -549,8 +548,7 @@ class CosmologyValidation(
                 try:
                     cl_bb = self.pseudo_cls[ver]["pseudo_cl"]["BB"]
                     cov_bb = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-                    chi2_bb = float(cl_bb @ np.linalg.solve(cov_bb, cl_bb))
-                    row["C_l_BB"] = sp_stats.chi2.sf(chi2_bb, len(cl_bb))
+                    _, _, row["C_l_BB"] = chi2_and_pte(cl_bb, cov_bb)
                     cov_methods.add("Gaussian (NaMaster)")
                 except (KeyError, AttributeError):
                     pass
