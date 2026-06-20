@@ -28,7 +28,7 @@ import healsparse as hsp
 from cs_util.plots import FootprintPlotter
 
 from sp_validation import cosmo_val
-from sp_validation import run_joint_cat as sp_joint
+from sp_validation import catalog_builders as sp_joint
 
 # -
 

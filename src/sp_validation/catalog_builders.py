@@ -1,7 +1,7 @@
-"""RUN JOINT CAT.
+"""CATALOG BUILDERS.
 
 This module implements classes to create, mask, and calibrate joint
-comprehensive catalogues.
+comprehensive catalogues, plus the run_* entry-point functions.
 
 :Author: Martin Kilbinger
 """
