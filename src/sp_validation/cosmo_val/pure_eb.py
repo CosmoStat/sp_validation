@@ -7,7 +7,7 @@ correlation functions (xi+/xi- pure-mode decomposition) for catalog versions.
 
 import numpy as np
 
-from .b_modes import (
+from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
     plot_eb_covariance_matrix,

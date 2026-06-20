@@ -8,13 +8,13 @@ import numpy as np
 import yaml
 from shear_psf_leakage import run_object, run_scale
 
-from .b_modes import (
+from ..b_modes import (
     _get_pte_from_scale_cut,
     find_conservative_scale_cut_key,
 )
+from ..cosmology import get_cosmo
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
-from .cosmology import get_cosmo
 from .pseudo_cl import PseudoClMixin
 from .psf_systematics import PSFSystematicsMixin
 from .pure_eb import PureEBMixin

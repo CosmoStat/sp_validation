@@ -16,8 +16,8 @@ import numpy as np
 import pymaster as nmt
 from astropy.io import fits
 
-from .cosmology import get_theo_c_ell
-from .rho_tau import get_params_rho_tau
+from ..cosmology import get_theo_c_ell
+from ..rho_tau import get_params_rho_tau
 
 
 class PseudoClMixin:

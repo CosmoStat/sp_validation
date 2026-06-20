@@ -16,7 +16,7 @@ from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
-from .rho_tau import (
+from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
 )

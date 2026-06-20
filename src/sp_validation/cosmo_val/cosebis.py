@@ -7,7 +7,7 @@ Mixin providing COSEBIs calculation and plotting for the
 
 import numpy as np
 
-from .b_modes import (
+from ..b_modes import (
     calculate_cosebis,
     find_conservative_scale_cut_key,
     plot_cosebis_covariance_matrix,

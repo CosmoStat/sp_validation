@@ -6,6 +6,8 @@ each call site) keeps resolving for callers that import the package as a module
 handle.
 """
 
-from .core import CosmologyValidation, cs_plots
+from cs_util import plots as cs_plots
+
+from .core import CosmologyValidation
 
 __all__ = ["CosmologyValidation", "cs_plots"]
