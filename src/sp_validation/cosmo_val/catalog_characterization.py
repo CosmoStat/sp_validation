@@ -209,7 +209,7 @@ class CatalogCharacterizationMixin:
         for ver in self.versions:
             self.print_magenta(ver)
             with self.results[ver].temporarily_read_data():
-                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                w = self._read_shear_cols(ver, "w_col")
                 n_eff_gal[ver] = (
                     1 / (self.area[ver] * 60 * 60) * np.sum(w) ** 2 / np.sum(w**2)
                 )
@@ -224,9 +224,7 @@ class CatalogCharacterizationMixin:
         for ver in self.versions:
             self.print_magenta(ver)
             with self.results[ver].temporarily_read_data():
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
                 ellipticity_dispersion[ver] = np.sqrt(
                     0.5
                     * (
@@ -317,7 +315,7 @@ class CatalogCharacterizationMixin:
             for ver in self.versions:
                 self.print_magenta(ver)
                 with self.results[ver].temporarily_read_data():
-                    w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
+                    w = self._read_shear_cols(ver, "w_col")
 
                     plt.hist(
                         w,

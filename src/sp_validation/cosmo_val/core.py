@@ -484,6 +484,43 @@ class CosmologyValidation(
             **extra,
         }
 
+    def _read_shear_cols(self, ver, *keys):
+        """Read shear-catalog columns by their config-key names.
+
+        Each key in ``*keys`` (e.g. ``"e1_col"``, ``"w_col"``) is resolved to a
+        column name via ``self.cc[ver]["shear"][key]`` and indexed out of
+        ``self.results[ver].dat_shear``. Must be called inside a
+        ``self.results[ver].temporarily_read_data()`` context, since it touches
+        ``dat_shear`` directly.
+
+        Returns one array per key (a bare array, not a 1-tuple, when a single
+        key is requested).
+        """
+        cols = tuple(
+            self.results[ver].dat_shear[self.cc[ver]["shear"][key]] for key in keys
+        )
+        return cols[0] if len(cols) == 1 else cols
+
+    def _calibrated_g(self, ver):
+        """Calibrated shear components ``(g1, g2)`` for a catalog version.
+
+        Applies additive-bias subtraction and the multiplicative response:
+        ``g = (e − c) / R``. For DES the response is the catalog-averaged
+        per-component ``R11``/``R22`` (column names in the config); for every
+        other version it is the scalar ``R`` from the config. Mirrors the
+        calibration in :meth:`calculate_2pcf` exactly.
+
+        Must be called inside a ``self.results[ver].temporarily_read_data()``
+        context, since it reads ``dat_shear`` columns.
+        """
+        e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
+        if ver != "DES":
+            R1 = R2 = self.cc[ver]["shear"]["R"]
+        else:
+            R1 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R11"]])
+            R2 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R22"]])
+        return (e1 - self.c1[ver]) / R1, (e2 - self.c2[ver]) / R2
+
     @property
     def colors(self):
         return [self.cc[ver]["colour"] for ver in self.versions]

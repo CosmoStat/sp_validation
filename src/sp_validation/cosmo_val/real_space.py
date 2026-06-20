@@ -75,22 +75,8 @@ class RealSpaceMixin:
         else:
             # Load data and create a catalog
             with self.results[ver].temporarily_read_data():
-                e1 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                e2 = self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                w = self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]]
-                if ver != "DES":
-                    R = self.cc[ver]["shear"]["R"]
-                    g1 = (e1 - self.c1[ver]) / R
-                    g2 = (e2 - self.c2[ver]) / R
-                else:
-                    R11 = self.cc[ver]["shear"]["R11"]
-                    R22 = self.cc[ver]["shear"]["R22"]
-                    g1 = (e1 - self.c1[ver]) / np.average(
-                        self.results[ver].dat_shear[R11]
-                    )
-                    g2 = (e2 - self.c2[ver]) / np.average(
-                        self.results[ver].dat_shear[R22]
-                    )
+                g1, g2 = self._calibrated_g(ver)
+                w = self._read_shear_cols(ver, "w_col")
 
                 # Use patch file if it exists
                 patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
@@ -429,21 +415,13 @@ class RealSpaceMixin:
                 gg.read(out_fname)
             else:
                 with self.results[ver].temporarily_read_data():
-                    R = self.cc[ver]["shear"]["R"]
-                    g1 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e1_col"]]
-                        - self.c1[ver]
-                    ) / R
-                    g2 = (
-                        self.results[ver].dat_shear[self.cc[ver]["shear"]["e2_col"]]
-                        - self.c2[ver]
-                    ) / R
+                    g1, g2 = self._calibrated_g(ver)
                     cat_gal = treecorr.Catalog(
                         ra=self.results[ver].dat_shear["RA"],
                         dec=self.results[ver].dat_shear["Dec"],
                         g1=g1,
                         g2=g2,
-                        w=self.results[ver].dat_shear[self.cc[ver]["shear"]["w_col"]],
+                        w=self._read_shear_cols(ver, "w_col"),
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
