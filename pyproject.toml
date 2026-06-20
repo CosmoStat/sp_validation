@@ -58,8 +58,11 @@ dependencies = [
     # when camb ships > 1.6.6 with the scipy-1.18 fix.
     "scipy<1.18",
     "seaborn",
-    # SHA-pinned snapshot of shear_psf_leakage branch `develop` (mutable branch).
-    "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@48e5756f557fc586b7dc7773c7a4bcf3c256b4fa",
+    # Intentionally tracks the mutable `develop` branch (NOT SHA-pinned):
+    # shear_psf_leakage is actively co-developed CosmoStat code we want to stay
+    # current with, so freezing it would only create bump-churn. (Contrast the
+    # getdist feature-branch below, which is an external fork we pin for repro.)
+    "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
     "statsmodels",
     "treecorr>=5.0",
