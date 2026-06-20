@@ -18,6 +18,7 @@ from astropy.io import fits
 
 from ..cosmology import get_theo_c_ell
 from ..rho_tau import get_params_rho_tau
+from ..statistics import cov_from_one_covariance
 
 
 class PseudoClMixin:
@@ -419,24 +420,13 @@ class PseudoClMixin:
         with open(config_path, "w") as f:
             config.write(f)
 
-    def get_cov_from_onecov(self, cov_one_cov, gaussian=True):
-        n_bins = np.sqrt(cov_one_cov.shape[0]).astype(int)
-        cov = np.zeros((n_bins, n_bins))
-
-        index_value = 10 if gaussian else 9
-        for i in range(n_bins):
-            for j in range(n_bins):
-                cov[i, j] = cov_one_cov[i * n_bins + j, index_value]
-
-        return cov
-
     def _load_onecovariance_cov(self, out_dir, ver):
         self.print_cyan(f"Loading OneCovariance results from {out_dir}")
         cov_one_cov = np.genfromtxt(
             os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")
         )
-        gaussian_one_cov = self.get_cov_from_onecov(cov_one_cov, gaussian=True)
-        all_one_cov = self.get_cov_from_onecov(cov_one_cov, gaussian=False)
+        gaussian_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=True)
+        all_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=False)
 
         self._pseudo_cls_onecov[ver] = {
             "gaussian_cov": gaussian_one_cov,
