@@ -26,7 +26,7 @@ import matplotlib.pylab as plt
 from sp_validation import catalog_builders as sp_joint
 from sp_validation import format
 from sp_validation.calibration import metacal
-import sp_validation.cat as cat
+import sp_validation.catalog as cat
 
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()

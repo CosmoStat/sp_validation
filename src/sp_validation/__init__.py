@@ -2,8 +2,8 @@ from .version import __version__
 
 __all__ = [
     'b_modes',
-    'cat',
     'calibration',
+    'catalog',
     'catalog_builders',
     'cosmology',
     'format',

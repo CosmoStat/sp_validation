@@ -34,6 +34,14 @@ MOVE_MAP: tuple[tuple[str, str], ...] = (
     ("sp_validation.info", "sp_validation.version (__version__); __name__ dropped"),
     ("sp_validation/util.py", "sp_validation/format.py"),
     ("run_joint_cat", "catalog_builders"),
+    # The catalogue data layer ``cat.py`` became ``catalog.py``. The bare token
+    # ``sp_validation.cat`` is a *prefix* of the live ``sp_validation.catalog``
+    # / ``sp_validation.catalog_builders`` modules, so registering it would
+    # false-positive on every catalog reference (the same trap as ``glass_mock``
+    # above). The flat-import form ``sp_validation.cat import`` is unique to the
+    # retired module — its next char is a space, never the ``a`` of ``catalog`` —
+    # so it traps the dangling import without catching the new name.
+    ("sp_validation.cat import", "sp_validation.catalog import"),
 )
 EXCLUDED_DIRS = {
     ".git",

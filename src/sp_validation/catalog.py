@@ -1,8 +1,11 @@
-"""CAT.
+"""CATALOG.
 
-:Name: cat.py
+:Name: catalog.py
 
-:Description: This script contains methods to deal with catalogues.
+:Description: Catalogue data layer — the read/write, column-access, and
+    object-matching free functions that operate directly on shape catalogues.
+    These are the low-level primitives; the catalogue *construction pipeline*
+    (runner classes that orchestrate them) lives in ``catalog_builders``.
 
 :Author: Martin Kilbinger
 

@@ -12,7 +12,7 @@ from cs_util import logging
 from cs_util import cat
 from cs_util import plots
 
-from sp_validation.cat import *
+from sp_validation.catalog import *
 from sp_validation.calibration import *
 
 

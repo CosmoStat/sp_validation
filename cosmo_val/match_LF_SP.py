@@ -29,7 +29,7 @@ from astropy.coordinates import SkyCoord
 from uncertainties import ufloat   
 from sklearn import preprocessing
 
-from sp_validation import cat
+from sp_validation import catalog as cat
 
 # ## Set-up
 

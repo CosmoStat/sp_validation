@@ -16,7 +16,7 @@ import statsmodels.api as sm
 import tqdm
 
 from sp_validation.statistics import jackknif_weighted_average2
-from sp_validation import cat as sp_cat
+from sp_validation import catalog as sp_cat
 
 from shear_psf_leakage import leakage
 from shear_psf_leakage import run_object

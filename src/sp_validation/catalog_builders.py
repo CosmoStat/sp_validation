@@ -1,7 +1,9 @@
 """CATALOG BUILDERS.
 
-This module implements classes to create, mask, and calibrate joint
-comprehensive catalogues, plus the run_* entry-point functions.
+Catalogue construction pipeline — the runner classes that create, mask, and
+calibrate joint comprehensive catalogues, plus the ``run_*`` entry-point
+functions. Built on the catalogue data layer in ``catalog`` (imported here as
+``sp_cat``), which supplies the read/write/column-access/matching primitives.
 
 :Author: Martin Kilbinger
 """
@@ -31,7 +33,7 @@ from cs_util import args as cs_args
 
 from . import format
 from . import calibration
-from . import cat as sp_cat
+from . import catalog as sp_cat
 
 # Spatial-masking primitives now live in ``masks``; re-exported here so external
 # code using ``from sp_validation import catalog_builders as sp_joint`` keeps
