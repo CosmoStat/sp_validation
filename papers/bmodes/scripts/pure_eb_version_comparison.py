@@ -39,9 +39,9 @@ def _extract_sigma(covariance, block_index, block_size):
     return np.sqrt(np.clip(np.diag(block), 0, None))
 
 
-
-def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
-                                       x_offset_factors=None, box_style=None):
+def _create_version_comparison_figure(
+    datasets, scale_cuts, fiducial_version, x_offset_factors=None, box_style=None
+):
     """Create figure comparing total and B-mode correlations across versions.
 
     Layout:
@@ -68,7 +68,8 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
     # Create figure with custom height ratios: B row is 2/3 of top row
     # Both rows share y-axis across columns
     fig, axes = plt.subplots(
-        2, 2,
+        2,
+        2,
         figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.55),
         sharex=True,
         gridspec_kw={"height_ratios": [3, 2]},
@@ -99,15 +100,19 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
         for key in ("xip_total", "xim_total"):
             data[f"{key}_scaled"] = (theta * data[key]) / scale_factor
 
-    for col, (mode_key, title) in enumerate([
-        ("xip_total", r"$\xi_+$"),
-        ("xim_total", r"$\xi_-$"),
-    ]):
+    for col, (mode_key, title) in enumerate(
+        [
+            ("xip_total", r"$\xi_+$"),
+            ("xim_total", r"$\xi_-$"),
+        ]
+    ):
         ax = axes[0, col]
 
         # Draw version spread boxes (before data points so they're behind)
         draw_normalized_boxes_log_scale(
-            ax, theta, datasets,
+            ax,
+            theta,
+            datasets,
             y_norm_key=f"{mode_key}_scaled",
             fiducial_idx=fiducial_idx,
             x_offset_range=x_offset_range,
@@ -117,7 +122,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
         for i, data in enumerate(datasets):
             theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
-            marker = data.get("marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o")
+            marker = data.get(
+                "marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            )
             fillstyle = data.get("fillstyle", "full")
             mfc = data["color"] if fillstyle == "full" else "none"
 
@@ -155,15 +162,19 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
             ax.set_ylabel(r"$\theta \xi \times 10^4$")
 
     # Bottom row: xi_B +/- normalized
-    for col, (mode_key, title) in enumerate([
-        ("xip_B", r"$\xi_+^{\mathrm{B}} / \sigma$"),
-        ("xim_B", r"$\xi_-^{\mathrm{B}} / \sigma$"),
-    ]):
+    for col, (mode_key, title) in enumerate(
+        [
+            ("xip_B", r"$\xi_+^{\mathrm{B}} / \sigma$"),
+            ("xim_B", r"$\xi_-^{\mathrm{B}} / \sigma$"),
+        ]
+    ):
         ax = axes[1, col]
 
         # Draw version spread boxes (before data points)
         draw_normalized_boxes_log_scale(
-            ax, theta, datasets,
+            ax,
+            theta,
+            datasets,
             y_norm_key=f"{mode_key}_normalized",
             fiducial_idx=fiducial_idx,
             x_offset_range=x_offset_range,
@@ -173,7 +184,9 @@ def _create_version_comparison_figure(datasets, scale_cuts, fiducial_version,
         for i, data in enumerate(datasets):
             theta_i = data["theta"]
             offset = x_offset_factors[i] if i < len(x_offset_factors) else 1.0
-            marker = data.get("marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o")
+            marker = data.get(
+                "marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            )
             fillstyle = data.get("fillstyle", "full")
             mfc = data["color"] if fillstyle == "full" else "none"
 
@@ -245,7 +258,8 @@ def main():
 
     # Which version gets the fiducial reference line in boxes
     fiducial_for_comparison = getattr(
-        snakemake.params, "fiducial_for_comparison",
+        snakemake.params,
+        "fiducial_for_comparison",
         plotting_config.get("fiducial_for_comparison", fiducial_version),
     )
 
@@ -282,10 +296,12 @@ def main():
     # Load data for all versions
     datasets = []
 
-    for i, (version, data_path) in enumerate(zip(
-        versions,
-        snakemake.input["pure_eb_data"],
-    )):
+    for i, (version, data_path) in enumerate(
+        zip(
+            versions,
+            snakemake.input["pure_eb_data"],
+        )
+    ):
         if has_ecut:
             parent = version.split("_ecut")[0].replace("_leak_corr", "")
             color = parent_color_map[parent]
@@ -317,8 +333,8 @@ def main():
         sigma_xim_total = _extract_sigma(cov_pure_eb, 1, nbins)
 
         # Extract B-mode covariance blocks
-        block_xip_B = cov_pure_eb[2*nbins:3*nbins, 2*nbins:3*nbins]
-        block_xim_B = cov_pure_eb[3*nbins:4*nbins, 3*nbins:4*nbins]
+        block_xip_B = cov_pure_eb[2 * nbins : 3 * nbins, 2 * nbins : 3 * nbins]
+        block_xim_B = cov_pure_eb[3 * nbins : 4 * nbins, 3 * nbins : 4 * nbins]
         sigma_xip_B = np.sqrt(np.clip(np.diag(block_xip_B), 0, None))
         sigma_xim_B = np.sqrt(np.clip(np.diag(block_xim_B), 0, None))
 
@@ -327,37 +343,55 @@ def main():
         chi2_xim_B, pte_xim_B, dof_xim_B = compute_chi2_pte(xim_B, block_xim_B)
 
         # Scale-cut PTEs (fiducial xip and xim cuts)
-        xip_cut_mask = (theta >= fiducial_xip_scale_cut[0]) & (theta <= fiducial_xip_scale_cut[1])
-        xim_cut_mask = (theta >= fiducial_xim_scale_cut[0]) & (theta <= fiducial_xim_scale_cut[1])
+        xip_cut_mask = (theta >= fiducial_xip_scale_cut[0]) & (
+            theta <= fiducial_xip_scale_cut[1]
+        )
+        xim_cut_mask = (theta >= fiducial_xim_scale_cut[0]) & (
+            theta <= fiducial_xim_scale_cut[1]
+        )
         xip_idx = np.where(xip_cut_mask)[0]
         xim_idx = np.where(xim_cut_mask)[0]
         chi2_xip_B_cut, pte_xip_B_cut, dof_xip_B_cut = compute_chi2_pte(
-            xip_B[xip_idx], block_xip_B[np.ix_(xip_idx, xip_idx)])
+            xip_B[xip_idx], block_xip_B[np.ix_(xip_idx, xip_idx)]
+        )
         chi2_xim_B_cut, pte_xim_B_cut, dof_xim_B_cut = compute_chi2_pte(
-            xim_B[xim_idx], block_xim_B[np.ix_(xim_idx, xim_idx)])
+            xim_B[xim_idx], block_xim_B[np.ix_(xim_idx, xim_idx)]
+        )
 
-        datasets.append({
-            "version": version,
-            "label": version_label(version, version_labels),
-            "color": color,
-            "marker": marker,
-            "fillstyle": fillstyle,
-            "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
-            "theta": theta,
-            # Total correlation functions
-            "xip_total": xip_total,
-            "xim_total": xim_total,
-            "sigma_xip_total": sigma_xip_total,
-            "sigma_xim_total": sigma_xim_total,
-            # B-mode (normalized)
-            "xip_B_normalized": xip_B / sigma_xip_B,
-            "xim_B_normalized": xim_B / sigma_xim_B,
-            # PTEs
-            "pte_xip_B": pte_xip_B, "chi2_xip_B": chi2_xip_B, "dof_xip_B": dof_xip_B,
-            "pte_xim_B": pte_xim_B, "chi2_xim_B": chi2_xim_B, "dof_xim_B": dof_xim_B,
-            "pte_xip_B_cut": pte_xip_B_cut, "chi2_xip_B_cut": chi2_xip_B_cut, "dof_xip_B_cut": dof_xip_B_cut,
-            "pte_xim_B_cut": pte_xim_B_cut, "chi2_xim_B_cut": chi2_xim_B_cut, "dof_xim_B_cut": dof_xim_B_cut,
-        })
+        datasets.append(
+            {
+                "version": version,
+                "label": version_label(version, version_labels),
+                "color": color,
+                "marker": marker,
+                "fillstyle": fillstyle,
+                "alpha": get_version_alpha(
+                    version, fiducial_for_comparison, plotting_config
+                ),
+                "theta": theta,
+                # Total correlation functions
+                "xip_total": xip_total,
+                "xim_total": xim_total,
+                "sigma_xip_total": sigma_xip_total,
+                "sigma_xim_total": sigma_xim_total,
+                # B-mode (normalized)
+                "xip_B_normalized": xip_B / sigma_xip_B,
+                "xim_B_normalized": xim_B / sigma_xim_B,
+                # PTEs
+                "pte_xip_B": pte_xip_B,
+                "chi2_xip_B": chi2_xip_B,
+                "dof_xip_B": dof_xip_B,
+                "pte_xim_B": pte_xim_B,
+                "chi2_xim_B": chi2_xim_B,
+                "dof_xim_B": dof_xim_B,
+                "pte_xip_B_cut": pte_xip_B_cut,
+                "chi2_xip_B_cut": chi2_xip_B_cut,
+                "dof_xip_B_cut": dof_xip_B_cut,
+                "pte_xim_B_cut": pte_xim_B_cut,
+                "chi2_xim_B_cut": chi2_xim_B_cut,
+                "dof_xim_B_cut": dof_xim_B_cut,
+            }
+        )
 
     # Create output directory
     output_dir = Path(snakemake.output["evidence"]).parent
@@ -365,8 +399,11 @@ def main():
 
     # Generate figure
     fig = _create_version_comparison_figure(
-        datasets, scale_cuts, fiducial_for_comparison,
-        x_offset_factors=x_offset_factors, box_style=box_style
+        datasets,
+        scale_cuts,
+        fiducial_for_comparison,
+        x_offset_factors=x_offset_factors,
+        box_style=box_style,
     )
 
     fig_name = "figure.png"
@@ -390,10 +427,20 @@ def main():
     evidence_versions = {}
     for data in datasets:
         v = data["version"]
-        for key in ("pte_xip_B", "chi2_xip_B", "dof_xip_B",
-                     "pte_xim_B", "chi2_xim_B", "dof_xim_B",
-                     "pte_xip_B_cut", "chi2_xip_B_cut", "dof_xip_B_cut",
-                     "pte_xim_B_cut", "chi2_xim_B_cut", "dof_xim_B_cut"):
+        for key in (
+            "pte_xip_B",
+            "chi2_xip_B",
+            "dof_xip_B",
+            "pte_xim_B",
+            "chi2_xim_B",
+            "dof_xim_B",
+            "pte_xip_B_cut",
+            "chi2_xip_B_cut",
+            "dof_xip_B_cut",
+            "pte_xim_B_cut",
+            "chi2_xim_B_cut",
+            "dof_xim_B_cut",
+        ):
             val = data[key]
             evidence_versions[f"{v}_{key}"] = int(val) if "dof" in key else float(val)
 

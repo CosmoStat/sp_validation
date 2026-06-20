@@ -10,7 +10,6 @@
 
 """
 
-
 import re
 import numpy as np
 
@@ -32,11 +31,7 @@ from cs_util.size import T_to_fwhm, sigma_to_fwhm  # noqa: F401  re-exported;
 from sp_validation import io
 
 
-def classification_galaxy_overlap_ra_dec(
-    dd,
-    ra_key='XWIN_WORLD',
-    dec_key='YWIN_WORLD'
-):
+def classification_galaxy_overlap_ra_dec(dd, ra_key="XWIN_WORLD", dec_key="YWIN_WORLD"):
     """Classification Galaxy Overlap Ra Dec.
 
     Return mask corresponding to non-overlapping tile areas using
@@ -59,12 +54,12 @@ def classification_galaxy_overlap_ra_dec(
 
     """
     # Unique set of tile IDs in data
-    tile_ID_list = set(dd['TILE_ID'])
+    tile_ID_list = set(dd["TILE_ID"])
 
     # Transform to string format
     tile_ID_str_list = []
     for ID in tile_ID_list:
-        tile_ID_str_list.append(f'{ID:07.3f}')
+        tile_ID_str_list.append(f"{ID:07.3f}")
 
     # Extract integer numbers from tile IDs
     nix = []
@@ -78,7 +73,7 @@ def classification_galaxy_overlap_ra_dec(
     ra_cen, dec_cen = cfis.get_tile_coord_from_nixy(nix, niy)
 
     # Create limits on Dec by adding/subtracting half of the tile size
-    delta_dec = cfis.Cfis().size['tile'] / 2
+    delta_dec = cfis.Cfis().size["tile"] / 2
     dec_upper = dec_cen + delta_dec
     dec_lower = dec_cen - delta_dec
 
@@ -89,14 +84,12 @@ def classification_galaxy_overlap_ra_dec(
 
     # Loop over tiles and mask objects outside the Dec limits
     for idx, tile_ID in enumerate(tile_ID_list):
-
         # Get indices of galaxies on this tile ID
-        idx_ID = (dd['TILE_ID'] == tile_ID)
+        idx_ID = dd["TILE_ID"] == tile_ID
 
         # Set mask for this tile ID
-        mask_dec_ID = (
-            (dd[idx_ID][dec_key] < dec_upper[idx].value)
-            & (dd[idx_ID][dec_key] >= dec_lower[idx].value)
+        mask_dec_ID = (dd[idx_ID][dec_key] < dec_upper[idx].value) & (
+            dd[idx_ID][dec_key] >= dec_lower[idx].value
         )
 
         # Apply to global mask
@@ -107,9 +100,8 @@ def classification_galaxy_overlap_ra_dec(
     ra_lower_list = []
 
     for idx, tile_ID in enumerate(tile_ID_str_list):
-
         # Find tile ID towards increasing RA
-        ID_upper = f'{int(nix[idx]) + 1:03d}.{int(niy[idx]):03d}'
+        ID_upper = f"{int(nix[idx]) + 1:03d}.{int(niy[idx]):03d}"
         if ID_upper in tile_ID_str_list:
             # If found: compute halfway RA
             idx_upper = tile_ID_str_list.index(ID_upper)
@@ -122,7 +114,7 @@ def classification_galaxy_overlap_ra_dec(
         ra_upper_list.append(ra_upper)
 
         # Repeat towards decreasing RA
-        ID_lower = f'{int(nix[idx]) - 1:03d}.{int(niy[idx]):03d}'
+        ID_lower = f"{int(nix[idx]) - 1:03d}.{int(niy[idx]):03d}"
         if ID_lower in tile_ID_str_list:
             idx_lower = tile_ID_str_list.index(ID_lower)
             ra_lower = (ra_cen[idx] + ra_cen[idx_lower]) / 2
@@ -135,10 +127,9 @@ def classification_galaxy_overlap_ra_dec(
     mask_ra = np.full(len(dd), True)
 
     for idx, tile_ID in enumerate(tile_ID_list):
-        idx_ID = (dd['TILE_ID'] == tile_ID)
-        mask_ra_ID = (
-            (dd[idx_ID][ra_key] < ra_upper_list[idx].value)
-            & (dd[idx_ID][ra_key] >= ra_lower_list[idx].value)
+        idx_ID = dd["TILE_ID"] == tile_ID
+        mask_ra_ID = (dd[idx_ID][ra_key] < ra_upper_list[idx].value) & (
+            dd[idx_ID][ra_key] >= ra_lower_list[idx].value
         )
         mask_ra[idx_ID] = mask_ra_ID
 
@@ -152,7 +143,7 @@ def classification_galaxy_base(
     gal_mag_faint=26,
     flags_keep=None,
     n_epoch_min=1,
-    do_spread_model=True
+    do_spread_model=True,
 ):
     """Classification Galaxy Base.
 
@@ -161,14 +152,10 @@ def classification_galaxy_base(
     """
     if do_spread_model:
         # spread model class, add two times the uncertainty to be conservative
-        sm_classif = dd['SPREAD_MODEL'] + 2 * dd['SPREADERR_MODEL']
+        sm_classif = dd["SPREAD_MODEL"] + 2 * dd["SPREADERR_MODEL"]
         cut_sm = sm_classif > 0.0035
 
-        cut_sm_all = (
-            cut_sm
-            & (dd['SPREAD_MODEL'] > 0)
-            & (dd['SPREAD_MODEL'] < 0.03)
-        )
+        cut_sm_all = cut_sm & (dd["SPREAD_MODEL"] > 0) & (dd["SPREAD_MODEL"] < 0.03)
     else:
         # Do not use spread model
         cut_sm_all = True
@@ -176,20 +163,19 @@ def classification_galaxy_base(
     # SExtractor flags
     # Keep some flags if specified
     if flags_keep:
-
         # Check whether flags are powers of 2
-        if not all([bin(flag).count('1') == 1 for flag in flags_keep]):
+        if not all([bin(flag).count("1") == 1 for flag in flags_keep]):
             raise ValueError('Flag values in "flags_keep" not powers of 2')
 
         cut_flags = bitmask.bitfield_to_boolean_mask(
-            dd['FLAGS'],
+            dd["FLAGS"],
             good_mask_value=True,
             ignore_flags=flags_keep,
             dtype=bool,
         )
     else:
         cut_flags = bitmask.bitfield_to_boolean_mask(
-            dd['FLAGS'],
+            dd["FLAGS"],
             good_mask_value=True,
             dtype=bool,
         )
@@ -198,10 +184,10 @@ def classification_galaxy_base(
         cut_overlap
         & cut_flags
         & cut_sm_all
-        & (dd['MAG_AUTO'] <= gal_mag_faint)
-        & (dd['MAG_AUTO'] >= gal_mag_bright)
-        & (dd['IMAFLAGS_ISO'] == 0)
-        & (dd['N_EPOCH'] >= n_epoch_min)
+        & (dd["MAG_AUTO"] <= gal_mag_faint)
+        & (dd["MAG_AUTO"] >= gal_mag_bright)
+        & (dd["IMAFLAGS_ISO"] == 0)
+        & (dd["N_EPOCH"] >= n_epoch_min)
     )
 
     return cut_common
@@ -219,9 +205,9 @@ def classification_galaxy_ngmix(
     """
     m_gal_ngmix = (
         cut_common
-        & (dd['NGMIX_MCAL_FLAGS'] == 0)
-        & (dd['NGMIX_ELL_PSFo_NOSHEAR'][:, 0] != -10)
-        & (dd['NGMIX_MOM_FAIL'] == 0)
+        & (dd["NGMIX_MCAL_FLAGS"] == 0)
+        & (dd["NGMIX_ELL_PSFo_NOSHEAR"][:, 0] != -10)
+        & (dd["NGMIX_MOM_FAIL"] == 0)
     )
 
     n_gal_ngmix = len(np.where(m_gal_ngmix)[0])
@@ -229,11 +215,12 @@ def classification_galaxy_ngmix(
 
     if stats_file:
         io.print_ratio(
-            'ngmix: Objects selected as galaxies',
+            "ngmix: Objects selected as galaxies",
             n_gal_ngmix,
             n_tot,
             stats_file,
-            verbose=verbose)
+            verbose=verbose,
+        )
 
     return m_gal_ngmix
 
@@ -244,20 +231,18 @@ def classification_galaxy_galsim(dd, cut_common, stats_file, verbose=False):
     Return mask corresponding to galsim classification of galaxies
 
     """
-    m_gal_galsim = (
-        cut_common
-        & (dd['GALSIM_PSF_ELL_ORIGINAL_PSF'][:, 0] != -10)
-    )
+    m_gal_galsim = cut_common & (dd["GALSIM_PSF_ELL_ORIGINAL_PSF"][:, 0] != -10)
 
     n_gal_galsim = len(np.where(m_gal_galsim)[0])
     n_tot = len(dd)
 
     io.print_ratio(
-        'galsim: Objects selected as galaxies',
+        "galsim: Objects selected as galaxies",
         n_gal_galsim,
         n_tot,
         stats_file,
-        verbose=verbose)
+        verbose=verbose,
+    )
 
     return m_gal_galsim
 
@@ -292,11 +277,9 @@ def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
         w = WCS(naxis=2)
         w.wcs.crval = np.array([ra.deg, dec.deg])
         w.wcs.crpix = np.array([5000, 5000])
-        w.wcs.cd = np.array(
-            [[0.187 / 3600, 0], [0, 0.187 / 3600]]
-        )
-        w.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-        w.wcs.cunit = ['deg', 'deg']
+        w.wcs.cd = np.array([[0.187 / 3600, 0], [0, 0.187 / 3600]])
+        w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        w.wcs.cunit = ["deg", "deg"]
         w._naxis = [10000, 10000]
 
         return w
@@ -306,24 +289,21 @@ def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
         ra = float(xxx) / 2 / np.cos(np.deg2rad(dec))
 
         new_wcs = WCS(naxis=2)
-        new_wcs.wcs.ctype = ['RA---TAN', 'DEC--TAN']
-        new_wcs.wcs.cunit = ['deg     ', 'deg     ']
-        new_wcs.wcs.crpix = [5.000000000000E+03, 5.000000000000E+03]
+        new_wcs.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        new_wcs.wcs.cunit = ["deg     ", "deg     "]
+        new_wcs.wcs.crpix = [5.000000000000e03, 5.000000000000e03]
         new_wcs.wcs.crval = [ra, dec]
-        new_wcs.wcs.cd = [
-            [-5.160234650248E-05, 0.],
-            [0., 5.160234650248E-05]
-        ]
+        new_wcs.wcs.cd = [[-5.160234650248e-05, 0.0], [0.0, 5.160234650248e-05]]
 
         return new_wcs
 
     def runner(r, all_tiles_id, all_tiles_ra, all_tiles_dec):
-        xxx, yyy = re.findall(r'\d+', re.split(r'\s', r.meta['text'])[1])
+        xxx, yyy = re.findall(r"\d+", re.split(r"\s", r.meta["text"])[1])
         idx = np.where(all_tiles_id == float(xxx) + float(yyy) / 1000)
         tile_points = coords.SkyCoord(
             all_tiles_ra[idx],
             all_tiles_dec[idx],
-            unit='deg',
+            unit="deg",
         )
         m_cont = r.contains(tile_points, get_tile_wcs(xxx, yyy))
         m_not_cont = np.invert(m_cont)
@@ -336,12 +316,10 @@ def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
 
     all_regions = regions.Regions.read(region_file_path)
 
-    res = Parallel(n_jobs=n_jobs, backend='loky')(delayed(runner)(
-        r,
-        tile_id,
-        tile_ra,
-        tile_dec
-    ) for r in tqdm(all_regions, total=len(all_regions)))
+    res = Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(runner)(r, tile_id, tile_ra, tile_dec)
+        for r in tqdm(all_regions, total=len(all_regions))
+    )
 
     m_over = np.ones(len(tile_id), dtype=bool)
     for m_not_cont, idx in res:

@@ -62,9 +62,7 @@ def _load_module():
     try:
         spec.loader.exec_module(module)
     except ImportError as exc:  # pragma: no cover - container has numpy/astropy
-        pytest.importorskip(
-            getattr(exc, "name", "") or "cosmosis_fitting_dependency"
-        )
+        pytest.importorskip(getattr(exc, "name", "") or "cosmosis_fitting_dependency")
         raise
     return module
 
@@ -145,9 +143,7 @@ def test_cov_with_tau_block_layout(tmp_path):
     cov_xi = _write_xi_cov(tmp_path / "cov_xi.txt")
     cov_tau = _write_tau_cov(tmp_path / "cov_tau.npy")
 
-    hdu = cf.covdat_to_fits(
-        str(cov_xi), filename_cov_tau=str(cov_tau)
-    )
+    hdu = cf.covdat_to_fits(str(cov_xi), filename_cov_tau=str(cov_tau))
 
     # Combined size: xi (2*N_ANG) + truncated tau (2*N_ANG).
     assert hdu.data.shape == (4 * N_ANG, 4 * N_ANG)
@@ -218,9 +214,7 @@ def test_2pt_hdu_columns_and_header():
     hdu = cf._create_2pt_hdu(values, theta, "XI_PLUS", "G+R", "G+R")
 
     assert hdu.name == "XI_PLUS"
-    assert set(["BIN1", "BIN2", "ANGBIN", "VALUE", "ANG"]).issubset(
-        set(hdu.data.names)
-    )
+    assert set(["BIN1", "BIN2", "ANGBIN", "VALUE", "ANG"]).issubset(set(hdu.data.names))
     assert np.array_equal(hdu.data["VALUE"], values)
     assert np.array_equal(hdu.data["ANG"], theta)
     assert np.array_equal(hdu.data["ANGBIN"], np.arange(1, len(values) + 1))
@@ -367,20 +361,31 @@ def _run_cli(tmp_path, *, use_rho_tau):
     cmd = [
         sys.executable,
         str(_SCRIPT),
-        "--cosmosis-root", root,
-        "--data-dir", str(tmp_path / "chains"),
-        "--nz-file", str(nz),
-        "--output-root", str(out_root),
-        "--template-dir", str(template_dir),
-        "--xi", str(xip), str(xim),
-        "--cov-xi", str(cov_xi),
+        "--cosmosis-root",
+        root,
+        "--data-dir",
+        str(tmp_path / "chains"),
+        "--nz-file",
+        str(nz),
+        "--output-root",
+        str(out_root),
+        "--template-dir",
+        str(template_dir),
+        "--xi",
+        str(xip),
+        str(xim),
+        "--cov-xi",
+        str(cov_xi),
     ]
     if use_rho_tau:
         cmd += [
             "--use-rho-tau",
-            "--rho-stats", str(_write_rho_stats(tmp_path / "rho.fits")),
-            "--tau-stats", str(_write_tau_stats(tmp_path / "tau.fits")),
-            "--cov-tau", str(_write_tau_cov(tmp_path / "cov_tau.npy")),
+            "--rho-stats",
+            str(_write_rho_stats(tmp_path / "rho.fits")),
+            "--tau-stats",
+            str(_write_tau_stats(tmp_path / "tau.fits")),
+            "--cov-tau",
+            str(_write_tau_cov(tmp_path / "cov_tau.npy")),
         ]
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -457,9 +462,7 @@ def test_cli_rho_tau_hdu_set_and_cov_block(tmp_path):
 
         # The tau block is the truncated tau covariance at the bottom-right.
         tau_trunc = _tau_cov_full()[: 2 * N_ANG, : 2 * N_ANG]
-        assert np.array_equal(
-            cov_hdu.data[2 * N_ANG :, 2 * N_ANG :], tau_trunc
-        )
+        assert np.array_equal(cov_hdu.data[2 * N_ANG :, 2 * N_ANG :], tau_trunc)
 
         # rho/tau theta is forced onto the xi theta grid (consistency step).
         assert np.allclose(hdul["RHO_STATS"].data["theta"], _THETA)
@@ -496,14 +499,23 @@ def test_cli_perturbed_xi_changes_data_vector(tmp_path):
     root = "TESTROOT2"
     proc = subprocess.run(
         [
-            sys.executable, str(_SCRIPT),
-            "--cosmosis-root", root,
-            "--data-dir", str(tmp2 / "chains"),
-            "--nz-file", str(nz),
-            "--output-root", str(out_root),
-            "--template-dir", str(template_dir),
-            "--xi", str(xip), str(xim),
-            "--cov-xi", str(cov_xi),
+            sys.executable,
+            str(_SCRIPT),
+            "--cosmosis-root",
+            root,
+            "--data-dir",
+            str(tmp2 / "chains"),
+            "--nz-file",
+            str(nz),
+            "--output-root",
+            str(out_root),
+            "--template-dir",
+            str(template_dir),
+            "--xi",
+            str(xip),
+            str(xim),
+            "--cov-xi",
+            str(cov_xi),
         ],
         capture_output=True,
         text=True,

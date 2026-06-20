@@ -108,7 +108,9 @@ def main():
     print("Loading 1,000-bin ξ±...")
     gg_1k = _load_gg(snakemake.input.xi_1k, min_sep_int, max_sep_int, nbins_1k)
     print("Loading 10,000-bin ξ±...")
-    gg_10k = _load_gg(snakemake.input.xi_10k, min_sep_int, max_sep_int, nbins_10k, columns_only=True)
+    gg_10k = _load_gg(
+        snakemake.input.xi_10k, min_sep_int, max_sep_int, nbins_10k, columns_only=True
+    )
 
     # Compute COSEBIS from 1,000-bin ξ± (with covariance for PTE baseline)
     print("\nComputing COSEBIS from 1,000-bin ξ±...")

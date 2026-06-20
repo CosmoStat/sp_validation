@@ -73,7 +73,9 @@ def covariance_to_correlation(covariance: np.ndarray) -> np.ndarray:
 
     diag = np.sqrt(np.diag(covariance))
     if np.any(diag == 0):
-        raise ValueError("Encountered zero variance while constructing correlation matrix")
+        raise ValueError(
+            "Encountered zero variance while constructing correlation matrix"
+        )
     corr = covariance / np.outer(diag, diag)
     np.clip(corr, -1.0, 1.0, out=corr)
     return corr
@@ -105,7 +107,10 @@ def plot_correlation(
         ax.axhline(boundary, color="white", linewidth=1.2)
         ax.axvline(boundary, color="white", linewidth=1.2)
 
-    centers = [0.5 * (start + end) for start, end in zip([0] + list(boundaries[:-1]), boundaries)]
+    centers = [
+        0.5 * (start + end)
+        for start, end in zip([0] + list(boundaries[:-1]), boundaries)
+    ]
     labels = [r"$\xi_+$", r"$\xi_-$", r"$C_\ell^{EE}$", r"$C_\ell^{BB}$"]
     ax.set_xticks(centers)
     ax.set_xticklabels(labels, rotation=45, ha="right")
@@ -125,22 +130,63 @@ def collect_mock_files(paths: list[Path]) -> dict[str, Path]:
     for path in sorted(paths):
         mock_id = extract_mock_id(path)
         if mock_id in files:
-            raise ValueError(f"Duplicate mock id {mock_id}: {path} and {files[mock_id]}")
+            raise ValueError(
+                f"Duplicate mock id {mock_id}: {path} and {files[mock_id]}"
+            )
         files[mock_id] = path
     return files
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--xi-files", type=Path, nargs="+", required=True, help="Paths to xi mocks")
-    parser.add_argument("--cl-files", type=Path, nargs="+", required=True, help="Paths to C_ell mocks")
-    parser.add_argument("--xi-covariance", type=Path, required=True, help="Output path for xi-only covariance (npy)")
-    parser.add_argument("--cl-covariance", type=Path, required=True, help="Output path for cl-only covariance (npy)")
-    parser.add_argument("--combined-covariance", type=Path, required=True, help="Output path for combined covariance (npy)")
-    parser.add_argument("--combined-correlation-plot", type=Path, required=True, help="Output path for combined correlation heatmap (png)")
-    parser.add_argument("--xi-mean", type=Path, required=True, help="Output path for xi mean vector (npy)")
-    parser.add_argument("--cl-mean", type=Path, required=True, help="Output path for cl mean vector (npy)")
-    parser.add_argument("--combined-mean", type=Path, required=True, help="Output path for combined mean vector (npy)")
+    parser.add_argument(
+        "--xi-files", type=Path, nargs="+", required=True, help="Paths to xi mocks"
+    )
+    parser.add_argument(
+        "--cl-files", type=Path, nargs="+", required=True, help="Paths to C_ell mocks"
+    )
+    parser.add_argument(
+        "--xi-covariance",
+        type=Path,
+        required=True,
+        help="Output path for xi-only covariance (npy)",
+    )
+    parser.add_argument(
+        "--cl-covariance",
+        type=Path,
+        required=True,
+        help="Output path for cl-only covariance (npy)",
+    )
+    parser.add_argument(
+        "--combined-covariance",
+        type=Path,
+        required=True,
+        help="Output path for combined covariance (npy)",
+    )
+    parser.add_argument(
+        "--combined-correlation-plot",
+        type=Path,
+        required=True,
+        help="Output path for combined correlation heatmap (png)",
+    )
+    parser.add_argument(
+        "--xi-mean",
+        type=Path,
+        required=True,
+        help="Output path for xi mean vector (npy)",
+    )
+    parser.add_argument(
+        "--cl-mean",
+        type=Path,
+        required=True,
+        help="Output path for cl mean vector (npy)",
+    )
+    parser.add_argument(
+        "--combined-mean",
+        type=Path,
+        required=True,
+        help="Output path for combined mean vector (npy)",
+    )
     return parser.parse_args()
 
 
@@ -200,6 +246,7 @@ def main() -> None:
     # Plot combined correlation matrix only
     correlation = covariance_to_correlation(combined_covariance)
     plot_correlation(correlation, block_lengths, correlation_plot_path)
+
 
 if __name__ == "__main__":
     main()

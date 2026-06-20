@@ -8,15 +8,17 @@ import twopoint
 import gaussian_covariance
 import os
 from spec_tools import TheorySpectrum
+
 default_array = np.repeat(-1.0, 99)
 
-#To copy in cosmosis-standard-library/likelihood
+
+# To copy in cosmosis-standard-library/likelihood
 def is_default(x):
     return len(x) == len(default_array) and (x == default_array).all()
 
 
 def convert_nz_steradian(n):
-    return n * (41253.0 * 60. * 60.) / (4 * np.pi)
+    return n * (41253.0 * 60.0 * 60.0) / (4 * np.pi)
 
 
 class TwoPointLikelihood(GaussianLikelihood):
@@ -32,27 +34,32 @@ class TwoPointLikelihood(GaussianLikelihood):
     def __init__(self, options):
         # We may decide to use an analytic gaussian covariance
         # in that case we won't load the covmat.
-        self.gaussian_covariance = options.get_bool(
-            "gaussian_covariance", False)
+        self.gaussian_covariance = options.get_bool("gaussian_covariance", False)
         if self.gaussian_covariance:
             self.constant_covariance = False
 
-        self.moped = options.get_string('moped', default='')
+        self.moped = options.get_string("moped", default="")
 
         super(TwoPointLikelihood, self).__init__(options)
 
         self.raw_data_x, self.raw_data_y = self.build_data()
 
         if self.moped:
-            print("Using compressed data from MOPED algorithm: {} data points".format(len(self.moped_data)))
+            print(
+                "Using compressed data from MOPED algorithm: {} data points".format(
+                    len(self.moped_data)
+                )
+            )
             if self.sellentin:
-                raise ValueError("Sellentin mode is incompatible with Moped mode in 2pt like")
+                raise ValueError(
+                    "Sellentin mode is incompatible with Moped mode in 2pt like"
+                )
 
     def build_data(self):
-        filename = self.options.get_string('data_file')
+        filename = self.options.get_string("data_file")
 
         # Suffixes to added on to two point data from e.g. different experiments
-        suffix_string = self.options.get_string('suffixes', default="")
+        suffix_string = self.options.get_string("suffixes", default="")
         if suffix_string == "":
             # If there are no suffixes provided, then we create a list of a single empty suffix
             suffixes = [""]
@@ -60,8 +67,8 @@ class TwoPointLikelihood(GaussianLikelihood):
             suffixes_temp = suffix_string.split()
             suffixes = []
             for suffix in suffixes_temp:
-                if (suffix.lower() == 'none'):
-                    suffixes.append('')
+                if suffix.lower() == "none":
+                    suffixes.append("")
                 else:
                     suffixes.append("_" + suffix)
         self.suffixes = suffixes
@@ -88,8 +95,7 @@ class TwoPointLikelihood(GaussianLikelihood):
             covmat_name = self.options.get_string("covmat_name", "COVMAT")
 
         # This is the main work - read data in from the file
-        self.two_point_data = twopoint.TwoPointFile.from_fits(
-            filename, covmat_name)
+        self.two_point_data = twopoint.TwoPointFile.from_fits(filename, covmat_name)
 
         # Potentially cut out lines. For some reason one version of
         # this file used zeros to mark masked values.
@@ -113,8 +119,7 @@ class TwoPointLikelihood(GaussianLikelihood):
             self.two_point_data.choose_data_sets(data_sets)
 
         # The ones we actually used.
-        self.used_names = [
-            spectrum.name for spectrum in self.two_point_data.spectra]
+        self.used_names = [spectrum.name for spectrum in self.two_point_data.spectra]
 
         # Check for scale cuts. In general, this is a minimum and maximum angle for
         # each spectrum, for each redshift bin combination. Which is clearly a massive pain...
@@ -150,18 +155,25 @@ class TwoPointLikelihood(GaussianLikelihood):
         # Info on which likelihoods we do and do not use
         print("Found these data sets in the file:")
         total_data_points = 0
-        final_names = [
-            spectrum.name for spectrum in self.two_point_data.spectra]
+        final_names = [spectrum.name for spectrum in self.two_point_data.spectra]
         for name in all_names:
             if name in final_names:
                 data_points = len(self.two_point_data.get_spectrum(name))
             else:
                 data_points = 0
             if name in self.used_names:
-                print("    - {}  {} data points after cuts {}".format(name,  data_points, "  [using in likelihood]"))
+                print(
+                    "    - {}  {} data points after cuts {}".format(
+                        name, data_points, "  [using in likelihood]"
+                    )
+                )
                 total_data_points += data_points
             else:
-                print("    - {}  {} data points after cuts {}".format(name, data_points, "  [not using in likelihood]"))
+                print(
+                    "    - {}  {} data points after cuts {}".format(
+                        name, data_points, "  [not using in likelihood]"
+                    )
+                )
         print("Total data points used = {}".format(total_data_points))
 
         # Convert all units to radians.  The units in cosmosis are all
@@ -170,24 +182,32 @@ class TwoPointLikelihood(GaussianLikelihood):
             if spectrum.is_real_space():
                 spectrum.convert_angular_units("rad")
                 # if self.options.get_bool("print physical scale",False):
-                #	section,_,_=theory_names(spectrum)
-                #	chi_peak =
-                #	for ang in spectrum.angle:
+                # section,_,_=theory_names(spectrum)
+                # chi_peak =
+                # for ang in spectrum.angle:
 
         # build up the data vector from all the separate vectors.
         # Just concatenation
         data_vector = np.concatenate(
-            [spectrum.value for spectrum in self.two_point_data.spectra])
+            [spectrum.value for spectrum in self.two_point_data.spectra]
+        )
 
         # Make sure
         if len(data_vector) == 0:
             raise ValueError(
-                "No data was chosen to be used from 2-point data file {0}. It was either not selectedin data_sets or cut out".format(filename))
+                "No data was chosen to be used from 2-point data file {0}. It was either not selectedin data_sets or cut out".format(
+                    filename
+                )
+            )
 
         if self.moped:
             data_file = fits.open(filename)
-            self.moped_data = data_file['MOPED-DATA-{}'.format(self.moped)].data['moped']
-            self.moped_transform = data_file['MOPED-TRANSFORM-{}'.format(self.moped)].data
+            self.moped_data = data_file["MOPED-DATA-{}".format(self.moped)].data[
+                "moped"
+            ]
+            self.moped_transform = data_file[
+                "MOPED-TRANSFORM-{}".format(self.moped)
+            ].data
             data_file.close()
 
             return None, self.moped_data
@@ -199,14 +219,12 @@ class TwoPointLikelihood(GaussianLikelihood):
 
     def build_covariance(self):
 
-        
         C = np.array(self.two_point_data.covmat)
-        r = self.options.get_int('covariance_realizations', default=-1)
-        self.sellentin = self.options.get_bool('sellentin', default=False)
+        r = self.options.get_int("covariance_realizations", default=-1)
+        self.sellentin = self.options.get_bool("sellentin", default=False)
 
         if self.moped:
             return np.identity(len(self.moped_data))
-
 
         if self.sellentin:
             if not self.constant_covariance:
@@ -219,17 +237,24 @@ class TwoPointLikelihood(GaussianLikelihood):
             if r < 0:
                 print()
                 print("ERROR: You asked for the Sellentin-Heavens corrections")
-                print("by setting sellentin=T, but you did not set covariance_realizations")
+                print(
+                    "by setting sellentin=T, but you did not set covariance_realizations"
+                )
                 print("If you want covariance_realizations=infinity you can use 0")
-                print("(unlikely, but it's also possible you were super-perverse and set it negative?)")
+                print(
+                    "(unlikely, but it's also possible you were super-perverse and set it negative?)"
+                )
                 print()
                 raise ValueError(
-                    "Please set covariance_realizations for 2pt like. See message above.")
+                    "Please set covariance_realizations for 2pt like. See message above."
+                )
             elif r == 0:
                 print()
                 print("NOTE: You asked for the Sellentin-Heavens corrections")
                 print("but set covariance_realizations=0. I am assuming you want")
-                print("the limit of an infinite number of realizations, so we will just go back")
+                print(
+                    "the limit of an infinite number of realizations, so we will just go back"
+                )
                 print("to the original Gaussian model")
                 print()
                 self.sellentin = False
@@ -237,10 +262,14 @@ class TwoPointLikelihood(GaussianLikelihood):
                 # use proper correction
                 self.covariance_realizations = r
                 print()
-                print("You set sellentin=T so I will apply the Sellentin-Heavens correction")
+                print(
+                    "You set sellentin=T so I will apply the Sellentin-Heavens correction"
+                )
                 print("for a covariance matrix estimated from Monte-Carlo simulations")
                 print("(you told us it was {} simulations in the ini file)".format(r))
-                print("This analytic marginalization converts the Gaussian distribution")
+                print(
+                    "This analytic marginalization converts the Gaussian distribution"
+                )
                 print("to a multivariate student's t distribution instead.")
                 print()
 
@@ -252,10 +281,20 @@ class TwoPointLikelihood(GaussianLikelihood):
             x = (r - 1.0) / (r - p - 2.0)
             C = C * x
             print()
-            print("You set covariance_realizations={} in the 2pt likelihood parameter file".format(r))
-            print("So I will apply the Anderson-Hartlap correction to the covariance matrix")
+            print(
+                "You set covariance_realizations={} in the 2pt likelihood parameter file".format(
+                    r
+                )
+            )
+            print(
+                "So I will apply the Anderson-Hartlap correction to the covariance matrix"
+            )
             print("The covariance matrix is nxn = {}x{}".format(p, p))
-            print("So the correction scales the covariance matrix by (r - 1) / (r - n - 2) = {}".format(x))
+            print(
+                "So the correction scales the covariance matrix by (r - 1) / (r - n - 2) = {}".format(
+                    x
+                )
+            )
             print()
         return C
 
@@ -279,15 +318,20 @@ class TwoPointLikelihood(GaussianLikelihood):
         # If only a single suffix is provided, assume this applies to all data sets
         if len(self.suffixes) == 1:
             suffixes = np.tile(self.suffixes[0], len(self.two_point_data.spectra))
-        elif len(self.suffixes) > 1 and len(self.suffixes) == len(self.two_point_data.spectra):
+        elif len(self.suffixes) > 1 and len(self.suffixes) == len(
+            self.two_point_data.spectra
+        ):
             suffixes = self.suffixes
         else:
-            raise ValueError("The number of suffixes supplied does not match the number of two point spectra.")
-        
-        # Now we actually loop through our data sets    
+            raise ValueError(
+                "The number of suffixes supplied does not match the number of two point spectra."
+            )
+
+        # Now we actually loop through our data sets
         for ii, spectrum in enumerate(self.two_point_data.spectra):
-            theory_vector, angle_vector, bin1_vector, bin2_vector = self.extract_spectrum_prediction(
-                block, spectrum, suffixes[ii])
+            theory_vector, angle_vector, bin1_vector, bin2_vector = (
+                self.extract_spectrum_prediction(block, spectrum, suffixes[ii])
+            )
             theory.append(theory_vector)
             angle.append(angle_vector)
             bin1.append(bin1_vector)
@@ -330,7 +374,8 @@ class TwoPointLikelihood(GaussianLikelihood):
             # least make clear there is a problem somewhere and not
             # yield misleading results.
             block[names.data_vector, self.like_name + "_simulation"] = (
-                np.nan * block[names.data_vector, self.like_name + "_simulation"])
+                np.nan * block[names.data_vector, self.like_name + "_simulation"]
+            )
 
             # It changes the Likelihood from Gaussian to a multivariate
             # student's t distribution.  Here we will have to do a little
@@ -347,12 +392,12 @@ class TwoPointLikelihood(GaussianLikelihood):
             else:
                 log_det = block[names.data_vector, self.like_name + "_LOG_DET"]
 
-            like = -0.5 * log_det - 0.5 * N * np.log(1 + chi2 / (N - 1.))
+            like = -0.5 * log_det - 0.5 * N * np.log(1 + chi2 / (N - 1.0))
 
             # overwrite the log-likelihood
             block[names.likelihoods, self.like_name + "_LIKE"] = like
 
-    #Should suffix be made into a keyword?
+    # Should suffix be made into a keyword?
     def extract_spectrum_prediction(self, block, spectrum, suffix):
 
         # We may need theory predictions for multiple different
@@ -361,16 +406,15 @@ class TwoPointLikelihood(GaussianLikelihood):
         # block we expect to find these - mapping spectrum types
         # to block names
         section, x_name, y_name = theory_names(spectrum)
-        
+
         # To handle multiple different data sets we allow a suffix
         # to be applied to the section names, so that we can look up
         # e.g. "shear_cl_des" instead of just "shear_cl".
         section += suffix
-        
+
         # Initialize TheorySpectrum class from block
         bin_pairs = spectrum.get_bin_pairs()
-        theory_spec = TheorySpectrum.from_block(block, 
-            section, bin_pairs=bin_pairs)
+        theory_spec = TheorySpectrum.from_block(block, section, bin_pairs=bin_pairs)
 
         # If the theory spectrum has been bin-averaged then we expect the
         # data to be so also.  We check this by ensuring that angle_min is specified
@@ -379,11 +423,13 @@ class TwoPointLikelihood(GaussianLikelihood):
         # whereas the interpolated version just wants a single angle.
         if theory_spec.is_bin_averaged:
             if spectrum.angle_min is None:
-                raise ValueError("Your theory pipeline produced angle-binnned values, but your data it not binned.")
+                raise ValueError(
+                    "Your theory pipeline produced angle-binnned values, but your data it not binned."
+                )
             angles = list(zip(spectrum.angle_min, spectrum.angle_max))
         else:
             angles = spectrum.angle
-        
+
         # We store the nominal mid-points for plotting later on, etc.
         angle_mids = spectrum.angle
 
@@ -399,7 +445,9 @@ class TwoPointLikelihood(GaussianLikelihood):
         bin1_vector = []
         bin2_vector = []
 
-        for (b1, b2, angle, angle_mid) in zip(spectrum.bin1, spectrum.bin2, angles, angle_mids):
+        for b1, b2, angle, angle_mid in zip(
+            spectrum.bin1, spectrum.bin2, angles, angle_mids
+        ):
             # The extra object will either be a spline (for interpolated spectra)
             # or theta mid-point values (for bin-averaged ones, e.g. for plotting)
             theory, extra = theory_spec.get_spectrum_value(b1, b2, angle)
@@ -427,9 +475,10 @@ class TwoPointLikelihood(GaussianLikelihood):
 
         return theory_vector, angle_vector, bin1_vector, bin2_vector
 
-
     def extract_covariance(self, block):
-        assert self.gaussian_covariance, "Set constant_covariance=F but somehow not with Gaussian covariance.  Internal error - please open an issue on the cosmosis site."
+        assert self.gaussian_covariance, (
+            "Set constant_covariance=F but somehow not with Gaussian covariance.  Internal error - please open an issue on the cosmosis site."
+        )
 
         C = []
         # s and t index the spectra that we have. e.g. s or t=1 might be the full set of
@@ -437,15 +486,20 @@ class TwoPointLikelihood(GaussianLikelihood):
         for s, AB in enumerate(self.two_point_data.spectra[:]):
             M = []
             for t, CD in enumerate(self.two_point_data.spectra[:]):
-                print("Looking at covariance between {} and {} (s={}, t={})".format(AB.name, CD.name, s, t))
+                print(
+                    "Looking at covariance between {} and {} (s={}, t={})".format(
+                        AB.name, CD.name, s, t
+                    )
+                )
                 # We only calculate the upper triangular.
                 # Get the lower triangular here. We have to
                 # transpose it compared to the upper one.
                 if s > t:
                     MI = C[t][s].T
                 else:
-                    MI = gaussian_covariance.compute_gaussian_covariance(self.sky_area,
-                                                                         self._lookup_theory_cl, block, AB, CD)
+                    MI = gaussian_covariance.compute_gaussian_covariance(
+                        self.sky_area, self._lookup_theory_cl, block, AB, CD
+                    )
                 M.append(MI)
             C.append(M)
 
@@ -459,14 +513,16 @@ class TwoPointLikelihood(GaussianLikelihood):
     def _lookup_theory_cl(self, block, A, B, i, j, ell):
         """
         This is a helper function for the compute_gaussian_covariance code.
-        It looks up the theory value of C^{ij}_{AB}(ell) in the 
+        It looks up the theory value of C^{ij}_{AB}(ell) in the
         """
         # We have already saved splines into the theory space earlier
         # when constructing the theory vector.
         # So now we just need to look those up again, using the same
         # code we use in the twopoint library.
         section, ell_name, value_name = type_table[A, B]
-        assert ell_name == "ell", "Gaussian covariances are currently only written for C_ell, not other 2pt functions"
+        assert ell_name == "ell", (
+            "Gaussian covariances are currently only written for C_ell, not other 2pt functions"
+        )
         d = self.theory_splines[section]
 
         # We save the splines with these names when we extract the theory vector
@@ -492,8 +548,11 @@ class TwoPointLikelihood(GaussianLikelihood):
             elif block.has_value(section, name_ji) and A == B:
                 theory = block[section, name_ji]
             else:
-                raise ValueError("Could not find theory prediction {} in section {}".format(
-                    value_name.format(i, j), section))
+                raise ValueError(
+                    "Could not find theory prediction {} in section {}".format(
+                        value_name.format(i, j), section
+                    )
+                )
 
             spline = interp1d(angle_theory, theory)
             # Finally cache this so we don't have to do this again.
@@ -503,25 +562,34 @@ class TwoPointLikelihood(GaussianLikelihood):
 
         # For shear-shear the noise component is sigma^2 / number_density_bin
         # and for position-position it is just 1/number_density_bin
-        if (A == B) and (A == twopoint.Types.galaxy_shear_emode_fourier.name) and (i == j):
-            if i > len(self.number_density_shear_bin) or i > len(self.sigma_e_bin) or is_default(self.sigma_e_bin) or is_default(self.number_density_shear_bin):
-                raise ValueError(
-                    "Not enough number density bins for shear specified")
-            noise = self.sigma_e_bin[i - 1]**2 / \
-                convert_nz_steradian(self.number_density_shear_bin[i - 1])
+        if (
+            (A == B)
+            and (A == twopoint.Types.galaxy_shear_emode_fourier.name)
+            and (i == j)
+        ):
+            if (
+                i > len(self.number_density_shear_bin)
+                or i > len(self.sigma_e_bin)
+                or is_default(self.sigma_e_bin)
+                or is_default(self.number_density_shear_bin)
+            ):
+                raise ValueError("Not enough number density bins for shear specified")
+            noise = self.sigma_e_bin[i - 1] ** 2 / convert_nz_steradian(
+                self.number_density_shear_bin[i - 1]
+            )
             obs_cl += noise
         if (A == B) and (A == twopoint.Types.galaxy_position_fourier.name) and (i == j):
-            if i > len(self.number_density_lss_bin) or is_default(self.number_density_lss_bin):
-                raise ValueError(
-                    "Not enough number density bins for lss specified")
-            noise = 1.0 / \
-                convert_nz_steradian(self.number_density_lss_bin[i - 1])
+            if i > len(self.number_density_lss_bin) or is_default(
+                self.number_density_lss_bin
+            ):
+                raise ValueError("Not enough number density bins for lss specified")
+            noise = 1.0 / convert_nz_steradian(self.number_density_lss_bin[i - 1])
             obs_cl += noise
 
         return obs_cl
-    
+
     def update_xi_w_sys(self, block):
-        self.data_y = self.raw_data_y + block['xi_sys', 'xi_sys_vec']
+        self.data_y = self.raw_data_y + block["xi_sys", "xi_sys_vec"]
 
     @classmethod
     def build_module(cls):
@@ -534,7 +602,7 @@ class TwoPointLikelihood(GaussianLikelihood):
         def execute(block, config):
             likelihoodCalculator = config
             likelihoodCalculator.update_xi_w_sys(block)
-            #print(likelihoodCalculator.data_y)
+            # print(likelihoodCalculator.data_y)
             likelihoodCalculator.do_likelihood(block)
             return 0
 

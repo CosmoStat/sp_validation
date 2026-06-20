@@ -30,7 +30,9 @@ plt.style.use(
 
 
 # %%
-def load_covariance_pair(mask_path: Path, nomask_path: Path) -> Tuple[np.ndarray, np.ndarray]:
+def load_covariance_pair(
+    mask_path: Path, nomask_path: Path
+) -> Tuple[np.ndarray, np.ndarray]:
     """Load covariance matrices for mask/no-mask comparison."""
     if not mask_path.exists():
         raise FileNotFoundError(f"Mask covariance not found: {mask_path}")
@@ -97,7 +99,9 @@ def plot_comparison(
 
     ax_ratio.plot(indices, variance_ratio, linewidth=2, color="#ef8a62")
     ax_ratio.set_xlabel("Data vector index")
-    ax_ratio.set_ylabel("$\\sigma^2_{\\mathrm{mask}} / \\sigma^2_{\\mathrm{no\\ mask}}$")
+    ax_ratio.set_ylabel(
+        "$\\sigma^2_{\\mathrm{mask}} / \\sigma^2_{\\mathrm{no\\ mask}}$"
+    )
     ax_ratio.set_title("Variance ratio")
     ax_ratio.grid(alpha=0.3)
 
@@ -137,10 +141,14 @@ def main() -> None:
         nomask_path = Path(snakemake.input["nomask"])  # type: ignore[name-defined]
         output_path = Path(snakemake.output["plot"])  # type: ignore[name-defined]
     except NameError as exc:  # pragma: no cover - executed only outside Snakemake
-        raise RuntimeError("This script is intended to be executed via Snakemake.") from exc
+        raise RuntimeError(
+            "This script is intended to be executed via Snakemake."
+        ) from exc
 
     mask_cov, nomask_cov = load_covariance_pair(mask_path, nomask_path)
-    mask_std, nomask_std, variance_ratio, covariance_delta = create_diagnostics(mask_cov, nomask_cov)
+    mask_std, nomask_std, variance_ratio, covariance_delta = create_diagnostics(
+        mask_cov, nomask_cov
+    )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     plot_comparison(mask_std, nomask_std, variance_ratio, covariance_delta, output_path)

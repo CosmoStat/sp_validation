@@ -74,7 +74,9 @@ def _load_pure_eb_data(pure_eb_path, cov_path):
     return data
 
 
-def _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut, title_suffix=""):
+def _create_pure_eb_figure(
+    data, fiducial_xip_scale_cut, fiducial_xim_scale_cut, title_suffix=""
+):
     """Create pure E/B decomposition figure.
 
     Args:
@@ -116,28 +118,61 @@ def _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
         ylabel_text and ax.set_ylabel(ylabel_text)
 
     # Create 1x2 figure
-    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.36), sharey=True)
+    fig, axes = plt.subplots(
+        1, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.36), sharey=True
+    )
 
     # Left panel: xi+ decomposition
     ax = axes[0]
     plot_data = [
-        (data["xip_total"], sigma_xip_total, "o", color_total, alpha_main, r"$\xi_\pm$ (total)"),
+        (
+            data["xip_total"],
+            sigma_xip_total,
+            "o",
+            color_total,
+            alpha_main,
+            r"$\xi_\pm$ (total)",
+        ),
         (data["xip_E"], sigma_xip_E, "s", color_E, alpha_faint, r"$\xi_\pm^E$"),
         (data["xip_B"], sigma_xip_B, "X", color_B, alpha_main, r"$\xi_\pm^B$"),
-        (data["xip_amb"], sigma_xip_amb, "v", color_amb, alpha_faint, r"$\xi_\pm^\mathrm{amb}$"),
+        (
+            data["xip_amb"],
+            sigma_xip_amb,
+            "v",
+            color_amb,
+            alpha_faint,
+            r"$\xi_\pm^\mathrm{amb}$",
+        ),
     ]
     for i, (d, sigma, marker, color, alpha, label) in enumerate(plot_data):
         ax.errorbar(
-            theta * offsets[i], theta * d / scale_factor, yerr=theta * sigma / scale_factor,
-            fmt=marker, color=color, markersize=ms, capsize=capsize, capthick=capthick,
-            elinewidth=elinewidth, alpha=alpha, label=label
+            theta * offsets[i],
+            theta * d / scale_factor,
+            yerr=theta * sigma / scale_factor,
+            fmt=marker,
+            color=color,
+            markersize=ms,
+            capsize=capsize,
+            capthick=capthick,
+            elinewidth=elinewidth,
+            alpha=alpha,
+            label=label,
         )
     shade_excluded_regions(ax, fiducial_xip_scale_cut)
     setup_panel(ax, ylabel_text=r"$\theta \xi \times 10^4$")
     panel_label = rf"$\xi_+${title_suffix}" if title_suffix else r"$\xi_+$"
-    ax.text(0.05, 0.95, panel_label, transform=ax.transAxes,
-            ha="left", va="top", fontsize=10,
-            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"))
+    ax.text(
+        0.05,
+        0.95,
+        panel_label,
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=10,
+        bbox=dict(
+            boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"
+        ),
+    )
 
     # Right panel: xi- decomposition
     ax = axes[1]
@@ -149,16 +184,32 @@ def _create_pure_eb_figure(data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
     ]
     for i, (d, sigma, marker, color, alpha) in enumerate(xim_plot_data):
         ax.errorbar(
-            theta * offsets[i], theta * d / scale_factor, yerr=theta * sigma / scale_factor,
-            fmt=marker, color=color, markersize=ms, capsize=capsize, capthick=capthick,
-            elinewidth=elinewidth, alpha=alpha
+            theta * offsets[i],
+            theta * d / scale_factor,
+            yerr=theta * sigma / scale_factor,
+            fmt=marker,
+            color=color,
+            markersize=ms,
+            capsize=capsize,
+            capthick=capthick,
+            elinewidth=elinewidth,
+            alpha=alpha,
         )
     shade_excluded_regions(ax, fiducial_xim_scale_cut)
     setup_panel(ax)
     panel_label = rf"$\xi_-${title_suffix}" if title_suffix else r"$\xi_-$"
-    ax.text(0.05, 0.95, panel_label, transform=ax.transAxes,
-            ha="left", va="top", fontsize=10,
-            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"))
+    ax.text(
+        0.05,
+        0.95,
+        panel_label,
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=10,
+        bbox=dict(
+            boxstyle="round,pad=0.2", facecolor="white", alpha=0.8, edgecolor="none"
+        ),
+    )
     axes[0].set_ylim(ylim)
     fig.tight_layout()
     handles, labels = axes[0].get_legend_handles_labels()
@@ -175,7 +226,9 @@ def main():
     fiducial_xim_scale_cut = tuple(config["fiducial"]["fiducial_xim_scale_cut"])
 
     # Build input path lookup from snakemake inputs
-    pure_eb_paths = {k: v for k, v in snakemake.input.items() if k.startswith("pure_eb_")}
+    pure_eb_paths = {
+        k: v for k, v in snakemake.input.items() if k.startswith("pure_eb_")
+    }
     cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("cov_")}
 
     # Create output directory
@@ -201,8 +254,10 @@ def main():
         # Create figure with appropriate title
         title_suffix = f" ({fig_spec['title']})" if fig_spec["title"] else ""
         fig = _create_pure_eb_figure(
-            data, fiducial_xip_scale_cut, fiducial_xim_scale_cut,
-            title_suffix=title_suffix
+            data,
+            fiducial_xip_scale_cut,
+            fiducial_xim_scale_cut,
+            title_suffix=title_suffix,
         )
 
         # Save figure
@@ -223,8 +278,7 @@ def main():
 
     # Compute PTEs for evidence (fiducial version, leak-corrected only)
     data = _load_pure_eb_data(
-        pure_eb_paths[f"pure_eb_{version}"],
-        cov_paths[f"cov_{version}"]
+        pure_eb_paths[f"pure_eb_{version}"], cov_paths[f"cov_{version}"]
     )
     theta = data["theta"]
     nbins = data["nbins"]
@@ -240,8 +294,12 @@ def main():
     cov_cross_full = cov_pure_eb[2 * nbins : 3 * nbins, 3 * nbins : 4 * nbins]
 
     # Scale cut masks
-    mask_xip = (theta >= fiducial_xip_scale_cut[0]) & (theta <= fiducial_xip_scale_cut[1])
-    mask_xim = (theta >= fiducial_xim_scale_cut[0]) & (theta <= fiducial_xim_scale_cut[1])
+    mask_xip = (theta >= fiducial_xip_scale_cut[0]) & (
+        theta <= fiducial_xip_scale_cut[1]
+    )
+    mask_xim = (theta >= fiducial_xim_scale_cut[0]) & (
+        theta <= fiducial_xim_scale_cut[1]
+    )
 
     # Apply scale cuts to covariances
     cov_xip_B_cut = cov_xip_B_full[np.ix_(mask_xip, mask_xip)]
@@ -249,20 +307,36 @@ def main():
     cov_cross_cut = cov_cross_full[np.ix_(mask_xip, mask_xim)]
 
     # Compute PTEs at fiducial scale cuts
-    chi2_xip_fid, pte_xip_fid, dof_xip_fid = compute_chi2_pte(xip_B[mask_xip], cov_xip_B_cut, n_samples=n_samples)
-    chi2_xim_fid, pte_xim_fid, dof_xim_fid = compute_chi2_pte(xim_B[mask_xim], cov_xim_B_cut, n_samples=n_samples)
+    chi2_xip_fid, pte_xip_fid, dof_xip_fid = compute_chi2_pte(
+        xip_B[mask_xip], cov_xip_B_cut, n_samples=n_samples
+    )
+    chi2_xim_fid, pte_xim_fid, dof_xim_fid = compute_chi2_pte(
+        xim_B[mask_xim], cov_xim_B_cut, n_samples=n_samples
+    )
     pte_joint_fid, chi2_joint_fid, dof_joint_fid = _compute_joint_pte(
-        xip_B[mask_xip], xim_B[mask_xim], cov_xip_B_cut, cov_xim_B_cut, cov_cross_cut, n_samples=n_samples
+        xip_B[mask_xip],
+        xim_B[mask_xim],
+        cov_xip_B_cut,
+        cov_xim_B_cut,
+        cov_cross_cut,
+        n_samples=n_samples,
     )
 
     # Compute PTEs at full range
     _, pte_xip_full, _ = compute_chi2_pte(xip_B, cov_xip_B_full, n_samples=n_samples)
     _, pte_xim_full, _ = compute_chi2_pte(xim_B, cov_xim_B_full, n_samples=n_samples)
     pte_joint_full, chi2_joint_full, dof_joint_full = _compute_joint_pte(
-        xip_B, xim_B, cov_xip_B_full, cov_xim_B_full, cov_cross_full, n_samples=n_samples
+        xip_B,
+        xim_B,
+        cov_xip_B_full,
+        cov_xim_B_full,
+        cov_cross_full,
+        n_samples=n_samples,
     )
 
-    print(f"Blind {blind} PTEs (fiducial): xi+^B={pte_xip_fid:.3f}, xi-^B={pte_xim_fid:.3f}, joint={pte_joint_fid:.3f}")
+    print(
+        f"Blind {blind} PTEs (fiducial): xi+^B={pte_xip_fid:.3f}, xi-^B={pte_xim_fid:.3f}, joint={pte_joint_fid:.3f}"
+    )
 
     # Write evidence.json (based on leak-corrected fiducial data only)
     evidence_data = {

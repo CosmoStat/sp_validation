@@ -55,10 +55,22 @@ def make_figure(theta, ratios_B, ratios_C, output_path):
         ax.axhspan(0.99, 1.01, color="teal", alpha=0.15, label=r"$\pm 1\%$")
         ax.axhspan(0.90, 1.10, color="orange", alpha=0.10, label=r"$\pm 10\%$")
 
-        ax.plot(theta, ratios_B[key]["ratio"], "o-", color=colors[0],
-                label="B / A", markersize=5)
-        ax.plot(theta, ratios_C[key]["ratio"], "s--", color=colors[1],
-                label="C / A", markersize=5)
+        ax.plot(
+            theta,
+            ratios_B[key]["ratio"],
+            "o-",
+            color=colors[0],
+            label="B / A",
+            markersize=5,
+        )
+        ax.plot(
+            theta,
+            ratios_C[key]["ratio"],
+            "s--",
+            color=colors[1],
+            label="C / A",
+            markersize=5,
+        )
 
         ax.set_xscale("log")
         ax.set_xlabel(r"$\theta$ [arcmin]")
@@ -93,8 +105,10 @@ def main(snakemake):
 
     # Determine pass/fail
     all_max_devs = [
-        ratios_B["xip"]["max_dev"], ratios_B["xim"]["max_dev"],
-        ratios_C["xip"]["max_dev"], ratios_C["xim"]["max_dev"],
+        ratios_B["xip"]["max_dev"],
+        ratios_B["xim"]["max_dev"],
+        ratios_C["xip"]["max_dev"],
+        ratios_C["xim"]["max_dev"],
     ]
     pass_1pct = all(d < 0.01 for d in all_max_devs)
     pass_10pct = all(d < 0.10 for d in all_max_devs)

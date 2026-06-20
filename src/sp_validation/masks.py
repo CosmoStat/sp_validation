@@ -29,9 +29,7 @@ def correlation_matrix(masks, confidence_level=0.9):
         for jdx, mask_jdx in enumerate(masks):
             res = stats.pearsonr(mask_idx._mask, mask_jdx._mask)
             r_val[idx][jdx] = res.statistic
-            r_cl[idx][jdx] = res.confidence_interval(
-                confidence_level=confidence_level
-            )
+            r_cl[idx][jdx] = res.confidence_interval(confidence_level=confidence_level)
 
     return r_val, r_cl
 
@@ -42,9 +40,7 @@ def confusion_matrix(prediction, observation):
 
     pred_pos = sum(prediction)
     result["true_pos"] = sum(prediction & observation)
-    result["true_neg"] = sum(
-        np.logical_not(prediction) & np.logical_not(observation)
-    )
+    result["true_neg"] = sum(np.logical_not(prediction) & np.logical_not(observation))
     result["false_neg"] = sum(prediction & np.logical_not(observation))
     result["false_pos"] = sum(np.logical_not(prediction) & observation)
     result["false_pos_rate"] = result["false_pos"] / (
@@ -71,11 +67,11 @@ def confusion_matrix(prediction, observation):
     return result
 
 
-class Mask():
+class Mask:
     """Mask.
-    
+
     Class to handle masking of catalogues.
-    
+
     Parameters
     ----------
     col_name : str
@@ -95,7 +91,7 @@ class Mask():
     """
 
     def __init__(self, col_name, label, kind=None, value=0, dat=None, verbose=False):
-        
+
         self._col_name = col_name
         self._label = label
         self._value = value
@@ -108,20 +104,20 @@ class Mask():
 
         if dat is not None:
             self.apply(dat)
-            
+
     def __repr__(self):
-        
+
         return (
             f"Mask(col_name={self._col_name}, label={self._label}, kind={self._kind},"
             + f" value={self._value})"
         )
-        
-    @classmethod    
+
+    @classmethod
     def from_list(cls, masks, label="combined", verbose=False):
 
         if verbose:
             print(f"Combining {len(masks)} masks")
-        
+
         my_mask = cls(label, label, kind="combined", value=None)
 
         my_mask._mask = np.logical_and.reduce([m._mask for m in masks])
@@ -129,20 +125,39 @@ class Mask():
         return my_mask
 
     def apply(self, dat):
-        
+
         # Get column
         col_data = dat[self._col_name]
-        
+
         if self._kind == "equal":
-            self._mask = ne.evaluate("col_data == value", local_dict={"col_data": col_data, "value": self._value})
+            self._mask = ne.evaluate(
+                "col_data == value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
         elif self._kind == "not_equal":
-            self._mask = ne.evaluate("col_data != value", local_dict={"col_data": col_data, "value": self._value})
+            self._mask = ne.evaluate(
+                "col_data != value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
         elif self._kind == "greater_equal":
-            self._mask = ne.evaluate("col_data >= value", local_dict={"col_data": col_data, "value": self._value})
+            self._mask = ne.evaluate(
+                "col_data >= value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
         elif self._kind == "smaller_equal":
-            self._mask = ne.evaluate("col_data <= value", local_dict={"col_data": col_data, "value": self._value})
+            self._mask = ne.evaluate(
+                "col_data <= value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
         elif self._kind == "range":
-            self._mask = ne.evaluate("(col_data >= low) & (col_data <= high)", local_dict={"col_data": col_data, "low": self._value[0], "high": self._value[1]})
+            self._mask = ne.evaluate(
+                "(col_data >= low) & (col_data <= high)",
+                local_dict={
+                    "col_data": col_data,
+                    "low": self._value[0],
+                    "high": self._value[1],
+                },
+            )
         else:
             raise ValueError(f"Invalid kind {self._kind}")
 
@@ -165,24 +180,24 @@ class Mask():
         )
         mask_bool[valid_pixels] = self._mask
         return mask_bool
- 
+
     @classmethod
     def print_strings(cls, coln, lab, num, fnum, f_out=None):
         msg = f"{coln:30s} {lab:30s} {num:10s} {fnum:10s}"
         print(msg)
         if f_out:
             print(msg, file=f_out)
- 
+
     def print_stats(self, num_obj, f_out=None):
         if self._num_ok is None:
             self._num_ok = sum(self._mask)
 
         si = f"{self._num_ok:10d}"
-        sf = f"{self._num_ok/num_obj:10.2%}"
+        sf = f"{self._num_ok / num_obj:10.2%}"
         self.print_strings(self._col_name, self._label, si, sf, f_out=f_out)
 
     def get_sign(self, latex=False):
-        
+
         sign = None
         if self._kind == "equal":
             sign = "$=$" if latex else "="
@@ -200,7 +215,7 @@ class Mask():
             return ""
 
         sign = self.get_sign(latex=latex)
-        
+
         name = self._label if latex else self._col_name
 
         if sign is not None:
@@ -230,16 +245,17 @@ class Mask():
         if self._kind == "range":
             descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
         self._descr = descr
-    
+
         # Create description for FITS header
+
     def add_summary_to_FITS_header(self, header):
 
         header_new = fits.Header()
-        
+
         self.create_descr()
 
         header_new[self._col_name] = (self._descr, self._label)
-        
+
         header.update(header_new)
 
 
@@ -251,7 +267,7 @@ def print_mask_stats(num_obj, masks, mask_combined):
     Parameters
     ----------
     num_obj
-    
+
     """
     Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
     for my_mask in masks:
@@ -260,17 +276,11 @@ def print_mask_stats(num_obj, masks, mask_combined):
     mask_combined.print_stats(num_obj)
 
 
-def get_masks_from_config(
-    config,
-    dat,
-    dat_ext,
-    masks_to_apply=None,
-    verbose=False
-):
+def get_masks_from_config(config, dat, dat_ext, masks_to_apply=None, verbose=False):
     """Get Masks From Config.
-    
+
     Return mask information from yaml config structure.
-    
+
     Parameters
     ----------
     config : dict
@@ -283,41 +293,37 @@ def get_masks_from_config(
         masks to apply exclusively; if `None` (default), use all masks
     verbose : bool, optional
         verbose output if ``True``; default is ``False``
-        
+
     Returns
     -------
     list
         list of masks
     dict
         list of indices for given mask column name (label)
-        
+
     """
     # List to store all mask objects
     masks = []
 
     # Dict to associate labels with index in mask list
     labels = {}
-    
-     # Loop over mask sections from config file
-    config_data = {
-        key: config[key] for key in ["dat", "dat_ext"] if key in config
-    }
+
+    # Loop over mask sections from config file
+    config_data = {key: config[key] for key in ["dat", "dat_ext"] if key in config}
     idx = 0
     for section, mask_list in config_data.items():
-
         # Set data source
         dat_source = dat if section == "dat" else dat_ext
 
         # Loop over mask information in this section
         for mask_params in mask_list:
-
-            use_this_mask = False            
+            use_this_mask = False
             if masks_to_apply is not None:
                 if mask_params["col_name"] in masks_to_apply:
                     use_this_mask = True
             else:
                 use_this_mask = True
-                    
+
             if use_this_mask:
                 # Ensure 'range' kind has exactly two values
                 value = mask_params["value"]
@@ -337,5 +343,5 @@ def get_masks_from_config(
                 if verbose:
                     print(f"Skipping mask {mask_params['col_name']}")
                 continue
-            
+
     return masks, labels

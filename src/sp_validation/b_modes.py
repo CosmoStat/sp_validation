@@ -5,7 +5,6 @@ This module contains pure E/B mode decomposition, COSEBIs analysis,
 and semi-analytical covariance calculations extracted from CosmologyValidation.
 """
 
-
 import warnings
 
 import matplotlib.pyplot as plt
@@ -41,8 +40,7 @@ def find_conservative_scale_cut_key(results, requested_scale_cut):
 
     # Find all keys that fit conservatively within the requested range
     valid_keys = [
-        key for key in results.keys()
-        if key[0] >= min_req and key[1] <= max_req
+        key for key in results.keys() if key[0] >= min_req and key[1] <= max_req
     ]
 
     if valid_keys:
@@ -50,8 +48,7 @@ def find_conservative_scale_cut_key(results, requested_scale_cut):
         return max(valid_keys, key=lambda k: k[1] - k[0])
 
     # If no conservative match, find closest by total distance
-    return min(results.keys(),
-              key=lambda k: abs(k[0] - min_req) + abs(k[1] - max_req))
+    return min(results.keys(), key=lambda k: abs(k[0] - min_req) + abs(k[1] - max_req))
 
 
 def scale_cut_to_bins(gg, min_scale=None, max_scale=None):
@@ -82,13 +79,13 @@ def scale_cut_to_bins(gg, min_scale=None, max_scale=None):
 
     if min_scale is not None:
         # Conservative: exclude bins whose left edge is below min_scale
-        start_bin = np.searchsorted(gg.left_edges, min_scale, side='left')
+        start_bin = np.searchsorted(gg.left_edges, min_scale, side="left")
     else:
         start_bin = 0
 
     if max_scale is not None:
         # Conservative: exclude bins whose right edge is above max_scale
-        stop_bin = np.searchsorted(gg.right_edges, max_scale, side='right')
+        stop_bin = np.searchsorted(gg.right_edges, max_scale, side="right")
     else:
         stop_bin = nbins
 
@@ -120,7 +117,7 @@ def calculate_pure_eb_correlation(
     cov_path_int=None,
     cosmo_cov=None,
     n_samples=1000,
-    z_dist=None
+    z_dist=None,
 ):
     """
     Calculate pure E/B modes from correlation function objects.
@@ -157,9 +154,15 @@ def calculate_pure_eb_correlation(
     def pure_EB(corrs):
         gg, gg_int = corrs
         return get_pure_EB_modes(
-            theta=gg.meanr, xip=gg.xip, xim=gg.xim,
-            theta_int=gg_int.meanr, xip_int=gg_int.xip, xim_int=gg_int.xim,
-            tmin=min_sep, tmax=max_sep, parallel=True
+            theta=gg.meanr,
+            xip=gg.xip,
+            xim=gg.xim,
+            theta_int=gg_int.meanr,
+            xip_int=gg_int.xip,
+            xim_int=gg_int.xim,
+            tmin=min_sep,
+            tmax=max_sep,
+            parallel=True,
         )
 
     # Initialize results dictionary with basic E/B mode data
@@ -181,44 +184,50 @@ def calculate_pure_eb_correlation(
 
         # Set up integration binning and pre-compute binning matrix
         nbins_int, theta_int = len(gg_int.meanr), gg_int.meanr
-        reporting_bin_edges = np.concatenate([
-            gg.left_edges, [gg.right_edges[-1]]
-        ])
+        reporting_bin_edges = np.concatenate([gg.left_edges, [gg.right_edges[-1]]])
         bin_indices = np.digitize(theta_int, reporting_bin_edges) - 1
 
         valid_mask = (bin_indices >= 0) & (bin_indices < len(gg.meanr))
-        row_indices, col_indices = (
-            bin_indices[valid_mask], np.where(valid_mask)[0]
-        )
+        row_indices, col_indices = (bin_indices[valid_mask], np.where(valid_mask)[0])
 
         binning_matrix = sparse.csr_matrix(
             (np.ones(len(row_indices)), (row_indices, col_indices)),
-            shape=(len(gg.meanr), nbins_int)
+            shape=(len(gg.meanr), nbins_int),
         )
         row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
-        binning_matrix = sparse.diags(1/row_sums) @ binning_matrix
+        binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
 
         # Generate theoretical xi+/xi- predictions and sample
-        mean_int = np.concatenate(get_theo_xi(
-            theta=theta_int, z=z_dist[:, 0], nz=z_dist[:, 1],
-            backend="ccl", cosmo=cosmo_cov
-        ))
-
-        samples_int = np.random.multivariate_normal(
-            mean_int, cov_int, size=n_samples
+        mean_int = np.concatenate(
+            get_theo_xi(
+                theta=theta_int,
+                z=z_dist[:, 0],
+                nz=z_dist[:, 1],
+                backend="ccl",
+                cosmo=cosmo_cov,
+            )
         )
+
+        samples_int = np.random.multivariate_normal(mean_int, cov_int, size=n_samples)
         samples_int_xip = samples_int[:, :nbins_int]
         samples_int_xim = samples_int[:, nbins_int:]
         samples_rep_xip = (binning_matrix @ samples_int_xip.T).T
         samples_rep_xim = (binning_matrix @ samples_int_xim.T).T
 
         transformed_samples = [
-            np.concatenate(get_pure_EB_modes(
-                theta=gg.meanr, theta_int=gg_int.meanr,
-                xip=samples_rep_xip[i], xim=samples_rep_xim[i],
-                xip_int=samples_int_xip[i], xim_int=samples_int_xim[i],
-                tmin=min_sep, tmax=max_sep, parallel=True
-            ))
+            np.concatenate(
+                get_pure_EB_modes(
+                    theta=gg.meanr,
+                    theta_int=gg_int.meanr,
+                    xip=samples_rep_xip[i],
+                    xim=samples_rep_xim[i],
+                    xip_int=samples_int_xip[i],
+                    xim_int=samples_int_xim[i],
+                    tmin=min_sep,
+                    tmax=max_sep,
+                    parallel=True,
+                )
+            )
             for i in tqdm.tqdm(range(n_samples), desc="MC samples")
         ]
 
@@ -241,7 +250,7 @@ def calculate_pure_eb_correlation(
         warnings.warn(
             "E/B mode covariance matrix is not positive definite. "
             "Chi-squared statistics may be unreliable.",
-            UserWarning
+            UserWarning,
         )
 
     return results
@@ -299,9 +308,7 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         start_bin, stop_bin = scale_cut_to_bins(gg, min_theta, max_theta)
         inds = np.arange(start_bin, stop_bin)
 
-        theta_cut, xip_cut, xim_cut = [
-            arr[inds] for arr in [gg.meanr, gg.xip, gg.xim]
-        ]
+        theta_cut, xip_cut, xim_cut = [arr[inds] for arr in [gg.meanr, gg.xip, gg.xim]]
 
         # Calculate COSEBIs E/B modes using actual theta range (per Axel's recommendation)
         # Use precision=120 (vs default 80) to avoid sympy root convergence failures
@@ -326,15 +333,22 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         ]
 
         results = {
-            'En': En, 'Bn': Bn, 'cov': cov_cosebis,
-            'hartlap_factor': hartlap_factor, 'chi2_E': chi2_E, 'chi2_B': chi2_B,
-            'pte_B': 1 - stats.chi2.cdf(chi2_B, nmodes),
-            'scale_cut': (min_theta, max_theta), 'inds': inds
+            "En": En,
+            "Bn": Bn,
+            "cov": cov_cosebis,
+            "hartlap_factor": hartlap_factor,
+            "chi2_E": chi2_E,
+            "chi2_B": chi2_B,
+            "pte_B": 1 - stats.chi2.cdf(chi2_B, nmodes),
+            "scale_cut": (min_theta, max_theta),
+            "inds": inds,
         }
 
         print(f"COSEBIs results [{min_theta:.1f}-{max_theta:.1f} arcmin]:")
-        print(f"  chi2(E) = {chi2_E:.2f}, chi2(B) = {chi2_B:.2f}, "
-              f"PTE(B) = {results['pte_B']:.4f}")
+        print(
+            f"  chi2(E) = {chi2_E:.2f}, chi2(B) = {chi2_B:.2f}, "
+            f"PTE(B) = {results['pte_B']:.4f}"
+        )
 
         all_results[scale_cut] = results
 
@@ -389,8 +403,7 @@ def calculate_eb_statistics(
 
     # Generate all valid (start, stop) combinations for scale cuts
     combinations = [
-        (start, stop) for start in range(nbins)
-        for stop in range(start, nbins + 1)
+        (start, stop) for start in range(nbins) for stop in range(start, nbins + 1)
     ]
 
     for start_bin, stop_bin in combinations:
@@ -398,9 +411,7 @@ def calculate_eb_statistics(
         hartlap_factor = (n_eff - nbins_eff - 2) / (n_eff - 1)
 
         # Individual B-mode chi-squared calculations
-        data_slices = [
-            results[f"{xi}_B"][start_bin:stop_bin] for xi in ["xip", "xim"]
-        ]
+        data_slices = [results[f"{xi}_B"][start_bin:stop_bin] for xi in ["xip", "xim"]]
         cov_slices = [
             results[f"cov_{xi}_B"][start_bin:stop_bin, start_bin:stop_bin]
             for xi in ["xip", "xim"]
@@ -410,26 +421,27 @@ def calculate_eb_statistics(
             for data, cov in zip(data_slices, cov_slices)
         ]
 
-        pte_xip_B[start_bin, stop_bin-1] = stats.chi2.sf(chi2_values[0], nbins_eff)
-        pte_xim_B[start_bin, stop_bin-1] = stats.chi2.sf(chi2_values[1], nbins_eff)
+        pte_xip_B[start_bin, stop_bin - 1] = stats.chi2.sf(chi2_values[0], nbins_eff)
+        pte_xim_B[start_bin, stop_bin - 1] = stats.chi2.sf(chi2_values[1], nbins_eff)
 
         # Combined calculation with cross-correlation
         data_combined = np.concatenate(data_slices)
 
         # Build combined covariance matrix blocks
-        xip_slice = slice(2*nbins + start_bin, 2*nbins + stop_bin)
-        xim_slice = slice(3*nbins + start_bin, 3*nbins + stop_bin)
+        xip_slice = slice(2 * nbins + start_bin, 2 * nbins + stop_bin)
+        xim_slice = slice(3 * nbins + start_bin, 3 * nbins + stop_bin)
         cov_xip_block = cov[xip_slice, xip_slice]
         cov_xim_block = cov[xim_slice, xim_slice]
         cov_cross_block = cov[xip_slice, xim_slice]
-        cov_combined = np.block([
-            [cov_xip_block, cov_cross_block],
-            [cov_cross_block.T, cov_xim_block]
-        ])
+        cov_combined = np.block(
+            [[cov_xip_block, cov_cross_block], [cov_cross_block.T, cov_xim_block]]
+        )
         chi2_combined = hartlap_factor * (
             data_combined @ np.linalg.solve(cov_combined, data_combined)
         )
-        pte_combined[start_bin, stop_bin-1] = stats.chi2.sf(chi2_combined, 2*nbins_eff)
+        pte_combined[start_bin, stop_bin - 1] = stats.chi2.sf(
+            chi2_combined, 2 * nbins_eff
+        )
 
     # Store PTE matrices
     pte_data = {"xip_B": pte_xip_B, "xim_B": pte_xim_B, "combined": pte_combined}
@@ -457,13 +469,13 @@ def plot_integration_vs_reporting(gg, gg_int, output_path, version):
 
     # Configure plot data for both xi+ and xi- in a consolidated loop
     plot_configs = [
-        ('+', 'xip', 'varxip', r"$\theta \xi_+(\theta) \times 10^4$"),
-        ('-', 'xim', 'varxim', r"$\theta \xi_-(\theta) \times 10^4$")
+        ("+", "xip", "varxip", r"$\theta \xi_+(\theta) \times 10^4$"),
+        ("-", "xim", "varxim", r"$\theta \xi_-(\theta) \times 10^4$"),
     ]
 
     data_configs = [
-        (gg_int, 'k.', 3, 0.3, 'Integration'),
-        (gg, '.', 12, 1, 'Reporting')
+        (gg_int, "k.", 3, 0.3, "Integration"),
+        (gg, ".", 12, 1, "Reporting"),
     ]
 
     for ax_idx, (xi_label, xi_attr, var_attr, ylabel) in enumerate(plot_configs):
@@ -471,24 +483,29 @@ def plot_integration_vs_reporting(gg, gg_int, output_path, version):
             xi_val = getattr(data, xi_attr)
             yerr = (
                 data.meanr * np.sqrt(getattr(data, var_attr)) / 1e-4
-                if hasattr(data, var_attr) and label_type == 'Reporting'
+                if hasattr(data, var_attr) and label_type == "Reporting"
                 else None
             )
             axs[ax_idx].errorbar(
-                data.meanr, data.meanr * xi_val / 1e-4, yerr=yerr,
-                fmt=fmt, ms=ms, alpha=alpha, capsize=3,
-                ls='' if label_type == 'Reporting' else None,
+                data.meanr,
+                data.meanr * xi_val / 1e-4,
+                yerr=yerr,
+                fmt=fmt,
+                ms=ms,
+                alpha=alpha,
+                capsize=3,
+                ls="" if label_type == "Reporting" else None,
                 label=(
                     rf"$\xi_{{{xi_label}}}$, {label_type}: "
                     rf"${data.min_sep} < \theta < {data.max_sep}$, "
                     rf"{data.nbins} bins"
-                )
+                ),
             )
         axs[ax_idx].set(
             xlabel=r"$\theta$ [arcmin]",
             ylabel=ylabel,
             xscale="log",
-            title=rf"$\xi_{{{xi_label}}}(\theta)$"
+            title=rf"$\xi_{{{xi_label}}}(\theta)$",
         )
         axs[ax_idx].legend()
 
@@ -519,7 +536,7 @@ def _get_pte_from_scale_cut(pte_matrix, gg, scale_cut):
 
     if scale_cut is None:
         # Return full-range PTE (first row, last column)
-        return pte_matrix[0, nbins-1]
+        return pte_matrix[0, nbins - 1]
 
     min_scale, max_scale = scale_cut
 
@@ -529,7 +546,7 @@ def _get_pte_from_scale_cut(pte_matrix, gg, scale_cut):
     # Ensure valid range, otherwise fallback to full range
     if stop_bin <= start_bin or start_bin >= nbins or stop_bin <= 0:
         raise RuntimeError("Invalid scale cut range")
-    return pte_matrix[start_bin, stop_bin-1]
+    return pte_matrix[start_bin, stop_bin - 1]
 
 
 def plot_pure_eb_correlations(
@@ -580,15 +597,20 @@ def plot_pure_eb_correlations(
     # ξ+^B block (2*nbins:3*nbins, 2*nbins:3*nbins)
     # ξ-^B block (3*nbins:4*nbins, 3*nbins:4*nbins)
     # ξ+^B-ξ-^B cross (2*nbins:3*nbins, 3*nbins:4*nbins)
-    cov_xip_B = cov[2*nbins + xip_start_bin:2*nbins + xip_stop_bin,
-                    2*nbins + xip_start_bin:2*nbins + xip_stop_bin]
-    cov_xim_B = cov[3*nbins + xim_start_bin:3*nbins + xim_stop_bin,
-                    3*nbins + xim_start_bin:3*nbins + xim_stop_bin]
-    cov_cross = cov[2*nbins + xip_start_bin:2*nbins + xip_stop_bin,
-                    3*nbins + xim_start_bin:3*nbins + xim_stop_bin]
+    cov_xip_B = cov[
+        2 * nbins + xip_start_bin : 2 * nbins + xip_stop_bin,
+        2 * nbins + xip_start_bin : 2 * nbins + xip_stop_bin,
+    ]
+    cov_xim_B = cov[
+        3 * nbins + xim_start_bin : 3 * nbins + xim_stop_bin,
+        3 * nbins + xim_start_bin : 3 * nbins + xim_stop_bin,
+    ]
+    cov_cross = cov[
+        2 * nbins + xip_start_bin : 2 * nbins + xip_stop_bin,
+        3 * nbins + xim_start_bin : 3 * nbins + xim_stop_bin,
+    ]
 
-    cov_combined = np.block([[cov_xip_B, cov_cross],
-                            [cov_cross.T, cov_xim_B]])
+    cov_combined = np.block([[cov_xip_B, cov_cross], [cov_cross.T, cov_xim_B]])
 
     # Calculate combined chi-squared with Hartlap factor
     nbins_eff = len(xip_B_data) + len(xim_B_data)
@@ -619,10 +641,20 @@ def plot_pure_eb_correlations(
 
     # Main correlation functions and decomposed modes
     plot_configs = [
-        ('xip', '+', 'varxip',
-         r"$\xi_{+}=\xi_{+}^{E}+\xi_{+}^{B}+\xi_{+}^{\mathrm{amb}}$", xip_B_pte),
-        ('xim', '-', 'varxim',
-         r"$\xi_{-}=\xi_{-}^{E}-\xi_{-}^{B}+\xi_{-}^{\mathrm{amb}}$", xim_B_pte)
+        (
+            "xip",
+            "+",
+            "varxip",
+            r"$\xi_{+}=\xi_{+}^{E}+\xi_{+}^{B}+\xi_{+}^{\mathrm{amb}}$",
+            xip_B_pte,
+        ),
+        (
+            "xim",
+            "-",
+            "varxim",
+            r"$\xi_{-}=\xi_{-}^{E}-\xi_{-}^{B}+\xi_{-}^{\mathrm{amb}}$",
+            xim_B_pte,
+        ),
     ]
 
     for ax_idx, (xi_type, xi_label, var_attr, main_label, pte_val) in enumerate(
@@ -631,26 +663,43 @@ def plot_pure_eb_correlations(
         # Plot main correlation function
         xi_val = getattr(gg, xi_type)
         axs[ax_idx].errorbar(
-            gg.meanr, gg.meanr * xi_val / scale_factor,
+            gg.meanr,
+            gg.meanr * xi_val / scale_factor,
             yerr=gg.meanr * np.sqrt(getattr(gg, var_attr)) / scale_factor,
-            fmt="k.", capsize=3, label=main_label
+            fmt="k.",
+            capsize=3,
+            label=main_label,
         )
 
         # Plot E/B/amb modes
         plot_data = [
             (f"{xi_type}_E", "g", 0.25, rf"$\xi_{{{xi_label}}}^{{E}}$"),
-            (f"{xi_type}_B", "r", 1.0,
-             rf"$\xi_{{{xi_label}}}^{{B}}, {{\rm PTE}}="
-             rf"{np.round(pte_val, 4)}$"),
-            (f"{xi_type}_amb", "purple", 0.25,
-             rf"$\xi_{{{xi_label}}}^{{\mathrm{{amb}}}}$")
+            (
+                f"{xi_type}_B",
+                "r",
+                1.0,
+                rf"$\xi_{{{xi_label}}}^{{B}}, {{\rm PTE}}="
+                rf"{np.round(pte_val, 4)}$",
+            ),
+            (
+                f"{xi_type}_amb",
+                "purple",
+                0.25,
+                rf"$\xi_{{{xi_label}}}^{{\mathrm{{amb}}}}$",
+            ),
         ]
 
         for key, color, alpha, label in plot_data:
             axs[ax_idx].errorbar(
-                gg.meanr, gg.meanr * results[key] / scale_factor,
+                gg.meanr,
+                gg.meanr * results[key] / scale_factor,
                 yerr=gg.meanr * results[f"std_{key}"] / scale_factor,
-                color=color, ls="", marker=".", alpha=alpha, capsize=3, label=label
+                color=color,
+                ls="",
+                marker=".",
+                alpha=alpha,
+                capsize=3,
+                label=label,
             )
 
         axs[ax_idx].set_ylabel(r"$\theta\xi\times10^{4}$")
@@ -679,18 +728,24 @@ def plot_pure_eb_correlations(
             # Show excluded regions based on bin edges used in PTE calculation
             # Lower exclusion: bins 0 to start_bin-1 are excluded
             if start_bin > 0:
-                lower_exclusion_edge = gg.right_edges[start_bin-1]
+                lower_exclusion_edge = gg.right_edges[start_bin - 1]
                 axs[ax_idx].axvspan(
-                    xlim[0], lower_exclusion_edge, alpha=0.2, color='gray',
-                    label='Scale cuts' if ax_idx == 0 else None
+                    xlim[0],
+                    lower_exclusion_edge,
+                    alpha=0.2,
+                    color="gray",
+                    label="Scale cuts" if ax_idx == 0 else None,
                 )
 
             # Upper exclusion: bins stop_bin to end are excluded
             if stop_bin < len(gg.left_edges):
                 upper_exclusion_edge = gg.left_edges[stop_bin]
                 axs[ax_idx].axvspan(
-                    upper_exclusion_edge, xlim[1], alpha=0.2, color='gray',
-                    label='Scale cuts' if ax_idx == 0 and start_bin == 0 else None
+                    upper_exclusion_edge,
+                    xlim[1],
+                    alpha=0.2,
+                    color="gray",
+                    label="Scale cuts" if ax_idx == 0 and start_bin == 0 else None,
                 )
 
             # Restore original axis limits
@@ -698,7 +753,8 @@ def plot_pure_eb_correlations(
 
     plt.suptitle(
         f"{version}: Pure Correlation Functions, Combined PTE = {combined_pte:.4f}",
-        fontsize=23, y=0.95
+        fontsize=23,
+        y=0.95,
     )
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
@@ -734,7 +790,7 @@ def plot_cosebis_scale_cut_heatmap(
 
     snr_matrix = np.full((nbins, nbins), np.nan)
     pte_matrix = np.full((nbins, nbins), np.nan)
-    for (row, column, snr, pte) in zip(rows, columns, snrs, ptes):
+    for row, column, snr, pte in zip(rows, columns, snrs, ptes):
         snr_matrix[row, column] = snr
         pte_matrix[row, column] = pte
 
@@ -745,47 +801,59 @@ def plot_cosebis_scale_cut_heatmap(
             result = cosebis_results.get(scale_cut)
 
             if result is not None:
-                snr_matrix[i, j] = np.sqrt(result['chi2_E'])
-                pte_matrix[i, j] = result['pte_B']
+                snr_matrix[i, j] = np.sqrt(result["chi2_E"])
+                pte_matrix[i, j] = result["pte_B"]
 
     # Create 1x2 subplot layout
     fig, axs = plt.subplots(1, 2, figsize=(15, 7))
 
     # Set up colormaps
     mako_cmap, vlag_cmap = [
-        sns.color_palette(name, as_cmap=True).copy()
-        for name in ["mako", "vlag"]
+        sns.color_palette(name, as_cmap=True).copy() for name in ["mako", "vlag"]
     ]
     for cmap in (mako_cmap, vlag_cmap):
-        cmap.set_bad(color='lightgray')
+        cmap.set_bad(color="lightgray")
 
     # Left plot: E-mode SNR
     snr_max = np.nanmax(snr_matrix) if not np.all(np.isnan(snr_matrix)) else 1
     snr_plot_data = snr_matrix.T
     im1 = axs[0].imshow(
-        snr_plot_data, origin='lower', aspect='auto', cmap=mako_cmap,
-        vmin=0, vmax=snr_max, extent=[0, nbins, 0, nbins]
+        snr_plot_data,
+        origin="lower",
+        aspect="auto",
+        cmap=mako_cmap,
+        vmin=0,
+        vmax=snr_max,
+        extent=[0, nbins, 0, nbins],
     )
-    axs[0].set_title(r'E-mode SNR: $\sqrt{\chi^2_E}$')
-    axs[0].set_xlabel('Lower scale cut')
-    axs[0].set_ylabel('Upper scale cut')
+    axs[0].set_title(r"E-mode SNR: $\sqrt{\chi^2_E}$")
+    axs[0].set_xlabel("Lower scale cut")
+    axs[0].set_ylabel("Upper scale cut")
 
     # Right plot: B-mode PTE with contours
     pte_plot_data = pte_matrix.T
     im2 = axs[1].imshow(
-        pte_plot_data, origin='lower', aspect='auto', cmap=vlag_cmap,
-        vmin=0, vmax=1, extent=[0, nbins, 0, nbins]
+        pte_plot_data,
+        origin="lower",
+        aspect="auto",
+        cmap=vlag_cmap,
+        vmin=0,
+        vmax=1,
+        extent=[0, nbins, 0, nbins],
     )
 
     # Add contours to PTE plot
     cs = axs[1].contour(
-        pte_plot_data, levels=[0.05, 0.95], colors='black', linewidths=1,
-        extent=[0, nbins, 0, nbins]
+        pte_plot_data,
+        levels=[0.05, 0.95],
+        colors="black",
+        linewidths=1,
+        extent=[0, nbins, 0, nbins],
     )
     axs[1].clabel(cs, inline=True, fontsize=8)
 
-    axs[1].set_title('B-mode PTE')
-    axs[1].set_xlabel('Lower scale cut')
+    axs[1].set_title("B-mode PTE")
+    axs[1].set_xlabel("Lower scale cut")
 
     # Add fiducial scale cut cross-hatching if provided
     if fiducial_scale_cut is not None:
@@ -800,31 +868,40 @@ def plot_cosebis_scale_cut_heatmap(
             rect_height = 1
 
             for ax_idx, ax in enumerate(axs):
-                ax.add_patch(plt.Rectangle(
-                    (rect_x, rect_y), rect_width, rect_height,
-                    fill=False, edgecolor='black', linewidth=2,
-                    hatch='///', alpha=0.8,
-                    label='Fiducial scale cut' if ax_idx == 0 else None
-                ))
+                ax.add_patch(
+                    plt.Rectangle(
+                        (rect_x, rect_y),
+                        rect_width,
+                        rect_height,
+                        fill=False,
+                        edgecolor="black",
+                        linewidth=2,
+                        hatch="///",
+                        alpha=0.8,
+                        label="Fiducial scale cut" if ax_idx == 0 else None,
+                    )
+                )
 
     # Set angular scale ticks
     tick_indices = np.arange(0, nbins)
-    x_tick_labels = [f'{gg.left_edges[i]:.1f}' for i in tick_indices
-                     if i < len(gg.left_edges)]
-    y_tick_labels = [f'{gg.right_edges[i]:.1f}' for i in tick_indices
-                     if i < len(gg.right_edges)]
+    x_tick_labels = [
+        f"{gg.left_edges[i]:.1f}" for i in tick_indices if i < len(gg.left_edges)
+    ]
+    y_tick_labels = [
+        f"{gg.right_edges[i]:.1f}" for i in tick_indices if i < len(gg.right_edges)
+    ]
     x_tick_positions = tick_indices + 0.5
     y_tick_positions = tick_indices + 0.5
 
     for ax in axs:
-        ax.set_xticks(x_tick_positions[:len(x_tick_labels)])
+        ax.set_xticks(x_tick_positions[: len(x_tick_labels)])
         ax.set_xticklabels(x_tick_labels, rotation=45)
-        ax.set_yticks(y_tick_positions[:len(y_tick_labels)])
+        ax.set_yticks(y_tick_positions[: len(y_tick_labels)])
         ax.set_yticklabels(y_tick_labels)
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
 
     # Add colorbars to both plots
-    colorbar_data = [(im1, 'SNR'), (im2, 'PTE')]
+    colorbar_data = [(im1, "SNR"), (im2, "PTE")]
     for i, (im, label) in enumerate(colorbar_data):
         divider = make_axes_locatable(axs[i])
         cax = divider.append_axes("right", size="5%", pad=0.1)
@@ -833,16 +910,19 @@ def plot_cosebis_scale_cut_heatmap(
 
     # Add legend if fiducial scale cut shown
     if fiducial_scale_cut is not None:
-        axs[0].legend(loc='lower right', fontsize=8)
+        axs[0].legend(loc="lower right", fontsize=8)
 
-    plt.suptitle(f'{version}: COSEBIs Scale Cut Analysis', fontsize=23, y=0.95)
+    plt.suptitle(f"{version}: COSEBIs Scale Cut Analysis", fontsize=23, y=0.95)
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
 
 def plot_pte_2d_heatmaps(
-    results, version, output_path,
-    fiducial_xip_scale_cut=None, fiducial_xim_scale_cut=None
+    results,
+    version,
+    output_path,
+    fiducial_xip_scale_cut=None,
+    fiducial_xim_scale_cut=None,
 ):
     """
     Plot 2D PTE matrix heatmaps for B-mode analysis.
@@ -870,37 +950,53 @@ def plot_pte_2d_heatmaps(
 
     # Set up colormap
     vlag_cmap = sns.color_palette("vlag", as_cmap=True).copy()
-    vlag_cmap.set_bad(color='lightgray')
+    vlag_cmap.set_bad(color="lightgray")
     contour_levels = [0.05, 0.95]
 
     # Left plot: xi+ PTE
     xip_plot_data = pte_xip_B.T
     axs[0].imshow(
-        xip_plot_data, origin='lower', aspect='auto', cmap=vlag_cmap,
-        vmin=0, vmax=1, extent=[0, nbins, 0, nbins]
+        xip_plot_data,
+        origin="lower",
+        aspect="auto",
+        cmap=vlag_cmap,
+        vmin=0,
+        vmax=1,
+        extent=[0, nbins, 0, nbins],
     )
     cs1 = axs[0].contour(
-        xip_plot_data, levels=contour_levels, colors='black', linewidths=1,
-        extent=[0, nbins, 0, nbins]
+        xip_plot_data,
+        levels=contour_levels,
+        colors="black",
+        linewidths=1,
+        extent=[0, nbins, 0, nbins],
     )
     axs[0].clabel(cs1, inline=True, fontsize=8)
-    axs[0].set_title(r'$\xi_+^B$ PTE')
-    axs[0].set_xlabel('Lower scale cut')
-    axs[0].set_ylabel('Upper scale cut')
+    axs[0].set_title(r"$\xi_+^B$ PTE")
+    axs[0].set_xlabel("Lower scale cut")
+    axs[0].set_ylabel("Upper scale cut")
 
     # Right plot: xi- PTE
     xim_plot_data = pte_xim_B.T
     im2 = axs[1].imshow(
-        xim_plot_data, origin='lower', aspect='auto', cmap=vlag_cmap,
-        vmin=0, vmax=1, extent=[0, nbins, 0, nbins]
+        xim_plot_data,
+        origin="lower",
+        aspect="auto",
+        cmap=vlag_cmap,
+        vmin=0,
+        vmax=1,
+        extent=[0, nbins, 0, nbins],
     )
     cs2 = axs[1].contour(
-        xim_plot_data, levels=contour_levels, colors='black', linewidths=1,
-        extent=[0, nbins, 0, nbins]
+        xim_plot_data,
+        levels=contour_levels,
+        colors="black",
+        linewidths=1,
+        extent=[0, nbins, 0, nbins],
     )
     axs[1].clabel(cs2, inline=True, fontsize=8)
-    axs[1].set_title(r'$\xi_-^B$ PTE')
-    axs[1].set_xlabel('Lower scale cut')
+    axs[1].set_title(r"$\xi_-^B$ PTE")
+    axs[1].set_xlabel("Lower scale cut")
 
     # Add fiducial scale cuts individually
     fiducial_scale_cuts = [fiducial_xip_scale_cut, fiducial_xim_scale_cut]
@@ -915,40 +1011,49 @@ def plot_pte_2d_heatmaps(
                 rect_width = 1
                 rect_height = 1
 
-                axs[ax_idx].add_patch(plt.Rectangle(
-                    (rect_x, rect_y), rect_width, rect_height,
-                    fill=False, edgecolor='black', linewidth=2,
-                    hatch='///', alpha=0.8,
-                    label='Fiducial scale cut' if ax_idx == 0 else None
-                ))
+                axs[ax_idx].add_patch(
+                    plt.Rectangle(
+                        (rect_x, rect_y),
+                        rect_width,
+                        rect_height,
+                        fill=False,
+                        edgecolor="black",
+                        linewidth=2,
+                        hatch="///",
+                        alpha=0.8,
+                        label="Fiducial scale cut" if ax_idx == 0 else None,
+                    )
+                )
 
     # Set angular scale ticks
     tick_indices = np.arange(0, nbins)
-    x_tick_labels = [f'{gg.left_edges[i]:.1f}' for i in tick_indices
-                     if i < len(gg.left_edges)]
-    y_tick_labels = [f'{gg.right_edges[i]:.1f}' for i in tick_indices
-                     if i < len(gg.right_edges)]
+    x_tick_labels = [
+        f"{gg.left_edges[i]:.1f}" for i in tick_indices if i < len(gg.left_edges)
+    ]
+    y_tick_labels = [
+        f"{gg.right_edges[i]:.1f}" for i in tick_indices if i < len(gg.right_edges)
+    ]
     x_tick_positions = tick_indices + 0.5
     y_tick_positions = tick_indices + 0.5
 
     for ax in axs:
-        ax.set_xticks(x_tick_positions[:len(x_tick_labels)])
+        ax.set_xticks(x_tick_positions[: len(x_tick_labels)])
         ax.set_xticklabels(x_tick_labels, rotation=45)
-        ax.set_yticks(y_tick_positions[:len(y_tick_labels)])
+        ax.set_yticks(y_tick_positions[: len(y_tick_labels)])
         ax.set_yticklabels(y_tick_labels)
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
 
     # Add colorbar
     divider = make_axes_locatable(axs[1])
     cax = divider.append_axes("right", size="5%", pad=0.1)
     cbar = plt.colorbar(im2, cax=cax)
-    cbar.set_label('PTE', rotation=270, labelpad=15)
+    cbar.set_label("PTE", rotation=270, labelpad=15)
 
     # Add legend if any fiducial scale cuts shown
     if any(cut is not None for cut in fiducial_scale_cuts):
-        axs[0].legend(loc='lower right', fontsize=8)
+        axs[0].legend(loc="lower right", fontsize=8)
 
-    plt.suptitle(f'{version}: PTEs as a Function of Scale Cut', fontsize=23, y=0.95)
+    plt.suptitle(f"{version}: PTEs as a Function of Scale Cut", fontsize=23, y=0.95)
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
@@ -977,8 +1082,12 @@ def plot_eb_covariance_matrix(cov_matrix, var_method, output_path, version):
     # Configure tick labels for E/B modes
     tick_positions = np.arange(nbins / 2, nbins * 6, nbins)
     tick_labels = [
-        r"$\xi_+^{E}$", r"$\xi_-^{E}$", r"$\xi_+^{B}$",
-        r"$\xi_-^{B}$", r"$\xi_+^{\rm amb}$", r"$\xi_-^{\rm amb}$"
+        r"$\xi_+^{E}$",
+        r"$\xi_-^{E}$",
+        r"$\xi_+^{B}$",
+        r"$\xi_-^{B}$",
+        r"$\xi_+^{\rm amb}$",
+        r"$\xi_-^{\rm amb}$",
     ]
 
     for ticks in (plt.xticks, plt.yticks):
@@ -993,12 +1102,8 @@ def plot_eb_covariance_matrix(cov_matrix, var_method, output_path, version):
     ax.set_title(f"{version}: {var_method} correlation matrix")
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
-def plot_cosebis_modes(
-    results,
-    version,
-    output_path,
-    fiducial_scale_cut=None
-):
+
+def plot_cosebis_modes(results, version, output_path, fiducial_scale_cut=None):
     """
     Plot COSEBIs E/B mode correlation functions.
 
@@ -1044,8 +1149,8 @@ def plot_cosebis_modes(
 
     # Add scale cut information to title - use actual scale cut from results
     scale_info = ""
-    if 'scale_cut' in results:
-        actual_scale_cut = results['scale_cut']
+    if "scale_cut" in results:
+        actual_scale_cut = results["scale_cut"]
         scale_info = (
             f", scale cut: ({actual_scale_cut[0]:.1f}, {actual_scale_cut[1]:.1f})"
         )
@@ -1100,7 +1205,6 @@ def _cosebis_result_to_dict(r, suffix=""):
         f"chi2_B{suffix}": np.array(r["chi2_B"]),
         f"pte_B{suffix}": np.array(r["pte_B"]),
     }
-
 
 
 def save_cosebis_results(results, output_path, fiducial_scale_cut=None):

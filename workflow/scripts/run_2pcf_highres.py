@@ -45,8 +45,7 @@ except ImportError:
 # Configuration
 # ---------------------------------------------------------------------------
 CAT_PATH = (
-    "/n17data/UNIONS/WL/v1.4.x/v1.4.6.3/"
-    "unions_shapepipe_cut_struc_2024_v1.4.6.3.fits"
+    "/n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits"
 )
 VERSION = "SP_v1.4.6.3_leak_corr"
 
@@ -67,10 +66,7 @@ NPATCH = 50
 NUM_THREADS = int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 24))
 
 # Output
-OUTPUT_DIR = (
-    "/n17data/cdaley/unions/pure_eb/"
-    "code/sp_validation/cosmo_val/output"
-)
+OUTPUT_DIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output"
 PATCH_FILE = os.path.join(
     OUTPUT_DIR,
     f"patch_centers_{VERSION}_{NPATCH}_{TMIN}_{TMAX}.dat",
@@ -140,8 +136,7 @@ def write_xi_fits(gg, prefix, xi_data):
     """Write ξ+ or ξ- to FITS matching CosmologyValidation format."""
     out_path = os.path.join(
         OUTPUT_DIR,
-        f"{prefix}_{VERSION}_minsep={TMIN}_maxsep={TMAX}"
-        f"_nbins={NBINS}_npatch=1.fits",
+        f"{prefix}_{VERSION}_minsep={TMIN}_maxsep={TMAX}_nbins={NBINS}_npatch=1.fits",
     )
     n = len(xi_data)
     cols = [
@@ -225,8 +220,7 @@ def main():
     if rank == 0:
         out_txt = os.path.join(
             OUTPUT_DIR,
-            f"{VERSION}_xi_minsep={TMIN}_maxsep={TMAX}"
-            f"_nbins={NBINS}_npatch=1.txt",
+            f"{VERSION}_xi_minsep={TMIN}_maxsep={TMAX}_nbins={NBINS}_npatch=1.txt",
         )
         gg.write(out_txt, write_patch_results=True, write_cov=True)
         log(f"  Wrote {out_txt}")
@@ -235,7 +229,7 @@ def main():
         write_xi_fits(gg, "xi_minus", gg.xim)
 
         elapsed = time.time() - t0
-        log(f"Done! Total time: {elapsed/3600:.1f}h ({elapsed:.0f}s)")
+        log(f"Done! Total time: {elapsed / 3600:.1f}h ({elapsed:.0f}s)")
 
 
 if __name__ == "__main__":

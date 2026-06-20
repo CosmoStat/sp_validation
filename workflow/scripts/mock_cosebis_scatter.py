@@ -25,6 +25,13 @@ xim_cut = gg.xim[inds].astype(float)
 cosebis_obj = COSEBIS(np.min(theta_cut), np.max(theta_cut), nmodes, precision=120)
 En, Bn = cosebis_obj.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
 
-np.savez(out_path, En=En, Bn=Bn, theta_min_actual=np.min(theta_cut),
-         theta_max_actual=np.max(theta_cut))
-print(f"Saved {out_path}: {nmodes} modes, θ=[{np.min(theta_cut):.2f}, {np.max(theta_cut):.2f}]")
+np.savez(
+    out_path,
+    En=En,
+    Bn=Bn,
+    theta_min_actual=np.min(theta_cut),
+    theta_max_actual=np.max(theta_cut),
+)
+print(
+    f"Saved {out_path}: {nmodes} modes, θ=[{np.min(theta_cut):.2f}, {np.max(theta_cut):.2f}]"
+)

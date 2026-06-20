@@ -61,7 +61,9 @@ masks_to_apply = [
     "NGMIX_ELL_PSFo_NOSHEAR_1",
 ]
 
-masks, labels = sp_joint.get_masks_from_config(config, dat, dat, masks_to_apply=masks_to_apply, verbose=obj._params["verbose"])
+masks, labels = sp_joint.get_masks_from_config(
+    config, dat, dat, masks_to_apply=masks_to_apply, verbose=obj._params["verbose"]
+)
 
 mask_combined = sp_joint.Mask.from_list(
     masks,
@@ -74,9 +76,7 @@ mask_combined = sp_joint.Mask.from_list(
 
 num_obj = dat.shape[0]
 
-sp_joint.Mask.print_strings(
-    "flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}"
-)
+sp_joint.Mask.print_strings("flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}")
 for my_mask in masks:
     my_mask.print_stats(num_obj)
 
@@ -84,7 +84,6 @@ mask_combined.print_stats(num_obj)
 # -
 
 if obj._params["sky_regions"]:
-
     # MKDBEUG TODO: zooms as list in config
     zoom_ra = [200, 205]
     zoom_dec = [55, 60]
@@ -210,9 +209,7 @@ for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
 
 # +
-output_shape_cat_path = obj._params["input_path"].replace(
-    "comprehensive", "cut"
-)
+output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
 output_shape_cat_path = output_shape_cat_path.replace("hdf5", "fits")
 
 cat.write_shape_catalog(

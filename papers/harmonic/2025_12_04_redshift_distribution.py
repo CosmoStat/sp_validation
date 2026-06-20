@@ -11,10 +11,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-plt.style.use(
-    './/matplotlib_config/paper.mplstyle'
-)
-plt.rcParams['text.usetex'] = True
+plt.style.use(".//matplotlib_config/paper.mplstyle")
+plt.rcParams["text.usetex"] = True
 
 sns.set_palette("husl")
 
@@ -23,7 +21,9 @@ if ipython is not None:
 
 # %%
 blind = "B"
-path_redshift_distribution = f"/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_{blind}.txt"
+path_redshift_distribution = (
+    f"/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_{blind}.txt"
+)
 redshift_distribution = np.loadtxt(path_redshift_distribution)
 
 
@@ -43,10 +43,10 @@ ax.set_xlim(0, 3)
 ax.set_ylim(0, None)
 ax.set_xlabel(r"$z$", fontsize=14)
 ax.set_ylabel(r"$n(z)$", fontsize=14)
-ax.tick_params(axis='both', which='major', labelsize=12)
+ax.tick_params(axis="both", which="major", labelsize=12)
 
 plt.savefig("./plots/redshift_distribution_SP_v1.4.6.png", dpi=300)
-#Save PDF
+# Save PDF
 plt.savefig("./plots/redshift_distribution_SP_v1.4.6.pdf")
 plt.show()
 # %%

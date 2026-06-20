@@ -54,9 +54,10 @@ def _repo_root() -> Path:
 
 
 def _on_candide() -> bool:
-    return socket.gethostname().split(".")[0] == "candide" or Path(
-        "/automnt/n17data/cdaley"
-    ).exists()
+    return (
+        socket.gethostname().split(".")[0] == "candide"
+        or Path("/automnt/n17data/cdaley").exists()
+    )
 
 
 def _pathish_key(key: str) -> bool:

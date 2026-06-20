@@ -27,6 +27,7 @@ from plotting_utils import (
     get_version_alpha,
     version_label,
 )
+
 # Import to register SquareRootScale
 import plotting_utils  # noqa: F401
 
@@ -34,11 +35,10 @@ import plotting_utils  # noqa: F401
 plt.style.use(PAPER_MPLSTYLE)
 
 
-
-
 def main():
     # Read config
     import yaml
+
     with open(snakemake.input["config"]) as f:
         config = yaml.safe_load(f)
 
@@ -55,7 +55,8 @@ def main():
 
     # Which version gets the fiducial reference line in boxes
     fiducial_for_comparison = getattr(
-        snakemake.params, "fiducial_for_comparison",
+        snakemake.params,
+        "fiducial_for_comparison",
         plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"]),
     )
     box_style = plotting_config.get("version_box", {})
@@ -118,34 +119,40 @@ def main():
         chi2_bb_cut, pte_bb_cut, dof_bb_cut = compute_chi2_pte(cl_bb_cut, cov_bb_cut)
         chi2_eb_cut, pte_eb_cut, dof_eb_cut = compute_chi2_pte(cl_eb_cut, cov_eb_cut)
 
-        datasets.append({
-            "version": version,
-            "label": version_label(version, version_labels),
-            "color": color,
-            "marker": marker,
-            "fillstyle": fillstyle,
-            "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
-            "ell": ell,
-            "cl_bb": cl_bb,
-            "cl_eb": cl_eb,
-            "sigma_bb": sigma_bb,
-            "sigma_eb": sigma_eb,
-            "pte_bb": pte_bb,
-            "chi2_bb": chi2_bb,
-            "dof_bb": dof_bb,
-            "pte_eb": pte_eb,
-            "chi2_eb": chi2_eb,
-            "dof_eb": dof_eb,
-            "pte_bb_cut": pte_bb_cut,
-            "chi2_bb_cut": chi2_bb_cut,
-            "dof_bb_cut": dof_bb_cut,
-            "pte_eb_cut": pte_eb_cut,
-            "chi2_eb_cut": chi2_eb_cut,
-            "dof_eb_cut": dof_eb_cut,
-        })
+        datasets.append(
+            {
+                "version": version,
+                "label": version_label(version, version_labels),
+                "color": color,
+                "marker": marker,
+                "fillstyle": fillstyle,
+                "alpha": get_version_alpha(
+                    version, fiducial_for_comparison, plotting_config
+                ),
+                "ell": ell,
+                "cl_bb": cl_bb,
+                "cl_eb": cl_eb,
+                "sigma_bb": sigma_bb,
+                "sigma_eb": sigma_eb,
+                "pte_bb": pte_bb,
+                "chi2_bb": chi2_bb,
+                "dof_bb": dof_bb,
+                "pte_eb": pte_eb,
+                "chi2_eb": chi2_eb,
+                "dof_eb": dof_eb,
+                "pte_bb_cut": pte_bb_cut,
+                "chi2_bb_cut": chi2_bb_cut,
+                "dof_bb_cut": dof_bb_cut,
+                "pte_eb_cut": pte_eb_cut,
+                "chi2_eb_cut": chi2_eb_cut,
+                "dof_eb_cut": dof_eb_cut,
+            }
+        )
 
     # Two-panel figure: BB (top) and EB (bottom)
-    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.45), sharex=True)
+    fig, (ax_bb, ax_eb) = plt.subplots(
+        2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.45), sharex=True
+    )
 
     ell_ref = datasets[0]["ell"]
     ell_widths = np.diff(ell_ref)
@@ -161,14 +168,26 @@ def main():
 
     # Draw version spread boxes (before data points)
     draw_normalized_boxes_ell_scale(
-        ax_bb, ell_ref, ell_widths, datasets,
-        y_norm_key="cl_bb_normalized", fiducial_idx=fiducial_idx,
-        jitter_fraction=jitter_fraction, n_versions=len(datasets), box_style=box_style
+        ax_bb,
+        ell_ref,
+        ell_widths,
+        datasets,
+        y_norm_key="cl_bb_normalized",
+        fiducial_idx=fiducial_idx,
+        jitter_fraction=jitter_fraction,
+        n_versions=len(datasets),
+        box_style=box_style,
     )
     draw_normalized_boxes_ell_scale(
-        ax_eb, ell_ref, ell_widths, datasets,
-        y_norm_key="cl_eb_normalized", fiducial_idx=fiducial_idx,
-        jitter_fraction=jitter_fraction, n_versions=len(datasets), box_style=box_style
+        ax_eb,
+        ell_ref,
+        ell_widths,
+        datasets,
+        y_norm_key="cl_eb_normalized",
+        fiducial_idx=fiducial_idx,
+        jitter_fraction=jitter_fraction,
+        n_versions=len(datasets),
+        box_style=box_style,
     )
 
     legend_handles = []
@@ -189,17 +208,27 @@ def main():
         cl_eb_normalized = data["cl_eb_normalized"]
 
         line_bb = ax_bb.errorbar(
-            ell_jittered, cl_bb_normalized, yerr=np.ones_like(cl_bb_normalized),
-            fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=mfc, markeredgecolor=color,
+            ell_jittered,
+            cl_bb_normalized,
+            yerr=np.ones_like(cl_bb_normalized),
+            fmt=marker,
+            color=color,
+            alpha=alpha,
+            markerfacecolor=mfc,
+            markeredgecolor=color,
             **ERRORBAR_DEFAULTS,
             zorder=2,
         )
 
         ax_eb.errorbar(
-            ell_jittered, cl_eb_normalized, yerr=np.ones_like(cl_eb_normalized),
-            fmt=marker, color=color, alpha=alpha,
-            markerfacecolor=mfc, markeredgecolor=color,
+            ell_jittered,
+            cl_eb_normalized,
+            yerr=np.ones_like(cl_eb_normalized),
+            fmt=marker,
+            color=color,
+            alpha=alpha,
+            markerfacecolor=mfc,
+            markeredgecolor=color,
             **ERRORBAR_DEFAULTS,
             zorder=2,
         )
@@ -214,7 +243,10 @@ def main():
     major_ticks = np.array([100, 400, 900, 1600])
     minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 
-    for ax, ylabel in [(ax_bb, r"$C_\ell^{BB} / \sigma$"), (ax_eb, r"$C_\ell^{EB} / \sigma$")]:
+    for ax, ylabel in [
+        (ax_bb, r"$C_\ell^{BB} / \sigma$"),
+        (ax_eb, r"$C_\ell^{EB} / \sigma$"),
+    ]:
         ax.axhline(0, color="black", linewidth=0.8, alpha=0.6)
         ax.set_xscale("squareroot")
         ax.set_xlim(ell_min, ell_max)

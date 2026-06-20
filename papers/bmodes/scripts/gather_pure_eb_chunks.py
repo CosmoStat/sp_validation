@@ -62,9 +62,14 @@ def main():
 
     # Compute data vectors from correlation functions
     eb_results = get_pure_EB_modes(
-        theta=gg["meanr"], xip=gg["xip"], xim=gg["xim"],
-        theta_int=gg_int["meanr"], xip_int=gg_int["xip"], xim_int=gg_int["xim"],
-        tmin=numeric_params["min_sep"], tmax=numeric_params["max_sep"]
+        theta=gg["meanr"],
+        xip=gg["xip"],
+        xim=gg["xim"],
+        theta_int=gg_int["meanr"],
+        xip_int=gg_int["xip"],
+        xim_int=gg_int["xim"],
+        tmin=numeric_params["min_sep"],
+        tmax=numeric_params["max_sep"],
     )
     xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = eb_results
 

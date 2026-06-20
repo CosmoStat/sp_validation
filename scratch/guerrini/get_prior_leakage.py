@@ -8,11 +8,11 @@ preserved as-is.
 import numpy as np
 
 # %%
-base_dir = 'output/rho_tau_stats/'
-version = 'SP_v1.4.5_leak_corr'
+base_dir = "output/rho_tau_stats/"
+version = "SP_v1.4.5_leak_corr"
 
 # %%
-samples_leakage = np.load(f'{base_dir}/samples_{version}.npy')
+samples_leakage = np.load(f"{base_dir}/samples_{version}.npy")
 
 # %%
 mean_samples = np.mean(samples_leakage, axis=0)
@@ -21,11 +21,11 @@ cov_samples = np.cov(samples_leakage.T)
 
 # %%
 prior_psf = {
-    'bin1': {
-        'mean': mean_samples,
-        'cov': cov_samples,
+    "bin1": {
+        "mean": mean_samples,
+        "cov": cov_samples,
     }
 }
 
 # %%
-np.save(f'{base_dir}/prior_psf_sys_{version}.npy', prior_psf)
+np.save(f"{base_dir}/prior_psf_sys_{version}.npy", prior_psf)

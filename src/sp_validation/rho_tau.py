@@ -161,11 +161,7 @@ def get_rho_tau(
     outdir_path = Path(outdir)
     rho_path = outdir_path / f"rho_stats_{base}.fits"
     catalog_id = f"{base}_jk" if cov_rho else base
-    cov_rho_path = (
-        outdir_path / f"cov_rho_{catalog_id}.npy"
-        if cov_rho
-        else None
-    )
+    cov_rho_path = outdir_path / f"cov_rho_{catalog_id}.npy" if cov_rho else None
 
     rho_stat_handler = RhoStat(
         output=outdir, treecorr_config=treecorr_config, verbose=True
@@ -218,7 +214,6 @@ def get_rho_tau(
         print(f"Skipping tau statistics computation, file {tau_path} already exists.")
         tau_stat_handler.load_tau_stats(tau_path.name)
     else:
-
         tau_stat_handler.catalogs.set_params(params, outdir)
 
         mask = version != "DES"
@@ -283,9 +278,7 @@ def get_theory_cov(
     target_cov = Path(outdir) / f"cov_tau_{base}_th.npy"
 
     if target_cov.exists():
-        print(
-            f"Skipping covariance computation, file {target_cov} already exists."
-        )
+        print(f"Skipping covariance computation, file {target_cov} already exists.")
         return
 
     print("Computing the covariance matrix for the version: ", version)
@@ -333,9 +326,7 @@ def get_jackknife_cov(
     tau_cov_path = Path(outdir) / f"cov_tau_{base}_jk.npy"
 
     if tau_cov_path.exists():
-        print(
-            f"Skipping covariance computation, file {tau_cov_path} already exists."
-        )
+        print(f"Skipping covariance computation, file {tau_cov_path} already exists.")
         rho_stat_handler = RhoStat(
             output=outdir, treecorr_config=treecorr_config, verbose=False
         )
@@ -375,13 +366,10 @@ def get_jackknife_cov(
     tau_stat_handler.catalogs.set_params(params, outdir)
 
     for i in range(ncov):
-
         tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
         rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
         if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
-            print(
-                f"Computing rho-statistics for {version} (patch {i+1}/{ncov})"
-            )
+            print(f"Computing rho-statistics for {version} (patch {i + 1}/{ncov})")
 
             if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
                 # Build catalogues
@@ -407,9 +395,7 @@ def get_jackknife_cov(
                 )
 
             else:
-                print(
-                    f"Computing the patch centers for patch {i+1}/{ncov}"
-                )
+                print(f"Computing the patch centers for patch {i + 1}/{ncov}")
 
                 npatch = rho_stat_handler.catalogs._params["patch_number"]
                 field = rho_stat_handler.catalogs.catalogs_dict[
@@ -417,7 +403,7 @@ def get_jackknife_cov(
                 ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
                 patch, centers = field.run_kmeans(npatch)
 
-                #Update the patch centers of the catalogs
+                # Update the patch centers of the catalogs
                 for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
                     cat._centers = centers
                     field = cat.getNField(
@@ -443,17 +429,17 @@ def get_jackknife_cov(
                 var_method="jackknife",
             )
 
-            #Update the keys in the dictionaries
+            # Update the keys in the dictionaries
             rho_dict = rho_stat_handler.catalogs.catalogs_dict
             tau_dict = tau_stat_handler.catalogs.catalogs_dict
-            rho_dict[f"psf_{version}{i+1}"] = rho_dict.pop(f"psf_{version}{i}")
-            rho_dict[f"psf_error_{version}{i+1}"] = rho_dict.pop(
+            rho_dict[f"psf_{version}{i + 1}"] = rho_dict.pop(f"psf_{version}{i}")
+            rho_dict[f"psf_error_{version}{i + 1}"] = rho_dict.pop(
                 f"psf_error_{version}{i}"
             )
-            rho_dict[f"psf_size_error_{version}{i+1}"] = rho_dict.pop(
+            rho_dict[f"psf_size_error_{version}{i + 1}"] = rho_dict.pop(
                 f"psf_size_error_{version}{i}"
             )
-            tau_dict[f"gal_{version}{i+1}"] = tau_dict.pop(f"gal_{version}{i}")
+            tau_dict[f"gal_{version}{i + 1}"] = tau_dict.pop(f"gal_{version}{i}")
 
     cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{version}0.npy"))
     cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{version}0.npy"))

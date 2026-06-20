@@ -17,7 +17,12 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 import numpy as np
 
-from plotting_utils import PAPER_MPLSTYLE, format_pte_colorbar, make_pte_colormap, make_pte_norm
+from plotting_utils import (
+    PAPER_MPLSTYLE,
+    format_pte_colorbar,
+    make_pte_colormap,
+    make_pte_norm,
+)
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -176,8 +181,16 @@ def _load_version_pte_data(pure_eb_pte_files, cosebis_pte_files, version, config
     }
 
 
-def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
-                   show_xticklabels=True, show_yticklabels=False):
+def plot_pte_panel(
+    ax,
+    pte_matrix,
+    theta_grid,
+    fid_start,
+    fid_stop,
+    title,
+    show_xticklabels=True,
+    show_yticklabels=False,
+):
     """Plot a single PTE heatmap panel.
 
     Parameters
@@ -220,7 +233,8 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     ax.add_patch(
         Rectangle(
             (fid_start, fid_stop),
-            1, 1,
+            1,
+            1,
             fill=False,
             edgecolor="black",
             linewidth=1.5,
@@ -229,9 +243,16 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
 
     # Title inside plot (bottom-right of empty upper triangle)
     if title:
-        ax.text(0.95, 0.05, title, transform=ax.transAxes,
-                ha="right", va="bottom", fontsize=9,
-                bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8))
+        ax.text(
+            0.95,
+            0.05,
+            title,
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=9,
+            bbox=dict(boxstyle="round,pad=0.2", facecolor="white", alpha=0.8),
+        )
 
     # Tick positioning: x-axis at left edge of bins, y-axis at top edge
     tick_step = 2
@@ -245,7 +266,9 @@ def plot_pte_panel(ax, pte_matrix, theta_grid, fid_start, fid_stop, title,
     ax.set_yticks(tick_indices + 1)
 
     if show_xticklabels:
-        ax.set_xticklabels(x_tick_labels, rotation=45, ha="right", rotation_mode="anchor", fontsize=7)
+        ax.set_xticklabels(
+            x_tick_labels, rotation=45, ha="right", rotation_mode="anchor", fontsize=7
+        )
     else:
         ax.set_xticklabels([])
 
@@ -348,8 +371,9 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
     return ptes
 
 
-def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
-                            xip_fid, xim_fid, cosebis_fid, config):
+def create_3panel_composite(
+    version, pure_eb_pte_files, cosebis_pte_files, xip_fid, xim_fid, cosebis_fid, config
+):
     """Create a 1×3 composite figure for the fiducial version (main text).
 
     Parameters
@@ -382,11 +406,15 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
 
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
-        1, 3,
+        1,
+        3,
         width_ratios=[1, 1, 1],
-        wspace=0.03, hspace=0.03,
-        left=0.08, right=0.92,
-        bottom=0.15, top=0.90
+        wspace=0.03,
+        hspace=0.03,
+        left=0.08,
+        right=0.92,
+        bottom=0.15,
+        top=0.90,
     )
 
     # Load all PTE data for this version
@@ -417,25 +445,37 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
 
     # Plot panels with titles
     plot_pte_panel(
-        ax_xip, pte_xip_B, theta_pure_eb,
-        xip_start, xip_stop,
+        ax_xip,
+        pte_xip_B,
+        theta_pure_eb,
+        xip_start,
+        xip_stop,
         r"$\xi_+^{\mathrm{B}}$",
-        show_xticklabels=True, show_yticklabels=True
+        show_xticklabels=True,
+        show_yticklabels=True,
     )
     ax_xip.set_ylabel(r"$\theta_{\max}$ [arcmin]", labelpad=2)
 
     plot_pte_panel(
-        ax_xim, pte_xim_B, theta_pure_eb,
-        xim_start, xim_stop,
+        ax_xim,
+        pte_xim_B,
+        theta_pure_eb,
+        xim_start,
+        xim_stop,
         r"$\xi_-^{\mathrm{B}}$",
-        show_xticklabels=True, show_yticklabels=False
+        show_xticklabels=True,
+        show_yticklabels=False,
     )
 
     im_cosebis = plot_pte_panel(
-        ax_cosebis, pte_cosebis, theta_cosebis,
-        cosebis_fid_start, cosebis_fid_stop,
+        ax_cosebis,
+        pte_cosebis,
+        theta_cosebis,
+        cosebis_fid_start,
+        cosebis_fid_stop,
         r"COSEBIS $B_n$",
-        show_xticklabels=True, show_yticklabels=False
+        show_xticklabels=True,
+        show_yticklabels=False,
     )
 
     # Colorbar at exact height of rendered panels (accounts for aspect="equal")
@@ -448,26 +488,39 @@ def create_3panel_composite(version, pure_eb_pte_files, cosebis_pte_files,
     cbar.ax.tick_params(labelsize=7)
 
     # Common x-axis label
-    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]",
-             ha="center")
+    fig.text(0.50, 0.02, r"$\theta_{\min}$ [arcmin]", ha="center")
 
     # Compute statistics
     stats = {
         "xip": compute_stats(pte_xip_B, xip_start, xip_stop),
         "xim": compute_stats(pte_xim_B, xim_start, xim_stop),
-        "combined": compute_stats(pte_combined, xip_start, xip_stop) if pte_combined is not None else {"pte_at_fiducial": float("nan")},
+        "combined": compute_stats(pte_combined, xip_start, xip_stop)
+        if pte_combined is not None
+        else {"pte_at_fiducial": float("nan")},
         "cosebis": compute_stats(pte_cosebis, cosebis_fid_start, cosebis_fid_stop),
-        "cosebis_20": compute_stats(pte_cosebis_20, cosebis_fid_start, cosebis_fid_stop),
+        "cosebis_20": compute_stats(
+            pte_cosebis_20, cosebis_fid_start, cosebis_fid_stop
+        ),
     }
 
     # Extract full-range PTEs
-    full_range_ptes = extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version)
+    full_range_ptes = extract_full_range_ptes(
+        pure_eb_pte_files, cosebis_pte_files, version
+    )
 
     return fig, stats, full_range_ptes
 
 
-def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
-                            xip_fid, xim_fid, cosebis_fid, version_labels, config):
+def create_9panel_composite(
+    versions,
+    pure_eb_pte_files,
+    cosebis_pte_files,
+    xip_fid,
+    xim_fid,
+    cosebis_fid,
+    version_labels,
+    config,
+):
     """Create a Nx3 composite figure for all versions (appendix).
 
     Parameters
@@ -502,11 +555,15 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
     fig = plt.figure(figsize=(fig_width, fig_height))
     gs = fig.add_gridspec(
-        n_versions, 3,
+        n_versions,
+        3,
         width_ratios=[1, 1, 1],
-        wspace=0.03, hspace=0.04,
-        left=0.10, right=0.85,
-        bottom=0.08, top=0.94
+        wspace=0.03,
+        hspace=0.04,
+        left=0.10,
+        right=0.85,
+        bottom=0.08,
+        top=0.94,
     )
 
     all_stats = {}
@@ -543,7 +600,7 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         # Y-axis labels on each row (leftmost column only)
         # X-axis labels only on bottom row
         show_yticklabels = True
-        show_xticklabels = (row_idx == n_versions - 1)
+        show_xticklabels = row_idx == n_versions - 1
 
         # Plot titles: version label + stat name on every row's panels
         version_label = version_labels.get(version, version)
@@ -553,24 +610,36 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
 
         # Plot panels
         plot_pte_panel(
-            ax_xip, pte_xip_B, theta_pure_eb,
-            xip_start, xip_stop,
+            ax_xip,
+            pte_xip_B,
+            theta_pure_eb,
+            xip_start,
+            xip_stop,
             xip_title,
-            show_xticklabels=show_xticklabels, show_yticklabels=show_yticklabels
+            show_xticklabels=show_xticklabels,
+            show_yticklabels=show_yticklabels,
         )
 
         plot_pte_panel(
-            ax_xim, pte_xim_B, theta_pure_eb,
-            xim_start, xim_stop,
+            ax_xim,
+            pte_xim_B,
+            theta_pure_eb,
+            xim_start,
+            xim_stop,
             xim_title,
-            show_xticklabels=show_xticklabels, show_yticklabels=False
+            show_xticklabels=show_xticklabels,
+            show_yticklabels=False,
         )
 
         im_cosebis = plot_pte_panel(
-            ax_cosebis, pte_cosebis, theta_cosebis,
-            cosebis_fid_start, cosebis_fid_stop,
+            ax_cosebis,
+            pte_cosebis,
+            theta_cosebis,
+            cosebis_fid_start,
+            cosebis_fid_stop,
             cosebis_title,
-            show_xticklabels=show_xticklabels, show_yticklabels=False
+            show_xticklabels=show_xticklabels,
+            show_yticklabels=False,
         )
         cosebis_axes.append(ax_cosebis)
 
@@ -578,14 +647,20 @@ def create_9panel_composite(versions, pure_eb_pte_files, cosebis_pte_files,
         stats = {
             "xip": compute_stats(pte_xip_B, xip_start, xip_stop),
             "xim": compute_stats(pte_xim_B, xim_start, xim_stop),
-            "combined": compute_stats(pte_combined, xip_start, xip_stop) if pte_combined is not None else {"pte_at_fiducial": float("nan")},
+            "combined": compute_stats(pte_combined, xip_start, xip_stop)
+            if pte_combined is not None
+            else {"pte_at_fiducial": float("nan")},
             "cosebis": compute_stats(pte_cosebis, cosebis_fid_start, cosebis_fid_stop),
-            "cosebis_20": compute_stats(pte_cosebis_20, cosebis_fid_start, cosebis_fid_stop),
+            "cosebis_20": compute_stats(
+                pte_cosebis_20, cosebis_fid_start, cosebis_fid_stop
+            ),
         }
         all_stats[version] = stats
 
         # Extract full-range PTEs
-        full_range_ptes = extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version)
+        full_range_ptes = extract_full_range_ptes(
+            pure_eb_pte_files, cosebis_pte_files, version
+        )
         all_full_range_ptes[version] = full_range_ptes
 
     # Colorbar: use actual rendered positions after aspect="equal" constraint
@@ -672,6 +747,7 @@ def main():
 
     except Exception:
         import traceback
+
         print("  ERROR creating fiducial composite:", flush=True)
         traceback.print_exc()
         raise
@@ -711,15 +787,21 @@ def main():
 
     except Exception:
         import traceback
+
         print("  ERROR creating appendix composite:", flush=True)
         traceback.print_exc()
         raise
 
     # Compute PTEs for uncorrected versions (no figures, evidence only)
     paper_version_labels = config["plotting"]["version_labels"]
-    uncorrected_versions = [v for v in versions if v not in paper_version_labels and v != fiducial_version]
+    uncorrected_versions = [
+        v for v in versions if v not in paper_version_labels and v != fiducial_version
+    ]
     if uncorrected_versions:
-        print(f"\n--- Computing PTEs for uncorrected versions: {uncorrected_versions} ---", flush=True)
+        print(
+            f"\n--- Computing PTEs for uncorrected versions: {uncorrected_versions} ---",
+            flush=True,
+        )
         for version in uncorrected_versions:
             try:
                 matrices = _load_version_pte_data(
@@ -737,19 +819,33 @@ def main():
                 stats = {
                     "xip": compute_stats(matrices["pte_xip_B"], xip_start, xip_stop),
                     "xim": compute_stats(matrices["pte_xim_B"], xim_start, xim_stop),
-                    "combined": compute_stats(matrices["pte_combined"], xip_start, xip_stop) if matrices["pte_combined"] is not None else {"pte_at_fiducial": float("nan")},
-                    "cosebis": compute_stats(matrices["pte_cosebis"], cos_start, cos_stop),
-                    "cosebis_20": compute_stats(matrices["pte_cosebis_20"], cos_start, cos_stop),
+                    "combined": compute_stats(
+                        matrices["pte_combined"], xip_start, xip_stop
+                    )
+                    if matrices["pte_combined"] is not None
+                    else {"pte_at_fiducial": float("nan")},
+                    "cosebis": compute_stats(
+                        matrices["pte_cosebis"], cos_start, cos_stop
+                    ),
+                    "cosebis_20": compute_stats(
+                        matrices["pte_cosebis_20"], cos_start, cos_stop
+                    ),
                 }
-                full_range_ptes = extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version)
+                full_range_ptes = extract_full_range_ptes(
+                    pure_eb_pte_files, cosebis_pte_files, version
+                )
 
                 all_stats[version] = stats
                 all_full_range_ptes[version] = full_range_ptes
-                print(f"  {version}: xip_fid={stats['xip']['pte_at_fiducial']:.3f}, "
-                      f"xim_fid={stats['xim']['pte_at_fiducial']:.3f}, "
-                      f"cosebis_fid={stats['cosebis']['pte_at_fiducial']:.4f}", flush=True)
+                print(
+                    f"  {version}: xip_fid={stats['xip']['pte_at_fiducial']:.3f}, "
+                    f"xim_fid={stats['xim']['pte_at_fiducial']:.3f}, "
+                    f"cosebis_fid={stats['cosebis']['pte_at_fiducial']:.4f}",
+                    flush=True,
+                )
             except Exception:
                 import traceback
+
                 print(f"  WARNING: Could not compute PTEs for {version}:", flush=True)
                 traceback.print_exc()
 
@@ -799,8 +895,12 @@ def main():
             },
         }
 
-    evidence_data["output"]["figure_fiducial"] = Path(snakemake.output["figure_fiducial"]).name
-    evidence_data["output"]["figure_appendix"] = Path(snakemake.output["figure_appendix"]).name
+    evidence_data["output"]["figure_fiducial"] = Path(
+        snakemake.output["figure_fiducial"]
+    ).name
+    evidence_data["output"]["figure_appendix"] = Path(
+        snakemake.output["figure_appendix"]
+    ).name
 
     evidence_path = Path(snakemake.output["evidence"])
     with open(evidence_path, "w") as f:

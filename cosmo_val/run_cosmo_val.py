@@ -28,10 +28,7 @@ if ipython is not None:
 
 # %%
 # Specify version
-versions = [
-    "SP_v1.3.6",
-    "SP_v1.3.6_leak_corr"
-]
+versions = ["SP_v1.3.6", "SP_v1.3.6_leak_corr"]
 
 # Get the cosmology
 planck = Planck18
@@ -54,7 +51,7 @@ extra_params = {
         "halofit_version": halofit_version,
         "HMCode_log_T_AGN": log_T_AGN,
         "kmax": 20,
-        "kmax_extrapolate": 500
+        "kmax_extrapolate": 500,
     }
 }
 
@@ -62,10 +59,10 @@ cosmo_params = {
     "Omega_m": om,
     "Omega_b": ob,
     "h": h,
-    "sig8":sigma8,
-    "ns":ns,
-    "mnu":mnu,
-    "extra_params":extra_params
+    "sig8": sigma8,
+    "ns": ns,
+    "mnu": mnu,
+    "extra_params": extra_params,
 }
 
 cv = CosmologyValidation(
@@ -81,13 +78,13 @@ cv = CosmologyValidation(
     cell_method="catalog",
     nside_mask=8192,
     path_onecovariance="/home/guerrini/OneCovariance/",
-    cosmo_params=cosmo_params
+    cosmo_params=cosmo_params,
 )
 
 
 # %%
-#cv.calculate_pseudo_cl_g_ng_cov()
-#cv.calculate_pseudo_cl_g_ng_cov(gaussian_part="OneCovariance")
+# cv.calculate_pseudo_cl_g_ng_cov()
+# cv.calculate_pseudo_cl_g_ng_cov(gaussian_part="OneCovariance")
 
 # %%
 cv.plot_footprints()
@@ -106,7 +103,7 @@ if cv.rho_tau_method != "none":
 cv.plot_objectwise_leakage()
 
 # %%
-#cv.plot_objectwise_leakage()
+# cv.plot_objectwise_leakage()
 
 # %%
 # cv.plot_ellipticity()
@@ -124,19 +121,19 @@ cv.plot_2pcf()
 cv.plot_ratio_xi_sys_xi(offset=0.1)
 
 # %%
-#cv.plot_aperture_mass_dispersion()
+# cv.plot_aperture_mass_dispersion()
 
 # %%
-#cv.plot_pseudo_cl()
+# cv.plot_pseudo_cl()
 
 # %%
-#cv.plot_pure_eb(
+# cv.plot_pure_eb(
 #    min_sep_int=0.08,
 #    max_sep_int=300,
 #    nbins_int=100,
 #    npatch=256,
 #    var_method="jackknife",
-#)
+# )
 
 # %%
 """ 
@@ -162,4 +159,3 @@ scv.plot_cosebis(
 
 # %% B-mode summary
 cv.summarize_bmodes(fiducial_scale_cut=FIDUCIAL_SCALE_CUT)
-

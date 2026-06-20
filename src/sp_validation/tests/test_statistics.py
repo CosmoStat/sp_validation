@@ -21,6 +21,7 @@ from sp_validation.statistics import (
     jackknif_weighted_average2,
 )
 
+
 def test_jackknif_weighted_average2_mean_and_error():
     """Pin the jackknife weighted average + error for a seeded RNG draw.
 
@@ -82,16 +83,12 @@ def test_corr_from_cov_pins_correlation_matrix():
     divided by the variances instead of the standard deviations would break
     the unit-diagonal property and the closed form simultaneously.
     """
-    cov = np.array([[4.0, 1.0, -2.0],
-                    [1.0, 9.0, 3.0],
-                    [-2.0, 3.0, 16.0]])
+    cov = np.array([[4.0, 1.0, -2.0], [1.0, 9.0, 3.0], [-2.0, 3.0, 16.0]])
     corr = corr_from_cov(cov)
 
     npt.assert_allclose(
         corr,
-        [[1.0, 1.0 / 6.0, -0.25],
-         [1.0 / 6.0, 1.0, 0.25],
-         [-0.25, 0.25, 1.0]],
+        [[1.0, 1.0 / 6.0, -0.25], [1.0 / 6.0, 1.0, 0.25], [-0.25, 0.25, 1.0]],
         rtol=1e-12,
     )
 
@@ -121,7 +118,7 @@ def test_chi2_and_pte_diagonal_reduces_to_sum_of_squares():
     """
     d = np.array([1.0, -2.0, 0.5, 3.0])
     sigma = np.array([2.0, 1.0, 0.5, 4.0])
-    cov_diag = np.diag(sigma ** 2)
+    cov_diag = np.diag(sigma**2)
 
     chi2, reduced_chi2, pte = chi2_and_pte(d, cov_diag)
 
@@ -138,10 +135,14 @@ def test_chi2_and_pte_diagonal_reduces_to_sum_of_squares():
 
     # TEETH: off-diagonal covariance terms change the quadratic form, so the
     # full d^T C^-1 d path (not just the diagonal shortcut) is load-bearing.
-    cov_full = np.array([[4.0, 1.0, 0.0, 0.0],
-                         [1.0, 1.0, 0.2, 0.0],
-                         [0.0, 0.2, 0.25, 0.1],
-                         [0.0, 0.0, 0.1, 16.0]])
+    cov_full = np.array(
+        [
+            [4.0, 1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.2, 0.0],
+            [0.0, 0.2, 0.25, 0.1],
+            [0.0, 0.0, 0.1, 16.0],
+        ]
+    )
     chi2_full, _, pte_full = chi2_and_pte(d, cov_full)
     npt.assert_allclose(chi2_full, 13.526036131774706, rtol=1e-12)
     npt.assert_allclose(pte_full, 0.00897199803545734, rtol=1e-12)

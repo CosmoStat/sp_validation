@@ -61,8 +61,12 @@ def main():
     # Configure tick labels for E/B modes
     tick_positions = np.arange(nbins / 2, nbins * 6, nbins)
     tick_labels = [
-        r"$\xi_+^{\mathrm{E}}$", r"$\xi_-^{\mathrm{E}}$", r"$\xi_+^{\mathrm{B}}$",
-        r"$\xi_-^{\mathrm{B}}$", r"$\xi_+^{\mathrm{amb}}$", r"$\xi_-^{\mathrm{amb}}$"
+        r"$\xi_+^{\mathrm{E}}$",
+        r"$\xi_-^{\mathrm{E}}$",
+        r"$\xi_+^{\mathrm{B}}$",
+        r"$\xi_-^{\mathrm{B}}$",
+        r"$\xi_+^{\mathrm{amb}}$",
+        r"$\xi_-^{\mathrm{amb}}$",
     ]
 
     for ticks in (plt.xticks, plt.yticks):

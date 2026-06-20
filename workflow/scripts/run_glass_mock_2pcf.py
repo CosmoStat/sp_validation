@@ -29,12 +29,19 @@ with fits.open(catalog_path) as hdul:
 print(f"Loaded {len(ra)} galaxies from {catalog_path}")
 
 cat = treecorr.Catalog(
-    ra=ra, dec=dec, g1=e1, g2=e2, w=w,
-    ra_units="degrees", dec_units="degrees",
+    ra=ra,
+    dec=dec,
+    g1=e1,
+    g2=e2,
+    w=w,
+    ra_units="degrees",
+    dec_units="degrees",
 )
 
 gg = treecorr.GGCorrelation(
-    min_sep=min_sep, max_sep=max_sep, nbins=nbins,
+    min_sep=min_sep,
+    max_sep=max_sep,
+    nbins=nbins,
     sep_units="arcmin",
 )
 

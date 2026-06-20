@@ -14,7 +14,9 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-sys.path.insert(0, '/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats')
+sys.path.insert(
+    0, "/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats"
+)
 from cosmo_val import CosmologyValidation, rename_output  # noqa: E402
 
 
@@ -24,7 +26,7 @@ if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 # Different options
-versions_146 = ["SP_v1.4.6"] #, "SP_v1.4.6_leak_corr"]
+versions_146 = ["SP_v1.4.6"]  # , "SP_v1.4.6_leak_corr"]
 versions_var = ["SP_v1.4.5", "SP_v1.4.6", "SP_v1.4.7", "SP_v1.4.8"]
 
 # We use this combination of versions
@@ -46,20 +48,20 @@ cv = CosmologyValidation(
     theta_min=theta_min,
     theta_max=theta_max,
     nbins=15,
-    cov_estimate_method='jk',
+    cov_estimate_method="jk",
     theta_min_plot=theta_min / plot_range_fac,
     theta_max_plot=theta_max * plot_range_fac,
-    rho_tau_method='emcee',
+    rho_tau_method="emcee",
     n_cov=1,
     star_weight_type="uniform",
     random_multiple=5,
 )
 
 output_bases = [
-	"gammat_stars_around_galaxies_lin_non_tomographic",
-	"gammat_stars_around_galaxies_log_non_tomographic",
-	"dgammat_stars_around_galaxies_lin_non_tomographic",
-	"dsize_stars_around_galaxies_lin_non_tomographic",
+    "gammat_stars_around_galaxies_lin_non_tomographic",
+    "gammat_stars_around_galaxies_log_non_tomographic",
+    "dgammat_stars_around_galaxies_lin_non_tomographic",
+    "dsize_stars_around_galaxies_lin_non_tomographic",
 ]
 suff = ".png"
 version_string = "_".join(versions)
@@ -67,7 +69,9 @@ version_string = "_".join(versions)
 # lambda_1
 print("Computing  λ_1...")
 cv.plot_gammat_stars_around_galaxies(offset=0.025, gammax=True, wo_rand_subtr=True)
-cv.plot_gammat_stars_around_galaxies(offset=0.025, gammax=True, logy=True, wo_rand_subtr=True)
+cv.plot_gammat_stars_around_galaxies(
+    offset=0.025, gammax=True, logy=True, wo_rand_subtr=True
+)
 
 # lambda_2
 print("Computing  λ_2...")
@@ -95,4 +99,3 @@ print("Computing  λ_3...")
 cv.plot_dsize_stars_around_galaxies(offset=0.025, gammax=True)
 
 rename_output(output_bases, output_dir, suff, version_string, "")
-

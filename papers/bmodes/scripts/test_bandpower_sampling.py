@@ -22,12 +22,42 @@ from cosmo_numba.B_modes.cosebis import COSEBIS
 
 
 # The exact 32 powspace ℓ values from the pipeline
-ELL_32 = np.array([
-    12.5, 24., 38.5, 56.5, 78., 103., 131.5, 163.5, 199., 238.,
-    281., 327.5, 377., 430., 487., 547.5, 611., 678., 749., 823.5,
-    901., 982., 1067., 1155.5, 1247.5, 1343., 1441.5, 1544., 1650.,
-    1759.5, 1872.5, 1988.5,
-])
+ELL_32 = np.array(
+    [
+        12.5,
+        24.0,
+        38.5,
+        56.5,
+        78.0,
+        103.0,
+        131.5,
+        163.5,
+        199.0,
+        238.0,
+        281.0,
+        327.5,
+        377.0,
+        430.0,
+        487.0,
+        547.5,
+        611.0,
+        678.0,
+        749.0,
+        823.5,
+        901.0,
+        982.0,
+        1067.0,
+        1155.5,
+        1247.5,
+        1343.0,
+        1441.5,
+        1544.0,
+        1650.0,
+        1759.5,
+        1872.5,
+        1988.5,
+    ]
+)
 
 
 def theory_cl(ell, model="power_law"):
@@ -102,21 +132,28 @@ def main():
             (1.0, 250.0, "full [1,250]'"),
             (12.0, 83.0, "fiducial [12,83]'"),
         ]:
-            print(f"\n{'='*75}")
+            print(f"\n{'=' * 75}")
             print(f"C(ℓ) model: {cl_model}, scale cut: {label}")
-            print(f"{'='*75}")
+            print(f"{'=' * 75}")
 
             # --- Ground truth: dense ℓ ---
             ell_dense = np.logspace(np.log10(2), np.log10(5000), 10_000)
             cl_dense = theory_cl(ell_dense, model=cl_model)
             ce_dense, _ = harmonic_cosebis(
-                ell_dense, cl_dense, theta_min, theta_max, nmodes,
+                ell_dense,
+                cl_dense,
+                theta_min,
+                theta_max,
+                nmodes,
             )
 
             # --- Config-space reference ---
             print("Computing config-space reference (Hankel + xipm)...")
             ce_config, _ = config_space_cosebis(
-                theta_min, theta_max, nmodes, cl_model,
+                theta_min,
+                theta_max,
+                nmodes,
+                cl_model,
             )
 
             # --- Binned paths ---
@@ -136,11 +173,17 @@ def main():
             print("-" * (14 + 13 * len(bin_counts)))
 
             for n in range(nmodes):
-                line = f"  n={n+1:>2d}"
+                line = f"  n={n + 1:>2d}"
                 for nb in bin_counts:
-                    r = ce_binned[nb][n] / ce_dense[n] if abs(ce_dense[n]) > 1e-30 else np.nan
+                    r = (
+                        ce_binned[nb][n] / ce_dense[n]
+                        if abs(ce_dense[n]) > 1e-30
+                        else np.nan
+                    )
                     line += f" {r:>12.4f}"
-                r_cfg = ce_dense[n] / ce_config[n] if abs(ce_config[n]) > 1e-30 else np.nan
+                r_cfg = (
+                    ce_dense[n] / ce_config[n] if abs(ce_config[n]) > 1e-30 else np.nan
+                )
                 line += f" {r_cfg:>12.4f}"
                 print(line)
 
@@ -152,12 +195,12 @@ def main():
                 valid = np.isfinite(ratios)
                 if valid.any():
                     err = np.max(np.abs(1 - ratios[valid]))
-                    print(f"    {nb:>4d} bins: {err:.4f}  ({err*100:.1f}%)")
+                    print(f"    {nb:>4d} bins: {err:.4f}  ({err * 100:.1f}%)")
             ratios_cfg = ce_dense[:n_summary] / ce_config[:n_summary]
             valid = np.isfinite(ratios_cfg)
             if valid.any():
                 err = np.max(np.abs(1 - ratios_cfg[valid]))
-                print(f"    dense/config: {err:.4f}  ({err*100:.1f}%)")
+                print(f"    dense/config: {err:.4f}  ({err * 100:.1f}%)")
 
 
 if __name__ == "__main__":

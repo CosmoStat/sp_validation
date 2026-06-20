@@ -35,7 +35,7 @@ def get_bins(results, key="phot_g_mean_mag", n_bins=3):
         subsets.append(this_subset)
 
         print(
-            f"  Bin {i+1}: {quantiles[i]:.2f}, {quantiles[i+1]:.2f}, N={len(this_subset)}"
+            f"  Bin {i + 1}: {quantiles[i]:.2f}, {quantiles[i + 1]:.2f}, N={len(this_subset)}"
         )
 
     return subsets, quantiles
@@ -56,7 +56,6 @@ def do_query(do_async=True, nmax=3_000_000):
         ORDER BY random_index
 	"""
     ).strip()
-
 
     # Launch the query
     if not do_async:
@@ -81,7 +80,6 @@ def do_query(do_async=True, nmax=3_000_000):
 def write_subsets(subsets, quantiles):
 
     for idx, subset in enumerate(subsets):
-
         if idx == 0:
             out_path = f"gaia_stars_g_smaller_{quantiles[idx + 1]}.fits"
         elif idx == len(subsets) - 1:

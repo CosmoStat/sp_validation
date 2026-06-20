@@ -13,7 +13,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import os
-sys.path.insert(0, '/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats')
+
+sys.path.insert(
+    0, "/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats"
+)
 from cosmo_val import CosmologyValidation
 
 
@@ -21,7 +24,7 @@ def rename_output(output_bases, output_dir, suff, version_string, rand_str):
 
     for base in output_bases:
         old_path = f"{output_dir}/plots/{base}{suff}"
-        new_path  = f"{output_dir}/plots/{base}_{version_string}{rand_str}{suff}"
+        new_path = f"{output_dir}/plots/{base}_{version_string}{rand_str}{suff}"
         print(f"mv {old_path} -> {new_path}")
         os.rename(old_path, new_path)
 
@@ -47,10 +50,10 @@ cv = CosmologyValidation(
     theta_min=1.0,
     theta_max=250.0,
     nbins=20,
-    cov_estimate_method='jk',
+    cov_estimate_method="jk",
     theta_min_plot=0.8,
     theta_max_plot=260.0,
-    rho_tau_method='emcee',
+    rho_tau_method="emcee",
     n_cov=1,
     star_weight_type="uniform",
 )

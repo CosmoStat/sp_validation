@@ -60,7 +60,6 @@ auxiliary_masks = []
 auxiliary_labels = []
 for section, mask_list in config_data.items():
     for mask_params in mask_list:
-
         # Check bit-coded masks
         if mask_params["col_name"] in all_masks_bits:
             bits = bits | all_masks_bits[mask_params["col_name"]]
@@ -95,11 +94,17 @@ fp = FootprintPlotter()
 nside = 512
 
 for idx, label in enumerate(paths):
-    fp.plot_region(hsp_maps[idx], fp._regions["fullsky"], outpath=f"mask_{label}.png", title=label)
-    fp.plot_footprint_as_hp(hsp_maps[idx], nside, outpath=f"footprint_{label}.png", title=label)
+    fp.plot_region(
+        hsp_maps[idx], fp._regions["fullsky"], outpath=f"mask_{label}.png", title=label
+    )
+    fp.plot_footprint_as_hp(
+        hsp_maps[idx], nside, outpath=f"footprint_{label}.png", title=label
+    )
 
 label = "combined"
-fp.plot_region(map_comb, fp._regions["fullsky"], outpath=f"mask_{label}.png", title=label)
+fp.plot_region(
+    map_comb, fp._regions["fullsky"], outpath=f"mask_{label}.png", title=label
+)
 fp.plot_footprint_as_hp(map_comb, nside, outpath=f"footprint_{label}.png", title=label)
 # -
 

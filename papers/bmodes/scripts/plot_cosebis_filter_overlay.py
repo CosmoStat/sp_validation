@@ -51,7 +51,10 @@ def make_figure(ell_32, bb, sigma_bb, ell_dense, Wn_full, Wn_fid, output_path):
     colors = sns.color_palette("husl", nmodes)
 
     fig, axes = plt.subplots(
-        2, 1, figsize=(8.5, 7.5), sharex=True,
+        2,
+        1,
+        figsize=(8.5, 7.5),
+        sharex=True,
         gridspec_kw={"hspace": 0.12},
     )
 
@@ -64,16 +67,26 @@ def make_figure(ell_32, bb, sigma_bb, ell_dense, Wn_full, Wn_fid, output_path):
         Dl_bb = ell_32 * (ell_32 + 1) * bb / (2 * np.pi)
         Dl_sig = ell_32 * (ell_32 + 1) * sigma_bb / (2 * np.pi)
         ax_bb.fill_between(
-            ell_32, Dl_bb - Dl_sig, Dl_bb + Dl_sig,
-            color="0.85", zorder=0, label=r"$C_\ell^{BB} \pm 1\sigma$",
+            ell_32,
+            Dl_bb - Dl_sig,
+            Dl_bb + Dl_sig,
+            color="0.85",
+            zorder=0,
+            label=r"$C_\ell^{BB} \pm 1\sigma$",
         )
         ax_bb.scatter(
-            ell_32, Dl_bb,
-            s=12, color="0.55", zorder=1, marker="s",
+            ell_32,
+            Dl_bb,
+            s=12,
+            color="0.55",
+            zorder=1,
+            marker="s",
         )
         ax_bb.set_ylabel(
             r"$\ell(\ell{+}1)\,C_\ell^{BB}/2\pi$",
-            fontsize=8, color="0.5", labelpad=8,
+            fontsize=8,
+            color="0.5",
+            labelpad=8,
         )
         ax_bb.tick_params(axis="y", labelcolor="0.5", labelsize=7)
 
@@ -82,9 +95,12 @@ def make_figure(ell_32, bb, sigma_bb, ell_dense, Wn_full, Wn_fid, output_path):
             peak = np.max(np.abs(Wn[n]))
             if peak > 0:
                 ax.plot(
-                    ell_dense, Wn[n] / peak,
-                    color=colors[n], lw=1.4, alpha=0.9,
-                    label=rf"$n = {n+1}$",
+                    ell_dense,
+                    Wn[n] / peak,
+                    color=colors[n],
+                    lw=1.4,
+                    alpha=0.9,
+                    label=rf"$n = {n + 1}$",
                 )
 
         ax.axhline(0, color="k", lw=0.4, zorder=0)
@@ -94,25 +110,39 @@ def make_figure(ell_32, bb, sigma_bb, ell_dense, Wn_full, Wn_fid, output_path):
         # Bin-centre tick marks along the top
         for e in ell_32:
             ax.plot(
-                [e, e], [1.1, 1.2], color="0.35", lw=0.6,
-                clip_on=False, zorder=5, transform=ax.get_xaxis_transform(),
+                [e, e],
+                [1.1, 1.2],
+                color="0.35",
+                lw=0.6,
+                clip_on=False,
+                zorder=5,
+                transform=ax.get_xaxis_transform(),
             )
 
         # Scale-cut annotation
         ax.text(
-            0.02, 0.95, cut_label,
-            transform=ax.transAxes, fontsize=9,
-            va="top", ha="left",
+            0.02,
+            0.95,
+            cut_label,
+            transform=ax.transAxes,
+            fontsize=9,
+            va="top",
+            ha="left",
             bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="0.7", alpha=0.9),
         )
 
     # Shared legend for filter modes
     handles, labels = axes[0].get_legend_handles_labels()
     axes[0].legend(
-        handles, labels,
-        fontsize=7.5, ncol=nmodes, loc="upper right",
-        title=r"COSEBIS mode $n$", title_fontsize=8,
-        columnspacing=1.0, handlelength=1.5,
+        handles,
+        labels,
+        fontsize=7.5,
+        ncol=nmodes,
+        loc="upper right",
+        title=r"COSEBIS mode $n$",
+        title_fontsize=8,
+        columnspacing=1.0,
+        handlelength=1.5,
     )
 
     axes[1].set_xlabel(r"$\ell$", fontsize=10)

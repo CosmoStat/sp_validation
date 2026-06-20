@@ -183,7 +183,9 @@ def cov_cl_to_fits(cov_file, cov_hdu="COVAR_FULL"):
     elif cov_file.endswith(".npy"):
         cov_data = np.load(cov_file)
     else:
-        raise NotImplementedError(f"Unsupported pseudo-Cl covariance format: {cov_file}")
+        raise NotImplementedError(
+            f"Unsupported pseudo-Cl covariance format: {cov_file}"
+        )
 
     if cov_data.shape[0] != cov_data.shape[1]:
         raise ValueError("Pseudo-Cl covariance matrix must be square")
@@ -246,7 +248,9 @@ def rho_to_fits(filename, theta=None):
     return rho_stat_hdu
 
 
-def covdat_to_fits(filename_cov_xi, filename_cov_tau=None, filename_cov_cl=None, cov_hdu=None):
+def covdat_to_fits(
+    filename_cov_xi, filename_cov_tau=None, filename_cov_cl=None, cov_hdu=None
+):
     """
     Convert CosmoCov covariance matrix to FITS format.
 
@@ -274,7 +278,9 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None, filename_cov_cl=None,
         elif filename_cov_cl.endswith(".npy"):
             cov_data = np.load(filename_cov_cl)
         else:
-            raise NotImplementedError(f"Unsupported pseudo-Cl covariance format: {filename_cov_cl}")
+            raise NotImplementedError(
+                f"Unsupported pseudo-Cl covariance format: {filename_cov_cl}"
+            )
         covmat = np.block(
             [
                 [covmat, np.zeros((len(covmat), len(cov_data)))],
@@ -297,17 +303,21 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None, filename_cov_cl=None,
     }
 
     if filename_cov_tau:
-        cov_dict.update({
-            "NAME_2": "TAU_0_PLUS",
-            "STRT_2": len(covmat_xi),
-            "NAME_3": "TAU_2_PLUS",
-            "STRT_3": len(covmat_xi) + int(len(covmat_tau) / 2),
-        })
-    
-    filename_cov_cl and cov_dict.update({
+        cov_dict.update(
+            {
+                "NAME_2": "TAU_0_PLUS",
+                "STRT_2": len(covmat_xi),
+                "NAME_3": "TAU_2_PLUS",
+                "STRT_3": len(covmat_xi) + int(len(covmat_tau) / 2),
+            }
+        )
+
+    filename_cov_cl and cov_dict.update(
+        {
             "NAME_4": "CELL_EE",
             "STRT_4": len(covmat_xi) + (len(covmat_tau) if filename_cov_tau else 0),
-        })
+        }
+    )
 
     for key, value in cov_dict.items():
         cov_hdu.header[key] = value
@@ -366,7 +376,10 @@ def _generate_ini_file(
 ):
     """Generate a CosmoSIS INI configuration file from template with modifications."""
     template_path = Path(args.template_dir) / template_base
-    output_path = Path(args.output_config_dir) / f"cosmosis_pipeline_{args.config_name_base}{suffix}.ini"
+    output_path = (
+        Path(args.output_config_dir)
+        / f"cosmosis_pipeline_{args.config_name_base}{suffix}.ini"
+    )
 
     with open(template_path, "r") as f:
         config_content = f.read()
@@ -582,9 +595,7 @@ Example for glass mock v0 (mock data):
         required=False,
         help="Path to pseudo-C_ell covariance matrix (required if --cl-file)",
     )
-    parser.add_argument(
-        "--mock", action="store_true", help="Mock data mode"
-    )
+    parser.add_argument("--mock", action="store_true", help="Mock data mode")
     parser.add_argument(
         "--output-root",
         type=str,
@@ -690,7 +701,9 @@ if __name__ == "__main__":
             else:
                 # Data mode expects two TreeCorr files (xi_plus, xi_minus)
                 if len(args.xi) != 2:
-                    raise ValueError(f"Data mode requires exactly 2 xi files, got {len(args.xi)}")
+                    raise ValueError(
+                        f"Data mode requires exactly 2 xi files, got {len(args.xi)}"
+                    )
                 xip_hdu, xim_hdu = treecorr_to_fits(args.xi[0], args.xi[1])
 
             xi_theta = xip_hdu.data["ANG"]
@@ -733,7 +746,12 @@ if __name__ == "__main__":
             print("Loaded rho/tau statistics")
 
             if args.cl_file:
-                cov_hdu = covdat_to_fits(args.cov_xi, filename_cov_tau=args.cov_tau, filename_cov_cl=args.cov_cl, cov_hdu="COVAR_FULL")
+                cov_hdu = covdat_to_fits(
+                    args.cov_xi,
+                    filename_cov_tau=args.cov_tau,
+                    filename_cov_cl=args.cov_cl,
+                    cov_hdu="COVAR_FULL",
+                )
             else:
                 cov_hdu = covdat_to_fits(args.cov_xi, filename_cov_tau=args.cov_tau)
             print("Loaded combined covariance with tau")
@@ -746,7 +764,9 @@ if __name__ == "__main__":
         if cov_hdu is not None:
             hdu_list.append(cov_hdu)
         else:
-            cov_cl_hdu.header["EXTNAME"] = "COVMAT" # If no xi use covmat for the extname of the cl cov
+            cov_cl_hdu.header["EXTNAME"] = (
+                "COVMAT"  # If no xi use covmat for the extname of the cl cov
+            )
         if cov_cl_hdu is not None:
             hdu_list.append(cov_cl_hdu)
         if args.xi:

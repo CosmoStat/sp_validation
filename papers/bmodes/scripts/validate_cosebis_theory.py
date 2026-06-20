@@ -23,8 +23,8 @@ def setup_cosmology_and_tracer():
         h=0.67,
         sigma8=0.8,
         n_s=0.96,
-        transfer_function='boltzmann_camb',
-        matter_power_spectrum='halofit'
+        transfer_function="boltzmann_camb",
+        matter_power_spectrum="halofit",
     )
 
     # Simple Gaussian n(z) centered at z=1.0
@@ -48,8 +48,8 @@ def get_theory_xipm(cosmo, ell, cl_ee, theta_arcmin):
     """Compute ξ±(θ) from C_ℓ using CCL's built-in correlation function."""
     theta_rad = np.deg2rad(theta_arcmin / 60)
 
-    xip = ccl.correlation(cosmo, ell=ell, C_ell=cl_ee, theta=theta_rad, type='GG+')
-    xim = ccl.correlation(cosmo, ell=ell, C_ell=cl_ee, theta=theta_rad, type='GG-')
+    xip = ccl.correlation(cosmo, ell=ell, C_ell=cl_ee, theta=theta_rad, type="GG+")
+    xim = ccl.correlation(cosmo, ell=ell, C_ell=cl_ee, theta=theta_rad, type="GG-")
 
     return xip, xim
 
@@ -100,11 +100,7 @@ def main():
     # Note: Using 20000 points for better high-ℓ accuracy (FFT-log issue)
     theta_grid = np.logspace(np.log10(theta_min), np.log10(theta_max), 20000)
     ce_harm, cb_harm = cosebis.cosebis_from_Cell(
-        ell=ell,
-        Cell_E=cl_ee,
-        Cell_B=cl_bb,
-        theta=theta_grid,
-        cache=True
+        ell=ell, Cell_E=cl_ee, Cell_B=cl_bb, theta=theta_grid, cache=True
     )
 
     print("\nComputing COSEBIS from config-space (ξ±)...")
@@ -113,11 +109,7 @@ def main():
     xim_zero = np.zeros_like(xip)  # B=0 for theory
 
     ce_config, cb_config = cosebis.cosebis_from_xipm(
-        theta=theta_integration,
-        dtheta=dtheta,
-        xi_plus=xip,
-        xi_minus=xim,
-        cache=True
+        theta=theta_integration, dtheta=dtheta, xi_plus=xip, xi_minus=xim, cache=True
     )
 
     # Compare
@@ -132,7 +124,9 @@ def main():
         # For theory, expect exact agreement, so σ is not meaningful
         # Just report absolute difference
         diff = ce_harm[n] - ce_config[n]
-        print(f"E_{n+1:<4} {ce_harm[n]:>14.6e} {ce_config[n]:>14.6e} {ratio:>10.4f} {diff:>10.2e}")
+        print(
+            f"E_{n + 1:<4} {ce_harm[n]:>14.6e} {ce_config[n]:>14.6e} {ratio:>10.4f} {diff:>10.2e}"
+        )
 
     print("\n" + "=" * 60)
     print("Results: B_n (should be ~0)")
@@ -141,7 +135,7 @@ def main():
     print("-" * 60)
 
     for n in range(nmodes):
-        print(f"B_{n+1:<4} {cb_harm[n]:>14.6e} {cb_config[n]:>14.6e}")
+        print(f"B_{n + 1:<4} {cb_harm[n]:>14.6e} {cb_config[n]:>14.6e}")
 
     # Summary statistics
     print("\n" + "=" * 60)
@@ -156,20 +150,22 @@ def main():
     # Verdict
     tolerance = 0.05  # 5% agreement expected for well-resolved integration
     if np.all(np.abs(ratios - 1) < tolerance):
-        print(f"\n✓ PASS: Harmonic and config-space agree within {tolerance*100:.0f}%")
+        print(
+            f"\n✓ PASS: Harmonic and config-space agree within {tolerance * 100:.0f}%"
+        )
     else:
-        print(f"\n✗ FAIL: Discrepancy exceeds {tolerance*100:.0f}%")
+        print(f"\n✗ FAIL: Discrepancy exceeds {tolerance * 100:.0f}%")
         print("  This could indicate:")
         print("  1. Insufficient integration resolution")
         print("  2. Different ℓ/θ range coverage")
         print("  3. Bug in one of the integration methods")
 
     return {
-        'ce_harm': ce_harm,
-        'cb_harm': cb_harm,
-        'ce_config': ce_config,
-        'cb_config': cb_config,
-        'ratios': ratios
+        "ce_harm": ce_harm,
+        "cb_harm": cb_harm,
+        "ce_config": ce_config,
+        "cb_config": cb_config,
+        "ratios": ratios,
     }
 
 

@@ -66,7 +66,9 @@ def _load_pseudo_cl_data(pseudo_cl_path, pseudo_cl_cov_path):
     return ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb
 
 
-def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_max_cut, title=None):
+def _create_cl_figure(
+    ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_max_cut, title=None
+):
     """Create two-panel Cl figure.
 
     Args:
@@ -74,10 +76,12 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
         ell_max_cut: Upper scale cut for shading excluded region
         title: Optional title for the figure (None for paper figure)
     """
-    fig, (ax_bb, ax_eb) = plt.subplots(2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.75), sharex=True)
+    fig, (ax_bb, ax_eb) = plt.subplots(
+        2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.75), sharex=True
+    )
 
-    color_bb = "#2c5f8a"   # dark blue (distinct harmonic-space scheme)
-    color_eb = "#c45a2c"   # burnt orange
+    color_bb = "#2c5f8a"  # dark blue (distinct harmonic-space scheme)
+    color_eb = "#c45a2c"  # burnt orange
 
     minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
 
@@ -86,9 +90,17 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
     if title:
         bb_label = rf"$C_\ell^{{BB}}$ ({title})"
     ax_bb.errorbar(
-        ell, cl_bb / sigma_bb, yerr=np.ones_like(cl_bb),
-        fmt="o", mfc=color_bb, mec=color_bb, color=color_bb,
-        capsize=2, markersize=4, linewidth=1.0, label=bb_label,
+        ell,
+        cl_bb / sigma_bb,
+        yerr=np.ones_like(cl_bb),
+        fmt="o",
+        mfc=color_bb,
+        mec=color_bb,
+        color=color_bb,
+        capsize=2,
+        markersize=4,
+        linewidth=1.0,
+        label=bb_label,
     )
     ax_bb.axhline(0, color="black", linestyle="-", linewidth=1.0, alpha=0.8)
     ax_bb.set_xscale("squareroot")
@@ -100,9 +112,17 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
     if title:
         eb_label = rf"$C_\ell^{{EB}}$ ({title})"
     ax_eb.errorbar(
-        ell, cl_eb / sigma_eb, yerr=np.ones_like(cl_eb),
-        fmt="s", mfc="none", mec=color_eb, color=color_eb,
-        capsize=2, markersize=4, linewidth=1.0, label=eb_label,
+        ell,
+        cl_eb / sigma_eb,
+        yerr=np.ones_like(cl_eb),
+        fmt="s",
+        mfc="none",
+        mec=color_eb,
+        color=color_eb,
+        capsize=2,
+        markersize=4,
+        linewidth=1.0,
+        label=eb_label,
     )
     ax_eb.axhline(0, color="black", linestyle="-", linewidth=1.0, alpha=0.8)
     ax_eb.set_xscale("squareroot")
@@ -117,7 +137,7 @@ def _create_cl_figure(ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_ma
     ell_low, ell_high = get_powspace_bin_edges(ell)
     mask = ell_bin_mask(ell, ell_min_cut, ell_max_cut)
     included = np.where(mask)[0]
-    shade_low = ell_low[included[0]]    # lower edge of first included bin
+    shade_low = ell_low[included[0]]  # lower edge of first included bin
     shade_high = ell_high[included[-1]]  # upper edge of last included bin
 
     for ax in [ax_bb, ax_eb]:
@@ -147,8 +167,14 @@ def main():
     ell_max_cut = int(snakemake.params.ell_max_cut)
 
     # Build input path lookup from snakemake inputs
-    cl_paths = {k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_") and not k.startswith("pseudo_cl_cov")}
-    cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_cov_")}
+    cl_paths = {
+        k: v
+        for k, v in snakemake.input.items()
+        if k.startswith("pseudo_cl_") and not k.startswith("pseudo_cl_cov")
+    }
+    cov_paths = {
+        k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_cov_")
+    }
 
     # Create output directory
     output_dir = Path(snakemake.output["evidence"]).parent
@@ -174,8 +200,14 @@ def main():
 
         # Create figure with appropriate title
         fig = _create_cl_figure(
-            ell, cl_bb, cl_eb, sigma_bb, sigma_eb, ell_min_cut, ell_max_cut,
-            title=fig_spec["title"]
+            ell,
+            cl_bb,
+            cl_eb,
+            sigma_bb,
+            sigma_eb,
+            ell_min_cut,
+            ell_max_cut,
+            title=fig_spec["title"],
         )
 
         # Save figure

@@ -39,37 +39,40 @@ def create_tau_fits(sampled_values, theta, header=None):
 
     # Create columns
     columns = []
-    columns.append(fits.Column(name='theta', format='D', array=theta))
+    columns.append(fits.Column(name="theta", format="D", array=theta))
 
     # tau_0_p
-    columns.append(fits.Column(name='tau_0_p', format='D', array=tau_0_p))
-    columns.append(fits.Column(name='vartau_0_p', format='D',
-                              array=np.abs(tau_0_p) * 0.1))
+    columns.append(fits.Column(name="tau_0_p", format="D", array=tau_0_p))
+    columns.append(
+        fits.Column(name="vartau_0_p", format="D", array=np.abs(tau_0_p) * 0.1)
+    )
     # tau_0_m
-    columns.append(fits.Column(name='tau_0_m', format='D',
-                              array=np.zeros(nbins)))
-    columns.append(fits.Column(name='vartau_0_m', format='D',
-                              array=np.ones(nbins) * 1e-15))
+    columns.append(fits.Column(name="tau_0_m", format="D", array=np.zeros(nbins)))
+    columns.append(
+        fits.Column(name="vartau_0_m", format="D", array=np.ones(nbins) * 1e-15)
+    )
 
     # tau_2_p
-    columns.append(fits.Column(name='tau_2_p', format='D', array=tau_2_p))
-    columns.append(fits.Column(name='vartau_2_p', format='D',
-                              array=np.abs(tau_2_p) * 0.1))
+    columns.append(fits.Column(name="tau_2_p", format="D", array=tau_2_p))
+    columns.append(
+        fits.Column(name="vartau_2_p", format="D", array=np.abs(tau_2_p) * 0.1)
+    )
     # tau_2_m
-    columns.append(fits.Column(name='tau_2_m', format='D',
-                              array=np.zeros(nbins)))
-    columns.append(fits.Column(name='vartau_2_m', format='D',
-                              array=np.ones(nbins) * 1e-15))
+    columns.append(fits.Column(name="tau_2_m", format="D", array=np.zeros(nbins)))
+    columns.append(
+        fits.Column(name="vartau_2_m", format="D", array=np.ones(nbins) * 1e-15)
+    )
 
     # tau_5_p
-    columns.append(fits.Column(name='tau_5_p', format='D', array=tau_5_p))
-    columns.append(fits.Column(name='vartau_5_p', format='D',
-                              array=np.abs(tau_5_p) * 0.1))
+    columns.append(fits.Column(name="tau_5_p", format="D", array=tau_5_p))
+    columns.append(
+        fits.Column(name="vartau_5_p", format="D", array=np.abs(tau_5_p) * 0.1)
+    )
     # tau_5_m
-    columns.append(fits.Column(name='tau_5_m', format='D',
-                              array=np.zeros(nbins)))
-    columns.append(fits.Column(name='vartau_5_m', format='D',
-                              array=np.ones(nbins) * 1e-15))
+    columns.append(fits.Column(name="tau_5_m", format="D", array=np.zeros(nbins)))
+    columns.append(
+        fits.Column(name="vartau_5_m", format="D", array=np.ones(nbins) * 1e-15)
+    )
 
     # Create HDU
     coldefs = fits.ColDefs(columns)
@@ -96,10 +99,7 @@ def generate_samples_for_mock(mock_id, cov_tau, theta, ref_tau_header, output_di
     rng = np.random.default_rng(int(mock_id))
 
     # Sample tau statistics from N(0, Cov_tau)
-    tau_samples = rng.multivariate_normal(
-        mean=np.zeros(cov_tau.shape[0]),
-        cov=cov_tau
-    )
+    tau_samples = rng.multivariate_normal(mean=np.zeros(cov_tau.shape[0]), cov=cov_tau)
 
     # Create FITS file
     tau_hdu = create_tau_fits(tau_samples, theta, ref_tau_header)
@@ -119,14 +119,30 @@ def main():
     parser = argparse.ArgumentParser(
         description="Generate zero-mean tau samples for GLASS mocks"
     )
-    parser.add_argument("--cov-tau", type=str, required=True,
-                        help="Path to tau covariance matrix (.npy file)")
-    parser.add_argument("--ref-tau", type=str, required=True,
-                        help="Reference tau FITS file for structure")
-    parser.add_argument("--output-dir", type=str, required=True,
-                        help="Output directory for sampled FITS files")
-    parser.add_argument("--mock-ids", type=str, default="00001-00350",
-                        help="Range of mock IDs (format: 00001-00350)")
+    parser.add_argument(
+        "--cov-tau",
+        type=str,
+        required=True,
+        help="Path to tau covariance matrix (.npy file)",
+    )
+    parser.add_argument(
+        "--ref-tau",
+        type=str,
+        required=True,
+        help="Reference tau FITS file for structure",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        required=True,
+        help="Output directory for sampled FITS files",
+    )
+    parser.add_argument(
+        "--mock-ids",
+        type=str,
+        default="00001-00350",
+        help="Range of mock IDs (format: 00001-00350)",
+    )
     args = parser.parse_args()
 
     # Load tau covariance and reference
@@ -136,16 +152,27 @@ def main():
 
     print("Loading reference FITS...")
     ref_tau_data, ref_tau_header = load_reference_fits(args.ref_tau)
-    theta = ref_tau_data['theta']
-    print(f"  theta range: {theta.min():.3f} - {theta.max():.3f} arcmin, nbins: {len(theta)}")
+    theta = ref_tau_data["theta"]
+    print(
+        f"  theta range: {theta.min():.3f} - {theta.max():.3f} arcmin, nbins: {len(theta)}"
+    )
 
     # Parse mock ID range
-    mock_ids = (list(range(int(args.mock_ids.split("-")[0]), int(args.mock_ids.split("-")[1]) + 1))
-                if "-" in args.mock_ids else [int(args.mock_ids)])
+    mock_ids = (
+        list(
+            range(
+                int(args.mock_ids.split("-")[0]), int(args.mock_ids.split("-")[1]) + 1
+            )
+        )
+        if "-" in args.mock_ids
+        else [int(args.mock_ids)]
+    )
 
     print(f"Generating tau samples for {len(mock_ids)} mocks...")
     for mock_id in mock_ids:
-        msg = generate_samples_for_mock(mock_id, cov_tau, theta, ref_tau_header, args.output_dir)
+        msg = generate_samples_for_mock(
+            mock_id, cov_tau, theta, ref_tau_header, args.output_dir
+        )
         print(msg)
     print("Done!")
 

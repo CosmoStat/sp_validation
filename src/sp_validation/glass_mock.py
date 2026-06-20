@@ -160,8 +160,7 @@ def build_camb_params(config: GlassMockConfig):
 
     realized = camb_sigma8(pars)
     assert np.isclose(config.sigma8, realized), (
-        f"As rescaling missed target sigma8: wanted {config.sigma8}, "
-        f"got {realized}"
+        f"As rescaling missed target sigma8: wanted {config.sigma8}, got {realized}"
     )
     return pars
 
@@ -315,9 +314,7 @@ def create_mask_from_catalogue(nside, path, output, ra_col="RA", dec_col="DEC"):
     phi = ra * np.pi / 180.0
     pix = hp.ang2pix(nside, theta, phi)
 
-    _unique_pix, _idx, idx_rep = np.unique(
-        pix, return_index=True, return_inverse=True
-    )
+    _unique_pix, _idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
     n_gal = np.zeros(hp.nside2npix(nside))
     n_gal[np.unique(pix)] = np.bincount(idx_rep)
     mask = n_gal != 0
@@ -390,9 +387,7 @@ def get_n_gal_map(nside, ra, dec):
     phi = ra * np.pi / 180.0
     pix = hp.ang2pix(nside, theta, phi)
 
-    unique_pix, idx, idx_rep = np.unique(
-        pix, return_index=True, return_inverse=True
-    )
+    unique_pix, idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
     n_gal = np.zeros(hp.nside2npix(nside))
     n_gal[unique_pix] = np.bincount(idx_rep)
     return n_gal, unique_pix, idx, idx_rep

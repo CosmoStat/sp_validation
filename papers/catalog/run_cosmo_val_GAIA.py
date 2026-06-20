@@ -12,7 +12,10 @@ if ipython is not None:
 import matplotlib.pyplot as plt  # noqa: E402, F401
 import numpy as np  # noqa: E402, F401
 import sys  # noqa: E402
-sys.path.insert(0, '/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats')
+
+sys.path.insert(
+    0, "/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats"
+)
 from cosmo_val import CosmologyValidation  # noqa: E402
 
 # enable inline plotting for interactive sessions
@@ -30,10 +33,10 @@ cv = CosmologyValidation(
     theta_min=1.0,
     theta_max=250.0,
     nbins=20,
-    cov_estimate_method='jk',
+    cov_estimate_method="jk",
     theta_min_plot=0.8,
     theta_max_plot=260.0,
-    rho_tau_method='emcee',
+    rho_tau_method="emcee",
     n_cov=1,
 )
 

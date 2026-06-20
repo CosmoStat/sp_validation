@@ -136,7 +136,6 @@ class MergePsfCat:
 
         dat_all = {}
         for idx, patch in enumerate(patches):
-
             if verbose:
                 print(f"  {patch}")
 

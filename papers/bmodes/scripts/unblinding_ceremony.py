@@ -41,6 +41,7 @@ plt.rc("text", usetex=True)
 
 # ── Data types ──────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class ChainSpec:
     root: str
@@ -50,7 +51,18 @@ class ChainSpec:
     alpha: float = 1.0
 
 
-FULL_PARAMS = ["OMEGA_M", "ombh2", "h0", "n_s", "SIGMA_8", "s_8_input", "logt_agn", "a", "m1", "bias_1"]
+FULL_PARAMS = [
+    "OMEGA_M",
+    "ombh2",
+    "h0",
+    "n_s",
+    "SIGMA_8",
+    "s_8_input",
+    "logt_agn",
+    "a",
+    "m1",
+    "bias_1",
+]
 COSMO_PARAMS = ["OMEGA_M", "s_8_input", "SIGMA_8", "a"]
 
 MUTED_ALPHA = 0.25
@@ -85,6 +97,7 @@ def _save_path(cfg: CeremonyConfig, index: int, slug: str) -> Path:
 
 # ── Chain loading (extracted from Sasha's notebooks) ────────────────────────
 
+
 def _load_xi_table(path: Path | str, nrows: int = 20) -> np.ndarray:
     rows: list[np.ndarray] = []
     with Path(path).open("r", encoding="utf-8") as handle:
@@ -99,7 +112,9 @@ def _load_xi_table(path: Path | str, nrows: int = 20) -> np.ndarray:
             if len(rows) >= nrows:
                 break
     if len(rows) < nrows:
-        raise ValueError(f"Expected at least {nrows} xi rows in {path}, found {len(rows)}")
+        raise ValueError(
+            f"Expected at least {nrows} xi rows in {path}, found {len(rows)}"
+        )
     return np.vstack(rows)
 
 
@@ -125,7 +140,9 @@ def ensure_getdist_chain(base_dir: Path, root: str) -> Path:
 
     samples = np.loadtxt(samples_path)
     if "nautilus" in root:
-        samples = np.column_stack((np.exp(samples[:, -3]), samples[:, -1] - samples[:, -2], samples[:, 0:-3]))
+        samples = np.column_stack(
+            (np.exp(samples[:, -3]), samples[:, -1] - samples[:, -2], samples[:, 0:-3])
+        )
     else:
         samples = np.column_stack((samples[:, -1], samples[:, -3], samples[:, 0:-4]))
     np.savetxt(gd_samples_path, samples)
@@ -147,7 +164,19 @@ def _build_plotter(
 
 
 def _set_param_labels(chain) -> None:
-    name_list = ["OMEGA_M", "ombh2", "h0", "n_s", "SIGMA_8", "S_8", "s_8_input", "logt_agn", "a", "m1", "bias_1"]
+    name_list = [
+        "OMEGA_M",
+        "ombh2",
+        "h0",
+        "n_s",
+        "SIGMA_8",
+        "S_8",
+        "s_8_input",
+        "logt_agn",
+        "a",
+        "m1",
+        "bias_1",
+    ]
     label_list = [
         r"\Omega_{\rm m}",
         r"\omega_{\rm b} h^2",
@@ -179,7 +208,9 @@ def _set_param_labels(chain) -> None:
             pass
 
 
-def _adjust_paramname_chain(chain, current_name: str, target_name: str, label: str) -> None:
+def _adjust_paramname_chain(
+    chain, current_name: str, target_name: str, label: str
+) -> None:
     try:
         param_names = chain.getParamNames()
         par = param_names.parWithName(current_name)
@@ -214,7 +245,12 @@ def load_getdist_chains(
     axes_labelsize: float,
     legend_fontsize: float,
 ):
-    g = _build_plotter(width_inch=width_inch, axes_fontsize=axes_fontsize, axes_labelsize=axes_labelsize, legend_fontsize=legend_fontsize)
+    g = _build_plotter(
+        width_inch=width_inch,
+        axes_fontsize=axes_fontsize,
+        axes_labelsize=axes_labelsize,
+        legend_fontsize=legend_fontsize,
+    )
 
     chains = []
     for spec in chain_specs:
@@ -225,7 +261,14 @@ def load_getdist_chains(
             settings={"ignore_rows": 0, "smooth_scale_2D": 0.5, "smooth_scale_1D": 0.5},
         )
         _set_param_labels(chain)
-        if spec.base_dir.name == "ext_data" or spec.root in {"Planck18", "DES_Y3", "KiDS-1000", "DES+KiDS", "HSC_Y3", "HSC_Y3_cell"}:
+        if spec.base_dir.name == "ext_data" or spec.root in {
+            "Planck18",
+            "DES_Y3",
+            "KiDS-1000",
+            "DES+KiDS",
+            "HSC_Y3",
+            "HSC_Y3_cell",
+        }:
             _harmonize_external_chain(chain, spec.root)
         chains.append(chain)
 
@@ -233,6 +276,7 @@ def load_getdist_chains(
 
 
 # ── Plot functions (extracted from Sasha's notebooks) ───────────────────────
+
 
 def plot_triangle(
     chain_specs: list[ChainSpec],
@@ -245,7 +289,9 @@ def plot_triangle(
     legend_loc: str = "upper right",
 ) -> None:
     """Extracted triangle_plot pattern from contour notebooks."""
-    g, chains = load_getdist_chains(chain_specs, width_inch, axes_fontsize, axes_labelsize, legend_fontsize)
+    g, chains = load_getdist_chains(
+        chain_specs, width_inch, axes_fontsize, axes_labelsize, legend_fontsize
+    )
 
     colours = [spec.color for spec in chain_specs]
     linestyle = ["solid" for _ in chain_specs]
@@ -277,22 +323,74 @@ def plot_xipm_data_vector(xipm_path: str, output_path: Path) -> None:
 
     fig, (ax1, ax2) = plt.subplots(ncols=2, nrows=1, figsize=(10, 4.5))
 
-    ax1.tick_params(axis="both", which="both", direction="in", length=6, width=1, top=True, bottom=True, left=True, right=True)
+    ax1.tick_params(
+        axis="both",
+        which="both",
+        direction="in",
+        length=6,
+        width=1,
+        top=True,
+        bottom=True,
+        left=True,
+        right=True,
+    )
     ax1.yaxis.minorticks_on()
-    ax1.plot(theta, xip * 1e4, marker="o", markersize=4, ls="solid", lw=1.8, color="royalblue")
-    ax1.fill_between(theta, (xip - varxip) * 1e4, (xip + varxip) * 1e4, color="powderblue", alpha=0.7)
-    ax1.text(0.85, 0.88, "1-1", transform=ax1.transAxes, bbox=dict(facecolor="white", edgecolor="black", boxstyle="round", pad=0.5))
+    ax1.plot(
+        theta,
+        xip * 1e4,
+        marker="o",
+        markersize=4,
+        ls="solid",
+        lw=1.8,
+        color="royalblue",
+    )
+    ax1.fill_between(
+        theta, (xip - varxip) * 1e4, (xip + varxip) * 1e4, color="powderblue", alpha=0.7
+    )
+    ax1.text(
+        0.85,
+        0.88,
+        "1-1",
+        transform=ax1.transAxes,
+        bbox=dict(facecolor="white", edgecolor="black", boxstyle="round", pad=0.5),
+    )
     ax1.axvspan(0, 10, color="gray", alpha=0.3)
     ax1.axvspan(150, 200, color="gray", alpha=0.3)
     ax1.set_xscale("log")
     ax1.set_xlabel(r"$\theta$ [arcmin]")
     ax1.set_ylabel(r"$\xi_+\times 10^4$")
 
-    ax2.tick_params(axis="both", which="both", direction="in", length=6, width=1, top=True, bottom=True, left=True, right=True)
+    ax2.tick_params(
+        axis="both",
+        which="both",
+        direction="in",
+        length=6,
+        width=1,
+        top=True,
+        bottom=True,
+        left=True,
+        right=True,
+    )
     ax2.yaxis.minorticks_on()
-    ax2.plot(theta, xim * 1e4, marker="o", markersize=4, ls="solid", lw=1.8, color="orangered")
-    ax2.fill_between(theta, (xim - varxim) * 1e4, (xim + varxim) * 1e4, color="pink", alpha=0.7)
-    ax2.text(0.85, 0.88, "1-1", transform=ax2.transAxes, bbox=dict(facecolor="white", edgecolor="black", boxstyle="round", pad=0.5))
+    ax2.plot(
+        theta,
+        xim * 1e4,
+        marker="o",
+        markersize=4,
+        ls="solid",
+        lw=1.8,
+        color="orangered",
+    )
+    ax2.fill_between(
+        theta, (xim - varxim) * 1e4, (xim + varxim) * 1e4, color="pink", alpha=0.7
+    )
+    ax2.text(
+        0.85,
+        0.88,
+        "1-1",
+        transform=ax2.transAxes,
+        bbox=dict(facecolor="white", edgecolor="black", boxstyle="round", pad=0.5),
+    )
     ax2.axvspan(0, 10, color="gray", alpha=0.3)
     ax2.axvspan(150, 200, color="gray", alpha=0.3)
     ax2.set_xscale("log")
@@ -305,7 +403,9 @@ def plot_xipm_data_vector(xipm_path: str, output_path: Path) -> None:
     plt.close(fig)
 
 
-def plot_cell_ee_data_vector(pseudo_cl_path: str, pseudo_cl_cov_path: str, output_path: Path) -> None:
+def plot_cell_ee_data_vector(
+    pseudo_cl_path: str, pseudo_cl_cov_path: str, output_path: Path
+) -> None:
     """Extracted from 2025_10_08_plot_data_vectors.py (EE panel logic)."""
     cell = fits.getdata(pseudo_cl_path)
     cov_cell = fits.open(pseudo_cl_cov_path)
@@ -385,8 +485,12 @@ def plot_xipm_bestfit_with_bmodes(
     cov_pure_eb = eb_data["cov_pure_eb"]
 
     nbins = len(theta_eb)
-    sigma_xip_B = np.sqrt(np.diag(cov_pure_eb[2 * nbins : 3 * nbins, 2 * nbins : 3 * nbins]))
-    sigma_xim_B = np.sqrt(np.diag(cov_pure_eb[3 * nbins : 4 * nbins, 3 * nbins : 4 * nbins]))
+    sigma_xip_B = np.sqrt(
+        np.diag(cov_pure_eb[2 * nbins : 3 * nbins, 2 * nbins : 3 * nbins])
+    )
+    sigma_xim_B = np.sqrt(
+        np.diag(cov_pure_eb[3 * nbins : 4 * nbins, 3 * nbins : 4 * nbins])
+    )
 
     min_sep, max_sep = 1.0, 250.0
     bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
@@ -403,22 +507,38 @@ def plot_xipm_bestfit_with_bmodes(
 
     has_theory = bestfit_dir is not None
     if has_theory:
-        theta_theory_rad = np.loadtxt(bestfit_dir / "shear_xi_plus" / "theta.txt", comments="#")
+        theta_theory_rad = np.loadtxt(
+            bestfit_dir / "shear_xi_plus" / "theta.txt", comments="#"
+        )
         theta_theory = np.rad2deg(theta_theory_rad) * 60
-        xip_theory = np.loadtxt(bestfit_dir / "shear_xi_plus" / "bin_1_1.txt", comments="#")
-        xim_theory = np.loadtxt(bestfit_dir / "shear_xi_minus" / "bin_1_1.txt", comments="#")
+        xip_theory = np.loadtxt(
+            bestfit_dir / "shear_xi_plus" / "bin_1_1.txt", comments="#"
+        )
+        xim_theory = np.loadtxt(
+            bestfit_dir / "shear_xi_minus" / "bin_1_1.txt", comments="#"
+        )
 
         theta_sys_rad = np.loadtxt(bestfit_dir / "xi_sys" / "theta.txt", comments="#")
         theta_sys = np.rad2deg(theta_sys_rad) * 60
         xip_sys = np.loadtxt(bestfit_dir / "xi_sys" / "shear_xi_plus.txt", comments="#")
-        xim_sys = np.loadtxt(bestfit_dir / "xi_sys" / "shear_xi_minus.txt", comments="#")
+        xim_sys = np.loadtxt(
+            bestfit_dir / "xi_sys" / "shear_xi_minus.txt", comments="#"
+        )
 
     theta_fine = np.geomspace(0.5, 300, 500)
     if has_theory:
-        xip_th_interp = interp1d(theta_theory, xip_theory, kind="cubic", fill_value="extrapolate")(theta_fine)
-        xim_th_interp = interp1d(theta_theory, xim_theory, kind="cubic", fill_value="extrapolate")(theta_fine)
-        xip_sys_interp = interp1d(theta_sys, xip_sys, kind="cubic", fill_value="extrapolate")(theta_fine)
-        xim_sys_interp = interp1d(theta_sys, xim_sys, kind="cubic", fill_value="extrapolate")(theta_fine)
+        xip_th_interp = interp1d(
+            theta_theory, xip_theory, kind="cubic", fill_value="extrapolate"
+        )(theta_fine)
+        xim_th_interp = interp1d(
+            theta_theory, xim_theory, kind="cubic", fill_value="extrapolate"
+        )(theta_fine)
+        xip_sys_interp = interp1d(
+            theta_sys, xip_sys, kind="cubic", fill_value="extrapolate"
+        )(theta_fine)
+        xim_sys_interp = interp1d(
+            theta_sys, xim_sys, kind="cubic", fill_value="extrapolate"
+        )(theta_fine)
 
     scale_factor = 1e-4
     xlim = [1, 250]
@@ -432,15 +552,44 @@ def plot_xipm_bestfit_with_bmodes(
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharey=True)
 
     plot_configs = [
-        (axes[0], xip_data, sigma_xip, xip_B, sigma_xip_B,
-         xip_th_interp if has_theory else None, xip_sys_interp if has_theory else None,
-         edge_cut_xip, r"$\xi_+$", "+"),
-        (axes[1], xim_data, sigma_xim, xim_B, sigma_xim_B,
-         xim_th_interp if has_theory else None, xim_sys_interp if has_theory else None,
-         edge_cut_xim, r"$\xi_-$", "-"),
+        (
+            axes[0],
+            xip_data,
+            sigma_xip,
+            xip_B,
+            sigma_xip_B,
+            xip_th_interp if has_theory else None,
+            xip_sys_interp if has_theory else None,
+            edge_cut_xip,
+            r"$\xi_+$",
+            "+",
+        ),
+        (
+            axes[1],
+            xim_data,
+            sigma_xim,
+            xim_B,
+            sigma_xim_B,
+            xim_th_interp if has_theory else None,
+            xim_sys_interp if has_theory else None,
+            edge_cut_xim,
+            r"$\xi_-$",
+            "-",
+        ),
     ]
 
-    for idx, (ax, xi_data_arr, sigma_xi, xi_B, sigma_B, xi_th, xi_sys_arr, edge_cut, label, _pm) in enumerate(plot_configs):
+    for idx, (
+        ax,
+        xi_data_arr,
+        sigma_xi,
+        xi_B,
+        sigma_B,
+        xi_th,
+        xi_sys_arr,
+        edge_cut,
+        label,
+        _pm,
+    ) in enumerate(plot_configs):
         show_legend = idx == 1
 
         ax.axvspan(xlim[0], edge_cut[0], color="0.90", zorder=0, alpha=0.7)
@@ -453,7 +602,9 @@ def plot_xipm_bestfit_with_bmodes(
                 "-",
                 color="k",
                 lw=1.5,
-                label=r"Best-fit $\xi^{\mathrm{th}}_\pm + \xi^{\mathrm{sys}}_\pm$" if show_legend else None,
+                label=r"Best-fit $\xi^{\mathrm{th}}_\pm + \xi^{\mathrm{sys}}_\pm$"
+                if show_legend
+                else None,
                 zorder=2,
             )
             ax.plot(
@@ -593,19 +744,34 @@ def plot_cell_ee_with_bestfit(
     ax.axvline(x=500, color="black", linestyle="--", alpha=0.3)
 
     ax.text(
-        1740, 0.90, r"$k_\mathrm{max} = 3 h$ Mpc$^{-1}$",
+        1740,
+        0.90,
+        r"$k_\mathrm{max} = 3 h$ Mpc$^{-1}$",
         transform=ax.get_xaxis_transform(),
-        ha="center", va="top", fontsize=10, rotation=90,
+        ha="center",
+        va="top",
+        fontsize=10,
+        rotation=90,
     )
     ax.text(
-        1978, 0.90, r"$k_\mathrm{max} = 5 h$ Mpc$^{-1}$",
+        1978,
+        0.90,
+        r"$k_\mathrm{max} = 5 h$ Mpc$^{-1}$",
         transform=ax.get_xaxis_transform(),
-        ha="center", va="top", fontsize=10, rotation=90,
+        ha="center",
+        va="top",
+        fontsize=10,
+        rotation=90,
     )
     ax.text(
-        470, 0.90, r"$k_\mathrm{max} = 1 h$ Mpc$^{-1}$",
+        470,
+        0.90,
+        r"$k_\mathrm{max} = 1 h$ Mpc$^{-1}$",
         transform=ax.get_xaxis_transform(),
-        ha="center", va="top", fontsize=10, rotation=90,
+        ha="center",
+        va="top",
+        fontsize=10,
+        rotation=90,
     )
 
     ax.set_ylabel(r"$\ell C_\ell$", fontsize=16)
@@ -646,7 +812,13 @@ def plot_s8_whisker(
         reference_labels = [reference_label]
         reference_colors = reference_colors or [None]
 
-    g, chains = load_getdist_chains(chain_specs, width_inch=30, axes_fontsize=60, axes_labelsize=60, legend_fontsize=60)
+    g, chains = load_getdist_chains(
+        chain_specs,
+        width_inch=30,
+        axes_fontsize=60,
+        axes_labelsize=60,
+        legend_fontsize=60,
+    )
     plt.close(g.fig)
 
     labels = [spec.label for spec in chain_specs]
@@ -654,7 +826,21 @@ def plot_s8_whisker(
     alphas = [spec.alpha for spec in chain_specs]
 
     param_values = np.array(
-        [["# Expt", "Colour", "S8_Mean", "S8_low", "S8_high", "sigma_8_Mean", "sigma_8_low", "sigma_8_high", "Omega_m_Mean", "Omega_m_low", "Omega_m_high"]],
+        [
+            [
+                "# Expt",
+                "Colour",
+                "S8_Mean",
+                "S8_low",
+                "S8_high",
+                "sigma_8_Mean",
+                "sigma_8_low",
+                "sigma_8_high",
+                "Omega_m_Mean",
+                "Omega_m_low",
+                "Omega_m_high",
+            ]
+        ],
         dtype=object,
     )
 
@@ -676,7 +862,7 @@ def plot_s8_whisker(
     omegam_high = param_values[1:, 10].astype(np.float64)
 
     ref_indices = []
-    for rl in (reference_labels or []):
+    for rl in reference_labels or []:
         matches = np.where(expt == rl)[0]
         if len(matches):
             ref_indices.append(matches[0])
@@ -703,13 +889,35 @@ def plot_s8_whisker(
 
     for ax, param in zip(axs, params):
         means, lows, highs, label = param
-        for i, mean, low, high, color, alpha in zip(y, means, lows, highs, colours_arr, alphas):
-            ax.errorbar(mean, 0.05 + i * row_spacing, xerr=np.array([low, high])[:, None], fmt="o", color=color, ecolor=color, elinewidth=2, capsize=3, alpha=alpha)
+        for i, mean, low, high, color, alpha in zip(
+            y, means, lows, highs, colours_arr, alphas
+        ):
+            ax.errorbar(
+                mean,
+                0.05 + i * row_spacing,
+                xerr=np.array([low, high])[:, None],
+                fmt="o",
+                color=color,
+                ecolor=color,
+                elinewidth=2,
+                capsize=3,
+                alpha=alpha,
+            )
         ax.set_xlabel(label, fontsize=14)
 
         for ri, ref_idx in enumerate(ref_indices):
-            band_color = (reference_colors[ri] if reference_colors and ri < len(reference_colors) else colours_arr[ref_idx]) or colours_arr[ref_idx]
-            ax.axvspan(means[ref_idx] - lows[ref_idx], means[ref_idx] + highs[ref_idx], color=band_color, alpha=0.15, zorder=0)
+            band_color = (
+                reference_colors[ri]
+                if reference_colors and ri < len(reference_colors)
+                else colours_arr[ref_idx]
+            ) or colours_arr[ref_idx]
+            ax.axvspan(
+                means[ref_idx] - lows[ref_idx],
+                means[ref_idx] + highs[ref_idx],
+                color=band_color,
+                alpha=0.15,
+                zorder=0,
+            )
 
         ax.grid(False)
         ax.tick_params(axis="y", left=False, labelleft=False)
@@ -725,12 +933,37 @@ def plot_s8_whisker(
     for label, color, alpha in zip(expt, colours_arr, alphas):
         idx = np.where(expt == label)[0][0]
         yloc = 0.05 + row_spacing * idx
-        axs[0].text(0.26, yloc, label, fontsize=12, ha="left", va="center", color=color, alpha=alpha)
+        axs[0].text(
+            0.26,
+            yloc,
+            label,
+            fontsize=12,
+            ha="left",
+            va="center",
+            color=color,
+            alpha=alpha,
+        )
         if label not in ref_label_set and ref_indices:
             ri0 = ref_indices[0]
-            s8_tension = get_sigma_tension(s8_mean[idx], s8_low[idx], s8_high[idx], s8_mean[ri0], s8_low[ri0], s8_high[ri0])
+            s8_tension = get_sigma_tension(
+                s8_mean[idx],
+                s8_low[idx],
+                s8_high[idx],
+                s8_mean[ri0],
+                s8_low[ri0],
+                s8_high[ri0],
+            )
             sign_str = "+" if s8_tension > 0 else "-"
-            axs[0].text(1.045, yloc, rf"${sign_str}{np.abs(s8_tension):.2f}" + r"\, \sigma$", fontsize=10, ha="right", va="center", color=color, alpha=alpha)
+            axs[0].text(
+                1.045,
+                yloc,
+                rf"${sign_str}{np.abs(s8_tension):.2f}" + r"\, \sigma$",
+                fontsize=10,
+                ha="right",
+                va="center",
+                color=color,
+                alpha=alpha,
+            )
 
     plt.gca().invert_yaxis()
     plt.tight_layout()
@@ -741,6 +974,7 @@ def plot_s8_whisker(
 
 
 # ── Snakemake entry ──────────────────────────────────────────────────────────
+
 
 def _config_from_snakemake(smk) -> CeremonyConfig:
     """Build config from snakemake.input / snakemake.output / snakemake.params."""
@@ -793,10 +1027,21 @@ def _config_from_cli() -> CeremonyConfig:
     """
     _PROJECT_ROOT = _SCRIPT_DIR.parent.parent
 
-    parser = argparse.ArgumentParser(description="Run the UNIONS unblinding ceremony plot sequence.")
+    parser = argparse.ArgumentParser(
+        description="Run the UNIONS unblinding ceremony plot sequence."
+    )
     parser.add_argument("blind", choices=["A", "B", "C"], help="Revealed blind letter")
-    parser.add_argument("--chain-version", default=_DEFAULT_CHAIN_VERSION, help="Chain version (default: %(default)s)")
-    parser.add_argument("--output-dir", type=Path, default=None, help="Output directory for results (default: <project_root>/results/unblinding)")
+    parser.add_argument(
+        "--chain-version",
+        default=_DEFAULT_CHAIN_VERSION,
+        help="Chain version (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory for results (default: <project_root>/results/unblinding)",
+    )
     args = parser.parse_args()
 
     blind = args.blind
@@ -805,21 +1050,29 @@ def _config_from_cli() -> CeremonyConfig:
     output_dir = args.output_dir or (_PROJECT_ROOT / "results" / "unblinding")
 
     xi_data_path = _require_path(
-        _COSMOSIS_DATA_DIR / f"{chain_prefix}_{blind}" / f"cosmosis_{chain_prefix}_{blind}.fits",
+        _COSMOSIS_DATA_DIR
+        / f"{chain_prefix}_{blind}"
+        / f"cosmosis_{chain_prefix}_{blind}.fits",
         f"CosmoSIS xi FITS for blind {blind}",
     )
 
     pseudo_cl_path = _require_path(
-        Path(f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_{chain_prefix}.fits"),
+        Path(
+            f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_{chain_prefix}.fits"
+        ),
         f"pseudo-Cl for {chain_prefix} (Guerrini)",
     )
     pseudo_cl_cov_path = _require_path(
-        Path(f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_{chain_prefix}.fits"),
+        Path(
+            f"/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_{chain_prefix}.fits"
+        ),
         f"pseudo-Cl covariance for {chain_prefix} (Guerrini)",
     )
 
     cosmosis_cell_fits = _require_path(
-        _COSMOSIS_DATA_DIR / f"{chain_prefix}_{blind}_fid" / f"cosmosis_{chain_prefix}_{blind}_fid_cell.fits",
+        _COSMOSIS_DATA_DIR
+        / f"{chain_prefix}_{blind}_fid"
+        / f"cosmosis_{chain_prefix}_{blind}_fid_cell.fits",
         f"CosmoSIS C_ell FITS for blind {blind}",
     )
 
@@ -839,20 +1092,29 @@ def _config_from_cli() -> CeremonyConfig:
         evidence_dir=output_dir / "claims" / "unblinding_ceremony",
         xi_data_path=xi_data_path,
         pure_eb_path=_require_path(
-            _PROJECT_ROOT / "results" / "paper_plots" / "intermediate" / f"{chain_prefix}_{blind}_pure_eb_semianalytic.npz",
+            _PROJECT_ROOT
+            / "results"
+            / "paper_plots"
+            / "intermediate"
+            / f"{chain_prefix}_{blind}_pure_eb_semianalytic.npz",
             f"Pure E/B file for blind {blind}",
         ),
         pseudo_cl_path=pseudo_cl_path,
         pseudo_cl_cov_path=pseudo_cl_cov_path,
         cosmosis_cell_fits=cosmosis_cell_fits,
         bestfit_dir=bestfit_dir,
-        bestfit_root_fid_cell=_require_bestfit_root(_CHAIN_ROOT_DIR, f"{chain_prefix}_{blind}_fid_cell"),
-        bestfit_root_halofit_cell=_require_bestfit_root(_CHAIN_ROOT_DIR, f"{chain_prefix}_{blind}_halofit_cell"),
+        bestfit_root_fid_cell=_require_bestfit_root(
+            _CHAIN_ROOT_DIR, f"{chain_prefix}_{blind}_fid_cell"
+        ),
+        bestfit_root_halofit_cell=_require_bestfit_root(
+            _CHAIN_ROOT_DIR, f"{chain_prefix}_{blind}_halofit_cell"
+        ),
         bestfit_root_config=bestfit_root_config,
     )
 
 
 # ── Main ceremony ────────────────────────────────────────────────────────────
+
 
 def run_ceremony(cfg: CeremonyConfig) -> None:
     blind = cfg.blind
@@ -873,7 +1135,9 @@ def run_ceremony(cfg: CeremonyConfig) -> None:
 
     # 02: C_ell^EE data, no theory
     plot_cell_ee_data_vector(
-        str(cfg.pseudo_cl_path), str(cfg.pseudo_cl_cov_path), _save_path(cfg, 2, "cell_ee_data")
+        str(cfg.pseudo_cl_path),
+        str(cfg.pseudo_cl_cov_path),
+        _save_path(cfg, 2, "cell_ee_data"),
     )
 
     # 03: xi+/- with config-space best-fit (Paper IV Fig 1)
@@ -1011,12 +1275,34 @@ def run_ceremony(cfg: CeremonyConfig) -> None:
             )
         )
 
-    whisker_specs.extend([
-        ChainSpec(root="Planck18", label=r"\textit{Planck} 2018", color="black", base_dir=cfg.external_root_dir),
-        ChainSpec(root="DES_Y3", label=r"DES Y3 $\xi_\pm$", color="black", base_dir=cfg.external_root_dir),
-        ChainSpec(root="KiDS-1000", label=r"KiDS-1000 $\xi_\pm$", color="black", base_dir=cfg.external_root_dir),
-        ChainSpec(root="HSC_Y3", label=r"HSC Y3 $\xi_\pm$", color="black", base_dir=cfg.external_root_dir),
-    ])
+    whisker_specs.extend(
+        [
+            ChainSpec(
+                root="Planck18",
+                label=r"\textit{Planck} 2018",
+                color="black",
+                base_dir=cfg.external_root_dir,
+            ),
+            ChainSpec(
+                root="DES_Y3",
+                label=r"DES Y3 $\xi_\pm$",
+                color="black",
+                base_dir=cfg.external_root_dir,
+            ),
+            ChainSpec(
+                root="KiDS-1000",
+                label=r"KiDS-1000 $\xi_\pm$",
+                color="black",
+                base_dir=cfg.external_root_dir,
+            ),
+            ChainSpec(
+                root="HSC_Y3",
+                label=r"HSC Y3 $\xi_\pm$",
+                color="black",
+                base_dir=cfg.external_root_dir,
+            ),
+        ]
+    )
 
     plot_s8_whisker(
         whisker_specs,
@@ -1056,9 +1342,16 @@ def run_ceremony(cfg: CeremonyConfig) -> None:
             "pseudo_cl": str(cfg.pseudo_cl_path),
             "pseudo_cl_cov": str(cfg.pseudo_cl_cov_path),
             "cosmosis_cell_fits": str(cfg.cosmosis_cell_fits),
-            "harmonic_chains": str(cfg.chain_root_dir / f"{cfg.chain_prefix}_{{A,B,C}}_lmin=300_lmax=1600_cell"),
-            "config_chains": str(cfg.chain_root_dir / f"{cfg.chain_prefix}_{{A,B,C}}_10_80"),
-            "external_chains": str(cfg.external_root_dir / "{Planck18,DES_Y3,KiDS-1000,HSC_Y3}"),
+            "harmonic_chains": str(
+                cfg.chain_root_dir
+                / f"{cfg.chain_prefix}_{{A,B,C}}_lmin=300_lmax=1600_cell"
+            ),
+            "config_chains": str(
+                cfg.chain_root_dir / f"{cfg.chain_prefix}_{{A,B,C}}_10_80"
+            ),
+            "external_chains": str(
+                cfg.external_root_dir / "{Planck18,DES_Y3,KiDS-1000,HSC_Y3}"
+            ),
         },
         "output": output_dict,
         "params": {
