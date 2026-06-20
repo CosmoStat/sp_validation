@@ -17,6 +17,14 @@ import numpy as np
 from astropy.io import fits
 from cs_util import plots as cs_plots
 
+from ..survey import (
+    additive_bias,
+    area_from_coords,
+    effective_survey_stats,
+    n_eff_density,
+)
+from ..survey import ellipticity_dispersion as ellipticity_dispersion_stat
+
 
 class CatalogCharacterizationMixin:
     def compute_survey_stats(
@@ -79,10 +87,6 @@ class CatalogCharacterizationMixin:
 
         w = np.asarray(data[weight_column], dtype=float)
 
-        sum_w = float(np.sum(w))
-        sum_w2 = float(np.sum(w**2))
-        sum_w2_e2 = float(np.sum((w**2) * (e1**2 + e2**2)))
-
         if mask_path is not None:
             if not os.path.exists(mask_path):
                 raise FileNotFoundError(f"Mask path not found: {mask_path}")
@@ -106,23 +110,22 @@ class CatalogCharacterizationMixin:
                 f"Unable to determine survey area for {ver}. Provide mask_path or nside."
             )
 
-        area_arcmin2 = area_deg2 * 3600.0
-
-        n_eff = (sum_w**2) / (area_arcmin2 * sum_w2) if sum_w2 > 0 else 0.0
-        sigma_e = np.sqrt(sum_w2_e2 / sum_w2) if sum_w2 > 0 else 0.0
+        stats = effective_survey_stats(e1, e2, w, area_deg2)
 
         results = {
             "area_deg2": area_deg2,
-            "n_eff": n_eff,
-            "sigma_e": sigma_e,
-            "sum_w": sum_w,
-            "sum_w2": sum_w2,
+            "n_eff": stats["n_eff"],
+            "sigma_e": stats["sigma_e"],
+            "sum_w": stats["sum_w"],
+            "sum_w2": stats["sum_w2"],
             "catalog_size": n_rows,
         }
 
         if overwrite_config:
             self.cc[ver].setdefault("cov_th", {}).update(
-                A=float(area_deg2), n_e=float(n_eff), sigma_e=float(sigma_e)
+                A=float(area_deg2),
+                n_e=float(stats["n_eff"]),
+                sigma_e=float(stats["sigma_e"]),
             )
             self._write_catalog_config()
 
@@ -132,11 +135,7 @@ class CatalogCharacterizationMixin:
         data = fits.getdata(catalog_path, memmap=True)
         ra = np.asarray(data["RA"], dtype=float)
         dec = np.asarray(data["Dec"], dtype=float)
-        theta = np.radians(90.0 - dec)
-        phi = np.radians(ra)
-        pix = hp.ang2pix(nside, theta, phi, lonlat=False)
-        unique_pix = np.unique(pix)
-        return float(unique_pix.size * hp.nside2pixarea(nside, degrees=True))
+        return area_from_coords(ra, dec, nside)
 
     def _area_from_mask(self, mask_map_path):
         mask = hp.read_map(mask_map_path, dtype=np.float64)
@@ -210,9 +209,7 @@ class CatalogCharacterizationMixin:
             self.print_magenta(ver)
             with self.results[ver].temporarily_read_data():
                 w = self._read_shear_cols(ver, "w_col")
-                n_eff_gal[ver] = (
-                    1 / (self.area[ver] * 60 * 60) * np.sum(w) ** 2 / np.sum(w**2)
-                )
+                n_eff_gal[ver] = n_eff_density(w, self.area[ver])
                 print(f"n_eff_gal = {n_eff_gal[ver]:.2f} gal./arcmin^-2")
 
         self._n_eff_gal = n_eff_gal
@@ -225,13 +222,7 @@ class CatalogCharacterizationMixin:
             self.print_magenta(ver)
             with self.results[ver].temporarily_read_data():
                 e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
-                ellipticity_dispersion[ver] = np.sqrt(
-                    0.5
-                    * (
-                        np.average(e1**2, weights=w**2)
-                        + np.average(e2**2, weights=w**2)
-                    )
-                )
+                ellipticity_dispersion[ver] = ellipticity_dispersion_stat(e1, e2, w)
                 print(f"Ellipticity dispersion = {ellipticity_dispersion[ver]:.4f}")
         self._ellipticity_dispersion = ellipticity_dispersion
 
@@ -363,18 +354,9 @@ class CatalogCharacterizationMixin:
         for ver in self.versions:
             self.print_magenta(ver)
             R = self.cc[ver]["shear"]["R"]
-            e1_col, e2_col, w_col = [
-                self.cc[ver]["shear"][k] for k in ["e1_col", "e2_col", "w_col"]
-            ]
             with self.results[ver].temporarily_read_data():
-                self._c1[ver] = np.average(
-                    self.results[ver].dat_shear[e1_col] / R,
-                    weights=self.results[ver].dat_shear[w_col],
-                )
-                self._c2[ver] = np.average(
-                    self.results[ver].dat_shear[e2_col] / R,
-                    weights=self.results[ver].dat_shear[w_col],
-                )
+                e1, e2, w = self._read_shear_cols(ver, "e1_col", "e2_col", "w_col")
+                self._c1[ver], self._c2[ver] = additive_bias(e1, e2, w, R)
         self.print_done("Finished additive bias calculation.")
 
     @property
