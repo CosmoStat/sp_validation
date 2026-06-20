@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 from matplotlib import scale as mscale
 import matplotlib.ticker as mticker
 import seaborn as sns
-from sp_validation.utils_cosmo_val import SquareRootScale
+from sp_validation.rho_tau import SquareRootScale
 
 from utils import get_chi2_and_pte
 

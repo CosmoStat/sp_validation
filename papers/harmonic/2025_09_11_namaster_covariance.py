@@ -19,7 +19,7 @@ import healpy as hp
 import pymaster as nmt
 import camb
 
-from sp_validation.utils_cosmo_val import SquareRootScale
+from sp_validation.rho_tau import SquareRootScale
 from sp_validation.cosmo_val import CosmologyValidation
 from sp_validation.rho_tau import get_params_rho_tau
 
