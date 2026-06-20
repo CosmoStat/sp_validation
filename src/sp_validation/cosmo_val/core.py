@@ -501,25 +501,20 @@ class CosmologyValidation(
         )
         return cols[0] if len(cols) == 1 else cols
 
-    def _calibrated_g(self, ver, des_branch=True):
+    def _calibrated_g(self, ver):
         """Calibrated shear components ``(g1, g2)`` for a catalog version.
 
         Applies additive-bias subtraction and the multiplicative response:
-        ``g = (e − c) / R``. When ``des_branch`` is set and the version is
-        ``"DES"``, the response is the catalog-averaged per-component
-        ``R11``/``R22`` (column names in the config); otherwise it is the
-        scalar ``R`` from the config. ``des_branch`` exists because the two
-        callers historically differed: :meth:`calculate_2pcf` used the DES
-        branch, while :meth:`calculate_aperture_mass_dispersion` used scalar
-        ``R`` for every version. NOTE: that asymmetry is likely a latent bug
-        (aperture-mass on DES probably also wants ``R11``/``R22``); the flag
-        preserves each caller's exact prior behavior pending a deliberate fix.
+        ``g = (e − c) / R``. For DES the response is the catalog-averaged
+        per-component ``R11``/``R22`` (column names in the config); for every
+        other version it is the scalar ``R`` from the config. Used identically
+        by :meth:`calculate_2pcf` and :meth:`calculate_aperture_mass_dispersion`.
 
         Must be called inside a ``self.results[ver].temporarily_read_data()``
         context, since it reads ``dat_shear`` columns.
         """
         e1, e2 = self._read_shear_cols(ver, "e1_col", "e2_col")
-        if des_branch and ver == "DES":
+        if ver == "DES":
             R1 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R11"]])
             R2 = np.average(self.results[ver].dat_shear[self.cc[ver]["shear"]["R22"]])
         else:

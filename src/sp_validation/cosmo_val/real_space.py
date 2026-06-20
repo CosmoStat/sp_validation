@@ -415,9 +415,7 @@ class RealSpaceMixin:
                 gg.read(out_fname)
             else:
                 with self.results[ver].temporarily_read_data():
-                    # des_branch=False preserves this method's historical
-                    # scalar-R calibration for all versions (see _calibrated_g).
-                    g1, g2 = self._calibrated_g(ver, des_branch=False)
+                    g1, g2 = self._calibrated_g(ver)
                     cat_gal = treecorr.Catalog(
                         ra=self.results[ver].dat_shear["RA"],
                         dec=self.results[ver].dat_shear["Dec"],
