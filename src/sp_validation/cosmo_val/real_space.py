@@ -57,8 +57,7 @@ class RealSpaceMixin:
 
         npatch = npatch or self.npatch
         treecorr_config = {
-            **self.treecorr_config,
-            **treecorr_config,
+            **self._binning(**treecorr_config),
             "var_method": "jackknife" if int(npatch) > 1 else "shot",
         }
 
@@ -417,12 +416,7 @@ class RealSpaceMixin:
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
         self._map2["theta_map"] = theta_map
 
-        treecorr_config = {
-            **self.treecorr_config,
-            "min_sep": theta_min,
-            "max_sep": theta_max,
-            "nbins": nbins,
-        }
+        treecorr_config = self._binning(theta_min, theta_max, nbins)
 
         for ver in self.versions:
             self.print_magenta(ver)

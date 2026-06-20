@@ -469,6 +469,20 @@ class CosmologyValidation(
             f"_npatch={patches}"
         )
 
+    def _binning(self, min_sep=None, max_sep=None, nbins=None, **extra):
+        """treecorr_config with min_sep/max_sep/nbins overridden.
+
+        None falls back to the instance's treecorr_config value for that key;
+        any further keys in `extra` override on top.
+        """
+        return {
+            **self.treecorr_config,
+            "min_sep": min_sep or self.treecorr_config["min_sep"],
+            "max_sep": max_sep or self.treecorr_config["max_sep"],
+            "nbins": nbins or self.treecorr_config["nbins"],
+            **extra,
+        }
+
     @property
     def colors(self):
         return [self.cc[ver]["colour"] for ver in self.versions]

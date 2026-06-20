@@ -103,24 +103,10 @@ class PureEBMixin:
 
         # Set up parameters with defaults
         npatch = npatch or self.npatch
-        min_sep = min_sep or self.treecorr_config["min_sep"]
-        max_sep = max_sep or self.treecorr_config["max_sep"]
-        nbins = nbins or self.treecorr_config["nbins"]
 
         # Create TreeCorr configurations
-        treecorr_config = {
-            **self.treecorr_config,
-            "min_sep": min_sep,
-            "max_sep": max_sep,
-            "nbins": nbins,
-        }
-
-        treecorr_config_int = {
-            **treecorr_config,
-            "min_sep": min_sep_int,
-            "max_sep": max_sep_int,
-            "nbins": nbins_int,
-        }
+        treecorr_config = self._binning(min_sep, max_sep, nbins)
+        treecorr_config_int = self._binning(min_sep_int, max_sep_int, nbins_int)
 
         # Calculate correlation functions
         gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)

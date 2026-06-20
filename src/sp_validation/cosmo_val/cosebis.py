@@ -92,12 +92,7 @@ class CosebisMixin:
         npatch = npatch or self.npatch
 
         # Always use integration binning for COSEBIs calculation (fine binning)
-        treecorr_config = {
-            **self.treecorr_config,
-            "min_sep": min_sep_int,
-            "max_sep": max_sep_int,
-            "nbins": nbins_int,
-        }
+        treecorr_config = self._binning(min_sep_int, max_sep_int, nbins_int)
 
         # Calculate single fine-binned correlation function for COSEBIs
         print(
@@ -114,9 +109,12 @@ class CosebisMixin:
             )
         elif evaluate_all_scale_cuts:
             # Use reporting binning parameters or inherit from class config
-            min_sep = min_sep or self.treecorr_config["min_sep"]
-            max_sep = max_sep or self.treecorr_config["max_sep"]
-            nbins = nbins or self.treecorr_config["nbins"]
+            binning = self._binning(min_sep, max_sep, nbins)
+            min_sep, max_sep, nbins = (
+                binning["min_sep"],
+                binning["max_sep"],
+                binning["nbins"],
+            )
 
             # Generate scale cuts using np.geomspace (no TreeCorr needed)
             bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
@@ -266,12 +264,7 @@ class CosebisMixin:
         # Generate scale cut heatmap if we have multiple scale cuts
         if multiple_scale_cuts and len(results) > 1:
             # Create temporary gg object with correct binning for mapping
-            treecorr_config_temp = {
-                **self.treecorr_config,
-                "min_sep": min_sep or self.treecorr_config["min_sep"],
-                "max_sep": max_sep or self.treecorr_config["max_sep"],
-                "nbins": nbins or self.treecorr_config["nbins"],
-            }
+            treecorr_config_temp = self._binning(min_sep, max_sep, nbins)
             gg_temp = self.calculate_2pcf(
                 version, npatch=npatch, **treecorr_config_temp
             )
