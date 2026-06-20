@@ -27,7 +27,7 @@ from cs_util import cat
 from sp_validation import util
 from sp_validation import io
 from sp_validation.survey import get_footprint
-from sp_validation import __version__, __name__
+from sp_validation.version import __version__
 
 
 def print_mean_ellipticity(

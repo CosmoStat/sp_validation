@@ -31,6 +31,7 @@ MOVE_MAP: tuple[tuple[str, str], ...] = (
         "cosmo_inference/notebooks/2D_cosmic_shear_consistency",
         "papers/consistency",
     ),
+    ("sp_validation.info", "sp_validation.version (__version__); __name__ dropped"),
 )
 EXCLUDED_DIRS = {
     ".git",
