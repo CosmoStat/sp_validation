@@ -1,7 +1,18 @@
-# Bloat guards: notebook outputs are stripped on commit, and oversized files
-# are rejected. Activate once per clone with `pre-commit install`
-# (see CONTRIBUTING.md).
+# Lint + format guards, plus bloat guards: notebook outputs are stripped on
+# commit and oversized files are rejected. Activate once per clone with
+# `pre-commit install` (see CONTRIBUTING.md).
 repos:
+  # Lint + format. `ruff` is scoped to the library (src/sp_validation/) so it
+  # only BLOCKS commits on library lint; `ruff-format` runs repo-wide so the
+  # whole tree stays formatted. CI (.github/workflows/lint.yml) gates the full
+  # repo at the agreed per-file-ignores policy.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.18
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+        files: "^src/sp_validation/"
+      - id: ruff-format
   - repo: https://github.com/kynan/nbstripout
     rev: 0.8.1
     hooks:

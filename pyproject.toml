@@ -117,5 +117,17 @@ select = [
 ]
 ignore = [
     "E712",  # comparison to True should be 'if cond is True:' or 'if cond:'
+    "E501",  # line-too-long: the formatter owns line width (ruff's own guidance)
 ]
+
+# Region-aware relaxations. src/ stays strict (no ignores). The peripheral
+# trees — workflow scripts, per-paper analysis scripts, top-level scripts, and
+# scratch — legitimately do sys.path manipulation before importing (E402) and
+# pull names in via `from x import *` (F403/F405); enforcing those there would
+# be noise, not signal.
+[tool.ruff.lint.per-file-ignores]
+"workflow/scripts/*" = ["E402"]
+"papers/*/scripts/*" = ["E402", "F403", "F405"]
+"scripts/*" = ["E402", "F403", "F405"]
+"scratch/*" = ["E402", "F403", "F405"]
 

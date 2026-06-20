@@ -1,0 +1,29 @@
+name: Lint
+
+# Gate the whole repo on ruff: format must be clean and lint must pass at the
+# agreed policy. `ruff check .` honours the per-file-ignores in pyproject.toml,
+# so the peripheral trees (scripts, scratch, papers, workflow) are held to the
+# relaxed rules while src/ stays strict.
+#
+#   push / pull_request → run both checks; either failure fails the run
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: Ruff format + lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Check formatting
+        run: uvx ruff format --check .
+
+      - name: Lint
+        run: uvx ruff check .
