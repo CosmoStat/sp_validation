@@ -405,13 +405,13 @@ class CosmologyValidation(
     def color_reset(self):
         print(colorama.Fore.BLACK, end="")
 
-    def _print_color(self, color, msg, end="\n"):
+    def _cprint(self, color, msg, end="\n"):
         """Print ``msg`` in ``color``, then restore the default foreground."""
         print(color + msg, end=end)
         self.color_reset()
 
     def print_blue(self, msg, end="\n"):
-        self._print_color(colorama.Fore.BLUE, msg, end=end)
+        self._cprint(colorama.Fore.BLUE, msg, end=end)
 
     def print_start(self, msg, end="\n"):
         print()
@@ -421,13 +421,13 @@ class CosmologyValidation(
         self.print_blue(msg)
 
     def print_magenta(self, msg):
-        self._print_color(colorama.Fore.MAGENTA, msg)
+        self._cprint(colorama.Fore.MAGENTA, msg)
 
     def print_green(self, msg):
-        self._print_color(colorama.Fore.GREEN, msg)
+        self._cprint(colorama.Fore.GREEN, msg)
 
     def print_cyan(self, msg):
-        self._print_color(colorama.Fore.CYAN, msg)
+        self._cprint(colorama.Fore.CYAN, msg)
 
     def init_results(self, objectwise=False):
         # Branch is loop-invariant: pick the leakage class and its parameter
