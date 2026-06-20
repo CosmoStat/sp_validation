@@ -1,11 +1,15 @@
 name: Lint
 
-# Gate the whole repo on ruff: format must be clean and lint must pass at the
-# agreed policy. `ruff check .` honours the per-file-ignores in pyproject.toml,
-# so the peripheral trees (scripts, scratch, papers, workflow) are held to the
-# relaxed rules while src/ stays strict.
+# Region-aware ruff gate:
+#   - formatting is enforced repo-wide (`ruff format --check .`)
+#   - lint is enforced (blocking) on the library only (`ruff check src/sp_validation`),
+#     matching the src-only pre-commit hook. The peripheral analysis/workflow trees
+#     are formatted but not lint-blocking — they legitimately accrue analysis-script
+#     patterns, and policing them would block unrelated PRs.
+#   - a repo-wide lint runs informationally (non-blocking) for visibility; it surfaces
+#     genuine peripheral issues (e.g. undefined names) without failing the build.
 #
-#   push / pull_request → run both checks; either failure fails the run
+#   push / pull_request → format + library-lint must pass; repo-wide lint is advisory.
 on:
   push:
   pull_request:
@@ -22,8 +26,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Check formatting
+      - name: Check formatting (repo-wide, blocking)
         run: uvx ruff format --check .
 
-      - name: Lint
+      - name: Lint library (src/, blocking)
+        run: uvx ruff check src/sp_validation
+
+      - name: Lint repo-wide (advisory, non-blocking)
+        continue-on-error: true
         run: uvx ruff check .

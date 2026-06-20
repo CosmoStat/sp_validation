@@ -128,6 +128,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "workflow/scripts/*" = ["E402"]
 "papers/*/scripts/*" = ["E402", "F403", "F405"]
+"papers/*/*.py" = ["E402", "F403", "F405"]  # per-paper analysis scripts live at this level too
 "scripts/*" = ["E402", "F403", "F405"]
 "scratch/*" = ["E402", "F403", "F405"]
+"cosmo_inference/**/*.py" = ["E402"]  # notebooks/scripts do sys.path + mpl-backend setup before imports
 
