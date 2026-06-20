@@ -1183,25 +1183,6 @@ class CalibrateCat(BaseCat):
 
         """
 
-def confusion_matrix(mask, confidence_level=0.9):
-
-    n_key = len(mask)
-
-    cm = np.empty((n_key, n_key))
-    r_val = np.zeros_like(cm)
-    r_cl = np.empty((n_key, n_key, 2))
-
-    for idx, key1 in enumerate(mask):
-        for jdx, key2 in enumerate(mask):
-            res = stats.pearsonr(mask[key1], mask[key2])
-            r_val[idx][jdx] = res.statistic
-            r_cl[idx][jdx] = res.confidence_interval(
-                confidence_level=confidence_level
-            )
-
-    return r_val, r_cl
-
-
 def correlation_matrix(masks, confidence_level=0.9):
 
     n_key = len(masks)
