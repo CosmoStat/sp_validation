@@ -3,12 +3,12 @@ from .version import __version__
 __all__ = [
     'util',
     'io',
-    'basic',
     'cosmo_val',
     'galaxy',
     'cosmology',
     'glass_mock',
     'calibration',
+    'statistics',
     'cat',
     'plot_style',
     'plots',
@@ -19,7 +19,6 @@ __all__ = [
 # Explicit imports to avoid circular issues
 #from . import util
 #from . import io
-#from . import basic
 #from . import galaxy
 #from . import cosmology
 #from . import calibration

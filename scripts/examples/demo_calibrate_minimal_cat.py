@@ -25,7 +25,7 @@ import matplotlib.pylab as plt
 
 from sp_validation import run_joint_cat as sp_joint
 from sp_validation import util
-from sp_validation.basic import metacal
+from sp_validation.calibration import metacal
 import sp_validation.cat as cat
 
 # Initialize calibration class instance

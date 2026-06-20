@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 import matplotlib.scale as mscale
 from sp_validation.rho_tau import SquareRootScale
-from sp_validation.basic import corr_from_cov, cov_from_one_covariance
+from sp_validation.statistics import corr_from_cov, cov_from_one_covariance
 
 mscale.register_scale(SquareRootScale)
 

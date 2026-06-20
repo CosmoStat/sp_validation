@@ -25,7 +25,7 @@ from cs_util import cat as cs_cat
 import sp_validation.cat as cat
 from sp_validation import calibration
 from sp_validation import run_joint_cat as sp_joint
-from sp_validation.basic import metacal
+from sp_validation.calibration import metacal
 
 # %%
 # Initialize calibration class instance
