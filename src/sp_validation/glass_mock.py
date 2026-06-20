@@ -380,17 +380,15 @@ def compute_two_point_xi(cat, config=None):
 
 
 def get_n_gal_map(nside, ra, dec):
-    """Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays."""
-    import healpy as hp
+    """Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.
 
-    theta = (90.0 - dec) * np.pi / 180.0
-    phi = ra * np.pi / 180.0
-    pix = hp.ang2pix(nside, theta, phi)
+    The unweighted twin of the pseudo-Cl ``get_n_gal_map`` primitive: delegates
+    to it with ``weights=None`` (counts). Imported lazily so this module keeps
+    resolving in CAMB-only environments without the harmonic stack.
+    """
+    from sp_validation.pseudo_cl import get_n_gal_map as _get_n_gal_map
 
-    unique_pix, idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
-    n_gal = np.zeros(hp.nside2npix(nside))
-    n_gal[unique_pix] = np.bincount(idx_rep)
-    return n_gal, unique_pix, idx, idx_rep
+    return _get_n_gal_map(nside, ra, dec)
 
 
 def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):

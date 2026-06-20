@@ -17,6 +17,13 @@ import pymaster as nmt
 from astropy.io import fits
 
 from ..cosmology import get_theo_c_ell
+from ..pseudo_cl import (
+    apply_random_rotation,
+    get_n_gal_map,
+    get_pseudo_cls_catalog,
+    get_pseudo_cls_map,
+    make_namaster_bin,
+)
 from ..rho_tau import get_params_rho_tau
 from ..statistics import chi2_and_pte, cov_from_one_covariance
 
@@ -36,51 +43,16 @@ class PseudoClMixin:
         return self._pseudo_cls_onecov
 
     def get_namaster_bin(self, lmin, lmax, b_lmax):
-        """Build NaMaster binning object.
-
-        Parameters
-        ----------
-        lmin, lmax : int
-            Multipole range.
-        b_lmax : int
-            Maximum multipole for the NmtBin object.
-
-        Returns
-        -------
-        nmt.NmtBin
-        """
-        ells = np.arange(lmin, lmax + 1)
-
-        if self.binning == "linear":
-            bpws = (ells - lmin) // self.ell_step
-            bpws = np.minimum(bpws, bpws[-1])
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-        elif self.binning == "logspace":
-            # Start geomspace at ell_min_log (>= lmin) to avoid
-            # sub-multipole bins at low ell that destabilize the MCM.
-            # All ell below ell_min_log go into bin 0 as padding.
-            ell_min_log = max(lmin, 50)
-            bins_ell = np.geomspace(ell_min_log, lmax, self.n_ell_bins + 1)
-            bpws = np.digitize(ells.astype(float), bins_ell) - 1
-            bpws = np.clip(bpws, 0, self.n_ell_bins - 1)
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-        elif self.binning == "powspace":
-            start = np.power(lmin, self.power)
-            end = np.power(lmax, self.power)
-            bins_ell = np.power(
-                np.linspace(start, end, self.n_ell_bins + 1), 1 / self.power
-            )
-            bpws = np.digitize(ells.astype(float), bins_ell) - 1
-            bpws[0] = 0
-            bpws[-1] = self.n_ell_bins - 1
-            b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
-        else:
-            raise ValueError(
-                f"Unknown binning '{self.binning}'. "
-                "Choose from 'linear', 'logspace', 'powspace'."
-            )
-
-        return b
+        """Build NaMaster binning object (thin wrapper, state -> primitive)."""
+        return make_namaster_bin(
+            lmin,
+            lmax,
+            b_lmax,
+            self.binning,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
+        )
 
     def get_variance_map(self, nside, e1, e2, w, unique_pix, idx_rep):
         """
@@ -596,23 +568,13 @@ class PseudoClMixin:
         self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
 
     def get_n_gal_map(self, params, nside, cat_gal):
-        """
-        Compute the galaxy number density map.
-        """
-        ra = cat_gal[params["ra_col"]]
-        dec = cat_gal[params["dec_col"]]
-        w = cat_gal[params["w_col"]]
-
-        theta = (90.0 - dec) * np.pi / 180.0
-        phi = ra * np.pi / 180.0
-        pix = hp.ang2pix(nside, theta, phi)
-
-        unique_pix, idx, idx_rep = np.unique(
-            pix, return_index=True, return_inverse=True
+        """Weighted galaxy number-density map (thin wrapper -> primitive)."""
+        return get_n_gal_map(
+            nside,
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            weights=cat_gal[params["w_col"]],
         )
-        n_gal = np.zeros(hp.nside2npix(nside))
-        n_gal[unique_pix] = np.bincount(idx_rep, weights=w)
-        return n_gal, unique_pix, idx, idx_rep
 
     def get_gaussian_real(
         self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
@@ -648,85 +610,40 @@ class PseudoClMixin:
         return cl_noise, f, wsp
 
     def get_pseudo_cls_map(self, map, mask, wsp=None):
-        """
-        Compute the pseudo-cl for a given map.
-        """
-
-        lmin = 8
-        lmax = 2 * self.nside
-        b_lmax = lmax - 1
-
-        b = self.get_namaster_bin(lmin, lmax, b_lmax)
-
-        ell_eff = b.get_effective_ells()
-
-        factor = -1 if self.pol_factor else 1
-
-        f_all = nmt.NmtField(mask=mask, maps=[map.real, factor * map.imag], lmax=b_lmax)
-        if wsp is None:
-            wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
-
-        cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
-        cl_all = wsp.decouple_cell(cl_coupled)
-
-        return ell_eff, cl_all, wsp
-
-    def get_pseudo_cls_catalog(self, catalog, params, wsp=None):
-        """
-        Compute the pseudo-cl for a given catalog.
-        """
-
-        lmin = 8
-        lmax = 2 * self.nside
-        b_lmax = lmax - 1
-
-        b = self.get_namaster_bin(lmin, lmax, b_lmax)
-
-        ell_eff = b.get_effective_ells()
-
-        factor = -1 if self.pol_factor else 1
-
-        f_all = nmt.NmtFieldCatalog(
-            positions=[catalog[params["ra_col"]], catalog[params["dec_col"]]],
-            weights=catalog[params["w_col"]],
-            field=[catalog[params["e1_col"]], factor * catalog[params["e2_col"]]],
-            lmax=b_lmax,
-            lmax_mask=b_lmax,
-            spin=2,
-            lonlat=True,
+        """Map-based pseudo-cl (thin wrapper, state -> primitive)."""
+        return get_pseudo_cls_map(
+            map,
+            mask,
+            self.nside,
+            self.binning,
+            pol_factor=self.pol_factor,
+            wsp=wsp,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
         )
 
-        if wsp is None:
-            wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
-
-        cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
-        cl_all = wsp.decouple_cell(cl_coupled)
-
-        return ell_eff, cl_all, wsp
+    def get_pseudo_cls_catalog(self, catalog, params, wsp=None):
+        """Catalog-based pseudo-cl (thin wrapper, state -> primitive)."""
+        return get_pseudo_cls_catalog(
+            catalog,
+            params,
+            self.nside,
+            self.binning,
+            pol_factor=self.pol_factor,
+            wsp=wsp,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
+        )
 
     def apply_random_rotation(self, e1, e2):
-        """
-        Apply a random rotation to the ellipticity components e1 and e2.
+        """Random ellipticity rotation (thin wrapper -> primitive).
 
-        Parameters
-        ----------
-        e1 : np.array
-            First component of the ellipticity.
-        e2 : np.array
-            Second component of the ellipticity.
-
-        Returns
-        -------
-        np.array
-            First component of the rotated ellipticity.
-        np.array
-            Second component of the rotated ellipticity.
+        Uses the primitive's default (no-argument ``np.random.seed()``) path to
+        preserve the historical non-deterministic noise-debiasing behavior.
         """
-        np.random.seed()
-        rot_angle = np.random.rand(len(e1)) * 2 * np.pi
-        e1_out = e1 * np.cos(rot_angle) + e2 * np.sin(rot_angle)
-        e2_out = -e1 * np.sin(rot_angle) + e2 * np.cos(rot_angle)
-        return e1_out, e2_out
+        return apply_random_rotation(e1, e2)
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
         """
