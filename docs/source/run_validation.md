@@ -10,7 +10,7 @@ including the sheared values for metacalibration.
 ### Set up
 
 All inputs and settings are contained in the python configuration script
-`scripts/examples/params.py`, that needs to be edited accordingly.
+`scripts/calibration/params.py`, that needs to be edited accordingly.
 The main parameters are:
 - `name`: field or patch name, can be any string. E.g. `P3` for patch 3. 
 - `data_dir`: input directory for data. Set to `.` for validation run in
@@ -33,4 +33,4 @@ the required input files to where the validation is to be run.
 
 ### Run
 
-Run the python script `scripts/examples/extract_info.py`.
+Run the python script `scripts/calibration/extract_info.py`.

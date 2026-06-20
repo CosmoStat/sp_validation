@@ -189,3 +189,6 @@ papers/catalog/plots/*.pdf
 # TLDR tool artifacts (auto-generated per-directory status/ignore files).
 .tldr/
 .tldrignore
+
+# SLURM run logs from cosmo_val validation runs
+papers/cosmo_val/logs/

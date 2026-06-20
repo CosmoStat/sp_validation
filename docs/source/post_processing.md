@@ -15,7 +15,7 @@ These steps are carried out as follows:
 
 ### 1. Extract information, run basic diagnostics, create catalogues.
 
-This is performed (version > v1.4.1, < v2.0) with the python script `extract_info.py` in `sp_validation/notebooks`.
+This is performed (version > v1.4.1, < v2.0) with the python script `scripts/calibration/extract_info.py`.
 
 This script creates three shear catalogues in FITS format:
 - _Basic_ catalogue containing
@@ -27,21 +27,21 @@ This script creates three shear catalogues in FITS format:
   This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.  
   This is the main output catalogue that will be processed further.
 
-This step is carried out per patch. Parameters have to be set via the python configuration file `params.py` (template at `scripts/examples/params.py`).
+This step is carried out per patch. Parameters have to be set via the python configuration file `params.py` (template at `scripts/calibration/params.py`).
 
 ### 2. Merge catalogues
 
-The patch-wise comprehensive catalogues extracted in the previous step are merged using the script `create_joint_comprehensive_cat.py`, which is a front-end
+The patch-wise comprehensive catalogues extracted in the previous step are merged using the script `scripts/calibration/create_joint_comprehensive_cat.py`, which is a front-end
 of the `sp_validation` library class `run_joint_cat:JointCat`.
 
 ### 3. Apply external masks
 
-Code for this step is developed in the library file `run_calibrate_joint.py`.
+The structural and coverage masks are added with `scripts/calibration/demo_apply_hsp_masks.py` (built on the library file `run_calibrate_joint.py`).
 
 ### 4. Mask, select, and calibrate
 
-The steps of masking, galaxy sample selection, and calibration are carried out jointly using the notebook
-`calibrate_comprehensive_cat.py`.
+The steps of masking, galaxy sample selection, and calibration are carried out jointly using the script
+`scripts/calibration/calibrate_comprehensive_cat.py`.
 
 Masking parameters have to be set via a configuration file `config_mask.yaml`. Examples can be found in `sp_validation/config/calibration`.
 
