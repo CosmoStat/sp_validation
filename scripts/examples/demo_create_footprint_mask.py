@@ -28,7 +28,7 @@ import healsparse as hsp
 from cs_util.plots import FootprintPlotter
 
 from sp_validation import catalog_builders as sp_joint
-from sp_validation import cosmo_val
+from sp_validation.plots import hsp_map_logical_or
 
 # -
 
@@ -87,7 +87,7 @@ for label in paths:
         print(f"Reading mask {paths[label]} for label {label}...")
     hsp_maps.append(hsp.HealSparseMap.read(paths[label]))
 
-map_comb = cosmo_val.hsp_map_logical_or(hsp_maps, verbose=obj._params["verbose"])
+map_comb = hsp_map_logical_or(hsp_maps, verbose=obj._params["verbose"])
 
 # +
 fp = FootprintPlotter()
