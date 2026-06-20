@@ -1,10 +1,13 @@
 ---
+id: 01KTCHX02B8APEX03YEC97AW4E
 name: 'Docker build: uv-venv base image'
+status: closed
 tags:
     - docker
     - ci
 created-at: 2026-06-03T10:22:53.245547768+02:00
-outcome: 'shapepipe:develop (moving tag) switched to a uv venv at /app/.venv and dropped libtool, breaking the sp_validation image two ways; fixed in Dockerfile by adding autotools + using uv pip. Recurring risk: the base tag moves.'
+closed-at: 2026-06-10T17:13:38.572339006+02:00
+outcome: 'sp_validation image fixed for the uv-venv shapepipe:develop base: autotools restored via apt for pymaster, uv pip install so packages land in /app/.venv. Standing risk documented: moving base tag can break again — diff base env assumptions before blaming our code.'
 ---
 
 The `Dockerfile` builds `FROM ghcr.io/cosmostat/shapepipe:develop` — a **moving tag**.

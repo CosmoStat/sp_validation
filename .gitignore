@@ -73,6 +73,7 @@ instance/
 docs/_build/
 docs/source/fortuna.*
 docs/source/scripts.*
+docs/source/sp_validation.*
 docs/source/*.nblink
 
 # PyBuilder
@@ -117,6 +118,12 @@ ENV/
 env.bak/
 venv.bak/
 
+# uv: container is the canonical runtime (see CLAUDE.md); uv is a dev convenience
+# and the lockfile has never been tracked. Ignore it rather than commit a
+# pinned-dep reproducibility promise the project hasn't made. Flip to tracked
+# if we decide to pin deps via uv.
+uv.lock
+
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -141,53 +148,47 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-notebooks/validation*.py
-notebooks/main_set_up.py
-notebooks/analyse_shear_cat/tutorial_UNIONS_SP_v1.0.py
-
-notebooks/cosmo_val/output*
-notebooks/cosmo_val/cosmo_val.ipynb
-notebooks/cosmo_val/match_LF_SP.ipynb
-
-notebooks/examples/*.ipynb
+# Run outputs: one top-level results/ (contents ignored, dir kept) plus the
+# legacy output homes that predate the results/ migration.
+/results/*
+!/results/.gitkeep
+!/results/README.md
+/output/
+cosmo_val/output*
+/cosmo_val/harmonic_covariance_gaussian_sims*
 
 cosmo_inference/data/
 cosmo_inference/plots/
 
-notebooks/tests/star_response.ipynb
 sp_validation.code-workspace
-notebooks/calibrate_comprehensive_cat.ipynb
-notebooks/calibrate_comprehensive_cat.ipynb
-notebooks/calibrate_comprehensive_cat.ipynb
-notebooks/test_apply_hsp_masks.ipynb
-notebooks/calibrate_comprehensive_cat.ipynb
-notebooks/demo_apply_hsp_masks.py
-notebooks/demo_apply_hsp_masks.ipynb
-notebooks/plot_footprints.ipynb
-notebooks/demo_calibrate_minimal_cat.ipynb
-notebooks/leakage_minimal.ipynb
-notebooks/mask_fits2hsparse.ipynb
-notebooks/mask_fits2hsparse_test.ipynb
-notebooks/create_shear_mb_empty.ipynb
-notebooks/demo_add_bands.ipynb
-notebooks/demo_add_bands_to_empty.ipynb
-notebooks/demo_comprehensive_to_minimal_cat.ipynb
-notebooks/demo_create_footprint_mask.ipynb
-notebooks/demo_check_footprint.ipynb
-notebooks/demo_comprehensive_to_minimal_cat.ipynb
-notebooks/demo_calibrate_minimal_cat.ipynb
-notebooks/leakage_minimal.ipynb
-notebooks/demo_add_bands.ipynb
-notebooks/demo_add_bands_to_empty.ipynb
 
 cosmo_inference/cosmosis_config/cosmosis_pipeline_S*.ini
 cosmo_inference/cosmosis_config/priors_S*.ini
+cosmo_inference/cosmosis_config/values_S*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mocks_v0*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_0*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_v0*.ini
+cosmo_inference/cosmosis_config/glass_mocks_v*
+
+# Regenerable catalog-paper plots: the paper TeX lives in the separate docs/
+# repo, so these are script/notebook outputs, not LaTeX-tracked figures.
+papers/catalog/plots/*.pdf
 
 # felt — track the fiber records (engineering decisions & findings); skip only
 # the regenerable index and runtime locks.
 .felt/*.db
+.felt/*.db-shm
+.felt/*.db-wal
 .felt/*.lock
 .felt/index-sync.*
+
+# Claude Code agent worktrees — transient isolated checkouts for background
+# agents; never tracked.
+.claude/worktrees/
+
+# TLDR tool artifacts (auto-generated per-directory status/ignore files).
+.tldr/
+.tldrignore
+
+# SLURM run logs from cosmo_val validation runs
+papers/cosmo_val/logs/

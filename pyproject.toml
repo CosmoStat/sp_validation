@@ -43,7 +43,11 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
-    "scipy",
+    # scipy 1.18 (py3.12+) changed interpolators to return arrays for scalar
+    # input, which breaks camb's BBN Y_He predictor inside set_cosmology
+    # (`TypeError: only 0-dimensional arrays can be converted to Python
+    # scalars`), failing all get_cosmo-backed tests. Cap until camb ships a fix.
+    "scipy<1.18",
     "seaborn",
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
@@ -69,6 +73,20 @@ docs = [
     "sphinxcontrib-bibtex>=2.6",
     # 6.0.3 is a broken wheel on PyPI (dist-info only, no python module)
     "sphinxawesome-theme>=5.3,!=6.0.3"
+]
+# GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
+# library and its import guard resolve without GLASS, and the production
+# container does not yet ship it. Pinned set (verified 2026-06-13, fiber
+# glass-cosmology-api-pin): glass 2025.1 is the unique version with the flat API
+# the map path uses AND the legacy ``cosmo.dc``/``xm``/``ef`` interface that
+# ``cosmology`` 2022.10.9 (its newest release) provides — newer glass calls
+# ``comoving_distance``, which no ``cosmology`` release exposes. ``matter_cls``
+# lives in the separate ``glass.ext.camb`` package (absent from glass core
+# >=2024.2), so it is pinned explicitly.
+glass = [
+    "glass==2025.1",
+    "glass.ext.camb==2023.6",
+    "cosmology==2022.10.9",
 ]
 develop = ["sp_validation[test,docs]"]
 

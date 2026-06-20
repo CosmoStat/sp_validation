@@ -7,6 +7,7 @@ __all__ = [
     'cosmo_val',
     'galaxy',
     'cosmology',
+    'glass_mock',
     'calibration',
     'cat',
     'plot_style',

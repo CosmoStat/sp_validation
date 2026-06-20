@@ -8,12 +8,14 @@
   about
   installation
   quickstart
+  repository_structure
 
 .. toctree::
   :hidden:
   :titlesonly:
   :caption: User Guide
 
+  using_the_catalogues
   run_validation
   post_processing
   Leakage_object_Tutorial
