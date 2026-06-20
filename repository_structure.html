@@ -21,15 +21,15 @@
 <meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
 <meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>sp_validation.info | sp_validation v0.6.0</title>
-<meta content="sp_validation.info | sp_validation v0.6.0" property="og:title"/>
-<meta content="sp_validation.info | sp_validation v0.6.0" name="twitter:title"/>
+<title>Repository structure | sp_validation v0.6.0</title>
+<meta content="Repository structure | sp_validation v0.6.0" property="og:title"/>
+<meta content="Repository structure | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
 <link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.io.html" rel="next" title="sp_validation.io"/>
-<link href="sp_validation.glass_mock.html" rel="prev" title="sp_validation.glass_mock"/>
+<link href="using_the_catalogues.html" rel="next" title="Using the weak-lensing catalogues"/>
+<link href="quickstart.html" rel="prev" title="Quickstart"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
 <div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
@@ -71,11 +71,11 @@
 <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
 <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
 <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Repository structure</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
@@ -85,8 +85,8 @@
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul class="current">
-<li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<ul>
+<li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html">sp_validation.basic</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
@@ -95,7 +95,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
@@ -130,38 +130,93 @@
 <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
 </svg>
 </a>
-<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="sp_validation.html">sp_validation</a>
-<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.info</span>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">Repository structure</span>
 </nav>
 <div id="content" role="main">
-<section id="module-sp_validation.info">
-<span id="sp-validation-info"></span><h1>sp_validation.info<a class="headerlink" href="#module-sp_validation.info" title="Link to this heading">¶</a></h1>
-<p>SP_VALIDATION INFO.</p>
-<p>This module provides some basic information about the sp_validation package.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Author<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Martin Kilbinger &lt;<a class="reference external" href="mailto:martin.kilbingers%40cea.fr">martin<span>.</span>kilbingers<span>@</span>cea<span>.</span>fr</a>&gt;</p>
-</dd>
-</dl>
+<section id="repository-structure">
+<h1>Repository structure<a class="headerlink" href="#repository-structure" title="Link to this heading">¶</a></h1>
+<p>The repository is laid out so that a single, generic analysis can feed many
+papers, and so that several people can run it side by side without colliding.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">src/sp_validation/    library code (incl. glass_mock core)
+</span><span id="line-2">cosmo_val/            validation: code + config        (promoted from notebooks/)
+</span><span id="line-3">cosmo_inference/      inference: code + config         (cosmosis / cosmocov)
+</span><span id="line-4">workflow/             ALL analysis — modular Snakemake, multi-person → results/
+</span><span id="line-5">papers/               final-figure assembly only (PDF, colour, layout)
+</span><span id="line-6">scripts/              real reduction + runner scripts (catalog builders, masking, glass-mock runners)
+</span><span id="line-7">scratch/              per-person — ad hoc work + personal workflows (tracked)
+</span><span id="line-8">results/              analysis products + diagnostic plots (contents gitignored, dir kept)
+</span><span id="line-9">docs/  tests/  config/
+</span></code></pre></div>
+</div>
+<section id="analysis-versus-presentation">
+<h2>Analysis versus presentation<a class="headerlink" href="#analysis-versus-presentation" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#analysis-versus-presentation'">¶</a></h2>
+<p>The dividing line that organizes everything is the <strong>inputs to a paper figure</strong>.</p>
+<p>Everything up to that point is <em>analysis</em>. It lives in <code class="docutils literal notranslate"><span class="pre">workflow/</span></code>: generic,
+reusable, modular Snakemake rules, organized for several people, producing both
+the data products and the diagnostic plots that vet them.
+All of it lands in a single top-level <code class="docutils literal notranslate"><span class="pre">results/</span></code>.</p>
+<p>The figure itself is <em>presentation</em>. It lives in <code class="docutils literal notranslate"><span class="pre">papers/&lt;paper&gt;/</span></code>:
+final-figure assembly only — PDF, colour, layout — tied to one manuscript, and
+free to never touch Snakemake at all.
+A paper directory reads finished products out of <code class="docutils literal notranslate"><span class="pre">results/</span></code> and emits
+publication-ready figures; it does not write analysis products back in.</p>
+</section>
+<section id="where-each-thing-lives">
+<h2>Where each thing lives<a class="headerlink" href="#where-each-thing-lives" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#where-each-thing-lives'">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">src/sp_validation/</span></code> — the importable library, including the glass-mock
+core. Reusable functions belong here, not copied into scripts or notebooks.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cosmo_val/</span></code> and <code class="docutils literal notranslate"><span class="pre">cosmo_inference/</span></code> — the side-by-side code-and-config
+homes for the two later stages: validation diagnostics (rho/tau statistics,
+E-/B-mode decomposition, PSF-leakage tests) and CosmoSIS / CosmoCov inference.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">workflow/</span></code> — the shared analysis: all of it, as Snakemake rules and their
+scripts.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">papers/</span></code> — final-figure assembly, one directory per paper.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scripts/</span></code> — real reduction and runner scripts (catalogue builders, masking,
+glass-mock runners) run from the command line rather than imported.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">scratch/&lt;person&gt;/</span></code> — personal, ad hoc work and custom workflows. Tracked on
+purpose, because sharing scratch is useful; promote anything generic into
+<code class="docutils literal notranslate"><span class="pre">workflow/</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">results/</span></code> — the single sink for analysis products and diagnostic plots. Its
+contents are gitignored and the directory is kept.</p></li>
+</ul>
+</section>
+<section id="scaling-by-modularity">
+<h2>Scaling by modularity<a class="headerlink" href="#scaling-by-modularity" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#scaling-by-modularity'">¶</a></h2>
+<p>The workflow scales by being modular, not monolithic.
+A paper or run composes the shared rules with Snakemake’s <code class="docutils literal notranslate"><span class="pre">module</span></code> directive
+under its own config and an output <code class="docutils literal notranslate"><span class="pre">prefix</span></code>, so each run namespaces cleanly
+under <code class="docutils literal notranslate"><span class="pre">results/&lt;name&gt;/</span></code> without clobbering another.
+The shared rules live in <code class="docutils literal notranslate"><span class="pre">workflow/</span></code> exactly once; runs differ only in the
+config they bring.</p>
+</section>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.glass_mock.html">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="quickstart.html">
 <svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="15 18 9 12 15 6"></polyline>
 </svg>
-        sp_validation.glass_mock
+        Quickstart
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.io.html">
-        sp_validation.io
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="using_the_catalogues.html">
+        Using the weak-lensing catalogues
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
 </a>
 </div>
-</div></div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#analysis-versus-presentation'" class="reference internal" href="#analysis-versus-presentation">Analysis versus presentation</a></li>
+<li><a :data-current="activeSection === '#where-each-thing-lives'" class="reference internal" href="#where-each-thing-lives">Where each thing lives</a></li>
+<li><a :data-current="activeSection === '#scaling-by-modularity'" class="reference internal" href="#scaling-by-modularity">Scaling by modularity</a></li>
+</ul>
+</div>
+</aside>
 </main>
 </div>
 </div><footer class="py-6 border-t border-border md:py-0">

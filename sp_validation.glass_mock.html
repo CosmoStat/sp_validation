@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html :class="{ 'dark' : darkMode === true }" data-content_root="./" lang="en" x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}">
+<head>
+<script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>sp_validation.glass_mock | sp_validation v0.6.0</title>
+<meta content="sp_validation.glass_mock | sp_validation v0.6.0" property="og:title"/>
+<meta content="sp_validation.glass_mock | sp_validation v0.6.0" name="twitter:title"/>
+<link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
+<link href="search.html" rel="search" title="Search"/>
+<link href="genindex.html" rel="index" title="Index"/>
+<link href="sp_validation.info.html" rel="next" title="sp_validation.info"/>
+<link href="sp_validation.galaxy.html" rel="prev" title="sp_validation.galaxy"/>
+</head>
+<body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
+<div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+<div class="hidden mr-4 md:flex">
+<a class="flex items-center mr-6" href="index.html"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a></div><button @click="showSidebar = true" class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden" type="button">
+<svg aria-hidden="true" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z"></path>
+</svg>
+<span class="sr-only">Toggle navigation menu</span>
+</button>
+<div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+<div class="flex-1 w-full md:w-auto md:flex-none"><form @keydown.k.window.meta="$refs.search.focus()" action="search.html" class="relative flex items-center group" id="searchbox" method="get">
+<input aria-label="Search the docs" class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" id="search-input" name="q" placeholder="Search ..." type="search" x-ref="search"/>
+<kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+<span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+</div>
+<nav class="flex items-center gap-1">
+<button @click="darkMode = !darkMode" class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9" title="Toggle color scheme" type="button">
+<svg class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z"></path>
+</svg>
+<svg class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z"></path>
+</svg>
+</button>
+</nav>
+</div>
+</div>
+</header>
+<div class="flex-1"><div class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }" class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky" id="left-sidebar">
+<a class="justify-start text-sm md:!hidden bg-background" href="index.html"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a>
+<div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+<div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html">sp_validation.basic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cat.html">sp_validation.cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.run_joint_cat.html">sp_validation.run_joint_cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.util.html">sp_validation.util</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<button @click="showSidebar = false" class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100" type="button">
+<svg class="h-4 w-4" fill="currentColor" height="24" stroke="none" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z"></path>
+</svg>
+</button>
+</aside>
+<main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs" class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+<a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground" href="index.html">
+<span class="hidden md:inline">sp_validation v0.6.0</span>
+<svg aria-label="Home" class="md:hidden" fill="currentColor" height="18" stroke="none" viewbox="0 96 960 960" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
+</svg>
+</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="sp_validation.html">sp_validation</a>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.glass_mock</span>
+</nav>
+<div id="content" role="main">
+<section id="module-sp_validation.glass_mock">
+<span id="sp-validation-glass-mock"></span><h1>sp_validation.glass_mock<a class="headerlink" href="#module-sp_validation.glass_mock" title="Link to this heading">¶</a></h1>
+<p>GLASS mock generation core for UNIONS weak-lensing simulations.</p>
+<p>The reproducibility surface of the UNIONS GLASS mocks lives here: the fixed
+cosmology (Planck18 + HMCode AGN feedback, <code class="docutils literal notranslate"><span class="pre">sigma8</span></code>-rescaled CAMB power
+spectrum) and the lognormal matter / lensing-map generation that turns a seed
+into a sky. Galaxy sampling and catalogue I/O are a thin layer downstream
+(<code class="docutils literal notranslate"><span class="pre">scripts/glass_mock/make_unions_glass_sim.py</span></code>), so that the load-bearing
+config can be characterized in isolation — see
+<code class="docutils literal notranslate"><span class="pre">tests/test_glass_mock.py</span></code>.</p>
+<p>This module also collects the reusable two-point and PSF-leakage helpers the
+mock post-processing runners in <code class="docutils literal notranslate"><span class="pre">scripts/glass_mock/</span></code> share (configuration-
+space ξ±, NaMaster pseudo-Cℓ, harmonic rho/tau, footprint masks).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">glass</span></code> dependency is imported lazily inside the map-generation functions
+so that this module — and therefore the import guard — resolves in any
+environment with CAMB, even one without GLASS installed.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">GlassMockConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">200.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zmax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.6766</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Om</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.30966</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ob</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.04897</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.9665</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma8</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.8102</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mnu</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log_T_AGN</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">7.8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">As_init</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.1e-09</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kmax</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_arcmin2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">6.0905</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_e</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.2684</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phz_sigma_0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.03</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbins</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ia_bias</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#GlassMockConfig"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Fixed configuration for a UNIONS GLASS mock realization.</p>
+<p>Every field here is a value that must not silently drift: the cosmology
+(a Planck18 base with explicit <code class="docutils literal notranslate"><span class="pre">ns</span></code>/<code class="docutils literal notranslate"><span class="pre">sigma8</span></code>/AGN-feedback choices),
+the shell construction (<code class="docutils literal notranslate"><span class="pre">dx</span></code>, <code class="docutils literal notranslate"><span class="pre">zmax</span></code>), and the resolution/seed. The
+characterization test pins these against a committed reference.</p>
+<p>Cosmology defaults reproduce the fiducial UNIONS v1.4.6.3 mock. The
+<code class="docutils literal notranslate"><span class="pre">Planck18</span></code> matter/baryon densities are read at construction time so the
+dataclass carries concrete numbers (not an astropy object) and round-trips
+cleanly to a reference.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.nside">
+<span class="sig-name descname"><span class="pre">nside</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">32</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.nside" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.nside'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.seed">
+<span class="sig-name descname"><span class="pre">seed</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">42</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.seed" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.seed'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.dx">
+<span class="sig-name descname"><span class="pre">dx</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">200.0</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.dx" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.dx'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.zmax">
+<span class="sig-name descname"><span class="pre">zmax</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3.0</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.zmax" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.zmax'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.h">
+<span class="sig-name descname"><span class="pre">h</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.6766</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.h" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.h'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.Om">
+<span class="sig-name descname"><span class="pre">Om</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.30966</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.Om" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.Om'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.Ob">
+<span class="sig-name descname"><span class="pre">Ob</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.04897</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.Ob" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.Ob'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.ns">
+<span class="sig-name descname"><span class="pre">ns</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.9665</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.ns" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.ns'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.sigma8">
+<span class="sig-name descname"><span class="pre">sigma8</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.8102</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.sigma8" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.sigma8'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.mnu">
+<span class="sig-name descname"><span class="pre">mnu</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.06</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.mnu" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.mnu'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.log_T_AGN">
+<span class="sig-name descname"><span class="pre">log_T_AGN</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7.8</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.log_T_AGN" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.log_T_AGN'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.As_init">
+<span class="sig-name descname"><span class="pre">As_init</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2.1e-09</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.As_init" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.As_init'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.kmax">
+<span class="sig-name descname"><span class="pre">kmax</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">20.0</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.kmax" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.kmax'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.n_arcmin2">
+<span class="sig-name descname"><span class="pre">n_arcmin2</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">6.0905</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.n_arcmin2" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.n_arcmin2'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.sigma_e">
+<span class="sig-name descname"><span class="pre">sigma_e</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.2684</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.sigma_e" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.sigma_e'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.bias">
+<span class="sig-name descname"><span class="pre">bias</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.2</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.bias" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.bias'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.phz_sigma_0">
+<span class="sig-name descname"><span class="pre">phz_sigma_0</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.03</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.nbins">
+<span class="sig-name descname"><span class="pre">nbins</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.nbins" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.nbins'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.ia_bias">
+<span class="sig-name descname"><span class="pre">ia_bias</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.ia_bias" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.ia_bias'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.from_planck18">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_planck18</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">overrides</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig" title="sp_validation.glass_mock.GlassMockConfig"><span class="pre">GlassMockConfig</span></a></span></span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#GlassMockConfig.from_planck18"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.from_planck18" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.from_planck18'">¶</a></dt>
+<dd><p>Build a config with matter/baryon densities pulled from Planck18.</p>
+<p>Keeps the dataclass defaults and the production script in sync with the
+single source of truth (<code class="docutils literal notranslate"><span class="pre">astropy.cosmology.Planck18</span></code>) without making
+the dataclass depend on astropy at import time.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.lmax">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">lmax</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.lmax" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.lmax'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">lmax</span></code> is tied to <code class="docutils literal notranslate"><span class="pre">nside</span></code> in the production mocks.</p>
+</dd></dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.GlassMockConfig.Oc">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Oc</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><a class="headerlink" href="#sp_validation.glass_mock.GlassMockConfig.Oc" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.GlassMockConfig.Oc'">¶</a></dt>
+<dd><p>Cold dark matter density (CDM = matter - baryons), pre-neutrino.</p>
+</dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.build_camb_params">
+<span class="sig-name descname"><span class="pre">build_camb_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig" title="sp_validation.glass_mock.GlassMockConfig"><span class="pre">GlassMockConfig</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#build_camb_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.build_camb_params" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.build_camb_params'">¶</a></dt>
+<dd><p>Build the CAMB parameters for a mock, with <code class="docutils literal notranslate"><span class="pre">As</span></code> rescaled to <code class="docutils literal notranslate"><span class="pre">sigma8</span></code>.</p>
+<p>This is the cosmological heart of the mock and is GLASS-free: it reproduces
+the exact CAMB setup of the production script — Planck18 densities, HMCode
+<code class="docutils literal notranslate"><span class="pre">mead2020_feedback</span></code> non-linear model with <code class="docutils literal notranslate"><span class="pre">HMCode_logT_AGN</span></code>, neutrino
+mass subtracted from CDM, and an iterative <code class="docutils literal notranslate"><span class="pre">As</span></code> rescaling so the realized
+<code class="docutils literal notranslate"><span class="pre">sigma8(z=0)</span></code> matches <code class="docutils literal notranslate"><span class="pre">config.sigma8</span></code>.</p>
+<p>Returns the CAMB <code class="docutils literal notranslate"><span class="pre">CAMBparams</span></code> object; <code class="docutils literal notranslate"><span class="pre">camb_sigma8</span></code> reads the realized
+value back out.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.camb_sigma8">
+<span class="sig-name descname"><span class="pre">camb_sigma8</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pars</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#camb_sigma8"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.camb_sigma8" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.camb_sigma8'">¶</a></dt>
+<dd><p>Realized <code class="docutils literal notranslate"><span class="pre">sigma8(z=0)</span></code> for a CAMB parameter set.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.build_shells">
+<span class="sig-name descname"><span class="pre">build_shells</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig" title="sp_validation.glass_mock.GlassMockConfig"><span class="pre">GlassMockConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pars</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#build_shells"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.build_shells" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.build_shells'">¶</a></dt>
+<dd><p>Linear-window matter shells on a comoving distance grid.</p>
+<p>Returns the GLASS shell list (<code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">w,</span> <span class="pre">zeff)</span></code> windows). Lazily imports
+GLASS; only callable where GLASS is installed.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.matter_shell_cls">
+<span class="sig-name descname"><span class="pre">matter_shell_cls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig" title="sp_validation.glass_mock.GlassMockConfig"><span class="pre">GlassMockConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shells</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#matter_shell_cls"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.matter_shell_cls" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.matter_shell_cls'">¶</a></dt>
+<dd><p>Matter angular power spectra for the shells, from CAMB via GLASS.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.generate_matter_maps">
+<span class="sig-name descname"><span class="pre">generate_matter_maps</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig" title="sp_validation.glass_mock.GlassMockConfig"><span class="pre">GlassMockConfig</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#generate_matter_maps"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.generate_matter_maps" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.generate_matter_maps'">¶</a></dt>
+<dd><p>Yield <code class="docutils literal notranslate"><span class="pre">(delta,</span> <span class="pre">kappa,</span> <span class="pre">gamma1,</span> <span class="pre">gamma2)</span></code> HEALPix maps, shell by shell.</p>
+<p>This is the deterministic core of the mock at the map level: a seeded RNG
+drives lognormal matter fields (<code class="docutils literal notranslate"><span class="pre">ncorr=3</span></code>), accumulated into convergence
+via <code class="docutils literal notranslate"><span class="pre">MultiPlaneConvergence</span></code> and shear via <code class="docutils literal notranslate"><span class="pre">shear_from_convergence</span></code>. For
+a fixed config + seed the emitted maps are bit-for-bit reproducible within
+a GLASS/NumPy version, which is what the self-consistency test asserts.</p>
+<p>The galaxy sampling that consumes these maps lives in the production script;
+keeping it out of this generator is what makes the map level testable.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.downgrade_mask">
+<span class="sig-name descname"><span class="pre">downgrade_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#downgrade_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.downgrade_mask" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.downgrade_mask'">¶</a></dt>
+<dd><p>Downgrade a HEALPix mask to a lower <code class="docutils literal notranslate"><span class="pre">nside</span></code> (&gt;=0.75 -&gt; 1, else 0).</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">mask</span></code> unchanged when it is already at <code class="docutils literal notranslate"><span class="pre">nside</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.growth_factor">
+<span class="sig-name descname"><span class="pre">growth_factor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">om0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#growth_factor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.growth_factor" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.growth_factor'">¶</a></dt>
+<dd><p>Normalised linear growth factor <code class="docutils literal notranslate"><span class="pre">D(z)</span></code> (scalar or array <code class="docutils literal notranslate"><span class="pre">z</span></code>).</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.ia_convergence">
+<span class="sig-name descname"><span class="pre">ia_convergence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">delta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#ia_convergence"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.ia_convergence" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.ia_convergence'">¶</a></dt>
+<dd><p>Intrinsic-alignment contribution to the convergence (NLA model).</p>
+<p>Mirrors the production NLA prefactor: <code class="docutils literal notranslate"><span class="pre">-A_ia</span> <span class="pre">*</span> <span class="pre">rho_c1</span> <span class="pre">*</span> <span class="pre">Om0</span> <span class="pre">/</span> <span class="pre">D(z_eff)</span></code>
+applied to the matter overdensity <code class="docutils literal notranslate"><span class="pre">delta</span></code> of one shell.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.create_mask_from_catalogue">
+<span class="sig-name descname"><span class="pre">create_mask_from_catalogue</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RA'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_col</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'DEC'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#create_mask_from_catalogue"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.create_mask_from_catalogue" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.create_mask_from_catalogue'">¶</a></dt>
+<dd><p>Write a HEALPix footprint mask from the populated pixels of a catalogue.</p>
+<p>Pixels containing at least one object get 1.0, everything else 0.0.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.powspace_bins">
+<span class="sig-name descname"><span class="pre">powspace_bins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#powspace_bins"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.powspace_bins" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.powspace_bins'">¶</a></dt>
+<dd><p>NaMaster powspace bandpower binning used across the mock harmonic stats.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">(bin,</span> <span class="pre">ell_eff,</span> <span class="pre">lmax,</span> <span class="pre">b_lmax)</span></code>: the NaMaster <code class="docutils literal notranslate"><span class="pre">NmtBin</span></code> built on
+square-root-spaced bandpowers between <code class="docutils literal notranslate"><span class="pre">lmin</span></code> and <code class="docutils literal notranslate"><span class="pre">lmax</span> <span class="pre">=</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">nside</span></code>,
+plus the effective ells and the two lmax values the callers reuse.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.compute_two_point_xi">
+<span class="sig-name descname"><span class="pre">compute_two_point_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#compute_two_point_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.compute_two_point_xi" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.compute_two_point_xi'">¶</a></dt>
+<dd><p>Configuration-space shear 2PCF (treecorr <code class="docutils literal notranslate"><span class="pre">GGCorrelation</span></code>) for a mock.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.compute_two_point_cl">
+<span class="sig-name descname"><span class="pre">compute_two_point_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#compute_two_point_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.compute_two_point_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.compute_two_point_cl'">¶</a></dt>
+<dd><p>Catalogue-based NaMaster pseudo-Cl for a mock shear field.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">(cl_coupled,</span> <span class="pre">cl_all)</span></code>, each with the ell axis prepended.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.compute_two_point_cl_map">
+<span class="sig-name descname"><span class="pre">compute_two_point_cl_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#compute_two_point_cl_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.compute_two_point_cl_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.compute_two_point_cl_map'">¶</a></dt>
+<dd><p>Map-based NaMaster pseudo-Cl for a mock shear field.</p>
+<p>Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)
+and runs the MCM on the resulting masked field. Returns
+<code class="docutils literal notranslate"><span class="pre">(cl_coupled,</span> <span class="pre">cl_all)</span></code> with the ell axis prepended.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.get_n_gal_map">
+<span class="sig-name descname"><span class="pre">get_n_gal_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#get_n_gal_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.get_n_gal_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.get_n_gal_map'">¶</a></dt>
+<dd><p>Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.glass_mock.compute_leakage_harmony">
+<span class="sig-name descname"><span class="pre">compute_leakage_harmony</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cat_star</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#compute_leakage_harmony"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.compute_leakage_harmony" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.compute_leakage_harmony'">¶</a></dt>
+<dd><p>Harmonic-space PSF-leakage rho_0 / tau_0 from galaxy + star catalogues.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">(rho_cl,</span> <span class="pre">tau_cl)</span></code>: the PSF-PSF (rho_0) and galaxy-PSF (tau_0)
+decoupled pseudo-Cl, each with the effective-ell axis prepended.</p>
+</dd></dl>
+</section>
+</div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+<div class="mr-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.galaxy.html">
+<svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+        sp_validation.galaxy
+      </a>
+</div>
+<div class="ml-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.info.html">
+        sp_validation.info
+        <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="9 18 15 12 9 6"></polyline>
+</svg>
+</a>
+</div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.nside'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.nside"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.nside</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.seed'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.seed"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.seed</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.dx'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.dx"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.dx</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.zmax'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.zmax"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.zmax</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.h'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.h"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.h</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.Om'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.Om"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.Om</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.Ob'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.Ob"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.Ob</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.ns'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.ns"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.ns</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.sigma8'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.sigma8"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.sigma8</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.mnu'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.mnu"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.mnu</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.log_T_AGN'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.log_T_AGN"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.log_T_AGN</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.As_init'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.As_init"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.As_init</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.kmax'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.kmax"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.kmax</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.n_arcmin2'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.n_arcmin2"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.n_arcmin2</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.sigma_e'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.sigma_e"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.sigma_e</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.bias'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.bias"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.bias</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.phz_sigma_0</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.nbins'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.nbins"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.nbins</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.ia_bias'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.ia_bias"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.ia_bias</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.from_planck18'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.from_planck18"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.from_planck18()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.lmax'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.lmax"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.lmax</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.GlassMockConfig.Oc'" class="reference internal" href="#sp_validation.glass_mock.GlassMockConfig.Oc"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.Oc</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.build_camb_params'" class="reference internal" href="#sp_validation.glass_mock.build_camb_params"><code class="docutils literal notranslate"><span class="pre">build_camb_params()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.camb_sigma8'" class="reference internal" href="#sp_validation.glass_mock.camb_sigma8"><code class="docutils literal notranslate"><span class="pre">camb_sigma8()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.build_shells'" class="reference internal" href="#sp_validation.glass_mock.build_shells"><code class="docutils literal notranslate"><span class="pre">build_shells()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.matter_shell_cls'" class="reference internal" href="#sp_validation.glass_mock.matter_shell_cls"><code class="docutils literal notranslate"><span class="pre">matter_shell_cls()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.generate_matter_maps'" class="reference internal" href="#sp_validation.glass_mock.generate_matter_maps"><code class="docutils literal notranslate"><span class="pre">generate_matter_maps()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.downgrade_mask'" class="reference internal" href="#sp_validation.glass_mock.downgrade_mask"><code class="docutils literal notranslate"><span class="pre">downgrade_mask()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.growth_factor'" class="reference internal" href="#sp_validation.glass_mock.growth_factor"><code class="docutils literal notranslate"><span class="pre">growth_factor()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.ia_convergence'" class="reference internal" href="#sp_validation.glass_mock.ia_convergence"><code class="docutils literal notranslate"><span class="pre">ia_convergence()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.create_mask_from_catalogue'" class="reference internal" href="#sp_validation.glass_mock.create_mask_from_catalogue"><code class="docutils literal notranslate"><span class="pre">create_mask_from_catalogue()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.powspace_bins'" class="reference internal" href="#sp_validation.glass_mock.powspace_bins"><code class="docutils literal notranslate"><span class="pre">powspace_bins()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.compute_two_point_xi'" class="reference internal" href="#sp_validation.glass_mock.compute_two_point_xi"><code class="docutils literal notranslate"><span class="pre">compute_two_point_xi()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.compute_two_point_cl'" class="reference internal" href="#sp_validation.glass_mock.compute_two_point_cl"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.compute_two_point_cl_map'" class="reference internal" href="#sp_validation.glass_mock.compute_two_point_cl_map"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl_map()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.get_n_gal_map'" class="reference internal" href="#sp_validation.glass_mock.get_n_gal_map"><code class="docutils literal notranslate"><span class="pre">get_n_gal_map()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.glass_mock.compute_leakage_harmony'" class="reference internal" href="#sp_validation.glass_mock.compute_leakage_harmony"><code class="docutils literal notranslate"><span class="pre">compute_leakage_harmony()</span></code></a></li>
+</ul>
+</div>
+</aside>
+</main>
+</div>
+</div><footer class="py-6 border-t border-border md:py-0">
+<div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+<div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+</div>
+</div>
+</footer>
+</div><button :class="{'opacity-0 invisible' : !showScrollTop}" @click="window.scrollTo({top: 0, behavior: 'smooth'})" class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950" id="scrolltop" x-cloak="">
+<svg aria-hidden="true" class="inline fill-current mb-[2px]" height="14" viewbox="0 96 960 960" width="14" xmlns="http://www.w3.org/2000/svg">
+<path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z"></path>
+</svg>
+  Back to top
+</button>
+<script src="_static/documentation_options.js?v=5929fcd5"></script>
+<script src="_static/doctools.js?v=fd6eb6e6"></script>
+<script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
+</body>
+</html>

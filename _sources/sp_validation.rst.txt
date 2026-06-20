@@ -20,6 +20,7 @@ Submodules
    sp_validation.cosmo_val
    sp_validation.cosmology
    sp_validation.galaxy
+   sp_validation.glass_mock
    sp_validation.info
    sp_validation.io
    sp_validation.plot_style

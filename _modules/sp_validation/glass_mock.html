@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en" data-content_root="../../"
+  x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}"
+  :class="{ 'dark' : darkMode === true }">
+
+<head>
+  <script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#030711" />
+  
+  <title>sp_validation.glass_mock | sp_validation v0.6.0</title>
+  <meta property="og:title" content="sp_validation.glass_mock | sp_validation v0.6.0" />
+  <meta name="twitter:title" content="sp_validation.glass_mock | sp_validation v0.6.0" />
+  <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+  <link rel="stylesheet" type="text/css" href="../../_static/theme.css?v=d6d7c91b" />
+  <link rel="search" title="Search" href="../../search.html" />
+  <link rel="index" title="Index" href="../../genindex.html" />
+</head>
+
+<body x-data="{ showSidebar: false, showScrollTop: false }"
+  class="min-h-screen font-sans antialiased bg-background text-foreground" :class="{ 'overflow-hidden': showSidebar }"@scroll.window="showScrollTop = pageYOffset > 100">
+  <div x-cloak x-show="showSidebar"
+    class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden"
+    @click.self="showSidebar = false"></div><div id="page" class="relative flex flex-col min-h-screen"><a href="#content"
+      class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+    <div class="hidden mr-4 md:flex">
+      <a href="../../index.html" class="flex items-center mr-6"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+      </a></div><button
+      class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden"
+      type="button" @click="showSidebar = true">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" aria-hidden="true"
+        fill="currentColor">
+        <path
+          d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z" />
+      </svg>
+      <span class="sr-only">Toggle navigation menu</span>
+    </button>
+    <div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+      <div class="flex-1 w-full md:w-auto md:flex-none"><form id="searchbox"
+      action="../../search.html"
+      method="get"
+      class="relative flex items-center group"
+      @keydown.k.window.meta="$refs.search.focus()">
+  <input x-ref="search"
+          name="q"
+          id="search-input"
+          type="search"
+          aria-label="Search the docs"
+          placeholder="Search ..."
+          class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" />
+  <kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+    <span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+      </div>
+      <nav class="flex items-center gap-1">
+        <button @click="darkMode = !darkMode"
+          class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
+          type="button"
+          title="Toggle color scheme">
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0">
+            <path
+              d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100">
+            <path
+              d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z" />
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+    <div class="flex-1"><div
+        class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside id="left-sidebar"
+  class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky"
+  :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }">
+
+    <a href="../../index.html" class="justify-start text-sm md:!hidden bg-background"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+    </a>
+
+    <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+      <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+  <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../repository_structure.html">Repository structure</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.basic.html">sp_validation.basic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cat.html">sp_validation.cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmology.html">sp_validation.cosmology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.info.html">sp_validation.info</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.run_joint_cat.html">sp_validation.run_joint_cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.util.html">sp_validation.util</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a></li>
+</ul>
+
+</nav>
+      </div>
+    </div>
+    <button type="button" @click="showSidebar = false"
+      class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+        stroke="none" class="h-4 w-4">
+        <path
+          d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z" />
+      </svg>
+    </button>
+  </aside>
+          <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs"
+     class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+  <a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground"
+     href="../../index.html">
+    <span class="hidden md:inline">sp_validation v0.6.0</span>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         height="18"
+         width="18"
+         viewBox="0 96 960 960"
+         aria-label="Home"
+         fill="currentColor"
+         stroke="none"
+         class="md:hidden">
+      <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z" />
+    </svg>
+  </a>
+  
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap"
+       href="../index.html">Module code</a>
+    
+<div class="mr-1">/</div><span aria-current="page"
+        class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.glass_mock</span>
+</nav>
+
+    <div id="content" role="main">
+      <h1>Source code for sp_validation.glass_mock</h1><div class="highlight"><pre>
+<span></span><code><span id="line-1"><span class="sd">&quot;&quot;&quot;GLASS mock generation core for UNIONS weak-lensing simulations.</span>
+</span><span id="line-2">
+</span><span id="line-3"><span class="sd">The reproducibility surface of the UNIONS GLASS mocks lives here: the fixed</span>
+</span><span id="line-4"><span class="sd">cosmology (Planck18 + HMCode AGN feedback, ``sigma8``-rescaled CAMB power</span>
+</span><span id="line-5"><span class="sd">spectrum) and the lognormal matter / lensing-map generation that turns a seed</span>
+</span><span id="line-6"><span class="sd">into a sky. Galaxy sampling and catalogue I/O are a thin layer downstream</span>
+</span><span id="line-7"><span class="sd">(``scripts/glass_mock/make_unions_glass_sim.py``), so that the load-bearing</span>
+</span><span id="line-8"><span class="sd">config can be characterized in isolation — see</span>
+</span><span id="line-9"><span class="sd">``tests/test_glass_mock.py``.</span>
+</span><span id="line-10">
+</span><span id="line-11"><span class="sd">This module also collects the reusable two-point and PSF-leakage helpers the</span>
+</span><span id="line-12"><span class="sd">mock post-processing runners in ``scripts/glass_mock/`` share (configuration-</span>
+</span><span id="line-13"><span class="sd">space ξ±, NaMaster pseudo-Cℓ, harmonic rho/tau, footprint masks).</span>
+</span><span id="line-14">
+</span><span id="line-15"><span class="sd">The ``glass`` dependency is imported lazily inside the map-generation functions</span>
+</span><span id="line-16"><span class="sd">so that this module — and therefore the import guard — resolves in any</span>
+</span><span id="line-17"><span class="sd">environment with CAMB, even one without GLASS installed.</span>
+</span><span id="line-18"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-19">
+</span><span id="line-20"><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+</span><span id="line-21">
+</span><span id="line-22"><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+</span><span id="line-23">
+</span><span id="line-24"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-25">
+</span><span id="line-26"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-27">    <span class="s2">&quot;GlassMockConfig&quot;</span><span class="p">,</span>
+</span><span id="line-28">    <span class="s2">&quot;build_camb_params&quot;</span><span class="p">,</span>
+</span><span id="line-29">    <span class="s2">&quot;camb_sigma8&quot;</span><span class="p">,</span>
+</span><span id="line-30">    <span class="s2">&quot;build_shells&quot;</span><span class="p">,</span>
+</span><span id="line-31">    <span class="s2">&quot;matter_shell_cls&quot;</span><span class="p">,</span>
+</span><span id="line-32">    <span class="s2">&quot;generate_matter_maps&quot;</span><span class="p">,</span>
+</span><span id="line-33">    <span class="s2">&quot;downgrade_mask&quot;</span><span class="p">,</span>
+</span><span id="line-34">    <span class="s2">&quot;growth_factor&quot;</span><span class="p">,</span>
+</span><span id="line-35">    <span class="s2">&quot;ia_convergence&quot;</span><span class="p">,</span>
+</span><span id="line-36">    <span class="s2">&quot;create_mask_from_catalogue&quot;</span><span class="p">,</span>
+</span><span id="line-37">    <span class="s2">&quot;powspace_bins&quot;</span><span class="p">,</span>
+</span><span id="line-38">    <span class="s2">&quot;compute_two_point_xi&quot;</span><span class="p">,</span>
+</span><span id="line-39">    <span class="s2">&quot;compute_two_point_cl&quot;</span><span class="p">,</span>
+</span><span id="line-40">    <span class="s2">&quot;compute_two_point_cl_map&quot;</span><span class="p">,</span>
+</span><span id="line-41">    <span class="s2">&quot;get_n_gal_map&quot;</span><span class="p">,</span>
+</span><span id="line-42">    <span class="s2">&quot;compute_leakage_harmony&quot;</span><span class="p">,</span>
+</span><span id="line-43">    <span class="s2">&quot;TREECORR_CONFIG&quot;</span><span class="p">,</span>
+</span><span id="line-44"><span class="p">]</span>
+</span><span id="line-45">
+</span><span id="line-46">
+<div class="viewcode-block" id="GlassMockConfig">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig">[docs]</a>
+</span><span id="line-47"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-48"><span class="k">class</span><span class="w"> </span><span class="nc">GlassMockConfig</span><span class="p">:</span>
+</span><span id="line-49"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Fixed configuration for a UNIONS GLASS mock realization.</span>
+</span><span id="line-50">
+</span><span id="line-51"><span class="sd">    Every field here is a value that must not silently drift: the cosmology</span>
+</span><span id="line-52"><span class="sd">    (a Planck18 base with explicit ``ns``/``sigma8``/AGN-feedback choices),</span>
+</span><span id="line-53"><span class="sd">    the shell construction (``dx``, ``zmax``), and the resolution/seed. The</span>
+</span><span id="line-54"><span class="sd">    characterization test pins these against a committed reference.</span>
+</span><span id="line-55">
+</span><span id="line-56"><span class="sd">    Cosmology defaults reproduce the fiducial UNIONS v1.4.6.3 mock. The</span>
+</span><span id="line-57"><span class="sd">    ``Planck18`` matter/baryon densities are read at construction time so the</span>
+</span><span id="line-58"><span class="sd">    dataclass carries concrete numbers (not an astropy object) and round-trips</span>
+</span><span id="line-59"><span class="sd">    cleanly to a reference.</span>
+</span><span id="line-60"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-61">
+</span><span id="line-62">    <span class="c1"># --- resolution / sampling ---</span>
+</span><span id="line-63">    <span class="n">nside</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span>
+</span><span id="line-64">    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span>
+</span><span id="line-65">    <span class="c1"># --- shell construction ---</span>
+</span><span id="line-66">    <span class="n">dx</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">200.0</span>  <span class="c1"># comoving shell thickness [Mpc]</span>
+</span><span id="line-67">    <span class="n">zmax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3.0</span>
+</span><span id="line-68">    <span class="c1"># --- cosmology (Planck18 base, UNIONS fiducial overrides) ---</span>
+</span><span id="line-69">    <span class="n">h</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.6766</span><span class="p">)</span>
+</span><span id="line-70">    <span class="n">Om</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.30966</span><span class="p">)</span>
+</span><span id="line-71">    <span class="n">Ob</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.04897</span><span class="p">)</span>
+</span><span id="line-72">    <span class="n">ns</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9665</span>
+</span><span id="line-73">    <span class="n">sigma8</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8102</span>
+</span><span id="line-74">    <span class="n">mnu</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.06</span>
+</span><span id="line-75">    <span class="n">log_T_AGN</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">7.8</span>
+</span><span id="line-76">    <span class="n">As_init</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.1e-9</span>  <span class="c1"># seed As before sigma8 rescaling</span>
+</span><span id="line-77">    <span class="n">kmax</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20.0</span>
+</span><span id="line-78">    <span class="c1"># --- galaxy population (downstream of map generation) ---</span>
+</span><span id="line-79">    <span class="n">n_arcmin2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">6.0905</span>
+</span><span id="line-80">    <span class="n">sigma_e</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2684</span>
+</span><span id="line-81">    <span class="n">bias</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.2</span>  <span class="c1"># constant linear galaxy bias b(z)</span>
+</span><span id="line-82">    <span class="n">phz_sigma_0</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.03</span>
+</span><span id="line-83">    <span class="n">nbins</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>  <span class="c1"># number of tomographic bins</span>
+</span><span id="line-84">    <span class="n">ia_bias</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-85">
+<div class="viewcode-block" id="GlassMockConfig.from_planck18">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.from_planck18">[docs]</a>
+</span><span id="line-86">    <span class="nd">@classmethod</span>
+</span><span id="line-87">    <span class="k">def</span><span class="w"> </span><span class="nf">from_planck18</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">**</span><span class="n">overrides</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;GlassMockConfig&quot;</span><span class="p">:</span>
+</span><span id="line-88"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a config with matter/baryon densities pulled from Planck18.</span>
+</span><span id="line-89">
+</span><span id="line-90"><span class="sd">        Keeps the dataclass defaults and the production script in sync with the</span>
+</span><span id="line-91"><span class="sd">        single source of truth (``astropy.cosmology.Planck18``) without making</span>
+</span><span id="line-92"><span class="sd">        the dataclass depend on astropy at import time.</span>
+</span><span id="line-93"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-94">        <span class="kn">from</span><span class="w"> </span><span class="nn">astropy.cosmology</span><span class="w"> </span><span class="kn">import</span> <span class="n">Planck18</span>
+</span><span id="line-95">
+</span><span id="line-96">        <span class="n">base</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+</span><span id="line-97">            <span class="n">h</span><span class="o">=</span><span class="n">Planck18</span><span class="o">.</span><span class="n">H0</span><span class="o">.</span><span class="n">value</span> <span class="o">/</span> <span class="mi">100</span><span class="p">,</span>
+</span><span id="line-98">            <span class="n">Om</span><span class="o">=</span><span class="n">Planck18</span><span class="o">.</span><span class="n">Om0</span><span class="p">,</span>
+</span><span id="line-99">            <span class="n">Ob</span><span class="o">=</span><span class="n">Planck18</span><span class="o">.</span><span class="n">Ob0</span><span class="p">,</span>
+</span><span id="line-100">        <span class="p">)</span>
+</span><span id="line-101">        <span class="n">base</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">overrides</span><span class="p">)</span>
+</span><span id="line-102">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="o">**</span><span class="n">base</span><span class="p">)</span></div>
+
+</span><span id="line-103">
+</span><span id="line-104">    <span class="nd">@property</span>
+</span><span id="line-105">    <span class="k">def</span><span class="w"> </span><span class="nf">lmax</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="line-106"><span class="w">        </span><span class="sd">&quot;&quot;&quot;``lmax`` is tied to ``nside`` in the production mocks.&quot;&quot;&quot;</span>
+</span><span id="line-107">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nside</span>
+</span><span id="line-108">
+</span><span id="line-109">    <span class="nd">@property</span>
+</span><span id="line-110">    <span class="k">def</span><span class="w"> </span><span class="nf">Oc</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="line-111"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Cold dark matter density (CDM = matter - baryons), pre-neutrino.&quot;&quot;&quot;</span>
+</span><span id="line-112">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Om</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">Ob</span></div>
+
+</span><span id="line-113">
+</span><span id="line-114">
+<div class="viewcode-block" id="build_camb_params">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.build_camb_params">[docs]</a>
+</span><span id="line-115"><span class="k">def</span><span class="w"> </span><span class="nf">build_camb_params</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">GlassMockConfig</span><span class="p">):</span>
+</span><span id="line-116"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Build the CAMB parameters for a mock, with ``As`` rescaled to ``sigma8``.</span>
+</span><span id="line-117">
+</span><span id="line-118"><span class="sd">    This is the cosmological heart of the mock and is GLASS-free: it reproduces</span>
+</span><span id="line-119"><span class="sd">    the exact CAMB setup of the production script — Planck18 densities, HMCode</span>
+</span><span id="line-120"><span class="sd">    ``mead2020_feedback`` non-linear model with ``HMCode_logT_AGN``, neutrino</span>
+</span><span id="line-121"><span class="sd">    mass subtracted from CDM, and an iterative ``As`` rescaling so the realized</span>
+</span><span id="line-122"><span class="sd">    ``sigma8(z=0)`` matches ``config.sigma8``.</span>
+</span><span id="line-123">
+</span><span id="line-124"><span class="sd">    Returns the CAMB ``CAMBparams`` object; ``camb_sigma8`` reads the realized</span>
+</span><span id="line-125"><span class="sd">    value back out.</span>
+</span><span id="line-126"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-127">    <span class="kn">import</span><span class="w"> </span><span class="nn">camb</span>
+</span><span id="line-128">
+</span><span id="line-129">    <span class="n">pars</span> <span class="o">=</span> <span class="n">camb</span><span class="o">.</span><span class="n">CAMBparams</span><span class="p">()</span>
+</span><span id="line-130">    <span class="n">pars</span><span class="o">.</span><span class="n">set_cosmology</span><span class="p">(</span>
+</span><span id="line-131">        <span class="n">H0</span><span class="o">=</span><span class="mi">100</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span><span class="p">,</span>
+</span><span id="line-132">        <span class="n">omch2</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">Oc</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-133">        <span class="n">ombh2</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">Ob</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-134">        <span class="n">mnu</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">mnu</span><span class="p">,</span>
+</span><span id="line-135">    <span class="p">)</span>
+</span><span id="line-136">    <span class="c1"># Neutrino density steals from CDM; re-set with the corrected omch2.</span>
+</span><span id="line-137">    <span class="n">Oc</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">Oc</span> <span class="o">-</span> <span class="n">pars</span><span class="o">.</span><span class="n">omeganu</span>
+</span><span id="line-138">    <span class="n">pars</span><span class="o">.</span><span class="n">set_cosmology</span><span class="p">(</span>
+</span><span id="line-139">        <span class="n">H0</span><span class="o">=</span><span class="mi">100</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span><span class="p">,</span>
+</span><span id="line-140">        <span class="n">omch2</span><span class="o">=</span><span class="n">Oc</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-141">        <span class="n">ombh2</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">Ob</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-142">        <span class="n">mnu</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">mnu</span><span class="p">,</span>
+</span><span id="line-143">    <span class="p">)</span>
+</span><span id="line-144">
+</span><span id="line-145">    <span class="n">pars</span><span class="o">.</span><span class="n">InitPower</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="n">As</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">As_init</span><span class="p">,</span> <span class="n">ns</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">ns</span><span class="p">)</span>
+</span><span id="line-146">    <span class="n">pars</span><span class="o">.</span><span class="n">WantTransfer</span> <span class="o">=</span> <span class="kc">True</span>
+</span><span id="line-147">    <span class="n">pars</span><span class="o">.</span><span class="n">NonLinear</span> <span class="o">=</span> <span class="n">camb</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">NonLinear_both</span>
+</span><span id="line-148">    <span class="n">pars</span><span class="o">.</span><span class="n">NonLinearModel</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span>
+</span><span id="line-149">        <span class="n">halofit_version</span><span class="o">=</span><span class="s2">&quot;mead2020_feedback&quot;</span><span class="p">,</span>
+</span><span id="line-150">        <span class="n">HMCode_logT_AGN</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">log_T_AGN</span><span class="p">,</span>
+</span><span id="line-151">    <span class="p">)</span>
+</span><span id="line-152">    <span class="n">pars</span><span class="o">.</span><span class="n">set_matter_power</span><span class="p">(</span><span class="n">nonlinear</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">kmax</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">kmax</span><span class="p">)</span>
+</span><span id="line-153">
+</span><span id="line-154">    <span class="c1"># Rescale As ∝ sigma8^2 so the realized sigma8(z=0) hits the target.</span>
+</span><span id="line-155">    <span class="n">sigma8_temp</span> <span class="o">=</span> <span class="n">camb</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span><span class="o">.</span><span class="n">get_sigma8_0</span><span class="p">()</span>
+</span><span id="line-156">    <span class="n">As_scaled</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">As_init</span> <span class="o">*</span> <span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">sigma8</span> <span class="o">/</span> <span class="n">sigma8_temp</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+</span><span id="line-157">    <span class="n">init_power</span> <span class="o">=</span> <span class="n">camb</span><span class="o">.</span><span class="n">InitialPowerLaw</span><span class="p">()</span>
+</span><span id="line-158">    <span class="n">init_power</span><span class="o">.</span><span class="n">set_params</span><span class="p">(</span><span class="n">As</span><span class="o">=</span><span class="n">As_scaled</span><span class="p">,</span> <span class="n">ns</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">ns</span><span class="p">)</span>
+</span><span id="line-159">    <span class="n">pars</span><span class="o">.</span><span class="n">InitPower</span> <span class="o">=</span> <span class="n">init_power</span>
+</span><span id="line-160">
+</span><span id="line-161">    <span class="n">realized</span> <span class="o">=</span> <span class="n">camb_sigma8</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span>
+</span><span id="line-162">    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">sigma8</span><span class="p">,</span> <span class="n">realized</span><span class="p">),</span> <span class="p">(</span>
+</span><span id="line-163">        <span class="sa">f</span><span class="s2">&quot;As rescaling missed target sigma8: wanted </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">sigma8</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="line-164">        <span class="sa">f</span><span class="s2">&quot;got </span><span class="si">{</span><span class="n">realized</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-165">    <span class="p">)</span>
+</span><span id="line-166">    <span class="k">return</span> <span class="n">pars</span></div>
+
+</span><span id="line-167">
+</span><span id="line-168">
+<div class="viewcode-block" id="camb_sigma8">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.camb_sigma8">[docs]</a>
+</span><span id="line-169"><span class="k">def</span><span class="w"> </span><span class="nf">camb_sigma8</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+</span><span id="line-170"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Realized ``sigma8(z=0)`` for a CAMB parameter set.&quot;&quot;&quot;</span>
+</span><span id="line-171">    <span class="kn">import</span><span class="w"> </span><span class="nn">camb</span>
+</span><span id="line-172">
+</span><span id="line-173">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">camb</span><span class="o">.</span><span class="n">get_results</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span><span class="o">.</span><span class="n">get_sigma8_0</span><span class="p">())</span></div>
+
+</span><span id="line-174">
+</span><span id="line-175">
+<div class="viewcode-block" id="build_shells">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.build_shells">[docs]</a>
+</span><span id="line-176"><span class="k">def</span><span class="w"> </span><span class="nf">build_shells</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">GlassMockConfig</span><span class="p">,</span> <span class="n">pars</span><span class="p">):</span>
+</span><span id="line-177"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Linear-window matter shells on a comoving distance grid.</span>
+</span><span id="line-178">
+</span><span id="line-179"><span class="sd">    Returns the GLASS shell list (``(z, w, zeff)`` windows). Lazily imports</span>
+</span><span id="line-180"><span class="sd">    GLASS; only callable where GLASS is installed.</span>
+</span><span id="line-181"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-182">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-183">    <span class="kn">from</span><span class="w"> </span><span class="nn">cosmology</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cosmology</span>
+</span><span id="line-184">
+</span><span id="line-185">    <span class="n">cosmo</span> <span class="o">=</span> <span class="n">Cosmology</span><span class="o">.</span><span class="n">from_camb</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span>
+</span><span id="line-186">    <span class="n">zb</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">distance_grid</span><span class="p">(</span><span class="n">cosmo</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">zmax</span><span class="p">,</span> <span class="n">dx</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">dx</span><span class="p">)</span>
+</span><span id="line-187">    <span class="k">return</span> <span class="n">glass</span><span class="o">.</span><span class="n">linear_windows</span><span class="p">(</span><span class="n">zb</span><span class="p">)</span></div>
+
+</span><span id="line-188">
+</span><span id="line-189">
+<div class="viewcode-block" id="matter_shell_cls">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.matter_shell_cls">[docs]</a>
+</span><span id="line-190"><span class="k">def</span><span class="w"> </span><span class="nf">matter_shell_cls</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">GlassMockConfig</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">):</span>
+</span><span id="line-191"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Matter angular power spectra for the shells, from CAMB via GLASS.&quot;&quot;&quot;</span>
+</span><span id="line-192">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass.ext.camb</span>
+</span><span id="line-193">
+</span><span id="line-194">    <span class="k">return</span> <span class="n">glass</span><span class="o">.</span><span class="n">ext</span><span class="o">.</span><span class="n">camb</span><span class="o">.</span><span class="n">matter_cls</span><span class="p">(</span><span class="n">pars</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">lmax</span><span class="p">,</span> <span class="n">shells</span><span class="p">)</span></div>
+
+</span><span id="line-195">
+</span><span id="line-196">
+<div class="viewcode-block" id="generate_matter_maps">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.generate_matter_maps">[docs]</a>
+</span><span id="line-197"><span class="k">def</span><span class="w"> </span><span class="nf">generate_matter_maps</span><span class="p">(</span><span class="n">config</span><span class="p">:</span> <span class="n">GlassMockConfig</span><span class="p">,</span> <span class="n">pars</span><span class="p">,</span> <span class="n">shells</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+</span><span id="line-198"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Yield ``(delta, kappa, gamma1, gamma2)`` HEALPix maps, shell by shell.</span>
+</span><span id="line-199">
+</span><span id="line-200"><span class="sd">    This is the deterministic core of the mock at the map level: a seeded RNG</span>
+</span><span id="line-201"><span class="sd">    drives lognormal matter fields (``ncorr=3``), accumulated into convergence</span>
+</span><span id="line-202"><span class="sd">    via ``MultiPlaneConvergence`` and shear via ``shear_from_convergence``. For</span>
+</span><span id="line-203"><span class="sd">    a fixed config + seed the emitted maps are bit-for-bit reproducible within</span>
+</span><span id="line-204"><span class="sd">    a GLASS/NumPy version, which is what the self-consistency test asserts.</span>
+</span><span id="line-205">
+</span><span id="line-206"><span class="sd">    The galaxy sampling that consumes these maps lives in the production script;</span>
+</span><span id="line-207"><span class="sd">    keeping it out of this generator is what makes the map level testable.</span>
+</span><span id="line-208"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-209">    <span class="kn">import</span><span class="w"> </span><span class="nn">glass</span>
+</span><span id="line-210">
+</span><span id="line-211">    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+</span><span id="line-212">    <span class="n">fields</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">lognormal_fields</span><span class="p">(</span><span class="n">shells</span><span class="p">)</span>
+</span><span id="line-213">    <span class="n">gls</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">solve_gaussian_spectra</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span>
+</span><span id="line-214">    <span class="n">matter</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">fields</span><span class="p">,</span> <span class="n">gls</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">nside</span><span class="p">,</span> <span class="n">ncorr</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">rng</span><span class="o">=</span><span class="n">rng</span><span class="p">)</span>
+</span><span id="line-215">    <span class="n">convergence</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">MultiPlaneConvergence</span><span class="p">(</span><span class="n">Cosmology_from_camb</span><span class="p">(</span><span class="n">pars</span><span class="p">))</span>
+</span><span id="line-216">
+</span><span id="line-217">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">delta_i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">matter</span><span class="p">):</span>
+</span><span id="line-218">        <span class="n">convergence</span><span class="o">.</span><span class="n">add_window</span><span class="p">(</span><span class="n">delta_i</span><span class="p">,</span> <span class="n">shells</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</span><span id="line-219">        <span class="n">kappa_i</span> <span class="o">=</span> <span class="n">convergence</span><span class="o">.</span><span class="n">kappa</span>
+</span><span id="line-220">        <span class="n">gamma1_i</span><span class="p">,</span> <span class="n">gamma2_i</span> <span class="o">=</span> <span class="n">glass</span><span class="o">.</span><span class="n">shear_from_convergence</span><span class="p">(</span><span class="n">kappa_i</span><span class="p">)</span>
+</span><span id="line-221">        <span class="k">yield</span> <span class="n">delta_i</span><span class="p">,</span> <span class="n">kappa_i</span><span class="p">,</span> <span class="n">gamma1_i</span><span class="p">,</span> <span class="n">gamma2_i</span></div>
+
+</span><span id="line-222">
+</span><span id="line-223">
+</span><span id="line-224"><span class="k">def</span><span class="w"> </span><span class="nf">Cosmology_from_camb</span><span class="p">(</span><span class="n">pars</span><span class="p">):</span>
+</span><span id="line-225"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Thin indirection so the convergence cosmology is built once, lazily.&quot;&quot;&quot;</span>
+</span><span id="line-226">    <span class="kn">from</span><span class="w"> </span><span class="nn">cosmology</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cosmology</span>
+</span><span id="line-227">
+</span><span id="line-228">    <span class="k">return</span> <span class="n">Cosmology</span><span class="o">.</span><span class="n">from_camb</span><span class="p">(</span><span class="n">pars</span><span class="p">)</span>
+</span><span id="line-229">
+</span><span id="line-230">
+</span><span id="line-231"><span class="c1"># --- mask / galaxy-sampling helpers (used by the generation runner) ---------</span>
+</span><span id="line-232">
+</span><span id="line-233">
+<div class="viewcode-block" id="downgrade_mask">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.downgrade_mask">[docs]</a>
+</span><span id="line-234"><span class="k">def</span><span class="w"> </span><span class="nf">downgrade_mask</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">nside</span><span class="p">):</span>
+</span><span id="line-235"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Downgrade a HEALPix mask to a lower ``nside`` (&gt;=0.75 -&gt; 1, else 0).</span>
+</span><span id="line-236">
+</span><span id="line-237"><span class="sd">    Returns ``mask`` unchanged when it is already at ``nside``.</span>
+</span><span id="line-238"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-239">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-240">
+</span><span id="line-241">    <span class="n">nside_mask</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">get_nside</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+</span><span id="line-242">    <span class="k">if</span> <span class="n">nside_mask</span> <span class="o">==</span> <span class="n">nside</span><span class="p">:</span>
+</span><span id="line-243">        <span class="k">return</span> <span class="n">mask</span>
+</span><span id="line-244">    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[!] Downgrading mask from Nside </span><span class="si">{</span><span class="n">nside_mask</span><span class="si">}</span><span class="s2"> to Nside </span><span class="si">{</span><span class="n">nside</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+</span><span id="line-245">    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[!] Pixels with values &lt;0.75 will be set to 0.0&quot;</span><span class="p">)</span>
+</span><span id="line-246">    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[!] Pixels with values &gt;=0.75 will be set to 1.0&quot;</span><span class="p">)</span>
+</span><span id="line-247">    <span class="n">mask_down</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ud_grade</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">nside</span><span class="p">)</span>
+</span><span id="line-248">    <span class="n">mask_down</span><span class="p">[</span><span class="n">mask_down</span> <span class="o">&lt;</span> <span class="mf">0.75</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+</span><span id="line-249">    <span class="n">mask_down</span><span class="p">[</span><span class="n">mask_down</span> <span class="o">&gt;=</span> <span class="mf">0.75</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
+</span><span id="line-250">    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[!] Done.&quot;</span><span class="p">)</span>
+</span><span id="line-251">    <span class="k">return</span> <span class="n">mask_down</span></div>
+
+</span><span id="line-252">
+</span><span id="line-253">
+</span><span id="line-254"><span class="k">def</span><span class="w"> </span><span class="nf">_growth_E_sq</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">om0</span><span class="p">):</span>
+</span><span id="line-255"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Flat-LCDM ``E^2(z) = H^2(z)/H0^2``.&quot;&quot;&quot;</span>
+</span><span id="line-256">    <span class="k">return</span> <span class="n">om0</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">z</span><span class="p">)</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">om0</span>
+</span><span id="line-257">
+</span><span id="line-258">
+</span><span id="line-259"><span class="k">def</span><span class="w"> </span><span class="nf">_growth_integrand</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">om0</span><span class="p">):</span>
+</span><span id="line-260"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Growth-factor redshift integrand.&quot;&quot;&quot;</span>
+</span><span id="line-261">    <span class="k">return</span> <span class="p">(</span><span class="n">z</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">_growth_E_sq</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">om0</span><span class="p">))</span> <span class="o">**</span> <span class="mf">1.5</span>
+</span><span id="line-262">
+</span><span id="line-263">
+</span><span id="line-264"><span class="k">def</span><span class="w"> </span><span class="nf">_growth_factor_single</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">om0</span><span class="p">):</span>
+</span><span id="line-265"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalised linear growth factor at a single redshift.&quot;&quot;&quot;</span>
+</span><span id="line-266">    <span class="kn">import</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">sp</span>
+</span><span id="line-267">
+</span><span id="line-268">    <span class="n">first</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">integrate</span><span class="o">.</span><span class="n">quad</span><span class="p">(</span><span class="n">_growth_integrand</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">om0</span><span class="p">,))[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="line-269">    <span class="n">second</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">integrate</span><span class="o">.</span><span class="n">quad</span><span class="p">(</span><span class="n">_growth_integrand</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">om0</span><span class="p">,))[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="line-270">    <span class="k">return</span> <span class="p">(</span><span class="n">_growth_E_sq</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">om0</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">first</span> <span class="o">/</span> <span class="n">second</span>
+</span><span id="line-271">
+</span><span id="line-272">
+<div class="viewcode-block" id="growth_factor">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.growth_factor">[docs]</a>
+</span><span id="line-273"><span class="k">def</span><span class="w"> </span><span class="nf">growth_factor</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">om0</span><span class="p">):</span>
+</span><span id="line-274"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Normalised linear growth factor ``D(z)`` (scalar or array ``z``).&quot;&quot;&quot;</span>
+</span><span id="line-275">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">)):</span>
+</span><span id="line-276">        <span class="k">return</span> <span class="n">_growth_factor_single</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">om0</span><span class="p">)</span>
+</span><span id="line-277">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">_growth_factor_single</span><span class="p">(</span><span class="n">zi</span><span class="p">,</span> <span class="n">om0</span><span class="p">)</span> <span class="k">for</span> <span class="n">zi</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">z</span><span class="p">)])</span></div>
+
+</span><span id="line-278">
+</span><span id="line-279">
+<div class="viewcode-block" id="ia_convergence">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.ia_convergence">[docs]</a>
+</span><span id="line-280"><span class="k">def</span><span class="w"> </span><span class="nf">ia_convergence</span><span class="p">(</span><span class="n">delta</span><span class="p">,</span> <span class="n">shell</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+</span><span id="line-281"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Intrinsic-alignment contribution to the convergence (NLA model).</span>
+</span><span id="line-282">
+</span><span id="line-283"><span class="sd">    Mirrors the production NLA prefactor: ``-A_ia * rho_c1 * Om0 / D(z_eff)``</span>
+</span><span id="line-284"><span class="sd">    applied to the matter overdensity ``delta`` of one shell.</span>
+</span><span id="line-285"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-286">    <span class="kn">import</span><span class="w"> </span><span class="nn">astropy.constants</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">const</span>
+</span><span id="line-287">    <span class="kn">import</span><span class="w"> </span><span class="nn">astropy.units</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">u</span>
+</span><span id="line-288">
+</span><span id="line-289">    <span class="n">Om0</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">Om</span>
+</span><span id="line-290">    <span class="n">A_ia</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">ia_bias</span>
+</span><span id="line-291">    <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">z_eff</span> <span class="o">=</span> <span class="n">shell</span>
+</span><span id="line-292">    <span class="n">c1</span> <span class="o">=</span> <span class="mf">5e-14</span> <span class="o">*</span> <span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">Mpc</span><span class="o">**</span><span class="mf">3.0</span><span class="p">)</span> <span class="o">/</span> <span class="n">u</span><span class="o">.</span><span class="n">solMass</span>
+</span><span id="line-293">    <span class="n">c1_cgs</span> <span class="o">=</span> <span class="p">(</span><span class="n">c1</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span><span class="p">)</span> <span class="o">**</span> <span class="mf">2.0</span><span class="p">)</span><span class="o">.</span><span class="n">cgs</span>
+</span><span id="line-294">    <span class="n">H0</span> <span class="o">=</span> <span class="p">(</span><span class="mi">100</span> <span class="o">*</span> <span class="n">config</span><span class="o">.</span><span class="n">h</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">km</span> <span class="o">/</span> <span class="n">u</span><span class="o">.</span><span class="n">s</span> <span class="o">/</span> <span class="n">u</span><span class="o">.</span><span class="n">Mpc</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">s</span><span class="o">**-</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="line-295">    <span class="n">G</span> <span class="o">=</span> <span class="p">(</span><span class="n">const</span><span class="o">.</span><span class="n">G</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">m</span><span class="o">**</span><span class="mi">3</span> <span class="o">/</span> <span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">kg</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">s</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">cgs</span>
+</span><span id="line-296">    <span class="n">rho_crit</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">H0</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">8</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">G</span><span class="p">)</span>
+</span><span id="line-297">    <span class="n">rho_c1</span> <span class="o">=</span> <span class="p">(</span><span class="n">c1_cgs</span> <span class="o">*</span> <span class="n">rho_crit</span><span class="p">)</span><span class="o">.</span><span class="n">value</span>
+</span><span id="line-298">    <span class="n">prefactor</span> <span class="o">=</span> <span class="o">-</span><span class="n">A_ia</span> <span class="o">*</span> <span class="n">rho_c1</span> <span class="o">*</span> <span class="n">Om0</span>
+</span><span id="line-299">    <span class="k">return</span> <span class="n">prefactor</span> <span class="o">/</span> <span class="n">growth_factor</span><span class="p">(</span><span class="n">z_eff</span><span class="p">,</span> <span class="n">Om0</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta</span></div>
+
+</span><span id="line-300">
+</span><span id="line-301">
+<div class="viewcode-block" id="create_mask_from_catalogue">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.create_mask_from_catalogue">[docs]</a>
+</span><span id="line-302"><span class="k">def</span><span class="w"> </span><span class="nf">create_mask_from_catalogue</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">ra_col</span><span class="o">=</span><span class="s2">&quot;RA&quot;</span><span class="p">,</span> <span class="n">dec_col</span><span class="o">=</span><span class="s2">&quot;DEC&quot;</span><span class="p">):</span>
+</span><span id="line-303"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write a HEALPix footprint mask from the populated pixels of a catalogue.</span>
+</span><span id="line-304">
+</span><span id="line-305"><span class="sd">    Pixels containing at least one object get 1.0, everything else 0.0.</span>
+</span><span id="line-306"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-307">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-308">    <span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
+</span><span id="line-309">
+</span><span id="line-310">    <span class="n">cat_gal</span> <span class="o">=</span> <span class="n">fits</span><span class="o">.</span><span class="n">getdata</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-311">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="n">ra_col</span><span class="p">]</span>
+</span><span id="line-312">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat_gal</span><span class="p">[</span><span class="n">dec_col</span><span class="p">]</span>
+</span><span id="line-313">
+</span><span id="line-314">    <span class="n">theta</span> <span class="o">=</span> <span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">dec</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
+</span><span id="line-315">    <span class="n">phi</span> <span class="o">=</span> <span class="n">ra</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
+</span><span id="line-316">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">)</span>
+</span><span id="line-317">
+</span><span id="line-318">    <span class="n">_unique_pix</span><span class="p">,</span> <span class="n">_idx</span><span class="p">,</span> <span class="n">idx_rep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
+</span><span id="line-319">        <span class="n">pix</span><span class="p">,</span> <span class="n">return_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span>
+</span><span id="line-320">    <span class="p">)</span>
+</span><span id="line-321">    <span class="n">n_gal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-322">    <span class="n">n_gal</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">)</span>
+</span><span id="line-323">    <span class="n">mask</span> <span class="o">=</span> <span class="n">n_gal</span> <span class="o">!=</span> <span class="mi">0</span>
+</span><span id="line-324">
+</span><span id="line-325">    <span class="n">hp</span><span class="o">.</span><span class="n">write_map</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+</span><span id="line-326">
+</span><span id="line-327">
+</span><span id="line-328"><span class="c1"># --- two-point statistics on mock catalogues --------------------------------</span>
+</span><span id="line-329">
+</span><span id="line-330"><span class="c1"># Configuration-space treecorr defaults for the GLASS-mock 2PCF.</span>
+</span><span id="line-331"><span class="n">TREECORR_CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-332">    <span class="s2">&quot;ra_units&quot;</span><span class="p">:</span> <span class="s2">&quot;degrees&quot;</span><span class="p">,</span>
+</span><span id="line-333">    <span class="s2">&quot;dec_units&quot;</span><span class="p">:</span> <span class="s2">&quot;degrees&quot;</span><span class="p">,</span>
+</span><span id="line-334">    <span class="s2">&quot;min_sep&quot;</span><span class="p">:</span> <span class="mf">1.0</span><span class="p">,</span>
+</span><span id="line-335">    <span class="s2">&quot;max_sep&quot;</span><span class="p">:</span> <span class="mf">250.0</span><span class="p">,</span>
+</span><span id="line-336">    <span class="s2">&quot;nbins&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+</span><span id="line-337">    <span class="s2">&quot;sep_units&quot;</span><span class="p">:</span> <span class="s2">&quot;arcmin&quot;</span><span class="p">,</span>
+</span><span id="line-338">    <span class="s2">&quot;num_threads&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+</span><span id="line-339"><span class="p">}</span>
+</span><span id="line-340">
+</span><span id="line-341">
+<div class="viewcode-block" id="powspace_bins">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.powspace_bins">[docs]</a>
+</span><span id="line-342"><span class="k">def</span><span class="w"> </span><span class="nf">powspace_bins</span><span class="p">(</span><span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+</span><span id="line-343"><span class="w">    </span><span class="sd">&quot;&quot;&quot;NaMaster powspace bandpower binning used across the mock harmonic stats.</span>
+</span><span id="line-344">
+</span><span id="line-345"><span class="sd">    Returns ``(bin, ell_eff, lmax, b_lmax)``: the NaMaster ``NmtBin`` built on</span>
+</span><span id="line-346"><span class="sd">    square-root-spaced bandpowers between ``lmin`` and ``lmax = 2 * nside``,</span>
+</span><span id="line-347"><span class="sd">    plus the effective ells and the two lmax values the callers reuse.</span>
+</span><span id="line-348"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-349">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
+</span><span id="line-350">
+</span><span id="line-351">    <span class="n">lmax</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">nside</span>
+</span><span id="line-352">    <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">lmax</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span id="line-353">
+</span><span id="line-354">    <span class="n">ells</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-355">    <span class="n">start</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">lmin</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-356">    <span class="n">end</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">lmax</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-357">    <span class="n">bins_ell</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-358">
+</span><span id="line-359">    <span class="n">bpws</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">digitize</span><span class="p">(</span><span class="n">ells</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">),</span> <span class="n">bins_ell</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span id="line-360">    <span class="n">bpws</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-361">    <span class="n">bpws</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_bins</span> <span class="o">-</span> <span class="mi">1</span>
+</span><span id="line-362">
+</span><span id="line-363">    <span class="n">b</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtBin</span><span class="p">(</span><span class="n">ells</span><span class="o">=</span><span class="n">ells</span><span class="p">,</span> <span class="n">bpws</span><span class="o">=</span><span class="n">bpws</span><span class="p">,</span> <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">)</span>
+</span><span id="line-364">    <span class="k">return</span> <span class="n">b</span><span class="p">,</span> <span class="n">b</span><span class="o">.</span><span class="n">get_effective_ells</span><span class="p">(),</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span></div>
+
+</span><span id="line-365">
+</span><span id="line-366">
+<div class="viewcode-block" id="compute_two_point_xi">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_xi">[docs]</a>
+</span><span id="line-367"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_xi</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-368"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Configuration-space shear 2PCF (treecorr ``GGCorrelation``) for a mock.&quot;&quot;&quot;</span>
+</span><span id="line-369">    <span class="kn">import</span><span class="w"> </span><span class="nn">treecorr</span>
+</span><span id="line-370">
+</span><span id="line-371">    <span class="n">treecorr_config</span> <span class="o">=</span> <span class="n">TREECORR_CONFIG</span> <span class="k">if</span> <span class="n">config</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">config</span>
+</span><span id="line-372">    <span class="n">treecorr_cat</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">Catalog</span><span class="p">(</span>
+</span><span id="line-373">        <span class="n">ra</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">],</span>
+</span><span id="line-374">        <span class="n">dec</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">],</span>
+</span><span id="line-375">        <span class="n">g1</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e1&quot;</span><span class="p">],</span>
+</span><span id="line-376">        <span class="n">g2</span><span class="o">=</span><span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e2&quot;</span><span class="p">],</span>
+</span><span id="line-377">        <span class="n">ra_units</span><span class="o">=</span><span class="s2">&quot;degrees&quot;</span><span class="p">,</span>
+</span><span id="line-378">        <span class="n">dec_units</span><span class="o">=</span><span class="s2">&quot;degrees&quot;</span><span class="p">,</span>
+</span><span id="line-379">    <span class="p">)</span>
+</span><span id="line-380">    <span class="n">gg</span> <span class="o">=</span> <span class="n">treecorr</span><span class="o">.</span><span class="n">GGCorrelation</span><span class="p">(</span><span class="n">treecorr_config</span><span class="p">)</span>
+</span><span id="line-381">    <span class="n">gg</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">treecorr_cat</span><span class="p">)</span>
+</span><span id="line-382">    <span class="k">return</span> <span class="n">gg</span></div>
+
+</span><span id="line-383">
+</span><span id="line-384">
+<div class="viewcode-block" id="get_n_gal_map">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map">[docs]</a>
+</span><span id="line-385"><span class="k">def</span><span class="w"> </span><span class="nf">get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
+</span><span id="line-386"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.&quot;&quot;&quot;</span>
+</span><span id="line-387">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-388">
+</span><span id="line-389">    <span class="n">theta</span> <span class="o">=</span> <span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">dec</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
+</span><span id="line-390">    <span class="n">phi</span> <span class="o">=</span> <span class="n">ra</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">180.0</span>
+</span><span id="line-391">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">)</span>
+</span><span id="line-392">
+</span><span id="line-393">    <span class="n">unique_pix</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">idx_rep</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span>
+</span><span id="line-394">        <span class="n">pix</span><span class="p">,</span> <span class="n">return_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">return_inverse</span><span class="o">=</span><span class="kc">True</span>
+</span><span id="line-395">    <span class="p">)</span>
+</span><span id="line-396">    <span class="n">n_gal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-397">    <span class="n">n_gal</span><span class="p">[</span><span class="n">unique_pix</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">)</span>
+</span><span id="line-398">    <span class="k">return</span> <span class="n">n_gal</span><span class="p">,</span> <span class="n">unique_pix</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">idx_rep</span></div>
+
+</span><span id="line-399">
+</span><span id="line-400">
+<div class="viewcode-block" id="compute_two_point_cl">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl">[docs]</a>
+</span><span id="line-401"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_cl</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+</span><span id="line-402"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Catalogue-based NaMaster pseudo-Cl for a mock shear field.</span>
+</span><span id="line-403">
+</span><span id="line-404"><span class="sd">    Returns ``(cl_coupled, cl_all)``, each with the ell axis prepended.</span>
+</span><span id="line-405"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-406">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
+</span><span id="line-407">
+</span><span id="line-408">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e1&quot;</span><span class="p">]</span>
+</span><span id="line-409">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e2&quot;</span><span class="p">]</span>
+</span><span id="line-410">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">]</span>
+</span><span id="line-411">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">]</span>
+</span><span id="line-412">    <span class="k">del</span> <span class="n">cat</span>
+</span><span id="line-413">
+</span><span id="line-414">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-415">
+</span><span id="line-416">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">powspace_bins</span><span class="p">(</span><span class="n">nside</span><span class="o">=</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">)</span>
+</span><span id="line-417">
+</span><span id="line-418">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span id="line-419">    <span class="n">f_all</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-420">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span>
+</span><span id="line-421">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">e1</span><span class="p">),</span>
+</span><span id="line-422">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2</span><span class="p">],</span>
+</span><span id="line-423">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-424">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-425">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-426">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-427">    <span class="p">)</span>
+</span><span id="line-428">
+</span><span id="line-429">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-430">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">)</span>
+</span><span id="line-431">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
+</span><span id="line-432">
+</span><span id="line-433">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">cl_coupled</span><span class="p">])</span>
+</span><span id="line-434">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cl_all</span><span class="p">])</span>
+</span><span id="line-435">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_all</span></div>
+
+</span><span id="line-436">
+</span><span id="line-437">
+<div class="viewcode-block" id="compute_two_point_cl_map">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl_map">[docs]</a>
+</span><span id="line-438"><span class="k">def</span><span class="w"> </span><span class="nf">compute_two_point_cl_map</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+</span><span id="line-439"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Map-based NaMaster pseudo-Cl for a mock shear field.</span>
+</span><span id="line-440">
+</span><span id="line-441"><span class="sd">    Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)</span>
+</span><span id="line-442"><span class="sd">    and runs the MCM on the resulting masked field. Returns</span>
+</span><span id="line-443"><span class="sd">    ``(cl_coupled, cl_all)`` with the ell axis prepended.</span>
+</span><span id="line-444"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-445">    <span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-446">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
+</span><span id="line-447">
+</span><span id="line-448">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e1&quot;</span><span class="p">]</span>
+</span><span id="line-449">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e2&quot;</span><span class="p">]</span>
+</span><span id="line-450">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">]</span>
+</span><span id="line-451">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">]</span>
+</span><span id="line-452">    <span class="k">del</span> <span class="n">cat</span>
+</span><span id="line-453">
+</span><span id="line-454">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-455">
+</span><span id="line-456">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">powspace_bins</span><span class="p">(</span><span class="n">nside</span><span class="o">=</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">)</span>
+</span><span id="line-457">
+</span><span id="line-458">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span id="line-459">    <span class="n">n_gal_map</span><span class="p">,</span> <span class="n">unique_pix</span><span class="p">,</span> <span class="n">_idx</span><span class="p">,</span> <span class="n">idx_rep</span> <span class="o">=</span> <span class="n">get_n_gal_map</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">)</span>
+</span><span id="line-460">    <span class="n">mask</span> <span class="o">=</span> <span class="n">n_gal_map</span> <span class="o">&gt;</span> <span class="mi">0</span>
+</span><span id="line-461">
+</span><span id="line-462">    <span class="n">shear_map_e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-463">    <span class="n">shear_map_e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hp</span><span class="o">.</span><span class="n">nside2npix</span><span class="p">(</span><span class="n">nside</span><span class="p">))</span>
+</span><span id="line-464">    <span class="n">shear_map_e1</span><span class="p">[</span><span class="n">unique_pix</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">e1</span><span class="p">)</span>
+</span><span id="line-465">    <span class="n">shear_map_e2</span><span class="p">[</span><span class="n">unique_pix</span><span class="p">]</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">idx_rep</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">e2</span><span class="p">)</span>
+</span><span id="line-466">    <span class="n">shear_map_e1</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">n_gal_map</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</span><span id="line-467">    <span class="n">shear_map_e2</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">/=</span> <span class="n">n_gal_map</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
+</span><span id="line-468">
+</span><span id="line-469">    <span class="n">f_all</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtField</span><span class="p">(</span>
+</span><span id="line-470">        <span class="n">mask</span><span class="o">=</span><span class="n">n_gal_map</span><span class="p">,</span>
+</span><span id="line-471">        <span class="n">maps</span><span class="o">=</span><span class="p">[</span><span class="n">shear_map_e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">shear_map_e2</span><span class="p">],</span>
+</span><span id="line-472">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-473">    <span class="p">)</span>
+</span><span id="line-474">
+</span><span id="line-475">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-476">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_all</span><span class="p">,</span> <span class="n">f_all</span><span class="p">)</span>
+</span><span id="line-477">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">cl_coupled</span><span class="p">)</span>
+</span><span id="line-478">
+</span><span id="line-479">    <span class="n">cl_coupled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">lmax</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:],</span> <span class="n">cl_coupled</span><span class="p">])</span>
+</span><span id="line-480">    <span class="n">cl_all</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cl_all</span><span class="p">])</span>
+</span><span id="line-481">    <span class="k">return</span> <span class="n">cl_coupled</span><span class="p">,</span> <span class="n">cl_all</span></div>
+
+</span><span id="line-482">
+</span><span id="line-483">
+<div class="viewcode-block" id="compute_leakage_harmony">
+<a class="viewcode-back" href="../../sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony">[docs]</a>
+</span><span id="line-484"><span class="k">def</span><span class="w"> </span><span class="nf">compute_leakage_harmony</span><span class="p">(</span><span class="n">cat</span><span class="p">,</span> <span class="n">cat_star</span><span class="p">,</span> <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">):</span>
+</span><span id="line-485"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Harmonic-space PSF-leakage rho_0 / tau_0 from galaxy + star catalogues.</span>
+</span><span id="line-486">
+</span><span id="line-487"><span class="sd">    Returns ``(rho_cl, tau_cl)``: the PSF-PSF (rho_0) and galaxy-PSF (tau_0)</span>
+</span><span id="line-488"><span class="sd">    decoupled pseudo-Cl, each with the effective-ell axis prepended.</span>
+</span><span id="line-489"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-490">    <span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
+</span><span id="line-491">
+</span><span id="line-492">    <span class="n">e1</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e1&quot;</span><span class="p">]</span>
+</span><span id="line-493">    <span class="n">e2</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;e2&quot;</span><span class="p">]</span>
+</span><span id="line-494">    <span class="n">e1_psf</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">&quot;E1_PSF_HSM&quot;</span><span class="p">]</span>
+</span><span id="line-495">    <span class="n">e2_psf</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">&quot;E2_PSF_HSM&quot;</span><span class="p">]</span>
+</span><span id="line-496">
+</span><span id="line-497">    <span class="n">ra</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;ra&quot;</span><span class="p">]</span>
+</span><span id="line-498">    <span class="n">dec</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[</span><span class="s2">&quot;dec&quot;</span><span class="p">]</span>
+</span><span id="line-499">    <span class="n">ra_star</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">&quot;RA&quot;</span><span class="p">]</span>
+</span><span id="line-500">    <span class="n">dec_star</span> <span class="o">=</span> <span class="n">cat_star</span><span class="p">[</span><span class="s2">&quot;DEC&quot;</span><span class="p">]</span>
+</span><span id="line-501">    <span class="k">del</span> <span class="n">cat</span>
+</span><span id="line-502">
+</span><span id="line-503">    <span class="n">ra</span><span class="p">[</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-504">    <span class="n">ra_star</span><span class="p">[</span><span class="n">ra_star</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">360</span>
+</span><span id="line-505">
+</span><span id="line-506">    <span class="n">b</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">,</span> <span class="n">_lmax</span><span class="p">,</span> <span class="n">b_lmax</span> <span class="o">=</span> <span class="n">powspace_bins</span><span class="p">(</span><span class="n">nside</span><span class="o">=</span><span class="n">nside</span><span class="p">,</span> <span class="n">lmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span> <span class="n">n_bins</span><span class="o">=</span><span class="n">n_bins</span><span class="p">)</span>
+</span><span id="line-507">
+</span><span id="line-508">    <span class="n">factor</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span id="line-509">    <span class="n">f_psf</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-510">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra_star</span><span class="p">,</span> <span class="n">dec_star</span><span class="p">],</span>
+</span><span id="line-511">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra_star</span><span class="p">),</span>
+</span><span id="line-512">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1_psf</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2_psf</span><span class="p">],</span>
+</span><span id="line-513">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-514">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-515">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-516">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-517">    <span class="p">)</span>
+</span><span id="line-518">    <span class="n">f_gal</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtFieldCatalog</span><span class="p">(</span>
+</span><span id="line-519">        <span class="n">positions</span><span class="o">=</span><span class="p">[</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">],</span>
+</span><span id="line-520">        <span class="n">weights</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">ra</span><span class="p">),</span>
+</span><span id="line-521">        <span class="n">field</span><span class="o">=</span><span class="p">[</span><span class="n">e1</span><span class="p">,</span> <span class="n">factor</span> <span class="o">*</span> <span class="n">e2</span><span class="p">],</span>
+</span><span id="line-522">        <span class="n">lmax</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-523">        <span class="n">lmax_mask</span><span class="o">=</span><span class="n">b_lmax</span><span class="p">,</span>
+</span><span id="line-524">        <span class="n">spin</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-525">        <span class="n">lonlat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-526">    <span class="p">)</span>
+</span><span id="line-527">
+</span><span id="line-528">    <span class="c1"># rho_0: PSF-PSF</span>
+</span><span id="line-529">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_psf</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-530">    <span class="n">rho_cl</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_psf</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">))</span>
+</span><span id="line-531">    <span class="n">rho_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">rho_cl</span><span class="p">])</span>
+</span><span id="line-532">
+</span><span id="line-533">    <span class="c1"># tau_0: galaxy-PSF</span>
+</span><span id="line-534">    <span class="n">wsp</span> <span class="o">=</span> <span class="n">nmt</span><span class="o">.</span><span class="n">NmtWorkspace</span><span class="o">.</span><span class="n">from_fields</span><span class="p">(</span><span class="n">f_gal</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-535">    <span class="n">tau_cl</span> <span class="o">=</span> <span class="n">wsp</span><span class="o">.</span><span class="n">decouple_cell</span><span class="p">(</span><span class="n">nmt</span><span class="o">.</span><span class="n">compute_coupled_cell</span><span class="p">(</span><span class="n">f_gal</span><span class="p">,</span> <span class="n">f_psf</span><span class="p">))</span>
+</span><span id="line-536">    <span class="n">tau_cl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">ell_eff</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">tau_cl</span><span class="p">])</span>
+</span><span id="line-537">
+</span><span id="line-538">    <span class="k">return</span> <span class="n">rho_cl</span><span class="p">,</span> <span class="n">tau_cl</span></div>
+
+</span></code></pre></div>
+    </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+</div></div>
+          </main>
+        </div>
+      </div><footer class="py-6 border-t border-border md:py-0">
+    <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 20 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+    href="https://www.sphinx-doc.org"
+    rel="noreferrer">Sphinx 9.1.0</a></p>
+</div>
+</div>
+</footer>
+    </div><button id="scrolltop"
+        x-cloak
+        @click="window.scrollTo({top: 0, behavior: 'smooth'})"
+        class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950"
+        :class="{'opacity-0 invisible' : !showScrollTop}"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       height="14"
+       viewBox="0 96 960 960"
+       width="14"
+       class="inline fill-current mb-[2px]"
+       aria-hidden="true">
+    <path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z" />
+  </svg>
+  Back to top
+</button>
+    
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script defer="defer" src="../../_static/theme.js?v=5db23cf8"></script>
+    
+</body>
+
+</html>

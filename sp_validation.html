@@ -25,7 +25,7 @@
 <meta content="sp_validation | sp_validation v0.6.0" property="og:title"/>
 <meta content="sp_validation | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
-<link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="sp_validation.b_modes.html" rel="next" title="sp_validation.b_modes"/>
@@ -75,9 +75,11 @@
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
@@ -92,6 +94,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -177,6 +180,9 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html#sp_validation.basic.jackknif_weighted_average2"><code class="docutils literal notranslate"><span class="pre">jackknif_weighted_average2()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html#sp_validation.basic.mask_gal_size"><code class="docutils literal notranslate"><span class="pre">mask_gal_size()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html#sp_validation.basic.mask_gal_SNR"><code class="docutils literal notranslate"><span class="pre">mask_gal_SNR()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html#sp_validation.basic.corr_from_cov"><code class="docutils literal notranslate"><span class="pre">corr_from_cov()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html#sp_validation.basic.chi2_and_pte"><code class="docutils literal notranslate"><span class="pre">chi2_and_pte()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html#sp_validation.basic.cov_from_one_covariance"><code class="docutils literal notranslate"><span class="pre">cov_from_one_covariance()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a><ul>
@@ -229,6 +235,7 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.n_eff_gal"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.n_eff_gal</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.ellipticity_dispersion"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.ellipticity_dispersion</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.pseudo_cls_onecov"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.pseudo_cls_onecov</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._get_binned_catalog_mask"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._get_binned_catalog_mask()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_area()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area_from_binned_catalog"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_area_from_binned_catalog()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_n_eff_gal"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_n_eff_gal()</span></code></a></li>
@@ -308,6 +315,49 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_ngmix"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_ngmix()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_galsim"><code class="docutils literal notranslate"><span class="pre">classification_galaxy_galsim()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html#sp_validation.galaxy.mask_overlap"><code class="docutils literal notranslate"><span class="pre">mask_overlap()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nside"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.nside</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.seed"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.seed</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.dx"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.dx</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.zmax"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.zmax</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.h"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.h</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Om"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.Om</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Ob"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.Ob</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.ns"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.ns</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.sigma8"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.sigma8</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.mnu"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.mnu</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.log_T_AGN"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.log_T_AGN</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.As_init"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.As_init</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.kmax"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.kmax</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.n_arcmin2"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.n_arcmin2</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.sigma_e"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.sigma_e</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.bias"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.bias</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.phz_sigma_0</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nbins"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.nbins</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.ia_bias"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.ia_bias</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.from_planck18"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.from_planck18()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.lmax"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.lmax</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Oc"><code class="docutils literal notranslate"><span class="pre">GlassMockConfig.Oc</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.build_camb_params"><code class="docutils literal notranslate"><span class="pre">build_camb_params()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.camb_sigma8"><code class="docutils literal notranslate"><span class="pre">camb_sigma8()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.build_shells"><code class="docutils literal notranslate"><span class="pre">build_shells()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.matter_shell_cls"><code class="docutils literal notranslate"><span class="pre">matter_shell_cls()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.generate_matter_maps"><code class="docutils literal notranslate"><span class="pre">generate_matter_maps()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.downgrade_mask"><code class="docutils literal notranslate"><span class="pre">downgrade_mask()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.growth_factor"><code class="docutils literal notranslate"><span class="pre">growth_factor()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.ia_convergence"><code class="docutils literal notranslate"><span class="pre">ia_convergence()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.create_mask_from_catalogue"><code class="docutils literal notranslate"><span class="pre">create_mask_from_catalogue()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.powspace_bins"><code class="docutils literal notranslate"><span class="pre">powspace_bins()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_xi"><code class="docutils literal notranslate"><span class="pre">compute_two_point_xi()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl_map"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl_map()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map"><code class="docutils literal notranslate"><span class="pre">get_n_gal_map()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony"><code class="docutils literal notranslate"><span class="pre">compute_leakage_harmony()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
@@ -495,7 +545,7 @@
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
@@ -508,6 +558,6 @@
 <script src="_static/documentation_options.js?v=5929fcd5"></script>
 <script src="_static/doctools.js?v=fd6eb6e6"></script>
 <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
-<script defer="defer" src="_static/theme.js?v=d6a9845b"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
 </body>
 </html>

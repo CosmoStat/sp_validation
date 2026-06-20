@@ -25,7 +25,7 @@
 <meta content="sp_validation.cosmology | sp_validation v0.6.0" property="og:title"/>
 <meta content="sp_validation.cosmology | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
-<link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="sp_validation.galaxy.html" rel="next" title="sp_validation.galaxy"/>
@@ -75,9 +75,11 @@
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
@@ -92,6 +94,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -199,7 +202,7 @@ Omega_m, omb, h0, sigma_8, n_spec</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.cosmology.get_cosmo">
-<span class="sig-name descname"><span class="pre">get_cosmo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Omega_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Omega_m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig8</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wa</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boltzmann_camb'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matter_power_spectrum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'halofit'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosmocov_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">camb_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmology.html#get_cosmo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmology.get_cosmo" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmology.get_cosmo'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_cosmo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Omega_b</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Omega_m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">h</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sig8</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wa</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mnu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transfer_function</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'boltzmann_camb'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matter_power_spectrum</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'halofit'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cosmocov_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">camb_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_params</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmology.html#get_cosmo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmology.get_cosmo" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmology.get_cosmo'">¶</a></dt>
 <dd><p>Get CCL cosmology object with user-specified parameters.</p>
 <p>Defaults to astropy Planck18 cosmology (Table 2: TT,TE,EE+lowE+lensing+BAO).
 Can also use CosmoCov or CAMB parameter formats.</p>
@@ -213,6 +216,7 @@ Can also use CosmoCov or CAMB parameter formats.</p>
 <li><p><strong>ns</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default=None</em>) – Scalar spectral index (defaults to Planck18: 0.9665)</p></li>
 <li><p><strong>w0</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default=None</em>) – Dark energy equation of state parameter (defaults to -1.0)</p></li>
 <li><p><strong>wa</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default=None</em>) – Dark energy equation of state evolution parameter (defaults to 0.0)</p></li>
+<li><p><strong>mnu</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default=None</em>) – Total neutrino mass in eV (defaults to 0.06 eV)</p></li>
 <li><p><strong>transfer_function</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>default='boltzmann_camb'</em>) – Transfer function to use</p></li>
 <li><p><strong>matter_power_spectrum</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>default='halofit'</em>) – Matter power spectrum to use</p></li>
 <li><p><strong>cosmocov_params</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Parameters in CosmoCov format (Omega_m, omb, h0, sigma_8, n_spec)
@@ -221,6 +225,7 @@ camb_params.</p></li>
 <li><p><strong>camb_params</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Parameters in CAMB format (H0, ombh2, omch2, ns, sigma8)
 If provided, entries override above parameters. Mutually exclusive with
 cosmocov_params.</p></li>
+<li><p><strong>extra_params</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Additional parameters to pass to CCL (e.g., for CAMB non-linear settings)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -416,7 +421,7 @@ lensing.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
@@ -429,6 +434,6 @@ lensing.</p>
 <script src="_static/documentation_options.js?v=5929fcd5"></script>
 <script src="_static/doctools.js?v=fd6eb6e6"></script>
 <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
-<script defer="defer" src="_static/theme.js?v=d6a9845b"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
 </body>
 </html>

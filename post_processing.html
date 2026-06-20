@@ -25,7 +25,7 @@
 <meta content="Post-processing | sp_validation v0.6.0" property="og:title"/>
 <meta content="Post-processing | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
-<link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="Leakage_object_Tutorial.html" rel="next" title="Leakage_object Tutorial"/>
@@ -75,9 +75,11 @@
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
@@ -92,6 +94,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -147,7 +150,7 @@ c. Calibrate the shear estimates with the <code class="docutils literal notransl
 <p>These steps are carried out as follows:</p>
 <section id="extract-information-run-basic-diagnostics-create-catalogues">
 <h3>1. Extract information, run basic diagnostics, create catalogues.<a class="headerlink" href="#extract-information-run-basic-diagnostics-create-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#extract-information-run-basic-diagnostics-create-catalogues'">¶</a></h3>
-<p>This is performed (version &gt; v1.4.1, &lt; v2.0) with the python script <code class="docutils literal notranslate"><span class="pre">extract_info.py</span></code> in <code class="docutils literal notranslate"><span class="pre">sp_validation/notebooks</span></code>.</p>
+<p>This is performed (version &gt; v1.4.1, &lt; v2.0) with the python script <code class="docutils literal notranslate"><span class="pre">scripts/calibration/extract_info.py</span></code>.</p>
 <p>This script creates three shear catalogues in FITS format:</p>
 <ul class="simple">
 <li><p><em>Basic</em> catalogue containing
@@ -159,21 +162,21 @@ metacal information (measured sheared quantities), mask information (<code class
 This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.<br/>
 This is the main output catalogue that will be processed further.</p></li>
 </ul>
-<p>This step is carried out per patch. Parameters have to be set via the python configuration file <code class="docutils literal notranslate"><span class="pre">params.py</span></code>.</p>
+<p>This step is carried out per patch. Parameters have to be set via the python configuration file <code class="docutils literal notranslate"><span class="pre">params.py</span></code> (template at <code class="docutils literal notranslate"><span class="pre">scripts/calibration/params.py</span></code>).</p>
 </section>
 <section id="merge-catalogues">
 <h3>2. Merge catalogues<a class="headerlink" href="#merge-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#merge-catalogues'">¶</a></h3>
-<p>The patch-wise comprehensive catalogues extracted in the previous step are merged using the script <code class="docutils literal notranslate"><span class="pre">create_joint_comprehensive_cat.py</span></code>, which is a front-end
+<p>The patch-wise comprehensive catalogues extracted in the previous step are merged using the script <code class="docutils literal notranslate"><span class="pre">scripts/calibration/create_joint_comprehensive_cat.py</span></code>, which is a front-end
 of the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> library class <code class="docutils literal notranslate"><span class="pre">run_joint_cat:JointCat</span></code>.</p>
 </section>
 <section id="apply-external-masks">
 <h3>3. Apply external masks<a class="headerlink" href="#apply-external-masks" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#apply-external-masks'">¶</a></h3>
-<p>Code for this step is developed in the library file <code class="docutils literal notranslate"><span class="pre">run_calibrate_joint.py</span></code>.</p>
+<p>The structural and coverage masks are added with <code class="docutils literal notranslate"><span class="pre">scripts/calibration/demo_apply_hsp_masks.py</span></code> (built on the library file <code class="docutils literal notranslate"><span class="pre">run_calibrate_joint.py</span></code>).</p>
 </section>
 <section id="mask-select-and-calibrate">
 <h3>4. Mask, select, and calibrate<a class="headerlink" href="#mask-select-and-calibrate" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#mask-select-and-calibrate'">¶</a></h3>
-<p>The steps of masking, galaxy sample selection, and calibration are carried out jointly using the notebook
-<code class="docutils literal notranslate"><span class="pre">calibrate_comprehensive_cat.py</span></code>.</p>
+<p>The steps of masking, galaxy sample selection, and calibration are carried out jointly using the script
+<code class="docutils literal notranslate"><span class="pre">scripts/calibration/calibrate_comprehensive_cat.py</span></code>.</p>
 <p>Masking parameters have to be set via a configuration file <code class="docutils literal notranslate"><span class="pre">config_mask.yaml</span></code>. Examples can be found in <code class="docutils literal notranslate"><span class="pre">sp_validation/config/calibration</span></code>.</p>
 <hr class="docutils"/>
 <p>The following describes the pre-v1.4.2 method to create a joint, calibrated shear catalogue.</p>
@@ -261,7 +264,7 @@ created above.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
@@ -274,6 +277,6 @@ created above.</p>
 <script src="_static/documentation_options.js?v=5929fcd5"></script>
 <script src="_static/doctools.js?v=fd6eb6e6"></script>
 <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
-<script defer="defer" src="_static/theme.js?v=d6a9845b"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
 </body>
 </html>

@@ -25,7 +25,7 @@
 <meta content="sp_validation.basic | sp_validation v0.6.0" property="og:title"/>
 <meta content="sp_validation.basic | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
-<link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="sp_validation.calibration.html" rel="next" title="sp_validation.calibration"/>
@@ -75,9 +75,11 @@
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
@@ -92,6 +94,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -298,6 +301,65 @@ if <code class="docutils literal notranslate"><span class="pre">False</span></co
 <dt class="sig sig-object py" id="sp_validation.basic.mask_gal_SNR">
 <span class="sig-name descname"><span class="pre">mask_gal_SNR</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">SNR</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_max</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/basic.html#mask_gal_SNR"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.basic.mask_gal_SNR" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.basic.mask_gal_SNR'">¶</a></dt>
 <dd></dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.basic.corr_from_cov">
+<span class="sig-name descname"><span class="pre">corr_from_cov</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/basic.html#corr_from_cov"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.basic.corr_from_cov" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.basic.corr_from_cov'">¶</a></dt>
+<dd><p>Correlation matrix from a covariance matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Covariance matrix.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Correlation matrix.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.basic.chi2_and_pte">
+<span class="sig-name descname"><span class="pre">chi2_and_pte</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_vector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cov</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/basic.html#chi2_and_pte"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.basic.chi2_and_pte" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.basic.chi2_and_pte'">¶</a></dt>
+<dd><p>Chi-squared, reduced chi-squared and PTE for a data vector.</p>
+<p>The data vector is assumed to be zero-mean under the null hypothesis,
+so <code class="docutils literal notranslate"><span class="pre">chi2</span> <span class="pre">=</span> <span class="pre">d^T</span> <span class="pre">C^-1</span> <span class="pre">d</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data_vector</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Data vector.</p></li>
+<li><p><strong>cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Covariance matrix of the data vector.</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, print the statistics; default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(chi2,</span> <span class="pre">reduced_chi2,</span> <span class="pre">pte)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.basic.cov_from_one_covariance">
+<span class="sig-name descname"><span class="pre">cov_from_one_covariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_one_cov</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaussian</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/basic.html#cov_from_one_covariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.basic.cov_from_one_covariance" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.basic.cov_from_one_covariance'">¶</a></dt>
+<dd><p>Reshape a OneCovariance <code class="docutils literal notranslate"><span class="pre">covariance_list</span></code> table into a matrix.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cov_one_cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Flat OneCovariance output (e.g. from <code class="docutils literal notranslate"><span class="pre">covariance_list_..._Cell.dat</span></code>),
+with one row per <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code> element pair.</p></li>
+<li><p><strong>gaussian</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> use the Gaussian-only column, otherwise the
+Gaussian+non-Gaussian column; default is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Square covariance matrix.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -339,6 +401,9 @@ if <code class="docutils literal notranslate"><span class="pre">False</span></co
 <li><a :data-current="activeSection === '#sp_validation.basic.jackknif_weighted_average2'" class="reference internal" href="#sp_validation.basic.jackknif_weighted_average2"><code class="docutils literal notranslate"><span class="pre">jackknif_weighted_average2()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.basic.mask_gal_size'" class="reference internal" href="#sp_validation.basic.mask_gal_size"><code class="docutils literal notranslate"><span class="pre">mask_gal_size()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.basic.mask_gal_SNR'" class="reference internal" href="#sp_validation.basic.mask_gal_SNR"><code class="docutils literal notranslate"><span class="pre">mask_gal_SNR()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.basic.corr_from_cov'" class="reference internal" href="#sp_validation.basic.corr_from_cov"><code class="docutils literal notranslate"><span class="pre">corr_from_cov()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.basic.chi2_and_pte'" class="reference internal" href="#sp_validation.basic.chi2_and_pte"><code class="docutils literal notranslate"><span class="pre">chi2_and_pte()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.basic.cov_from_one_covariance'" class="reference internal" href="#sp_validation.basic.cov_from_one_covariance"><code class="docutils literal notranslate"><span class="pre">cov_from_one_covariance()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -347,7 +412,7 @@ if <code class="docutils literal notranslate"><span class="pre">False</span></co
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
@@ -360,6 +425,6 @@ if <code class="docutils literal notranslate"><span class="pre">False</span></co
 <script src="_static/documentation_options.js?v=5929fcd5"></script>
 <script src="_static/doctools.js?v=fd6eb6e6"></script>
 <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
-<script defer="defer" src="_static/theme.js?v=d6a9845b"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
 </body>
 </html>

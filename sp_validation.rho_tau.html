@@ -25,7 +25,7 @@
 <meta content="sp_validation.rho_tau | sp_validation v0.6.0" property="og:title"/>
 <meta content="sp_validation.rho_tau | sp_validation v0.6.0" name="twitter:title"/>
 <link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
-<link href="_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
 <link href="sp_validation.run_joint_cat.html" rel="next" title="sp_validation.run_joint_cat"/>
@@ -75,9 +75,11 @@
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
@@ -92,6 +94,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -136,7 +139,7 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.rho_tau.SquareRootScale">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SquareRootScale</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axis</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#SquareRootScale"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau.SquareRootScale" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau.SquareRootScale'">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://matplotlib.org/stable/api/scale_api.html#matplotlib.scale.ScaleBase" title="(in Matplotlib v3.10.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScaleBase</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://matplotlib.org/stable/api/scale_api.html#matplotlib.scale.ScaleBase" title="(in Matplotlib v3.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScaleBase</span></code></a></p>
 <p>ScaleBase class for generating square root scale.</p>
 <p>Usage example: axis.set_yscale(‘squareroot’)</p>
 <dl class="py attribute">
@@ -160,7 +163,7 @@ This is used by log scales to determine a minimum value.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.rho_tau.SquareRootScale.SquareRootTransform">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">SquareRootTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shorthand_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#SquareRootScale.SquareRootTransform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau.SquareRootScale.SquareRootTransform" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau.SquareRootScale.SquareRootTransform'">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://matplotlib.org/stable/api/transformations.html#matplotlib.transforms.Transform" title="(in Matplotlib v3.10.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Transform</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://matplotlib.org/stable/api/transformations.html#matplotlib.transforms.Transform" title="(in Matplotlib v3.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Transform</span></code></a></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sp_validation.rho_tau.SquareRootScale.SquareRootTransform.input_dims">
 <span class="sig-name descname"><span class="pre">input_dims</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.input_dims" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau.SquareRootScale.SquareRootTransform.input_dims'">¶</a></dt>
@@ -219,7 +222,7 @@ update to its inverted copy.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">InvertedSquareRootTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shorthand_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/rho_tau.html#SquareRootScale.InvertedSquareRootTransform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform'">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://matplotlib.org/stable/api/transformations.html#matplotlib.transforms.Transform" title="(in Matplotlib v3.10.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Transform</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://matplotlib.org/stable/api/transformations.html#matplotlib.transforms.Transform" title="(in Matplotlib v3.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Transform</span></code></a></p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.input_dims">
 <span class="sig-name descname"><span class="pre">input_dims</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.input_dims" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.input_dims'">¶</a></dt>
@@ -431,7 +434,7 @@ Also compute rho and tau-statistics.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
@@ -444,6 +447,6 @@ Also compute rho and tau-statistics.</p>
 <script src="_static/documentation_options.js?v=5929fcd5"></script>
 <script src="_static/doctools.js?v=fd6eb6e6"></script>
 <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
-<script defer="defer" src="_static/theme.js?v=d6a9845b"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
 </body>
 </html>

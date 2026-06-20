@@ -27,7 +27,7 @@
   <meta property="og:title" content="Index | sp_validation v0.6.0" />
   <meta name="twitter:title" content="Index | sp_validation v0.6.0" />
   <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-  <link rel="stylesheet" type="text/css" href="_static/theme.css?v=979577e3" />
+  <link rel="stylesheet" type="text/css" href="_static/theme.css?v=d6d7c91b" />
   <link rel="search" title="Search" href="search.html" />
   <link rel="index" title="Index" href="#" />
 </head>
@@ -107,9 +107,11 @@
 <li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
@@ -124,6 +126,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -199,6 +202,8 @@
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau._extract_xip">_extract_xip() (in module sp_validation.rho_tau)</a>
 </li>
+      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._get_binned_catalog_mask">_get_binned_catalog_mask() (CosmologyValidation method)</a>
+</li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes._get_pte_from_scale_cut">_get_pte_from_scale_cut() (in module sp_validation.b_modes)</a>
 </li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks._labels_struct">_labels_struct (ApplyHspMasks attribute)</a>
@@ -207,10 +212,10 @@
 </li>
       <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._masking_gal">_masking_gal() (metacal method)</a>
 </li>
-      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._masking_gal_mom">_masking_gal_mom() (metacal method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._masking_gal_mom">_masking_gal_mom() (metacal method)</a>
+</li>
       <li><a href="sp_validation.basic.html#sp_validation.basic.metacal._masking_star">_masking_star() (metacal method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path">_materialize_seed_path() (CosmologyValidation static method)</a>
@@ -252,10 +257,10 @@
 </li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.append_masks">append_masks() (ApplyHspMasks method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.apply">apply() (Mask method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.apply_mask">apply_mask() (ApplyHspMasks method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.apply_random_rotation">apply_random_rotation() (CosmologyValidation method)</a>
@@ -263,6 +268,8 @@
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks">ApplyHspMasks (class in sp_validation.run_joint_cat)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.area">area (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.As_init">As_init (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -273,11 +280,17 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat">BaseCat (class in sp_validation.run_joint_cat)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename">basename() (CosmologyValidation method)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.bias">bias (GlassMockConfig attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.build_camb_params">build_camb_params() (in module sp_validation.glass_mock)</a>
+</li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.build_df">build_df() (in module sp_validation.calibration)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.build_shells">build_shells() (in module sp_validation.glass_mock)</a>
 </li>
   </ul></td>
   </tr>
@@ -334,19 +347,23 @@
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_fits">calculate_rho_tau_fits() (CosmologyValidation method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_stats">calculate_rho_tau_stats() (CosmologyValidation method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_scale_dependent_leakage">calculate_scale_dependent_leakage() (CosmologyValidation method)</a>
 </li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.CalibrateCat">CalibrateCat (class in sp_validation.run_joint_cat)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.camb_sigma8">camb_sigma8() (in module sp_validation.glass_mock)</a>
+</li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.catalog_config_path">catalog_config_path (CosmologyValidation attribute)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cc">cc (CosmologyValidation attribute)</a>
 </li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ApplyHspMasks.check_params">check_params() (ApplyHspMasks method)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.chi2_and_pte">chi2_and_pte() (in module sp_validation.basic)</a>
 </li>
       <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_base">classification_galaxy_base() (in module sp_validation.galaxy)</a>
 </li>
@@ -362,13 +379,23 @@
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.colors">colors (CosmologyValidation property)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony">compute_leakage_harmony() (in module sp_validation.glass_mock)</a>
+</li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.compute_PSF_leakage">compute_PSF_leakage() (in module sp_validation.run_joint_cat)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.compute_survey_stats">compute_survey_stats() (CosmologyValidation method)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl">compute_two_point_cl() (in module sp_validation.glass_mock)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl_map">compute_two_point_cl_map() (in module sp_validation.glass_mock)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_xi">compute_two_point_xi() (in module sp_validation.glass_mock)</a>
+</li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.compute_weights_gatti">compute_weights_gatti() (in module sp_validation.run_joint_cat)</a>
 </li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.confusion_matrix">confusion_matrix() (in module sp_validation.run_joint_cat)</a>
+</li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.corr_from_cov">corr_from_cov() (in module sp_validation.basic)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.correlation_from_covariance">correlation_from_covariance() (in module sp_validation.b_modes)</a>
 </li>
@@ -378,9 +405,13 @@
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation">CosmologyValidation (class in sp_validation.cosmo_val)</a>
 </li>
+      <li><a href="sp_validation.basic.html#sp_validation.basic.cov_from_one_covariance">cov_from_one_covariance() (in module sp_validation.basic)</a>
+</li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.create_bins">create_bins() (in module sp_validation.calibration)</a>
 </li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.create_descr">create_descr() (Mask method)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.create_mask_from_catalogue">create_mask_from_catalogue() (in module sp_validation.glass_mock)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.cut_to_bins">cut_to_bins() (in module sp_validation.calibration)</a>
 </li>
@@ -391,7 +422,13 @@
   <h2 id="D">D</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.downgrade_mask">downgrade_mask() (in module sp_validation.glass_mock)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.dtype_out">dtype_out() (JointCat method)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.dx">dx (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -411,11 +448,13 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.fill_cat_gal">fill_cat_gal() (in module sp_validation.calibration)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.find_conservative_scale_cut_key">find_conservative_scale_cut_key() (in module sp_validation.b_modes)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.Mask.from_list">from_list() (Mask class method)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.from_planck18">from_planck18() (GlassMockConfig class method)</a>
 </li>
   </ul></td>
   </tr>
@@ -425,6 +464,8 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.gamma_T_tc">gamma_T_tc() (in module sp_validation.cosmology)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.generate_matter_maps">generate_matter_maps() (in module sp_validation.glass_mock)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_alpha_leakage_per_object">get_alpha_leakage_per_object() (in module sp_validation.calibration)</a>
 </li>
@@ -467,7 +508,11 @@
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.get_masks_from_config">get_masks_from_config() (in module sp_validation.run_joint_cat)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_n_gal_map">get_n_gal_map() (CosmologyValidation method)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map">(in module sp_validation.glass_mock)</a>
 </li>
+      </ul></li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.get_n_obj">get_n_obj() (JointCat method)</a>
 </li>
   </ul></td>
@@ -518,6 +563,10 @@
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_w_des">get_w_des() (in module sp_validation.calibration)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig">GlassMockConfig (class in sp_validation.glass_mock)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.growth_factor">growth_factor() (in module sp_validation.glass_mock)</a>
+</li>
   </ul></td>
   </tr>
       </table>
@@ -525,6 +574,8 @@
   <h2 id="H">H</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.h">h (GlassMockConfig attribute)</a>
+</li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.has_inverse">has_inverse (SquareRootScale.InvertedSquareRootTransform attribute)</a>
 
       <ul style="list-style-type:none">
@@ -542,6 +593,10 @@
   <h2 id="I">I</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.ia_bias">ia_bias (GlassMockConfig attribute)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.ia_convergence">ia_convergence() (in module sp_validation.glass_mock)</a>
+</li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.init_data">init_data() (JointCat method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results">init_results() (CosmologyValidation method)</a>
@@ -583,10 +638,25 @@
   </tr>
       </table>
   
+  <h2 id="K">K</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.kmax">kmax (GlassMockConfig attribute)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
   <h2 id="L">L</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.limit_range_for_scale">limit_range_for_scale() (SquareRootScale method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.lmax">lmax (GlassMockConfig property)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.log_T_AGN">log_T_AGN (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -607,6 +677,8 @@
 </li>
       <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.mask_overlap">mask_overlap() (in module sp_validation.galaxy)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.matter_shell_cls">matter_shell_cls() (in module sp_validation.glass_mock)</a>
+</li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.JointCat.merge_catalogues">merge_catalogues() (JointCat method)</a>
 </li>
       <li><a href="sp_validation.basic.html#sp_validation.basic.metacal">metacal (class in sp_validation.basic)</a>
@@ -614,6 +686,8 @@
       <li><a href="sp_validation.util.html#sp_validation.util.millify">millify() (in module sp_validation.util)</a>
 </li>
       <li><a href="sp_validation.survey.html#sp_validation.survey.missing_tiles">missing_tiles() (in module sp_validation.survey)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.mnu">mnu (GlassMockConfig attribute)</a>
 </li>
       <li>
     module
@@ -634,6 +708,8 @@
         <li><a href="sp_validation.cosmology.html#module-sp_validation.cosmology">sp_validation.cosmology</a>
 </li>
         <li><a href="sp_validation.galaxy.html#module-sp_validation.galaxy">sp_validation.galaxy</a>
+</li>
+        <li><a href="sp_validation.glass_mock.html#module-sp_validation.glass_mock">sp_validation.glass_mock</a>
 </li>
         <li><a href="sp_validation.info.html#module-sp_validation.info">sp_validation.info</a>
 </li>
@@ -661,11 +737,19 @@
   <h2 id="N">N</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.n_arcmin2">n_arcmin2 (GlassMockConfig attribute)</a>
+</li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.n_eff_gal">n_eff_gal (CosmologyValidation property)</a>
+</li>
+      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.name">name (SquareRootScale attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.name">name (SquareRootScale attribute)</a>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nbins">nbins (GlassMockConfig attribute)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.ns">ns (GlassMockConfig attribute)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nside">nside (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   </tr>
@@ -674,10 +758,16 @@
   <h2 id="O">O</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.io.html#sp_validation.io.open_stats_file">open_stats_file() (in module sp_validation.io)</a>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Ob">Ob (GlassMockConfig attribute)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Oc">Oc (GlassMockConfig property)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.Om">Om (GlassMockConfig attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.io.html#sp_validation.io.open_stats_file">open_stats_file() (in module sp_validation.io)</a>
+</li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.InvertedSquareRootTransform.output_dims">output_dims (SquareRootScale.InvertedSquareRootTransform attribute)</a>
 
       <ul style="list-style-type:none">
@@ -701,6 +791,8 @@
         <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.ReadCat.params_default">(ReadCat method)</a>
 </li>
       </ul></li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0">phz_sigma_0 (GlassMockConfig attribute)</a>
+</li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_2pcf">plot_2pcf() (CosmologyValidation method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_aperture_mass_dispersion">plot_aperture_mass_dispersion() (CosmologyValidation method)</a>
@@ -758,6 +850,8 @@
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_tau_stats">plot_tau_stats() (CosmologyValidation method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_weights">plot_weights() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.powspace_bins">powspace_bins() (in module sp_validation.glass_mock)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_blue">print_blue() (CosmologyValidation method)</a>
 </li>
@@ -857,6 +951,8 @@
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.scale_cut_to_bins">scale_cut_to_bins() (in module sp_validation.b_modes)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.seed">seed (GlassMockConfig attribute)</a>
+</li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.SquareRootScale.set_default_locators_and_formatters">set_default_locators_and_formatters() (SquareRootScale method)</a>
 </li>
       <li><a href="sp_validation.run_joint_cat.html#sp_validation.run_joint_cat.BaseCat.set_params_from_command_line">set_params_from_command_line() (BaseCat method)</a>
@@ -870,6 +966,10 @@
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_leakage_scale">set_params_leakage_scale() (CosmologyValidation method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_rho_tau">set_params_rho_tau() (CosmologyValidation method)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.sigma8">sigma8 (GlassMockConfig attribute)</a>
+</li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.sigma_e">sigma_e (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.sky_plots">sky_plots() (in module sp_validation.plots)</a>
 </li>
@@ -929,6 +1029,13 @@
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.galaxy.html#module-sp_validation.galaxy">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.glass_mock
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.glass_mock.html#module-sp_validation.glass_mock">module</a>
 </li>
       </ul></li>
       <li>
@@ -1087,12 +1194,21 @@
   </tr>
       </table>
   
+  <h2 id="Z">Z</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.zmax">zmax (GlassMockConfig attribute)</a>
+</li>
+  </ul></td>
+  </tr>
+      </table>
+  
 
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 </div></div>
 <aside id="right-sidebar" class="hidden text-sm xl:block">
 <div class="sticky top-16 -mt-10 max-h-[calc(var(--vh)-4rem)] overflow-y-auto pt-6 space-y-2">
-<a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#_">_</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#A">A</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#B">B</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#C">C</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#D">D</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#E">E</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#F">F</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#G">G</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#H">H</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#I">I</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#J">J</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#L">L</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#M">M</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#N">N</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#O">O</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#P">P</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#R">R</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#S">S</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#T">T</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#U">U</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#V">V</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#W">W</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#X">X</a>
+<a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#_">_</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#A">A</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#B">B</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#C">C</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#D">D</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#E">E</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#F">F</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#G">G</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#H">H</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#I">I</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#J">J</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#K">K</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#L">L</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#M">M</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#N">N</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#O">O</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#P">P</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#R">R</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#S">S</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#T">T</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#U">U</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#V">V</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#W">W</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#X">X</a><a class="pt-2 block text-muted-foreground no-underline transition-colors hover:text-foreground focus-visible:outline-offset-[-1px]" href="#Z">Z</a>
 </div>
 </aside>
           </main>
@@ -1100,7 +1216,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 11 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 20 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
@@ -1126,7 +1242,7 @@
     <script src="_static/documentation_options.js?v=5929fcd5"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
-    <script defer="defer" src="_static/theme.js?v=d6a9845b"></script>
+    <script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
     
 </body>
 
