@@ -145,7 +145,6 @@ class PseudoClMixin:
                 self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
 
                 lmax = 2 * self.nside
-                z, dndz = self.get_redshift(ver)
                 ell = np.arange(1, lmax + 1)
                 pw = hp.pixwin(nside, lmax=lmax)
                 if pw.shape[0] != len(ell) + 1:
@@ -158,7 +157,6 @@ class PseudoClMixin:
                 # Load redshift distribution and calculate theory C_ell
                 path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
                 z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
-                ell = np.arange(1, lmax + 1)
                 fiducial_cl = (
                     get_theo_c_ell(
                         ell=ell,
@@ -181,7 +179,7 @@ class PseudoClMixin:
                 # Load data and create shear and noise maps
                 cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-                n_gal, unique_pix, idx, idx_rep = self.get_n_gal_map(
+                n_gal, unique_pix, _idx, idx_rep = self.get_n_gal_map(
                     params, nside, cat_gal
                 )
 
@@ -202,14 +200,7 @@ class PseudoClMixin:
                         idx_rep,
                     )
 
-                    cl_noise = np.mean(cl_noise, axis=0)
-                    noise_bias_cl = cl_noise
-                    noise_bias_cl = b.unbin_cell(noise_bias_cl)  # Unbin
-                    lowest_ell = b.get_ell_list(0)[0]
-                    for i in range(4):
-                        noise_bias_cl[i, :lowest_ell] = noise_bias_cl[
-                            i, lowest_ell
-                        ]  # Fill the data vector below lmin
+                    noise_bias_cl = np.mean(cl_noise, axis=0)
 
                 elif self.noise_bias_method == "analytic":
                     self.print_cyan("Getting analytic noise bias.")
@@ -230,17 +221,16 @@ class PseudoClMixin:
                     noise_bias_cl[3, :] = noise_bias
 
                     noise_bias_cl = wsp.decouple_cell(noise_bias_cl)  # Decouple
-                    noise_bias_cl = b.unbin_cell(noise_bias_cl)  # Unbin
-                    lowest_ell = b.get_ell_list(0)[0]
-                    for i in range(4):
-                        noise_bias_cl[i, :lowest_ell] = noise_bias_cl[
-                            i, lowest_ell
-                        ]  # Fill the data vector below lmin
 
                 else:
                     raise ValueError(
                         f"Noise bias method {self.noise_bias_method} not recognized. It should be 'randoms' or 'analytic'."
                     )
+
+                # Unbin, then fill the data vector below lmin with the lowest-ell value
+                noise_bias_cl = b.unbin_cell(noise_bias_cl)
+                lowest_ell = b.get_ell_list(0)[0]
+                noise_bias_cl[:, :lowest_ell] = noise_bias_cl[:, [lowest_ell]]
 
                 self.print_cyan("Adding noise bias to the fiducial Cls.")
 
@@ -288,43 +278,21 @@ class PseudoClMixin:
                     wb=wsp,
                 ).reshape([n_ell_actual, 4, n_ell_actual, 4])
 
-                covar_EE_EE = covar_22_22[:, 0, :, 0]
-                covar_EE_EB = covar_22_22[:, 0, :, 1]
-                covar_EE_BE = covar_22_22[:, 0, :, 2]
-                covar_EE_BB = covar_22_22[:, 0, :, 3]
-                covar_EB_EE = covar_22_22[:, 1, :, 0]
-                covar_EB_EB = covar_22_22[:, 1, :, 1]
-                covar_EB_BE = covar_22_22[:, 1, :, 2]
-                covar_EB_BB = covar_22_22[:, 1, :, 3]
-                covar_BE_EE = covar_22_22[:, 2, :, 0]
-                covar_BE_EB = covar_22_22[:, 2, :, 1]
-                covar_BE_BE = covar_22_22[:, 2, :, 2]
-                covar_BE_BB = covar_22_22[:, 2, :, 3]
-                covar_BB_EE = covar_22_22[:, 3, :, 0]
-                covar_BB_EB = covar_22_22[:, 3, :, 1]
-                covar_BB_BE = covar_22_22[:, 3, :, 2]
-                covar_BB_BB = covar_22_22[:, 3, :, 3]
-
                 self.print_cyan("Saving Pseudo-Cl covariance")
 
+                # covar_22_22 is indexed [ell, pol_a, ell, pol_b]; store each of the
+                # 16 EE/EB/BE/BB cross-blocks as a named HDU (row-major pol order).
+                # Append rather than construct from a list so astropy promotes the
+                # first HDU to a PrimaryHDU on write.
+                pols = ["EE", "EB", "BE", "BB"]
                 hdu = fits.HDUList()
-
-                hdu.append(fits.ImageHDU(covar_EE_EE, name="COVAR_EE_EE"))
-                hdu.append(fits.ImageHDU(covar_EE_EB, name="COVAR_EE_EB"))
-                hdu.append(fits.ImageHDU(covar_EE_BE, name="COVAR_EE_BE"))
-                hdu.append(fits.ImageHDU(covar_EE_BB, name="COVAR_EE_BB"))
-                hdu.append(fits.ImageHDU(covar_EB_EE, name="COVAR_EB_EE"))
-                hdu.append(fits.ImageHDU(covar_EB_EB, name="COVAR_EB_EB"))
-                hdu.append(fits.ImageHDU(covar_EB_BE, name="COVAR_EB_BE"))
-                hdu.append(fits.ImageHDU(covar_EB_BB, name="COVAR_EB_BB"))
-                hdu.append(fits.ImageHDU(covar_BE_EE, name="COVAR_BE_EE"))
-                hdu.append(fits.ImageHDU(covar_BE_EB, name="COVAR_BE_EB"))
-                hdu.append(fits.ImageHDU(covar_BE_BE, name="COVAR_BE_BE"))
-                hdu.append(fits.ImageHDU(covar_BE_BB, name="COVAR_BE_BB"))
-                hdu.append(fits.ImageHDU(covar_BB_EE, name="COVAR_BB_EE"))
-                hdu.append(fits.ImageHDU(covar_BB_EB, name="COVAR_BB_EB"))
-                hdu.append(fits.ImageHDU(covar_BB_BE, name="COVAR_BB_BE"))
-                hdu.append(fits.ImageHDU(covar_BB_BB, name="COVAR_BB_BB"))
+                for i, pa in enumerate(pols):
+                    for j, pb in enumerate(pols):
+                        hdu.append(
+                            fits.ImageHDU(
+                                covar_22_22[:, i, :, j], name=f"COVAR_{pa}_{pb}"
+                            )
+                        )
 
                 hdu.writeto(out_path, overwrite=True)
 
@@ -565,7 +533,9 @@ class PseudoClMixin:
 
         w = cat_gal[params["w_col"]]
         self.print_cyan("Creating maps and computing Cl's...")
-        n_gal_map, unique_pix, idx, idx_rep = self.get_n_gal_map(params, nside, cat_gal)
+        n_gal_map, unique_pix, _idx, idx_rep = self.get_n_gal_map(
+            params, nside, cat_gal
+        )
         mask = n_gal_map != 0
 
         shear_map_e1 = np.zeros(hp.nside2npix(nside))

@@ -197,7 +197,7 @@ class RealSpaceMixin:
 
     def plot_2pcf(self):
         # Plot of n_pairs
-        fig, ax = plt.subplots(ncols=1, nrows=1)
+        plt.subplots(ncols=1, nrows=1)
         for ver in self.versions:
             self.calculate_2pcf(ver)
             plt.plot(
@@ -216,7 +216,7 @@ class RealSpaceMixin:
         self.print_done(f"n_pair plot saved to {out_path}")
 
         # Plot of xi_+
-        fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
                 self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
@@ -239,7 +239,7 @@ class RealSpaceMixin:
         self.print_done(f"xi_plus plot saved to {out_path}")
 
         # Plot of xi_-
-        fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
                 self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
@@ -262,7 +262,7 @@ class RealSpaceMixin:
         self.print_done(f"xi_minus plot saved to {out_path}")
 
         # Plot of xi_+(theta) * theta
-        fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
                 self.cat_ggs[ver].meanr,
@@ -284,7 +284,7 @@ class RealSpaceMixin:
         self.print_done(f"xi_plus_theta plot saved to {out_path}")
 
         # Plot of xi_- * theta
-        fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
                 self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
@@ -309,7 +309,7 @@ class RealSpaceMixin:
         # but skip if xi_psf_sys is not calculated since that takes forever
         if hasattr(self, "_xi_psf_sys"):
             for idx, ver in enumerate(self.versions):
-                fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
+                plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
                 plt.errorbar(
                     self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
                     self.cat_ggs[ver].xip,
@@ -354,7 +354,7 @@ class RealSpaceMixin:
 
     def plot_ratio_xi_sys_xi(self, threshold=0.1, offset=0.02):
 
-        fig, _ = plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
+        plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
 
         for idx, ver in enumerate(self.versions):
             self.calculate_2pcf(ver)
@@ -497,19 +497,12 @@ class RealSpaceMixin:
 
     def plot_aperture_mass_dispersion(self):
         for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
-            x = []
-            y = []
-            yerr = []
-            labels = []
-            colors = []
-            linestyles = []
-            for ver in self.versions:
-                x.append(self.map2["theta_map"])
-                y.append(self.map2[ver][mode])
-                yerr.append(np.sqrt(self.map2[ver]["varmapsq"]))
-                labels.append(ver)
-                colors.append(self.cc[ver]["colour"])
-                linestyles.append(self.cc[ver]["ls"])
+            x = [self.map2["theta_map"] for ver in self.versions]
+            y = [self.map2[ver][mode] for ver in self.versions]
+            yerr = [np.sqrt(self.map2[ver]["varmapsq"]) for ver in self.versions]
+            labels = list(self.versions)
+            colors = [self.cc[ver]["colour"] for ver in self.versions]
+            linestyles = [self.cc[ver]["ls"] for ver in self.versions]
 
             xlabel = r"$\theta$ [arcmin]"
             ylabel = "dispersion"
@@ -536,13 +529,9 @@ class RealSpaceMixin:
             self.print_done(f"linear-scale {mode} plot saved to {out_path}")
 
         for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
-            x = []
-            y = []
-            yerr = []
-            for ver in self.versions:
-                x.append(self.map2["theta_map"])
-                y.append(np.abs(self.map2[ver][mode]))
-                yerr.append(np.sqrt(self.map2[ver]["varmapsq"]))
+            x = [self.map2["theta_map"] for ver in self.versions]
+            y = [np.abs(self.map2[ver][mode]) for ver in self.versions]
+            yerr = [np.sqrt(self.map2[ver]["varmapsq"]) for ver in self.versions]
             xlabel = r"$\theta$ [arcmin]"
             ylabel = "dispersion"
             title = f"Aperture-mass dispersion mode {mode}"

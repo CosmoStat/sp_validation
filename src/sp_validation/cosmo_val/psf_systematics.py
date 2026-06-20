@@ -103,10 +103,7 @@ class PSFSystematicsMixin:
         if survey in ("DES", "SP_axel_v0.0", "SP_axel_v0.0_repr"):
             params["patch_number"] = 120
             print("DES, jackknife patch number = 120")
-        elif survey == "SP_axel_v0.0":
-            params["patch_number"] = 120
-            print("SP_Axel_v0.0, jackknife patch number =120")
-        elif survey == "SP_v1.4-P3" or survey == "SP_v1.4-P3_LFmask":
+        elif survey in ("SP_v1.4-P3", "SP_v1.4-P3_LFmask"):
             params["patch_number"] = 120
             print("SP_v1.4, jackknife patch number =120")
         else:
@@ -176,11 +173,9 @@ class PSFSystematicsMixin:
 
             self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
-            xi_psf_sys_samples = np.array([]).reshape(0, nbins)
-
-            for i in range(len(flat_samples)):
-                xi_psf_sys = self.psf_fitter.compute_xi_psf_sys(flat_samples[i])
-                xi_psf_sys_samples = np.vstack([xi_psf_sys_samples, xi_psf_sys])
+            xi_psf_sys_samples = np.array(
+                [self.psf_fitter.compute_xi_psf_sys(sample) for sample in flat_samples]
+            ).reshape(-1, nbins)
 
             self._xi_psf_sys[ver] = {
                 "mean": np.mean(xi_psf_sys_samples, axis=0),
@@ -567,35 +562,26 @@ class PSFSystematicsMixin:
         # Gather coefficients
         leakage_coeff = {}
         for ver in self.results_objectwise:
-            leakage_coeff[ver] = {}
             results = self.results[ver]
-            results_obj = self.results_objectwise[ver]
-            # Object-wise leakage
-            leakage_coeff[ver]["a11"] = ufloat(
-                results_obj.par_best_fit["a11"].value,
-                results_obj.par_best_fit["a11"].stderr,
-            )
-            leakage_coeff[ver]["a22"] = ufloat(
-                results_obj.par_best_fit["a22"].value,
-                results_obj.par_best_fit["a22"].stderr,
-            )
-            leakage_coeff[ver]["aii_mean"] = 0.5 * (
-                leakage_coeff[ver]["a11"] + leakage_coeff[ver]["a22"]
-            )
+            par_best_fit = self.results_objectwise[ver].par_best_fit
 
-            # Scale-dependent leakage: mean
-            leakage_coeff[ver]["alpha_mean"] = ufloat(
-                results.alpha_leak_mean, results.alpha_leak_std
-            )
-            # Scale-dependent leakage: value at smallest scale
-            leakage_coeff[ver]["alpha_1"] = ufloat(
-                results.alpha_leak[0], results.sig_alpha_leak[0]
-            )
-            # Scale-dependent leakage: value extrapolated to 0 using affine model
-            leakage_coeff[ver]["alpha_0"] = ufloat(
-                results.alpha_affine_best_fit["c"].value,
-                results.alpha_affine_best_fit["c"].stderr,
-            )
+            # Object-wise leakage
+            a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
+            a22 = ufloat(par_best_fit["a22"].value, par_best_fit["a22"].stderr)
+            leakage_coeff[ver] = {
+                "a11": a11,
+                "a22": a22,
+                "aii_mean": 0.5 * (a11 + a22),
+                # Scale-dependent leakage: mean
+                "alpha_mean": ufloat(results.alpha_leak_mean, results.alpha_leak_std),
+                # Scale-dependent leakage: value at smallest scale
+                "alpha_1": ufloat(results.alpha_leak[0], results.sig_alpha_leak[0]),
+                # Scale-dependent leakage: value extrapolated to 0 using affine model
+                "alpha_0": ufloat(
+                    results.alpha_affine_best_fit["c"].value,
+                    results.alpha_affine_best_fit["c"].stderr,
+                ),
+            }
 
         self.leakage_coeff = leakage_coeff
 

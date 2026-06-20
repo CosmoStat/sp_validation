@@ -138,7 +138,7 @@ class CosebisMixin:
                 gg=gg, nmodes=nmodes, scale_cuts=None, cov_path=cov_path
             )
             # Extract single results dict from scale_cuts dictionary
-            results = list(results.values())[0]
+            results = next(iter(results.values()))
 
         return results
 
@@ -237,19 +237,17 @@ class CosebisMixin:
 
         # Generate plots using specialized plotting functions
         # Extract single result for plotting if multiple scale cuts were evaluated
-        if isinstance(results, dict) and all(
-            isinstance(k, tuple) for k in results.keys()
-        ):
+        multiple_scale_cuts = isinstance(results, dict) and all(
+            isinstance(k, tuple) for k in results
+        )
+        if multiple_scale_cuts:
             # Multiple scale cuts: use fiducial_scale_cut if provided, otherwise use
-            # full range
-            if fiducial_scale_cut is not None:
-                plot_results = results[
-                    find_conservative_scale_cut_key(results, fiducial_scale_cut)
-                ]
-            else:
-                # Use full range result (largest scale cut)
-                max_range_key = max(results.keys(), key=lambda x: x[1] - x[0])
-                plot_results = results[max_range_key]
+            # full range (largest scale cut)
+            plot_results = results[
+                find_conservative_scale_cut_key(results, fiducial_scale_cut)
+                if fiducial_scale_cut is not None
+                else max(results, key=lambda x: x[1] - x[0])
+            ]
         else:
             # Single result
             plot_results = results
@@ -266,11 +264,7 @@ class CosebisMixin:
         )
 
         # Generate scale cut heatmap if we have multiple scale cuts
-        if (
-            isinstance(results, dict)
-            and all(isinstance(k, tuple) for k in results.keys())
-            and len(results) > 1
-        ):
+        if multiple_scale_cuts and len(results) > 1:
             # Create temporary gg object with correct binning for mapping
             treecorr_config_temp = {
                 **self.treecorr_config,

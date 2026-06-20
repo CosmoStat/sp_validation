@@ -127,11 +127,11 @@ class PureEBMixin:
         gg_int = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_int)
 
         # Get redshift distribution if using analytic covariance
-        if cov_path_int is not None:
-            z, nz = self.get_redshift(version)
-            z_dist = np.column_stack([z, nz])
-        else:
-            z_dist = None
+        z_dist = (
+            np.column_stack(self.get_redshift(version))
+            if cov_path_int is not None
+            else None
+        )
 
         # Delegate to b_modes module
         results = calculate_pure_eb_correlation(
@@ -282,7 +282,7 @@ class PureEBMixin:
                 n_samples=n_samples,
             )
 
-            # Calculate E/B statistics for all bin combinations (only if not provided)
+            # Calculate E/B statistics for all bin combinations
             version_results = calculate_eb_statistics(
                 version_results,
                 cov_path_int=cov_path_int,

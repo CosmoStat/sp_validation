@@ -1,6 +1,7 @@
 # %%
 import copy
 import os
+import re
 from pathlib import Path
 
 import colorama
@@ -249,19 +250,17 @@ class CosmologyValidation(
             "cell_method must be 'map' or 'catalog'"
         )
         assert self.noise_bias_method in ["analytic", "randoms"], (
-            "noise_bias_method must be 'analytical' or 'randoms'"
+            "noise_bias_method must be 'analytic' or 'randoms'"
         )
         assert self.fiducial_input_inka in ["coupled", "decoupled"], (
             "fiducial_input_inka must be 'coupled' or 'decoupled'"
         )
 
-        # For theory calculations:
-        # Create cosmology object using new functionality
-        if cosmo_params is not None:
-            self.cosmo = get_cosmo(**cosmo_params)
-        else:
-            # Use Planck 2018 defaults
-            self.cosmo = get_cosmo()
+        # Cosmology for theory predictions: caller-supplied params, else the
+        # get_cosmo() Planck 2018 defaults.
+        self.cosmo = (
+            get_cosmo(**cosmo_params) if cosmo_params is not None else get_cosmo()
+        )
 
         self.treecorr_config = {
             "ra_units": "degrees",
@@ -276,15 +275,15 @@ class CosmologyValidation(
 
         self.catalog_config_path = Path(catalog_config)
         with self.catalog_config_path.open("r") as file:
-            self.cc = cc = yaml.load(file.read(), Loader=yaml.FullLoader)
+            self.cc = cc = yaml.load(file, Loader=yaml.FullLoader)
 
         def resolve_paths_for_version(ver):
             """Resolve relative paths for a version using its subdir."""
             subdir = Path(cc[ver]["subdir"])
-            for key in cc[ver]:
-                if "path" in cc[ver][key]:
-                    path = Path(cc[ver][key]["path"])
-                    cc[ver][key]["path"] = (
+            for section in cc[ver].values():
+                if "path" in section:
+                    path = Path(section["path"])
+                    section["path"] = (
                         str(path) if path.is_absolute() else str(subdir / path)
                     )
 
@@ -381,8 +380,6 @@ class CosmologyValidation(
         specified blind (A, B, or C) by replacing the blind suffix in the
         configured path.
         """
-        import re
-
         redshift_path = self.cc[version]["shear"]["redshift_path"]
 
         # Override blind if specified
@@ -398,9 +395,13 @@ class CosmologyValidation(
     def color_reset(self):
         print(colorama.Fore.BLACK, end="")
 
-    def print_blue(self, msg, end="\n"):
-        print(colorama.Fore.BLUE + msg, end=end)
+    def _print_color(self, color, msg, end="\n"):
+        """Print ``msg`` in ``color``, then restore the default foreground."""
+        print(color + msg, end=end)
         self.color_reset()
+
+    def print_blue(self, msg, end="\n"):
+        self._print_color(colorama.Fore.BLUE, msg, end=end)
 
     def print_start(self, msg, end="\n"):
         print()
@@ -410,30 +411,29 @@ class CosmologyValidation(
         self.print_blue(msg)
 
     def print_magenta(self, msg):
-        print(colorama.Fore.MAGENTA + msg)
-        self.color_reset()
+        self._print_color(colorama.Fore.MAGENTA, msg)
 
     def print_green(self, msg):
-        print(colorama.Fore.GREEN + msg)
-        self.color_reset()
+        self._print_color(colorama.Fore.GREEN, msg)
 
     def print_cyan(self, msg):
-        print(colorama.Fore.CYAN + msg)
-        self.color_reset()
+        self._print_color(colorama.Fore.CYAN, msg)
 
     def init_results(self, objectwise=False):
+        # Branch is loop-invariant: pick the leakage class and its parameter
+        # builder once, then apply per version.
+        make_leakage, set_params = (
+            (run_object.LeakageObject, self.set_params_leakage_object)
+            if objectwise
+            else (run_scale.LeakageScale, self.set_params_leakage_scale)
+        )
+
         results = {}
         for ver in self.versions:
-            # Set parameters depending on the type of leakage
-            if objectwise:
-                results[ver] = run_object.LeakageObject()
-                results[ver]._params.update(self.set_params_leakage_object(ver))
-            else:
-                results[ver] = run_scale.LeakageScale()
-                results[ver]._params.update(self.set_params_leakage_scale(ver))
-
-            results[ver].check_params()
-            results[ver].prepare_output()
+            leakage = results[ver] = make_leakage()
+            leakage._params.update(set_params(ver))
+            leakage.check_params()
+            leakage.prepare_output()
 
         return results
 
@@ -501,10 +501,11 @@ class CosmologyValidation(
                         )
                 except (KeyError, RuntimeError):
                     pass
-                if "eb_samples" in res:
-                    cov_methods.add("semi-analytic")
-                else:
-                    cov_methods.add(f"jackknife ({gg.npatch1} patches)")
+                cov_methods.add(
+                    "semi-analytic"
+                    if "eb_samples" in res
+                    else f"jackknife ({gg.npatch1} patches)"
+                )
 
             # COSEBIs PTE from stored results
             if ver in self._cosebis_results:

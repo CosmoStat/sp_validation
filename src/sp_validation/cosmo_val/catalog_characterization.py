@@ -121,11 +121,9 @@ class CatalogCharacterizationMixin:
         }
 
         if overwrite_config:
-            if "cov_th" not in self.cc[ver]:
-                self.cc[ver]["cov_th"] = {}
-            self.cc[ver]["cov_th"]["A"] = float(area_deg2)
-            self.cc[ver]["cov_th"]["n_e"] = float(n_eff)
-            self.cc[ver]["cov_th"]["sigma_e"] = float(sigma_e)
+            self.cc[ver].setdefault("cov_th", {}).update(
+                A=float(area_deg2), n_e=float(n_eff), sigma_e=float(sigma_e)
+            )
             self._write_catalog_config()
 
         return results
@@ -268,7 +266,7 @@ class CatalogCharacterizationMixin:
         else:
             self.print_start("Computing ellipticity histograms:")
 
-            fig, axs = plt.subplots(1, 2, figsize=(22, 7))
+            _fig, axs = plt.subplots(1, 2, figsize=(22, 7))
             bins = np.linspace(-1.1, 1.1, nbins + 1)
             for ver in self.versions:
                 self.print_magenta(ver)
@@ -317,7 +315,7 @@ class CatalogCharacterizationMixin:
         else:
             self.print_start("Computing weight histograms:")
 
-            fig, ax = plt.subplots(1, 1, figsize=(10, 7))
+            plt.figure(figsize=(10, 7))
             for ver in self.versions:
                 self.print_magenta(ver)
                 with self.results[ver].temporarily_read_data():
@@ -345,7 +343,7 @@ class CatalogCharacterizationMixin:
     def plot_separation(self, nbins=200):
         self.print_start("Separation histograms")
         if "SP_matched_MP_v1.0" in self.versions:
-            fig, axs = plt.subplots(1, 1, figsize=(10, 7))
+            _fig, axs = plt.subplots(1, 1, figsize=(10, 7))
             with self.results["SP_matched_MP_v1.0"].temporarily_read_data():
                 sep = self.results["SP_matched_MP_v1.0"].dat_shear["Separation"]
             axs.hist(
