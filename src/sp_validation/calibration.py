@@ -15,10 +15,7 @@ from astropy.io import fits
 import statsmodels.api as sm
 import tqdm
 
-from sp_validation import util
-from sp_validation import io
 from sp_validation.statistics import jackknif_weighted_average2
-from sp_validation.survey import get_footprint
 from sp_validation import cat as sp_cat
 
 from shear_psf_leakage import leakage
@@ -786,7 +783,6 @@ class metacal:
 
         print("FHP/MK hack using p1 PSF for ns in cuts")
         indices = np.where(mask)[0]
-        col_noshear = f"{self._prefix}_Tpsf_NOSHEAR"
         col_1p = f"{self._prefix}_Tpsf_1P"
         new_psf = data[col_1p][indices]
 
@@ -1193,25 +1189,6 @@ class metacal:
             self.R_shear_global = np.average(self.R_shear, axis=2, weights=weights)
 
         self.R = self.R_shear_global + self.R_selection
-
-    def _return():
-        """Add docstring.
-
-        ...
-
-        """
-        return (
-            self.m1,
-            self.p1,
-            self.p1,
-            self.p2,
-            self.ns,
-            self.R,
-            self.R_selection_std,
-            self.R_shear_std
-        )
-
-
 
 
 def mask_gal_size(T, Tpsf, rel_size_min, rel_size_max, size_corr_ell=False, g1=None, g2=None):
