@@ -245,9 +245,7 @@ class CatalogCharacterizationMixin:
             fp = cs_plots.FootprintPlotter()
 
             for region in fp._regions:
-                out_path = os.path.abspath(
-                    f"{self.cc['paths']['output']}/footprint_{ver}_{region}.png"
-                )
+                out_path = self._output_path(f"footprint_{ver}_{region}.png")
             if os.path.exists(out_path):
                 self.print_done(f"Skipping footprint plot, {out_path} exists")
             else:
@@ -260,7 +258,7 @@ class CatalogCharacterizationMixin:
                 self.print_done("Footprint plot saved to " + out_path)
 
     def plot_ellipticity(self, nbins=200):
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/ell_hist.png")
+        out_path = self._output_path("ell_hist.png")
         if os.path.exists(out_path):
             self.print_done(f"Skipping ellipticity histograms, {out_path} exists")
         else:
@@ -309,7 +307,7 @@ class CatalogCharacterizationMixin:
             self.print_done("Ellipticity histograms saved to " + out_path)
 
     def plot_weights(self, nbins=200):
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/weight_hist.png")
+        out_path = self._output_path("weight_hist.png")
         if os.path.exists(out_path):
             self.print_done(f"Skipping weight histograms, {out_path} exists")
         else:

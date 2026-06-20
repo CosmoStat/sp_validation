@@ -132,9 +132,7 @@ class PseudoClMixin:
             if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/pseudo_cl_cov_{ver}.fits"
-            )
+            out_path = self._output_path(f"pseudo_cl_cov_{ver}.fits")
             if os.path.exists(out_path):
                 self.print_done(
                     f"Skipping Pseudo-Cl covariance calculation, {out_path} exists"
@@ -325,9 +323,7 @@ class PseudoClMixin:
         for ver in self.versions:
             self.print_magenta(ver)
 
-            out_dir = os.path.abspath(
-                f"{self.cc['paths']['output']}/pseudo_cl_cov_onecov_{ver}/"
-            )
+            out_dir = self._output_path(f"pseudo_cl_cov_onecov_{ver}/")
             os.makedirs(out_dir, exist_ok=True)
 
             if os.path.exists(
@@ -445,8 +441,8 @@ class PseudoClMixin:
 
         for ver in self.versions:
             self.print_magenta(ver)
-            out_file = os.path.abspath(
-                f"{self.cc['paths']['output']}/pseudo_cl_cov_g_ng_{gaussian_part}_{ver}.fits"
+            out_file = self._output_path(
+                f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}.fits"
             )
             if os.path.exists(out_file):
                 self.print_done(
@@ -499,9 +495,7 @@ class PseudoClMixin:
 
             self._pseudo_cls[ver] = {}
 
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/pseudo_cl_{ver}.fits"
-            )
+            out_path = self._output_path(f"pseudo_cl_{ver}.fits")
             if os.path.exists(out_path):
                 self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
                 cl_shear = fits.getdata(out_path)
@@ -762,7 +756,7 @@ class PseudoClMixin:
         self.print_cyan("Plotting pseudo-Cl's")
 
         # Plotting EE
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_ee.png")
+        out_path = self._output_path("cell_ee.png")
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
         for ver in self.versions:
@@ -817,7 +811,7 @@ class PseudoClMixin:
         plt.savefig(out_path)
 
         # Plotting EB
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_eb.png")
+        out_path = self._output_path("cell_eb.png")
 
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
@@ -874,7 +868,7 @@ class PseudoClMixin:
         plt.savefig(out_path)
 
         # Plotting BB
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/cell_bb.png")
+        out_path = self._output_path("cell_bb.png")
 
         fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
 
@@ -946,9 +940,7 @@ class PseudoClMixin:
 
             # Save BB data + covariance to .npz
             ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            bb_out = os.path.abspath(
-                f"{self.cc['paths']['output']}/{ver}_cell_bb_data.npz"
-            )
+            bb_out = self._output_path(f"{ver}_cell_bb_data.npz")
             np.savez(
                 bb_out,
                 ell=ell,

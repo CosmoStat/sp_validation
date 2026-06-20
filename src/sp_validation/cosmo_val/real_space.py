@@ -65,8 +65,8 @@ class RealSpaceMixin:
         gg = treecorr.GGCorrelation(treecorr_config)
 
         # If the output file already exists, skip the calculation
-        out_fname = os.path.abspath(
-            f"{self.cc['paths']['output']}/{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
+        out_fname = self._output_path(
+            f"{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
         )
 
         if os.path.exists(out_fname):
@@ -94,9 +94,7 @@ class RealSpaceMixin:
                     )
 
                 # Use patch file if it exists
-                patch_file = os.path.abspath(
-                    f"{self.cc['paths']['output']}/{ver}_patches_npatch={npatch}.dat"
-                )
+                patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
 
                 cat_gal = treecorr.Catalog(
                     ra=self.results[ver].dat_shear["RA"],
@@ -210,7 +208,7 @@ class RealSpaceMixin:
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.ylabel(r"$n_{\rm pair}$")
         plt.legend()
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/n_pair.png")
+        out_path = self._output_path("n_pair.png")
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"n_pair plot saved to {out_path}")
@@ -233,7 +231,7 @@ class RealSpaceMixin:
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\xi_+(\theta)$")
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_p.png")
+        out_path = self._output_path("xi_p.png")
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"xi_plus plot saved to {out_path}")
@@ -256,7 +254,7 @@ class RealSpaceMixin:
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\xi_-(\theta)$")
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_m.png")
+        out_path = self._output_path("xi_m.png")
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"xi_minus plot saved to {out_path}")
@@ -278,7 +276,7 @@ class RealSpaceMixin:
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\theta \xi_+(\theta)$")
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_p_theta.png")
+        out_path = self._output_path("xi_p_theta.png")
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"xi_plus_theta plot saved to {out_path}")
@@ -300,7 +298,7 @@ class RealSpaceMixin:
         plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
         plt.xlim([self.theta_min_plot, self.theta_max_plot])
         plt.ylabel(r"$\theta \xi_-(\theta)$")
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_m_theta.png")
+        out_path = self._output_path("xi_m_theta.png")
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"xi_minus_theta plot saved to {out_path}")
@@ -345,9 +343,7 @@ class RealSpaceMixin:
                 plt.xlim([self.theta_min_plot, self.theta_max_plot])
                 plt.ylim(1e-8, 5e-4)
                 plt.ylabel(r"$\xi_+(\theta)$")
-                out_path = os.path.abspath(
-                    f"{self.cc['paths']['output']}/xi_p_xi_psf_sys_{ver}.png"
-                )
+                out_path = self._output_path(f"xi_p_xi_psf_sys_{ver}.png")
                 cs_plots.savefig(out_path, close_fig=False)
                 cs_plots.show()
                 self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
@@ -407,7 +403,7 @@ class RealSpaceMixin:
         plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
         plt.legend()
         plt.title("Ratio of PSF systematics to cosmic shear signal")
-        out_path = os.path.abspath(f"{self.cc['paths']['output']}/ratio_xi_sys_xi.png")
+        out_path = self._output_path("ratio_xi_sys_xi.png")
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         print(f"Ratio of xi_psf_sys to xi plot saved to {out_path}")
@@ -433,9 +429,7 @@ class RealSpaceMixin:
 
             gg = treecorr.GGCorrelation(treecorr_config)
 
-            out_fname = os.path.abspath(
-                f"{self.cc['paths']['output']}/xi_for_map2_{ver}.txt"
-            )
+            out_fname = self._output_path(f"xi_for_map2_{ver}.txt")
             if os.path.exists(out_fname):
                 self.print_green(f"Skipping xi for Map2, {out_fname} exists")
                 gg.read(out_fname)
@@ -471,9 +465,7 @@ class RealSpaceMixin:
                 R=theta_map,
                 m2_uform="Schneider",
             )
-            out_fname_map2 = os.path.abspath(
-                f"{self.cc['paths']['output']}/map2_{ver}.txt"
-            )
+            out_fname_map2 = self._output_path(f"map2_{ver}.txt")
             if os.path.exists(out_fname_map2):
                 self.print_green(f"Skipping Map2, {out_fname_map2} exists")
             else:
@@ -507,7 +499,7 @@ class RealSpaceMixin:
             xlabel = r"$\theta$ [arcmin]"
             ylabel = "dispersion"
             title = f"Aperture-mass dispersion {mode}"
-            out_path = os.path.abspath(f"{self.cc['paths']['output']}/{mode}.png")
+            out_path = self._output_path(f"{mode}.png")
             cs_plots.plot_data_1d(
                 x,
                 y,
@@ -535,7 +527,7 @@ class RealSpaceMixin:
             xlabel = r"$\theta$ [arcmin]"
             ylabel = "dispersion"
             title = f"Aperture-mass dispersion mode {mode}"
-            out_path = os.path.abspath(f"{self.cc['paths']['output']}/{mode}_log.png")
+            out_path = self._output_path(f"{mode}_log.png")
             cs_plots.plot_data_1d(
                 x,
                 y,

@@ -347,9 +347,7 @@ class PSFSystematicsMixin:
             self.print_magenta(ver)
             results = self.results[ver]
 
-            output_base_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/leakage_{ver}/xi_for_leak_scale"
-            )
+            output_base_path = self._output_path(f"leakage_{ver}/xi_for_leak_scale")
             output_path_ab = f"{output_base_path}_a_b.txt"
             output_path_aa = f"{output_base_path}_a_a.txt"
             with self.results[ver].temporarily_read_data():
@@ -397,9 +395,7 @@ class PSFSystematicsMixin:
 
         if len(theta) > 0:
             # Log x
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/alpha_leak_log.png"
-            )
+            out_path = self._output_path("alpha_leak_log.png")
 
             title = r"$\alpha$ leakage"
             xlabel = r"$\theta$ [arcmin]"
@@ -425,9 +421,7 @@ class PSFSystematicsMixin:
             self.print_done(f"Log-scale alpha leakage plot saved to {out_path}")
 
             # Lin x
-            out_path = os.path.abspath(
-                f"{self.cc['paths']['output']}/alpha_leak_lin.png"
-            )
+            out_path = self._output_path("alpha_leak_lin.png")
 
             title = r"$\alpha$ leakage"
             xlabel = r"$\theta$ [arcmin]"
@@ -470,7 +464,7 @@ class PSFSystematicsMixin:
             xlabel = r"$\theta$ [arcmin]"
             ylabel = r"$\xi^{\rm sys}_+(\theta)$"
             title = "Cross-correlation leakage"
-            out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_sys_p.png")
+            out_path = self._output_path("xi_sys_p.png")
             cs_plots.plot_data_1d(
                 theta,
                 y,
@@ -501,7 +495,7 @@ class PSFSystematicsMixin:
             xlabel = r"$\theta$ [arcmin]"
             ylabel = r"$\xi^{\rm sys}_-(\theta)$"
             title = "Cross-correlation leakage"
-            out_path = os.path.abspath(f"{self.cc['paths']['output']}/xi_sys_m.png")
+            out_path = self._output_path("xi_sys_m.png")
             cs_plots.plot_data_1d(
                 theta,
                 y,
@@ -627,9 +621,7 @@ class PSFSystematicsMixin:
         plt.legend()
         plt.xlabel(r"tr $a$ (object-wise)")
         plt.ylabel(r"$\alpha$ (scale-dependent)")
-        out_path = os.path.abspath(
-            f"{self.cc['paths']['output']}/leakage_coefficients.png"
-        )
+        out_path = self._output_path("leakage_coefficients.png")
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"Object-wise leakage coefficients plot saved to {out_path}")

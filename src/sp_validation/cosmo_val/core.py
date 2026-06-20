@@ -359,6 +359,16 @@ class CosmologyValidation(
         self._pure_eb_results = {}
         self._cosebis_results = {}
 
+    def _output_path(self, *parts):
+        """Absolute path under the catalog config's output directory.
+
+        Joins ``*parts`` onto ``self.cc["paths"]["output"]`` and absolutises
+        the result, mirroring the ``os.path.abspath(f"{output}/...")`` pattern
+        used throughout the mixins. A single ``parts`` string may contain
+        ``/`` separators.
+        """
+        return os.path.abspath(os.path.join(self.cc["paths"]["output"], *parts))
+
     def get_redshift(self, version):
         """Load redshift distribution for a catalog version.
 
