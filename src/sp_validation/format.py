@@ -6,11 +6,7 @@
 
 """
 
-import sys
-import os
-
 import math
-import numpy as np
 
 
 def millify(n):

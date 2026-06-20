@@ -7,27 +7,22 @@ Data outside fiducial scale cuts shown greyed out.
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 from plotting_utils import (
-    ERRORBAR_DEFAULTS,
     FIG_WIDTH_FULL,
     MARKER_STYLES,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
     draw_normalized_boxes_log_scale,
     find_fiducial_index,
-    get_box_style,
     get_version_alpha,
     version_label,
 )
-
 
 plt.style.use(PAPER_MPLSTYLE)
 

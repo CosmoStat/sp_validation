@@ -17,9 +17,8 @@ Author: Claude Code
 """
 
 import numpy as np
-from scipy import special
 from cosmo_numba.B_modes.cosebis import COSEBIS
-
+from scipy import special
 
 # The exact 32 powspace ℓ values from the pipeline
 ELL_32 = np.array(
@@ -94,7 +93,6 @@ def config_space_cosebis(theta_min, theta_max, nmodes, cl_model, n_theta=5_000):
     xip = np.zeros(n_theta)
     xim = np.zeros(n_theta)
     weight = ell_dense * cl / (2 * np.pi)  # (n_ell,)
-    d_ell = np.gradient(ell_dense)  # for trapezoid-like weighting
 
     for start in range(0, n_theta, chunk):
         end = min(start + chunk, n_theta)

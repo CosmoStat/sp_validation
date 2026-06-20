@@ -29,8 +29,7 @@ import pytest
 from astropy.table import Table
 
 from sp_validation import calibration
-from sp_validation.calibration import metacal, mask_gal_size, mask_gal_SNR
-
+from sp_validation.calibration import mask_gal_size, mask_gal_SNR, metacal
 
 # Fixed, compact inputs shared across the tests.
 #

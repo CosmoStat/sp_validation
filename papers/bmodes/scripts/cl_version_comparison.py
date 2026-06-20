@@ -6,15 +6,16 @@ Statistical PTEs reported separately in evidence.json.
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+# Import to register SquareRootScale
+import plotting_utils  # noqa: F401
 import seaborn as sns
 from astropy.io import fits
-
 from plotting_utils import (
     ERRORBAR_DEFAULTS,
     FIG_WIDTH_FULL,
@@ -27,10 +28,6 @@ from plotting_utils import (
     get_version_alpha,
     version_label,
 )
-
-# Import to register SquareRootScale
-import plotting_utils  # noqa: F401
-
 
 plt.style.use(PAPER_MPLSTYLE)
 

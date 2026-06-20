@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import numpy as np
 import matplotlib.pylab as plt
+import numpy as np
 
 from sp_validation import galaxy
 

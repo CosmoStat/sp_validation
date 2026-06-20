@@ -15,15 +15,14 @@ if ipython is not None:
 
 import os
 
-import numpy as np
-from astropy.io import fits
 import matplotlib.pyplot as plt
-from matplotlib import scale as mscale
-import matplotlib.ticker as mticker
+import numpy as np
 import seaborn as sns
-from sp_validation.rho_tau import SquareRootScale
-
+from astropy.io import fits
+from matplotlib import scale as mscale
 from utils import get_chi2_and_pte
+
+from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)
 

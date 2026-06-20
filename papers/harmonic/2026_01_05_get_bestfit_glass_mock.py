@@ -1,8 +1,8 @@
 # %%
-import os
-import sys
 import configparser
+import os
 import subprocess
+import sys
 
 sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts/")
 
@@ -14,16 +14,11 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import numpy as np
-from astropy.io import fits
-import scipy.stats as stats
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-from tqdm import tqdm
-
-from getdist import plots, MCSamples
 import chain_postprocessing as cp
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from getdist import plots
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 
@@ -114,16 +109,16 @@ name_list = [
     "bias_1",
 ]
 label_list = [
-    "\Omega_m",
-    "\omega_b h^2",
+    r"\Omega_m",
+    r"\omega_b h^2",
     "h_0",
     "n_s",
-    "\sigma_8",
+    r"\sigma_8",
     "S_8",
     "log T_{AGN}",
     "A_{IA}",
     "m_1",
-    "\Delta z_1",
+    r"\Delta z_1",
 ]
 
 for chain in chains:

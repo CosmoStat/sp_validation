@@ -6,7 +6,6 @@ Statistical evidence (PTEs) is in cosebis_pte_matrix.
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -14,8 +13,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import treecorr
-
-from sp_validation.b_modes import calculate_cosebis
 from plotting_utils import (
     ERRORBAR_DEFAULTS,
     FIG_WIDTH_FULL,
@@ -28,6 +25,7 @@ from plotting_utils import (
     version_label,
 )
 
+from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
 

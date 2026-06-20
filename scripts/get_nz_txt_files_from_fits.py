@@ -7,10 +7,9 @@ Produces a text file for each blind redshift distribution in the format to feed 
 
 import sys
 
-from astropy.io import fits
 import matplotlib.pyplot as plt
 import numpy as np
-
+from astropy.io import fits
 
 nz_hdu = sys.argv[1]
 root = sys.argv[2]

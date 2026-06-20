@@ -22,25 +22,19 @@ if ipython is not None:
     ipython.run_line_magic("autoreload", "2")
 import os
 
-import numpy as np
-from astropy.io import fits
-from astropy.cosmology import Planck18
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-from matplotlib import scale as mscale
-import seaborn as sns
-from tqdm import tqdm
 import healpy as hp
+import matplotlib.pyplot as plt
+import namaster_utils as utils
+import numpy as np
 import pymaster as nmt
-import camb
+import seaborn as sns
 import skymapper as skm
+from astropy.io import fits
+from matplotlib import scale as mscale
+from matplotlib.gridspec import GridSpec
+from tqdm import tqdm
 
 from sp_validation.rho_tau import SquareRootScale
-from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.cosmology import get_theo_c_ell, get_cosmo
-from sp_validation.rho_tau import get_params_rho_tau
-
-import namaster_utils as utils
 
 mscale.register_scale(SquareRootScale)
 
@@ -795,7 +789,7 @@ map.grid(sep=sep)
 # make density plot
 nside = 1024
 mappable = map.healpix(np.ma.masked_invalid(variance_map_plot), vmin=0, vmax=3000)
-cb = map.colorbar(mappable, cb_label="$\sigma_e^2$", loc="bottom")
+cb = map.colorbar(mappable, cb_label=r"$\sigma_e^2$", loc="bottom")
 
 map.focus(ra, dec)
 
@@ -833,7 +827,7 @@ map.grid(sep=sep)
 # make density plot
 nside = 1024
 mappable = map.healpix(shear_map_e1, cmap="seismic")
-cb = map.colorbar(mappable, cb_label="$\gamma_1$", loc="bottom")
+cb = map.colorbar(mappable, cb_label=r"$\gamma_1$", loc="bottom")
 
 map.focus(ra, dec)
 
@@ -864,7 +858,7 @@ map.grid(sep=sep)
 # make density plot
 nside = 1024
 mappable = map.healpix(smoothed_shear_map_e1, cmap="seismic", vmin=-0.05, vmax=0.05)
-cb = map.colorbar(mappable, cb_label="$\gamma_1$", loc="bottom")
+cb = map.colorbar(mappable, cb_label=r"$\gamma_1$", loc="bottom")
 
 map.focus(ra, dec)
 

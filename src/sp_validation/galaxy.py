@@ -11,23 +11,21 @@
 """
 
 import re
-import numpy as np
 
+import numpy as np
+import regions
+from astropy import coordinates as coords
+from astropy import units
+from astropy.nddata import bitmask
+from astropy.wcs import WCS
+from cs_util import cfis
+from cs_util.size import T_to_fwhm, sigma_to_fwhm  # noqa: F401  re-exported;
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-import regions
-from astropy import units
-from astropy import coordinates as coords
-from astropy.wcs import WCS
-from astropy.nddata import bitmask
-
-from cs_util import cfis
-from cs_util.size import T_to_fwhm, sigma_to_fwhm  # noqa: F401  re-exported;
 # the previous local T_to_fwhm (T / 1.17741 * 2.355) treated the area
 # T = 2 sigma^2 as if it were sigma; the cs_util version carries the
 # required square root: FWHM = 2.35482 sqrt(T / 2)
-
 from sp_validation import io
 
 

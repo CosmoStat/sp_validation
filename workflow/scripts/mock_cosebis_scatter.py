@@ -2,8 +2,8 @@
 
 import numpy as np
 import treecorr
-
 from cosmo_numba.B_modes.cosebis import COSEBIS
+
 from sp_validation.b_modes import scale_cut_to_bins
 
 xi_path = snakemake.input.xi

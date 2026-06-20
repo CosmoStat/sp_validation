@@ -10,13 +10,10 @@
 
 """
 
+import camb
 import numpy as np
 import pyccl as ccl
-import camb
-
-from astropy import cosmology
 from astropy.cosmology import Planck18
-
 
 # =============================================================================
 # Fiducial Cosmology: astropy Planck18

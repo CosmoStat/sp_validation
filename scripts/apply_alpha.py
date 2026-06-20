@@ -9,21 +9,14 @@ Write FITS file with added columns.
 
 """
 
-import sys
 import pickle
-
+import sys
 from optparse import OptionParser
 
-from lmfit import Parameters
 from astropy.io import fits
-from astropy.table import Table, Column
-
+from astropy.table import Column, Table
 from cs_util import logging
-
 from shear_psf_leakage.leakage import func_bias_2d
-
-from sp_validation import catalog as cat
-from sp_validation import format
 
 
 def params_default():

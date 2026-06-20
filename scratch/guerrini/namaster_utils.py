@@ -17,21 +17,17 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import numpy as np
-from astropy.io import fits
-from astropy.cosmology import Planck18
-import matplotlib.pyplot as plt
-from matplotlib import scale as mscale
-import seaborn as sns
-from tqdm import tqdm
 import healpy as hp
+import matplotlib.pyplot as plt
+import numpy as np
 import pymaster as nmt
-import camb
+import seaborn as sns
+from astropy.io import fits
+from matplotlib import scale as mscale
+from tqdm import tqdm
 
+from sp_validation.cosmology import get_cosmo, get_theo_c_ell
 from sp_validation.rho_tau import SquareRootScale
-from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.cosmology import get_theo_c_ell, get_cosmo
-from sp_validation.rho_tau import get_params_rho_tau
 
 mscale.register_scale(SquareRootScale)
 

@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-
 STYLE_PATH = Path(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
 )

@@ -9,24 +9,17 @@ inspired from the code of Shun-Sheng Li
 """
 
 import sys
-import pickle
-
+import time
 from optparse import OptionParser
 
-from lmfit import Parameters
-from astropy.io import fits
-from astropy.table import Table, Column
 import matplotlib.pyplot as plt
-
-import statsmodels.api as sm
-
-from cs_util import logging
-
 import numpy as np
 import pandas as pd
-
+import statsmodels.api as sm
+from astropy.io import fits
+from astropy.table import Column, Table
+from cs_util import logging
 from tqdm import tqdm
-import time
 
 
 def params_default():

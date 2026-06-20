@@ -7,13 +7,9 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import os
-from pathlib import Path
 import h5py
-
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 from astropy.io import fits
 

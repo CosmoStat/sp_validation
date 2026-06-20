@@ -6,8 +6,8 @@
 # (cf file get_matched_catalogue.py in src/sp_validation for the creation of the matched catalogues)
 
 
-from astropy.table import Table
 import numpy as np
+from astropy.table import Table
 from calibration import fill_cat_gal, get_alpha_leakage_per_object
 
 

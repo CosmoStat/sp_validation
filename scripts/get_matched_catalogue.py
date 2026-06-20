@@ -5,13 +5,11 @@
 # Python file to match UNIONS shape catalogue with a spectroscopic catalogue and save the matched catalogue with redshift information.
 
 
-import numpy as np
 import pandas as pd
+from astropy import units as u
+from astropy.coordinates import SkyCoord, match_coordinates_sky
 from astropy.io import fits
 from astropy.table import Table
-from astropy.coordinates import SkyCoord, match_coordinates_sky
-from astropy.coordinates import concatenate
-from astropy import units as u
 
 
 def read_fits_to_pandas(path):

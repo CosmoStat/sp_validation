@@ -4,11 +4,11 @@
 Loads downgraded mask, computes C_ell using healpy.anafast, exports for CosmoCov.
 """
 
-from datetime import datetime
 import os
+from datetime import datetime
 
-import numpy as np
 import healpy as hp
+import numpy as np
 
 
 def load_healpix_mask(mask_path: str, verbose: bool = True) -> np.ndarray:

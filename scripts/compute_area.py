@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 
-import sys
-import os
+import glob
 import re
+import sys
 
 import numpy as np
 from uncertainties import ufloat
-import glob
 
 
 def main(argv=None):
@@ -47,7 +46,7 @@ def main(argv=None):
         for idx, t_ID in enumerate(tile_ID):
             n_gal[f"{t_ID:07.3f}"] = dat[idx, 2]
     elif tile_ID_from == "random":
-        dat = np.loadtxt(f"sp_output_random/found_ID.txt")
+        dat = np.loadtxt("sp_output_random/found_ID.txt")
         tile_ID = dat
         for idx, t_ID in enumerate(tile_ID):
             n_gal[f"{t_ID:07.3f}"] = 1
@@ -58,7 +57,7 @@ def main(argv=None):
     # Loop over log files
     for idx, log_file in enumerate(log_files):
         no_gal = False
-        pattern = re.compile(f".*{log_file_base}(.*)-(.*)\.log")
+        pattern = re.compile(rf".*{log_file_base}(.*)-(.*)\.log")
         m = re.match(pattern, log_file)
         if m:
             this_id = f"{m[1]}.{m[2]}"
@@ -81,7 +80,7 @@ def main(argv=None):
 
         # Loop over lines in log file
         for line in log_content:
-            m = re.search("Total area without overlap = (\S+) deg", line)
+            m = re.search(r"Total area without overlap = (\S+) deg", line)
             if m:
                 area_deg2_non_overl[idx] = float(m[1])
                 if not no_gal:
@@ -89,7 +88,7 @@ def main(argv=None):
                 else:
                     area_deg2_non_overl_wgal[idx] = 0
 
-            m = re.search("Unmaskewd area without overlap = (\S+) deg", line)
+            m = re.search(r"Unmaskewd area without overlap = (\S+) deg", line)
             if m:
                 area_deg2_eff_non_overl[idx] = float(m[1])
                 if not no_gal:
@@ -97,7 +96,7 @@ def main(argv=None):
                 else:
                     area_deg2_eff_non_overl_wgal[idx] = 0
 
-            m = re.search("Ratio masked to total pixels = (\S+)", line)
+            m = re.search(r"Ratio masked to total pixels = (\S+)", line)
             if m:
                 ratio_unmasked_tot[idx] = float(m[1])
 

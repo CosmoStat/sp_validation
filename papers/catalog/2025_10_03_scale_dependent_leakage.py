@@ -8,14 +8,11 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import numpy as np
-import statsmodels.api as sm
-from astropy.io import fits
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
-import pandas as pd
-
-from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
+from astropy.io import fits
+from shear_psf_leakage.rho_tau_stat import PSFErrorFit, RhoStat, TauStat
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 

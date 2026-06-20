@@ -9,13 +9,11 @@ Produces 9 figures:
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from astropy.io import fits
 
 # Import shared utilities (also registers SquareRootScale)
@@ -27,7 +25,6 @@ from plotting_utils import (
     get_powspace_bin_edges,
     iter_version_figures,
 )
-
 
 plt.style.use(PAPER_MPLSTYLE)
 

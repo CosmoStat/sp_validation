@@ -7,22 +7,19 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import os
 import copy
-from tqdm import tqdm
+import os
 import sys
+
+from tqdm import tqdm
 
 sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts/")
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import numpy as np
-import healpy as hp
-import seaborn as sns
-from astropy.io import fits
 import chain_postprocessing as cpp
-
-from getdist import plots, MCSamples
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from getdist import plots
 
 g = plots.get_subplot_plotter(width_inch=7)
 g.settings.axes_fontsize = 15
@@ -225,14 +222,14 @@ skip_weird = True
 for i, root in enumerate(tqdm(roots)):
     if (i + 1) in failed_simulations:
         print(f"Skipping failed simulation {i + 1}")
-        print(f"Add a flag 'ERROR' to the chains lists")
+        print("Add a flag 'ERROR' to the chains lists")
         chain_configuration.append("ERROR")
         chain_harmonic.append("ERROR")
         continue
 
     if skip_weird and (i + 1) in weird_simulations_v2:
         print(f"Skipping weird simulation {i + 1}")
-        print(f"Add a flag 'ERROR' to the chains lists")
+        print("Add a flag 'ERROR' to the chains lists")
         chain_configuration.append("ERROR")
         chain_harmonic.append("ERROR")
         continue

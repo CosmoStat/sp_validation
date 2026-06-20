@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 
-import sys
 import copy
-import numpy as np
-from glob import glob
+import sys
 from optparse import OptionParser
-from astropy.io import ascii
 
+import numpy as np
+from astropy.io import ascii
 from cs_util import logging
 
 from sp_validation.catalog import *
 from sp_validation.plots import *
-from sp_validation import io
 
 
 class param:
@@ -86,10 +84,10 @@ def parse_options(p_def):
         dest="sh",
         default=None,
         type="string",
-        help=f"shape measurement method, default: read from parameter file",
+        help="shape measurement method, default: read from parameter file",
     )
     parser.add_option(
-        "-v", "--verbose", dest="verbose", action="store_true", help=f"verbose output"
+        "-v", "--verbose", dest="verbose", action="store_true", help="verbose output"
     )
 
     options, args = parser.parse_args()
@@ -139,7 +137,7 @@ def update_param(p_def, options):
 
     # Add remaining keys from options to param
     for key in vars(options):
-        if not key in vars(param):
+        if key not in vars(param):
             setattr(param, key, getattr(options, key))
 
     return param
@@ -177,8 +175,6 @@ def plot_alpha_leakage(
         y-axis plot limits, default is `Ǹone`
 
     """
-    plot_dir_leakage = output_dir
-
     theta = meanr
     alpha_theta = alpha_leak
     yerr = sig_alpha_leak

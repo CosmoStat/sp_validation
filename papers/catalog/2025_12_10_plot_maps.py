@@ -9,23 +9,17 @@ import IPython
 
 ipython = IPython.get_ipython()
 
-import os
-import numpy as np
+import astropy.units as u
+import bornraytrace.lensing as lensing
 import healpy as hp
-from astropy.io import fits
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-from matplotlib.ticker import ScalarFormatter
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+import numpy as np
 import seaborn as sns
-
 import skymapper as skm
 from astropy.coordinates import SkyCoord
-import astropy.units as u
-from scipy.ndimage import gaussian_filter
-
-import glass.lensing
-import bornraytrace.lensing as lensing
+from astropy.io import fits
+from matplotlib.ticker import ScalarFormatter
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 
@@ -125,7 +119,6 @@ def plot_healpix_map(
         Filename for the saved figure.
     """
     ra, dec = hp.pix2ang(nside, np.arange(len(pix_vals)), nest=False, lonlat=True)
-    valid = pix_vals != 0
 
     lon_0, lat_0, lat_1, lat_2 = 253, 40, 45, 49
     proj = skm.Albers(lon_0, lat_0, lat_1, lat_2)
@@ -135,7 +128,6 @@ def plot_healpix_map(
     ax.set_xlabel("Right Ascension [deg]", fontsize=20)
     ax.yaxis.set_ticks([])
 
-    dec_ticks = np.arange(30, 61, 15)
     sky_map = skm.Map(proj, ax=ax)
     plot_galactic_planes(sky_map)
 
@@ -232,7 +224,6 @@ def plot_healpix_map_ax(
         Filename for the saved figure.
     """
     ra, dec = hp.pix2ang(nside, np.arange(len(pix_vals)), nest=False, lonlat=True)
-    valid = pix_vals != 0
 
     lon_0, lat_0, lat_1, lat_2 = 253, 40, 45, 49
     proj = skm.Albers(lon_0, lat_0, lat_1, lat_2)
@@ -240,7 +231,6 @@ def plot_healpix_map_ax(
     ax.set_xlabel("Right Ascension [deg]", fontsize=12)
     ax.yaxis.set_ticks([])
 
-    dec_ticks = np.arange(30, 61, 15)
     sky_map = skm.Map(proj, ax=ax)
     plot_galactic_planes(sky_map)
 

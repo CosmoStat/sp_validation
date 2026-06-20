@@ -3,10 +3,10 @@ import IPython
 
 ipython = IPython.get_ipython()
 
-import numpy as np
-from astropy.io import fits
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
+from astropy.io import fits
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 
@@ -36,10 +36,10 @@ for ver in versions:
 num_bins = tau_stats[0]["theta"].shape[0]
 
 # %%
-e_obs = "e^\mathrm{obs}"
-e_psf = "e^\mathrm{PSF}"
-delta_e_psf = "\delta e^\mathrm{PSF}"
-delta_T_psf = "\delta T^\mathrm{PSF}"
+e_obs = r"e^\mathrm{obs}"
+e_psf = r"e^\mathrm{PSF}"
+delta_e_psf = r"\delta e^\mathrm{PSF}"
+delta_T_psf = r"\delta T^\mathrm{PSF}"
 
 titles = [
     rf"$\langle {e_obs} {e_psf} \rangle$",

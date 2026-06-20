@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import sys
 import re
+import sys
+
 import numpy as np
 
 
@@ -26,7 +27,7 @@ def main(argv=None):
             lines = fin.readlines()
             for typ in types:
                 for line in lines:
-                    pattern = f"{text} {typ}.*= (\d+)/(\d+)"
+                    pattern = rf"{text} {typ}.*= (\d+)/(\d+)"
                     m = re.search(pattern, line)
                     if m:
                         ntyp_patch = int(m.group(1))

@@ -8,7 +8,6 @@
 """
 
 import os
-
 from collections import Counter
 
 
@@ -47,7 +46,7 @@ def get_area(dd, area_tile, verbose=False):
     else:
         # Set to dummy values
         tile_IDs = None
-        n_tiles = 1
+        n_tile = 1
 
     # Compute area
     area_deg2 = n_tile * area_tile

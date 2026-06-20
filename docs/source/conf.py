@@ -2,9 +2,10 @@
 # Python Template sphinx config
 
 # Import relevant modules
-import sys
 import os
 import re
+import sys
+
 from importlib_metadata import metadata
 
 # If extensions (or modules to document with autodoc) are in another directory,

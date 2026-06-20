@@ -4,14 +4,9 @@ Created on Wed Mar  1 17:37:27 2023
 @author: fh272693
 """
 
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-from astropy.io import fits
-import treecorr
-from astropy.coordinates import match_coordinates_sky
 import astropy.units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, match_coordinates_sky
+from astropy.io import fits
 
 Cat1 = fits.open(
     "/feynman/work/dap/lcs/lg268561/UNIONS/Catalogues/unions_shapepipe_2022_v1.0.fits"

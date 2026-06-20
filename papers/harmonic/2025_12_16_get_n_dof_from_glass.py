@@ -7,15 +7,11 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import numpy as np
-from astropy.io import fits
-import scipy.stats as stats
-
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
+from getdist import plots
 from tqdm import tqdm
-
-from getdist import plots, MCSamples
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 

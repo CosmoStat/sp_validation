@@ -23,16 +23,8 @@
 #   https://arxiv.org/abs/2108.13045
 
 # %%
-import os
 
-import astropy.coordinates as coords
 from astropy.io import fits
-from astropy import units
-
-from uncertainties import ufloat
-import pandas as pd
-
-import matplotlib.colors as colors
 
 from sp_validation.plots import *
 

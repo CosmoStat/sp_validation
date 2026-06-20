@@ -7,13 +7,11 @@ correlation/confusion matrices) used when building catalogues.
 :Author: Martin Kilbinger
 """
 
-import numpy as np
-import numexpr as ne
-from scipy import stats
-
 import healsparse as hsp
-
+import numexpr as ne
+import numpy as np
 from astropy.io import fits
+from scipy import stats
 
 
 def correlation_matrix(masks, confidence_level=0.9):
@@ -38,7 +36,6 @@ def confusion_matrix(prediction, observation):
 
     result = {}
 
-    pred_pos = sum(prediction)
     result["true_pos"] = sum(prediction & observation)
     result["true_neg"] = sum(np.logical_not(prediction) & np.logical_not(observation))
     result["false_neg"] = sum(prediction & np.logical_not(observation))
@@ -202,11 +199,11 @@ class Mask:
         if self._kind == "equal":
             sign = "$=$" if latex else "="
         elif self._kind == "not_equal":
-            sign = "$\ne$" if latex else "!="
+            sign = r"$\ne$" if latex else "!="
         elif self._kind in ("greater_equal", "range"):
-            sign = "$\leq$" if latex else ">="
+            sign = r"$\leq$" if latex else ">="
         elif self._kind == "smaller_equal":
-            sign = "$\geq$" if latex else "<="
+            sign = r"$\geq$" if latex else "<="
         return sign
 
     def print_condition(self, f_out, latex=False):

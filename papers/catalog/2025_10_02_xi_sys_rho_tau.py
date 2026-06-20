@@ -4,15 +4,14 @@ import IPython
 ipython = IPython.get_ipython()
 
 import os
-import numpy as np
-from astropy.io import fits
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-
+import numpy as np
 import seaborn as sns
-from getdist import plots, MCSamples
-
-from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
+from astropy.io import fits
+from getdist import MCSamples, plots
+from shear_psf_leakage.rho_tau_stat import PSFErrorFit, RhoStat, TauStat
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 

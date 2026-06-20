@@ -1,13 +1,12 @@
-from cosmosis.gaussian_likelihood import GaussianLikelihood
-from cosmosis.datablock import names, SectionOptions
-from twopoint_cosmosis import theory_names, type_table
-from astropy.io import fits
-from scipy.interpolate import interp1d
+import gaussian_covariance
 import numpy as np
 import twopoint
-import gaussian_covariance
-import os
+from astropy.io import fits
+from cosmosis.datablock import SectionOptions, names
+from cosmosis.gaussian_likelihood import GaussianLikelihood
+from scipy.interpolate import interp1d
 from spec_tools import TheorySpectrum
+from twopoint_cosmosis import theory_names, type_table
 
 default_array = np.repeat(-1.0, 99)
 
@@ -312,7 +311,6 @@ class TwoPointLikelihood(GaussianLikelihood):
         angle = []
         bin1 = []
         bin2 = []
-        dataset_name = []
 
         # Get appropriate suffixes
         # If only a single suffix is provided, assume this applies to all data sets

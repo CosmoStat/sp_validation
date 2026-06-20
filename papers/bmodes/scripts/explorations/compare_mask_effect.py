@@ -9,14 +9,13 @@ mask power spectrum file.
 """
 
 # %%
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
 from typing import Tuple
 
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 from IPython import get_ipython
-
 
 # %%
 ipython = get_ipython()

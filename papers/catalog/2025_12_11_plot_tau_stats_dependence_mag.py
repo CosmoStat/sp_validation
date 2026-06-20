@@ -7,17 +7,14 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import os
 import copy
-from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
 import numpy as np
-import pandas as pd
 import seaborn as sns
-from astropy.io import fits
 import treecorr
+from astropy.io import fits
+from matplotlib.ticker import ScalarFormatter
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 

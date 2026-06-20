@@ -2,11 +2,12 @@
 # coding: utf-8
 
 
-import sys
 import os
+import sys
+
 import numpy as np
-from astropy.io import fits
 import treecorr
+from astropy.io import fits
 
 script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 

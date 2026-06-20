@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """Read matrix entries from FITS header and print in tex or pdf format."""
 
-from astropy.io import fits
-import numpy as np
+import os
 import subprocess
 import tempfile
-import os
 
+import numpy as np
+from astropy.io import fits
 from cs_util.args import parse_options
 
 

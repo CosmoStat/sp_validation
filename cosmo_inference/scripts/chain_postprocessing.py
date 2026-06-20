@@ -3,14 +3,14 @@ Scripts to postprocess the CosmoSIS chains
 Author: Sacha Guerrini
 """
 
-import os
 import configparser
+import os
 import subprocess
 
-import numpy as np
-from getdist import plots, MCSamples
-from astropy.io import fits
 import matplotlib.pyplot as plt
+import numpy as np
+from astropy.io import fits
+from getdist import plots
 
 # Mapping for CosmoSIS ini files section
 section_map = {
@@ -157,7 +157,7 @@ def load_chain(path_gd, smoothing_scale=0.3):
 
 def extract_best_fit_params(chain, best_fit_method="weighted_mean"):
     best_fit_params = {}
-    margestats = chain.getMargeStats()
+    chain.getMargeStats()
     likestats = chain.getLikeStats()
     for i, par in enumerate(likestats.names):
         if best_fit_method == "weighted_mean":
@@ -241,7 +241,7 @@ def compute_best_fit(
         # If the ini file root is not provided, we construct it based on the root and blind parameters
         if blind is not None:
             subdir = (
-                f"harmonic_space_fiducial_{blind}" if is_harmonic else f""
+                f"harmonic_space_fiducial_{blind}" if is_harmonic else ""
             )  # TODO: add real space subdir if needed
         else:
             subdir = ""
@@ -337,8 +337,6 @@ def adjust_paramname_chain(chain, current_name, target_name, label):
 
     chain.setParamNames(param_names)
 
-    p = chain.paramNames.parWithName(target_name)
-
 
 def derive_parameter_S8(chain):
     """
@@ -351,8 +349,6 @@ def derive_parameter_S8(chain):
     s_8 = sigma_8 * (omega_m / 0.3) ** 0.5
 
     chain.addDerived(s_8, name="S_8", label=r"S_8")
-
-    p = chain.paramNames.parWithName("S_8")
 
     return chain
 
@@ -367,8 +363,6 @@ def derive_parameter_Om(chain):
     omega_m = omch2 / (h0 / 100) ** 2
 
     chain.addDerived(omega_m, name="OMEGA_M", label=r"\Omega_{\rm m}")
-
-    p = chain.paramNames.parWithName("OMEGA_M")
 
     return chain
 
@@ -473,16 +467,19 @@ def plot_best_fit(
     )
 
     for idx, (label, root) in enumerate(zip(labels, root_to_plot)):
-        lower_bound_cell_ee = properties[root]["lower_bound_cell_ee"]
-        upper_bound_cell_ee = properties[root]["upper_bound_cell_ee"]
-
         # Read the results
         if paths_to_bestfit is None:
             ell = np.loadtxt(
-                output_folder + "{}/best_fit/shear_cl/ell.txt".format(root, root)
+                output_folder
+                + "{}/best_fit/shear_cl/ell.txt".format(
+                    root,
+                )
             )
             shear_cl = np.loadtxt(
-                output_folder + "{}/best_fit/shear_cl/bin_1_1.txt".format(root, root)
+                output_folder
+                + "{}/best_fit/shear_cl/bin_1_1.txt".format(
+                    root,
+                )
             )
         else:
             ell = np.loadtxt(paths_to_bestfit[idx] + "best_fit/shear_cl/ell.txt")
@@ -647,7 +644,7 @@ def plot_best_fit_config(
             xi_minus = np.loadtxt(
                 output_folder + "{}/best_fit/shear_xi_minus/bin_1_1.txt".format(root)
             )
-            if "$C_\ell$" not in label:
+            if r"$C_\ell$" not in label:
                 xi_sys_plus = np.loadtxt(
                     output_folder + "{}/best_fit/xi_sys/shear_xi_plus.txt".format(root)
                 )
@@ -677,7 +674,7 @@ def plot_best_fit_config(
             xi_minus = np.loadtxt(
                 paths_to_bestfit[idx] + "best_fit/shear_xi_minus/bin_1_1.txt"
             )
-            if "$C_\ell$" not in label:
+            if r"$C_\ell$" not in label:
                 xi_sys_plus = np.loadtxt(
                     output_folder + "{}/best_fit/xi_sys/shear_xi_plus.txt".format(root)
                 )

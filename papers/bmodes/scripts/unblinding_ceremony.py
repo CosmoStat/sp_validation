@@ -29,9 +29,8 @@ from astropy.io import fits
 from getdist import plots
 from matplotlib import scale as mscale
 from matplotlib.gridspec import GridSpec
-from scipy.interpolate import interp1d
-
 from plotting_utils import PAPER_MPLSTYLE, SquareRootScale
+from scipy.interpolate import interp1d
 
 # ── Plotting environment ────────────────────────────────────────────────────
 mscale.register_scale(SquareRootScale)
@@ -1163,7 +1162,7 @@ def run_ceremony(cfg: CeremonyConfig) -> None:
                 {"color": "royalblue", "linestyle": "--"},
             ),
             (
-                rf"UNIONS $\xi_\pm(\vartheta)$ (Goh et al., 2026)",
+                r"UNIONS $\xi_\pm(\vartheta)$ (Goh et al., 2026)",
                 cfg.bestfit_root_config,
                 {"color": "orange", "linestyle": "-"},
             ),

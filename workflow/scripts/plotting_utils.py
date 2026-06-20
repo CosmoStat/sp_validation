@@ -3,12 +3,11 @@
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
-from matplotlib.colors import BoundaryNorm, ListedColormap
-from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
+from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.patches import Rectangle
 from scipy import stats
-
 
 # Shared constants
 PAPER_MPLSTYLE = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"

@@ -3,9 +3,9 @@
 import glob
 import os
 import re
-import numpy as np
-from astropy.table import Table
+
 import matplotlib.pyplot as plt
+from astropy.table import Table
 from cs_util.plots import FootprintPlotter
 
 
@@ -129,12 +129,10 @@ def main():
             axes = [axes]
 
         for idx, (hsp_map, label) in enumerate(zip(hsp_maps, labels)):
-            ax = axes[idx]
-
             # Use fullsky region parameters
             region = plotter._regions["fullsky"]
 
-            projection = plotter.plot_area(
+            plotter.plot_area(
                 hsp_map,
                 ra_0=region["ra_0"],
                 extend=region["extend"],

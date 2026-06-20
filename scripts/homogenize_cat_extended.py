@@ -9,13 +9,11 @@ are calibrated per patch, while the non-extended catalog is calibrated on the wh
 """
 
 import sys
-
 from optparse import OptionParser
 
-from cs_util import logging
-
 from astropy.io import fits
-from astropy.table import Table, Column
+from astropy.table import Column, Table
+from cs_util import logging
 
 
 def params_default():

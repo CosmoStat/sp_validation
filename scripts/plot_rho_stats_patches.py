@@ -12,16 +12,12 @@
 #     name: python3
 # ---
 
-import os
-import sys
 import glob
-
 import itertools
-import numpy as np
+import os
+
 import matplotlib.pylab as plt
-
 from cs_util import args
-
 from shear_psf_leakage.rho_tau_stat import RhoStat
 
 

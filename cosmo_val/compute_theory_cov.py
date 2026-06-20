@@ -1,9 +1,7 @@
-import yaml
 import time
+
 import numpy as np
-
-from astropy.io import fits
-
+import yaml
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 
 

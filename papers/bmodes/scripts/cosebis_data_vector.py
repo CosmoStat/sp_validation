@@ -10,24 +10,20 @@ Produces 9 figures:
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 import treecorr
-
-from sp_validation.b_modes import calculate_cosebis
-
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     iter_version_figures,
 )
 
+from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
 

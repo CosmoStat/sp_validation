@@ -37,8 +37,8 @@ from astropy.io import fits
 
 # from sp_validation.catalog import *
 from sp_validation import catalog as spv_cat
-from sp_validation.calibration import metacal
 from sp_validation.calibration import *
+from sp_validation.calibration import metacal
 from sp_validation.galaxy import *
 from sp_validation.io import *
 from sp_validation.survey import *
@@ -337,14 +337,14 @@ from cs_util.plots import plot_histograms
 from lenspack.geometry.projections.gnom import radec2xy
 from uncertainties import ufloat
 
-from sp_validation.calibration import metacal
 from sp_validation.calibration import *
+from sp_validation.calibration import metacal
+from sp_validation.format import *
 from sp_validation.plot_style import *
 from sp_validation.plots import *
 
 # -
 from sp_validation.survey import *
-from sp_validation.format import *
 
 # ## metacalibration for galaxies
 

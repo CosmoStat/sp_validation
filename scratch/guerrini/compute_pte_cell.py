@@ -6,15 +6,13 @@ original author's (guerrini) machine and are preserved as-is.
 """
 
 # %%
+import camb
 import matplotlib.pyplot as plt
 import numpy as np
-import treecorr
+from IPython import get_ipython
+
 from sp_validation.cosmo_val import CosmologyValidation
 from sp_validation.statistics import chi2_and_pte
-import scipy.stats as stats
-import camb
-
-from IPython import get_ipython
 
 ipython = get_ipython()
 if ipython is not None:
@@ -33,7 +31,7 @@ cv.plot_pseudo_cl()  # Loads c_ells in cv object
 
 # %%
 header = (
-    "| Root | $\chi^2$ (EB) | $\chi^2$ (EB) / dof | p-val (EB)| $\chi^2$ (BB) | $\chi^2$ (BB) / dof | p-val (BB) |\n"
+    "| Root | $\\chi^2$ (EB) | $\\chi^2$ (EB) / dof | p-val (EB)| $\\chi^2$ (BB) | $\\chi^2$ (BB) / dof | p-val (BB) |\n"
     "|------|----------------|------------|---------------|------------|------------------|--------------|\n"
 )
 
@@ -98,13 +96,14 @@ ell, cl_best_fit = best_fit_axel[0], best_fit_axel[1]
 # %%
 import healpy as hp
 import matplotlib.scale as mscale
+
 from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)
 
 nside = 1024
 lmax = 2 * nside
-l = np.arange(lmax + 1)
+ell_grid = np.arange(lmax + 1)
 pw = hp.pixwin(nside, lmax=lmax)
 
 pseudo_cl_glass = cv._pseudo_cls["SP_v1.4.5.A"]["pseudo_cl"]
@@ -132,7 +131,7 @@ ax.errorbar(
     markersize=4,
     label="BB",
 )
-# ax.plot(l, l*theory_cls['W1xW1'], label=r'$C_\ell$ theory', c='k', ls='--')
+# ax.plot(ell_grid, ell_grid*theory_cls['W1xW1'], label=r'$C_\ell$ theory', c='k', ls='--')
 ax.plot(ell, ell * cl_best_fit, label=r"$C_\ell$ best fit", c="k", ls="--")
 
 ax.set_xlabel(r"$\ell$")

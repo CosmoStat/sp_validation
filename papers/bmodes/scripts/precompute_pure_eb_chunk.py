@@ -7,9 +7,8 @@ from pathlib import Path
 import numpy as np
 import pyccl as ccl
 import tqdm
-from scipy import sparse
-
 from IPython import get_ipython
+from scipy import sparse
 
 ipython = get_ipython()
 
@@ -70,6 +69,7 @@ def _load_xi(path, min_sep, max_sep, nbins):
 
 def main():
     from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+
     from sp_validation.cosmo_val import CosmologyValidation
     from sp_validation.cosmology import get_theo_xi
 

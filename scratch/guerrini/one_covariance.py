@@ -7,11 +7,11 @@ author's (guerrini) machine and are preserved as-is.
 """
 
 # %%
+import matplotlib.pyplot as plt
+import matplotlib.scale as mscale
 import numpy as np
 from astropy.io import fits
-import matplotlib.pyplot as plt
 
-import matplotlib.scale as mscale
 from sp_validation.rho_tau import SquareRootScale
 from sp_validation.statistics import corr_from_cov, cov_from_one_covariance
 

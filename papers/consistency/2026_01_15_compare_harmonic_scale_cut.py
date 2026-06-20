@@ -14,20 +14,13 @@ if ipython is not None:
     ipython.run_line_magic("autoreload", "2")
 
 import os
-import copy
-from tqdm import tqdm
 
 import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-import healpy as hp
-import seaborn as sns
-from astropy.io import fits
 import pandas as pd
+import seaborn as sns
+from getdist import plots
 from scipy.stats import norm
-
-from getdist import plots, MCSamples
-
 
 if os.path.exists("/home/guerrini/matplotlib_config/paper.mplstyle"):
     plt.style.use("/home/guerrini/matplotlib_config/paper.mplstyle")

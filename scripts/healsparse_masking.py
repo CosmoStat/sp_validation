@@ -8,10 +8,11 @@ Calculates HealSparse coverage and mask areas for the UNIONS cosmic shear analys
 """
 
 import os
+
+import healsparse as hsp
 import numpy as np
 import pandas as pd
 import tqdm
-import healsparse as hsp
 
 # %%
 print("\n=== HealSparse Area Analysis Exercise ===")

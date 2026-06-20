@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 
-import sys
 import os
 import re
+import sys
 
 import numpy as np
 import uncertainties as unc
-from pathlib import Path
 from astropy.io import ascii
 
 
@@ -29,10 +28,7 @@ def get_match(stats_files, patch, pattern, previous=None, n_previous=[1], typ=st
             prev_ok = False
             for prev, n_prev in zip(previous, n_previous):
                 # Line index n_previous earlier, +1 since next line will be read in
-                # next loop
-                idx_prev = idx - n_prev + 1
-
-                # Look for pattern in previous line
+                # next loop; look for pattern in previous line
                 m_prev = re.search(prev, stats_files[patch][idx - n_prev + 1])
                 if m_prev:
                     prev_ok = True
@@ -262,7 +258,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             results["value"][key][patch] = get_match(
                 stats_files,
                 patch,
-                "Number of galaxies after metacal = (\d+)/",
+                r"Number of galaxies after metacal = (\d+)/",
                 previous=[f"^{shape}$"],
                 typ=int,
             )
@@ -293,7 +289,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             results["value"][key][patch] = get_match(
                 stats_files,
                 patch,
-                "Sum of weights = (\S+)",
+                r"Sum of weights = (\S+)",
                 typ=float,
                 previous=[f"^{shape}$"],
             )
@@ -308,7 +304,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 c = get_match(
                     stats_files,
                     patch,
-                    f"{key_base}{comp} = (\S+)",
+                    rf"{key_base}{comp} = (\S+)",
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp - 1],
                     typ=float,
@@ -325,7 +321,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 dc = get_match(
                     stats_files,
                     patch,
-                    f"{key_base}{comp} = (\S+)",
+                    rf"{key_base}{comp} = (\S+)",
                     typ=float,
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp + 7],
@@ -342,7 +338,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 dmc = get_match(
                     stats_files,
                     patch,
-                    f"{key_base}{comp} = (\S+)",
+                    rf"{key_base}{comp} = (\S+)",
                     typ=float,
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp + 7],
@@ -359,7 +355,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 c = get_match(
                     stats_files,
                     patch,
-                    f"{key_base}{comp} = (\S+)",
+                    rf"{key_base}{comp} = (\S+)",
                     previous=[f"^{shape}:$"],
                     n_previous=[comp * 2],
                     typ=float,
@@ -376,7 +372,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 dmc = get_match(
                     stats_files,
                     patch,
-                    f"{key_base}{comp} = (\S+)",
+                    rf"{key_base}{comp} = (\S+)",
                     typ=float,
                     previous=[f"^{shape}:$"],
                     n_previous=[2 * comp + 8],
@@ -401,7 +397,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
                 c, dc = get_match(
                     stats_files,
                     patch,
-                    f"{key_base}{comp} = (\S+)",
+                    rf"{key_base}{comp} = (\S+)",
                     previous=[f"^{shape}:$"],
                     n_previous=[comp],
                     typ="ufloat",
@@ -417,7 +413,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             results["value"][key][patch] = get_match(
                 stats_files,
                 patch,
-                "Dispersion of complex ellipticity = (\S+)",
+                r"Dispersion of complex ellipticity = (\S+)",
                 previous=[f"^{shape}$"],
                 typ=float,
             )
@@ -432,7 +428,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[\[(\s?\S+)\s+\S+]",
+                r"\[\[(\s?\S+)\s+\S+]",
                 previous=["ngmix galaxies:", "total response matrix:"],
                 n_previous=[2, 1],
                 typ=float,
@@ -441,7 +437,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[\[\s?\S+\s+(\S+)]",
+                r"\[\[\s?\S+\s+(\S+)]",
                 previous=["ngmix galaxies:", "total response matrix:"],
                 n_previous=[2, 1],
                 typ=float,
@@ -450,7 +446,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[(\s?\S+)\s+\S+\]\]",
+                r"\[(\s?\S+)\s+\S+\]\]",
                 previous=["ngmix galaxies", "total response matrix:"],
                 n_previous=[3, 2],
                 typ=float,
@@ -459,7 +455,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                " \[\s?\S+\s+(\S+)\]\]",
+                r" \[\s?\S+\s+(\S+)\]\]",
                 previous=["ngmix galaxies:", "total response matrix:"],
                 n_previous=[3, 2],
                 typ=float,
@@ -493,7 +489,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[\[(\s?\S+)\s+\S+]",
+                r"\[\[(\s?\S+)\s+\S+]",
                 previous=["ngmix galaxies:", "shear response matrix:"],
                 n_previous=[5, 1],
                 typ=float,
@@ -502,7 +498,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[\[\s?\S+\s+(\S+)]",
+                r"\[\[\s?\S+\s+(\S+)]",
                 previous=["ngmix galaxies:", "shear response matrix:"],
                 n_previous=[5, 1],
                 typ=float,
@@ -511,7 +507,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[(\s?\S+)\s+\S+\]\]",
+                r"\[(\s?\S+)\s+\S+\]\]",
                 previous=["ngmix galaxies", "shear response matrix:"],
                 n_previous=[6, 2],
                 typ=float,
@@ -520,7 +516,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                " \[\s?\S+\s+(\S+)\]\]",
+                r" \[\s?\S+\s+(\S+)\]\]",
                 previous=["ngmix galaxies:", "shear response matrix:"],
                 n_previous=[6, 2],
                 typ=float,
@@ -554,7 +550,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[\[(\s?\S+)\s+\S+]",
+                r"\[\[(\s?\S+)\s+\S+]",
                 previous=["ngmix galaxies:", "selection response matrix:"],
                 n_previous=[8, 1],
                 typ=float,
@@ -563,7 +559,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[\[\s?\S+\s+(\S+)]",
+                r"\[\[\s?\S+\s+(\S+)]",
                 previous=["ngmix galaxies:", "selection response matrix:"],
                 n_previous=[8, 1],
                 typ=float,
@@ -572,7 +568,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                "\[(\s?\S+)\s+\S+\]\]",
+                r"\[(\s?\S+)\s+\S+\]\]",
                 previous=["ngmix galaxies", "selection response matrix:"],
                 n_previous=[9, 2],
                 typ=float,
@@ -581,7 +577,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             tmp = get_match(
                 stats_files,
                 patch,
-                " \[\s?\S+\s+(\S+)\]\]",
+                r" \[\s?\S+\s+(\S+)\]\]",
                 previous=["ngmix galaxies:", "selection response matrix:"],
                 n_previous=[9, 2],
                 typ=float,
@@ -622,7 +618,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             m, dm = get_match(
                 stats_files,
                 patch,
-                "\$e_\{1\}\^\{\\\\rm PSF\}\$: m_1=(\S*)",
+                "\\$e_\\{1\\}\\^\\{\\\\rm PSF\\}\\$: m_1=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[1],
                 typ="ufloat",
@@ -631,7 +627,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             m, dm = get_match(
                 stats_files,
                 patch,
-                "\$e_\{1\}\^\{\\\\rm PSF\}\$: m_2=(\S*)",
+                "\\$e_\\{1\\}\\^\\{\\\\rm PSF\\}\\$: m_2=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[2],
                 typ="ufloat",
@@ -640,7 +636,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             m, dm = get_match(
                 stats_files,
                 patch,
-                "\$e_\{2\}\^\{\\\\rm PSF\}\$: m_1=(\S*)",
+                "\\$e_\\{2\\}\\^\\{\\\\rm PSF\\}\\$: m_1=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[3],
                 typ="ufloat",
@@ -649,7 +645,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             m, dm = get_match(
                 stats_files,
                 patch,
-                "\$e_\{2\}\^\{\\\\rm PSF\}\$: m_2=(\S*)",
+                "\\$e_\\{2\\}\\^\\{\\\\rm PSF\\}\\$: m_2=(\\S*)",
                 previous=["ngmix"],
                 n_previous=[4],
                 typ="ufloat",
@@ -658,7 +654,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             m, dm = get_match(
                 stats_files,
                 patch,
-                "\$\\\\mathrm\{FWHM\}\^\{\\\\rm PSF\}\$ \[arcsec]: m_1=(\S+)",
+                "\\$\\\\mathrm\\{FWHM\\}\\^\\{\\\\rm PSF\\}\\$ \\[arcsec]: m_1=(\\S+)",
                 previous=["ngmix"],
                 n_previous=[5],
                 typ="ufloat",
@@ -667,7 +663,7 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
             m, dm = get_match(
                 stats_files,
                 patch,
-                "\$\\\\mathrm\{FWHM\}\^\{\\\\rm PSF\}\$ \[arcsec]: m_2=(\S+)",
+                "\\$\\\\mathrm\\{FWHM\\}\\^\\{\\\\rm PSF\\}\\$ \\[arcsec]: m_2=(\\S+)",
                 previous=["ngmix"],
                 n_previous=[6],
                 typ="ufloat",
@@ -680,7 +676,10 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         init_key(results, key, "w_avg", extra="N_gal")
         for patch in stats_files:
             results["value"][key][patch] = get_match(
-                stats_files, patch, "ngmix: Weighted average alpha =(\s?\S+)", typ=float
+                stats_files,
+                patch,
+                r"ngmix: Weighted average alpha =(\s?\S+)",
+                typ=float,
             )
 
     # xi_sys
@@ -690,11 +689,11 @@ def get_values(results, stats_files, shape, use_keys, area_deg2=-1):
         init_key(results, "xi_sys_m", "w_avg", extra="N_gal")
         for patch in stats_files:
             tmp = get_match(
-                stats_files, patch, "ngmix: <\|xi_sys_\+\|> = (\S*)", typ=float
+                stats_files, patch, r"ngmix: <\|xi_sys_\+\|> = (\S*)", typ=float
             )
             results["value"]["xi_sys_p"][patch] = tmp
             tmp = get_match(
-                stats_files, patch, "ngmix: <\|xi_sys_\-\|> = (\S*)", typ=float
+                stats_files, patch, r"ngmix: <\|xi_sys_\-\|> = (\S*)", typ=float
             )
             results["value"]["xi_sys_m"][patch] = tmp
 
@@ -736,7 +735,7 @@ def latex_table(file_base, cols=None, col_names=None):
                 if dat[col][nl] < 0:
                     pref = ""
                 else:
-                    pref = "\phantom{-}"
+                    pref = r"\phantom{-}"
                 str_line = f"{str_line} ${pref}{dat[col][nl]:#.4f}$\t&"
         print(rf"{str_line[: len(str_line) - 2]} \\", file=fout)
 
@@ -798,7 +797,6 @@ def main(argv=None):
     verbose = False
 
     stats_files = read_stats_files(patches, path, verbose=verbose)
-    n_patch_found = len(stats_files)
 
     results = {"value": {}, "type": {}, "extra": {}, "all": {}}
 
@@ -852,7 +850,6 @@ def main(argv=None):
     # Get value of combined run for precision check
     if argv[1] == "test":
         stats_file_comb = read_stats_files(["comb"], path, verbose=verbose)
-        n_patch_comb = len(stats_files)
         results_comb = {
             "value": {},
             "type": {},
@@ -878,14 +875,13 @@ def main(argv=None):
             stats_file_comb = read_stats_files(
                 ["joint"], f"leakage/{fbase}_leakage.txt", verbose=verbose
             )
-            n_patch_comb = len(stats_files)
             results_comb = {
                 "value": {},
                 "type": {},
                 "extra": {},
             }
             get_values(results_comb, stats_file_comb, shape, use_keys_m, area_deg2=1)
-        except:
+        except Exception:
             print("leakage stats file of joint catalogue not found, skipping")
 
     # Print some key (combinations) to text and LaTeX file
@@ -916,7 +912,7 @@ def main(argv=None):
             f = open(f"{file_base}.txt", "w")
             print_all(results, stats_files, use_keys=[key], fout=f, all=all)
             f.close()
-            latex_table(file_base, cols=[key], col_names=["\sigma^2_\epsilon"])
+            latex_table(file_base, cols=[key], col_names=[r"\sigma^2_\epsilon"])
 
         me = ["11", "12", "21", "22"]
 
@@ -974,13 +970,13 @@ def main(argv=None):
         f.close()
         col_names = [
             "c_1",
-            "\Delta c_1",
+            r"\Delta c_1",
             "c_2",
-            "\Delta c_2",
-            "\langle R^{\\rm tot}_{ii} \\rangle",
+            r"\Delta c_2",
+            "\\langle R^{\\rm tot}_{ii} \\rangle",
             "\\sum | R^{\\ tot}_{i \\ne j}|",
-            "\langle R^{\\rm shear}_{ii} \\rangle",
-            "\langle R^{\\rm select}_{ii} \\rangle",
+            "\\langle R^{\\rm shear}_{ii} \\rangle",
+            "\\langle R^{\\rm select}_{ii} \\rangle",
         ]
         latex_table(file_base, cols=use_keys, col_names=col_names)
 

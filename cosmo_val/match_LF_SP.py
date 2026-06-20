@@ -18,16 +18,15 @@
 # !pip install -U scikit-learn
 
 import os
-import numpy as np
-from scipy import stats
-import matplotlib.pyplot as plt
-from astropy.io import fits
-from astropy.coordinates import match_coordinates_sky
-import csv
+
 import astropy.units as u
-from astropy.coordinates import SkyCoord
-from uncertainties import ufloat
+import matplotlib.pyplot as plt
+import numpy as np
+from astropy.coordinates import SkyCoord, match_coordinates_sky
+from astropy.io import fits
+from scipy import stats
 from sklearn import preprocessing
+from uncertainties import ufloat
 
 from sp_validation import catalog as cat
 

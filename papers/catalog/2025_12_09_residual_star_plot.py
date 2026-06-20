@@ -3,11 +3,11 @@ import IPython
 
 ipython = IPython.get_ipython()
 
-import numpy as np
-from astropy.io import fits
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+import numpy as np
 import seaborn as sns
+from astropy.io import fits
+from matplotlib.gridspec import GridSpec
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 

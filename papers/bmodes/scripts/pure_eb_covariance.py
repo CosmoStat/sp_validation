@@ -15,10 +15,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns  # Registers seaborn colormaps (icefire, etc.) with matplotlib
-
 from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
-
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -210,11 +207,11 @@ def main():
     print(f"Saved evidence to {evidence_path}")
 
     # Print summary
-    print(f"\nCovariance Matrix Summary:")
+    print("\nCovariance Matrix Summary:")
     print(f"  Shape: {cov_pure_eb.shape}")
     print(f"  Full matrix condition number: {condition_number:.2e}")
     print(f"  Positive definite: {is_positive_definite}")
-    print(f"\nBlock Analysis:")
+    print("\nBlock Analysis:")
     for block_name, stats in block_analysis.items():
         print(f"  {block_name}:")
         print(f"    Condition number: {stats['condition_number']:.2e}")

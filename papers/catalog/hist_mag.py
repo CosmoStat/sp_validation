@@ -1,34 +1,31 @@
-# %%                                                                             
+# %%
 # hist_mag.py
 #
 # Plot magnitude histogram for various cuts and selection criteria
 
 # %%
-import matplotlib
 import matplotlib.pylab as plt
 
-# enable autoreload for interactive sessions                                     
-from IPython import get_ipython                                                  
-ipython = get_ipython()                                                          
-if ipython is not None:                                                          
+# enable autoreload for interactive sessions
+from IPython import get_ipython
+
+ipython = get_ipython()
+if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
-    ipython.run_line_magic("reload_ext", "autoreload")                             
-    ipython.run_line_magic("autoreload", "2")                                    
-    ipython.run_line_magic("reload_ext", "log_cell_time")                          
+    ipython.run_line_magic("reload_ext", "autoreload")
+    ipython.run_line_magic("autoreload", "2")
+    ipython.run_line_magic("reload_ext", "log_cell_time")
 
 # %%
-import sys
 import os
-import re
-import numpy as np
-from astropy.io import fits
+import sys
 from io import StringIO
 
-from sp_validation import catalog_builders as sp_joint
-from sp_validation import format
-from sp_validation.calibration import metacal
+import numpy as np
+
 from sp_validation import calibration
-import sp_validation.catalog as cat
+from sp_validation import catalog_builders as sp_joint
+from sp_validation.calibration import metacal
 
 # %%
 # Initialize calibration class instance
@@ -38,21 +35,22 @@ config = obj.read_config_set_params("config_mask.yaml")
 
 test_only = True
 
+
 # %%
 # Funcitons
 def get_data(obj, test_only=False):
     """Get Data.
-    
+
     Returns catalogue.
-    
+
     Parameters
     ----------
     obj : CalibrateCat instance
         Instance of CalibrateCat class
-    test_only : bool, optional 
+    test_only : bool, optional
         If True, only load a subset of data for testing;
         default is False.
-    
+
     """
     # Get data. Set load_into_memory to False for very large files
     dat, dat_ext = obj.read_cat(load_into_memory=False)
@@ -91,20 +89,16 @@ def read_hist_data(hist_data_path):
 
     for key in loaded.files:
         data = loaded[key]
-        hist_data[key] = {
-            'counts': data[0],
-            'bins': data[1],
-            'label': str(data[2])
-        }
+        hist_data[key] = {"counts": data[0], "bins": data[1], "label": str(data[2])}
 
     return hist_data
 
 
 def get_mask(masks, col_name):
     """Get Mask.
-    
+
     Returns mask corresponding to col_name.
-    
+
     Parameters
     ----------
     masks : list
@@ -117,7 +111,7 @@ def get_mask(masks, col_name):
         Mask object
     integer
         Mask position in list
-    
+
     """
     # Get mask fomr masks with col_name = col_name
     for idx, mask in enumerate(masks):
@@ -210,8 +204,8 @@ def plot_hist(counts, bins, label, alpha=1, ax=None, color=None):
         width=np.diff(bins),
         alpha=alpha,
         label=label,
-        align='center',
-        color=color
+        align="center",
+        color=color,
     )
 
 
@@ -228,16 +222,11 @@ def plot_all_hists(
 
     if ax is None:
         plt.figure()
-        fig, (ax) = plt.subplots(
-            1,
-            1,
-            figsize=(figsize, figsize)
-        )
+        fig, (ax) = plt.subplots(1, 1, figsize=(figsize, figsize))
 
     counts0 = None
     for col_name in col_names:
         if col_name in hist_data:
-
             data = hist_data[col_name]
             if fraction:
                 if counts0 is None:
@@ -248,15 +237,15 @@ def plot_all_hists(
 
             plot_hist(
                 counts,
-                data['bins'],
-                data['label'],
+                data["bins"],
+                data["label"],
                 alpha=alpha,
                 ax=ax,
-                color=color_map[col_name]
+                color=color_map[col_name],
             )
-            #print(f"{col_name}: n_valid = {data['n_valid']}")
+            # print(f"{col_name}: n_valid = {data['n_valid']}")
 
-    ax.set_xlabel('$r$')
+    ax.set_xlabel("$r$")
     ylabel = "fraction" if fraction else "number"
     ax.set_ylabel(ylabel)
     ax.set_xlim(17.5, 26.5)
@@ -265,11 +254,7 @@ def plot_all_hists(
 
     if out_path:
         plt.tight_layout()
-        plt.savefig(
-            out_path,
-            dpi=150,
-            bbox_inches='tight'
-        )
+        plt.savefig(out_path, dpi=150, bbox_inches="tight")
 
 
 # %%
@@ -290,7 +275,7 @@ else:
 
     dat, dat_ext = get_data(obj, test_only=test_only)
     hist_data = None
-    
+
 
 # %%
 # Masking
@@ -310,35 +295,38 @@ masks_labels_basic = ["overlap", "mag", "64_r"]
 col_names = ["basic masks"]
 
 if scenario == 0:
-    masks_labels_basic.extend([
-        "FLAGS",
-        "IMAFLAGS_ISO",
-        "NGMIX_MOM_FAIL",
-        "NGMIX_ELL_PSFo_NOSHEAR_0",
-        "NGMIX_ELL_PSFo_NOSHEAR_1",
-        "4_Stars",
-        "8_Manual",
-        "1024_Maximask",
-    ])
+    masks_labels_basic.extend(
+        [
+            "FLAGS",
+            "IMAFLAGS_ISO",
+            "NGMIX_MOM_FAIL",
+            "NGMIX_ELL_PSFo_NOSHEAR_0",
+            "NGMIX_ELL_PSFo_NOSHEAR_1",
+            "4_Stars",
+            "8_Manual",
+            "1024_Maximask",
+        ]
+    )
 
     col_names.extend(["N_EPOCH", "npoint3", "metacal"])
 
 elif scenario == 1:
-    
-    col_names.extend([
-        "IMAFLAGS_ISO",
-        "FLAGS",
-        "NGMIX_MOM_FAIL",
-        "NGMIX_ELL_PSFo_NOSHEAR_0",
-        "NGMIX_ELL_PSFo_NOSHEAR_1",
-        "4_Stars",
-        "8_Manual",
-        "1024_Maximask",
-        "N_EPOCH",
-        "npoint3",
-        "metacal",
-    ])
-    
+    col_names.extend(
+        [
+            "IMAFLAGS_ISO",
+            "FLAGS",
+            "NGMIX_MOM_FAIL",
+            "NGMIX_ELL_PSFo_NOSHEAR_0",
+            "NGMIX_ELL_PSFo_NOSHEAR_1",
+            "4_Stars",
+            "8_Manual",
+            "1024_Maximask",
+            "N_EPOCH",
+            "npoint3",
+            "metacal",
+        ]
+    )
+
     combine_cols = {
         "ngmix failures": [
             "NGMIX_MOM_FAIL",
@@ -346,7 +334,7 @@ elif scenario == 1:
             "NGMIX_ELL_PSFo_NOSHEAR_1",
         ]
     }
-    
+
 # %%
 # Combine columns if specified.
 # Remove old columns after combining.
@@ -377,7 +365,7 @@ if combine_cols is not None:
             )
         masks.insert(idx, masks_combined)
         col_names.insert(idx, new_col)
-        
+
         for old_mask, old_col in zip(old_masks, old_cols):
             masks.remove(old_mask)
             col_names.remove(old_col)
@@ -417,8 +405,9 @@ mask_tmp = sp_joint.Mask(
     kind="none",
 )
 
+
 # %%
-def get_info_for_metacal_masking(dat, mask, prefix = "NGMIX", name_shear = "NOSHEAR"):
+def get_info_for_metacal_masking(dat, mask, prefix="NGMIX", name_shear="NOSHEAR"):
 
     res = {}
 
@@ -427,35 +416,35 @@ def get_info_for_metacal_masking(dat, mask, prefix = "NGMIX", name_shear = "NOSH
     for key in ("flux", "flux_err", "T"):
         res[key] = dat[mask][f"{prefix}_{key.upper()}_{name_shear}"]
     res["Tpsf"] = dat[mask][f"{prefix}_Tpsf_{name_shear}"]
-    
+
     return res
+
 
 # %%
 if dat is not None:
     cm = config["metacal"]
-
 
 
 # %%
 # Call metacal if data is available
 if dat is not None:
     cm = config["metacal"]
-    gal_metacal = metacal(                                                           
-        dat,                                                                         
-        masks_basic_combined._mask,                                                         
-        snr_min=cm["gal_snr_min"],                                                   
-        snr_max=cm["gal_snr_max"],                                                   
-        rel_size_min=cm["gal_rel_size_min"],                                         
-        rel_size_max=cm["gal_rel_size_max"],                                         
-        size_corr_ell=cm["gal_size_corr_ell"],                                       
-        sigma_eps=cm["sigma_eps_prior"],                                             
-        global_R_weight=cm["global_R_weight"],                                       
-        col_2d=False,                                                                
+    gal_metacal = metacal(
+        dat,
+        masks_basic_combined._mask,
+        snr_min=cm["gal_snr_min"],
+        snr_max=cm["gal_snr_max"],
+        rel_size_min=cm["gal_rel_size_min"],
+        rel_size_max=cm["gal_rel_size_max"],
+        size_corr_ell=cm["gal_size_corr_ell"],
+        sigma_eps=cm["sigma_eps_prior"],
+        global_R_weight=cm["global_R_weight"],
+        col_2d=False,
         verbose=True,
     )
 
-    g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = (
-        calibration.get_calibrated_m_c(gal_metacal)
+    g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(
+        gal_metacal
     )
 
     # Convert index array to boolean mask
@@ -478,7 +467,7 @@ figsize = 10
 alpha = 0.5
 
 # Define explicit colors for each histogram
-colors = [f'C{i}' for i in range(len(col_names))]  # Use matplotlib default color cycle
+colors = [f"C{i}" for i in range(len(col_names))]  # Use matplotlib default color cycle
 color_map = dict(zip(col_names, colors))
 
 
@@ -489,7 +478,7 @@ if hist_data is None:
 
 if dat is not None:
     # Get magnitude column
-    mag = dat['mag']
+    mag = dat["mag"]
 
     mask_cumul = None
     for col_name in col_names:
@@ -498,21 +487,17 @@ if dat is not None:
             col_name=col_name,
             mask_cumul=mask_cumul,
             mag=mag,
-            bins=mag_bins
+            bins=mag_bins,
         )
         hist_data[col_name] = {
-            'counts': counts,
-            'bins': bins,
-            'label': label,
-            'n_valid': n_valid,
+            "counts": counts,
+            "bins": bins,
+            "label": label,
+            "n_valid": n_valid,
         }
 # %%
 # Create plots
-fig, axes = plt.subplots(
-    1,
-    2,
-    figsize=(2 * figsize, figsize)
-)
+fig, axes = plt.subplots(1, 2, figsize=(2 * figsize, figsize))
 # Plot histogram data
 plot_all_hists(
     hist_data,
@@ -531,11 +516,7 @@ plot_all_hists(
 )
 plt.tight_layout()
 out_path = f"magnitude_histograms_scenario-{scenario}.png"
-plt.savefig(
-    out_path,
-    dpi=150,
-    bbox_inches='tight'
-)
+plt.savefig(out_path, dpi=150, bbox_inches="tight")
 
 # %%
 # Save histogram data to file (only if we computed it)
@@ -545,15 +526,15 @@ if dat is not None:
         **{
             key: np.array(
                 [
-                    val['counts'],
-                    val['bins'],
-                    val['label'],
+                    val["counts"],
+                    val["bins"],
+                    val["label"],
                     val["n_valid"],
                 ],
-                dtype=object
+                dtype=object,
             )
             for key, val in hist_data.items()
-        }
+        },
     )
     print(f"Histogram data saved to {hist_data_path}")
 
@@ -564,9 +545,5 @@ if dat is not None:
 # %%
 for mask in masks:
     mask.print_condition(sys.stdout, latex=True)
-
-# %%
-# print number of valid objects and name
-for data in hist_data
 
 # %%

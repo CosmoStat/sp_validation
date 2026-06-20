@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import numpy as np
 import matplotlib.pylab as plt
-
 from astropy.io import fits
 
 shear_cat_name = "sp_output/shape_catalog_ngmix.fits"

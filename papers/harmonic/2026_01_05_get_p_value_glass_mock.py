@@ -13,21 +13,18 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import numpy as np
-from astropy.io import fits
-import scipy.stats as stats
-from scipy.interpolate import interp1d
-
 import matplotlib.pyplot as plt
-from matplotlib import scale as mscale
+import numpy as np
+import scipy.stats as stats
 import seaborn as sns
-from tqdm import tqdm
+from astropy.io import fits
+from matplotlib import scale as mscale
+from scipy.interpolate import interp1d
 
 from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)
 
-from getdist import plots, MCSamples
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 
@@ -331,7 +328,7 @@ print(f"Chi2 for the fiducial: {chi2_fiducial}")
 
 # %%
 # Make the plot
-output_fig_path = f"/home/guerrini/sp_validation/papers/harmonic/plots/"
+output_fig_path = "/home/guerrini/sp_validation/papers/harmonic/plots/"
 counts, bin_edges = np.histogram(chi2_glass_mocks, bins=25, density=True)
 
 sns.histplot(

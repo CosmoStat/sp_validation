@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 from astropy.io import fits
-
 from plotting_utils import PAPER_MPLSTYLE
+
 from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)

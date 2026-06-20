@@ -8,15 +8,13 @@ Each composite has shared axes and a single colorbar.
 """
 
 import json
-import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import numpy as np
-
+from matplotlib.patches import Rectangle
 from plotting_utils import (
     PAPER_MPLSTYLE,
     format_pte_colorbar,

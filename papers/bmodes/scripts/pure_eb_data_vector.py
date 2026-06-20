@@ -12,20 +12,17 @@ Produces 9 figures:
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-
 from plotting_utils import (
     FIG_WIDTH_FULL,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
     iter_version_figures,
 )
-
 
 plt.style.use(PAPER_MPLSTYLE)
 

@@ -17,16 +17,12 @@
 # %reload_ext autoreload
 # %autoreload 2
 
-import sys
-import os
 import numpy as np
 from astropy.io import fits
-import matplotlib.pylab as plt
 
-from sp_validation import catalog_builders as sp_joint
-from sp_validation import format
-from sp_validation.calibration import metacal
 import sp_validation.catalog as cat
+from sp_validation import catalog_builders as sp_joint
+from sp_validation.calibration import get_calibrated_m_c, metacal
 
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()

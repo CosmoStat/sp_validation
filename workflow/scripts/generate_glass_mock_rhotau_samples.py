@@ -10,8 +10,9 @@ measure PSF shape correlations which exist in real data but not in mocks).
 """
 
 import argparse
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 from astropy.io import fits
 
 

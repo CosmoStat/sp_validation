@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 from plotting_utils import PAPER_MPLSTYLE
 
 # Unbuffered output for Snakemake log streaming

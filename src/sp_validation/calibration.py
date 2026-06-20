@@ -10,16 +10,13 @@
 
 import numpy as np
 import pandas as pd
-
-from astropy.io import fits
 import statsmodels.api as sm
 import tqdm
+from astropy.io import fits
+from shear_psf_leakage import leakage, run_object
 
-from sp_validation.statistics import jackknif_weighted_average2
 from sp_validation import catalog as sp_cat
-
-from shear_psf_leakage import leakage
-from shear_psf_leakage import run_object
+from sp_validation.statistics import jackknif_weighted_average2
 
 
 def get_calibrated_quantities(gal_metacal, shape_method="ngmix"):
@@ -395,8 +392,8 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type="des"):
         mod_wls = sm.WLS(e1_out, sm.add_constant(e1_PSF), weights=weight_out)
         try:
             res_wls = mod_wls.fit()
-        except:
-            raise RunTimeError("Linear regression fit for PSF leakage failed")
+        except Exception as err:
+            raise RuntimeError("Linear regression fit for PSF leakage failed") from err
         alpha_df.loc[i_group, "alpha_1"] = res_wls.params[1]
         alpha_df.loc[i_group, "alpha_1_err"] = np.sqrt(res_wls.cov_params()[1, 1])
         del res_wls, mod_wls
@@ -526,8 +523,6 @@ def get_quantities_binned(
 
     if num_bins_y is None:
         num_bins_y = num_bins_x
-
-    bin_keys = ["snr", "size_ratio"]
 
     # Create input dataframe
     df_gal = build_df(cat_gal)
@@ -978,7 +973,7 @@ class metacal:
         # self._shear_response_std(stat_operator=lambda x:
         # jackknif_weighted_average(x, np.ones_like(x)))
 
-    def add_cuts(self, snr_min=10, snr_max=500, rel_size_min=0.5):
+    def add_cuts(self, snr_min=10, snr_max=500, rel_size_min=0.5, rel_size_max=3.0):
         """Add Cuts.
 
         Apply additional cuts to metacal galaxy catalogue.
@@ -987,6 +982,7 @@ class metacal:
             snr_min < self._snr_min
             or snr_max > self._snr_max
             or rel_size_min < self._rel_size_min
+            or rel_size_max > self._rel_size_max
         ):
             print(
                 "At least on cut is less stringend than existing one, " + "skipping..."
@@ -1056,7 +1052,6 @@ class metacal:
                 Tr_tmp *= (1 - (data["g1"] ** 2 + data["g2"] ** 2)) / (
                     1 + (data["g1"] ** 2 + data["g2"] ** 2)
                 )
-            snr_flux = data["flux"] / data["flux_err"]
 
             mask_tmp = (
                 (data["flag"] == 0)

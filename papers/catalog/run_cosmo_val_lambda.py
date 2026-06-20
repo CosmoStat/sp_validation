@@ -10,15 +10,11 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "log_cell_time")
 
 import sys
-import os
-import matplotlib.pyplot as plt
-import numpy as np
 
 sys.path.insert(
     0, "/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats"
 )
 from cosmo_val import CosmologyValidation, rename_output  # noqa: E402
-
 
 # enable inline plotting for interactive sessions
 # (must be done *after* importing package that sets agg backend)

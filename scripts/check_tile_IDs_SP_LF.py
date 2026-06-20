@@ -1,6 +1,7 @@
-import numpy as np
-import sys
 import re
+import sys
+
+import numpy as np
 
 
 def main(argv=None):
@@ -36,7 +37,7 @@ def main(argv=None):
             dat = f.readlines()
         ID_LF = []
         for line in dat:
-            m = re.match(".*CFIS\.(\d{3}\.\d{3})\.r", line)
+            m = re.match(r".*CFIS\.(\d{3}\.\d{3})\.r", line)
             if m:
                 ID_LF.append(m[1].rstrip())
         print(f" #LF = {len(ID_LF)}")
@@ -46,18 +47,12 @@ def main(argv=None):
         tile_ID = []
         for my_ID in dat[:, 0]:
             tile_ID.append(f"{my_ID:07.3f}")
-        n_det = dat[:, 1]
-        n_gal = dat[:, 2]
-        n_shape = dat[:, 3]
 
         # ShapePipe tiles not contained in LensFit
         n_SP_not_in_LF = 0
         for ID in ID_SP:
             if ID not in ID_LF:
                 # Print number of galaxies on those tiles not contained in LF
-                if ID in tile_ID:
-                    idx = tile_ID.index(ID)
-                    # print(ID, tile_ID[idx], n_det[idx], n_gal[idx], n_shape[idx])
                 n_SP_not_in_LF += 1
                 if n_SP_not_in_LF == -1:
                     print(f"  SP {ID} not in LF")

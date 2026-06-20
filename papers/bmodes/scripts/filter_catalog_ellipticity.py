@@ -79,7 +79,7 @@ props = {
 }
 
 print(f"Survey properties: n_eff={n_eff:.3f} gal/arcmin², sigma_e={sigma_e:.4f}")
-print(f"  (parent n_eff and sigma_e should be compared to assess impact)")
+print("  (parent n_eff and sigma_e should be compared to assess impact)")
 
 with open(output_props, "w") as f:
     json.dump(props, f, indent=2)

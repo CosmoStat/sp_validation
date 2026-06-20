@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
 
-import sys
-
-import numpy as np
 import copy
-from astropy.io import ascii
-from astropy.io import fits
+import sys
 from optparse import OptionParser
 
-from cs_util import logging
-from cs_util import cat
-from cs_util import plots
+import numpy as np
+from astropy.io import ascii, fits
+from cs_util import cat, logging, plots
 
-from sp_validation.catalog import *
 from sp_validation.calibration import *
+from sp_validation.catalog import *
 
 
 class param:
@@ -146,7 +142,7 @@ def update_param(p_def, options):
 
     # Add remaining keys from options to param
     for key in vars(options):
-        if not key in vars(param):
+        if key not in vars(param):
             setattr(param, key, getattr(options, key))
 
     return param
@@ -228,7 +224,7 @@ def merge_catalogues(
         input_path = f"{base_path}/{patch}/{input_sub_path}"
         try:
             dat = fits.getdata(input_path, hdu_in)
-        except:
+        except Exception:
             print(f"No data found in file {input_path} at HDU #{hdu_in}")
             print(f"Trying at HDU #{hdu_in - 1}")
             dat = fits.getdata(input_path, hdu_in - 1)
@@ -255,7 +251,7 @@ def merge_catalogues(
     # Compute column for the DES weights (Gatti et al. 2021)
     if sh == "ngmix":
         if verbose:
-            print(f"Compute DES weights for the combined catalogue.")
+            print("Compute DES weights for the combined catalogue.")
         name = "w_des"
         num_bins = 20
         dat_all["w_des"] = get_w_des(dat_all, num_bins)
@@ -481,7 +477,6 @@ def main(argv=None):
     g2_corr_mc_all = np.array([]) if g_corr is None else g_corr[1]
     w_all = np.array([])
     mag_all = np.array([])
-    snr_all = np.array([])
     patch_all = np.array([])
     if param.verbose:
         print("Merging base catalogue")

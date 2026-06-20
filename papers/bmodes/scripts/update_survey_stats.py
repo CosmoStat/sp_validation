@@ -11,14 +11,13 @@ Usage:
 
 import argparse
 import gc
-import sys
 import os
+from pathlib import Path
 
 import healpy as hp
 import numpy as np
-from astropy.io import fits
-from pathlib import Path
 import yaml
+from astropy.io import fits
 
 os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val")
 

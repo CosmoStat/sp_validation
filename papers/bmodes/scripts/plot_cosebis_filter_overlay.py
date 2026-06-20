@@ -14,9 +14,9 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import numpy as np
 import seaborn as sns
 from astropy.io import fits
 from cosmo_numba.B_modes.cosebis import COSEBIS

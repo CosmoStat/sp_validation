@@ -12,12 +12,11 @@ if ipython is not None:
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("reload_ext", "log_cell_time")
 
-import numpy as np
 import time
-from astroquery.gaia import Gaia
-import astropy.units
-from astropy.coordinates import SkyCoord
 from textwrap import dedent
+
+import numpy as np
+from astroquery.gaia import Gaia
 
 
 def get_bins(results, key="phot_g_mean_mag", n_bins=3):

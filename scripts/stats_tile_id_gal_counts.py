@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-import sys
-import numpy as np
 import copy
-import matplotlib.pylab as plt
-
+import sys
 from optparse import OptionParser
+
+import matplotlib.pylab as plt
+import numpy as np
 
 
 class param:
@@ -119,7 +119,7 @@ def update_param(p_def, options):
 
     # Add remaining keys from options to param
     for key in vars(options):
-        if not key in vars(param):
+        if key not in vars(param):
             setattr(param, key, getattr(options, key))
 
     return param
@@ -168,7 +168,6 @@ def main(argv=None):
 
     for patch, input_path in zip(patches, input_files):
         dat[patch] = np.loadtxt(input_path)
-        tile_ID = dat[patch][:, 0]
         n_det = dat[patch][:, 1]
         n_gal = dat[patch][:, 2]
         n_shape = dat[patch][:, 3]

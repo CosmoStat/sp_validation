@@ -9,22 +9,18 @@
 
 """
 
-from collections import Counter
-
-import healpy as hp
 import healsparse as hsp
 import matplotlib.pylab as plt
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
 import numpy as np
-import skyproj
-from astropy import units as u
-from astropy.coordinates import SkyCoord
 from cs_util import plots
 from lenspack.geometry.projections.gnom import radec2xy
 
-from sp_validation.plot_style import *
+# Imported for its import-time side effect: sets matplotlib rcParams (plot style).
+import sp_validation.plot_style  # noqa: F401
+from sp_validation.masks import Mask
 
 
 class SquareRootScale(mscale.ScaleBase):
@@ -272,7 +268,6 @@ def plot_map(
     if clusters:
         x_cluster = (clusters["x"] + mean_x - min_x) / (max_x - min_x) * Nx
         y_cluster = (clusters["y"] + mean_y - min_y) / (max_y - min_y) * Ny
-        dy = 0.02
         plt.plot(
             x_cluster,
             y_cluster,
@@ -340,7 +335,7 @@ def plot_binned(
     len_shape = len(quantities[key].shape)
 
     fig_size = 2 * len_shape
-    fig = plt.figure(figsize=(fig_size, fig_size))
+    plt.figure(figsize=(fig_size, fig_size))
 
     if len_shape == 2:
         ax = plt.subplot2grid((1, 1), (0, 0))
@@ -475,7 +470,7 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     ra = dat["RA"][:]
     dec = dat["Dec"][:]
 
-    zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
+    zoom_ra = (zoom_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
     zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
     zoom = zoom_ra & zoom_dec
 
@@ -498,6 +493,12 @@ def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
     m_maxi = masks[labels["1024_Maximask"]]._mask & m_point
     plot_area_mask(ra, dec, zoom, mask=m_maxi)
 
+    # Combined mask over all supplied masks (was passed in by the caller before
+    # this routine was extracted into a function; rebuilt here from ``masks``).
+    # ``masks`` is the list returned by ``get_masks_from_config`` (``labels``
+    # maps name -> integer index into it), so ``from_list`` consumes it directly
+    # -- exactly as the caller does (``Mask.from_list(masks, label="combined")``).
+    mask_combined = Mask.from_list(masks, label="combined")
     m_comb = mask_combined._mask
     plot_area_mask(ra, dec, zoom, mask=m_comb)
 

@@ -8,17 +8,15 @@ Uses fiducial blind covariance only (blind independence validated elsewhere).
 """
 
 import json
-import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 from astropy.io import fits
-
+from matplotlib.patches import Rectangle
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
@@ -28,7 +26,6 @@ from plotting_utils import (
     make_pte_colormap,
     make_pte_norm,
 )
-
 
 plt.style.use(PAPER_MPLSTYLE)
 

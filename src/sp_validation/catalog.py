@@ -11,24 +11,17 @@
 
 """
 
-import os
-import re
-import numpy as np
 import getpass
 
 import h5py
+import numpy as np
 import tqdm
-
-from datetime import datetime
-
-from astropy.io import fits
 from astropy import coordinates as coords
 from astropy import units as u
-
+from astropy.io import fits
 from cs_util import cat
 
-from sp_validation import format
-from sp_validation import io
+from sp_validation import format, io
 from sp_validation.survey import get_footprint
 from sp_validation.version import __version__
 
@@ -403,7 +396,6 @@ def read_shape_catalog(
     ra = dat[hdu_no].data["RA"]
     dec = dat[hdu_no].data["Dec"]
 
-    g = [np.empty_like(ra), np.empty_like(ra)]
     g1 = dat[hdu_no].data["e1_uncal"]
     g2 = dat[hdu_no].data["e2_uncal"]
     w = dat[hdu_no].data[w_name]
@@ -756,7 +748,7 @@ def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=Non
 
     with h5py.File(file_path, "r") as hdf5_file:
         # Find patch group in hierarchical structure
-        if not f"patches/{name}" in hdf5_file:
+        if f"patches/{name}" not in hdf5_file:
             raise KeyError(f"Entry patches/{name} not found in file {file_path}")
         patch_group = hdf5_file[f"patches/{name}"]
 

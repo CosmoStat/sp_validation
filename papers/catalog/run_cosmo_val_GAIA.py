@@ -9,9 +9,10 @@ if ipython is not None:
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("load_ext", "log_cell_time")
 
+import sys  # noqa: E402
+
 import matplotlib.pyplot as plt  # noqa: E402, F401
 import numpy as np  # noqa: E402, F401
-import sys  # noqa: E402
 
 sys.path.insert(
     0, "/home/mkilbing/astro/repositories/gitlab.euclid-sgs/FDQA/rho_tau_stats"

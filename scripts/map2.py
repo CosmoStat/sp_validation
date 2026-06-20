@@ -11,15 +11,10 @@ computed with ``treecorr``.
 """
 
 import sys
+from optparse import OptionParser
 
 import numpy as np
-
-from optparse import OptionParser
-from astropy.io import fits
-import matplotlib.pylab as plt
-
 import treecorr
-
 from cs_util import logging
 
 
@@ -99,7 +94,7 @@ def parse_options(p_def, short_options, types, help_strings):
             )
 
     parser.add_option(
-        "-v", "--verbose", dest="verbose", action="store_true", help=f"verbose output"
+        "-v", "--verbose", dest="verbose", action="store_true", help="verbose output"
     )
 
     options, args = parser.parse_args()

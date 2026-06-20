@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import treecorr
-
 from plotting_utils import compute_chi2_pte
+
 from sp_validation.b_modes import calculate_cosebis
 
 

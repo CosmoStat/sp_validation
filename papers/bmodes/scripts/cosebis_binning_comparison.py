@@ -17,17 +17,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import treecorr
-from scipy import stats
-
 from cosmo_numba.B_modes.cosebis import COSEBIS
-from sp_validation.b_modes import calculate_cosebis, scale_cut_to_bins
-
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
 )
 
+from sp_validation.b_modes import calculate_cosebis, scale_cut_to_bins
 
 plt.style.use(PAPER_MPLSTYLE)
 

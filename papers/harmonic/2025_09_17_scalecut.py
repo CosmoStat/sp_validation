@@ -5,12 +5,11 @@ import os
 os.environ["LD_LIBRARY_PATH"] = ""
 os.environ["CONDA_PREFIX"] = "/home/guerrini/.conda/envs/sp_validation_3.11"
 
-import numpy as np
 import camb
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
 from astropy.cosmology import Planck18
-from astropy.io import fits
 from scipy.interpolate import interp1d
 
 plt.style.use("/home/guerrini/matplotlib_config/paper.mplstyle")
@@ -136,7 +135,7 @@ for ell in ell_list:
 plt.figure()
 
 for ell, I_vals in zip(ell_list, I_vals_list):
-    plt.plot(k_vals, I_vals / np.max(I_vals), label=f"$\ell={ell}$")
+    plt.plot(k_vals, I_vals / np.max(I_vals), label=rf"$\ell={ell}$")
     print(np.trapz(I_vals, k_vals))
 
 plt.xscale("log")

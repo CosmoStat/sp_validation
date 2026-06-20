@@ -8,12 +8,12 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import statsmodels.api as sm
 from astropy.io import fits
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 
 plt.style.use("/home/guerrini/matplotlib_config/paper.mplstyle")
 
@@ -105,8 +105,8 @@ for name, group in df_gal_grouped:
     mod_wls = sm.WLS(e1_out, sm.add_constant(e1_PSF), weights=weight_out)
     try:
         res_wls = mod_wls.fit()
-    except:
-        raise RunTimeError("Linear regression fit for PSF leakage failed")
+    except Exception:
+        raise RuntimeError("Linear regression fit for PSF leakage failed")
     alpha_df.loc[i_group, "alpha_1"] = res_wls.params[1]
     alpha_df.loc[i_group, "alpha_1_err"] = np.sqrt(res_wls.cov_params()[1, 1])
     del res_wls, mod_wls

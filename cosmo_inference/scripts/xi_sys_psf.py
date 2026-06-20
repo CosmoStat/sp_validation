@@ -1,7 +1,6 @@
-from cosmosis.datablock import names, option_section
-from cosmosis.datablock.cosmosis_py import lib
-from astropy.io import fits
 import numpy as np
+from astropy.io import fits
+from cosmosis.datablock import option_section
 
 
 # This file should be added to your cosmosis_standard_library following the path shear/xi_sys/xi_sys_psf.py

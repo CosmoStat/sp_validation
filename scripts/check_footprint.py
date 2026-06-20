@@ -11,24 +11,16 @@ Check input catalogue against footprint mask.
 """
 
 import sys
-import os
-
-import numpy as np
-import healpy as hp
-
-from astropy.io import fits
-from astropy.table import Table
-
-import matplotlib.pylab as plt
-
 from optparse import OptionParser
 
-from unions_wl import catalogue as wl_cat
-
-from cs_util import logging
-from cs_util import calc
-from cs_util import plots
+import healpy as hp
+import matplotlib.pylab as plt
+import numpy as np
+from astropy.io import fits
+from astropy.table import Table
 from cs_util import cat as cs_cat
+from cs_util import logging
+from unions_wl import catalogue as wl_cat
 
 
 def params_default():
@@ -140,7 +132,7 @@ def parse_options(p_def, short_options, types, help_strings):
                 )
 
     parser.add_option(
-        "-v", "--verbose", dest="verbose", action="store_true", help=f"verbose output"
+        "-v", "--verbose", dest="verbose", action="store_true", help="verbose output"
     )
 
     options, args = parser.parse_args()
@@ -178,9 +170,6 @@ def main(argv=None):
 
     ## Get pixels in footprint, where mask is 1
     in_footprint = mask[ipix] == params["good"]
-
-    # Get numbers of pixels in footprint
-    ipix_in_footprint = ipix[in_footprint]
 
     # Get indices of coordinates in footprint
     idx_np = np.where(in_footprint)[0]

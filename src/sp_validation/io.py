@@ -111,7 +111,6 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
 def write_binned_quantity(quantity, key, bin_edges, extra_key="quantity"):
 
     shape = quantity.shape
-    len_shape = len(shape)
     nx, ny = shape[:2]
 
     filename = f"{key}_binned.npz"

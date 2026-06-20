@@ -235,7 +235,6 @@ def confusion_matrix(prediction, observation):
 
     result = {}
 
-    pred_pos = sum(prediction)
     result["true_pos"] = sum(prediction & observation)
     result["true_neg"] = sum(np.logical_not(prediction) & np.logical_not(observation))
     result["false_neg"] = sum(prediction & np.logical_not(observation))

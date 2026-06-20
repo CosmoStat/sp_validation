@@ -11,7 +11,6 @@ Author: Claude Code
 
 import numpy as np
 import pyccl as ccl
-
 from cosmo_numba.B_modes.cosebis import COSEBIS
 
 
@@ -70,7 +69,7 @@ def main():
     n_theta = 1000
     theta_integration = np.logspace(np.log10(theta_min), np.log10(theta_max), n_theta)
 
-    print(f"\nParameters:")
+    print("\nParameters:")
     print(f"  theta range: [{theta_min}, {theta_max}] arcmin")
     print(f"  COSEBIS modes: 1-{nmodes}")
     print(f"  ℓ grid: {len(ell)} points in [{ell.min()}, {ell.max()}]")
@@ -106,7 +105,6 @@ def main():
     print("\nComputing COSEBIS from config-space (ξ±)...")
     # For config-space, need dtheta for integration
     dtheta = np.gradient(theta_integration)
-    xim_zero = np.zeros_like(xip)  # B=0 for theory
 
     ce_config, cb_config = cosebis.cosebis_from_xipm(
         theta=theta_integration, dtheta=dtheta, xi_plus=xip, xi_minus=xim, cache=True

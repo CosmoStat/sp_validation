@@ -1,7 +1,5 @@
 # %%
 import os
-import configparser
-import subprocess
 import sys
 import warnings
 
@@ -11,18 +9,13 @@ sys.path.append(
     "/home/guerrini/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_unblinding/"
 )
 
-from getdist import plots, loadMCSamples
-from astropy.io import fits
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
-import scipy.stats as stats
-from IPython.display import Markdown, display
-import healpy as hp
 import matplotlib.scale as mscale
-import matplotlib.ticker as ticker
-import matplotlib.transforms as mtransforms
+import numpy as np
 import seaborn as sns
+from astropy.io import fits
+from getdist import plots
+from IPython.display import Markdown, display
 
 from sp_validation.rho_tau import SquareRootScale
 
@@ -161,8 +154,8 @@ ax.text(
 )
 
 ell, cell = cell_ee["ANG"], cell_ee["VALUE"]
-ax.set_ylabel("$\ell C_\ell$", fontsize=16)
-ax.set_xlabel("$\ell$", fontsize=16)
+ax.set_ylabel(r"$\ell C_\ell$", fontsize=16)
+ax.set_xlabel(r"$\ell$", fontsize=16)
 ax.set_xlim(ell.min() - 10, ell.max() + 100)
 ax.set_xscale("squareroot")
 ax.set_xticks(np.array([100, 400, 900, 1600]))
@@ -422,7 +415,7 @@ utils.plot_best_fit(
 # Plot best-fit xi_+ and xi_- (also from C_ell's)
 
 path_best_fit_xi_theta = os.path.join(
-    path_output_chains, fiducial_root_xi_chains, f"best_fit/shear_xi_plus/theta.txt"
+    path_output_chains, fiducial_root_xi_chains, "best_fit/shear_xi_plus/theta.txt"
 )
 theta_rad = np.loadtxt(path_best_fit_xi_theta)
 
@@ -590,7 +583,7 @@ for i, chain in enumerate(chains):
     for name, label in zip(name_list, label_list):
         try:
             param_names.parWithName(name).label = label
-        except:
+        except Exception:
             warnings.warn(f"Parameter {name} not found in chain {roots[i]}.")
 
 # Account for the missing parameter conventions
@@ -657,13 +650,13 @@ for i, chain in enumerate(chains):
     )
 print(param_values)
 np.savetxt(
-    f"./param_values.txt", param_values, fmt=["%s" for i in range(11)], delimiter=";"
+    "./param_values.txt", param_values, fmt=["%s" for i in range(11)], delimiter=";"
 )
 
 # Reload the table
 # Load the value of the parameters
 cosmo = np.loadtxt(
-    f"./param_values.txt",
+    "./param_values.txt",
     dtype={
         "names": (
             "Expt",
@@ -724,7 +717,7 @@ params = [
     (sigma8_mean, sigma8_low, sigma8_high, r"$\sigma_8$"),
     (omegam_mean, omegam_low, omegam_high, r"$\Omega_{\rm m}$"),
 ]
-reference = "UNIONS $C_\ell$, unblind"
+reference = r"UNIONS $C_\ell$, unblind"
 separation_after = [
     r"UNIONS $\xi_\pm(\vartheta)$, unblind",
     r"HSC Y3 $C_\ell$",
@@ -867,7 +860,7 @@ plt.show()
 
 # %%
 # 4. Make a contour plots
-display(Markdown("### Here comes $S_8$ and $\Omega_m$"))
+display(Markdown(r"### Here comes $S_8$ and $\Omega_m$"))
 colours = ["royalblue", "orange", "violet"]
 
 filled = [True, True, False, False, False, False, False, False, False, False, False]

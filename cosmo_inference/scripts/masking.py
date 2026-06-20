@@ -1,11 +1,11 @@
 import argparse
+import os
+from multiprocessing import Pool, cpu_count
+from pathlib import Path
+
 import h5py
 import healpy as hp
 import numpy as np
-from multiprocessing import Pool, cpu_count
-import os
-import sys
-from pathlib import Path
 import yaml
 
 # -------------------------

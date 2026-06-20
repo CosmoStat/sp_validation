@@ -2,26 +2,17 @@
 Useful scripts to perform the plots for the unblinding party.
 """
 
-import os
 import configparser
-import subprocess
+import os
 import sys
 
 # Append any useful folder in the path
 sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts/")
 
-from getdist import plots, loadMCSamples
-from astropy.io import fits
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
-import scipy.stats as stats
-from IPython.display import Markdown, display
-import healpy as hp
 import matplotlib.scale as mscale
-import matplotlib.ticker as ticker
-import matplotlib.transforms as mtransforms
-import seaborn as sns
+import numpy as np
+from astropy.io import fits
 
 from sp_validation.rho_tau import SquareRootScale
 
@@ -119,16 +110,19 @@ def plot_best_fit(
     )
 
     for idx, (label, root) in enumerate(zip(labels, root_to_plot)):
-        lower_bound_cell_ee = properties[root]["lower_bound_cell_ee"]
-        upper_bound_cell_ee = properties[root]["upper_bound_cell_ee"]
-
         # Read the results
         if paths_to_bestfit is None:
             ell = np.loadtxt(
-                output_folder + "{}/best_fit/shear_cl/ell.txt".format(root, root)
+                output_folder
+                + "{}/best_fit/shear_cl/ell.txt".format(
+                    root,
+                )
             )
             shear_cl = np.loadtxt(
-                output_folder + "{}/best_fit/shear_cl/bin_1_1.txt".format(root, root)
+                output_folder
+                + "{}/best_fit/shear_cl/bin_1_1.txt".format(
+                    root,
+                )
             )
         else:
             ell = np.loadtxt(paths_to_bestfit[idx] + "best_fit/shear_cl/ell.txt")
@@ -293,7 +287,7 @@ def plot_best_fit_config(
             xi_minus = np.loadtxt(
                 output_folder + "{}/best_fit/shear_xi_minus/bin_1_1.txt".format(root)
             )
-            if "$C_\ell$" not in label:
+            if r"$C_\ell$" not in label:
                 xi_sys_plus = np.loadtxt(
                     output_folder + "{}/best_fit/xi_sys/shear_xi_plus.txt".format(root)
                 )
@@ -323,7 +317,7 @@ def plot_best_fit_config(
             xi_minus = np.loadtxt(
                 paths_to_bestfit[idx] + "best_fit/shear_xi_minus/bin_1_1.txt"
             )
-            if "$C_\ell$" not in label:
+            if r"$C_\ell$" not in label:
                 xi_sys_plus = np.loadtxt(
                     output_folder + "{}/best_fit/xi_sys/shear_xi_plus.txt".format(root)
                 )

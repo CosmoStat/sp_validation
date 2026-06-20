@@ -18,7 +18,6 @@ Usage:
 """
 
 import os
-import sys
 import time
 
 import numpy as np
@@ -165,7 +164,7 @@ def main():
     t0 = time.time()
 
     log("=" * 60)
-    log(f"High-resolution ξ± measurement")
+    log("High-resolution ξ± measurement")
     log(f"  MPI: {'yes' if USE_MPI else 'no'} (ranks={size})")
     log(f"  Config: {NBINS:,} bins, [{TMIN}, {TMAX}] arcmin")
     log(f"  Patches: {NPATCH}, Threads/rank: {NUM_THREADS}")

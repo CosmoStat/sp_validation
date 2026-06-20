@@ -3,10 +3,10 @@ import IPython
 
 ipython = IPython.get_ipython()
 
-import numpy as np
-from astropy.io import fits
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
+from astropy.io import fits
 
 plt.style.use("./matplotlib_config/paper.mplstyle")
 
@@ -46,7 +46,7 @@ threshold_rho_25 = 0.5 * xi_plus / snr / a
 plot_requirements = True
 
 # %%
-e_psf = "e^\mathrm{PSF}"
+e_psf = r"e^\mathrm{PSF}"
 delta_e_psf = r"\delta e^\mathrm{PSF}"
 delta_T_psf = r"\delta T^\mathrm{PSF}"
 

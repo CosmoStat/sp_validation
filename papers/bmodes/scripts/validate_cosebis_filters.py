@@ -13,12 +13,10 @@ for modes n = 1 through 20, across a dense ℓ grid.
 Author: Claude Code
 """
 
-import numpy as np
-from scipy import special
-from scipy import integrate
 import matplotlib.pyplot as plt
-
+import numpy as np
 from cosmo_numba.B_modes.cosebis import COSEBIS
+from scipy import integrate, special
 
 
 def direct_Wn_integration(ell_val, theta_arcmin, Tp):
@@ -248,7 +246,7 @@ def main():
     )
     max_err = np.max(np.abs(1 - all_ratios))
     print(f"\n{'=' * 70}")
-    print(f"VERDICT")
+    print("VERDICT")
     print(f"{'=' * 70}")
     print(f"Maximum |1 - ratio| across all modes, scale cuts, ℓ: {max_err:.6f}")
     if max_err < 0.01:

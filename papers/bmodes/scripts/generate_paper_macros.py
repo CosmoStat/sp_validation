@@ -256,7 +256,6 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
             cosebis_20 = ver_data.get("cosebis_20_stats", {})
 
             # Fiducial PTEs
-            bold = 0.05
             if "pte_at_fiducial" in xip:
                 macros.append(
                     f"\\newcommand{{\\{prefix}Xip}}{{{_format_value(xip['pte_at_fiducial'])}}}"
@@ -467,11 +466,6 @@ def generate_pte_tables(
     if harmonic_pte_path.exists():
         with open(harmonic_pte_path) as f:
             harmonic_data = json.load(f).get("evidence", {}).get("versions", {})
-
-    # Get table label for caption
-    fid_label = table_labels.get(
-        fiducial_version, version_labels.get(fiducial_version, fiducial_version)
-    )
 
     # Results table (fiducial only) — grouped by statistic family
     if fiducial_version in config_data or fiducial_version in harmonic_data:

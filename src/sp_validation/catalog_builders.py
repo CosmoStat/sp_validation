@@ -8,43 +8,40 @@ functions. Built on the catalogue data layer in ``catalog`` (imported here as
 :Author: Martin Kilbinger
 """
 
-import sys
-import os
-
-import numpy as np
-import yaml
-
 import datetime
-from tqdm import tqdm
-
-from optparse import OptionParser
+import os
 from importlib.metadata import version
 
 import h5py
 import healsparse as hsp
 import numpy as np
-
+import yaml
 from astropy.io import fits
-from astropy.table import Column
-
-from cs_util import logging
-from cs_util import cat
 from cs_util import args as cs_args
-
-from . import format
-from . import calibration
-from . import catalog as sp_cat
+from cs_util import logging
 
 # Spatial-masking primitives now live in ``masks``; re-exported here so external
 # code using ``from sp_validation import catalog_builders as sp_joint`` keeps
 # resolving ``sp_joint.Mask``, ``sp_joint.get_masks_from_config``, etc.
 from sp_validation.masks import (
     Mask,
+    confusion_matrix,
+    correlation_matrix,
     get_masks_from_config,
     print_mask_stats,
-    correlation_matrix,
-    confusion_matrix,
 )
+
+from . import calibration, format
+from . import catalog as sp_cat
+
+# Names re-exported for external code that resolves them off this module.
+__all__ = [
+    "Mask",
+    "get_masks_from_config",
+    "print_mask_stats",
+    "correlation_matrix",
+    "confusion_matrix",
+]
 
 
 class BaseCat(object):
@@ -64,8 +61,8 @@ class BaseCat(object):
         Does not work from ipython or jupyter.
 
         """
-        # Read command line options
-        options = cs_args.parse_options(
+        # Read command line options (parses sys.argv; may exit on --help)
+        cs_args.parse_options(
             self._params,
             self._short_options,
             self._types,
@@ -232,7 +229,7 @@ class BaseCat(object):
             dset[:] = dat
 
         if self._params["verbose"]:
-            print(f"Done.")
+            print("Done.")
 
     def close_hd5(self):
         """Close HD5.
@@ -371,11 +368,11 @@ class JointCat(BaseCat):
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
                 hdu_list = fits.open(input_path)
-            except:
+            except Exception as err:
                 raise ValueError(
                     f"Could not open file {input_path} at HDU"
                     + f" #{self._params['hdu']}"
-                )
+                ) from err
             hdu_lists.append(hdu_list)
 
             this_n = int(hdu_list[self._params["hdu"]].header["NAXIS2"])
@@ -592,11 +589,11 @@ class JointCat(BaseCat):
                 # dat = hdu_lists[idx][self._params["hdu"]].data
 
                 hdu_lists[idx].close()
-            except:
+            except Exception as err:
                 raise ValueError(
                     f"Could not read data of file {input_path} at HDU"
                     + f" #{self._params['hdu']}"
-                )
+                ) from err
 
             # Create empty lists if first patch
             if idx == 0:
@@ -1271,7 +1268,7 @@ def compute_PSF_leakage(
         alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(
             cat_gal, num_bins, weight_type
         )
-    except:
+    except Exception:
         alpha_1, alpha_2 = -99, -99
 
     return alpha_1, alpha_2

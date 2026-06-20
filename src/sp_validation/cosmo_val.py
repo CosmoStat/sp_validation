@@ -1,8 +1,8 @@
 # %%
+import configparser
 import copy
 import os
 from pathlib import Path
-import configparser
 
 import colorama
 import healpy as hp
@@ -2778,7 +2778,6 @@ class CosmologyValidation:
                 n_gal, unique_pix, idx, idx_rep = self.get_n_gal_map(
                     params, nside, cat_gal
                 )
-                mask = n_gal != 0
 
                 f, wsp = self.get_field_and_workspace_from_map(n_gal, b_lmax, b)
 
@@ -3389,13 +3388,6 @@ class CosmologyValidation:
         cell_hdu = fits.BinTableHDU.from_columns(coldefs, name="PSEUDO_CELL")
 
         cell_hdu.writeto(out_path, overwrite=True)
-
-    @property
-    def pseudo_cls(self):
-        if not hasattr(self, "_pseudo_cls"):
-            self.calculate_pseudo_cl()
-            self.calculate_pseudo_cl_eb_cov()
-        return self._pseudo_cls
 
     def plot_pseudo_cl(self):
         """

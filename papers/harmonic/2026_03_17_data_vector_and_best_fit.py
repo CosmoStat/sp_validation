@@ -1,9 +1,6 @@
 # %%
 import os
-import configparser
-import subprocess
 import sys
-import warnings
 
 # Append any useful folder in the path
 sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts/")
@@ -11,18 +8,10 @@ sys.path.append(
     "/home/guerrini/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_unblinding/"
 )
 
-from getdist import plots, loadMCSamples
-from astropy.io import fits
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.interpolate import interp1d
-import scipy.stats as stats
-from IPython.display import Markdown, display
-import healpy as hp
 import matplotlib.scale as mscale
-import matplotlib.ticker as ticker
-import matplotlib.transforms as mtransforms
 import seaborn as sns
+from getdist import plots
 
 from sp_validation.rho_tau import SquareRootScale
 
@@ -40,7 +29,6 @@ if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 import chain_postprocessing as cp
-import utils
 
 plt.style.use(
     "/home/guerrini/sp_validation/papers/harmonic/matplotlib_config/paper.mplstyle"

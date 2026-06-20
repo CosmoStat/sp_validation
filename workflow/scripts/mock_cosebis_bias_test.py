@@ -16,12 +16,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import treecorr
+from cosmo_numba.B_modes.cosebis import COSEBIS
+from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
 from scipy.stats import chi2 as chi2_dist
 
-from cosmo_numba.B_modes.cosebis import COSEBIS
 from sp_validation.b_modes import scale_cut_to_bins
-
-from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
 
 plt.style.use(PAPER_MPLSTYLE)
 

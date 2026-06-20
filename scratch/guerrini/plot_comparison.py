@@ -7,12 +7,11 @@ preserved as-is.
 # %%
 import os
 
+import healpy as hp
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
-import matplotlib.pyplot as plt
-import healpy as hp
 from tqdm import tqdm
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 plt.rcParams.update(
     {
@@ -28,13 +27,9 @@ plt.rcParams.update(
         "figure.dpi": 600,  # Adjust as needed
     }
 )
-from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat, PSFErrorFit
-
 import treecorr
-
-from getdist import plots, MCSamples
-
 from IPython import get_ipython
+from shear_psf_leakage.rho_tau_stat import PSFErrorFit, RhoStat, TauStat
 
 ipython = get_ipython()
 if ipython is not None:
@@ -184,7 +179,7 @@ plt.yscale("log")
 plt.xlabel(r"$\theta$ (arcmin)")
 plt.ylabel(r"$\xi_{+}$")
 plt.legend()
-plt.title("Systematic error comparison at 68\% level")
+plt.title(r"Systematic error comparison at 68\% level")
 plt.savefig("Plots/xi_sys_lq_comparison.png", dpi=600)
 plt.show()
 
@@ -250,14 +245,14 @@ plt.plot(
     [threshold, threshold],
     c="black",
     ls="--",
-    label=str(threshold * 100) + "\% level",
+    label=str(threshold * 100) + r"\% level",
 )
 plt.plot([0.1, 250], [-threshold, -threshold], c="k", ls="--")
 plt.xscale("log")
 plt.xlabel(r"$\theta$ (arcmin)")
 plt.ylabel(r"$\xi_{\rm sys}/\xi_{+}$")
 plt.legend()
-plt.title("Systematic error comparison at 68\% level")
+plt.title(r"Systematic error comparison at 68\% level")
 plt.savefig("Plots/ratio_lq_comparison.png", dpi=600)
 plt.show()
 
@@ -329,7 +324,7 @@ plt.xscale("log")
 plt.xlabel(r"$\theta$ (arcmin)")
 plt.ylabel(r"$\frac{\xi_{\rm sys}/\xi_{+}}{[\xi_{\rm sys}/\xi_{+}]_{\rm DES}}$")
 plt.legend()
-plt.title("Systematic error comparison at 68\% level")
+plt.title(r"Systematic error comparison at 68\% level")
 plt.savefig("Plots/ratio_DES.png", dpi=600)
 plt.show()
 
@@ -424,14 +419,14 @@ plt.plot(
     [threshold, threshold],
     c="black",
     ls="--",
-    label=str(threshold * 100) + "\% level",
+    label=str(threshold * 100) + r"\% level",
 )
 plt.plot([0.1, 250], [-threshold, -threshold], c="k", ls="--")
 plt.xscale("log")
 plt.xlabel(r"$\theta$ (arcmin)")
 plt.ylabel(r"$\xi_{\rm sys}/\sigma_{\xi_+}$")
 plt.legend()
-plt.title("Systematic error comparison at 68\% level")
+plt.title(r"Systematic error comparison at 68\% level")
 plt.savefig("Plots/ratio_varxip_lq_comparison.png", dpi=600)
 plt.show()
 

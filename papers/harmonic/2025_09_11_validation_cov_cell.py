@@ -14,16 +14,14 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import numpy as np
-from astropy.io import fits
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
-import matplotlib.ticker as mticker
-from matplotlib import scale as mscale
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+import numpy as np
 import seaborn as sns
+from astropy.io import fits
+from matplotlib import scale as mscale
+from matplotlib.gridspec import GridSpec
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tqdm import tqdm
-import healpy as hp
 
 from sp_validation.rho_tau import SquareRootScale
 

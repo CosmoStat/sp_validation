@@ -8,30 +8,24 @@ Combine healpy tile masks into a joint footprint mask.
 
 """
 
-import sys
 import re
+import sys
+import warnings
 from glob import glob
 from optparse import OptionParser
 
-import numpy as np
-
 import matplotlib.pylab as plt
-
+import numpy as np
 from astropy.io import fits
 from astropy.table import Table
-from astropy import wcs
-
-import warnings
 from astropy.wcs import FITSFixedWarning
 
 warnings.filterwarnings("ignore", category=FITSFixedWarning)
 
 import healpy as hp
-from reproject import reproject_from_healpix, reproject_to_healpix
-
-from tqdm import tqdm
-
 from cs_util import logging
+from reproject import reproject_to_healpix
+from tqdm import tqdm
 
 
 def params_default():
