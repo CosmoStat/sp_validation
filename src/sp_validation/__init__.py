@@ -1,29 +1,16 @@
 from .version import __version__
 
 __all__ = [
-    'util',
-    'io',
-    'cosmo_val',
-    'galaxy',
-    'cosmology',
-    'glass_mock',
-    'calibration',
-    'statistics',
+    'b_modes',
     'cat',
-    'plot_style',
+    'calibration',
+    'cosmology',
+    'galaxy',
+    'glass_mock',
     'plots',
+    'rho_tau',
     'run_joint_cat',
+    'statistics',
     'survey',
+    'util',
 ]
-
-# Explicit imports to avoid circular issues
-#from . import util
-#from . import io
-#from . import galaxy
-#from . import cosmology
-#from . import calibration
-#from . import cat
-#from . import plot_style
-#from . import plots
-#from . import run_joint_cat
-#from . import survey
