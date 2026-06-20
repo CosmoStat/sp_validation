@@ -326,7 +326,7 @@ from sp_validation.plots import *
 
 # -
 from sp_validation.survey import *
-from sp_validation.util import *
+from sp_validation.format import *
 
 # ## metacalibration for galaxies
 
@@ -941,7 +941,7 @@ print_stats('Dispersion of (average) single-component ellipticity = {:.3f} = {:.
 import os
 
 from sp_validation.cat import *
-from sp_validation.util import *
+from sp_validation.format import *
 
 # Shear response per galaxy
 R_shear_ind = gal_metacal.R_shear

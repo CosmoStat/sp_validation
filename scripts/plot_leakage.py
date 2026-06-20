@@ -11,7 +11,6 @@ from cs_util import logging
 
 from sp_validation.cat import *
 from sp_validation.plots import *
-from sp_validation.util import transform_nan
 from sp_validation import io
 
 

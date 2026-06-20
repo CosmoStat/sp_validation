@@ -31,7 +31,7 @@ from cs_util import logging
 from cs_util import cat
 from cs_util import args as cs_args
 
-from . import util
+from . import format
 from . import calibration
 from . import cat as sp_cat
 
@@ -373,7 +373,7 @@ class JointCat(BaseCat):
             n_obj += this_n
 
         if self._params["verbose"]:
-            print(f"Found a total of {n_obj} (~{util.millify(n_obj)}) objects.")
+            print(f"Found a total of {n_obj} (~{format.millify(n_obj)}) objects.")
 
         return hdu_lists, n_obj_list, n_obj
 
@@ -627,7 +627,7 @@ class JointCat(BaseCat):
                 )
             if self._params["verbose"]:
                 print(
-                    f"{patch}: Added {len(dat)} (~{util.millify(len(dat))})"
+                    f"{patch}: Added {len(dat)} (~{format.millify(len(dat))})"
                     + f" objects (from {start} to {end-1})."
                 )
             start = end
@@ -1146,7 +1146,7 @@ class CalibrateCat(BaseCat):
 
         if verbose:
             print(
-                f"Found {len(dat)} (~{util.millify(len(dat))}) objects"
+                f"Found {len(dat)} (~{format.millify(len(dat))}) objects"
                 + " in catalogue"
             )
 

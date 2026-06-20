@@ -24,7 +24,7 @@ from astropy import units as u
 
 from cs_util import cat
 
-from sp_validation import util
+from sp_validation import format
 from sp_validation import io
 from sp_validation.survey import get_footprint
 from sp_validation.version import __version__
@@ -85,7 +85,7 @@ def print_mean_ellipticity(
     ind_v = ind_val[0] & ind_val[1]
 
     n_tot_val = len(np.where(ind_v)[0])
-    n_tot_mil = util.millify(n_tot_val)
+    n_tot_mil = format.millify(n_tot_val)
     msg = (
         f"Total number of valid objects ({ell_col_name}0,1 != {invalid})"
         + f" = {n_tot_val} = {n_tot_mil}"
@@ -143,7 +143,7 @@ def print_some_quantities(dd, stats_file, verbose=False):
         print("")
 
     n_tot = len(dd)
-    n_mil = util.millify(n_tot)
+    n_mil = format.millify(n_tot)
     msg = f"Total number of objects = {n_tot} = {n_mil}"
     io.print_stats(msg, stats_file, verbose=verbose)
 

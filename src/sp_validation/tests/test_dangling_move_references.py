@@ -32,6 +32,7 @@ MOVE_MAP: tuple[tuple[str, str], ...] = (
         "papers/consistency",
     ),
     ("sp_validation.info", "sp_validation.version (__version__); __name__ dropped"),
+    ("sp_validation/util.py", "sp_validation/format.py"),
 )
 EXCLUDED_DIRS = {
     ".git",

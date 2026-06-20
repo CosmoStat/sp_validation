@@ -5,6 +5,7 @@ __all__ = [
     'cat',
     'calibration',
     'cosmology',
+    'format',
     'galaxy',
     'glass_mock',
     'plots',
@@ -12,5 +13,4 @@ __all__ = [
     'run_joint_cat',
     'statistics',
     'survey',
-    'util',
 ]

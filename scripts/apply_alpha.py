@@ -23,7 +23,7 @@ from cs_util import logging
 from shear_psf_leakage.leakage import func_bias_2d
 
 from sp_validation import cat
-from sp_validation import util
+from sp_validation import format
 
 
 def params_default():
