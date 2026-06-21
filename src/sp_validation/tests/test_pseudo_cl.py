@@ -22,7 +22,7 @@ The pinned primitives (the exact functions Track B2 moves):
 * ``get_pseudo_cls_map``     -- map-based pseudo-Cl (decoupled EE/EB/BE/BB)
 * ``get_pseudo_cls_catalog`` -- catalog-based pseudo-Cl (NmtFieldCatalog)
 * ``calculate_pseudo_cl_catalog`` -- the deterministic end-to-end catalog path
-* ``apply_random_rotation``  -- pinned by INVARIANT, not value (see below)
+* ``apply_random_rotation``  -- pinned by INVARIANT + seed reproducibility (see below)
 
 REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
 ----------------------------------------------------------------------------
@@ -38,14 +38,13 @@ REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
   magnitude above that float-noise floor (no flakiness margin consumed) yet
   tight enough that a sub-percent change in any band bites. This matches the
   precedent in ``test_b_modes.py`` and the pure-E/B pins in ``test_cosmo_val``.
-* ``apply_random_rotation`` is genuinely NON-deterministic: it calls
-  ``np.random.seed()`` with NO argument internally (pseudo_cl.py), re-seeding
-  from OS entropy on every call, so an external seed cannot pin it. It is
-  pinned by the rotation INVARIANT instead -- magnitude conservation
-  ``e1_rot^2 + e2_rot^2 == e1^2 + e2^2`` and shape -- both exact and
-  deterministic. NOTE for Track B2: the extraction MUST preserve the
-  no-argument ``np.random.seed()`` call, or the noise-debiasing realizations
-  change.
+* ``apply_random_rotation`` takes an optional ``rng``: with a seeded generator
+  the draw is reproducible, with ``rng=None`` it is non-deterministic. It is
+  pinned by the rotation INVARIANT (magnitude conservation
+  ``e1_rot^2 + e2_rot^2 == e1^2 + e2^2`` and shape, both exact) plus a
+  reproducibility test (same seed -> identical, different seed -> differs).
+  The noise debiasing now threads a seeded ``rng`` (``CosmologyValidation``'s
+  ``cell_seed``) so the pseudo-Cl realizations are reproducible run-to-run.
 
 :Author: claude-opus on behalf of Cail
 
@@ -460,15 +459,13 @@ def test_get_pseudo_cls_catalog(cv, cat_and_params):
 
 
 # ===========================================================================
-# apply_random_rotation -- INVARIANT-pinned (non-deterministic by design)
+# apply_random_rotation -- invariant + reproducibility
 # ===========================================================================
 def test_apply_random_rotation_preserves_magnitude(cv, cat_and_params):
     """The rotation conserves shape magnitude and array shape.
 
-    apply_random_rotation reseeds np.random with NO argument internally, so its
-    output is not reproducible -- we pin the deterministic rotation invariant
-    (e1^2 + e2^2 conserved) and the shape instead. This invariant must survive
-    the Track B2 extraction.
+    The rotation is orthogonal, so per-object magnitude (e1^2 + e2^2) and array
+    shape are exactly preserved regardless of the random angle.
     """
     cat_gal, params = cat_and_params
     e1 = np.asarray(cat_gal[params["e1_col"]], dtype=np.float64)
@@ -482,24 +479,29 @@ def test_apply_random_rotation_preserves_magnitude(cv, cat_and_params):
     npt.assert_allclose(e1_rot**2 + e2_rot**2, e1**2 + e2**2, rtol=1e-12, atol=1e-15)
 
 
-def test_apply_random_rotation_is_nondeterministic(cv, cat_and_params):
-    """Two calls (even after an explicit external seed) give different draws.
+def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
+    """A seeded generator reproduces the rotation; rng=None stays random.
 
-    Guards the documented behavior that the method ignores external seeding by
-    calling np.random.seed() with no argument. If a refactor accidentally makes
-    this deterministic/seedable, this test flips and forces a conscious choice.
+    The noise-debiasing used to call np.random.seed() with no argument,
+    re-seeding from entropy every call. apply_random_rotation now takes an
+    optional rng: the same seeded generator reproduces the draw, a different
+    seed differs, and rng=None remains non-deterministic.
     """
     cat_gal, params = cat_and_params
     e1 = np.asarray(cat_gal[params["e1_col"]], dtype=np.float64)
     e2 = np.asarray(cat_gal[params["e2_col"]], dtype=np.float64)
 
-    np.random.seed(42)
-    a1, a2 = cv.apply_random_rotation(e1, e2)
-    np.random.seed(42)
-    b1, b2 = cv.apply_random_rotation(e1, e2)
+    a1, a2 = cv.apply_random_rotation(e1, e2, np.random.default_rng(42))
+    b1, b2 = cv.apply_random_rotation(e1, e2, np.random.default_rng(42))
+    npt.assert_array_equal(a1, b1)
+    npt.assert_array_equal(a2, b2)
 
-    assert not np.allclose(a1, b1)
-    assert not np.allclose(a2, b2)
+    c1, _ = cv.apply_random_rotation(e1, e2, np.random.default_rng(7))
+    assert not np.allclose(a1, c1)
+
+    d1, _ = cv.apply_random_rotation(e1, e2)
+    f1, _ = cv.apply_random_rotation(e1, e2)
+    assert not np.allclose(d1, f1)
 
 
 # ===========================================================================

@@ -169,6 +169,7 @@ class PseudoClMixin:
                         n_gal,
                         unique_pix,
                         idx_rep,
+                        np.random.default_rng(self.cell_seed),
                     )
 
                     noise_bias_cl = np.mean(cl_noise, axis=0)
@@ -514,12 +515,13 @@ class PseudoClMixin:
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map, n_gal_map)
 
         cl_noise = np.zeros_like(cl_shear)
+        rng = np.random.default_rng(self.cell_seed)
 
         for i in range(self.nrandom_cell):
             noise_map_e1 = np.zeros(hp.nside2npix(nside))
             noise_map_e2 = np.zeros(hp.nside2npix(nside))
 
-            e1_rot, e2_rot = self.apply_random_rotation(e1, e2)
+            e1_rot, e2_rot = self.apply_random_rotation(e1, e2, rng)
 
             noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot * w)
             noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot * w)
@@ -541,8 +543,7 @@ class PseudoClMixin:
             pass
         del n_gal_map
 
-        # This is a problem because the measurement depends on the seed. To be fixed.
-        # cl_shear = cl_shear - np.mean(cl_noise, axis=1, keepdims=True)
+        # Noise realizations are now reproducible (seeded rng from self.cell_seed).
         cl_shear = cl_shear - cl_noise
 
         self.print_cyan("Saving pseudo-Cl's...")
@@ -577,10 +578,10 @@ class PseudoClMixin:
         )
 
     def get_gaussian_real(
-        self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
+        self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep, rng=None
     ):
         e1_rot, e2_rot = self.apply_random_rotation(
-            cat_gal[params["e1_col"]], cat_gal[params["e2_col"]]
+            cat_gal[params["e1_col"]], cat_gal[params["e2_col"]], rng
         )
         noise_map_e1 = np.zeros(hp.nside2npix(nside))
         noise_map_e2 = np.zeros(hp.nside2npix(nside))
@@ -594,10 +595,20 @@ class PseudoClMixin:
         return noise_map_e1 + 1j * noise_map_e2
 
     def get_sample(
-        self, params, nside, lmax, b, cat_gal, n_gal, mask, unique_pix, idx_rep
+        self,
+        params,
+        nside,
+        lmax,
+        b,
+        cat_gal,
+        n_gal,
+        mask,
+        unique_pix,
+        idx_rep,
+        rng=None,
     ):
         noise_map = self.get_gaussian_real(
-            params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep
+            params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep, rng
         )
 
         f = nmt.NmtField(mask=mask, maps=[noise_map.real, noise_map.imag], lmax=lmax)
@@ -637,13 +648,12 @@ class PseudoClMixin:
             power=self.power,
         )
 
-    def apply_random_rotation(self, e1, e2):
+    def apply_random_rotation(self, e1, e2, rng=None):
         """Random ellipticity rotation (thin wrapper -> primitive).
 
-        Uses the primitive's default (no-argument ``np.random.seed()``) path to
-        preserve the historical non-deterministic noise-debiasing behavior.
+        Pass a seeded ``rng`` for reproducible noise realizations.
         """
-        return apply_random_rotation(e1, e2)
+        return apply_random_rotation(e1, e2, rng)
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
         """

@@ -91,6 +91,9 @@ class CosmologyValidation(
         Apply polarization correction factor in pseudo-C_ell calculations.
     nrandom_cell : int, default 10
         Number of random realizations for C_ell error estimation.
+    cell_seed : int, default 8192
+        Seed for the random-rotation noise realizations in the pseudo-C_ell
+        noise debiasing, making those realizations reproducible run-to-run.
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
 
@@ -215,6 +218,7 @@ class CosmologyValidation(
         noise_bias_method="analytic",
         fiducial_input_inka="coupled",
         nrandom_cell=10,
+        cell_seed=8192,
         path_onecovariance=None,
         cosmo_params=None,
         blind=None,
@@ -240,6 +244,7 @@ class CosmologyValidation(
         self.ell_step = ell_step
         self.pol_factor = pol_factor
         self.nrandom_cell = nrandom_cell
+        self.cell_seed = cell_seed
         self.cell_method = cell_method
         self.noise_bias_method = noise_bias_method
         self.fiducial_input_inka = fiducial_input_inka

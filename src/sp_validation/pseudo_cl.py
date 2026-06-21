@@ -123,11 +123,9 @@ def apply_random_rotation(e1, e2, rng=None):
     e1, e2 : np.ndarray
         Ellipticity components.
     rng : np.random.Generator, optional
-        Random generator to draw rotation angles from. When ``None`` (the
-        default), draws from the legacy global ``np.random`` after a
-        no-argument ``np.random.seed()``, i.e. re-seeds from OS entropy on every
-        call -- the historical non-deterministic noise-debiasing behavior. The
-        noise-debiasing realizations depend on this default; do not change it.
+        Random generator for the rotation angles. Pass a seeded generator
+        (e.g. ``np.random.default_rng(seed)``) for reproducible draws; when
+        ``None`` a fresh entropy-seeded generator is used (non-reproducible).
 
     Returns
     -------
@@ -135,10 +133,8 @@ def apply_random_rotation(e1, e2, rng=None):
         Rotated ellipticity components.
     """
     if rng is None:
-        np.random.seed()
-        rot_angle = np.random.rand(len(e1)) * 2 * np.pi
-    else:
-        rot_angle = rng.random(len(e1)) * 2 * np.pi
+        rng = np.random.default_rng()
+    rot_angle = rng.random(len(e1)) * 2 * np.pi
     e1_out = e1 * np.cos(rot_angle) + e2 * np.sin(rot_angle)
     e2_out = -e1 * np.sin(rot_angle) + e2 * np.cos(rot_angle)
     return e1_out, e2_out
