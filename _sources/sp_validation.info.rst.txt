@@ -1,7 +1,0 @@
-sp\_validation.info
--------------------
-
-.. automodule:: sp_validation.info
-   :members:
-   :show-inheritance:
-   :undoc-members:

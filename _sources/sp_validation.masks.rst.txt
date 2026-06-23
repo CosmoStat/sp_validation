@@ -1,7 +1,7 @@
-sp\_validation.basic
+sp\_validation.masks
 --------------------
 
-.. automodule:: sp_validation.basic
+.. automodule:: sp_validation.masks
    :members:
    :show-inheritance:
    :undoc-members:

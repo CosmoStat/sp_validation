@@ -88,21 +88,21 @@
 <ul>
 <li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html">sp_validation.basic</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cat.html">sp_validation.cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.run_joint_cat.html">sp_validation.run_joint_cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.util.html">sp_validation.util</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
 </ul>
 </li>
@@ -167,7 +167,7 @@ This is the main output catalogue that will be processed further.</p></li>
 <section id="merge-catalogues">
 <h3>2. Merge catalogues<a class="headerlink" href="#merge-catalogues" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#merge-catalogues'">¶</a></h3>
 <p>The patch-wise comprehensive catalogues extracted in the previous step are merged using the script <code class="docutils literal notranslate"><span class="pre">scripts/calibration/create_joint_comprehensive_cat.py</span></code>, which is a front-end
-of the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> library class <code class="docutils literal notranslate"><span class="pre">run_joint_cat:JointCat</span></code>.</p>
+of the <code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> library class <code class="docutils literal notranslate"><span class="pre">catalog_builders:JointCat</span></code>.</p>
 </section>
 <section id="apply-external-masks">
 <h3>3. Apply external masks<a class="headerlink" href="#apply-external-masks" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#apply-external-masks'">¶</a></h3>
@@ -264,7 +264,7 @@ created above.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 23 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

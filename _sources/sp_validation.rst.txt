@@ -14,19 +14,19 @@ Submodules
    :maxdepth: 4
 
    sp_validation.b_modes
-   sp_validation.basic
    sp_validation.calibration
-   sp_validation.cat
+   sp_validation.catalog
+   sp_validation.catalog_builders
    sp_validation.cosmo_val
    sp_validation.cosmology
+   sp_validation.format
    sp_validation.galaxy
    sp_validation.glass_mock
-   sp_validation.info
    sp_validation.io
+   sp_validation.masks
    sp_validation.plot_style
    sp_validation.plots
    sp_validation.rho_tau
-   sp_validation.run_joint_cat
+   sp_validation.statistics
    sp_validation.survey
-   sp_validation.util
    sp_validation.version

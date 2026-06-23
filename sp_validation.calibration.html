@@ -28,8 +28,8 @@
 <link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.cat.html" rel="next" title="sp_validation.cat"/>
-<link href="sp_validation.basic.html" rel="prev" title="sp_validation.basic"/>
+<link href="sp_validation.catalog.html" rel="next" title="sp_validation.catalog"/>
+<link href="sp_validation.b_modes.html" rel="prev" title="sp_validation.b_modes"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
 <div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
@@ -88,21 +88,21 @@
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html">sp_validation.basic</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cat.html">sp_validation.cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.run_joint_cat.html">sp_validation.run_joint_cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.util.html">sp_validation.util</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
 </ul>
 </li>
@@ -356,19 +356,158 @@ per object for the second component.</p></li>
 </dd>
 </dl>
 </dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">metacal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masking_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gal'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">step</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NGMIX'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_size_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_size_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_corr_ell</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_R_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_eps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.34</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_2d</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Metacal.</p>
+<p>Metacalibration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – input galaxy catalogue</p></li>
+<li><p><strong>mask</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – mask according to galaxy selection, e.g. spread_model</p></li>
+<li><p><strong>masking_type</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default='gal'</em>) – masking type, one in ‘gal’, ‘gal_mom’, ‘star’</p></li>
+<li><p><strong>step</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default=0.01</em>) – step h in finite differences</p></li>
+<li><p><strong>prefix</strong> (<em>string</em><em>, </em><em>optional</em><em>, </em><em>default='NGMIX'</em>) – to specify columns in input catalogue</p></li>
+<li><p><strong>snr_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default=10</em>) – signal-to-noise minimum</p></li>
+<li><p><strong>float</strong> (<em>snr_max;</em>) – signal-to-noise maximum</p></li>
+<li><p><strong>optional</strong> – signal-to-noise maximum</p></li>
+<li><p><strong>default=500</strong> – signal-to-noise maximum</p></li>
+<li><p><strong>rel_size_min</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default=0.5</em>) – relative size minimum</p></li>
+<li><p><strong>rel_size_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default=3.0</em>) – relative size maximum</p></li>
+<li><p><strong>size_corr_ell</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=True</em>)</p></li>
+<li><p><strong>global_R_weight</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em><em>,</em>) – weight column name for global response matrix; default is <code class="docutils literal notranslate"><span class="pre">None</span></code>
+(unweighted mean)</p></li>
+<li><p><strong>sigma_eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – ellipticity dispersion (one component) for computation
+of weights; default is 0.34</p></li>
+<li><p><strong>col_2d</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – if <cite>True</cite> (default, ellipticity in one 2D column;
+if <cite>False</cite>, ellipticity in two columns ELL_0, ELL_1</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._read_data">
+<span class="sig-name descname"><span class="pre">_read_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._read_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._read_data" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._read_data'">¶</a></dt>
+<dd><p>Read Data.</p>
+<p>Read relevant data columns.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._read_data_ngmix">
+<span class="sig-name descname"><span class="pre">_read_data_ngmix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ns</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._read_data_ngmix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._read_data_ngmix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._read_data_ngmix'">¶</a></dt>
+<dd><p>Read Data Ngmix.</p>
+<p>Read data from ngmix catalogue.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal.get_variance_ivweights">
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_variance_ivweights</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_eps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prefix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NGMIX'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">col_2d</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal.get_variance_ivweights"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal.get_variance_ivweights" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal.get_variance_ivweights'">¶</a></dt>
+<dd><p>Get Variance IVWEIGHTS.</p>
+<p>Compute variance and inverse-variance weights.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – input data</p></li>
+<li><p><strong>sigma_eps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – ellipticity dispersion</p></li>
+<li><p><strong>prefix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – shape measurement identifier; default is “NGMIX”</p></li>
+<li><p><strong>mask</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – indicates valid objects with <code class="docutils literal notranslate"><span class="pre">True</span></code> values; default is <code class="docutils literal notranslate"><span class="pre">None</span></code> = use all objects
+type has to be bool</p></li>
+<li><p><strong>col_2d</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – if <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), ellipticity is given in single 2D column;
+if <code class="docutils literal notranslate"><span class="pre">False</span></code>, ellipticity is expected in two 1D columns.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>float</em> – variance first component</p></li>
+<li><p><em>float</em> – variance second component</p></li>
+<li><p><em>float</em> – weight</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._read_data_galsim">
+<span class="sig-name descname"><span class="pre">_read_data_galsim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masked_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ns</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._read_data_galsim"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._read_data_galsim" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._read_data_galsim'">¶</a></dt>
+<dd><p>Read Data Galsim.</p>
+<p>Read data from galsim catalogue.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._compute_calibration">
+<span class="sig-name descname"><span class="pre">_compute_calibration</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._compute_calibration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._compute_calibration" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._compute_calibration'">¶</a></dt>
+<dd><p>Compute Calibration.</p>
+<p>Perform masking and compute calibration.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal.add_cuts">
+<span class="sig-name descname"><span class="pre">add_cuts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">snr_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_size_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal.add_cuts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal.add_cuts" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal.add_cuts'">¶</a></dt>
+<dd><p>Add Cuts.</p>
+<p>Apply additional cuts to metacal galaxy catalogue.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._masking_gal">
+<span class="sig-name descname"><span class="pre">_masking_gal</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._masking_gal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._masking_gal" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._masking_gal'">¶</a></dt>
+<dd><p>Masking Gal.</p>
+<p>Mask metacal catalogue, i.e. apply cuts.</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._masking_gal_mom">
+<span class="sig-name descname"><span class="pre">_masking_gal_mom</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._masking_gal_mom"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._masking_gal_mom" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._masking_gal_mom'">¶</a></dt>
+<dd><p>Add docstring.</p>
+<p>…</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._masking_star">
+<span class="sig-name descname"><span class="pre">_masking_star</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._masking_star"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._masking_star" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._masking_star'">¶</a></dt>
+<dd><p>Add docstring.</p>
+<p>…</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._shear_response">
+<span class="sig-name descname"><span class="pre">_shear_response</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._shear_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._shear_response" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._shear_response'">¶</a></dt>
+<dd><p>Shear Response.</p>
+<p>Compute shear response matrix</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._shear_response_std">
+<span class="sig-name descname"><span class="pre">_shear_response_std</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stat_operator</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;function</span> <span class="pre">metacal.&lt;lambda&gt;&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._shear_response_std"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._shear_response_std" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._shear_response_std'">¶</a></dt>
+<dd><p>Shear Response Std.</p>
+<p>Standard deviation of shear response</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._selection_response">
+<span class="sig-name descname"><span class="pre">_selection_response</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._selection_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._selection_response" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._selection_response'">¶</a></dt>
+<dd><p>Add docstring.</p>
+<p>…</p>
+</dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.calibration.metacal._total_response">
+<span class="sig-name descname"><span class="pre">_total_response</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#metacal._total_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.metacal._total_response" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.metacal._total_response'">¶</a></dt>
+<dd><p>Add docstring.</p>
+<p>…</p>
+</dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.calibration.mask_gal_size">
+<span class="sig-name descname"><span class="pre">mask_gal_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Tpsf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_size_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rel_size_max</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_corr_ell</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#mask_gal_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.mask_gal_size" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.mask_gal_size'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.calibration.mask_gal_SNR">
+<span class="sig-name descname"><span class="pre">mask_gal_SNR</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">SNR</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_min</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_max</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/calibration.html#mask_gal_SNR"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.calibration.mask_gal_SNR" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.calibration.mask_gal_SNR'">¶</a></dt>
+<dd></dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.basic.html">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.b_modes.html">
 <svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="15 18 9 12 15 6"></polyline>
 </svg>
-        sp_validation.basic
+        sp_validation.b_modes
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.cat.html">
-        sp_validation.cat
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.catalog.html">
+        sp_validation.catalog
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
@@ -388,6 +527,24 @@ per object for the second component.</p></li>
 <li><a :data-current="activeSection === '#sp_validation.calibration.get_quantities_binned'" class="reference internal" href="#sp_validation.calibration.get_quantities_binned"><code class="docutils literal notranslate"><span class="pre">get_quantities_binned()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.calibration.get_calibrate_e_from_cat'" class="reference internal" href="#sp_validation.calibration.get_calibrate_e_from_cat"><code class="docutils literal notranslate"><span class="pre">get_calibrate_e_from_cat()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.calibration.get_calibrate_no_leakage_e_from_cat'" class="reference internal" href="#sp_validation.calibration.get_calibrate_no_leakage_e_from_cat"><code class="docutils literal notranslate"><span class="pre">get_calibrate_no_leakage_e_from_cat()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal'" class="reference internal" href="#sp_validation.calibration.metacal"><code class="docutils literal notranslate"><span class="pre">metacal</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._read_data'" class="reference internal" href="#sp_validation.calibration.metacal._read_data"><code class="docutils literal notranslate"><span class="pre">metacal._read_data()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._read_data_ngmix'" class="reference internal" href="#sp_validation.calibration.metacal._read_data_ngmix"><code class="docutils literal notranslate"><span class="pre">metacal._read_data_ngmix()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal.get_variance_ivweights'" class="reference internal" href="#sp_validation.calibration.metacal.get_variance_ivweights"><code class="docutils literal notranslate"><span class="pre">metacal.get_variance_ivweights()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._read_data_galsim'" class="reference internal" href="#sp_validation.calibration.metacal._read_data_galsim"><code class="docutils literal notranslate"><span class="pre">metacal._read_data_galsim()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._compute_calibration'" class="reference internal" href="#sp_validation.calibration.metacal._compute_calibration"><code class="docutils literal notranslate"><span class="pre">metacal._compute_calibration()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal.add_cuts'" class="reference internal" href="#sp_validation.calibration.metacal.add_cuts"><code class="docutils literal notranslate"><span class="pre">metacal.add_cuts()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._masking_gal'" class="reference internal" href="#sp_validation.calibration.metacal._masking_gal"><code class="docutils literal notranslate"><span class="pre">metacal._masking_gal()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._masking_gal_mom'" class="reference internal" href="#sp_validation.calibration.metacal._masking_gal_mom"><code class="docutils literal notranslate"><span class="pre">metacal._masking_gal_mom()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._masking_star'" class="reference internal" href="#sp_validation.calibration.metacal._masking_star"><code class="docutils literal notranslate"><span class="pre">metacal._masking_star()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._shear_response'" class="reference internal" href="#sp_validation.calibration.metacal._shear_response"><code class="docutils literal notranslate"><span class="pre">metacal._shear_response()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._shear_response_std'" class="reference internal" href="#sp_validation.calibration.metacal._shear_response_std"><code class="docutils literal notranslate"><span class="pre">metacal._shear_response_std()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._selection_response'" class="reference internal" href="#sp_validation.calibration.metacal._selection_response"><code class="docutils literal notranslate"><span class="pre">metacal._selection_response()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.metacal._total_response'" class="reference internal" href="#sp_validation.calibration.metacal._total_response"><code class="docutils literal notranslate"><span class="pre">metacal._total_response()</span></code></a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.mask_gal_size'" class="reference internal" href="#sp_validation.calibration.mask_gal_size"><code class="docutils literal notranslate"><span class="pre">mask_gal_size()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.calibration.mask_gal_SNR'" class="reference internal" href="#sp_validation.calibration.mask_gal_SNR"><code class="docutils literal notranslate"><span class="pre">mask_gal_SNR()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -396,7 +553,7 @@ per object for the second component.</p></li>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 23 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

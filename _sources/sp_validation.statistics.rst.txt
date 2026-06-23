@@ -1,0 +1,7 @@
+sp\_validation.statistics
+-------------------------
+
+.. automodule:: sp_validation.statistics
+   :members:
+   :show-inheritance:
+   :undoc-members:

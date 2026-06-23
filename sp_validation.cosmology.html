@@ -28,7 +28,7 @@
 <link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.galaxy.html" rel="next" title="sp_validation.galaxy"/>
+<link href="sp_validation.format.html" rel="next" title="sp_validation.format"/>
 <link href="sp_validation.cosmo_val.html" rel="prev" title="sp_validation.cosmo_val"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -88,21 +88,21 @@
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.basic.html">sp_validation.basic</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cat.html">sp_validation.cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.cosmology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.info.html">sp_validation.info</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.run_joint_cat.html">sp_validation.run_joint_cat</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.util.html">sp_validation.util</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
 </ul>
 </li>
@@ -316,71 +316,6 @@ cosmocov_params.</p></li>
 </dd>
 </dl>
 </dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.cosmology.stack_mm3">
-<span class="sig-name descname"><span class="pre">stack_mm3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluster_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_match</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tree</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmology.html#stack_mm3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmology.stack_mm3" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmology.stack_mm3'">¶</a></dt>
-<dd><p>Add docstring.</p>
-<p>…</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.cosmology.gamma_T_tc">
-<span class="sig-name descname"><span class="pre">gamma_T_tc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra_pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_cat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmology.html#gamma_T_tc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmology.gamma_T_tc" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmology.gamma_T_tc'">¶</a></dt>
-<dd><p>Gamma T tc.</p>
-<p>Compute cross-correlation between positions (forground) and lensing
-(background) catalogue. Also called galaxy-galaxy lensing or population
-lensing.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ra_pos</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – RA coordinates of foreground catalogue</p></li>
-<li><p><strong>dec_pos</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – DEC coordinates of foreground catalogue</p></li>
-<li><p><strong>ra_cat</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – RA coordinates of background catalogue</p></li>
-<li><p><strong>dec_cat</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – DEC coordinates of background catalogue</p></li>
-<li><p><strong>e1_cat</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – ellipticity component 1 of background catalogue</p></li>
-<li><p><strong>e2_cat</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – ellipticity component 2 of background catalogue</p></li>
-<li><p><strong>w_cat</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em><em>, </em><em>default=None</em>) – weight of background catalogue</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><strong>meanr</strong> (<em>array of float</em>) – spatial bin centres</p></li>
-<li><p><strong>meanlogr</strong> (<em>array of float</em>) – log of spatial bin centres</p></li>
-<li><p><strong>xi</strong> (<em>array of float</em>) – tangential shear (E-mode)</p></li>
-<li><p><strong>xi_im</strong> (<em>array of float</em>) – cross-component shear (B- or parity mode)</p></li>
-<li><p><strong>rms</strong> (<em>array of float</em>) – R.M.S of both xi and xi_im</p></li>
-</ul>
-</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.cosmology.xi_gal_gal_tc">
-<span class="sig-name descname"><span class="pre">xi_gal_gal_tc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra_gal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_gal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_gal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_gal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_gal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra_star</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec_star</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e1_star</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2_star</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w_star</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_min_amin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_max_amin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_theta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmology.html#xi_gal_gal_tc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmology.xi_gal_gal_tc" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmology.xi_gal_gal_tc'">¶</a></dt>
-<dd><p>Add docstring.</p>
-<p>…</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.cosmology.get_clusters">
-<span class="sig-name descname"><span class="pre">get_clusters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cluster_cat_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vos_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">field_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/cosmology.html#get_clusters"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.cosmology.get_clusters" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.cosmology.get_clusters'">¶</a></dt>
-<dd><p>Get Clusters.</p>
-<p>Return cluster information from file on VOspace</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cluster_cat_name</strong> (<em>string</em>) – cluster catalogue file name</p></li>
-<li><p><strong>vos_dir</strong> (<em>string</em>) – directory on VOspace</p></li>
-<li><p><strong>field_name</strong> (<em>string</em>) – survey footprint name</p></li>
-<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em><em>, </em><em>default=False</em>) – verbose output if True</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>cluster information (ra, dec, z, SZ-mass)</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
-</dd>
-</dl>
-</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -392,8 +327,8 @@ lensing.</p>
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.galaxy.html">
-        sp_validation.galaxy
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.format.html">
+        sp_validation.format
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
@@ -409,10 +344,6 @@ lensing.</p>
 <li><a :data-current="activeSection === '#sp_validation.cosmology.get_theo_c_ell'" class="reference internal" href="#sp_validation.cosmology.get_theo_c_ell"><code class="docutils literal notranslate"><span class="pre">get_theo_c_ell()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmology.c_ell_to_xi'" class="reference internal" href="#sp_validation.cosmology.c_ell_to_xi"><code class="docutils literal notranslate"><span class="pre">c_ell_to_xi()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.cosmology.get_theo_xi'" class="reference internal" href="#sp_validation.cosmology.get_theo_xi"><code class="docutils literal notranslate"><span class="pre">get_theo_xi()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.cosmology.stack_mm3'" class="reference internal" href="#sp_validation.cosmology.stack_mm3"><code class="docutils literal notranslate"><span class="pre">stack_mm3()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.cosmology.gamma_T_tc'" class="reference internal" href="#sp_validation.cosmology.gamma_T_tc"><code class="docutils literal notranslate"><span class="pre">gamma_T_tc()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.cosmology.xi_gal_gal_tc'" class="reference internal" href="#sp_validation.cosmology.xi_gal_gal_tc"><code class="docutils literal notranslate"><span class="pre">xi_gal_gal_tc()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.cosmology.get_clusters'" class="reference internal" href="#sp_validation.cosmology.get_clusters"><code class="docutils literal notranslate"><span class="pre">get_clusters()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -421,7 +352,7 @@ lensing.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 20 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 23 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
