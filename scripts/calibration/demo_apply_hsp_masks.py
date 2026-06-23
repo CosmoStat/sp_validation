@@ -25,7 +25,7 @@ import os
 import re
 import tracemalloc
 
-from sp_validation import run_joint_cat as sp_joint
+from sp_validation import catalog_builders as sp_joint
 
 # +
 # Trace and print used memory if True

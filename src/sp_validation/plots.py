@@ -14,6 +14,9 @@ from collections import Counter
 import healpy as hp
 import healsparse as hsp
 import matplotlib.pylab as plt
+import matplotlib.scale as mscale
+import matplotlib.ticker as ticker
+import matplotlib.transforms as mtransforms
 import numpy as np
 import skyproj
 from astropy import units as u
@@ -22,6 +25,57 @@ from cs_util import plots
 from lenspack.geometry.projections.gnom import radec2xy
 
 from sp_validation.plot_style import *
+
+
+class SquareRootScale(mscale.ScaleBase):
+    """
+    ScaleBase class for generating square root scale.
+
+    Usage example: axis.set_yscale('squareroot')
+
+    """
+
+    name = "squareroot"
+
+    def __init__(self, axis, **kwargs):
+        mscale.ScaleBase.__init__(self, axis, **kwargs)
+
+    def set_default_locators_and_formatters(self, axis):
+        axis.set_major_locator(ticker.AutoLocator())
+        axis.set_major_formatter(ticker.ScalarFormatter())
+        axis.set_minor_locator(ticker.NullLocator())
+        axis.set_minor_formatter(ticker.NullFormatter())
+
+    def limit_range_for_scale(self, vmin, vmax, minpos):
+        return max(0.0, vmin), vmax
+
+    class SquareRootTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform_non_affine(self, a):
+            return np.array(a) ** 0.5
+
+        def inverted(self):
+            return SquareRootScale.InvertedSquareRootTransform()
+
+    class InvertedSquareRootTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform(self, a):
+            return np.array(a) ** 2
+
+        def inverted(self):
+            return SquareRootScale.SquareRootTransform()
+
+    def get_transform(self):
+        return self.SquareRootTransform()
+
+
+mscale.register_scale(SquareRootScale)
 
 
 def plot_spatial_density(
@@ -240,70 +294,6 @@ def plot_map(
     plt.title(title)
 
     plots.savefig(out_path)
-
-    return vlim
-
-
-def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
-    """Plot Map Stacked.
-
-    Plot stacked convergence map.
-
-    Parameters
-    ----------
-    kappa : image
-        map values
-    title : string
-        plot title
-    output_path : string
-        figure output file path
-
-    vlim : array(2) of float, optional, default=None
-        map limits; min and max of kappa if not given
-
-    Returns
-    -------
-    array(2) of float
-        map limits
-
-    """
-    plots.figure(figsize=(10, 10))
-
-    # plot image
-    plt.imshow(kappa)
-
-    # set colorbar
-    if not vlim:
-        vlim = plt.gci().get_clim()
-    else:
-        plt.gci().set_clim(vlim)
-    plt.colorbar()
-
-    npix = kappa.shape[0]
-
-    # mark center
-    plt.plot(npix / 2 - 1, npix / 2 - 1, "+")
-
-    # axes ticks
-    n_ticks = 4
-    loc = np.arange(0, npix + npix / n_ticks, step=npix / n_ticks)
-    lab = np.round(
-        np.arange(
-            -radius,
-            radius + radius * 2 / n_ticks,
-            step=radius * 2 / n_ticks,
-        ),
-        1,
-    )
-    plt.xticks(loc, labels=lab)
-    plt.yticks(loc, labels=lab)
-
-    plt.xlabel(r"separation $R$ [Mpc]")
-    plt.ylabel(r"separation $R$ [Mpc]")
-
-    plt.title(title)
-
-    plots.savefig(output_path)
 
     return vlim
 

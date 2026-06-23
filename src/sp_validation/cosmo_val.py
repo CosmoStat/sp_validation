@@ -19,6 +19,22 @@ from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
+from .b_modes import (
+    _get_pte_from_scale_cut,
+    calculate_cosebis,
+    calculate_eb_statistics,
+    calculate_pure_eb_correlation,
+    find_conservative_scale_cut_key,
+    plot_cosebis_covariance_matrix,
+    plot_cosebis_modes,
+    plot_cosebis_scale_cut_heatmap,
+    plot_eb_covariance_matrix,
+    plot_integration_vs_reporting,
+    plot_pte_2d_heatmaps,
+    plot_pure_eb_correlations,
+    save_cosebis_results,
+    save_pure_eb_results,
+)
 from .cosmology import get_cosmo, get_theo_c_ell
 from .rho_tau import (
     get_params_rho_tau,
@@ -2096,8 +2112,6 @@ class CosmologyValidation:
         - A shared patch file is used for the reporting and integration binning,
           and is created if it does not exist.
         """
-        from .b_modes import calculate_pure_eb_correlation
-
         self.print_start(f"Computing {version} pure E/B")
 
         # Set up parameters with defaults
@@ -2219,15 +2233,6 @@ class CosmologyValidation:
         - Delegates individual plot generation to specialized functions in
           b_modes module
         """
-        from .b_modes import (
-            calculate_eb_statistics,
-            plot_eb_covariance_matrix,
-            plot_integration_vs_reporting,
-            plot_pte_2d_heatmaps,
-            plot_pure_eb_correlations,
-            save_pure_eb_results,
-        )
-
         # Use instance defaults for unspecified parameters
         versions = versions or self.versions
         output_dir = output_dir or self.cc['paths']['output']
@@ -2406,8 +2411,6 @@ class CosmologyValidation:
             When multiple scale cuts: Dictionary with scale cut tuples as
             keys and results dictionaries as values.
         """
-        from .b_modes import calculate_cosebis
-
         self.print_start(f"Computing {version} COSEBIs")
 
         # Set up parameters with defaults
@@ -2513,13 +2516,6 @@ class CosmologyValidation:
             Precalculated results to avoid recomputation. If None (default),
             results will be calculated using calculate_cosebis.
         """
-        from .b_modes import (
-            find_conservative_scale_cut_key,
-            plot_cosebis_covariance_matrix,
-            plot_cosebis_modes,
-            plot_cosebis_scale_cut_heatmap,
-            save_cosebis_results,
-        )
 
         # Use instance defaults if not specified
         version = version or self.versions[0]
@@ -3461,7 +3457,6 @@ class CosmologyValidation:
             ``{version: {statistic: pte_value, ...}, ...}``
         """
         from scipy import stats as sp_stats
-        from .b_modes import _get_pte_from_scale_cut, find_conservative_scale_cut_key
 
         versions = versions or self.versions
         summary = {}

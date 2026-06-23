@@ -24,11 +24,11 @@ import numpy as np
 from astropy.io import fits
 from io import StringIO
 
-from sp_validation import run_joint_cat as sp_joint
-from sp_validation import util
-from sp_validation.basic import metacal
+from sp_validation import catalog_builders as sp_joint
+from sp_validation import format
+from sp_validation.calibration import metacal
 from sp_validation import calibration
-import sp_validation.cat as cat
+import sp_validation.catalog as cat
 
 # %%
 # Initialize calibration class instance

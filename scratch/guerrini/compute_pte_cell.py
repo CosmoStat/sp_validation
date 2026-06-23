@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.basic import chi2_and_pte
+from sp_validation.statistics import chi2_and_pte
 import scipy.stats as stats
 import camb
 

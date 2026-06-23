@@ -2,7 +2,7 @@
 
 import sys
 
-from sp_validation.run_joint_cat import run_joint_comprehensive_cat
+from sp_validation.catalog_builders import run_joint_comprehensive_cat
 
 def main(argv=None):
 

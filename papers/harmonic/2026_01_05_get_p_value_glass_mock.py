@@ -23,7 +23,7 @@ from matplotlib import scale as mscale
 import seaborn as sns
 from tqdm import tqdm
 
-from sp_validation.utils_cosmo_val import SquareRootScale
+from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)
 

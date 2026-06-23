@@ -1,6 +1,6 @@
-"""UTIL.
+"""FORMAT.
 
-:Description: This script contains utility methods.
+:Description: Human-readable formatting of large numbers.
 
 :Author: Martin Kilbinger <martin.kilblinger@cea.fr>
 

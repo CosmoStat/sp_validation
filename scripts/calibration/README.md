@@ -7,7 +7,7 @@ in order. See `docs/source/post_processing.md` for the full prose.
 | Step | Script | Does |
 |------|--------|------|
 | 1 | `extract_info.py` | Extract metacal + diagnostic info per patch; create pre-calibration shear catalogues. Configured via `params.py`. |
-| 2 | `create_joint_comprehensive_cat.py` | Merge the patch-wise comprehensive catalogues into one joint catalogue (front-end of `run_joint_cat.JointCat`). |
+| 2 | `create_joint_comprehensive_cat.py` | Merge the patch-wise comprehensive catalogues into one joint catalogue (front-end of `catalog_builders.JointCat`). |
 | 3 | `demo_apply_hsp_masks.py` | Add the structural and coverage (HealSparse) masks. |
 | 4 | `calibrate_comprehensive_cat.py` | Galaxy selection + metacalibration. Uses the mask configs in `config/calibration/`. |
 

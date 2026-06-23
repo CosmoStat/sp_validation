@@ -32,7 +32,7 @@ This step is carried out per patch. Parameters have to be set via the python con
 ### 2. Merge catalogues
 
 The patch-wise comprehensive catalogues extracted in the previous step are merged using the script `scripts/calibration/create_joint_comprehensive_cat.py`, which is a front-end
-of the `sp_validation` library class `run_joint_cat:JointCat`.
+of the `sp_validation` library class `catalog_builders:JointCat`.
 
 ### 3. Apply external masks
 

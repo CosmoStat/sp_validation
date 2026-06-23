@@ -21,7 +21,7 @@ import numpy as np
 from cs_util import cat as cs_cat
 from cs_util import plots as cs_plots
 
-from sp_validation import run_joint_cat as sp_joint
+from sp_validation import catalog_builders as sp_joint
 
 # %%
 # Initialize calibration class instance (for config and data)

@@ -23,10 +23,10 @@ import numpy as np
 from astropy.io import fits
 import matplotlib.pylab as plt
 
-from sp_validation import run_joint_cat as sp_joint
-from sp_validation import util
-from sp_validation.basic import metacal
-import sp_validation.cat as cat
+from sp_validation import catalog_builders as sp_joint
+from sp_validation import format
+from sp_validation.calibration import metacal
+import sp_validation.catalog as cat
 
 # Initialize calibration class instance
 obj = sp_joint.CalibrateCat()

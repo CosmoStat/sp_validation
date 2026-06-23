@@ -26,7 +26,7 @@ from tqdm import tqdm
 import healpy as hp
 import scipy.stats as stats
 
-from sp_validation.utils_cosmo_val import SquareRootScale
+from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)
 

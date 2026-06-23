@@ -35,9 +35,9 @@ import sys
 import numpy as np
 from astropy.io import fits
 
-#from sp_validation.cat import *
-from sp_validation import cat as spv_cat
-from sp_validation.basic import *
+#from sp_validation.catalog import *
+from sp_validation import catalog as spv_cat
+from sp_validation.calibration import metacal
 from sp_validation.calibration import *
 from sp_validation.galaxy import *
 from sp_validation.io import *
@@ -319,14 +319,14 @@ from cs_util.plots import plot_histograms
 from lenspack.geometry.projections.gnom import radec2xy
 from uncertainties import ufloat
 
-from sp_validation.basic import *
+from sp_validation.calibration import metacal
 from sp_validation.calibration import *
 from sp_validation.plot_style import *
 from sp_validation.plots import *
 
 # -
 from sp_validation.survey import *
-from sp_validation.util import *
+from sp_validation.format import *
 
 # ## metacalibration for galaxies
 
@@ -940,8 +940,8 @@ print_stats('Dispersion of (average) single-component ellipticity = {:.3f} = {:.
 
 import os
 
-from sp_validation.cat import *
-from sp_validation.util import *
+from sp_validation.catalog import *
+from sp_validation.format import *
 
 # Shear response per galaxy
 R_shear_ind = gal_metacal.R_shear
