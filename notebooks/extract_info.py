@@ -33,6 +33,7 @@ import sys
 import os
 import numpy as np
 from astropy.io import fits
+import h5py
 
 from cs_util import canfar
 from sp_validation.io import *
@@ -51,8 +52,11 @@ from params import *
 
 # ### Create and open output files and directories
 
-make_out_dirs(output_dir, plot_dir, [], verbose=verbose)
-stats_file = open_stats_file(plot_dir, stats_file_name)
+os.makedirs(output_dir, exist_ok=True)
+stats_file = open_stats_file(output_dir, stats_file_name)
+
+output_shape_cat_stem = output_shape_cat_base
+output_ext = output_format
 
 # ## 2. Load data
 #
@@ -100,6 +104,8 @@ area_deg2, area_amin2, tile_IDs = get_area(dd, area_tile, verbose=verbose)
 
 n_found, n_missing = missing_tiles(tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbose=verbose)
 
+print_stats(f'Tiles in input catalogue: {n_found}', stats_file, verbose=verbose)
+
 # ### Load star catalogue
 
 if star_cat_path:
@@ -139,47 +145,35 @@ if star_cat_path:
         verbose=verbose
     )
 
-# #### Refine: Match to valid, unflagged galaxy sample
+    m_star = (
+        (dd['FLAGS'][ind_star] == 0)
+        & (dd['IMAFLAGS_ISO'][ind_star] == 0)
+        & (dd['NGMIX_MCAL_FLAGS'][ind_star] == 0)
+        & (dd['NGMIX_ELL_PSFo_NOSHEAR'][:,0][ind_star] != -10)
+    )
 
-# +
-# Flags to indicate valid star sample
+    ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
+        dd,
+        ind_star,
+        m_star,
+        [col_name_ra, col_name_dec],
+        key_PSF_ell,
+        n_star_tot,
+        stats_file,
+        verbose=verbose
+    )
 
-m_star = (
-    (dd['FLAGS'][ind_star] == 0)
-    & (dd['IMAFLAGS_ISO'][ind_star] == 0)
-    & (dd['NGMIX_MCAL_FLAGS'][ind_star] == 0)
-    & (dd['NGMIX_ELL_PSFo_NOSHEAR'][:,0][ind_star] != -10)
-)
-
-ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
-    dd,
-    ind_star,
-    m_star,
-    [col_name_ra, col_name_dec],
-    key_PSF_ell,
-    n_star_tot,
-    stats_file,
-    verbose=verbose
-)
-# -
-
-# MKDEBUG: Moved from end of this script
 
 # ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
 
-spv_cat.write_PSF_cat(                                         
-    f'{output_PSF_cat_base}_{shape}.fits',
-    ra_star,
-    dec_star,
-    g_star_psf[0],
-    g_star_psf[1],
-)
-
-#### Refine: Match to SPREAD_CLASS samples
-if "SPREAD_CLASS" in dd.dtype.names:
-    spv_cat.match_spread_class(dd, ind_star, m_star, stats_file, len(ra_star), verbose=verbose)
-else:
-    print_stats("No SPREAD_CLASS in input, skipping star-gal matching", stats_file, verbose=verbose)
+if star_cat_path:
+    spv_cat.write_PSF_cat(                                         
+        f'{output_PSF_cat_base}_{shape}.fits',
+        ra_star,
+        dec_star,
+        g_star_psf[0],
+        g_star_psf[1],
+    )
 
 # ## Check for objects with invalid PSF
 
@@ -248,8 +242,9 @@ g2_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 1]
 if verbose:
     print("Writing comprehensive catalogue...")
 
+comprehensive_cat_path = f'{output_shape_cat_stem}_comprehensive_{shape}{output_ext}'
 spv_cat.write_shape_catalog(
-    f'{output_shape_cat_base}_comprehensive_{shape}.fits',
+    comprehensive_cat_path,
     ra_all,
     dec_all,
     iv_w,
@@ -260,6 +255,17 @@ spv_cat.write_shape_catalog(
     add_cols=ext_cols_pre_cal,
     add_cols_format=add_cols_pre_cal_format,
  )
+
+# Write tile count to HDF5 attributes
+if output_ext == '.hdf5':
+    try:
+        with h5py.File(comprehensive_cat_path, 'a') as hf:
+            hf.attrs['n_tiles'] = n_found
+            if verbose:
+                print(f"  Added n_tiles={n_found} to HDF5 attributes")
+    except Exception as e:
+        if verbose:
+            print(f"  Warning: could not add n_tiles attribute: {e}")
 # -
 
 do_selection_calibration = False
@@ -270,17 +276,9 @@ if not do_selection_calibration:
 else:
     if verbose:
         print("Continuing with selection and calibration")
+    os.makedirs(os.path.join(output_dir, plot_dir), exist_ok=True)
 
 # ## 4. Select galaxies
-
-# #### Common flags and cuts
-# First, set cuts common to ngmix and galsim:
-#   - spread model: select objects well larger than the PSF
-#   - magnitude: cut galaxies that are too faint (= too noisy, likely to be
-#     artefacts), and too bright (might be too large for postage stamp)
-#   - flags: cut objects that were flagged as invalid or masked
-#   - n_epoch: select objects observed on at leatst one epoch (for safety,
-#     to avoid potential errors with empty data)
 
 # +
 cut_common = classification_galaxy_base(
@@ -620,12 +618,13 @@ plot_histograms(
 
 # ## Metacalibration for stars
 
-star_metacal = metacal(
-    dd[ind_star],
-    m_star,
-    masking_type='star',
-    verbose=verbose
-)
+if star_cat_path:
+    star_metacal = metacal(
+        dd[ind_star],
+        m_star,
+        masking_type='star',
+        verbose=verbose
+    )
 
 # #### Number density
 
@@ -950,7 +949,7 @@ R_shear_ind = gal_metacal.R_shear
 # ### Write basic shape catalogue
 
 spv_cat.write_shape_catalog(
-    f'{output_shape_cat_base}_{shape}.fits',
+    f'{output_shape_cat_stem}_{shape}{output_ext}',
     ra,
     dec,
     w,
@@ -989,7 +988,7 @@ if mask_external_path:
 
 # Extended catalogue with SNR, individual R matrices, ext_cols
 spv_cat.write_shape_catalog(
-    f'{output_shape_cat_base}_extended_{shape}.fits',
+    f'{output_shape_cat_stem}_extended_{shape}{output_ext}',
     ra,
     dec,
     w,
@@ -1019,5 +1018,5 @@ if shape == "":
     ra = dd['RA'][cut_overlap]
     dec = dd['DEC'][cut_overlap]
     tile_id = dd['TILE_ID'][cut_overlap]
-    write_galaxy_cat(f'{output_shape_cat_base}.fits', ra, dec, tile_id)
+    write_galaxy_cat(f'{output_shape_cat_stem}{output_ext}', ra, dec, tile_id)
  

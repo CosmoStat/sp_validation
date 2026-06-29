@@ -70,16 +70,12 @@ mask_external_path = None
 ## Output paths
 
 ### Output base directory
-output_dir = f'{data_dir}/sp_output'
+output_dir = f'{data_dir}'
 
-### Galaxy shape catalogue base name.
-### Will be appended by
-### - '_{sh}.fits' for the basic catalogue
-### - 'extended_{sh}.fits' for the extended catalogue
-output_shape_cat_base= f'{output_dir}/shape_catalog'
+### Galaxy shape catalogue base name
+output_shape_cat_base = f'{output_dir}/shape_catalog'
 
 ### PSF output catalogue base name.
-### Will be appended by '_{sh}.fits'
 output_PSF_cat_base = f'{output_dir}/psf_catalog'
 
 ### File for found tile IDs
@@ -106,6 +102,9 @@ col_name_dec = 'YWIN_WORLD'
 mmap_mode = None
 
 ## Output
+
+### Output file format extension: '.fits' or '.hdf5'
+output_format = '.hdf5'
 
 ### Additional output columns
 add_cols = ["FLUX_RADIUS", "FWHM_IMAGE", "FWHM_WORLD", "MAGERR_AUTO", "MAG_WIN", "MAGERR_WIN", "FLUX_AUTO", "FLUXERR_AUTO", "FLUX_APER", "FLUXERR_APER", "NGMIX_T_NOSHEAR", "NGMIX_Tpsf_NOSHEAR"]

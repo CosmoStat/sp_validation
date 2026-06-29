@@ -100,7 +100,7 @@ gal_metacal = metacal(
     rel_size_max=cm["gal_rel_size_max"],
     size_corr_ell=cm["gal_size_corr_ell"],
     sigma_eps=cm["sigma_eps_prior"],
-    global_R_weight=cm["global_R_weight"],
+    global_R_weight=cm.get("global_R_weight", None),
     col_2d=False,
     verbose=True,
 )

@@ -344,6 +344,35 @@ def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
     io.print_stats(msg, stats_file, verbose=verbose)
 
 
+def match_catalogs_radec(ra1, dec1, ra2, dec2, thresh_deg=0.0002):
+    """Match two catalogues by RA/Dec.
+
+    Match each object in catalogue 2 to the nearest in catalogue 1
+    within a threshold.
+
+    Parameters
+    ----------
+    ra1, dec1 : array_like
+        coordinates of reference catalogue [deg]
+    ra2, dec2 : array_like
+        coordinates of catalogue to match [deg]
+    thresh_deg : float, optional
+        maximum separation [deg], default 0.0002
+
+    Returns
+    -------
+    idx1 : ndarray of int
+        indices into catalogue 1 of matched objects
+    idx2 : ndarray of int
+        indices into catalogue 2 of matched objects
+    """
+    coord1 = coords.SkyCoord(ra=ra1 * u.degree, dec=dec1 * u.degree)
+    coord2 = coords.SkyCoord(ra=ra2 * u.degree, dec=dec2 * u.degree)
+    idx1, sep, _ = coord2.match_to_catalog_sky(coord1)
+    mask = sep.deg < thresh_deg
+    return idx1[mask], np.where(mask)[0]
+
+
 def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
     """Add docstring.
 
@@ -583,55 +612,76 @@ def write_shape_catalog(
                 )
             )
 
-    # Write columns to FITS file
-    cols = []
-    for col, _ in col_info_arr:
-        cols.append(col)
-    table_hdu = fits.BinTableHDU.from_columns(cols)
+    ext = os.path.splitext(output_path)[1].lower()
 
-    # Add human-readable descriptions
-    for idx, col_info in enumerate(col_info_arr):
-        table_hdu.header[f"TTYPE{idx+1}"] = (
-            col_info[0].name,
-            col_info[1],
+    if ext in (".hdf5", ".hdf", ".h5"):
+        # Build flat list of (name, 1d-array) pairs, splitting 2D columns
+        fields = []
+        for col, descr in col_info_arr:
+            arr = np.asarray(col.array)
+            if arr.ndim == 2:
+                for idx in range(arr.shape[1]):
+                    fields.append((f"{col.name}_{idx}", arr[:, idx]))
+            else:
+                fields.append((col.name, arr))
+
+        # Build structured numpy array and write as single "data" dataset
+        dtype = np.dtype([(name, arr.dtype) for name, arr in fields])
+        structured = np.empty(len(fields[0][1]), dtype=dtype)
+        for name, arr in fields:
+            structured[name] = arr
+
+        with h5py.File(output_path, "w") as f:
+            f.create_dataset("data", data=structured)
+            if add_header:
+                for key, val in add_header.items():
+                    f.attrs[key] = str(val)
+            if all(v is not None for v in (R, R_shear, R_select, c)):
+                f.attrs["R"] = R
+                f.attrs["R_shear"] = R_shear
+                f.attrs["R_select"] = R_select
+                f.attrs["c"] = c
+            if c_err is not None:
+                f.attrs["c1_err"] = c_err[0]
+                f.attrs["c2_err"] = c_err[1]
+            if sigma_epsilon is not None:
+                f.attrs["sig_eps"] = sigma_epsilon
+            if alpha_leakage is not None:
+                f.attrs["alpha"] = alpha_leakage
+
+    else:
+        # Write columns to FITS file
+        cols = [col for col, _ in col_info_arr]
+        table_hdu = fits.BinTableHDU.from_columns(cols)
+
+        # Add human-readable descriptions
+        for idx, col_info in enumerate(col_info_arr):
+            table_hdu.header[f"TTYPE{idx+1}"] = (col_info[0].name, col_info[1])
+
+        # Primary HDU with information in header
+        primary_header = fits.Header()
+        if add_header:
+            primary_header.update(add_header)
+        primary_header = cat.write_header_info_sp(
+            primary_header,
+            software_name="sp_validation",
+            software_version=__version__,
+            author=getpass.getuser(),
         )
+        if all(v is not None for v in (R, R_shear, R_select, c)):
+            cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
+        if c_err is not None:
+            primary_header["c1_err"] = (c_err[0], "Standard deviation of c_1")
+            primary_header["c2_err"] = (c_err[1], "Standard deviation of c_2")
+        primary_header["w"] = "DES weight"
+        if sigma_epsilon is not None:
+            primary_header["sig_eps"] = (sigma_epsilon, "Shape noise RMS")
+        if alpha_leakage:
+            primary_header["alpha"] = (alpha_leakage, "Mean scale-dependent PSF leakage")
 
-    # Primary HDU with information in header
-    primary_header = fits.Header()
-    
-    if add_header:
-        primary_header.update(add_header)
-
-    primary_header = cat.write_header_info_sp(
-        primary_header,
-        software_name="sp_validation",
-        software_version=__version__,
-        author=getpass.getuser(),
-    )
-
-    if all(v is not None for v in (R, R_shear, R_select, c)):
-        cat.add_shear_bias_to_header(primary_header, R, R_shear, R_select, c)
-    if c_err is not None:
-        primary_header["c1_err"] = (c_err[0], "Standard deviation of c_1")
-        primary_header["c2_err"] = (c_err[1], "Standard deviation of c_2")
-
-    primary_header["w"] = "DES weight"
-
-    if sigma_epsilon is not None:
-        primary_header["sig_eps"] = (sigma_epsilon, "Shape noise RMS")
-
-    if alpha_leakage:
-        primary_header["alpha"] = (
-            alpha_leakage,
-            "Mean scale-dependent PSF leakage",
-        )
-
-    primary_hdu = fits.PrimaryHDU(header=primary_header)
-
-    # Final file
-    hdu_list = fits.HDUList([primary_hdu, table_hdu])
-
-    hdu_list.writeto(output_path, overwrite=True)
+        primary_hdu = fits.PrimaryHDU(header=primary_header)
+        hdu_list = fits.HDUList([primary_hdu, table_hdu])
+        hdu_list.writeto(output_path, overwrite=True)
 
 
 def write_galaxy_cat(output_path, ra, dec, tile_id):

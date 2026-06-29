@@ -1,0 +1,71 @@
+# Config file for masking and calibration.
+# Less conservative cuts, type v1.X.9 (e.g. for matching with spectroscopic sample).
+
+# General parameters (can also given on command line)
+params:
+  input_path: shape_catalog_comprehensive_ngmix.hdf5
+  cmatrices: False
+  sky_regions: False
+  verbose: True
+
+# Masks
+## Using columns in 'dat' group (ShapePipe flags)
+dat:
+  # SExtractor flags
+  - col_name: FLAGS
+    label: SE FLAGS
+    kind: smaller_equal
+    value: 2
+
+  # Duplicate objects
+  - col_name: overlap
+    label: tile overlap
+    kind: equal
+    value: True
+
+  # Number of epochs
+  - col_name: N_EPOCH
+    label: r"$n_{\rm epoch}$"
+    kind: greater_equal
+    value: 1
+
+  # Magnitude range
+  - col_name: mag
+    label: mag range
+    kind: range
+    value: [15, 30]
+
+  # ngmix flags
+  - col_name: NGMIX_MOM_FAIL
+    label: "ngmix moments failure"
+    kind: equal
+    value: 0
+
+  # invalid PSF ellipticities
+  - col_name: NGMIX_ELL_PSFo_NOSHEAR_0
+    label: "bad PSF ellipticity comp 1"
+    kind: not_equal
+    value: -10
+  - col_name: NGMIX_ELL_PSFo_NOSHEAR_1
+    label: "bad PSF ellipticity comp 2"
+    kind: not_equal
+    value: -10
+
+# Metacal parameters
+metacal:
+  # Ellipticity dispersion
+  sigma_eps_prior: 0.34
+
+  # Signal-to-noise range
+  gal_snr_min: 5
+  gal_snr_max: 500
+
+  # Relative-size (hlr / hlr_psf) range
+  gal_rel_size_min: 0.25
+  gal_rel_size_max: 10
+
+  # Correct relative size for ellipticity?
+  gal_size_corr_ell: False
+
+  # Weight for global response matrix, None for unweighted mean
+  global_R_weight: w

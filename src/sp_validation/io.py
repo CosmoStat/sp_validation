@@ -14,31 +14,11 @@ import os
 import numpy as np
 
 
-def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
-    """Make output directories.
-
-    Create output directories and subdirs
-
-    Parameters
-    ----------
-    plot_dir: string
-        directory name
-    plot_subdirs: array of string
-        subdirectory names
-    verbose: bool, optional, default=False
-        verbose output if True
-    """
-    for d in (output_dir, plot_dir):
-        if not os.path.isdir(d):
-            if verbose:
-                print('Creating dir {}'.format(d))
-            os.mkdir(d)
-    for sd in plot_subdirs:
-        dsd = '{}/{}'.format(plot_dir, sd)
-        if not os.path.isdir(dsd):
-            if verbose:
-                print('Creating dir {}'.format(dsd))
-            os.mkdir(dsd)
+def make_out_dirs(output_dir, verbose=False):
+    """Make output directory."""
+    os.makedirs(output_dir, exist_ok=True)
+    if verbose:
+        print(f'Created dir {output_dir}')
 
 
 def open_stats_file(directory, file_name):
