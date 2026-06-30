@@ -19,12 +19,16 @@ classifiers = [
 dependencies = [
     "adjustText",
     "astropy>=5.0",
-    "camb",
+    # Floor at the current latest release; do not cap — we want the eventual
+    # scipy-1.18 fix release. Revisit the scipy cap below when camb ships
+    # > 1.6.6 with the scipy-1.18 / BBN fix.
+    "camb>=1.6",
     "clmm",
     "colorama",
     "cs_util>=0.2.1",
     "emcee",
-    "getdist @ git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
+    # SHA-pinned snapshot of getdist branch `upper_triangle_whisker`.
+    "getdist @ git+https://github.com/benabed/getdist.git@113cd22a9a0d013b6f72fe734be81f260f3d3be5",
     "h5py",
     "healpy",
     "healsparse",
@@ -32,7 +36,7 @@ dependencies = [
     "joblib>=0.13",
     "jupyter",
     "jupyterlab",
-    "jupytext==1.15.1",
+    "jupytext>=1.15",
     "lenspack",
     "lmfit",
     "numexpr",
@@ -43,12 +47,21 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
-    # scipy 1.18 (py3.12+) changed interpolators to return arrays for scalar
-    # input, which breaks camb's BBN Y_He predictor inside set_cosmology
-    # (`TypeError: only 0-dimensional arrays can be converted to Python
-    # scalars`), failing all get_cosmo-backed tests. Cap until camb ships a fix.
+    # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
+    # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to
+    # shape-(1,) `array([x])`. camb's BBN Y_He predictor (bbn.py) wraps the
+    # result in np.float64(), which collapses a 0-d array to a scalar but leaves
+    # a (1,) array as (1,); set_cosmology then fails at the ctypes float
+    # assignment `self.YHe = YHe` with `TypeError: only 0-dimensional arrays can
+    # be converted to Python scalars`, failing all get_cosmo-backed tests. camb
+    # 1.6.6 (latest on PyPI) and current master are both unfixed. Lift this cap
+    # when camb ships > 1.6.6 with the scipy-1.18 fix.
     "scipy<1.18",
     "seaborn",
+    # Intentionally tracks the mutable `develop` branch (NOT SHA-pinned):
+    # shear_psf_leakage is actively co-developed CosmoStat code we want to stay
+    # current with, so freezing it would only create bump-churn. (Contrast the
+    # getdist feature-branch below, which is an external fork we pin for repro.)
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
     "statsmodels",
