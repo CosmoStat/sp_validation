@@ -71,10 +71,16 @@ undefined names, unused variables, other judgement calls — is printed as a
 way locally; the gate below is where it's enforced.
 
 **`develop` is the gate.** On every push to `develop` and every PR into it, CI
-runs the full ruff policy. If it fails, two things happen: the check goes **red
-and blocks the merge**, and a bot opens (or updates) a single **lint-debt issue
-assigned to you** listing the violations. Fix them and push again — the issue
-**auto-closes when CI is green**. So: warn while you work, clean before it lands.
+runs the full ruff policy. If it fails, the check goes **red and blocks the
+merge**, and the bot tells you what to fix where you already are:
+
+- **On a PR** → it posts (and keeps updating) a **comment on the PR** listing the
+  violations (also surfaced as annotations in the CI run). Push a fix and the
+  comment turns green.
+- **On a direct push to `develop`** (no PR) → it opens (or updates) a single
+  **lint-debt issue assigned to you**, which auto-closes when CI is green.
+
+So: warn while you work, clean before it lands.
 
 ## Commit hygiene (notebooks & large files)
 
