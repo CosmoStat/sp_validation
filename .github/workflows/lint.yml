@@ -1,37 +1,204 @@
 name: Lint
 
-# Region-aware ruff gate:
-#   - formatting is enforced repo-wide (`ruff format --check .`)
-#   - lint is enforced (blocking) on the library only (`ruff check src/sp_validation`),
-#     matching the src-only pre-commit hook. The peripheral analysis/workflow trees
-#     are formatted but not lint-blocking — they legitimately accrue analysis-script
-#     patterns, and policing them would block unrelated PRs.
-#   - a repo-wide lint runs informationally (non-blocking) for visibility; it surfaces
-#     genuine peripheral issues (e.g. undefined names) without failing the build.
+# Lint gate for `develop` — warn locally, account here.
 #
-#   push / pull_request → format + library-lint must pass; repo-wide lint is advisory.
+# The model (settled with Cail + Sacha, 2026-06-23):
+#   * Locally, ruff auto-applies safe fixes and only WARNS on the rest (see
+#     .pre-commit-config.yaml) — you commit freely.
+#   * Getting into `develop` is gated. This job runs the FULL ruff policy
+#     (`ruff check .` + `ruff format --check .`, region-aware per pyproject.toml)
+#     and on any failure it does two things:
+#       1. opens (or updates) ONE open issue for the committer, @-mentioning and
+#          assigning them, with the violations and a link to this run — a durable,
+#          owned record of what to fix. The issue auto-closes when their next run
+#          is clean.
+#       2. fails the job (red), so the check blocks the merge.
+#   * On a clean run it closes that committer's open lint-debt issue, if any.
+#   * If ruff itself can't run (network, bad version), the job goes red but files
+#     NO issue — that's infra, not the committer's lint debt.
+#
+# Triggers: pushes to `develop` and PRs targeting `develop` only — other
+# branches stay quiet (too noisy otherwise). `workflow_dispatch` is for manual
+# testing of the gate itself.
+#
+# Why `pull_request_target` for PRs: opening/assigning an issue needs a write
+# token, and PRs from forks (e.g. sachaguer/) get a read-only token under the
+# plain `pull_request` event. `pull_request_target` runs this workflow from the
+# BASE branch (so the workflow definition is trusted) with a write token, while
+# we check out the PR head ONLY to lint it. Two hardening measures make running
+# tooling over untrusted PR code safe here: ruff is a static analyzer (it parses
+# files, never imports/executes them), and `uvx --no-config` makes uv ignore any
+# `uv.toml`/`[tool.uv]` in the PR tree, so a malicious PR can't redirect ruff's
+# download to a trojaned index. The checkout also drops its git credentials.
+# (A PR can still edit `[tool.ruff]` to weaken its own policy, but that's visible
+# in the diff and reviewed like any other change.)
+
 on:
   push:
-  pull_request:
+    branches: [develop]
+  pull_request_target:
+    branches: [develop]
+  workflow_dispatch:
+
+# One lint run per branch / PR; newer pushes cancel older in-flight runs.
+concurrency:
+  group: lint-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   lint:
-    name: Ruff format + lint
+    name: Ruff (check + format)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout (PR head on pull_request_target, else the pushed ref)
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
 
-      - name: Check formatting (repo-wide, blocking)
-        run: uvx ruff format --check .
+      # Run both checks WITHOUT failing the step — we file the issue before
+      # turning the job red. `ruff@<pin>` matches the pre-commit version;
+      # `--no-config` neutralizes any uv config in the (untrusted) PR tree.
+      # ruff exit codes: 0 = clean, 1 = violations, >=2 = ruff/uvx error.
+      - name: Run ruff
+        id: ruff
+        shell: bash
+        run: |
+          set +e
+          uvx --no-config ruff@0.15.18 check .          > check.txt  2>&1; check_rc=$?
+          uvx --no-config ruff@0.15.18 format --check . > format.txt 2>&1; fmt_rc=$?
 
-      - name: Lint library (src/, blocking)
-        run: uvx ruff check src/sp_validation
+          {
+            echo "### \`ruff check .\`"
+            if [ "$check_rc" -eq 0 ]; then echo; echo "✅ clean"; else echo; echo '```'; cat check.txt; echo '```'; fi
+            echo
+            echo "### \`ruff format --check .\`"
+            if [ "$fmt_rc" -eq 0 ]; then echo; echo "✅ clean"; else echo; echo '```'; cat format.txt; echo '```'; fi
+          } > report.md
 
-      - name: Lint repo-wide (advisory, non-blocking)
+          # A tooling error (rc >= 2) is not lint debt — block, but don't blame.
+          if [ "$check_rc" -ge 2 ] || [ "$fmt_rc" -ge 2 ]; then
+            echo "tool_error=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "tool_error=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$check_rc" -eq 0 ] && [ "$fmt_rc" -eq 0 ]; then
+            echo "passed=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "passed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Issue management is a side effect — never let it red a clean run.
+      - name: File / update / clear the committer's lint-debt issue
+        if: steps.ruff.outputs.tool_error == 'false'
         continue-on-error: true
-        run: uvx ruff check .
+        uses: actions/github-script@v7
+        env:
+          PASSED: ${{ steps.ruff.outputs.passed }}
+        with:
+          script: |
+            const fs = require('fs');
+            const passed = process.env.PASSED === 'true';
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            const LABEL = 'lint-debt';
+
+            // Who introduced it, and where — pin the issue to one person.
+            let login, where;
+            if (context.eventName === 'pull_request_target') {
+              const pr = context.payload.pull_request;
+              login = pr.user.login;
+              where = `PR #${pr.number} (\`${pr.head.sha.slice(0, 7)}\`)`;
+            } else { // push or workflow_dispatch
+              login = context.actor;
+              where = `push to \`${context.ref.replace('refs/heads/', '')}\` (\`${context.sha.slice(0, 7)}\`)`;
+            }
+            const title = `Lint debt: @${login}`;
+
+            // Best-effort: make sure the label exists.
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: LABEL });
+            } catch {
+              try {
+                await github.rest.issues.createLabel({
+                  owner, repo, name: LABEL, color: 'd93f0b',
+                  description: 'Auto-filed lint failures from the develop gate',
+                });
+              } catch (e) { core.info(`label create skipped: ${e.message}`); }
+            }
+
+            // One open issue per committer (exclude PRs, which also list here).
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: LABEL, per_page: 100,
+            });
+            const existing = open.find(i => i.title === title && !i.pull_request);
+
+            if (passed) {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `✅ Lint is clean as of ${where}. Closing — thanks!`,
+                });
+                await github.rest.issues.update({ owner, repo, issue_number: existing.number, state: 'closed' });
+                core.info(`Closed #${existing.number} (clean).`);
+              } else {
+                core.info('Clean, no open lint-debt issue to close.');
+              }
+              return;
+            }
+
+            const report = fs.readFileSync('report.md', 'utf8');
+            const body = [
+              `@${login} — ruff flagged lint issues in **${where}**.`,
+              ``,
+              `This doesn't block your local work (pre-commit only warns), but the \`develop\` gate stays red until it's clean. Fix and push again — **this issue auto-closes when CI goes green.**`,
+              ``,
+              report,
+              ``,
+              `---`,
+              `[CI run](${runUrl}) · _Auto-filed by the lint gate; updated in place, closed when clean._`,
+              `<!-- lint-debt-for: ${login} -->`,
+            ].join('\n');
+
+            let number;
+            if (existing) {
+              await github.rest.issues.update({ owner, repo, issue_number: existing.number, body });
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number,
+                body: `🔴 Still failing as of ${where}. [run](${runUrl})`,
+              });
+              number = existing.number;
+              core.info(`Updated #${number}.`);
+            } else {
+              const created = await github.rest.issues.create({ owner, repo, title, body, labels: [LABEL] });
+              number = created.data.number;
+              core.info(`Opened #${number}.`);
+            }
+
+            // Assign the committer if they're assignable (collaborators only —
+            // external fork authors may not be; the @-mention still notifies).
+            try {
+              await github.rest.issues.addAssignees({ owner, repo, issue_number: number, assignees: [login] });
+            } catch (e) {
+              core.info(`assign skipped (${login} not assignable): ${e.message}`);
+            }
+
+      # Red → blocks the merge. `always()` so a hiccup in the issue step above
+      # can't suppress the red on genuine lint debt; a tooling error also reds.
+      - name: Fail the job if the gate didn't pass
+        if: always() && steps.ruff.outputs.passed == 'false'
+        run: |
+          if [ "${{ steps.ruff.outputs.tool_error }}" = "true" ]; then
+            echo "::error::ruff could not run (network / version) — gate inconclusive, blocking. No issue filed."
+          else
+            echo "::error::ruff found lint/format issues — see the auto-filed lint-debt issue."
+          fi
+          exit 1
