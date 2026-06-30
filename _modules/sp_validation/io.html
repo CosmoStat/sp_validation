@@ -220,13 +220,13 @@
 </span><span id="line-31">    <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">plot_dir</span><span class="p">):</span>
 </span><span id="line-32">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">d</span><span class="p">):</span>
 </span><span id="line-33">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-34">                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Creating dir </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
+</span><span id="line-34">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating dir </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">d</span><span class="p">))</span>
 </span><span id="line-35">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
 </span><span id="line-36">    <span class="k">for</span> <span class="n">sd</span> <span class="ow">in</span> <span class="n">plot_subdirs</span><span class="p">:</span>
-</span><span id="line-37">        <span class="n">dsd</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span>
+</span><span id="line-37">        <span class="n">dsd</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">plot_dir</span><span class="p">,</span> <span class="n">sd</span><span class="p">)</span>
 </span><span id="line-38">        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">):</span>
 </span><span id="line-39">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-40">                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Creating dir </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dsd</span><span class="p">))</span>
+</span><span id="line-40">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating dir </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dsd</span><span class="p">))</span>
 </span><span id="line-41">            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">dsd</span><span class="p">)</span></div>
 
 </span><span id="line-42">
@@ -245,7 +245,7 @@
 </span><span id="line-53"><span class="sd">    file_name : string</span>
 </span><span id="line-54"><span class="sd">        file name</span>
 </span><span id="line-55"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-56">    <span class="n">stats_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">{}</span><span class="s1">/</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">),</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span>
+</span><span id="line-56">    <span class="n">stats_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2">/</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">directory</span><span class="p">,</span> <span class="n">file_name</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
 </span><span id="line-57">
 </span><span id="line-58">    <span class="k">return</span> <span class="n">stats_file</span></div>
 
@@ -268,7 +268,7 @@
 </span><span id="line-73"><span class="sd">        print message to stdout if True</span>
 </span><span id="line-74"><span class="sd">    &quot;&quot;&quot;</span>
 </span><span id="line-75">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
-</span><span id="line-76">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+</span><span id="line-76">    <span class="n">stats_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 </span><span id="line-77">    <span class="n">stats_file</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
 </span><span id="line-78">
 </span><span id="line-79">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
@@ -300,9 +300,9 @@
 </span><span id="line-102">        <span class="n">ratio</span> <span class="o">=</span> <span class="mi">0</span>
 </span><span id="line-103">
 </span><span id="line-104">    <span class="n">print_stats</span><span class="p">(</span>
-</span><span id="line-105">        <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s1"> = </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s1">/</span><span class="si">{</span><span class="n">denominator</span><span class="si">}</span><span class="s1">&#39;</span>
-</span><span id="line-106">        <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39; = </span><span class="si">{</span><span class="n">ratio</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">%&#39;</span><span class="p">,</span>
-</span><span id="line-107">        <span class="n">stats_file</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span>
+</span><span id="line-105">        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">numerator</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">denominator</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; = </span><span class="si">{</span><span class="n">ratio</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,</span>
+</span><span id="line-106">        <span class="n">stats_file</span><span class="p">,</span>
+</span><span id="line-107">        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
 </span><span id="line-108">    <span class="p">)</span></div>
 
 </span><span id="line-109">
@@ -310,24 +310,23 @@
 <div class="viewcode-block" id="write_binned_quantity">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.write_binned_quantity">[docs]</a>
 </span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">write_binned_quantity</span><span class="p">(</span><span class="n">quantity</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="o">=</span><span class="s2">&quot;quantity&quot;</span><span class="p">):</span>
-</span><span id="line-112">    
+</span><span id="line-112">
 </span><span id="line-113">    <span class="n">shape</span> <span class="o">=</span> <span class="n">quantity</span><span class="o">.</span><span class="n">shape</span>
-</span><span id="line-114">    <span class="n">len_shape</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">shape</span><span class="p">)</span>
-</span><span id="line-115">    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
-</span><span id="line-116">    
-</span><span id="line-117">    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_binned.npz&quot;</span>
-</span><span id="line-118">
-</span><span id="line-119">    <span class="n">combined</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="p">:</span> <span class="n">quantity</span><span class="p">}</span>
-</span><span id="line-120">    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">combined</span><span class="p">)</span></div>
+</span><span id="line-114">    <span class="n">nx</span><span class="p">,</span> <span class="n">ny</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+</span><span id="line-115">
+</span><span id="line-116">    <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">_binned.npz&quot;</span>
+</span><span id="line-117">
+</span><span id="line-118">    <span class="n">combined</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">bin_edges</span><span class="p">,</span> <span class="n">extra_key</span><span class="p">:</span> <span class="n">quantity</span><span class="p">}</span>
+</span><span id="line-119">    <span class="n">np</span><span class="o">.</span><span class="n">savez</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="o">**</span><span class="n">combined</span><span class="p">)</span></div>
 
+</span><span id="line-120">
 </span><span id="line-121">
-</span><span id="line-122">
 <div class="viewcode-block" id="read_binned_quantity">
 <a class="viewcode-back" href="../../sp_validation.io.html#sp_validation.io.read_binned_quantity">[docs]</a>
-</span><span id="line-123"><span class="k">def</span><span class="w"> </span><span class="nf">read_binned_quantity</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
-</span><span id="line-124">
-</span><span id="line-125">    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">data</span><span class="p">:</span>
-</span><span id="line-126">        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">files</span><span class="p">}</span></div>
+</span><span id="line-122"><span class="k">def</span><span class="w"> </span><span class="nf">read_binned_quantity</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+</span><span id="line-123">
+</span><span id="line-124">    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span> <span class="k">as</span> <span class="n">data</span><span class="p">:</span>
+</span><span id="line-125">        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">data</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">files</span><span class="p">}</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
@@ -337,7 +336,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 23 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 30 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>

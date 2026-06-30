@@ -147,574 +147,118 @@ functions. Built on the catalogue data layer in <code class="docutils literal no
 </dd>
 </dl>
 <dl class="py class">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">BaseCat</span></span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat'">¶</a></dt>
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask'">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<p>Base_Cat.</p>
-<p>Basic catalogue class.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat.set_params_from_command_line">
-<span class="sig-name descname"><span class="pre">set_params_from_command_line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat.set_params_from_command_line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat.set_params_from_command_line" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat.set_params_from_command_line'">¶</a></dt>
-<dd><p>Set Params From Command Line.</p>
-<p>Only use when calling using python from command line.
-Does not work from ipython or jupyter.</p>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat.read_config_set_params">
-<span class="sig-name descname"><span class="pre">read_config_set_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fpath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat.read_config_set_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat.read_config_set_params" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat.read_config_set_params'">¶</a></dt>
-<dd><p>Read Config Set Params.</p>
-<p>Read configuration file and sets class parameters.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>fpath</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – inpput file path</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>configuration</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat.read_cat">
-<span class="sig-name descname"><span class="pre">read_cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_into_memory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'r'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hdu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'data'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat.read_cat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat.read_cat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat.read_cat'">¶</a></dt>
-<dd><p>Read Cat.</p>
-<p>Read input catalogue, either FITS or HDF5.</p>
+<p>Mask.</p>
+<p>Class to handle masking of catalogues.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>load_into_memory</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – load data into memory (potentially slow) of <code class="docutils literal notranslate"><span class="pre">True</span></code>;
-default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
-<li><p><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – HDF5 read mode, default is “r”</p></li>
-<li><p><strong>hdu</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – HDU number (for FITS file); default is 1</p></li>
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – dataset name, default is ‘data’</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Catalogue data</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#IOError" title="(in Python v3.14)"><strong>IOError</strong></a> – If file extension is not .fits or .hd5</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat.write_hdf5_header">
-<span class="sig-name descname"><span class="pre">write_hdf5_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hd5file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat.write_hdf5_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat.write_hdf5_header" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat.write_hdf5_header'">¶</a></dt>
-<dd><p>Write HDF5 Header.</p>
-<p>Write basic header information to HDF5 file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>hd5file</strong> (<em>h5py.File</em>) – input HDF5 file</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat.get_header">
-<span class="sig-name descname"><span class="pre">get_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat.get_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat.get_header" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat.get_header'">¶</a></dt>
-<dd><p>Get Header.</p>
-<p>Return header of hd5 file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – input path; if not <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) use <cite>output_path</cite> of
-self._params dict</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>header</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat.write_hdf5_file">
-<span class="sig-name descname"><span class="pre">write_hdf5_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat.write_hdf5_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat.write_hdf5_file" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat.write_hdf5_file'">¶</a></dt>
-<dd><p>Write HDF5 File.</p>
-<p>Write HDF5 data to file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – input data</p></li>
-<li><p><strong>output_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – output file path; when <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) use
-self._params[‘output_path’]</p></li>
+<li><p><strong>col_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – name of column to use for mask</p></li>
+<li><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – mask label</p></li>
+<li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – operation type, allowed are “equal”, “not_equal, “”greater_equal”,
+“smaller_equal”, “range”</p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – value(s) to be used in mask operation</p></li>
+<li><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a><em>, </em><em>optional</em>) – input data, default is <cite>None</cite>; apply mask if given</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – verbose output if <code class="docutils literal notranslate"><span class="pre">True</span></code>; default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
 </ul>
 </dd>
 </dl>
-</dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.BaseCat.close_hd5">
-<span class="sig-name descname"><span class="pre">close_hd5</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#BaseCat.close_hd5"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.BaseCat.close_hd5" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.BaseCat.close_hd5'">¶</a></dt>
-<dd><p>Close HD5.</p>
-<p>Close HDF5 file.</p>
-</dd></dl>
-</dd></dl>
-<dl class="py class">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">JointCat</span></span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat'">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sp_validation.catalog_builders.BaseCat" title="sp_validation.catalog_builders.BaseCat"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCat</span></code></a></p>
-<p>Joint Cat.</p>
-<p>Class to create joint weak-lensing catalogues.</p>
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.from_list">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'combined'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.from_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.from_list" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.from_list'">¶</a></dt>
+<dd></dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.set_params_from_command_line">
-<span class="sig-name descname"><span class="pre">set_params_from_command_line</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.set_params_from_command_line"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.set_params_from_command_line" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.set_params_from_command_line'">¶</a></dt>
-<dd><p>Set Params From Command Line.</p>
-<p>Only use when calling using python from command line.
-Does not work from ipython or jupyter.</p>
-</dd></dl>
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.apply">
+<span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.apply" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.apply'">¶</a></dt>
+<dd></dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.params_default">
-<span class="sig-name descname"><span class="pre">params_default</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.params_default"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.params_default" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.params_default'">¶</a></dt>
-<dd><p>Params Default.</p>
-<p>Set default parameter values.</p>
-</dd></dl>
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.to_bool">
+<span class="sig-name descname"><span class="pre">to_bool</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hsp_mask</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.to_bool"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.to_bool" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.to_bool'">¶</a></dt>
+<dd></dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.get_patches">
-<span class="sig-name descname"><span class="pre">get_patches</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.get_patches"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.get_patches" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.get_patches'">¶</a></dt>
-<dd><p>Get Patches.</p>
-<p>Return list of patches according to option parameter value.</p>
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.print_strings">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">print_strings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coln</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lab</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fnum</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.print_strings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.print_strings" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.print_strings'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.print_stats">
+<span class="sig-name descname"><span class="pre">print_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.print_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.print_stats" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.print_stats'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.get_sign">
+<span class="sig-name descname"><span class="pre">get_sign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.get_sign"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.get_sign" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.get_sign'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.print_condition">
+<span class="sig-name descname"><span class="pre">print_condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">latex</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.print_condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.print_condition" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.print_condition'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.print_summary">
+<span class="sig-name descname"><span class="pre">print_summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f_out</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.print_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.print_summary" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.print_summary'">¶</a></dt>
+<dd></dd></dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.create_descr">
+<span class="sig-name descname"><span class="pre">create_descr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.create_descr"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.create_descr" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.create_descr'">¶</a></dt>
+<dd><p>Create Descr.</p>
+<p>Create description of mask for later use in output file header.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>patches, list of str</p>
+<dd class="field-odd"><p>description</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
 <dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.get_n_obj">
-<span class="sig-name descname"><span class="pre">get_n_obj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_sub_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.get_n_obj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.get_n_obj" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.get_n_obj'">¶</a></dt>
-<dd><p>Get N Obj.</p>
-<p>Get number of objects from FITS file headers.</p>
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.Mask.add_summary_to_FITS_header">
+<span class="sig-name descname"><span class="pre">add_summary_to_FITS_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#Mask.add_summary_to_FITS_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.Mask.add_summary_to_FITS_header" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.Mask.add_summary_to_FITS_header'">¶</a></dt>
+<dd></dd></dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.get_masks_from_config">
+<span class="sig-name descname"><span class="pre">get_masks_from_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat_ext</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks_to_apply</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#get_masks_from_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.get_masks_from_config" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.get_masks_from_config'">¶</a></dt>
+<dd><p>Get Masks From Config.</p>
+<p>Return mask information from yaml config structure.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>patches</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – input patches, type is str</p></li>
-<li><p><strong>base_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input base directory, root dir of patches</p></li>
-<li><p><strong>input_sub_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input file name; input path is base_path/patch/input_sub_path</p></li>
-<li><p><strong>Raises</strong> – ValueError: if input file canont be read</p></li>
-<li><p><strong>Returns</strong> – <dl class="simple">
-<dt>list</dt><dd><p>HDUs</p>
-</dd>
-<dt>list</dt><dd><p>number of objects per file</p>
-</dd>
-<dt>int</dt><dd><p>total number of objects</p>
-</dd>
-</dl>
-</p></li>
+<li><p><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – config information</p></li>
+<li><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>) – input data</p></li>
+<li><p><strong>det_ext</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>) – input extended data</p></li>
+<li><p><strong>masks_to_apply</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – masks to apply exclusively; if <cite>None</cite> (default), use all masks</p></li>
+<li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – verbose output if <code class="docutils literal notranslate"><span class="pre">True</span></code>; default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
 </ul>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.get_col_info">
-<span class="sig-name descname"><span class="pre">get_col_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.get_col_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.get_col_info" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.get_col_info'">¶</a></dt>
-<dd><p>Get Col Info.</p>
-<p>Return information of input columns.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – input data</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><ul class="simple">
-<li><p><em>list</em> – column names</p></li>
-<li><p><em>list</em> – column formats</p></li>
-<li><p><em>int</em> – number of columns</p></li>
+<li><p><em>list</em> – list of masks</p></li>
+<li><p><em>dict</em> – list of indices for given mask column name (label)</p></li>
 </ul>
 </p>
 </dd>
 </dl>
 </dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.dtype_out">
-<span class="sig-name descname"><span class="pre">dtype_out</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype_in</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.dtype_out"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.dtype_out" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.dtype_out'">¶</a></dt>
-<dd><p>Set output dtype.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.print_mask_stats">
+<span class="sig-name descname"><span class="pre">print_mask_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_combined</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#print_mask_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.print_mask_stats" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.print_mask_stats'">¶</a></dt>
+<dd><p>Print Mask Stats.</p>
+<p>Print mask statistics.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – column name</p></li>
-<li><p><strong>dtype_in</strong> (<em>np.dtype</em>) – input dtype</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>output dtype</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>np.dtype</p>
+<dd class="field-odd"><p><strong>num_obj</strong></p>
 </dd>
 </dl>
 </dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.init_data">
-<span class="sig-name descname"><span class="pre">init_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_col</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ndim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.init_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.init_data" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.init_data'">¶</a></dt>
-<dd><p>Init Data.</p>
-<p>Initialize empty structured data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>n_col</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – number of columns</p></li>
-<li><p><strong>n_obj</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – number of objects (rows)</p></li>
-<li><p><strong>ndim</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – dimension of input columns</p></li>
-<li><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – example data</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>combined structure data, (n_col x n_obj) array</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.write_hdf5_file">
-<span class="sig-name descname"><span class="pre">write_hdf5_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dat_all</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patches</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.write_hdf5_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.write_hdf5_file" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.write_hdf5_file'">¶</a></dt>
-<dd><p>Write HDF5 File.</p>
-<p>Write data to HDF5 file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dat_all</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – input data</p></li>
-<li><p><strong>patches</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – input patches, list of str</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.write_hdf5_header">
-<span class="sig-name descname"><span class="pre">write_hdf5_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hd5file</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">patches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.write_hdf5_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.write_hdf5_header" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.write_hdf5_header'">¶</a></dt>
-<dd><p>Write HDF5 Header.</p>
-<p>Write header information to HDF5 file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>hd5file</strong> (<em>h5py.File</em>) – input HDF5 file</p></li>
-<li><p><strong>patches</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – input patches, list of str, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.merge_catalogues">
-<span class="sig-name descname"><span class="pre">merge_catalogues</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">patches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.merge_catalogues"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.merge_catalogues" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.merge_catalogues'">¶</a></dt>
-<dd><p>Merge Catalogues.</p>
-<p>Merge individual patch-based catalogues.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>patches</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – input patches; list of <cite>str</cite></p></li>
-<li><p><strong>base_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – input base directory path; default is “.”</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.JointCat.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#JointCat.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.JointCat.run" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.JointCat.run'">¶</a></dt>
-<dd><p>Run.</p>
-<p>Main processing function.</p>
-</dd></dl>
-</dd></dl>
-<dl class="py class">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ApplyHspMasks</span></span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks'">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sp_validation.catalog_builders.BaseCat" title="sp_validation.catalog_builders.BaseCat"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCat</span></code></a></p>
-<p>Apply Hsp Masks.</p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks._labels_struct">
-<span class="sig-name descname"><span class="pre">_labels_struct</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{1:</span> <span class="pre">'Faint_star_halos',</span> <span class="pre">2:</span> <span class="pre">'Bright_star_halos',</span> <span class="pre">4:</span> <span class="pre">'Stars',</span> <span class="pre">8:</span> <span class="pre">'Manual',</span> <span class="pre">16:</span> <span class="pre">'u',</span> <span class="pre">32:</span> <span class="pre">'g',</span> <span class="pre">64:</span> <span class="pre">'r',</span> <span class="pre">128:</span> <span class="pre">'i',</span> <span class="pre">256:</span> <span class="pre">'z',</span> <span class="pre">512:</span> <span class="pre">'Tile_RA_DEC_cut',</span> <span class="pre">1024:</span> <span class="pre">'Maximask',</span> <span class="pre">2048:</span> <span class="pre">'z2'}</span></span><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks._labels_struct" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks._labels_struct'">¶</a></dt>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.correlation_matrix">
+<span class="sig-name descname"><span class="pre">correlation_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.9</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#correlation_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.correlation_matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.correlation_matrix'">¶</a></dt>
 <dd></dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.get_label_struct">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_label_struct</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bit</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.get_label_struct"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.get_label_struct" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.get_label_struct'">¶</a></dt>
-<dd><p>Get Label Struct.</p>
-<p>Return label of bit-coded mask.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>bit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – input bit</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>label</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.get_mask_col_name">
-<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">get_mask_col_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bit</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.get_mask_col_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.get_mask_col_name" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.get_mask_col_name'">¶</a></dt>
-<dd><p>Get Mask Col Name.</p>
-<p>Return column name of mask corresponding to input bit.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>bit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – input bit</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>column name</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.params_default">
-<span class="sig-name descname"><span class="pre">params_default</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.params_default"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.params_default" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.params_default'">¶</a></dt>
-<dd><p>Params Default.</p>
-<p>Set default parameter values.</p>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.check_params">
-<span class="sig-name descname"><span class="pre">check_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.check_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.check_params" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.check_params'">¶</a></dt>
-<dd><p>Check Params.</p>
-<p>Check whether parameter values are valid.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – if a parameter value is not valid</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.update_params">
-<span class="sig-name descname"><span class="pre">update_params</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.update_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.update_params" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.update_params'">¶</a></dt>
-<dd><p>Update Params.</p>
-<p>Update and transform parameter values.</p>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.reverse_bit_list">
-<span class="sig-name descname"><span class="pre">reverse_bit_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.reverse_bit_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.reverse_bit_list" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.reverse_bit_list'">¶</a></dt>
-<dd><p>Reverse Bit List.</p>
-<p>Split bit-coded integer into bits.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>bit</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Bit-coded integer</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>List of bits</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.get_paths_bit_masks">
-<span class="sig-name descname"><span class="pre">get_paths_bit_masks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.get_paths_bit_masks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.get_paths_bit_masks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.get_paths_bit_masks'">¶</a></dt>
-<dd><p>Get Paths Bit Masks.</p>
-<p>Return paths of bit-coded mask files.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Dictionary with bit as key and path as value.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.get_mask">
-<span class="sig-name descname"><span class="pre">get_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.get_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.get_mask" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.get_mask'">¶</a></dt>
-<dd><p>Get Mask.</p>
-<p>Read from file and return healsparse mask.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – input path</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>mask</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>hsp.HealSparseMap</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.apply_mask">
-<span class="sig-name descname"><span class="pre">apply_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hsp_mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.apply_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.apply_mask" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.apply_mask'">¶</a></dt>
-<dd><p>Apply Mask.</p>
-<p>Apply mask to input coordinates.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>hsp_mask</strong> (<em>hsp.HealSparseMap</em>) – input mask</p></li>
-<li><p><strong>ra</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – input right ascension</p></li>
-<li><p><strong>dec</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – input declination</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>mask values</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.get_masks">
-<span class="sig-name descname"><span class="pre">get_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.get_masks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.get_masks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.get_masks'">¶</a></dt>
-<dd><p>Get Masks.</p>
-<p>Returns per-object masks for all bits.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a><em>, </em><em>optional</em>) – input data; if not given (default), data will be read from
-input file</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>masks</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.run" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.run'">¶</a></dt>
-<dd><p>Run.</p>
-<p>Main processing function.</p>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.append_masks">
-<span class="sig-name descname"><span class="pre">append_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.append_masks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.append_masks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.append_masks'">¶</a></dt>
-<dd><p>Append Masks.</p>
-<p>Add mask information as columns to data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – input data</p></li>
-<li><p><strong>masks</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – mask information</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>updated data</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_file">
-<span class="sig-name descname"><span class="pre">write_hdf5_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat_new</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.write_hdf5_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_file" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_file'">¶</a></dt>
-<dd><p>Write HDF5 File.</p>
-<p>Save data to a hdf5 file on disk.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>dat</strong> (<em>h5py dataset</em>) – input dataset</p></li>
-<li><p><strong>dat_new</strong> (<em>h5py dataset</em><em>, </em><em>optional</em>) – second dataset; unused if <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-<li><p><strong>masks</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – masks, to be added to header information</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_header">
-<span class="sig-name descname"><span class="pre">write_hdf5_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hd5file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ApplyHspMasks.write_hdf5_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_header" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_header'">¶</a></dt>
-<dd><p>Write HDF5 Header.</p>
-<p>Write header information to HDF5 file.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>hd5file</strong> (<em>h5py.File</em>) – input HDF5 file</p></li>
-<li><p><strong>patches</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – input patches, list of str, default is <code class="docutils literal notranslate"><span class="pre">None</span></code></p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-</dd></dl>
-<dl class="py class">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.CalibrateCat">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">CalibrateCat</span></span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#CalibrateCat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.CalibrateCat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.CalibrateCat'">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#sp_validation.catalog_builders.BaseCat" title="sp_validation.catalog_builders.BaseCat"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCat</span></code></a></p>
-<p>Calibrate Cat.</p>
-<p>Class to calibrate joint catalogue.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.CalibrateCat.params_default">
-<span class="sig-name descname"><span class="pre">params_default</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#CalibrateCat.params_default"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.CalibrateCat.params_default" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.CalibrateCat.params_default'">¶</a></dt>
-<dd><p>Params Default.</p>
-<p>Set default parameter values.</p>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.CalibrateCat.read_cat">
-<span class="sig-name descname"><span class="pre">read_cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">load_into_memory</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#CalibrateCat.read_cat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.CalibrateCat.read_cat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.CalibrateCat.read_cat'">¶</a></dt>
-<dd><p>Read Cat.</p>
-<p>Read input HDF5 catalogue.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>load_into_memory</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – load data into memory (potentially slow) of <code class="docutils literal notranslate"><span class="pre">True</span></code>;
-default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><ul class="simple">
-<li><p><em>list</em> – Catalogue data</p></li>
-<li><p><em>list_ext</em> – Extended catalogue data if exists in input file</p></li>
-</ul>
-</p>
-</dd>
-</dl>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.CalibrateCat.add_params_to_FITS_header">
-<span class="sig-name descname"><span class="pre">add_params_to_FITS_header</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">header</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#CalibrateCat.add_params_to_FITS_header"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.CalibrateCat.add_params_to_FITS_header" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.CalibrateCat.add_params_to_FITS_header'">¶</a></dt>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.catalog_builders.confusion_matrix">
+<span class="sig-name descname"><span class="pre">confusion_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prediction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">observation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#confusion_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.confusion_matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.confusion_matrix'">¶</a></dt>
 <dd></dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.CalibrateCat.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#CalibrateCat.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.CalibrateCat.run" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.CalibrateCat.run'">¶</a></dt>
-<dd><p>Run.</p>
-<p>Main processing function.</p>
-</dd></dl>
-</dd></dl>
-<dl class="py class">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ReadCat">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ReadCat</span></span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ReadCat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ReadCat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ReadCat'">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ReadCat.params_default">
-<span class="sig-name descname"><span class="pre">params_default</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ReadCat.params_default"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ReadCat.params_default" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ReadCat.params_default'">¶</a></dt>
-<dd><p>Params Default.</p>
-<p>Set default parameter values.</p>
-</dd></dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.ReadCat.run">
-<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#ReadCat.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.ReadCat.run" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.ReadCat.run'">¶</a></dt>
-<dd></dd></dl>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.compute_weights_gatti">
-<span class="sig-name descname"><span class="pre">compute_weights_gatti</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat_gal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g_uncorr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gal_metacal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_combined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_metacal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snr_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_ratio_min</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.707</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_ratio_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#compute_weights_gatti"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.compute_weights_gatti" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.compute_weights_gatti'">¶</a></dt>
-<dd><p>Compute Weights Gatti.</p>
-<p>Compute Gatti et al. (2021) DES-like weights.</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.compute_PSF_leakage">
-<span class="sig-name descname"><span class="pre">compute_PSF_leakage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat_gal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">g_corr_mc</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_combined</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask_metacal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#compute_PSF_leakage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.compute_PSF_leakage" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.compute_PSF_leakage'">¶</a></dt>
-<dd><p>Compute PSF Leakage.</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.run_joint_comprehensive_cat">
-<span class="sig-name descname"><span class="pre">run_joint_comprehensive_cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#run_joint_comprehensive_cat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.run_joint_comprehensive_cat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.run_joint_comprehensive_cat'">¶</a></dt>
-<dd><p>Run Joint Comprehensive Cat.</p>
-<p>Run class to create joint comprehensive catalogue from command line.</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.run_calibrate_comprehensive_cat">
-<span class="sig-name descname"><span class="pre">run_calibrate_comprehensive_cat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#run_calibrate_comprehensive_cat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.run_calibrate_comprehensive_cat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.run_calibrate_comprehensive_cat'">¶</a></dt>
-<dd><p>Run Calibrate Comprehensive Cat.</p>
-<p>Run class to calibrate joint comprehensive catalogue from command line.</p>
-</dd></dl>
-<dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.catalog_builders.run_apply_hsp_masks">
-<span class="sig-name descname"><span class="pre">run_apply_hsp_masks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/catalog_builders.html#run_apply_hsp_masks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.catalog_builders.run_apply_hsp_masks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.catalog_builders.run_apply_hsp_masks'">¶</a></dt>
-<dd><p>Run Apply Healsparse Masks.</p>
-<p>Run class to apply healsparse masks.</p>
-</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -736,65 +280,23 @@ default is <code class="docutils literal notranslate"><span class="pre">False</s
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat"><code class="docutils literal notranslate"><span class="pre">BaseCat</span></code></a><ul>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat.set_params_from_command_line'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat.set_params_from_command_line"><code class="docutils literal notranslate"><span class="pre">BaseCat.set_params_from_command_line()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat.read_config_set_params'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat.read_config_set_params"><code class="docutils literal notranslate"><span class="pre">BaseCat.read_config_set_params()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat.read_cat'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat.read_cat"><code class="docutils literal notranslate"><span class="pre">BaseCat.read_cat()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat.write_hdf5_header'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat.write_hdf5_header"><code class="docutils literal notranslate"><span class="pre">BaseCat.write_hdf5_header()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat.get_header'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat.get_header"><code class="docutils literal notranslate"><span class="pre">BaseCat.get_header()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat.write_hdf5_file'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat.write_hdf5_file"><code class="docutils literal notranslate"><span class="pre">BaseCat.write_hdf5_file()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.BaseCat.close_hd5'" class="reference internal" href="#sp_validation.catalog_builders.BaseCat.close_hd5"><code class="docutils literal notranslate"><span class="pre">BaseCat.close_hd5()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask'" class="reference internal" href="#sp_validation.catalog_builders.Mask"><code class="docutils literal notranslate"><span class="pre">Mask</span></code></a><ul>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.from_list'" class="reference internal" href="#sp_validation.catalog_builders.Mask.from_list"><code class="docutils literal notranslate"><span class="pre">Mask.from_list()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.apply'" class="reference internal" href="#sp_validation.catalog_builders.Mask.apply"><code class="docutils literal notranslate"><span class="pre">Mask.apply()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.to_bool'" class="reference internal" href="#sp_validation.catalog_builders.Mask.to_bool"><code class="docutils literal notranslate"><span class="pre">Mask.to_bool()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.print_strings'" class="reference internal" href="#sp_validation.catalog_builders.Mask.print_strings"><code class="docutils literal notranslate"><span class="pre">Mask.print_strings()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.print_stats'" class="reference internal" href="#sp_validation.catalog_builders.Mask.print_stats"><code class="docutils literal notranslate"><span class="pre">Mask.print_stats()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.get_sign'" class="reference internal" href="#sp_validation.catalog_builders.Mask.get_sign"><code class="docutils literal notranslate"><span class="pre">Mask.get_sign()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.print_condition'" class="reference internal" href="#sp_validation.catalog_builders.Mask.print_condition"><code class="docutils literal notranslate"><span class="pre">Mask.print_condition()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.print_summary'" class="reference internal" href="#sp_validation.catalog_builders.Mask.print_summary"><code class="docutils literal notranslate"><span class="pre">Mask.print_summary()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.create_descr'" class="reference internal" href="#sp_validation.catalog_builders.Mask.create_descr"><code class="docutils literal notranslate"><span class="pre">Mask.create_descr()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.Mask.add_summary_to_FITS_header'" class="reference internal" href="#sp_validation.catalog_builders.Mask.add_summary_to_FITS_header"><code class="docutils literal notranslate"><span class="pre">Mask.add_summary_to_FITS_header()</span></code></a></li>
 </ul>
 </li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat'" class="reference internal" href="#sp_validation.catalog_builders.JointCat"><code class="docutils literal notranslate"><span class="pre">JointCat</span></code></a><ul>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.set_params_from_command_line'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.set_params_from_command_line"><code class="docutils literal notranslate"><span class="pre">JointCat.set_params_from_command_line()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.params_default'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.params_default"><code class="docutils literal notranslate"><span class="pre">JointCat.params_default()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.get_patches'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.get_patches"><code class="docutils literal notranslate"><span class="pre">JointCat.get_patches()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.get_n_obj'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.get_n_obj"><code class="docutils literal notranslate"><span class="pre">JointCat.get_n_obj()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.get_col_info'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.get_col_info"><code class="docutils literal notranslate"><span class="pre">JointCat.get_col_info()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.dtype_out'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.dtype_out"><code class="docutils literal notranslate"><span class="pre">JointCat.dtype_out()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.init_data'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.init_data"><code class="docutils literal notranslate"><span class="pre">JointCat.init_data()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.write_hdf5_file'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.write_hdf5_file"><code class="docutils literal notranslate"><span class="pre">JointCat.write_hdf5_file()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.write_hdf5_header'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.write_hdf5_header"><code class="docutils literal notranslate"><span class="pre">JointCat.write_hdf5_header()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.merge_catalogues'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.merge_catalogues"><code class="docutils literal notranslate"><span class="pre">JointCat.merge_catalogues()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.JointCat.run'" class="reference internal" href="#sp_validation.catalog_builders.JointCat.run"><code class="docutils literal notranslate"><span class="pre">JointCat.run()</span></code></a></li>
-</ul>
-</li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks</span></code></a><ul>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks._labels_struct'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks._labels_struct"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks._labels_struct</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.get_label_struct'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.get_label_struct"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.get_label_struct()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.get_mask_col_name'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.get_mask_col_name"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.get_mask_col_name()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.params_default'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.params_default"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.params_default()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.check_params'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.check_params"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.check_params()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.update_params'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.update_params"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.update_params()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.reverse_bit_list'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.reverse_bit_list"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.reverse_bit_list()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.get_paths_bit_masks'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.get_paths_bit_masks"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.get_paths_bit_masks()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.get_mask'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.get_mask"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.get_mask()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.apply_mask'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.apply_mask"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.apply_mask()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.get_masks'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.get_masks"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.get_masks()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.run'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.run"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.run()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.append_masks'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.append_masks"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.append_masks()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_file'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_file"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.write_hdf5_file()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_header'" class="reference internal" href="#sp_validation.catalog_builders.ApplyHspMasks.write_hdf5_header"><code class="docutils literal notranslate"><span class="pre">ApplyHspMasks.write_hdf5_header()</span></code></a></li>
-</ul>
-</li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.CalibrateCat'" class="reference internal" href="#sp_validation.catalog_builders.CalibrateCat"><code class="docutils literal notranslate"><span class="pre">CalibrateCat</span></code></a><ul>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.CalibrateCat.params_default'" class="reference internal" href="#sp_validation.catalog_builders.CalibrateCat.params_default"><code class="docutils literal notranslate"><span class="pre">CalibrateCat.params_default()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.CalibrateCat.read_cat'" class="reference internal" href="#sp_validation.catalog_builders.CalibrateCat.read_cat"><code class="docutils literal notranslate"><span class="pre">CalibrateCat.read_cat()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.CalibrateCat.add_params_to_FITS_header'" class="reference internal" href="#sp_validation.catalog_builders.CalibrateCat.add_params_to_FITS_header"><code class="docutils literal notranslate"><span class="pre">CalibrateCat.add_params_to_FITS_header()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.CalibrateCat.run'" class="reference internal" href="#sp_validation.catalog_builders.CalibrateCat.run"><code class="docutils literal notranslate"><span class="pre">CalibrateCat.run()</span></code></a></li>
-</ul>
-</li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ReadCat'" class="reference internal" href="#sp_validation.catalog_builders.ReadCat"><code class="docutils literal notranslate"><span class="pre">ReadCat</span></code></a><ul>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ReadCat.params_default'" class="reference internal" href="#sp_validation.catalog_builders.ReadCat.params_default"><code class="docutils literal notranslate"><span class="pre">ReadCat.params_default()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.ReadCat.run'" class="reference internal" href="#sp_validation.catalog_builders.ReadCat.run"><code class="docutils literal notranslate"><span class="pre">ReadCat.run()</span></code></a></li>
-</ul>
-</li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.compute_weights_gatti'" class="reference internal" href="#sp_validation.catalog_builders.compute_weights_gatti"><code class="docutils literal notranslate"><span class="pre">compute_weights_gatti()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.compute_PSF_leakage'" class="reference internal" href="#sp_validation.catalog_builders.compute_PSF_leakage"><code class="docutils literal notranslate"><span class="pre">compute_PSF_leakage()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.run_joint_comprehensive_cat'" class="reference internal" href="#sp_validation.catalog_builders.run_joint_comprehensive_cat"><code class="docutils literal notranslate"><span class="pre">run_joint_comprehensive_cat()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.run_calibrate_comprehensive_cat'" class="reference internal" href="#sp_validation.catalog_builders.run_calibrate_comprehensive_cat"><code class="docutils literal notranslate"><span class="pre">run_calibrate_comprehensive_cat()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.catalog_builders.run_apply_hsp_masks'" class="reference internal" href="#sp_validation.catalog_builders.run_apply_hsp_masks"><code class="docutils literal notranslate"><span class="pre">run_apply_hsp_masks()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.get_masks_from_config'" class="reference internal" href="#sp_validation.catalog_builders.get_masks_from_config"><code class="docutils literal notranslate"><span class="pre">get_masks_from_config()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.print_mask_stats'" class="reference internal" href="#sp_validation.catalog_builders.print_mask_stats"><code class="docutils literal notranslate"><span class="pre">print_mask_stats()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.correlation_matrix'" class="reference internal" href="#sp_validation.catalog_builders.correlation_matrix"><code class="docutils literal notranslate"><span class="pre">correlation_matrix()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.catalog_builders.confusion_matrix'" class="reference internal" href="#sp_validation.catalog_builders.confusion_matrix"><code class="docutils literal notranslate"><span class="pre">confusion_matrix()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -803,7 +305,7 @@ default is <code class="docutils literal notranslate"><span class="pre">False</s
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 23 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 30 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

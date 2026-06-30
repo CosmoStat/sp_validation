@@ -159,13 +159,13 @@ Extracted verbatim from the former basic.py.</p>
 <dd><p>Correlation matrix from a covariance matrix.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Covariance matrix.</p>
+<dd class="field-odd"><p><strong>cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>) – Covariance matrix.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Correlation matrix.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -178,8 +178,8 @@ so <code class="docutils literal notranslate"><span class="pre">chi2</span> <spa
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data_vector</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Data vector.</p></li>
-<li><p><strong>cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Covariance matrix of the data vector.</p></li>
+<li><p><strong>data_vector</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>) – Data vector.</p></li>
+<li><p><strong>cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>) – Covariance matrix of the data vector.</p></li>
 <li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, print the statistics; default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
 </ul>
 </dd>
@@ -198,7 +198,7 @@ so <code class="docutils literal notranslate"><span class="pre">chi2</span> <spa
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cov_one_cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>numpy.ndarray</em></a>) – Flat OneCovariance output (e.g. from <code class="docutils literal notranslate"><span class="pre">covariance_list_..._Cell.dat</span></code>),
+<li><p><strong>cov_one_cov</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>) – Flat OneCovariance output (e.g. from <code class="docutils literal notranslate"><span class="pre">covariance_list_..._Cell.dat</span></code>),
 with one row per <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code> element pair.</p></li>
 <li><p><strong>gaussian</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> use the Gaussian-only column, otherwise the
 Gaussian+non-Gaussian column; default is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
@@ -208,7 +208,7 @@ Gaussian+non-Gaussian column; default is <code class="docutils literal notransla
 <dd class="field-even"><p>Square covariance matrix.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)">numpy.ndarray</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -245,7 +245,7 @@ Gaussian+non-Gaussian column; default is <code class="docutils literal notransla
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 23 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 30 Jun, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

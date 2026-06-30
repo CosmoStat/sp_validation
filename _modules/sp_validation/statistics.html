@@ -215,7 +215,7 @@
 </span><span id="line-26">    <span class="n">keep_size_pc</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">remove_size</span>
 </span><span id="line-27">
 </span><span id="line-28">    <span class="k">if</span> <span class="n">keep_size_pc</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-29">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;remove size should be in [0, 1]&#39;</span><span class="p">)</span>
+</span><span id="line-29">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;remove size should be in [0, 1]&quot;</span><span class="p">)</span>
 </span><span id="line-30">
 </span><span id="line-31">    <span class="n">subsamp_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">samp_size</span> <span class="o">*</span> <span class="n">keep_size_pc</span><span class="p">)</span>
 </span><span id="line-32">
@@ -225,7 +225,7 @@
 </span><span id="line-36">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_realization</span><span class="p">):</span>
 </span><span id="line-37">        <span class="n">sub_data_ind</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">all_ind</span><span class="p">,</span> <span class="n">subsamp_size</span><span class="p">)</span>
 </span><span id="line-38">
-</span><span id="line-39">        <span class="k">if</span> <span class="p">(</span><span class="nb">sum</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="line-39">        <span class="k">if</span> <span class="nb">sum</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">sub_data_ind</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
 </span><span id="line-40">            <span class="n">all_est</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
 </span><span id="line-41">        <span class="k">else</span><span class="p">:</span>
 </span><span id="line-42">            <span class="n">all_est</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
@@ -330,7 +330,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 23 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 30 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
