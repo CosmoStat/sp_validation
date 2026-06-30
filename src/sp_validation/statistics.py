@@ -87,10 +87,13 @@ def chi2_and_pte(data_vector, cov, verbose=False):
         ``(chi2, reduced_chi2, pte)``.
 
     """
-    chi2 = data_vector @ np.linalg.inv(cov) @ data_vector
+    # Solve the linear system rather than forming C^-1 explicitly (more stable,
+    # cheaper); use the survival function rather than 1 - cdf (avoids
+    # catastrophic cancellation in the high-chi2 / low-PTE tail).
+    chi2 = data_vector @ np.linalg.solve(cov, data_vector)
     dof = len(data_vector)
     reduced_chi2 = chi2 / dof
-    pte = 1 - stats.chi2.cdf(chi2, dof)
+    pte = stats.chi2.sf(chi2, dof)
     if verbose:
         print(f"Chi2: {chi2:.4f}")
         print(f"Reduced Chi2: {reduced_chi2:.4f}")

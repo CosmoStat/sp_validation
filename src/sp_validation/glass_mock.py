@@ -34,7 +34,6 @@ __all__ = [
     "growth_factor",
     "ia_convergence",
     "create_mask_from_catalogue",
-    "powspace_bins",
     "compute_two_point_xi",
     "compute_two_point_cl",
     "compute_two_point_cl_map",
@@ -336,28 +335,21 @@ TREECORR_CONFIG = {
 }
 
 
-def powspace_bins(nside=1024, lmin=8, n_bins=32):
-    """NaMaster powspace bandpower binning used across the mock harmonic stats.
+def _mock_powspace_bin(nside, lmin, n_bins):
+    """Powspace NaMaster binning for the mock harmonic stats, via the primitive.
 
-    Returns ``(bin, ell_eff, lmax, b_lmax)``: the NaMaster ``NmtBin`` built on
-    square-root-spaced bandpowers between ``lmin`` and ``lmax = 2 * nside``,
-    plus the effective ells and the two lmax values the callers reuse.
+    Returns ``(bin, ell_eff, lmax, b_lmax)`` — the 4-tuple the mock harmonic
+    helpers consume. The binning itself is the shared
+    ``pseudo_cl.make_namaster_bin`` powspace scheme (``power=0.5`` reproduces the
+    old square-root spacing exactly); ``lmax = 2 * nside`` / ``b_lmax = lmax - 1``
+    come from ``pseudo_cl.pseudo_cl_geometry``. Note the mock's ``lmin`` floor is
+    a call argument here, whereas the geometry helper fixes ``lmin = 8``; the two
+    coincide for the production default, and this wrapper keeps the override.
     """
-    import pymaster as nmt
+    from sp_validation.pseudo_cl import make_namaster_bin, pseudo_cl_geometry
 
-    lmax = 2 * nside
-    b_lmax = lmax - 1
-
-    ells = np.arange(lmin, lmax + 1)
-    start = np.power(lmin, 1 / 2)
-    end = np.power(lmax, 1 / 2)
-    bins_ell = np.power(np.linspace(start, end, n_bins + 1), 2)
-
-    bpws = np.digitize(ells.astype(float), bins_ell) - 1
-    bpws[0] = 0
-    bpws[-1] = n_bins - 1
-
-    b = nmt.NmtBin(ells=ells, bpws=bpws, lmax=b_lmax)
+    _lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
+    b = make_namaster_bin(lmin, lmax, b_lmax, "powspace", n_ell_bins=n_bins, power=0.5)
     return b, b.get_effective_ells(), lmax, b_lmax
 
 
@@ -380,23 +372,29 @@ def compute_two_point_xi(cat, config=None):
 
 
 def get_n_gal_map(nside, ra, dec):
-    """Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays."""
-    import healpy as hp
+    """Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.
 
-    theta = (90.0 - dec) * np.pi / 180.0
-    phi = ra * np.pi / 180.0
-    pix = hp.ang2pix(nside, theta, phi)
+    The unweighted twin of the pseudo-Cl ``get_n_gal_map`` primitive: delegates
+    to it with ``weights=None`` (counts). Imported lazily so this module keeps
+    resolving in CAMB-only environments without the harmonic stack.
+    """
+    from sp_validation.pseudo_cl import get_n_gal_map as _get_n_gal_map
 
-    unique_pix, idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
-    n_gal = np.zeros(hp.nside2npix(nside))
-    n_gal[unique_pix] = np.bincount(idx_rep)
-    return n_gal, unique_pix, idx, idx_rep
+    return _get_n_gal_map(nside, ra, dec)
 
 
 def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
     """Catalogue-based NaMaster pseudo-Cl for a mock shear field.
 
     Returns ``(cl_coupled, cl_all)``, each with the ell axis prepended.
+
+    Deliberately keeps its own ``NmtFieldCatalog`` construction rather than
+    delegating to the ``pseudo_cl.get_pseudo_cls_catalog`` primitive: the mock
+    field is UNWEIGHTED (``weights = ones``, no per-object shear weight) and this
+    function returns the COUPLED pseudo-Cl alongside the decoupled one (both with
+    an ell axis prepended), which the primitive's ``(ell_eff, cl_all, wsp)``
+    contract does not expose. The shared piece — the powspace binning — is taken
+    from ``_mock_powspace_bin`` so the bandpower drift is gone.
     """
     import pymaster as nmt
 
@@ -408,7 +406,7 @@ def compute_two_point_cl(cat, nside=1024, lmin=8, n_bins=32):
 
     ra[ra < 0] += 360
 
-    b, ell_eff, lmax, b_lmax = powspace_bins(nside=nside, lmin=lmin, n_bins=n_bins)
+    b, ell_eff, lmax, b_lmax = _mock_powspace_bin(nside, lmin, n_bins)
 
     factor = -1
     f_all = nmt.NmtFieldCatalog(
@@ -436,6 +434,15 @@ def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
     Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)
     and runs the MCM on the resulting masked field. Returns
     ``(cl_coupled, cl_all)`` with the ell axis prepended.
+
+    Deliberately keeps its own ``NmtField`` construction rather than delegating
+    to the ``pseudo_cl.get_pseudo_cls_map`` primitive: the mock shear map is
+    built from UNWEIGHTED galaxy counts (the mask is the count map and the
+    per-pixel mean divides by counts, not summed shear weights), and this
+    function returns the COUPLED pseudo-Cl alongside the decoupled one (both with
+    an ell axis prepended), which the primitive's ``(ell_eff, cl_all, wsp)``
+    contract does not expose. The shared pieces — the powspace binning and the
+    galaxy-count map — come from ``_mock_powspace_bin`` and ``get_n_gal_map``.
     """
     import healpy as hp
     import pymaster as nmt
@@ -448,7 +455,7 @@ def compute_two_point_cl_map(cat, nside=1024, lmin=8, n_bins=32):
 
     ra[ra < 0] += 360
 
-    b, ell_eff, lmax, b_lmax = powspace_bins(nside=nside, lmin=lmin, n_bins=n_bins)
+    b, ell_eff, lmax, b_lmax = _mock_powspace_bin(nside, lmin, n_bins)
 
     factor = -1
     n_gal_map, unique_pix, _idx, idx_rep = get_n_gal_map(nside, ra, dec)
@@ -498,7 +505,7 @@ def compute_leakage_harmony(cat, cat_star, nside=1024, lmin=8, n_bins=32):
     ra[ra < 0] += 360
     ra_star[ra_star < 0] += 360
 
-    b, ell_eff, _lmax, b_lmax = powspace_bins(nside=nside, lmin=lmin, n_bins=n_bins)
+    b, ell_eff, _lmax, b_lmax = _mock_powspace_bin(nside, lmin, n_bins)
 
     factor = -1
     f_psf = nmt.NmtFieldCatalog(

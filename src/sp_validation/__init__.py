@@ -12,6 +12,7 @@ __all__ = [
     "glass_mock",
     "masks",
     "plots",
+    "pseudo_cl",
     "rho_tau",
     "statistics",
     "survey",

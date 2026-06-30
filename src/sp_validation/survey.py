@@ -10,6 +10,9 @@
 import os
 from collections import Counter
 
+import healpy as hp
+import numpy as np
+
 
 def get_area(dd, area_tile, verbose=False):
     """Get area.
@@ -249,3 +252,155 @@ def get_footprint(patch, ra, dec):
 
     else:
         return dec > dec_min
+
+
+def area_from_coords(ra, dec, nside):
+    """Survey area from galaxy coordinates via HEALPix pixel counting.
+
+    Bins the galaxy positions onto a HEALPix grid at resolution ``nside`` and
+    sums the area of every occupied pixel. This ignores partial-pixel coverage
+    and so overestimates the true observed area, but needs no external mask.
+
+    Parameters
+    ----------
+    ra : array of float
+        Right-ascension coordinates in degrees.
+    dec : array of float
+        Declination coordinates in degrees.
+    nside : int
+        HEALPix resolution parameter.
+
+    Returns
+    -------
+    float
+        Area in square degrees.
+    """
+    theta = np.radians(90.0 - np.asarray(dec, dtype=float))
+    phi = np.radians(np.asarray(ra, dtype=float))
+    pix = hp.ang2pix(nside, theta, phi, lonlat=False)
+    unique_pix = np.unique(pix)
+    return float(unique_pix.size * hp.nside2pixarea(nside, degrees=True))
+
+
+def n_eff_density(w, area_deg2):
+    """Effective galaxy number density per square arcminute.
+
+    Uses the weighted definition ``n_eff = (Σw)² / (A · Σw²)`` where ``A`` is the
+    survey area in square arcminutes (``area_deg2 · 3600``). Returns ``0.0`` when
+    ``Σw² == 0`` to avoid division by zero.
+
+    Parameters
+    ----------
+    w : array of float
+        Per-galaxy weights.
+    area_deg2 : float
+        Survey area in square degrees.
+
+    Returns
+    -------
+    float
+        Effective number density in galaxies per square arcminute.
+    """
+    w = np.asarray(w, dtype=float)
+    sum_w = float(np.sum(w))
+    sum_w2 = float(np.sum(w**2))
+    area_arcmin2 = area_deg2 * 3600.0
+    return (sum_w**2) / (area_arcmin2 * sum_w2) if sum_w2 > 0 else 0.0
+
+
+def ellipticity_dispersion(e1, e2, w):
+    """Per-component weighted ellipticity dispersion.
+
+    Computes ``sqrt(0.5 · (⟨e1²⟩ + ⟨e2²⟩))`` where each component average is
+    weighted by ``w²``. This is the *per-component* RMS convention; it differs by
+    a factor ``√2`` from the summed-component ``sigma_e`` returned by
+    :func:`effective_survey_stats`. Keep the two conventions distinct.
+
+    Parameters
+    ----------
+    e1, e2 : array of float
+        Ellipticity components.
+    w : array of float
+        Per-galaxy weights.
+
+    Returns
+    -------
+    float
+        Per-component ellipticity dispersion.
+    """
+    e1 = np.asarray(e1, dtype=float)
+    e2 = np.asarray(e2, dtype=float)
+    w = np.asarray(w, dtype=float)
+    return float(
+        np.sqrt(
+            0.5 * (np.average(e1**2, weights=w**2) + np.average(e2**2, weights=w**2))
+        )
+    )
+
+
+def additive_bias(e1, e2, w, R):
+    """Weighted additive-bias estimates ``(c1, c2)``.
+
+    Returns the weighted mean of the response-corrected ellipticities
+    ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.
+
+    Parameters
+    ----------
+    e1, e2 : array of float
+        Ellipticity components (before response correction).
+    w : array of float
+        Per-galaxy weights.
+    R : float
+        Multiplicative shear response.
+
+    Returns
+    -------
+    tuple of float
+        ``(c1, c2)`` additive-bias estimates.
+    """
+    e1 = np.asarray(e1, dtype=float)
+    e2 = np.asarray(e2, dtype=float)
+    w = np.asarray(w, dtype=float)
+    c1 = float(np.average(e1 / R, weights=w))
+    c2 = float(np.average(e2 / R, weights=w))
+    return c1, c2
+
+
+def effective_survey_stats(e1, e2, w, area_deg2):
+    """Effective survey statistics for a shear catalogue.
+
+    Bundles the area-dependent number density and the summed-component shape
+    noise. Here ``sigma_e = sqrt(Σ[w²(e1² + e2²)] / Σw²)`` sums over *both*
+    components (no ``0.5`` factor); this is distinct from the per-component
+    :func:`ellipticity_dispersion`, differing by a factor ``√2``.
+
+    Parameters
+    ----------
+    e1, e2 : array of float
+        Ellipticity components.
+    w : array of float
+        Per-galaxy weights.
+    area_deg2 : float
+        Survey area in square degrees.
+
+    Returns
+    -------
+    dict
+        Keys ``n_eff``, ``sigma_e``, ``sum_w``, ``sum_w2``.
+    """
+    e1 = np.asarray(e1, dtype=float)
+    e2 = np.asarray(e2, dtype=float)
+    w = np.asarray(w, dtype=float)
+
+    sum_w = float(np.sum(w))
+    sum_w2 = float(np.sum(w**2))
+    sum_w2_e2 = float(np.sum((w**2) * (e1**2 + e2**2)))
+
+    sigma_e = np.sqrt(sum_w2_e2 / sum_w2) if sum_w2 > 0 else 0.0
+
+    return {
+        "n_eff": n_eff_density(w, area_deg2),
+        "sigma_e": sigma_e,
+        "sum_w": sum_w,
+        "sum_w2": sum_w2,
+    }
