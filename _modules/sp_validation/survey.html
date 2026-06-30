@@ -119,11 +119,20 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
@@ -132,6 +141,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.survey.html">sp_validation.survey</a></li>
@@ -197,256 +207,426 @@
 </span><span id="line-10"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 </span><span id="line-11"><span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
 </span><span id="line-12">
-</span><span id="line-13">
+</span><span id="line-13"><span class="kn">import</span><span class="w"> </span><span class="nn">healpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hp</span>
+</span><span id="line-14"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-15">
+</span><span id="line-16">
 <div class="viewcode-block" id="get_area">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.get_area">[docs]</a>
-</span><span id="line-14"><span class="k">def</span><span class="w"> </span><span class="nf">get_area</span><span class="p">(</span><span class="n">dd</span><span class="p">,</span> <span class="n">area_tile</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-</span><span id="line-15"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get area.</span>
-</span><span id="line-16">
-</span><span id="line-17"><span class="sd">    Return total survey area. This ignores masking as well as</span>
-</span><span id="line-18"><span class="sd">    overlaps between tiles, and provides therefore an overestimation.</span>
-</span><span id="line-19"><span class="sd">    of the actual observed area.</span>
-</span><span id="line-20">
-</span><span id="line-21"><span class="sd">    Parameters</span>
-</span><span id="line-22"><span class="sd">    ----------</span>
-</span><span id="line-23"><span class="sd">    dd : numpy.ndarray</span>
-</span><span id="line-24"><span class="sd">        galaxy catalog</span>
-</span><span id="line-25"><span class="sd">    area_tile : float</span>
-</span><span id="line-26"><span class="sd">        area per tile in square degree</span>
-</span><span id="line-27"><span class="sd">    verbose : bool, optional</span>
-</span><span id="line-28"><span class="sd">        verbose output if `True`, default is `False`</span>
-</span><span id="line-29">
-</span><span id="line-30"><span class="sd">    Returns</span>
-</span><span id="line-31"><span class="sd">    -------</span>
-</span><span id="line-32"><span class="sd">    float</span>
-</span><span id="line-33"><span class="sd">        area in square degrees</span>
-</span><span id="line-34"><span class="sd">    float</span>
-</span><span id="line-35"><span class="sd">        area in square arc minutes</span>
-</span><span id="line-36"><span class="sd">    list of float</span>
-</span><span id="line-37"><span class="sd">        tile IDs</span>
-</span><span id="line-38">
-</span><span id="line-39"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-40">    <span class="k">if</span> <span class="s2">&quot;TILE_ID&quot;</span> <span class="ow">in</span> <span class="n">dd</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
-</span><span id="line-41">        <span class="c1"># Get unique tile IDs</span>
-</span><span id="line-42">        <span class="n">tile_IDs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s2">&quot;TILE_ID&quot;</span><span class="p">])</span>
-</span><span id="line-43">        <span class="n">n_tile</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tile_IDs</span><span class="p">)</span>
-</span><span id="line-44">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-45">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of tiles found in galaxy catalogue = </span><span class="si">{</span><span class="n">n_tile</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-46">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-47">        <span class="c1"># Set to dummy values</span>
-</span><span id="line-48">        <span class="n">tile_IDs</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-49">        <span class="n">n_tile</span> <span class="o">=</span> <span class="mi">1</span>
-</span><span id="line-50">
-</span><span id="line-51">    <span class="c1"># Compute area</span>
-</span><span id="line-52">    <span class="n">area_deg2</span> <span class="o">=</span> <span class="n">n_tile</span> <span class="o">*</span> <span class="n">area_tile</span>
-</span><span id="line-53">    <span class="n">area_amin2</span> <span class="o">=</span> <span class="n">area_deg2</span> <span class="o">*</span> <span class="mi">3600</span>
-</span><span id="line-54">
-</span><span id="line-55">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-56">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Area [deg^2] = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">area_deg2</span><span class="p">))</span>
+</span><span id="line-17"><span class="k">def</span><span class="w"> </span><span class="nf">get_area</span><span class="p">(</span><span class="n">dd</span><span class="p">,</span> <span class="n">area_tile</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-18"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get area.</span>
+</span><span id="line-19">
+</span><span id="line-20"><span class="sd">    Return total survey area. This ignores masking as well as</span>
+</span><span id="line-21"><span class="sd">    overlaps between tiles, and provides therefore an overestimation.</span>
+</span><span id="line-22"><span class="sd">    of the actual observed area.</span>
+</span><span id="line-23">
+</span><span id="line-24"><span class="sd">    Parameters</span>
+</span><span id="line-25"><span class="sd">    ----------</span>
+</span><span id="line-26"><span class="sd">    dd : numpy.ndarray</span>
+</span><span id="line-27"><span class="sd">        galaxy catalog</span>
+</span><span id="line-28"><span class="sd">    area_tile : float</span>
+</span><span id="line-29"><span class="sd">        area per tile in square degree</span>
+</span><span id="line-30"><span class="sd">    verbose : bool, optional</span>
+</span><span id="line-31"><span class="sd">        verbose output if `True`, default is `False`</span>
+</span><span id="line-32">
+</span><span id="line-33"><span class="sd">    Returns</span>
+</span><span id="line-34"><span class="sd">    -------</span>
+</span><span id="line-35"><span class="sd">    float</span>
+</span><span id="line-36"><span class="sd">        area in square degrees</span>
+</span><span id="line-37"><span class="sd">    float</span>
+</span><span id="line-38"><span class="sd">        area in square arc minutes</span>
+</span><span id="line-39"><span class="sd">    list of float</span>
+</span><span id="line-40"><span class="sd">        tile IDs</span>
+</span><span id="line-41">
+</span><span id="line-42"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-43">    <span class="k">if</span> <span class="s2">&quot;TILE_ID&quot;</span> <span class="ow">in</span> <span class="n">dd</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">:</span>
+</span><span id="line-44">        <span class="c1"># Get unique tile IDs</span>
+</span><span id="line-45">        <span class="n">tile_IDs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dd</span><span class="p">[</span><span class="s2">&quot;TILE_ID&quot;</span><span class="p">])</span>
+</span><span id="line-46">        <span class="n">n_tile</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tile_IDs</span><span class="p">)</span>
+</span><span id="line-47">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-48">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of tiles found in galaxy catalogue = </span><span class="si">{</span><span class="n">n_tile</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-49">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-50">        <span class="c1"># Set to dummy values</span>
+</span><span id="line-51">        <span class="n">tile_IDs</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-52">        <span class="n">n_tile</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span id="line-53">
+</span><span id="line-54">    <span class="c1"># Compute area</span>
+</span><span id="line-55">    <span class="n">area_deg2</span> <span class="o">=</span> <span class="n">n_tile</span> <span class="o">*</span> <span class="n">area_tile</span>
+</span><span id="line-56">    <span class="n">area_amin2</span> <span class="o">=</span> <span class="n">area_deg2</span> <span class="o">*</span> <span class="mi">3600</span>
 </span><span id="line-57">
-</span><span id="line-58">    <span class="k">return</span> <span class="n">area_deg2</span><span class="p">,</span> <span class="n">area_amin2</span><span class="p">,</span> <span class="n">tile_IDs</span></div>
-
-</span><span id="line-59">
+</span><span id="line-58">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-59">        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Area [deg^2] = </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">area_deg2</span><span class="p">))</span>
 </span><span id="line-60">
+</span><span id="line-61">    <span class="k">return</span> <span class="n">area_deg2</span><span class="p">,</span> <span class="n">area_amin2</span><span class="p">,</span> <span class="n">tile_IDs</span></div>
+
+</span><span id="line-62">
+</span><span id="line-63">
 <div class="viewcode-block" id="missing_tiles">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.missing_tiles">[docs]</a>
-</span><span id="line-61"><span class="k">def</span><span class="w"> </span><span class="nf">missing_tiles</span><span class="p">(</span>
-</span><span id="line-62">    <span class="n">tile_IDs</span><span class="p">,</span>
-</span><span id="line-63">    <span class="n">path_tile_ID</span><span class="p">,</span>
-</span><span id="line-64">    <span class="n">path_found_ID</span><span class="p">,</span>
-</span><span id="line-65">    <span class="n">path_missing_ID</span><span class="p">,</span>
-</span><span id="line-66">    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-67"><span class="p">):</span>
-</span><span id="line-68"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Missing tiles.</span>
-</span><span id="line-69">
-</span><span id="line-70"><span class="sd">    Compute completeness, and identify missing tiles.</span>
-</span><span id="line-71">
-</span><span id="line-72"><span class="sd">    Parameters</span>
-</span><span id="line-73"><span class="sd">    ----------</span>
-</span><span id="line-74"><span class="sd">    tile_IDs : list of string</span>
-</span><span id="line-75"><span class="sd">        input tile IDs in catalogue</span>
-</span><span id="line-76"><span class="sd">    path_tile_ID : string</span>
-</span><span id="line-77"><span class="sd">        input tile ID path to match</span>
-</span><span id="line-78"><span class="sd">    path_found_ID : string</span>
-</span><span id="line-79"><span class="sd">        output found tile ID path</span>
-</span><span id="line-80"><span class="sd">    path_missing_ID : string</span>
-</span><span id="line-81"><span class="sd">        output missing tile ID path</span>
-</span><span id="line-82"><span class="sd">    verbose : bool</span>
-</span><span id="line-83"><span class="sd">        verbose output if True</span>
-</span><span id="line-84">
-</span><span id="line-85"><span class="sd">    Returns</span>
-</span><span id="line-86"><span class="sd">    -------</span>
-</span><span id="line-87"><span class="sd">    int</span>
-</span><span id="line-88"><span class="sd">        number of tiles found, -1 if ID file path not found</span>
-</span><span id="line-89"><span class="sd">    int</span>
-</span><span id="line-90"><span class="sd">        number of tiles missing, -1 if ID file path not found</span>
-</span><span id="line-91"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-92">    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path_tile_ID</span><span class="p">):</span>
-</span><span id="line-93">        <span class="c1"># Loop over input tile ID file</span>
-</span><span id="line-94">        <span class="n">found_IDs</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-95">        <span class="n">missing_IDs</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-96">        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path_tile_ID</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_in</span><span class="p">:</span>
-</span><span id="line-97">            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f_in</span><span class="p">:</span>
-</span><span id="line-98">                <span class="n">ID</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
-</span><span id="line-99">
-</span><span id="line-100">                <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tile_IDs</span><span class="p">:</span>
-</span><span id="line-101">                    <span class="c1"># Add ID to missing if not in input ID file</span>
-</span><span id="line-102">                    <span class="n">missing_IDs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span>
-</span><span id="line-103">                <span class="k">else</span><span class="p">:</span>
-</span><span id="line-104">                    <span class="c1"># Add ID to found if not in input ID file</span>
-</span><span id="line-105">                    <span class="n">found_IDs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span>
-</span><span id="line-106">
-</span><span id="line-107">        <span class="n">n_found</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">found_IDs</span><span class="p">)</span>
-</span><span id="line-108">        <span class="n">n_missing</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">missing_IDs</span><span class="p">)</span>
+</span><span id="line-64"><span class="k">def</span><span class="w"> </span><span class="nf">missing_tiles</span><span class="p">(</span>
+</span><span id="line-65">    <span class="n">tile_IDs</span><span class="p">,</span>
+</span><span id="line-66">    <span class="n">path_tile_ID</span><span class="p">,</span>
+</span><span id="line-67">    <span class="n">path_found_ID</span><span class="p">,</span>
+</span><span id="line-68">    <span class="n">path_missing_ID</span><span class="p">,</span>
+</span><span id="line-69">    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-70"><span class="p">):</span>
+</span><span id="line-71"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Missing tiles.</span>
+</span><span id="line-72">
+</span><span id="line-73"><span class="sd">    Compute completeness, and identify missing tiles.</span>
+</span><span id="line-74">
+</span><span id="line-75"><span class="sd">    Parameters</span>
+</span><span id="line-76"><span class="sd">    ----------</span>
+</span><span id="line-77"><span class="sd">    tile_IDs : list of string</span>
+</span><span id="line-78"><span class="sd">        input tile IDs in catalogue</span>
+</span><span id="line-79"><span class="sd">    path_tile_ID : string</span>
+</span><span id="line-80"><span class="sd">        input tile ID path to match</span>
+</span><span id="line-81"><span class="sd">    path_found_ID : string</span>
+</span><span id="line-82"><span class="sd">        output found tile ID path</span>
+</span><span id="line-83"><span class="sd">    path_missing_ID : string</span>
+</span><span id="line-84"><span class="sd">        output missing tile ID path</span>
+</span><span id="line-85"><span class="sd">    verbose : bool</span>
+</span><span id="line-86"><span class="sd">        verbose output if True</span>
+</span><span id="line-87">
+</span><span id="line-88"><span class="sd">    Returns</span>
+</span><span id="line-89"><span class="sd">    -------</span>
+</span><span id="line-90"><span class="sd">    int</span>
+</span><span id="line-91"><span class="sd">        number of tiles found, -1 if ID file path not found</span>
+</span><span id="line-92"><span class="sd">    int</span>
+</span><span id="line-93"><span class="sd">        number of tiles missing, -1 if ID file path not found</span>
+</span><span id="line-94"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-95">    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path_tile_ID</span><span class="p">):</span>
+</span><span id="line-96">        <span class="c1"># Loop over input tile ID file</span>
+</span><span id="line-97">        <span class="n">found_IDs</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-98">        <span class="n">missing_IDs</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-99">        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path_tile_ID</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_in</span><span class="p">:</span>
+</span><span id="line-100">            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f_in</span><span class="p">:</span>
+</span><span id="line-101">                <span class="n">ID</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+</span><span id="line-102">
+</span><span id="line-103">                <span class="k">if</span> <span class="nb">float</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tile_IDs</span><span class="p">:</span>
+</span><span id="line-104">                    <span class="c1"># Add ID to missing if not in input ID file</span>
+</span><span id="line-105">                    <span class="n">missing_IDs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span>
+</span><span id="line-106">                <span class="k">else</span><span class="p">:</span>
+</span><span id="line-107">                    <span class="c1"># Add ID to found if not in input ID file</span>
+</span><span id="line-108">                    <span class="n">found_IDs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ID</span><span class="p">)</span>
 </span><span id="line-109">
-</span><span id="line-110">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-111">            <span class="n">n_tile</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tile_IDs</span><span class="p">)</span>
-</span><span id="line-112">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_missing</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_tile</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">n_missing</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_tile</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot; tiles missing&quot;</span><span class="p">)</span>
-</span><span id="line-113">
-</span><span id="line-114">        <span class="c1"># Create output files with found and missing IDs</span>
-</span><span id="line-115">        <span class="k">if</span> <span class="n">n_found</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-116">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-117">                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating file &#39;</span><span class="si">{</span><span class="n">path_found_ID</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-</span><span id="line-118">            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path_found_ID</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_out</span><span class="p">:</span>
-</span><span id="line-119">                <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">found_IDs</span><span class="p">:</span>
-</span><span id="line-120">                    <span class="nb">print</span><span class="p">(</span><span class="n">ID</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span>
-</span><span id="line-121">
-</span><span id="line-122">        <span class="k">if</span> <span class="n">n_missing</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-123">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-124">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating file &#39;</span><span class="si">{path_missing_ID}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
-</span><span id="line-125">            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path_missing_ID</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_out</span><span class="p">:</span>
-</span><span id="line-126">                <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">missing_IDs</span><span class="p">:</span>
-</span><span id="line-127">                    <span class="nb">print</span><span class="p">(</span><span class="n">ID</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span>
-</span><span id="line-128">
-</span><span id="line-129">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-130">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-131">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tile ID file &#39;</span><span class="si">{</span><span class="n">path_tile_ID</span><span class="si">}</span><span class="s2">&#39; not found&quot;</span><span class="p">)</span>
-</span><span id="line-132">
-</span><span id="line-133">        <span class="c1"># Set to dummy values</span>
-</span><span id="line-134">        <span class="n">n_found</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-</span><span id="line-135">        <span class="n">n_missing</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-</span><span id="line-136">
-</span><span id="line-137">    <span class="k">return</span> <span class="n">n_found</span><span class="p">,</span> <span class="n">n_missing</span></div>
-
-</span><span id="line-138">
+</span><span id="line-110">        <span class="n">n_found</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">found_IDs</span><span class="p">)</span>
+</span><span id="line-111">        <span class="n">n_missing</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">missing_IDs</span><span class="p">)</span>
+</span><span id="line-112">
+</span><span id="line-113">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-114">            <span class="n">n_tile</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">tile_IDs</span><span class="p">)</span>
+</span><span id="line-115">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_missing</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">n_tile</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">n_missing</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">n_tile</span><span class="si">:</span><span class="s2">.2%</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot; tiles missing&quot;</span><span class="p">)</span>
+</span><span id="line-116">
+</span><span id="line-117">        <span class="c1"># Create output files with found and missing IDs</span>
+</span><span id="line-118">        <span class="k">if</span> <span class="n">n_found</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-119">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-120">                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Creating file &#39;</span><span class="si">{</span><span class="n">path_found_ID</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+</span><span id="line-121">            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path_found_ID</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_out</span><span class="p">:</span>
+</span><span id="line-122">                <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">found_IDs</span><span class="p">:</span>
+</span><span id="line-123">                    <span class="nb">print</span><span class="p">(</span><span class="n">ID</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span>
+</span><span id="line-124">
+</span><span id="line-125">        <span class="k">if</span> <span class="n">n_missing</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-126">            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-127">                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Creating file &#39;</span><span class="si">{path_missing_ID}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+</span><span id="line-128">            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path_missing_ID</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_out</span><span class="p">:</span>
+</span><span id="line-129">                <span class="k">for</span> <span class="n">ID</span> <span class="ow">in</span> <span class="n">missing_IDs</span><span class="p">:</span>
+</span><span id="line-130">                    <span class="nb">print</span><span class="p">(</span><span class="n">ID</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f_out</span><span class="p">)</span>
+</span><span id="line-131">
+</span><span id="line-132">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-133">        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-134">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tile ID file &#39;</span><span class="si">{</span><span class="n">path_tile_ID</span><span class="si">}</span><span class="s2">&#39; not found&quot;</span><span class="p">)</span>
+</span><span id="line-135">
+</span><span id="line-136">        <span class="c1"># Set to dummy values</span>
+</span><span id="line-137">        <span class="n">n_found</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+</span><span id="line-138">        <span class="n">n_missing</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
 </span><span id="line-139">
+</span><span id="line-140">    <span class="k">return</span> <span class="n">n_found</span><span class="p">,</span> <span class="n">n_missing</span></div>
+
+</span><span id="line-141">
+</span><span id="line-142">
 <div class="viewcode-block" id="write_tile_id_gal_counts">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.write_tile_id_gal_counts">[docs]</a>
-</span><span id="line-140"><span class="k">def</span><span class="w"> </span><span class="nf">write_tile_id_gal_counts</span><span class="p">(</span><span class="n">detection_IDs</span><span class="p">,</span> <span class="n">galaxy_IDs</span><span class="p">,</span> <span class="n">shape_IDs</span><span class="p">,</span> <span class="n">fname</span><span class="p">):</span>
-</span><span id="line-141"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write Tile ID Galaxy Counts.</span>
-</span><span id="line-142">
-</span><span id="line-143"><span class="sd">    Write number of galaxies per tile ID to file.</span>
-</span><span id="line-144">
-</span><span id="line-145"><span class="sd">    Parameters</span>
-</span><span id="line-146"><span class="sd">    ----------</span>
-</span><span id="line-147"><span class="sd">    detection_IDs : list</span>
-</span><span id="line-148"><span class="sd">        input tile ID for each detected object</span>
-</span><span id="line-149"><span class="sd">    galaxy_IDs : list</span>
-</span><span id="line-150"><span class="sd">        input tile ID for each selected galaxy</span>
-</span><span id="line-151"><span class="sd">    shape_IDs : list</span>
-</span><span id="line-152"><span class="sd">        input tile ID for each galaxy with measured shape</span>
-</span><span id="line-153"><span class="sd">    fname : str</span>
-</span><span id="line-154"><span class="sd">        output file name</span>
-</span><span id="line-155">
-</span><span id="line-156"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-157">    <span class="c1"># Create Counter objects of input ID lists, to get number of objects</span>
-</span><span id="line-158">    <span class="c1"># on each tile that are detected / selected as galaxy / for which</span>
-</span><span id="line-159">    <span class="c1"># a shape is measured</span>
-</span><span id="line-160">    <span class="n">detection_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">detection_IDs</span><span class="p">)</span>
-</span><span id="line-161">    <span class="n">galaxy_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">galaxy_IDs</span><span class="p">)</span>
-</span><span id="line-162">    <span class="n">shape_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">shape_IDs</span><span class="p">)</span>
-</span><span id="line-163">
-</span><span id="line-164">    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="line-165">        <span class="c1"># Loop over tile IDs of detected objects</span>
-</span><span id="line-166">        <span class="k">for</span> <span class="n">tile_id</span> <span class="ow">in</span> <span class="n">detection_counts</span><span class="p">:</span>
-</span><span id="line-167">            <span class="c1"># Write tile ID in CFIS tile format (`ABC.XYZ`)</span>
-</span><span id="line-168">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tile_id</span><span class="si">:</span><span class="s2">007.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
-</span><span id="line-169">
-</span><span id="line-170">            <span class="c1"># Loop over counters</span>
-</span><span id="line-171">            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">detection_counts</span><span class="p">,</span> <span class="n">galaxy_counts</span><span class="p">,</span> <span class="n">shape_counts</span><span class="p">:</span>
-</span><span id="line-172">                <span class="c1"># Get number of objects in corresponding counter</span>
-</span><span id="line-173">                <span class="k">if</span> <span class="n">tile_id</span> <span class="ow">in</span> <span class="n">x</span><span class="p">:</span>
-</span><span id="line-174">                    <span class="n">num</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">tile_id</span><span class="p">]</span>
-</span><span id="line-175">                <span class="k">else</span><span class="p">:</span>
-</span><span id="line-176">                    <span class="n">num</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="line-177">
-</span><span id="line-178">                <span class="c1"># Write number to file</span>
-</span><span id="line-179">                <span class="nb">print</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
-</span><span id="line-180">            <span class="nb">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">)</span></div>
+</span><span id="line-143"><span class="k">def</span><span class="w"> </span><span class="nf">write_tile_id_gal_counts</span><span class="p">(</span><span class="n">detection_IDs</span><span class="p">,</span> <span class="n">galaxy_IDs</span><span class="p">,</span> <span class="n">shape_IDs</span><span class="p">,</span> <span class="n">fname</span><span class="p">):</span>
+</span><span id="line-144"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write Tile ID Galaxy Counts.</span>
+</span><span id="line-145">
+</span><span id="line-146"><span class="sd">    Write number of galaxies per tile ID to file.</span>
+</span><span id="line-147">
+</span><span id="line-148"><span class="sd">    Parameters</span>
+</span><span id="line-149"><span class="sd">    ----------</span>
+</span><span id="line-150"><span class="sd">    detection_IDs : list</span>
+</span><span id="line-151"><span class="sd">        input tile ID for each detected object</span>
+</span><span id="line-152"><span class="sd">    galaxy_IDs : list</span>
+</span><span id="line-153"><span class="sd">        input tile ID for each selected galaxy</span>
+</span><span id="line-154"><span class="sd">    shape_IDs : list</span>
+</span><span id="line-155"><span class="sd">        input tile ID for each galaxy with measured shape</span>
+</span><span id="line-156"><span class="sd">    fname : str</span>
+</span><span id="line-157"><span class="sd">        output file name</span>
+</span><span id="line-158">
+</span><span id="line-159"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-160">    <span class="c1"># Create Counter objects of input ID lists, to get number of objects</span>
+</span><span id="line-161">    <span class="c1"># on each tile that are detected / selected as galaxy / for which</span>
+</span><span id="line-162">    <span class="c1"># a shape is measured</span>
+</span><span id="line-163">    <span class="n">detection_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">detection_IDs</span><span class="p">)</span>
+</span><span id="line-164">    <span class="n">galaxy_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">galaxy_IDs</span><span class="p">)</span>
+</span><span id="line-165">    <span class="n">shape_counts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">shape_IDs</span><span class="p">)</span>
+</span><span id="line-166">
+</span><span id="line-167">    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="line-168">        <span class="c1"># Loop over tile IDs of detected objects</span>
+</span><span id="line-169">        <span class="k">for</span> <span class="n">tile_id</span> <span class="ow">in</span> <span class="n">detection_counts</span><span class="p">:</span>
+</span><span id="line-170">            <span class="c1"># Write tile ID in CFIS tile format (`ABC.XYZ`)</span>
+</span><span id="line-171">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tile_id</span><span class="si">:</span><span class="s2">007.3f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
+</span><span id="line-172">
+</span><span id="line-173">            <span class="c1"># Loop over counters</span>
+</span><span id="line-174">            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">detection_counts</span><span class="p">,</span> <span class="n">galaxy_counts</span><span class="p">,</span> <span class="n">shape_counts</span><span class="p">:</span>
+</span><span id="line-175">                <span class="c1"># Get number of objects in corresponding counter</span>
+</span><span id="line-176">                <span class="k">if</span> <span class="n">tile_id</span> <span class="ow">in</span> <span class="n">x</span><span class="p">:</span>
+</span><span id="line-177">                    <span class="n">num</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">tile_id</span><span class="p">]</span>
+</span><span id="line-178">                <span class="k">else</span><span class="p">:</span>
+</span><span id="line-179">                    <span class="n">num</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-180">
+</span><span id="line-181">                <span class="c1"># Write number to file</span>
+</span><span id="line-182">                <span class="nb">print</span><span class="p">(</span><span class="n">num</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot; &quot;</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">)</span>
+</span><span id="line-183">            <span class="nb">print</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">f</span><span class="p">)</span></div>
 
-</span><span id="line-181">
-</span><span id="line-182">
+</span><span id="line-184">
+</span><span id="line-185">
 <div class="viewcode-block" id="get_footprint">
 <a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.get_footprint">[docs]</a>
-</span><span id="line-183"><span class="k">def</span><span class="w"> </span><span class="nf">get_footprint</span><span class="p">(</span><span class="n">patch</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
-</span><span id="line-184"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Footprint.</span>
-</span><span id="line-185">
-</span><span id="line-186"><span class="sd">    Return coordinates within footprint of patch.</span>
-</span><span id="line-187">
-</span><span id="line-188"><span class="sd">    Parameters</span>
-</span><span id="line-189"><span class="sd">    ----------</span>
-</span><span id="line-190"><span class="sd">    patch : str</span>
-</span><span id="line-191"><span class="sd">        patch name</span>
-</span><span id="line-192"><span class="sd">    ra : array of float</span>
-</span><span id="line-193"><span class="sd">        R,A, coordintates</span>
-</span><span id="line-194"><span class="sd">    dec : array of float</span>
-</span><span id="line-195"><span class="sd">        DEC coordinates</span>
-</span><span id="line-196">
-</span><span id="line-197"><span class="sd">    Returns</span>
-</span><span id="line-198"><span class="sd">    -------</span>
-</span><span id="line-199"><span class="sd">    list of float</span>
-</span><span id="line-200"><span class="sd">        list of coordinates withint footprint</span>
-</span><span id="line-201">
-</span><span id="line-202"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-203">    <span class="c1"># Set boundary coordinates between some of the patches</span>
-</span><span id="line-204">    <span class="n">ra_14</span> <span class="o">=</span> <span class="mf">157.5</span>
-</span><span id="line-205">    <span class="n">ra_45</span> <span class="o">=</span> <span class="mi">207</span>
-</span><span id="line-206">    <span class="n">ra2_45</span> <span class="o">=</span> <span class="mi">220</span>
-</span><span id="line-207">    <span class="n">ra_36</span> <span class="o">=</span> <span class="mi">230</span>
-</span><span id="line-208">    <span class="n">dec_3456</span> <span class="o">=</span> <span class="mi">48</span>
-</span><span id="line-209">
-</span><span id="line-210">    <span class="n">ra2_34</span> <span class="o">=</span> <span class="mi">190</span>
-</span><span id="line-211">
-</span><span id="line-212">    <span class="n">dec_min</span> <span class="o">=</span> <span class="mi">29</span>
-</span><span id="line-213">    <span class="n">dec_max</span> <span class="o">=</span> <span class="mi">60</span>
+</span><span id="line-186"><span class="k">def</span><span class="w"> </span><span class="nf">get_footprint</span><span class="p">(</span><span class="n">patch</span><span class="p">,</span> <span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">):</span>
+</span><span id="line-187"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get Footprint.</span>
+</span><span id="line-188">
+</span><span id="line-189"><span class="sd">    Return coordinates within footprint of patch.</span>
+</span><span id="line-190">
+</span><span id="line-191"><span class="sd">    Parameters</span>
+</span><span id="line-192"><span class="sd">    ----------</span>
+</span><span id="line-193"><span class="sd">    patch : str</span>
+</span><span id="line-194"><span class="sd">        patch name</span>
+</span><span id="line-195"><span class="sd">    ra : array of float</span>
+</span><span id="line-196"><span class="sd">        R,A, coordintates</span>
+</span><span id="line-197"><span class="sd">    dec : array of float</span>
+</span><span id="line-198"><span class="sd">        DEC coordinates</span>
+</span><span id="line-199">
+</span><span id="line-200"><span class="sd">    Returns</span>
+</span><span id="line-201"><span class="sd">    -------</span>
+</span><span id="line-202"><span class="sd">    list of float</span>
+</span><span id="line-203"><span class="sd">        list of coordinates withint footprint</span>
+</span><span id="line-204">
+</span><span id="line-205"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-206">    <span class="c1"># Set boundary coordinates between some of the patches</span>
+</span><span id="line-207">    <span class="n">ra_14</span> <span class="o">=</span> <span class="mf">157.5</span>
+</span><span id="line-208">    <span class="n">ra_45</span> <span class="o">=</span> <span class="mi">207</span>
+</span><span id="line-209">    <span class="n">ra2_45</span> <span class="o">=</span> <span class="mi">220</span>
+</span><span id="line-210">    <span class="n">ra_36</span> <span class="o">=</span> <span class="mi">230</span>
+</span><span id="line-211">    <span class="n">dec_3456</span> <span class="o">=</span> <span class="mi">48</span>
+</span><span id="line-212">
+</span><span id="line-213">    <span class="n">ra2_34</span> <span class="o">=</span> <span class="mi">190</span>
 </span><span id="line-214">
-</span><span id="line-215">    <span class="c1"># Check whether input matches one of the seven CFIS patch name.</span>
-</span><span id="line-216">    <span class="c1"># Return coordinates within the patch</span>
-</span><span id="line-217">    <span class="k">if</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P1&quot;</span><span class="p">:</span>
-</span><span id="line-218">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_max</span><span class="p">)</span>
-</span><span id="line-219">
-</span><span id="line-220">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P2&quot;</span><span class="p">:</span>
-</span><span id="line-221">        <span class="c1"># -30 &lt; ra &lt; 60</span>
-</span><span id="line-222">        <span class="k">return</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">60</span><span class="p">))</span> <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">360</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span>
-</span><span id="line-223">            <span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_max</span>
-</span><span id="line-224">        <span class="p">)</span>
-</span><span id="line-225">
-</span><span id="line-226">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P3&quot;</span><span class="p">:</span>
-</span><span id="line-227">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra2_34</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_3456</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">)</span>
+</span><span id="line-215">    <span class="n">dec_min</span> <span class="o">=</span> <span class="mi">29</span>
+</span><span id="line-216">    <span class="n">dec_max</span> <span class="o">=</span> <span class="mi">60</span>
+</span><span id="line-217">
+</span><span id="line-218">    <span class="c1"># Check whether input matches one of the seven CFIS patch name.</span>
+</span><span id="line-219">    <span class="c1"># Return coordinates within the patch</span>
+</span><span id="line-220">    <span class="k">if</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P1&quot;</span><span class="p">:</span>
+</span><span id="line-221">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_max</span><span class="p">)</span>
+</span><span id="line-222">
+</span><span id="line-223">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P2&quot;</span><span class="p">:</span>
+</span><span id="line-224">        <span class="c1"># -30 &lt; ra &lt; 60</span>
+</span><span id="line-225">        <span class="k">return</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">60</span><span class="p">))</span> <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">360</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span>
+</span><span id="line-226">            <span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_max</span>
+</span><span id="line-227">        <span class="p">)</span>
 </span><span id="line-228">
-</span><span id="line-229">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P4&quot;</span><span class="p">:</span>
-</span><span id="line-230">        <span class="k">return</span> <span class="p">(</span>
-</span><span id="line-231">            <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">))</span>
-</span><span id="line-232">            <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_34</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">))</span>
-</span><span id="line-233">            <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">36</span><span class="p">))</span>
-</span><span id="line-234">        <span class="p">)</span>
-</span><span id="line-235">
-</span><span id="line-236">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P5&quot;</span><span class="p">:</span>
-</span><span id="line-237">        <span class="k">return</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">))</span> <span class="o">|</span> <span class="p">(</span>
-</span><span id="line-238">            <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">)</span>
-</span><span id="line-239">        <span class="p">)</span>
-</span><span id="line-240">
-</span><span id="line-241">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P6&quot;</span><span class="p">:</span>
-</span><span id="line-242">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_3456</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">70</span><span class="p">)</span>
+</span><span id="line-229">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P3&quot;</span><span class="p">:</span>
+</span><span id="line-230">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra2_34</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_3456</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">)</span>
+</span><span id="line-231">
+</span><span id="line-232">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P4&quot;</span><span class="p">:</span>
+</span><span id="line-233">        <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-234">            <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">))</span>
+</span><span id="line-235">            <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_14</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_34</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">70</span><span class="p">))</span>
+</span><span id="line-236">            <span class="o">|</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">36</span><span class="p">))</span>
+</span><span id="line-237">        <span class="p">)</span>
+</span><span id="line-238">
+</span><span id="line-239">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P5&quot;</span><span class="p">:</span>
+</span><span id="line-240">        <span class="k">return</span> <span class="p">((</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">))</span> <span class="o">|</span> <span class="p">(</span>
+</span><span id="line-241">            <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="n">ra2_45</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="n">dec_3456</span><span class="p">)</span>
+</span><span id="line-242">        <span class="p">)</span>
 </span><span id="line-243">
-</span><span id="line-244">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P7&quot;</span><span class="p">:</span>
-</span><span id="line-245">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">180</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">90</span><span class="p">)</span>
+</span><span id="line-244">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P6&quot;</span><span class="p">:</span>
+</span><span id="line-245">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="n">ra_36</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">330</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_3456</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">70</span><span class="p">)</span>
 </span><span id="line-246">
-</span><span id="line-247">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;W3&quot;</span><span class="p">:</span>
-</span><span id="line-248">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">208</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">221</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">51</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">58</span><span class="p">)</span>
+</span><span id="line-247">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;P7&quot;</span><span class="p">:</span>
+</span><span id="line-248">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">180</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">60</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">90</span><span class="p">)</span>
 </span><span id="line-249">
-</span><span id="line-250">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-251">        <span class="k">return</span> <span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span></div>
+</span><span id="line-250">    <span class="k">elif</span> <span class="n">patch</span> <span class="o">==</span> <span class="s2">&quot;W3&quot;</span><span class="p">:</span>
+</span><span id="line-251">        <span class="k">return</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&gt;</span> <span class="mi">208</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ra</span> <span class="o">&lt;</span> <span class="mi">221</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&gt;</span> <span class="mi">51</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">dec</span> <span class="o">&lt;</span> <span class="mi">58</span><span class="p">)</span>
+</span><span id="line-252">
+</span><span id="line-253">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-254">        <span class="k">return</span> <span class="n">dec</span> <span class="o">&gt;</span> <span class="n">dec_min</span></div>
+
+</span><span id="line-255">
+</span><span id="line-256">
+<div class="viewcode-block" id="area_from_coords">
+<a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.area_from_coords">[docs]</a>
+</span><span id="line-257"><span class="k">def</span><span class="w"> </span><span class="nf">area_from_coords</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dec</span><span class="p">,</span> <span class="n">nside</span><span class="p">):</span>
+</span><span id="line-258"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Survey area from galaxy coordinates via HEALPix pixel counting.</span>
+</span><span id="line-259">
+</span><span id="line-260"><span class="sd">    Bins the galaxy positions onto a HEALPix grid at resolution ``nside`` and</span>
+</span><span id="line-261"><span class="sd">    sums the area of every occupied pixel. This ignores partial-pixel coverage</span>
+</span><span id="line-262"><span class="sd">    and so overestimates the true observed area, but needs no external mask.</span>
+</span><span id="line-263">
+</span><span id="line-264"><span class="sd">    Parameters</span>
+</span><span id="line-265"><span class="sd">    ----------</span>
+</span><span id="line-266"><span class="sd">    ra : array of float</span>
+</span><span id="line-267"><span class="sd">        Right-ascension coordinates in degrees.</span>
+</span><span id="line-268"><span class="sd">    dec : array of float</span>
+</span><span id="line-269"><span class="sd">        Declination coordinates in degrees.</span>
+</span><span id="line-270"><span class="sd">    nside : int</span>
+</span><span id="line-271"><span class="sd">        HEALPix resolution parameter.</span>
+</span><span id="line-272">
+</span><span id="line-273"><span class="sd">    Returns</span>
+</span><span id="line-274"><span class="sd">    -------</span>
+</span><span id="line-275"><span class="sd">    float</span>
+</span><span id="line-276"><span class="sd">        Area in square degrees.</span>
+</span><span id="line-277"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-278">    <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="mf">90.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">dec</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+</span><span id="line-279">    <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">ra</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">))</span>
+</span><span id="line-280">    <span class="n">pix</span> <span class="o">=</span> <span class="n">hp</span><span class="o">.</span><span class="n">ang2pix</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">phi</span><span class="p">,</span> <span class="n">lonlat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="line-281">    <span class="n">unique_pix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">pix</span><span class="p">)</span>
+</span><span id="line-282">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">unique_pix</span><span class="o">.</span><span class="n">size</span> <span class="o">*</span> <span class="n">hp</span><span class="o">.</span><span class="n">nside2pixarea</span><span class="p">(</span><span class="n">nside</span><span class="p">,</span> <span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+</span><span id="line-283">
+</span><span id="line-284">
+<div class="viewcode-block" id="n_eff_density">
+<a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.n_eff_density">[docs]</a>
+</span><span id="line-285"><span class="k">def</span><span class="w"> </span><span class="nf">n_eff_density</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">):</span>
+</span><span id="line-286"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Effective galaxy number density per square arcminute.</span>
+</span><span id="line-287">
+</span><span id="line-288"><span class="sd">    Uses the weighted definition ``n_eff = (Σw)² / (A · Σw²)`` where ``A`` is the</span>
+</span><span id="line-289"><span class="sd">    survey area in square arcminutes (``area_deg2 · 3600``). Returns ``0.0`` when</span>
+</span><span id="line-290"><span class="sd">    ``Σw² == 0`` to avoid division by zero.</span>
+</span><span id="line-291">
+</span><span id="line-292"><span class="sd">    Parameters</span>
+</span><span id="line-293"><span class="sd">    ----------</span>
+</span><span id="line-294"><span class="sd">    w : array of float</span>
+</span><span id="line-295"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-296"><span class="sd">    area_deg2 : float</span>
+</span><span id="line-297"><span class="sd">        Survey area in square degrees.</span>
+</span><span id="line-298">
+</span><span id="line-299"><span class="sd">    Returns</span>
+</span><span id="line-300"><span class="sd">    -------</span>
+</span><span id="line-301"><span class="sd">    float</span>
+</span><span id="line-302"><span class="sd">        Effective number density in galaxies per square arcminute.</span>
+</span><span id="line-303"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-304">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-305">    <span class="n">sum_w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-306">    <span class="n">sum_w2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-307">    <span class="n">area_arcmin2</span> <span class="o">=</span> <span class="n">area_deg2</span> <span class="o">*</span> <span class="mf">3600.0</span>
+</span><span id="line-308">    <span class="k">return</span> <span class="p">(</span><span class="n">sum_w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">area_arcmin2</span> <span class="o">*</span> <span class="n">sum_w2</span><span class="p">)</span> <span class="k">if</span> <span class="n">sum_w2</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span></div>
+
+</span><span id="line-309">
+</span><span id="line-310">
+<div class="viewcode-block" id="ellipticity_dispersion">
+<a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.ellipticity_dispersion">[docs]</a>
+</span><span id="line-311"><span class="k">def</span><span class="w"> </span><span class="nf">ellipticity_dispersion</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">):</span>
+</span><span id="line-312"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Per-component weighted ellipticity dispersion.</span>
+</span><span id="line-313">
+</span><span id="line-314"><span class="sd">    Computes ``sqrt(0.5 · (⟨e1²⟩ + ⟨e2²⟩))`` where each component average is</span>
+</span><span id="line-315"><span class="sd">    weighted by ``w²``. This is the *per-component* RMS convention; it differs by</span>
+</span><span id="line-316"><span class="sd">    a factor ``√2`` from the summed-component ``sigma_e`` returned by</span>
+</span><span id="line-317"><span class="sd">    :func:`effective_survey_stats`. Keep the two conventions distinct.</span>
+</span><span id="line-318">
+</span><span id="line-319"><span class="sd">    Parameters</span>
+</span><span id="line-320"><span class="sd">    ----------</span>
+</span><span id="line-321"><span class="sd">    e1, e2 : array of float</span>
+</span><span id="line-322"><span class="sd">        Ellipticity components.</span>
+</span><span id="line-323"><span class="sd">    w : array of float</span>
+</span><span id="line-324"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-325">
+</span><span id="line-326"><span class="sd">    Returns</span>
+</span><span id="line-327"><span class="sd">    -------</span>
+</span><span id="line-328"><span class="sd">    float</span>
+</span><span id="line-329"><span class="sd">        Per-component ellipticity dispersion.</span>
+</span><span id="line-330"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-331">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-332">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-333">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-334">    <span class="k">return</span> <span class="nb">float</span><span class="p">(</span>
+</span><span id="line-335">        <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span>
+</span><span id="line-336">            <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e1</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e2</span><span class="o">**</span><span class="mi">2</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-337">        <span class="p">)</span>
+</span><span id="line-338">    <span class="p">)</span></div>
+
+</span><span id="line-339">
+</span><span id="line-340">
+<div class="viewcode-block" id="additive_bias">
+<a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.additive_bias">[docs]</a>
+</span><span id="line-341"><span class="k">def</span><span class="w"> </span><span class="nf">additive_bias</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">R</span><span class="p">):</span>
+</span><span id="line-342"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Weighted additive-bias estimates ``(c1, c2)``.</span>
+</span><span id="line-343">
+</span><span id="line-344"><span class="sd">    Returns the weighted mean of the response-corrected ellipticities</span>
+</span><span id="line-345"><span class="sd">    ``⟨e1 / R⟩`` and ``⟨e2 / R⟩``, weighted by ``w``.</span>
+</span><span id="line-346">
+</span><span id="line-347"><span class="sd">    Parameters</span>
+</span><span id="line-348"><span class="sd">    ----------</span>
+</span><span id="line-349"><span class="sd">    e1, e2 : array of float</span>
+</span><span id="line-350"><span class="sd">        Ellipticity components (before response correction).</span>
+</span><span id="line-351"><span class="sd">    w : array of float</span>
+</span><span id="line-352"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-353"><span class="sd">    R : float</span>
+</span><span id="line-354"><span class="sd">        Multiplicative shear response.</span>
+</span><span id="line-355">
+</span><span id="line-356"><span class="sd">    Returns</span>
+</span><span id="line-357"><span class="sd">    -------</span>
+</span><span id="line-358"><span class="sd">    tuple of float</span>
+</span><span id="line-359"><span class="sd">        ``(c1, c2)`` additive-bias estimates.</span>
+</span><span id="line-360"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-361">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-362">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-363">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-364">    <span class="n">c1</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e1</span> <span class="o">/</span> <span class="n">R</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-365">    <span class="n">c2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">e2</span> <span class="o">/</span> <span class="n">R</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-366">    <span class="k">return</span> <span class="n">c1</span><span class="p">,</span> <span class="n">c2</span></div>
+
+</span><span id="line-367">
+</span><span id="line-368">
+<div class="viewcode-block" id="effective_survey_stats">
+<a class="viewcode-back" href="../../sp_validation.survey.html#sp_validation.survey.effective_survey_stats">[docs]</a>
+</span><span id="line-369"><span class="k">def</span><span class="w"> </span><span class="nf">effective_survey_stats</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">):</span>
+</span><span id="line-370"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Effective survey statistics for a shear catalogue.</span>
+</span><span id="line-371">
+</span><span id="line-372"><span class="sd">    Bundles the area-dependent number density and the summed-component shape</span>
+</span><span id="line-373"><span class="sd">    noise. Here ``sigma_e = sqrt(Σ[w²(e1² + e2²)] / Σw²)`` sums over *both*</span>
+</span><span id="line-374"><span class="sd">    components (no ``0.5`` factor); this is distinct from the per-component</span>
+</span><span id="line-375"><span class="sd">    :func:`ellipticity_dispersion`, differing by a factor ``√2``.</span>
+</span><span id="line-376">
+</span><span id="line-377"><span class="sd">    Parameters</span>
+</span><span id="line-378"><span class="sd">    ----------</span>
+</span><span id="line-379"><span class="sd">    e1, e2 : array of float</span>
+</span><span id="line-380"><span class="sd">        Ellipticity components.</span>
+</span><span id="line-381"><span class="sd">    w : array of float</span>
+</span><span id="line-382"><span class="sd">        Per-galaxy weights.</span>
+</span><span id="line-383"><span class="sd">    area_deg2 : float</span>
+</span><span id="line-384"><span class="sd">        Survey area in square degrees.</span>
+</span><span id="line-385">
+</span><span id="line-386"><span class="sd">    Returns</span>
+</span><span id="line-387"><span class="sd">    -------</span>
+</span><span id="line-388"><span class="sd">    dict</span>
+</span><span id="line-389"><span class="sd">        Keys ``n_eff``, ``sigma_e``, ``sum_w``, ``sum_w2``.</span>
+</span><span id="line-390"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-391">    <span class="n">e1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-392">    <span class="n">e2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">e2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-393">    <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</span><span id="line-394">
+</span><span id="line-395">    <span class="n">sum_w</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="p">))</span>
+</span><span id="line-396">    <span class="n">sum_w2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</span><span id="line-397">    <span class="n">sum_w2_e2</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">((</span><span class="n">w</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">e1</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">e2</span><span class="o">**</span><span class="mi">2</span><span class="p">)))</span>
+</span><span id="line-398">
+</span><span id="line-399">    <span class="n">sigma_e</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sum_w2_e2</span> <span class="o">/</span> <span class="n">sum_w2</span><span class="p">)</span> <span class="k">if</span> <span class="n">sum_w2</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">0.0</span>
+</span><span id="line-400">
+</span><span id="line-401">    <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-402">        <span class="s2">&quot;n_eff&quot;</span><span class="p">:</span> <span class="n">n_eff_density</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">area_deg2</span><span class="p">),</span>
+</span><span id="line-403">        <span class="s2">&quot;sigma_e&quot;</span><span class="p">:</span> <span class="n">sigma_e</span><span class="p">,</span>
+</span><span id="line-404">        <span class="s2">&quot;sum_w&quot;</span><span class="p">:</span> <span class="n">sum_w</span><span class="p">,</span>
+</span><span id="line-405">        <span class="s2">&quot;sum_w2&quot;</span><span class="p">:</span> <span class="n">sum_w2</span><span class="p">,</span>
+</span><span id="line-406">    <span class="p">}</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

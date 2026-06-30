@@ -28,7 +28,7 @@
 <link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.rho_tau.html" rel="next" title="sp_validation.rho_tau"/>
+<link href="sp_validation.pseudo_cl.html" rel="next" title="sp_validation.pseudo_cl"/>
 <link href="sp_validation.plot_style.html" rel="prev" title="sp_validation.plot_style"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -87,11 +87,20 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
@@ -100,6 +109,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
@@ -189,11 +199,6 @@ Must be overridden (with integers) in the subclass.</p>
 Must be overridden (with integers) in the subclass.</p>
 </dd></dl>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse">
-<span class="sig-name descname"><span class="pre">has_inverse</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse'">¶</a></dt>
-<dd><p>True if this transform has a corresponding inverse transform.</p>
-</dd></dl>
-<dl class="py attribute">
 <dt class="sig sig-object py" id="sp_validation.plots.SquareRootScale.SquareRootTransform.is_separable">
 <span class="sig-name descname"><span class="pre">is_separable</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.is_separable" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.SquareRootScale.SquareRootTransform.is_separable'">¶</a></dt>
 <dd><p>True if this transform is separable in the x- and y- dimensions.</p>
@@ -233,16 +238,16 @@ depending on the input.</p>
 temporary.  An update to <em>self</em> does not cause a corresponding
 update to its inverted copy.</p>
 </dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse">
+<span class="sig-name descname"><span class="pre">has_inverse</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse'">¶</a></dt>
+<dd><p>True if this transform has a corresponding inverse transform.</p>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="sp_validation.plots.SquareRootScale.InvertedSquareRootTransform">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">InvertedSquareRootTransform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shorthand_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/plots.html#SquareRootScale.InvertedSquareRootTransform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform'">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://matplotlib.org/stable/api/transformations.html#matplotlib.transforms.Transform" title="(in Matplotlib v3.11.0)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Transform</span></code></a></p>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse">
-<span class="sig-name descname"><span class="pre">has_inverse</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse'">¶</a></dt>
-<dd><p>True if this transform has a corresponding inverse transform.</p>
-</dd></dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims">
 <span class="sig-name descname"><span class="pre">input_dims</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims'">¶</a></dt>
@@ -286,6 +291,11 @@ shape (N, <code class="xref py py-attr docutils literal notranslate"><span class
 <p>The return value of this method should be treated as
 temporary.  An update to <em>self</em> does not cause a corresponding
 update to its inverted copy.</p>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse">
+<span class="sig-name descname"><span class="pre">has_inverse</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse'">¶</a></dt>
+<dd><p>True if this transform has a corresponding inverse transform.</p>
 </dd></dl>
 </dd></dl>
 <dl class="py method">
@@ -415,8 +425,8 @@ update to its inverted copy.</p>
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.rho_tau.html">
-        sp_validation.rho_tau
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.pseudo_cl.html">
+        sp_validation.pseudo_cl
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
@@ -432,19 +442,19 @@ update to its inverted copy.</p>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform</span></code></a><ul>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform.input_dims'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.input_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.input_dims</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform.output_dims'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.output_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.output_dims</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.has_inverse</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform.is_separable'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.is_separable"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.is_separable</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform.transform_non_affine'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.transform_non_affine"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.transform_non_affine()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform.inverted'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.inverted"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.inverted()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse'" class="reference internal" href="#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.has_inverse</span></code></a></li>
 </ul>
 </li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform</span></code></a><ul>
-<li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.has_inverse</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.input_dims</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.output_dims'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.output_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.output_dims</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.is_separable'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.is_separable"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.is_separable</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.transform'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.transform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.transform()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.inverted'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.inverted"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.inverted()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse'" class="reference internal" href="#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.has_inverse</span></code></a></li>
 </ul>
 </li>
 <li><a :data-current="activeSection === '#sp_validation.plots.SquareRootScale.get_transform'" class="reference internal" href="#sp_validation.plots.SquareRootScale.get_transform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.get_transform()</span></code></a></li>

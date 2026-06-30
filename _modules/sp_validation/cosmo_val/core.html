@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en" data-content_root="../../../"
+  x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}"
+  :class="{ 'dark' : darkMode === true }">
+
+<head>
+  <script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#030711" />
+  
+  <title>sp_validation.cosmo_val.core | sp_validation v0.6.0</title>
+  <meta property="og:title" content="sp_validation.cosmo_val.core | sp_validation v0.6.0" />
+  <meta name="twitter:title" content="sp_validation.cosmo_val.core | sp_validation v0.6.0" />
+  <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+  <link rel="stylesheet" type="text/css" href="../../../_static/theme.css?v=d6d7c91b" />
+  <link rel="search" title="Search" href="../../../search.html" />
+  <link rel="index" title="Index" href="../../../genindex.html" />
+</head>
+
+<body x-data="{ showSidebar: false, showScrollTop: false }"
+  class="min-h-screen font-sans antialiased bg-background text-foreground" :class="{ 'overflow-hidden': showSidebar }"@scroll.window="showScrollTop = pageYOffset > 100">
+  <div x-cloak x-show="showSidebar"
+    class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden"
+    @click.self="showSidebar = false"></div><div id="page" class="relative flex flex-col min-h-screen"><a href="#content"
+      class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+    <div class="hidden mr-4 md:flex">
+      <a href="../../../index.html" class="flex items-center mr-6"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+      </a></div><button
+      class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden"
+      type="button" @click="showSidebar = true">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" aria-hidden="true"
+        fill="currentColor">
+        <path
+          d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z" />
+      </svg>
+      <span class="sr-only">Toggle navigation menu</span>
+    </button>
+    <div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+      <div class="flex-1 w-full md:w-auto md:flex-none"><form id="searchbox"
+      action="../../../search.html"
+      method="get"
+      class="relative flex items-center group"
+      @keydown.k.window.meta="$refs.search.focus()">
+  <input x-ref="search"
+          name="q"
+          id="search-input"
+          type="search"
+          aria-label="Search the docs"
+          placeholder="Search ..."
+          class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" />
+  <kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+    <span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+      </div>
+      <nav class="flex items-center gap-1">
+        <button @click="darkMode = !darkMode"
+          class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
+          type="button"
+          title="Toggle color scheme">
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0">
+            <path
+              d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100">
+            <path
+              d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z" />
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+    <div class="flex-1"><div
+        class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside id="left-sidebar"
+  class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky"
+  :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }">
+
+    <a href="../../../index.html" class="justify-start text-sm md:!hidden bg-background"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+    </a>
+
+    <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+      <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+  <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../repository_structure.html">Repository structure</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.cosmology.html">sp_validation.cosmology</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.format.html">sp_validation.format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.masks.html">sp_validation.masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.statistics.html">sp_validation.statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../../z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing.html">Contributing</a></li>
+</ul>
+
+</nav>
+      </div>
+    </div>
+    <button type="button" @click="showSidebar = false"
+      class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+        stroke="none" class="h-4 w-4">
+        <path
+          d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z" />
+      </svg>
+    </button>
+  </aside>
+          <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs"
+     class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+  <a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground"
+     href="../../../index.html">
+    <span class="hidden md:inline">sp_validation v0.6.0</span>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         height="18"
+         width="18"
+         viewBox="0 96 960 960"
+         aria-label="Home"
+         fill="currentColor"
+         stroke="none"
+         class="md:hidden">
+      <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z" />
+    </svg>
+  </a>
+  
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap"
+       href="../../index.html">Module code</a>
+    
+<div class="mr-1">/</div><span aria-current="page"
+        class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.cosmo_val.core</span>
+</nav>
+
+    <div id="content" role="main">
+      <h1>Source code for sp_validation.cosmo_val.core</h1><div class="highlight"><pre>
+<span></span><code><span id="line-1"><span class="c1"># %%</span>
+</span><span id="line-2"><span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+</span><span id="line-3"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+</span><span id="line-4"><span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+</span><span id="line-5"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-6">
+</span><span id="line-7"><span class="kn">import</span><span class="w"> </span><span class="nn">colorama</span>
+</span><span id="line-8"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-9"><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+</span><span id="line-10"><span class="kn">from</span><span class="w"> </span><span class="nn">shear_psf_leakage</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_object</span><span class="p">,</span> <span class="n">run_scale</span>
+</span><span id="line-11">
+</span><span id="line-12"><span class="kn">from</span><span class="w"> </span><span class="nn">..b_modes</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-13">    <span class="n">_get_pte_from_scale_cut</span><span class="p">,</span>
+</span><span id="line-14">    <span class="n">find_conservative_scale_cut_key</span><span class="p">,</span>
+</span><span id="line-15"><span class="p">)</span>
+</span><span id="line-16"><span class="kn">from</span><span class="w"> </span><span class="nn">..cosmology</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cosmo</span>
+</span><span id="line-17"><span class="kn">from</span><span class="w"> </span><span class="nn">..statistics</span><span class="w"> </span><span class="kn">import</span> <span class="n">chi2_and_pte</span>
+</span><span id="line-18"><span class="kn">from</span><span class="w"> </span><span class="nn">.catalog_characterization</span><span class="w"> </span><span class="kn">import</span> <span class="n">CatalogCharacterizationMixin</span>
+</span><span id="line-19"><span class="kn">from</span><span class="w"> </span><span class="nn">.cosebis</span><span class="w"> </span><span class="kn">import</span> <span class="n">CosebisMixin</span>
+</span><span id="line-20"><span class="kn">from</span><span class="w"> </span><span class="nn">.pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="n">PseudoClMixin</span>
+</span><span id="line-21"><span class="kn">from</span><span class="w"> </span><span class="nn">.psf_systematics</span><span class="w"> </span><span class="kn">import</span> <span class="n">PSFSystematicsMixin</span>
+</span><span id="line-22"><span class="kn">from</span><span class="w"> </span><span class="nn">.pure_eb</span><span class="w"> </span><span class="kn">import</span> <span class="n">PureEBMixin</span>
+</span><span id="line-23"><span class="kn">from</span><span class="w"> </span><span class="nn">.real_space</span><span class="w"> </span><span class="kn">import</span> <span class="n">RealSpaceMixin</span>
+</span><span id="line-24">
+</span><span id="line-25">
+</span><span id="line-26"><span class="c1"># %%</span>
+<div class="viewcode-block" id="CosmologyValidation">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation">[docs]</a>
+</span><span id="line-27"><span class="k">class</span><span class="w"> </span><span class="nc">CosmologyValidation</span><span class="p">(</span>
+</span><span id="line-28">    <span class="n">CosebisMixin</span><span class="p">,</span>
+</span><span id="line-29">    <span class="n">PureEBMixin</span><span class="p">,</span>
+</span><span id="line-30">    <span class="n">RealSpaceMixin</span><span class="p">,</span>
+</span><span id="line-31">    <span class="n">PSFSystematicsMixin</span><span class="p">,</span>
+</span><span id="line-32">    <span class="n">CatalogCharacterizationMixin</span><span class="p">,</span>
+</span><span id="line-33">    <span class="n">PseudoClMixin</span><span class="p">,</span>
+</span><span id="line-34"><span class="p">):</span>
+</span><span id="line-35"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Framework for cosmic shear validation and systematics analysis.</span>
+</span><span id="line-36">
+</span><span id="line-37"><span class="sd">    Handles two-point correlation function measurements, PSF systematics (rho/tau),</span>
+</span><span id="line-38"><span class="sd">    pseudo-C_ell analysis, and covariance estimation for weak lensing surveys.</span>
+</span><span id="line-39"><span class="sd">    Supports multiple catalog versions with automatic leakage-corrected variants.</span>
+</span><span id="line-40">
+</span><span id="line-41"><span class="sd">    Parameters</span>
+</span><span id="line-42"><span class="sd">    ----------</span>
+</span><span id="line-43"><span class="sd">    versions : list of str</span>
+</span><span id="line-44"><span class="sd">        Catalog version identifiers to analyze. Appending &#39;_leak_corr&#39; to a base</span>
+</span><span id="line-45"><span class="sd">        version creates a virtual catalog using leakage-corrected ellipticity columns</span>
+</span><span id="line-46"><span class="sd">        (e1_col_corrected/e2_col_corrected) from the base version configuration.</span>
+</span><span id="line-47"><span class="sd">    catalog_config : str, default &#39;./cat_config.yaml&#39;</span>
+</span><span id="line-48"><span class="sd">        Path to catalog configuration YAML defining survey metadata, file paths,</span>
+</span><span id="line-49"><span class="sd">        and analysis settings for each version.</span>
+</span><span id="line-50"><span class="sd">    output_dir : str, optional</span>
+</span><span id="line-51"><span class="sd">        Override for output directory. If None, uses catalog config&#39;s paths.output.</span>
+</span><span id="line-52"><span class="sd">    rho_tau_method : {&#39;lsq&#39;, &#39;mcmc&#39;}, default &#39;lsq&#39;</span>
+</span><span id="line-53"><span class="sd">        Fitting method for PSF leakage systematics parameters.</span>
+</span><span id="line-54"><span class="sd">    cov_estimate_method : {&#39;th&#39;, &#39;jk&#39;}, default &#39;th&#39;</span>
+</span><span id="line-55"><span class="sd">        Covariance estimation: &#39;th&#39; for semi-analytic theory, &#39;jk&#39; for jackknife.</span>
+</span><span id="line-56"><span class="sd">    compute_cov_rho : bool, default True</span>
+</span><span id="line-57"><span class="sd">        Whether to compute covariance for rho statistics during PSF analysis.</span>
+</span><span id="line-58"><span class="sd">    n_cov : int, default 100</span>
+</span><span id="line-59"><span class="sd">        Number of realizations for covariance estimation when using theory method.</span>
+</span><span id="line-60"><span class="sd">    theta_min : float, default 0.1</span>
+</span><span id="line-61"><span class="sd">        Minimum angular separation in arcminutes for correlation function binning.</span>
+</span><span id="line-62"><span class="sd">    theta_max : float, default 250</span>
+</span><span id="line-63"><span class="sd">        Maximum angular separation in arcminutes for correlation function binning.</span>
+</span><span id="line-64"><span class="sd">    nbins : int, default 20</span>
+</span><span id="line-65"><span class="sd">        Number of angular bins for TreeCorr real-space correlation functions.</span>
+</span><span id="line-66"><span class="sd">    var_method : {&#39;jackknife&#39;, &#39;sample&#39;, &#39;bootstrap&#39;, &#39;marked_bootstrap&#39;}, default &#39;jackknife&#39;</span>
+</span><span id="line-67"><span class="sd">        TreeCorr variance estimation method.</span>
+</span><span id="line-68"><span class="sd">    npatch : int, default 20</span>
+</span><span id="line-69"><span class="sd">        Number of spatial patches for jackknife variance estimation.</span>
+</span><span id="line-70"><span class="sd">    quantile : float, default 0.1587</span>
+</span><span id="line-71"><span class="sd">        Quantile for uncertainty bands in plots (default: 1-sigma ≈ 0.159).</span>
+</span><span id="line-72"><span class="sd">    theta_min_plot : float, default 0.08</span>
+</span><span id="line-73"><span class="sd">        Minimum angular scale for plotting (may differ from analysis cut).</span>
+</span><span id="line-74"><span class="sd">    theta_max_plot : float, default 250</span>
+</span><span id="line-75"><span class="sd">        Maximum angular scale for plotting.</span>
+</span><span id="line-76"><span class="sd">    ylim_alpha : list of float, default [-0.005, 0.05]</span>
+</span><span id="line-77"><span class="sd">        Y-axis limits for alpha systematic parameter plots.</span>
+</span><span id="line-78"><span class="sd">    ylim_xi_sys_ratio : list of float, default [-0.02, 0.5]</span>
+</span><span id="line-79"><span class="sd">        Y-axis limits for xi systematics ratio plots.</span>
+</span><span id="line-80"><span class="sd">    nside : int, default 1024</span>
+</span><span id="line-81"><span class="sd">        HEALPix resolution for pseudo-C_ell analysis and area computation.</span>
+</span><span id="line-82"><span class="sd">    binning : {&#39;powspace&#39;, &#39;linspace&#39;, &#39;logspace&#39;}, default &#39;powspace&#39;</span>
+</span><span id="line-83"><span class="sd">        Ell binning scheme for pseudo-C_ell (powspace = ell^power spacing).</span>
+</span><span id="line-84"><span class="sd">    power : float, default 0.5</span>
+</span><span id="line-85"><span class="sd">        Exponent for power-law binning when binning=&#39;powspace&#39;.</span>
+</span><span id="line-86"><span class="sd">    n_ell_bins : int, default 32</span>
+</span><span id="line-87"><span class="sd">        Number of ell bins for pseudo-C_ell analysis (used with binning=&#39;powspace&#39;).</span>
+</span><span id="line-88"><span class="sd">    ell_step : int, default 10</span>
+</span><span id="line-89"><span class="sd">        Bin width in ell for linear binning (used with binning=&#39;linear&#39;).</span>
+</span><span id="line-90"><span class="sd">    pol_factor : bool, default True</span>
+</span><span id="line-91"><span class="sd">        Apply polarization correction factor in pseudo-C_ell calculations.</span>
+</span><span id="line-92"><span class="sd">    nrandom_cell : int, default 10</span>
+</span><span id="line-93"><span class="sd">        Number of random realizations for C_ell error estimation.</span>
+</span><span id="line-94"><span class="sd">    cell_seed : int, default 8192</span>
+</span><span id="line-95"><span class="sd">        Seed for the random-rotation noise realizations in the pseudo-C_ell</span>
+</span><span id="line-96"><span class="sd">        noise debiasing, making those realizations reproducible run-to-run.</span>
+</span><span id="line-97"><span class="sd">    cosmo_params : dict, optional</span>
+</span><span id="line-98"><span class="sd">        Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.</span>
+</span><span id="line-99">
+</span><span id="line-100"><span class="sd">    Attributes</span>
+</span><span id="line-101"><span class="sd">    ----------</span>
+</span><span id="line-102"><span class="sd">    versions : list of str</span>
+</span><span id="line-103"><span class="sd">        Validated catalog versions after processing _leak_corr variants.</span>
+</span><span id="line-104"><span class="sd">    cc : dict</span>
+</span><span id="line-105"><span class="sd">        Loaded catalog configuration with resolved absolute paths.</span>
+</span><span id="line-106"><span class="sd">    catalog_config_path : Path</span>
+</span><span id="line-107"><span class="sd">        Resolved path to the catalog configuration file.</span>
+</span><span id="line-108"><span class="sd">    treecorr_config : dict</span>
+</span><span id="line-109"><span class="sd">        Configuration dictionary passed to TreeCorr correlation objects.</span>
+</span><span id="line-110"><span class="sd">    cosmo : pyccl.Cosmology</span>
+</span><span id="line-111"><span class="sd">        Cosmology object for theory predictions.</span>
+</span><span id="line-112">
+</span><span id="line-113"><span class="sd">    Notes</span>
+</span><span id="line-114"><span class="sd">    -----</span>
+</span><span id="line-115"><span class="sd">    - Path resolution: Relative paths in catalog config are resolved using each</span>
+</span><span id="line-116"><span class="sd">      version&#39;s &#39;subdir&#39; field as the base directory.</span>
+</span><span id="line-117"><span class="sd">    - Virtual _leak_corr versions: These create deep copies of the base version</span>
+</span><span id="line-118"><span class="sd">      config, swapping e1_col/e2_col with e1_col_corrected/e2_col_corrected.</span>
+</span><span id="line-119"><span class="sd">    - TreeCorr cross_patch_weight: Automatically set to &#39;match&#39; for jackknife,</span>
+</span><span id="line-120"><span class="sd">      &#39;simple&#39; otherwise, following TreeCorr best practices.</span>
+</span><span id="line-121"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-122">
+<div class="viewcode-block" id="CosmologyValidation._split_seed_variant">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant">[docs]</a>
+</span><span id="line-123">    <span class="nd">@staticmethod</span>
+</span><span id="line-124">    <span class="k">def</span><span class="w"> </span><span class="nf">_split_seed_variant</span><span class="p">(</span><span class="n">version</span><span class="p">):</span>
+</span><span id="line-125"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the base version and seed label if version encodes a seed.&quot;&quot;&quot;</span>
+</span><span id="line-126">        <span class="k">if</span> <span class="s2">&quot;_seed&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">version</span><span class="p">:</span>
+</span><span id="line-127">            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+</span><span id="line-128">        <span class="n">base</span><span class="p">,</span> <span class="n">seed_label</span> <span class="o">=</span> <span class="n">version</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;_seed&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="line-129">        <span class="k">if</span> <span class="ow">not</span> <span class="n">base</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">seed_label</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+</span><span id="line-130">            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+</span><span id="line-131">        <span class="k">return</span> <span class="n">base</span><span class="p">,</span> <span class="n">seed_label</span></div>
+
+</span><span id="line-132">
+<div class="viewcode-block" id="CosmologyValidation._materialize_seed_path">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path">[docs]</a>
+</span><span id="line-133">    <span class="nd">@staticmethod</span>
+</span><span id="line-134">    <span class="k">def</span><span class="w"> </span><span class="nf">_materialize_seed_path</span><span class="p">(</span>
+</span><span id="line-135">        <span class="n">base_cfg</span><span class="p">,</span> <span class="n">seed_label</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">base_version</span><span class="p">,</span> <span class="n">catalog_config</span>
+</span><span id="line-136">    <span class="p">):</span>
+</span><span id="line-137"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Render the seed-specific shear path using Python string formatting.&quot;&quot;&quot;</span>
+</span><span id="line-138">        <span class="n">shear_cfg</span> <span class="o">=</span> <span class="n">base_cfg</span><span class="p">[</span><span class="s2">&quot;shear&quot;</span><span class="p">]</span>
+</span><span id="line-139">        <span class="n">template</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path_template&quot;</span><span class="p">)</span>
+</span><span id="line-140">
+</span><span id="line-141">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-142">            <span class="n">seed_value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">seed_label</span><span class="p">)</span>
+</span><span id="line-143">        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+</span><span id="line-144">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-145">                <span class="sa">f</span><span class="s2">&quot;Seed suffix for &#39;</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">&#39; is not numeric; cannot materialize path.&quot;</span>
+</span><span id="line-146">            <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+</span><span id="line-147">
+</span><span id="line-148">        <span class="n">format_context</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;seed&quot;</span><span class="p">:</span> <span class="n">seed_value</span><span class="p">,</span> <span class="s2">&quot;seed_label&quot;</span><span class="p">:</span> <span class="n">seed_label</span><span class="p">}</span>
+</span><span id="line-149">
+</span><span id="line-150">        <span class="k">if</span> <span class="n">template</span><span class="p">:</span>
+</span><span id="line-151">            <span class="k">try</span><span class="p">:</span>
+</span><span id="line-152">                <span class="k">return</span> <span class="n">template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">format_context</span><span class="p">)</span>
+</span><span id="line-153">            <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+</span><span id="line-154">                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-155">                    <span class="sa">f</span><span class="s2">&quot;Missing placeholder &#39;</span><span class="si">{</span><span class="n">error</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&#39; in path_template for &quot;</span>
+</span><span id="line-156">                    <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">base_version</span><span class="si">}</span><span class="s2">&#39; while materializing &#39;</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">&#39;. Update &quot;</span>
+</span><span id="line-157">                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">catalog_config</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="line-158">                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+</span><span id="line-159">            <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+</span><span id="line-160">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-161">                    <span class="sa">f</span><span class="s2">&quot;Invalid format specification in path_template for &#39;</span><span class="si">{</span><span class="n">base_version</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+</span><span id="line-162">                    <span class="sa">f</span><span class="s2">&quot;while materializing &#39;</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
+</span><span id="line-163">                <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+</span><span id="line-164">
+</span><span id="line-165">        <span class="n">path</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+</span><span id="line-166">        <span class="n">token_start</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s2">&quot;seed&quot;</span><span class="p">)</span>
+</span><span id="line-167">        <span class="k">if</span> <span class="n">token_start</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+</span><span id="line-168">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-169">                <span class="sa">f</span><span class="s2">&quot;Cannot materialize &#39;</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">&#39;: &#39;</span><span class="si">{</span><span class="n">base_version</span><span class="si">}</span><span class="s2">&#39; lacks a shear &quot;</span>
+</span><span id="line-170">                <span class="sa">f</span><span class="s2">&quot;path_template and its shear path &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39; does not contain a &#39;seed&#39; &quot;</span>
+</span><span id="line-171">                <span class="sa">f</span><span class="s2">&quot;token. Update </span><span class="si">{</span><span class="n">catalog_config</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="line-172">            <span class="p">)</span>
+</span><span id="line-173">        <span class="n">cursor</span> <span class="o">=</span> <span class="n">token_start</span> <span class="o">+</span> <span class="mi">4</span>  <span class="c1"># len(&quot;seed&quot;)</span>
+</span><span id="line-174">        <span class="k">if</span> <span class="n">cursor</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">path</span><span class="p">[</span><span class="n">cursor</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+</span><span id="line-175">            <span class="n">cursor</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span id="line-176">        <span class="n">digit_start</span> <span class="o">=</span> <span class="n">cursor</span>
+</span><span id="line-177">        <span class="k">while</span> <span class="n">cursor</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="ow">and</span> <span class="n">path</span><span class="p">[</span><span class="n">cursor</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+</span><span id="line-178">            <span class="n">cursor</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span id="line-179">        <span class="n">digit_end</span> <span class="o">=</span> <span class="n">cursor</span>
+</span><span id="line-180">        <span class="n">digits</span> <span class="o">=</span> <span class="n">path</span><span class="p">[</span><span class="n">digit_start</span><span class="p">:</span><span class="n">digit_end</span><span class="p">]</span>
+</span><span id="line-181">        <span class="k">if</span> <span class="ow">not</span> <span class="n">digits</span><span class="p">:</span>
+</span><span id="line-182">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-183">                <span class="sa">f</span><span class="s2">&quot;Cannot materialize &#39;</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">&#39;: shear path &#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&#39; for base version &quot;</span>
+</span><span id="line-184">                <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">base_version</span><span class="si">}</span><span class="s2">&#39; lacks digits after the seed token. Update &quot;</span>
+</span><span id="line-185">                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">catalog_config</span><span class="si">}</span><span class="s2">.&quot;</span>
+</span><span id="line-186">            <span class="p">)</span>
+</span><span id="line-187">
+</span><span id="line-188">        <span class="n">template</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="p">[:</span><span class="n">digit_start</span><span class="p">]</span><span class="si">}</span><span class="se">{{</span><span class="s2">seed_label</span><span class="se">}}</span><span class="si">{</span><span class="n">path</span><span class="p">[</span><span class="n">digit_end</span><span class="p">:]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-189">        <span class="k">return</span> <span class="n">template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">format_context</span><span class="p">)</span></div>
+
+</span><span id="line-190">
+</span><span id="line-191">    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+</span><span id="line-192">        <span class="bp">self</span><span class="p">,</span>
+</span><span id="line-193">        <span class="n">versions</span><span class="p">,</span>
+</span><span id="line-194">        <span class="n">catalog_config</span><span class="o">=</span><span class="s2">&quot;./cat_config.yaml&quot;</span><span class="p">,</span>
+</span><span id="line-195">        <span class="n">output_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-196">        <span class="n">rho_tau_method</span><span class="o">=</span><span class="s2">&quot;lsq&quot;</span><span class="p">,</span>
+</span><span id="line-197">        <span class="n">cov_estimate_method</span><span class="o">=</span><span class="s2">&quot;th&quot;</span><span class="p">,</span>
+</span><span id="line-198">        <span class="n">compute_cov_rho</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-199">        <span class="n">n_cov</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+</span><span id="line-200">        <span class="n">theta_min</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+</span><span id="line-201">        <span class="n">theta_max</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+</span><span id="line-202">        <span class="n">nbins</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="line-203">        <span class="n">var_method</span><span class="o">=</span><span class="s2">&quot;jackknife&quot;</span><span class="p">,</span>
+</span><span id="line-204">        <span class="n">npatch</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="line-205">        <span class="n">quantile</span><span class="o">=</span><span class="mf">0.1587</span><span class="p">,</span>
+</span><span id="line-206">        <span class="n">theta_min_plot</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span>
+</span><span id="line-207">        <span class="n">theta_max_plot</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
+</span><span id="line-208">        <span class="n">ylim_alpha</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">0.005</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">],</span>
+</span><span id="line-209">        <span class="n">ylim_xi_sys_ratio</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+</span><span id="line-210">        <span class="n">nside</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+</span><span id="line-211">        <span class="n">nside_mask</span><span class="o">=</span><span class="mi">2</span><span class="o">**</span><span class="mi">13</span><span class="p">,</span>
+</span><span id="line-212">        <span class="n">binning</span><span class="o">=</span><span class="s2">&quot;powspace&quot;</span><span class="p">,</span>
+</span><span id="line-213">        <span class="n">power</span><span class="o">=</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="line-214">        <span class="n">n_ell_bins</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>
+</span><span id="line-215">        <span class="n">ell_step</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+</span><span id="line-216">        <span class="n">pol_factor</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="line-217">        <span class="n">cell_method</span><span class="o">=</span><span class="s2">&quot;map&quot;</span><span class="p">,</span>
+</span><span id="line-218">        <span class="n">noise_bias_method</span><span class="o">=</span><span class="s2">&quot;analytic&quot;</span><span class="p">,</span>
+</span><span id="line-219">        <span class="n">fiducial_input_inka</span><span class="o">=</span><span class="s2">&quot;coupled&quot;</span><span class="p">,</span>
+</span><span id="line-220">        <span class="n">nrandom_cell</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+</span><span id="line-221">        <span class="n">cell_seed</span><span class="o">=</span><span class="mi">8192</span><span class="p">,</span>
+</span><span id="line-222">        <span class="n">path_onecovariance</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-223">        <span class="n">cosmo_params</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-224">        <span class="n">blind</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-225">    <span class="p">):</span>
+</span><span id="line-226">        <span class="bp">self</span><span class="o">.</span><span class="n">rho_tau_method</span> <span class="o">=</span> <span class="n">rho_tau_method</span>
+</span><span id="line-227">        <span class="bp">self</span><span class="o">.</span><span class="n">cov_estimate_method</span> <span class="o">=</span> <span class="n">cov_estimate_method</span>
+</span><span id="line-228">        <span class="bp">self</span><span class="o">.</span><span class="n">compute_cov_rho</span> <span class="o">=</span> <span class="n">compute_cov_rho</span>
+</span><span id="line-229">        <span class="bp">self</span><span class="o">.</span><span class="n">n_cov</span> <span class="o">=</span> <span class="n">n_cov</span>
+</span><span id="line-230">        <span class="bp">self</span><span class="o">.</span><span class="n">theta_min</span> <span class="o">=</span> <span class="n">theta_min</span>
+</span><span id="line-231">        <span class="bp">self</span><span class="o">.</span><span class="n">theta_max</span> <span class="o">=</span> <span class="n">theta_max</span>
+</span><span id="line-232">        <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span> <span class="o">=</span> <span class="n">npatch</span>
+</span><span id="line-233">        <span class="bp">self</span><span class="o">.</span><span class="n">nbins</span> <span class="o">=</span> <span class="n">nbins</span>
+</span><span id="line-234">        <span class="bp">self</span><span class="o">.</span><span class="n">quantile</span> <span class="o">=</span> <span class="n">quantile</span>
+</span><span id="line-235">        <span class="bp">self</span><span class="o">.</span><span class="n">theta_min_plot</span> <span class="o">=</span> <span class="n">theta_min_plot</span>
+</span><span id="line-236">        <span class="bp">self</span><span class="o">.</span><span class="n">theta_max_plot</span> <span class="o">=</span> <span class="n">theta_max_plot</span>
+</span><span id="line-237">        <span class="bp">self</span><span class="o">.</span><span class="n">ylim_alpha</span> <span class="o">=</span> <span class="n">ylim_alpha</span>
+</span><span id="line-238">        <span class="bp">self</span><span class="o">.</span><span class="n">ylim_xi_sys_ratio</span> <span class="o">=</span> <span class="n">ylim_xi_sys_ratio</span>
+</span><span id="line-239">        <span class="c1"># For pseudo-Cls</span>
+</span><span id="line-240">        <span class="bp">self</span><span class="o">.</span><span class="n">nside</span> <span class="o">=</span> <span class="n">nside</span>
+</span><span id="line-241">        <span class="bp">self</span><span class="o">.</span><span class="n">binning</span> <span class="o">=</span> <span class="n">binning</span>
+</span><span id="line-242">        <span class="bp">self</span><span class="o">.</span><span class="n">power</span> <span class="o">=</span> <span class="n">power</span>
+</span><span id="line-243">        <span class="bp">self</span><span class="o">.</span><span class="n">n_ell_bins</span> <span class="o">=</span> <span class="n">n_ell_bins</span>
+</span><span id="line-244">        <span class="bp">self</span><span class="o">.</span><span class="n">ell_step</span> <span class="o">=</span> <span class="n">ell_step</span>
+</span><span id="line-245">        <span class="bp">self</span><span class="o">.</span><span class="n">pol_factor</span> <span class="o">=</span> <span class="n">pol_factor</span>
+</span><span id="line-246">        <span class="bp">self</span><span class="o">.</span><span class="n">nrandom_cell</span> <span class="o">=</span> <span class="n">nrandom_cell</span>
+</span><span id="line-247">        <span class="bp">self</span><span class="o">.</span><span class="n">cell_seed</span> <span class="o">=</span> <span class="n">cell_seed</span>
+</span><span id="line-248">        <span class="bp">self</span><span class="o">.</span><span class="n">cell_method</span> <span class="o">=</span> <span class="n">cell_method</span>
+</span><span id="line-249">        <span class="bp">self</span><span class="o">.</span><span class="n">noise_bias_method</span> <span class="o">=</span> <span class="n">noise_bias_method</span>
+</span><span id="line-250">        <span class="bp">self</span><span class="o">.</span><span class="n">fiducial_input_inka</span> <span class="o">=</span> <span class="n">fiducial_input_inka</span>
+</span><span id="line-251">        <span class="bp">self</span><span class="o">.</span><span class="n">nside_mask</span> <span class="o">=</span> <span class="n">nside_mask</span>
+</span><span id="line-252">        <span class="bp">self</span><span class="o">.</span><span class="n">path_onecovariance</span> <span class="o">=</span> <span class="n">path_onecovariance</span>
+</span><span id="line-253">        <span class="bp">self</span><span class="o">.</span><span class="n">blind</span> <span class="o">=</span> <span class="n">blind</span>
+</span><span id="line-254">
+</span><span id="line-255">        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell_method</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;map&quot;</span><span class="p">,</span> <span class="s2">&quot;catalog&quot;</span><span class="p">],</span> <span class="p">(</span>
+</span><span id="line-256">            <span class="s2">&quot;cell_method must be &#39;map&#39; or &#39;catalog&#39;&quot;</span>
+</span><span id="line-257">        <span class="p">)</span>
+</span><span id="line-258">        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">noise_bias_method</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;analytic&quot;</span><span class="p">,</span> <span class="s2">&quot;randoms&quot;</span><span class="p">],</span> <span class="p">(</span>
+</span><span id="line-259">            <span class="s2">&quot;noise_bias_method must be &#39;analytic&#39; or &#39;randoms&#39;&quot;</span>
+</span><span id="line-260">        <span class="p">)</span>
+</span><span id="line-261">        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">fiducial_input_inka</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;coupled&quot;</span><span class="p">,</span> <span class="s2">&quot;decoupled&quot;</span><span class="p">],</span> <span class="p">(</span>
+</span><span id="line-262">            <span class="s2">&quot;fiducial_input_inka must be &#39;coupled&#39; or &#39;decoupled&#39;&quot;</span>
+</span><span id="line-263">        <span class="p">)</span>
+</span><span id="line-264">
+</span><span id="line-265">        <span class="c1"># Cosmology for theory predictions: caller-supplied params, else the</span>
+</span><span id="line-266">        <span class="c1"># get_cosmo() Planck 2018 defaults.</span>
+</span><span id="line-267">        <span class="bp">self</span><span class="o">.</span><span class="n">cosmo</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-268">            <span class="n">get_cosmo</span><span class="p">(</span><span class="o">**</span><span class="n">cosmo_params</span><span class="p">)</span> <span class="k">if</span> <span class="n">cosmo_params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">get_cosmo</span><span class="p">()</span>
+</span><span id="line-269">        <span class="p">)</span>
+</span><span id="line-270">
+</span><span id="line-271">        <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-272">            <span class="s2">&quot;ra_units&quot;</span><span class="p">:</span> <span class="s2">&quot;degrees&quot;</span><span class="p">,</span>
+</span><span id="line-273">            <span class="s2">&quot;dec_units&quot;</span><span class="p">:</span> <span class="s2">&quot;degrees&quot;</span><span class="p">,</span>
+</span><span id="line-274">            <span class="s2">&quot;min_sep&quot;</span><span class="p">:</span> <span class="n">theta_min</span><span class="p">,</span>
+</span><span id="line-275">            <span class="s2">&quot;max_sep&quot;</span><span class="p">:</span> <span class="n">theta_max</span><span class="p">,</span>
+</span><span id="line-276">            <span class="s2">&quot;sep_units&quot;</span><span class="p">:</span> <span class="s2">&quot;arcmin&quot;</span><span class="p">,</span>
+</span><span id="line-277">            <span class="s2">&quot;nbins&quot;</span><span class="p">:</span> <span class="n">nbins</span><span class="p">,</span>
+</span><span id="line-278">            <span class="s2">&quot;var_method&quot;</span><span class="p">:</span> <span class="n">var_method</span><span class="p">,</span>
+</span><span id="line-279">            <span class="s2">&quot;cross_patch_weight&quot;</span><span class="p">:</span> <span class="s2">&quot;match&quot;</span> <span class="k">if</span> <span class="n">var_method</span> <span class="o">==</span> <span class="s2">&quot;jackknife&quot;</span> <span class="k">else</span> <span class="s2">&quot;simple&quot;</span><span class="p">,</span>
+</span><span id="line-280">        <span class="p">}</span>
+</span><span id="line-281">
+</span><span id="line-282">        <span class="bp">self</span><span class="o">.</span><span class="n">catalog_config_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">catalog_config</span><span class="p">)</span>
+</span><span id="line-283">        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog_config_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+</span><span id="line-284">            <span class="bp">self</span><span class="o">.</span><span class="n">cc</span> <span class="o">=</span> <span class="n">cc</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span><span class="p">)</span>
+</span><span id="line-285">
+</span><span id="line-286">        <span class="k">def</span><span class="w"> </span><span class="nf">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">):</span>
+</span><span id="line-287"><span class="w">            </span><span class="sd">&quot;&quot;&quot;Resolve relative paths for a version using its subdir.&quot;&quot;&quot;</span>
+</span><span id="line-288">            <span class="n">subdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;subdir&quot;</span><span class="p">])</span>
+</span><span id="line-289">            <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+</span><span id="line-290">                <span class="k">if</span> <span class="s2">&quot;path&quot;</span> <span class="ow">in</span> <span class="n">section</span><span class="p">:</span>
+</span><span id="line-291">                    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">section</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">])</span>
+</span><span id="line-292">                    <span class="n">section</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-293">                        <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">()</span> <span class="k">else</span> <span class="nb">str</span><span class="p">(</span><span class="n">subdir</span> <span class="o">/</span> <span class="n">path</span><span class="p">)</span>
+</span><span id="line-294">                    <span class="p">)</span>
+</span><span id="line-295">
+</span><span id="line-296">        <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="s2">&quot;nz&quot;</span><span class="p">)</span>
+</span><span id="line-297">        <span class="n">processed</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;nz&quot;</span><span class="p">}</span>
+</span><span id="line-298">        <span class="n">final_versions</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-299">        <span class="n">leak_suffix</span> <span class="o">=</span> <span class="s2">&quot;_leak_corr&quot;</span>
+</span><span id="line-300">
+</span><span id="line-301">        <span class="k">def</span><span class="w"> </span><span class="nf">ensure_version_exists</span><span class="p">(</span><span class="n">ver</span><span class="p">):</span>
+</span><span id="line-302">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">processed</span><span class="p">:</span>
+</span><span id="line-303">                <span class="k">return</span>
+</span><span id="line-304">
+</span><span id="line-305">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
+</span><span id="line-306">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-307">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-308">                <span class="k">return</span>
+</span><span id="line-309">
+</span><span id="line-310">            <span class="n">seed_base</span><span class="p">,</span> <span class="n">seed_label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_split_seed_variant</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-311">
+</span><span id="line-312">            <span class="k">if</span> <span class="n">ver</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="n">leak_suffix</span><span class="p">):</span>
+</span><span id="line-313">                <span class="n">base_ver</span> <span class="o">=</span> <span class="n">ver</span><span class="p">[:</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">leak_suffix</span><span class="p">)]</span>
+</span><span id="line-314">                <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">base_ver</span><span class="p">)</span>
+</span><span id="line-315">                <span class="n">shear_cfg</span> <span class="o">=</span> <span class="n">cc</span><span class="p">[</span><span class="n">base_ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">]</span>
+</span><span id="line-316">                <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-317">                    <span class="s2">&quot;e1_col_corrected&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear_cfg</span>
+</span><span id="line-318">                    <span class="ow">or</span> <span class="s2">&quot;e2_col_corrected&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">shear_cfg</span>
+</span><span id="line-319">                <span class="p">):</span>
+</span><span id="line-320">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-321">                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_ver</span><span class="si">}</span><span class="s2"> does not have e1_col_corrected/e2_col_corrected &quot;</span>
+</span><span id="line-322">                        <span class="sa">f</span><span class="s2">&quot;fields; cannot create </span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-323">                    <span class="p">)</span>
+</span><span id="line-324">                <span class="k">if</span> <span class="n">ver</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
+</span><span id="line-325">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">base_ver</span><span class="p">])</span>
+</span><span id="line-326">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="s2">&quot;e1_col&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="p">[</span><span class="s2">&quot;e1_col_corrected&quot;</span><span class="p">]</span>
+</span><span id="line-327">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="s2">&quot;e2_col&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">shear_cfg</span><span class="p">[</span><span class="s2">&quot;e2_col_corrected&quot;</span><span class="p">]</span>
+</span><span id="line-328">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-329">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-330">                <span class="k">return</span>
+</span><span id="line-331">
+</span><span id="line-332">            <span class="k">if</span> <span class="n">seed_base</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-333">                <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">seed_base</span><span class="p">)</span>
+</span><span id="line-334">                <span class="k">if</span> <span class="n">ver</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">cc</span><span class="p">:</span>
+</span><span id="line-335">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="n">seed_base</span><span class="p">])</span>
+</span><span id="line-336">                    <span class="n">seed_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_materialize_seed_path</span><span class="p">(</span>
+</span><span id="line-337">                        <span class="n">cc</span><span class="p">[</span><span class="n">seed_base</span><span class="p">],</span>
+</span><span id="line-338">                        <span class="n">seed_label</span><span class="p">,</span>
+</span><span id="line-339">                        <span class="n">ver</span><span class="p">,</span>
+</span><span id="line-340">                        <span class="n">seed_base</span><span class="p">,</span>
+</span><span id="line-341">                        <span class="n">catalog_config</span><span class="p">,</span>
+</span><span id="line-342">                    <span class="p">)</span>
+</span><span id="line-343">                    <span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">seed_path</span>
+</span><span id="line-344">                <span class="n">resolve_paths_for_version</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-345">                <span class="n">processed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-346">                <span class="k">return</span>
+</span><span id="line-347">
+</span><span id="line-348">            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-349">                <span class="sa">f</span><span class="s2">&quot;Version string </span><span class="si">{</span><span class="n">ver</span><span class="si">}</span><span class="s2"> not found in config file </span><span class="si">{</span><span class="n">catalog_config</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-350">            <span class="p">)</span>
+</span><span id="line-351">
+</span><span id="line-352">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+</span><span id="line-353">            <span class="n">ensure_version_exists</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-354">            <span class="n">final_versions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ver</span><span class="p">)</span>
+</span><span id="line-355">
+</span><span id="line-356">        <span class="bp">self</span><span class="o">.</span><span class="n">versions</span> <span class="o">=</span> <span class="n">final_versions</span>
+</span><span id="line-357">
+</span><span id="line-358">        <span class="c1"># Override output directory if provided</span>
+</span><span id="line-359">        <span class="k">if</span> <span class="n">output_dir</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-360">            <span class="n">cc</span><span class="p">[</span><span class="s2">&quot;paths&quot;</span><span class="p">][</span><span class="s2">&quot;output&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">output_dir</span>
+</span><span id="line-361">
+</span><span id="line-362">        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cc</span><span class="p">[</span><span class="s2">&quot;paths&quot;</span><span class="p">][</span><span class="s2">&quot;output&quot;</span><span class="p">],</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-363">
+</span><span id="line-364">        <span class="c1"># B-mode results storage for summarize_bmodes()</span>
+</span><span id="line-365">        <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-366">        <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-367">
+<div class="viewcode-block" id="CosmologyValidation._output_path">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._output_path">[docs]</a>
+</span><span id="line-368">    <span class="k">def</span><span class="w"> </span><span class="nf">_output_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">parts</span><span class="p">):</span>
+</span><span id="line-369"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Absolute path under the catalog config&#39;s output directory.</span>
+</span><span id="line-370">
+</span><span id="line-371"><span class="sd">        Joins ``*parts`` onto ``self.cc[&quot;paths&quot;][&quot;output&quot;]`` and absolutises</span>
+</span><span id="line-372"><span class="sd">        the result, mirroring the ``os.path.abspath(f&quot;{output}/...&quot;)`` pattern</span>
+</span><span id="line-373"><span class="sd">        used throughout the mixins. A single ``parts`` string may contain</span>
+</span><span id="line-374"><span class="sd">        ``/`` separators.</span>
+</span><span id="line-375"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-376">        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="s2">&quot;paths&quot;</span><span class="p">][</span><span class="s2">&quot;output&quot;</span><span class="p">],</span> <span class="o">*</span><span class="n">parts</span><span class="p">))</span></div>
+
+</span><span id="line-377">
+<div class="viewcode-block" id="CosmologyValidation.get_redshift">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.get_redshift">[docs]</a>
+</span><span id="line-378">    <span class="k">def</span><span class="w"> </span><span class="nf">get_redshift</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">):</span>
+</span><span id="line-379"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Load redshift distribution for a catalog version.</span>
+</span><span id="line-380">
+</span><span id="line-381"><span class="sd">        Parameters</span>
+</span><span id="line-382"><span class="sd">        ----------</span>
+</span><span id="line-383"><span class="sd">        version : str</span>
+</span><span id="line-384"><span class="sd">            Catalog version identifier</span>
+</span><span id="line-385">
+</span><span id="line-386"><span class="sd">        Returns</span>
+</span><span id="line-387"><span class="sd">        -------</span>
+</span><span id="line-388"><span class="sd">        z : ndarray</span>
+</span><span id="line-389"><span class="sd">            Redshift values</span>
+</span><span id="line-390"><span class="sd">        nz : ndarray</span>
+</span><span id="line-391"><span class="sd">            n(z) probability density</span>
+</span><span id="line-392">
+</span><span id="line-393"><span class="sd">        Notes</span>
+</span><span id="line-394"><span class="sd">        -----</span>
+</span><span id="line-395"><span class="sd">        If self.blind is set, the redshift path is modified to use the</span>
+</span><span id="line-396"><span class="sd">        specified blind (A, B, or C) by replacing the blind suffix in the</span>
+</span><span id="line-397"><span class="sd">        configured path.</span>
+</span><span id="line-398"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-399">        <span class="n">redshift_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">version</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="s2">&quot;redshift_path&quot;</span><span class="p">]</span>
+</span><span id="line-400">
+</span><span id="line-401">        <span class="c1"># Override blind if specified</span>
+</span><span id="line-402">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">blind</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-403">            <span class="n">redshift_path</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;_[ABC]\.txt$&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">blind</span><span class="si">}</span><span class="s2">.txt&quot;</span><span class="p">,</span> <span class="n">redshift_path</span><span class="p">)</span>
+</span><span id="line-404">
+</span><span id="line-405">        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">redshift_path</span><span class="p">,</span> <span class="n">unpack</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+</span><span id="line-406">
+<div class="viewcode-block" id="CosmologyValidation._write_catalog_config">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config">[docs]</a>
+</span><span id="line-407">    <span class="k">def</span><span class="w"> </span><span class="nf">_write_catalog_config</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-408">        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalog_config_path</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+</span><span id="line-409">            <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">,</span> <span class="n">file</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+</span><span id="line-410">
+<div class="viewcode-block" id="CosmologyValidation.color_reset">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.color_reset">[docs]</a>
+</span><span id="line-411">    <span class="k">def</span><span class="w"> </span><span class="nf">color_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-412">        <span class="nb">print</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">BLACK</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span></div>
+
+</span><span id="line-413">
+<div class="viewcode-block" id="CosmologyValidation._cprint">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._cprint">[docs]</a>
+</span><span id="line-414">    <span class="k">def</span><span class="w"> </span><span class="nf">_cprint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+</span><span id="line-415"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Print ``msg`` in ``color``, then restore the default foreground.&quot;&quot;&quot;</span>
+</span><span id="line-416">        <span class="nb">print</span><span class="p">(</span><span class="n">color</span> <span class="o">+</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span>
+</span><span id="line-417">        <span class="bp">self</span><span class="o">.</span><span class="n">color_reset</span><span class="p">()</span></div>
+
+</span><span id="line-418">
+<div class="viewcode-block" id="CosmologyValidation.print_blue">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_blue">[docs]</a>
+</span><span id="line-419">    <span class="k">def</span><span class="w"> </span><span class="nf">print_blue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+</span><span id="line-420">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">BLUE</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span></div>
+
+</span><span id="line-421">
+<div class="viewcode-block" id="CosmologyValidation.print_start">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_start">[docs]</a>
+</span><span id="line-422">    <span class="k">def</span><span class="w"> </span><span class="nf">print_start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">):</span>
+</span><span id="line-423">        <span class="nb">print</span><span class="p">()</span>
+</span><span id="line-424">        <span class="bp">self</span><span class="o">.</span><span class="n">print_blue</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">end</span><span class="p">)</span></div>
+
+</span><span id="line-425">
+<div class="viewcode-block" id="CosmologyValidation.print_done">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_done">[docs]</a>
+</span><span id="line-426">    <span class="k">def</span><span class="w"> </span><span class="nf">print_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-427">        <span class="bp">self</span><span class="o">.</span><span class="n">print_blue</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span></div>
+
+</span><span id="line-428">
+<div class="viewcode-block" id="CosmologyValidation.print_magenta">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_magenta">[docs]</a>
+</span><span id="line-429">    <span class="k">def</span><span class="w"> </span><span class="nf">print_magenta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-430">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">MAGENTA</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
+
+</span><span id="line-431">
+<div class="viewcode-block" id="CosmologyValidation.print_green">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_green">[docs]</a>
+</span><span id="line-432">    <span class="k">def</span><span class="w"> </span><span class="nf">print_green</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-433">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">GREEN</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
+
+</span><span id="line-434">
+<div class="viewcode-block" id="CosmologyValidation.print_cyan">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.print_cyan">[docs]</a>
+</span><span id="line-435">    <span class="k">def</span><span class="w"> </span><span class="nf">print_cyan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+</span><span id="line-436">        <span class="bp">self</span><span class="o">.</span><span class="n">_cprint</span><span class="p">(</span><span class="n">colorama</span><span class="o">.</span><span class="n">Fore</span><span class="o">.</span><span class="n">CYAN</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span></div>
+
+</span><span id="line-437">
+<div class="viewcode-block" id="CosmologyValidation.init_results">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.init_results">[docs]</a>
+</span><span id="line-438">    <span class="k">def</span><span class="w"> </span><span class="nf">init_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">objectwise</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-439">        <span class="c1"># Branch is loop-invariant: pick the leakage class and its parameter</span>
+</span><span id="line-440">        <span class="c1"># builder once, then apply per version.</span>
+</span><span id="line-441">        <span class="n">make_leakage</span><span class="p">,</span> <span class="n">set_params</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-442">            <span class="p">(</span><span class="n">run_object</span><span class="o">.</span><span class="n">LeakageObject</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_params_leakage_object</span><span class="p">)</span>
+</span><span id="line-443">            <span class="k">if</span> <span class="n">objectwise</span>
+</span><span id="line-444">            <span class="k">else</span> <span class="p">(</span><span class="n">run_scale</span><span class="o">.</span><span class="n">LeakageScale</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">set_params_leakage_scale</span><span class="p">)</span>
+</span><span id="line-445">        <span class="p">)</span>
+</span><span id="line-446">
+</span><span id="line-447">        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-448">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">:</span>
+</span><span id="line-449">            <span class="n">leakage</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">make_leakage</span><span class="p">()</span>
+</span><span id="line-450">            <span class="n">leakage</span><span class="o">.</span><span class="n">_params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">set_params</span><span class="p">(</span><span class="n">ver</span><span class="p">))</span>
+</span><span id="line-451">            <span class="n">leakage</span><span class="o">.</span><span class="n">check_params</span><span class="p">()</span>
+</span><span id="line-452">            <span class="n">leakage</span><span class="o">.</span><span class="n">prepare_output</span><span class="p">()</span>
+</span><span id="line-453">
+</span><span id="line-454">        <span class="k">return</span> <span class="n">results</span></div>
+
+</span><span id="line-455">
+</span><span id="line-456">    <span class="nd">@property</span>
+</span><span id="line-457">    <span class="k">def</span><span class="w"> </span><span class="nf">results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-458">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_results&quot;</span><span class="p">):</span>
+</span><span id="line-459">            <span class="bp">self</span><span class="o">.</span><span class="n">_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_results</span><span class="p">(</span><span class="n">objectwise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="line-460">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results</span>
+</span><span id="line-461">
+</span><span id="line-462">    <span class="nd">@property</span>
+</span><span id="line-463">    <span class="k">def</span><span class="w"> </span><span class="nf">results_objectwise</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-464">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_results_objectwise&quot;</span><span class="p">):</span>
+</span><span id="line-465">            <span class="bp">self</span><span class="o">.</span><span class="n">_results_objectwise</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_results</span><span class="p">(</span><span class="n">objectwise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-466">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_results_objectwise</span>
+</span><span id="line-467">
+<div class="viewcode-block" id="CosmologyValidation.basename">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.basename">[docs]</a>
+</span><span id="line-468">    <span class="k">def</span><span class="w"> </span><span class="nf">basename</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">treecorr_config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">npatch</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-469">        <span class="n">cfg</span> <span class="o">=</span> <span class="n">treecorr_config</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span>
+</span><span id="line-470">        <span class="n">patches</span> <span class="o">=</span> <span class="n">npatch</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">npatch</span>
+</span><span id="line-471">        <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-472">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="s2">_minsep=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;min_sep&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-473">            <span class="sa">f</span><span class="s2">&quot;_maxsep=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;max_sep&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-474">            <span class="sa">f</span><span class="s2">&quot;_nbins=</span><span class="si">{</span><span class="n">cfg</span><span class="p">[</span><span class="s1">&#39;nbins&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-475">            <span class="sa">f</span><span class="s2">&quot;_npatch=</span><span class="si">{</span><span class="n">patches</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-476">        <span class="p">)</span></div>
+
+</span><span id="line-477">
+<div class="viewcode-block" id="CosmologyValidation._binning">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._binning">[docs]</a>
+</span><span id="line-478">    <span class="k">def</span><span class="w"> </span><span class="nf">_binning</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">min_sep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_sep</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nbins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">):</span>
+</span><span id="line-479"><span class="w">        </span><span class="sd">&quot;&quot;&quot;treecorr_config with min_sep/max_sep/nbins overridden.</span>
+</span><span id="line-480">
+</span><span id="line-481"><span class="sd">        None falls back to the instance&#39;s treecorr_config value for that key;</span>
+</span><span id="line-482"><span class="sd">        any further keys in `extra` override on top.</span>
+</span><span id="line-483"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-484">        <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-485">            <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">,</span>
+</span><span id="line-486">            <span class="s2">&quot;min_sep&quot;</span><span class="p">:</span> <span class="n">min_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">&quot;min_sep&quot;</span><span class="p">],</span>
+</span><span id="line-487">            <span class="s2">&quot;max_sep&quot;</span><span class="p">:</span> <span class="n">max_sep</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">&quot;max_sep&quot;</span><span class="p">],</span>
+</span><span id="line-488">            <span class="s2">&quot;nbins&quot;</span><span class="p">:</span> <span class="n">nbins</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">treecorr_config</span><span class="p">[</span><span class="s2">&quot;nbins&quot;</span><span class="p">],</span>
+</span><span id="line-489">            <span class="o">**</span><span class="n">extra</span><span class="p">,</span>
+</span><span id="line-490">        <span class="p">}</span></div>
+
+</span><span id="line-491">
+<div class="viewcode-block" id="CosmologyValidation._read_shear_cols">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols">[docs]</a>
+</span><span id="line-492">    <span class="k">def</span><span class="w"> </span><span class="nf">_read_shear_cols</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ver</span><span class="p">,</span> <span class="o">*</span><span class="n">keys</span><span class="p">):</span>
+</span><span id="line-493"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Read shear-catalog columns by their config-key names.</span>
+</span><span id="line-494">
+</span><span id="line-495"><span class="sd">        Each key in ``*keys`` (e.g. ``&quot;e1_col&quot;``, ``&quot;w_col&quot;``) is resolved to a</span>
+</span><span id="line-496"><span class="sd">        column name via ``self.cc[ver][&quot;shear&quot;][key]`` and indexed out of</span>
+</span><span id="line-497"><span class="sd">        ``self.results[ver].dat_shear``. Must be called inside a</span>
+</span><span id="line-498"><span class="sd">        ``self.results[ver].temporarily_read_data()`` context, since it touches</span>
+</span><span id="line-499"><span class="sd">        ``dat_shear`` directly.</span>
+</span><span id="line-500">
+</span><span id="line-501"><span class="sd">        Returns one array per key (a bare array, not a 1-tuple, when a single</span>
+</span><span id="line-502"><span class="sd">        key is requested).</span>
+</span><span id="line-503"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-504">        <span class="n">cols</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+</span><span id="line-505">            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="n">key</span><span class="p">]]</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span>
+</span><span id="line-506">        <span class="p">)</span>
+</span><span id="line-507">        <span class="k">return</span> <span class="n">cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">cols</span></div>
+
+</span><span id="line-508">
+<div class="viewcode-block" id="CosmologyValidation._calibrated_g">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation._calibrated_g">[docs]</a>
+</span><span id="line-509">    <span class="k">def</span><span class="w"> </span><span class="nf">_calibrated_g</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ver</span><span class="p">):</span>
+</span><span id="line-510"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Calibrated shear components ``(g1, g2)`` for a catalog version.</span>
+</span><span id="line-511">
+</span><span id="line-512"><span class="sd">        Applies additive-bias subtraction and the multiplicative response:</span>
+</span><span id="line-513"><span class="sd">        ``g = (e − c) / R``. For DES the response is the catalog-averaged</span>
+</span><span id="line-514"><span class="sd">        per-component ``R11``/``R22`` (column names in the config); for every</span>
+</span><span id="line-515"><span class="sd">        other version it is the scalar ``R`` from the config. Used identically</span>
+</span><span id="line-516"><span class="sd">        by :meth:`calculate_2pcf` and :meth:`calculate_aperture_mass_dispersion`.</span>
+</span><span id="line-517">
+</span><span id="line-518"><span class="sd">        Must be called inside a ``self.results[ver].temporarily_read_data()``</span>
+</span><span id="line-519"><span class="sd">        context, since it reads ``dat_shear`` columns.</span>
+</span><span id="line-520"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-521">        <span class="n">e1</span><span class="p">,</span> <span class="n">e2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_read_shear_cols</span><span class="p">(</span><span class="n">ver</span><span class="p">,</span> <span class="s2">&quot;e1_col&quot;</span><span class="p">,</span> <span class="s2">&quot;e2_col&quot;</span><span class="p">)</span>
+</span><span id="line-522">        <span class="k">if</span> <span class="n">ver</span> <span class="o">==</span> <span class="s2">&quot;DES&quot;</span><span class="p">:</span>
+</span><span id="line-523">            <span class="n">R1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="s2">&quot;R11&quot;</span><span class="p">]])</span>
+</span><span id="line-524">            <span class="n">R2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span><span class="o">.</span><span class="n">dat_shear</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="s2">&quot;R22&quot;</span><span class="p">]])</span>
+</span><span id="line-525">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-526">            <span class="n">R1</span> <span class="o">=</span> <span class="n">R2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;shear&quot;</span><span class="p">][</span><span class="s2">&quot;R&quot;</span><span class="p">]</span>
+</span><span id="line-527">        <span class="k">return</span> <span class="p">(</span><span class="n">e1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">c1</span><span class="p">[</span><span class="n">ver</span><span class="p">])</span> <span class="o">/</span> <span class="n">R1</span><span class="p">,</span> <span class="p">(</span><span class="n">e2</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">c2</span><span class="p">[</span><span class="n">ver</span><span class="p">])</span> <span class="o">/</span> <span class="n">R2</span></div>
+
+</span><span id="line-528">
+</span><span id="line-529">    <span class="nd">@property</span>
+</span><span id="line-530">    <span class="k">def</span><span class="w"> </span><span class="nf">colors</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-531">        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cc</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;colour&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span><span class="p">]</span>
+</span><span id="line-532">
+<div class="viewcode-block" id="CosmologyValidation.summarize_bmodes">
+<a class="viewcode-back" href="../../../sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.CosmologyValidation.summarize_bmodes">[docs]</a>
+</span><span id="line-533">    <span class="k">def</span><span class="w"> </span><span class="nf">summarize_bmodes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">83</span><span class="p">),</span> <span class="n">versions</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-534"><span class="w">        </span><span class="sd">&quot;&quot;&quot;Print and return B-mode PTE summary across all statistics.</span>
+</span><span id="line-535">
+</span><span id="line-536"><span class="sd">        Collects PTEs from pure E/B, COSEBIs, and pseudo-Cl at the specified</span>
+</span><span id="line-537"><span class="sd">        fiducial scale cut. Statistics that haven&#39;t been computed show &#39;--&#39;.</span>
+</span><span id="line-538">
+</span><span id="line-539"><span class="sd">        Parameters</span>
+</span><span id="line-540"><span class="sd">        ----------</span>
+</span><span id="line-541"><span class="sd">        fiducial_scale_cut : tuple, optional</span>
+</span><span id="line-542"><span class="sd">            (min_theta, max_theta) for extracting PTEs (default: (12, 83)).</span>
+</span><span id="line-543"><span class="sd">        versions : list, optional</span>
+</span><span id="line-544"><span class="sd">            Versions to summarize. Uses self.versions if None.</span>
+</span><span id="line-545">
+</span><span id="line-546"><span class="sd">        Returns</span>
+</span><span id="line-547"><span class="sd">        -------</span>
+</span><span id="line-548"><span class="sd">        dict</span>
+</span><span id="line-549"><span class="sd">            ``{version: {statistic: pte_value, ...}, ...}``</span>
+</span><span id="line-550"><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="line-551">        <span class="n">versions</span> <span class="o">=</span> <span class="n">versions</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">versions</span>
+</span><span id="line-552">        <span class="n">summary</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-553">        <span class="n">cov_methods</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-554">
+</span><span id="line-555">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+</span><span id="line-556">            <span class="n">row</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-557">
+</span><span id="line-558">            <span class="c1"># Pure E/B PTEs from stored results</span>
+</span><span id="line-559">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span><span class="p">:</span>
+</span><span id="line-560">                <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pure_eb_results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span>
+</span><span id="line-561">                <span class="n">gg</span> <span class="o">=</span> <span class="n">res</span><span class="p">[</span><span class="s2">&quot;gg&quot;</span><span class="p">]</span>
+</span><span id="line-562">                <span class="k">try</span><span class="p">:</span>
+</span><span id="line-563">                    <span class="k">for</span> <span class="n">stat</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;xip_B&quot;</span><span class="p">,</span> <span class="s2">&quot;xim_B&quot;</span><span class="p">,</span> <span class="s2">&quot;combined&quot;</span><span class="p">):</span>
+</span><span id="line-564">                        <span class="n">row</span><span class="p">[</span><span class="n">stat</span><span class="p">]</span> <span class="o">=</span> <span class="n">_get_pte_from_scale_cut</span><span class="p">(</span>
+</span><span id="line-565">                            <span class="n">res</span><span class="p">[</span><span class="s2">&quot;pte_matrices&quot;</span><span class="p">][</span><span class="n">stat</span><span class="p">],</span> <span class="n">gg</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span>
+</span><span id="line-566">                        <span class="p">)</span>
+</span><span id="line-567">                <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">RuntimeError</span><span class="p">):</span>
+</span><span id="line-568">                    <span class="k">pass</span>
+</span><span id="line-569">                <span class="n">cov_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+</span><span id="line-570">                    <span class="s2">&quot;semi-analytic&quot;</span>
+</span><span id="line-571">                    <span class="k">if</span> <span class="s2">&quot;eb_samples&quot;</span> <span class="ow">in</span> <span class="n">res</span>
+</span><span id="line-572">                    <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;jackknife (</span><span class="si">{</span><span class="n">gg</span><span class="o">.</span><span class="n">npatch1</span><span class="si">}</span><span class="s2"> patches)&quot;</span>
+</span><span id="line-573">                <span class="p">)</span>
+</span><span id="line-574">
+</span><span id="line-575">            <span class="c1"># COSEBIs PTE from stored results</span>
+</span><span id="line-576">            <span class="k">if</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span><span class="p">:</span>
+</span><span id="line-577">                <span class="n">cosebis_res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cosebis_results</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span>
+</span><span id="line-578">                <span class="n">has_multi_scale_cuts</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cosebis_res</span><span class="p">)</span>
+</span><span id="line-579">                <span class="k">if</span> <span class="n">has_multi_scale_cuts</span><span class="p">:</span>
+</span><span id="line-580">                    <span class="n">key</span> <span class="o">=</span> <span class="n">find_conservative_scale_cut_key</span><span class="p">(</span>
+</span><span id="line-581">                        <span class="n">cosebis_res</span><span class="p">,</span> <span class="n">fiducial_scale_cut</span>
+</span><span id="line-582">                    <span class="p">)</span>
+</span><span id="line-583">                    <span class="n">row</span><span class="p">[</span><span class="s2">&quot;COSEBIS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cosebis_res</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;pte_B&quot;</span><span class="p">]</span>
+</span><span id="line-584">                <span class="k">elif</span> <span class="s2">&quot;pte_B&quot;</span> <span class="ow">in</span> <span class="n">cosebis_res</span><span class="p">:</span>
+</span><span id="line-585">                    <span class="n">row</span><span class="p">[</span><span class="s2">&quot;COSEBIS&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cosebis_res</span><span class="p">[</span><span class="s2">&quot;pte_B&quot;</span><span class="p">]</span>
+</span><span id="line-586">
+</span><span id="line-587">            <span class="c1"># Pseudo-Cl BB PTE (_pseudo_cls is lazy; check existence without</span>
+</span><span id="line-588">            <span class="c1"># triggering computation)</span>
+</span><span id="line-589">            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_pseudo_cls&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">ver</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pseudo_cls</span><span class="p">:</span>
+</span><span id="line-590">                <span class="k">try</span><span class="p">:</span>
+</span><span id="line-591">                    <span class="n">cl_bb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pseudo_cls</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;pseudo_cl&quot;</span><span class="p">][</span><span class="s2">&quot;BB&quot;</span><span class="p">]</span>
+</span><span id="line-592">                    <span class="n">cov_bb</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pseudo_cls</span><span class="p">[</span><span class="n">ver</span><span class="p">][</span><span class="s2">&quot;cov&quot;</span><span class="p">][</span><span class="s2">&quot;COVAR_BB_BB&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+</span><span id="line-593">                    <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;C_l_BB&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">chi2_and_pte</span><span class="p">(</span><span class="n">cl_bb</span><span class="p">,</span> <span class="n">cov_bb</span><span class="p">)</span>
+</span><span id="line-594">                    <span class="n">cov_methods</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s2">&quot;Gaussian (NaMaster)&quot;</span><span class="p">)</span>
+</span><span id="line-595">                <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">AttributeError</span><span class="p">):</span>
+</span><span id="line-596">                    <span class="k">pass</span>
+</span><span id="line-597">
+</span><span id="line-598">            <span class="n">summary</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span>
+</span><span id="line-599">
+</span><span id="line-600">        <span class="c1"># Print summary table</span>
+</span><span id="line-601">        <span class="n">col_labels</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-602">            <span class="s2">&quot;xip_B&quot;</span><span class="p">:</span> <span class="sa">r</span><span class="s2">&quot;xi+B&quot;</span><span class="p">,</span>
+</span><span id="line-603">            <span class="s2">&quot;xim_B&quot;</span><span class="p">:</span> <span class="sa">r</span><span class="s2">&quot;xi-B&quot;</span><span class="p">,</span>
+</span><span id="line-604">            <span class="s2">&quot;combined&quot;</span><span class="p">:</span> <span class="s2">&quot;Combined&quot;</span><span class="p">,</span>
+</span><span id="line-605">            <span class="s2">&quot;COSEBIS&quot;</span><span class="p">:</span> <span class="s2">&quot;COSEBIS&quot;</span><span class="p">,</span>
+</span><span id="line-606">            <span class="s2">&quot;C_l_BB&quot;</span><span class="p">:</span> <span class="s2">&quot;C_l^BB&quot;</span><span class="p">,</span>
+</span><span id="line-607">        <span class="p">}</span>
+</span><span id="line-608">        <span class="n">stats_order</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">col_labels</span><span class="p">)</span>
+</span><span id="line-609">
+</span><span id="line-610">        <span class="n">sc_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">fiducial_scale_cut</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">fiducial_scale_cut</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2"> arcmin]&quot;</span>
+</span><span id="line-611">        <span class="n">sep</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\u2500</span><span class="s2">&quot;</span> <span class="o">*</span> <span class="mi">70</span>
+</span><span id="line-612">        <span class="n">header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;Version&#39;</span><span class="si">:</span><span class="s2">&lt;28s</span><span class="si">}</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+</span><span id="line-613">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="s2">&gt;10s</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">col_labels</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+</span><span id="line-614">        <span class="p">)</span>
+</span><span id="line-615">
+</span><span id="line-616">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">B-mode summary </span><span class="si">{</span><span class="n">sc_label</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-617">        <span class="nb">print</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
+</span><span id="line-618">        <span class="nb">print</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+</span><span id="line-619">        <span class="nb">print</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
+</span><span id="line-620">
+</span><span id="line-621">        <span class="k">for</span> <span class="n">ver</span> <span class="ow">in</span> <span class="n">versions</span><span class="p">:</span>
+</span><span id="line-622">            <span class="n">row</span> <span class="o">=</span> <span class="n">summary</span><span class="p">[</span><span class="n">ver</span><span class="p">]</span>
+</span><span id="line-623">            <span class="n">cells</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+</span><span id="line-624">                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">row</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="si">:</span><span class="s2">&gt;10.4f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">row</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;--&#39;</span><span class="si">:</span><span class="s2">&gt;10s</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stats_order</span>
+</span><span id="line-625">            <span class="p">)</span>
+</span><span id="line-626">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ver</span><span class="si">:</span><span class="s2">&lt;28s</span><span class="si">}{</span><span class="n">cells</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-627">
+</span><span id="line-628">        <span class="nb">print</span><span class="p">(</span><span class="n">sep</span><span class="p">)</span>
+</span><span id="line-629">        <span class="k">if</span> <span class="n">cov_methods</span><span class="p">:</span>
+</span><span id="line-630">            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Covariance: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">cov_methods</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-631">        <span class="nb">print</span><span class="p">()</span>
+</span><span id="line-632">
+</span><span id="line-633">        <span class="k">return</span> <span class="n">summary</span></div>
+</div>
+
+</span></code></pre></div>
+    </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+</div></div>
+          </main>
+        </div>
+      </div><footer class="py-6 border-t border-border md:py-0">
+    <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 30 Jun, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+    href="https://www.sphinx-doc.org"
+    rel="noreferrer">Sphinx 9.1.0</a></p>
+</div>
+</div>
+</footer>
+    </div><button id="scrolltop"
+        x-cloak
+        @click="window.scrollTo({top: 0, behavior: 'smooth'})"
+        class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950"
+        :class="{'opacity-0 invisible' : !showScrollTop}"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       height="14"
+       viewBox="0 96 960 960"
+       width="14"
+       class="inline fill-current mb-[2px]"
+       aria-hidden="true">
+    <path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z" />
+  </svg>
+  Back to top
+</button>
+    
+    <script src="../../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script defer="defer" src="../../../_static/theme.js?v=5db23cf8"></script>
+    
+</body>
+
+</html>

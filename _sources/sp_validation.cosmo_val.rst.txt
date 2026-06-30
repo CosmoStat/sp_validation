@@ -1,7 +1,22 @@
 sp\_validation.cosmo\_val
--------------------------
+=========================
+
 
 .. automodule:: sp_validation.cosmo_val
    :members:
    :show-inheritance:
    :undoc-members:
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   sp_validation.cosmo_val.catalog_characterization
+   sp_validation.cosmo_val.core
+   sp_validation.cosmo_val.cosebis
+   sp_validation.cosmo_val.pseudo_cl
+   sp_validation.cosmo_val.psf_systematics
+   sp_validation.cosmo_val.pure_eb
+   sp_validation.cosmo_val.real_space

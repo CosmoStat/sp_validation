@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.pseudo\_cl
+------------------------------------
+
+.. automodule:: sp_validation.cosmo_val.pseudo_cl
+   :members:
+   :show-inheritance:
+   :undoc-members:

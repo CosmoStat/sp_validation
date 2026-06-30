@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.core
+------------------------------
+
+.. automodule:: sp_validation.cosmo_val.core
+   :members:
+   :show-inheritance:
+   :undoc-members:

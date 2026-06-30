@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.pure\_eb
+----------------------------------
+
+.. automodule:: sp_validation.cosmo_val.pure_eb
+   :members:
+   :show-inheritance:
+   :undoc-members:

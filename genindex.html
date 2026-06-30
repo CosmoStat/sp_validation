@@ -119,11 +119,20 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
@@ -132,6 +141,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
@@ -186,9 +196,13 @@
   <h2 id="_">_</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._area_from_catalog">_area_from_catalog() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin._area_from_catalog">_area_from_catalog() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._area_from_mask">_area_from_mask() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin._area_from_mask">_area_from_mask() (CatalogCharacterizationMixin method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._binning">_binning() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._binning">[1]</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._calibrated_g">_calibrated_g() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._calibrated_g">[1]</a>
 </li>
       <li><a href="sp_validation.cosmology.html#sp_validation.cosmology._camb_to_ccl">_camb_to_ccl() (in module sp_validation.cosmology)</a>
 </li>
@@ -200,13 +214,15 @@
 </li>
       <li><a href="sp_validation.cosmology.html#sp_validation.cosmology._cosmocov_to_ccl">_cosmocov_to_ccl() (in module sp_validation.cosmology)</a>
 </li>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._cprint">_cprint() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._cprint">[1]</a>
+</li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau._extract_xip">_extract_xip() (in module sp_validation.rho_tau)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._get_binned_catalog_mask">_get_binned_catalog_mask() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin._get_binned_catalog_mask">_get_binned_catalog_mask() (CatalogCharacterizationMixin method)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes._get_pte_from_scale_cut">_get_pte_from_scale_cut() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._load_onecovariance_cov">_load_onecovariance_cov() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_onecovariance_cov">_load_onecovariance_cov() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._masking_gal">_masking_gal() (metacal method)</a>
 </li>
@@ -216,9 +232,11 @@
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._masking_star">_masking_star() (metacal method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path">_materialize_seed_path() (CosmologyValidation static method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._materialize_seed_path">_materialize_seed_path() (CosmologyValidation static method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._modify_onecov_config">_modify_onecov_config() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._modify_onecov_config">_modify_onecov_config() (PseudoClMixin method)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._output_path">_output_path() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._output_path">[1]</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._read_data">_read_data() (metacal method)</a>
 </li>
@@ -226,17 +244,19 @@
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._read_data_ngmix">_read_data_ngmix() (metacal method)</a>
 </li>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._read_shear_cols">_read_shear_cols() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols">[1]</a>
+</li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._selection_response">_selection_response() (metacal method)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._shear_response">_shear_response() (metacal method)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._shear_response_std">_shear_response_std() (metacal method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant">_split_seed_variant() (CosmologyValidation static method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._split_seed_variant">_split_seed_variant() (CosmologyValidation static method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant">[1]</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._total_response">_total_response() (metacal method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config">_write_catalog_config() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._write_catalog_config">_write_catalog_config() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config">[1]</a>
 </li>
   </ul></td>
   </tr>
@@ -249,13 +269,21 @@
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.add_summary_to_FITS_header">add_summary_to_FITS_header() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.add_summary_to_FITS_header">[1]</a>
 </li>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.additive_bias">additive_bias() (in module sp_validation.survey)</a>
+</li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.apply">apply() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.apply">[1]</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.apply_random_rotation">apply_random_rotation() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.apply_random_rotation">apply_random_rotation() (in module sp_validation.pseudo_cl)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.apply_random_rotation">(PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.area">area (CosmologyValidation property)</a>
+      </ul></li>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.area">area (CatalogCharacterizationMixin property)</a>
+</li>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.area_from_coords">area_from_coords() (in module sp_validation.survey)</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.As_init">As_init (GlassMockConfig attribute)</a>
 </li>
@@ -266,7 +294,7 @@
   <h2 id="B">B</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename">basename() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.basename">basename() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename">[1]</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.bias">bias (GlassMockConfig attribute)</a>
 </li>
@@ -285,23 +313,23 @@
   <h2 id="C">C</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.c1">c1 (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.c1">c1 (CatalogCharacterizationMixin property)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.c2">c2 (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.c2">c2 (CatalogCharacterizationMixin property)</a>
 </li>
       <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.c_ell_to_xi">c_ell_to_xi() (in module sp_validation.cosmology)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_2pcf">calculate_2pcf() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_2pcf">calculate_2pcf() (RealSpaceMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_additive_bias">calculate_additive_bias() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_additive_bias">calculate_additive_bias() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_aperture_mass_dispersion">calculate_aperture_mass_dispersion() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin.calculate_aperture_mass_dispersion">calculate_aperture_mass_dispersion() (RealSpaceMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area">calculate_area() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_area">calculate_area() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area_from_binned_catalog">calculate_area_from_binned_catalog() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_area_from_binned_catalog">calculate_area_from_binned_catalog() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_cosebis">calculate_cosebis() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.cosebis.html#sp_validation.cosmo_val.cosebis.CosebisMixin.calculate_cosebis">calculate_cosebis() (CosebisMixin method)</a>
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_cosebis">(in module sp_validation.b_modes)</a>
@@ -309,42 +337,44 @@
       </ul></li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_eb_statistics">calculate_eb_statistics() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_ellipticity_dispersion">calculate_ellipticity_dispersion() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_ellipticity_dispersion">calculate_ellipticity_dispersion() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_n_eff_gal">calculate_n_eff_gal() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.calculate_n_eff_gal">calculate_n_eff_gal() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_objectwise_leakage">calculate_objectwise_leakage() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_objectwise_leakage">calculate_objectwise_leakage() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl">calculate_pseudo_cl() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl">calculate_pseudo_cl() (PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_catalog">calculate_pseudo_cl_catalog() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_catalog">calculate_pseudo_cl_catalog() (PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_eb_cov">calculate_pseudo_cl_eb_cov() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_eb_cov">calculate_pseudo_cl_eb_cov() (PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_g_ng_cov">calculate_pseudo_cl_g_ng_cov() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_g_ng_cov">calculate_pseudo_cl_g_ng_cov() (PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_map">calculate_pseudo_cl_map() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_map">calculate_pseudo_cl_map() (PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_onecovariance">calculate_pseudo_cl_onecovariance() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.calculate_pseudo_cl_onecovariance">calculate_pseudo_cl_onecovariance() (PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pure_eb">calculate_pure_eb() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pure_eb.html#sp_validation.cosmo_val.pure_eb.PureEBMixin.calculate_pure_eb">calculate_pure_eb() (PureEBMixin method)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.calculate_pure_eb_correlation">calculate_pure_eb_correlation() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_fits">calculate_rho_tau_fits() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_fits">calculate_rho_tau_fits() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_stats">calculate_rho_tau_stats() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_rho_tau_stats">calculate_rho_tau_stats() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_scale_dependent_leakage">calculate_scale_dependent_leakage() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.calculate_scale_dependent_leakage">calculate_scale_dependent_leakage() (PSFSystematicsMixin method)</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.camb_sigma8">camb_sigma8() (in module sp_validation.glass_mock)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.catalog_config_path">catalog_config_path (CosmologyValidation attribute)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.catalog_config_path">catalog_config_path (CosmologyValidation attribute)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.catalog_config_path">[1]</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin">CatalogCharacterizationMixin (class in sp_validation.cosmo_val.catalog_characterization)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.cc">cc (CosmologyValidation attribute)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cc">[1]</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cc">cc (CosmologyValidation attribute)</a>
-</li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.check_invalid">check_invalid() (in module sp_validation.catalog)</a>
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.check_matching">check_matching() (in module sp_validation.catalog)</a>
@@ -359,13 +389,13 @@
 </li>
       <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.classification_galaxy_overlap_ra_dec">classification_galaxy_overlap_ra_dec() (in module sp_validation.galaxy)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.color_reset">color_reset() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.color_reset">color_reset() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.color_reset">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.colors">colors (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.colors">colors (CosmologyValidation property)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.colors">[1]</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony">compute_leakage_harmony() (in module sp_validation.glass_mock)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.compute_survey_stats">compute_survey_stats() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.compute_survey_stats">compute_survey_stats() (CatalogCharacterizationMixin method)</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl">compute_two_point_cl() (in module sp_validation.glass_mock)</a>
 </li>
@@ -389,10 +419,16 @@
         <li><a href="sp_validation.masks.html#sp_validation.masks.correlation_matrix">(in module sp_validation.masks)</a>
 </li>
       </ul></li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cosmo">cosmo (CosmologyValidation attribute)</a>
+      <li><a href="sp_validation.cosmo_val.cosebis.html#sp_validation.cosmo_val.cosebis.CosebisMixin">CosebisMixin (class in sp_validation.cosmo_val.cosebis)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.cosmo">cosmo (CosmologyValidation attribute)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cosmo">[1]</a>
 </li>
       <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation">CosmologyValidation (class in sp_validation.cosmo_val)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation">(class in sp_validation.cosmo_val.core)</a>
 </li>
+      </ul></li>
       <li><a href="sp_validation.statistics.html#sp_validation.statistics.cov_from_one_covariance">cov_from_one_covariance() (in module sp_validation.statistics)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.create_bins">create_bins() (in module sp_validation.calibration)</a>
@@ -423,7 +459,13 @@
   <h2 id="E">E</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.ellipticity_dispersion">ellipticity_dispersion (CosmologyValidation property)</a>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.effective_survey_stats">effective_survey_stats() (in module sp_validation.survey)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.ellipticity_dispersion">ellipticity_dispersion (CatalogCharacterizationMixin property)</a>
+</li>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.ellipticity_dispersion">ellipticity_dispersion() (in module sp_validation.survey)</a>
 </li>
   </ul></td>
   </tr>
@@ -467,13 +509,11 @@
 </li>
       <li><a href="sp_validation.cosmology.html#sp_validation.cosmology.get_cosmo">get_cosmo() (in module sp_validation.cosmology)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_cov_from_onecov">get_cov_from_onecov() (CosmologyValidation method)</a>
-</li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_field_and_workspace_from_map">get_field_and_workspace_from_map() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_field_and_workspace_from_map">get_field_and_workspace_from_map() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.survey.html#sp_validation.survey.get_footprint">get_footprint() (in module sp_validation.survey)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_gaussian_real">get_gaussian_real() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_gaussian_real">get_gaussian_real() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_jackknife_cov">get_jackknife_cov() (in module sp_validation.rho_tau)</a>
 </li>
@@ -485,31 +525,41 @@
         <li><a href="sp_validation.masks.html#sp_validation.masks.get_masks_from_config">(in module sp_validation.masks)</a>
 </li>
       </ul></li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_n_gal_map">get_n_gal_map() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map">get_n_gal_map() (in module sp_validation.glass_mock)</a>
 
       <ul style="list-style-type:none">
-        <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map">(in module sp_validation.glass_mock)</a>
+        <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_n_gal_map">(in module sp_validation.pseudo_cl)</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_n_gal_map">(PseudoClMixin method)</a>
 </li>
       </ul></li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_namaster_bin">get_namaster_bin() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_namaster_bin">get_namaster_bin() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_params_rho_tau">get_params_rho_tau() (in module sp_validation.rho_tau)</a>
 </li>
+      <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pseudo_cls_catalog">get_pseudo_cls_catalog() (in module sp_validation.pseudo_cl)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_pseudo_cls_catalog">(PseudoClMixin method)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_pseudo_cls_catalog">get_pseudo_cls_catalog() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pseudo_cls_map">get_pseudo_cls_map() (in module sp_validation.pseudo_cl)</a>
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_pseudo_cls_map">(PseudoClMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_pseudo_cls_map">get_pseudo_cls_map() (CosmologyValidation method)</a>
-</li>
+      </ul></li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_quantities_binned">get_quantities_binned() (in module sp_validation.calibration)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_redshift">get_redshift() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.get_redshift">get_redshift() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_redshift">[1]</a>
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau">get_rho_tau() (in module sp_validation.rho_tau)</a>
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_rho_tau_w_cov">get_rho_tau_w_cov() (in module sp_validation.rho_tau)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_sample">get_sample() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_sample">get_sample() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.rho_tau.html#sp_validation.rho_tau.get_samples">get_samples() (in module sp_validation.rho_tau)</a>
 </li>
@@ -533,7 +583,7 @@
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal.get_variance_ivweights">get_variance_ivweights() (metacal static method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_variance_map">get_variance_map() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.get_variance_map">get_variance_map() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.get_w_des">get_w_des() (in module sp_validation.calibration)</a>
 </li>
@@ -571,7 +621,7 @@
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.ia_convergence">ia_convergence() (in module sp_validation.glass_mock)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results">init_results() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.init_results">init_results() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results">[1]</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims">input_dims (SquareRootScale.InvertedSquareRootTransform attribute)</a>
 
@@ -633,9 +683,11 @@
   <h2 id="M">M</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.make_namaster_bin">make_namaster_bin() (in module sp_validation.pseudo_cl)</a>
+</li>
       <li><a href="sp_validation.io.html#sp_validation.io.make_out_dirs">make_out_dirs() (in module sp_validation.io)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.map2">map2 (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin.map2">map2 (RealSpaceMixin property)</a>
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask">Mask (class in sp_validation.catalog_builders)</a>
 
@@ -681,6 +733,20 @@
 </li>
         <li><a href="sp_validation.cosmo_val.html#module-sp_validation.cosmo_val">sp_validation.cosmo_val</a>
 </li>
+        <li><a href="sp_validation.cosmo_val.catalog_characterization.html#module-sp_validation.cosmo_val.catalog_characterization">sp_validation.cosmo_val.catalog_characterization</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.core.html#module-sp_validation.cosmo_val.core">sp_validation.cosmo_val.core</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.cosebis.html#module-sp_validation.cosmo_val.cosebis">sp_validation.cosmo_val.cosebis</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.pseudo_cl.html#module-sp_validation.cosmo_val.pseudo_cl">sp_validation.cosmo_val.pseudo_cl</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.psf_systematics.html#module-sp_validation.cosmo_val.psf_systematics">sp_validation.cosmo_val.psf_systematics</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.pure_eb.html#module-sp_validation.cosmo_val.pure_eb">sp_validation.cosmo_val.pure_eb</a>
+</li>
+        <li><a href="sp_validation.cosmo_val.real_space.html#module-sp_validation.cosmo_val.real_space">sp_validation.cosmo_val.real_space</a>
+</li>
         <li><a href="sp_validation.cosmology.html#module-sp_validation.cosmology">sp_validation.cosmology</a>
 </li>
         <li><a href="sp_validation.format.html#module-sp_validation.format">sp_validation.format</a>
@@ -696,6 +762,8 @@
         <li><a href="sp_validation.plot_style.html#module-sp_validation.plot_style">sp_validation.plot_style</a>
 </li>
         <li><a href="sp_validation.plots.html#module-sp_validation.plots">sp_validation.plots</a>
+</li>
+        <li><a href="sp_validation.pseudo_cl.html#module-sp_validation.pseudo_cl">sp_validation.pseudo_cl</a>
 </li>
         <li><a href="sp_validation.rho_tau.html#module-sp_validation.rho_tau">sp_validation.rho_tau</a>
 </li>
@@ -715,12 +783,14 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.n_arcmin2">n_arcmin2 (GlassMockConfig attribute)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.n_eff_gal">n_eff_gal (CosmologyValidation property)</a>
+      <li><a href="sp_validation.survey.html#sp_validation.survey.n_eff_density">n_eff_density() (in module sp_validation.survey)</a>
 </li>
-      <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.name">name (SquareRootScale attribute)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.n_eff_gal">n_eff_gal (CatalogCharacterizationMixin property)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.name">name (SquareRootScale attribute)</a>
+</li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.nbins">nbins (GlassMockConfig attribute)</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.ns">ns (GlassMockConfig attribute)</a>
@@ -759,9 +829,9 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.phz_sigma_0">phz_sigma_0 (GlassMockConfig attribute)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_2pcf">plot_2pcf() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin.plot_2pcf">plot_2pcf() (RealSpaceMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_aperture_mass_dispersion">plot_aperture_mass_dispersion() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin.plot_aperture_mass_dispersion">plot_aperture_mass_dispersion() (RealSpaceMixin method)</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.plot_area_mask">plot_area_mask() (in module sp_validation.plots)</a>
 </li>
@@ -769,7 +839,7 @@
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.plot_binned_one">plot_binned_one() (in module sp_validation.plots)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_cosebis">plot_cosebis() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.cosebis.html#sp_validation.cosmo_val.cosebis.CosebisMixin.plot_cosebis">plot_cosebis() (CosebisMixin method)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_cosebis_covariance_matrix">plot_cosebis_covariance_matrix() (in module sp_validation.b_modes)</a>
 </li>
@@ -779,55 +849,53 @@
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_eb_covariance_matrix">plot_eb_covariance_matrix() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_ellipticity">plot_ellipticity() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_ellipticity">plot_ellipticity() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_footprints">plot_footprints() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_footprints">plot_footprints() (CatalogCharacterizationMixin method)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_integration_vs_reporting">plot_integration_vs_reporting() (in module sp_validation.b_modes)</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.plot_map">plot_map() (in module sp_validation.plots)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_objectwise_leakage">plot_objectwise_leakage() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_objectwise_leakage">plot_objectwise_leakage() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_pseudo_cl">plot_pseudo_cl() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.plot_pseudo_cl">plot_pseudo_cl() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_pte_2d_heatmaps">plot_pte_2d_heatmaps() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_pure_eb">plot_pure_eb() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pure_eb.html#sp_validation.cosmo_val.pure_eb.PureEBMixin.plot_pure_eb">plot_pure_eb() (PureEBMixin method)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.plot_pure_eb_correlations">plot_pure_eb_correlations() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_ratio_xi_sys_xi">plot_ratio_xi_sys_xi() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin.plot_ratio_xi_sys_xi">plot_ratio_xi_sys_xi() (RealSpaceMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_rho_stats">plot_rho_stats() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_rho_stats">plot_rho_stats() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_rho_tau_fits">plot_rho_tau_fits() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_rho_tau_fits">plot_rho_tau_fits() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_scale_dependent_leakage">plot_scale_dependent_leakage() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_scale_dependent_leakage">plot_scale_dependent_leakage() (PSFSystematicsMixin method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_separation">plot_separation() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_separation">plot_separation() (CatalogCharacterizationMixin method)</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.plot_spatial_density">plot_spatial_density() (in module sp_validation.plots)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_tau_stats">plot_tau_stats() (CosmologyValidation method)</a>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.plot_tau_stats">plot_tau_stats() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_weights">plot_weights() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin.plot_weights">plot_weights() (CatalogCharacterizationMixin method)</a>
 </li>
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.powspace_bins">powspace_bins() (in module sp_validation.glass_mock)</a>
-</li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_blue">print_blue() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.print_blue">print_blue() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_blue">[1]</a>
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.print_condition">print_condition() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.print_condition">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_cyan">print_cyan() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.print_cyan">print_cyan() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_cyan">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_done">print_done() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.print_done">print_done() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_done">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_green">print_green() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.print_green">print_green() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_green">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_magenta">print_magenta() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.print_magenta">print_magenta() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_magenta">[1]</a>
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.print_mask_stats">print_mask_stats() (in module sp_validation.catalog_builders)</a>
 
@@ -843,7 +911,7 @@
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.print_some_quantities">print_some_quantities() (in module sp_validation.catalog)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_start">print_start() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.print_start">print_start() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_start">[1]</a>
 </li>
       <li><a href="sp_validation.io.html#sp_validation.io.print_stats">print_stats() (in module sp_validation.io)</a>
 
@@ -855,11 +923,19 @@
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.print_summary">print_summary() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.print_summary">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.pseudo_cls">pseudo_cls (CosmologyValidation property)</a>
+      <li><a href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.pseudo_cl_geometry">pseudo_cl_geometry() (in module sp_validation.pseudo_cl)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.pseudo_cls_onecov">pseudo_cls_onecov (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls">pseudo_cls (PseudoClMixin property)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.psf_fitter">psf_fitter (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.pseudo_cls_onecov">pseudo_cls_onecov (PseudoClMixin property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin">PseudoClMixin (class in sp_validation.cosmo_val.pseudo_cl)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.psf_fitter">psf_fitter (PSFSystematicsMixin property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin">PSFSystematicsMixin (class in sp_validation.cosmo_val.psf_systematics)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.pure_eb.html#sp_validation.cosmo_val.pure_eb.PureEBMixin">PureEBMixin (class in sp_validation.cosmo_val.pure_eb)</a>
 </li>
   </ul></td>
   </tr>
@@ -878,13 +954,15 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results">results (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin">RealSpaceMixin (class in sp_validation.cosmo_val.real_space)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise">results_objectwise (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.results">results (CosmologyValidation property)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.rho_stat_handler">rho_stat_handler (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.results_objectwise">results_objectwise (CosmologyValidation property)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise">[1]</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.rho_tau_fits">rho_tau_fits (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler">rho_stat_handler (PSFSystematicsMixin property)</a>
+</li>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_fits">rho_tau_fits (PSFSystematicsMixin property)</a>
 </li>
   </ul></td>
   </tr>
@@ -895,7 +973,7 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.save_cosebis_results">save_cosebis_results() (in module sp_validation.b_modes)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.save_pseudo_cl">save_pseudo_cl() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin.save_pseudo_cl">save_pseudo_cl() (PseudoClMixin method)</a>
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes.save_pure_eb_results">save_pure_eb_results() (in module sp_validation.b_modes)</a>
 </li>
@@ -905,11 +983,11 @@
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.set_default_locators_and_formatters">set_default_locators_and_formatters() (SquareRootScale method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_leakage_object">set_params_leakage_object() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.set_params_leakage_object">set_params_leakage_object() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_leakage_scale">set_params_leakage_scale() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.set_params_leakage_scale">set_params_leakage_scale() (PSFSystematicsMixin method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_rho_tau">set_params_rho_tau() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.set_params_rho_tau">set_params_rho_tau() (PSFSystematicsMixin method)</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.sigma8">sigma8 (GlassMockConfig attribute)</a>
 </li>
@@ -960,14 +1038,63 @@
 </li>
       </ul></li>
       <li>
+    sp_validation.cosmo_val.catalog_characterization
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.catalog_characterization.html#module-sp_validation.cosmo_val.catalog_characterization">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cosmo_val.core
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.core.html#module-sp_validation.cosmo_val.core">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cosmo_val.cosebis
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.cosebis.html#module-sp_validation.cosmo_val.cosebis">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cosmo_val.pseudo_cl
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.pseudo_cl.html#module-sp_validation.cosmo_val.pseudo_cl">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cosmo_val.psf_systematics
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.psf_systematics.html#module-sp_validation.cosmo_val.psf_systematics">module</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
+      <li>
+    sp_validation.cosmo_val.pure_eb
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.pure_eb.html#module-sp_validation.cosmo_val.pure_eb">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.cosmo_val.real_space
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.cosmo_val.real_space.html#module-sp_validation.cosmo_val.real_space">module</a>
+</li>
+      </ul></li>
+      <li>
     sp_validation.cosmology
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.cosmology.html#module-sp_validation.cosmology">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li>
     sp_validation.format
 
@@ -1018,6 +1145,13 @@
 </li>
       </ul></li>
       <li>
+    sp_validation.pseudo_cl
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.pseudo_cl.html#module-sp_validation.pseudo_cl">module</a>
+</li>
+      </ul></li>
+      <li>
     sp_validation.rho_tau
 
       <ul style="list-style-type:none">
@@ -1051,7 +1185,7 @@
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform">SquareRootScale.SquareRootTransform (class in sp_validation.plots)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.summarize_bmodes">summarize_bmodes() (CosmologyValidation method)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.summarize_bmodes">summarize_bmodes() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.summarize_bmodes">[1]</a>
 </li>
   </ul></td>
   </tr>
@@ -1060,7 +1194,7 @@
   <h2 id="T">T</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.tau_stat_handler">tau_stat_handler (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.tau_stat_handler">tau_stat_handler (PSFSystematicsMixin property)</a>
 </li>
       <li><a href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.Mask.to_bool">to_bool() (Mask method)</a>, <a href="sp_validation.masks.html#sp_validation.masks.Mask.to_bool">[1]</a>
 </li>
@@ -1070,7 +1204,7 @@
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.transform_non_affine">transform_non_affine() (SquareRootScale.SquareRootTransform method)</a>
 </li>
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.treecorr_config">treecorr_config (CosmologyValidation attribute)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.treecorr_config">treecorr_config (CosmologyValidation attribute)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.treecorr_config">[1]</a>
 </li>
   </ul></td>
   </tr>
@@ -1079,7 +1213,7 @@
   <h2 id="V">V</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.versions">versions (CosmologyValidation attribute)</a>
+      <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.versions">versions (CosmologyValidation attribute)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.versions">[1]</a>
 </li>
   </ul></td>
   </tr>
@@ -1107,7 +1241,7 @@
   <h2 id="X">X</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.xi_psf_sys">xi_psf_sys (CosmologyValidation property)</a>
+      <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.xi_psf_sys">xi_psf_sys (PSFSystematicsMixin property)</a>
 </li>
   </ul></td>
   </tr>

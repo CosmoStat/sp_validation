@@ -28,7 +28,7 @@
 <link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
 <link href="search.html" rel="search" title="Search"/>
 <link href="genindex.html" rel="index" title="Index"/>
-<link href="sp_validation.b_modes.html" rel="next" title="sp_validation.b_modes"/>
+<link href="sp_validation.cosmo_val.html" rel="next" title="sp_validation.cosmo_val"/>
 <link href="Leakage_object_Tutorial.html" rel="prev" title="Leakage_object Tutorial"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -87,11 +87,20 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="current reference internal expandable" href="#">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
@@ -100,6 +109,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
@@ -135,6 +145,77 @@
 <div id="content" role="main">
 <section id="module-sp_validation">
 <span id="sp-validation"></span><h1>sp_validation<a class="headerlink" href="#module-sp_validation" title="Link to this heading">¶</a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#subpackages'">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.versions"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.versions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cc"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.cc</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.catalog_config_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.catalog_config_path</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.treecorr_config"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.treecorr_config</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cosmo"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.cosmo</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._split_seed_variant()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._materialize_seed_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._output_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._output_path()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_redshift"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_redshift()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._write_catalog_config()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.color_reset"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.color_reset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._cprint"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._cprint()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_blue"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_blue()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_start"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_start()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_done"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_done()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_magenta"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_magenta()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_green"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_green()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_cyan"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_cyan()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.init_results()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results_objectwise</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.basename()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._binning"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._binning()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._read_shear_cols"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._read_shear_cols()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._calibrated_g"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._calibrated_g()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.colors"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.colors</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.summarize_bmodes"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.summarize_bmodes()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html#sp_validation.cosmo_val.catalog_characterization.CatalogCharacterizationMixin"><code class="docutils literal notranslate"><span class="pre">CatalogCharacterizationMixin</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html#sp_validation.cosmo_val.cosebis.CosebisMixin"><code class="docutils literal notranslate"><span class="pre">CosebisMixin</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin"><code class="docutils literal notranslate"><span class="pre">PseudoClMixin</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin"><code class="docutils literal notranslate"><span class="pre">PSFSystematicsMixin</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html#sp_validation.cosmo_val.pure_eb.PureEBMixin"><code class="docutils literal notranslate"><span class="pre">PureEBMixin</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin"><code class="docutils literal notranslate"><span class="pre">RealSpaceMixin</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#submodules'">¶</a></h2>
 <div class="toctree-wrapper compound">
@@ -230,101 +311,6 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html#sp_validation.catalog_builders.confusion_matrix"><code class="docutils literal notranslate"><span class="pre">confusion_matrix()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.versions"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.versions</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cc"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.cc</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.catalog_config_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.catalog_config_path</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.treecorr_config"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.treecorr_config</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.cosmo"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.cosmo</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._split_seed_variant"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._split_seed_variant()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._materialize_seed_path()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_redshift"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_redshift()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.compute_survey_stats"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.compute_survey_stats()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._area_from_catalog"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._area_from_catalog()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._area_from_mask"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._area_from_mask()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._write_catalog_config"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._write_catalog_config()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.color_reset"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.color_reset()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_blue"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_blue()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_start"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_start()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_done"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_done()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_magenta"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_magenta()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_green"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_green()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.print_cyan"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.print_cyan()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_leakage_scale"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.set_params_leakage_scale()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_leakage_object"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.set_params_leakage_object()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.init_results()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.results_objectwise</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.basename"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.basename()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_stats"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_rho_tau_stats()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.rho_stat_handler"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.rho_stat_handler</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.tau_stat_handler"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.tau_stat_handler</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.colors"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.colors</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.area"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.area</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.n_eff_gal"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.n_eff_gal</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.ellipticity_dispersion"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.ellipticity_dispersion</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.pseudo_cls"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.pseudo_cls</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.pseudo_cls_onecov"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.pseudo_cls_onecov</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._get_binned_catalog_mask"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._get_binned_catalog_mask()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_area()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_area_from_binned_catalog"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_area_from_binned_catalog()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_n_eff_gal"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_n_eff_gal()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_ellipticity_dispersion"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_ellipticity_dispersion()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_rho_stats"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_rho_stats()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_tau_stats"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_tau_stats()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.set_params_rho_tau"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.set_params_rho_tau()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.psf_fitter"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.psf_fitter</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_rho_tau_fits"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_rho_tau_fits()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.rho_tau_fits"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.rho_tau_fits</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_rho_tau_fits"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_rho_tau_fits()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.xi_psf_sys"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.xi_psf_sys</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_footprints"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_footprints()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_scale_dependent_leakage"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_scale_dependent_leakage()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_scale_dependent_leakage"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_scale_dependent_leakage()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_objectwise_leakage"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_objectwise_leakage()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_objectwise_leakage"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_objectwise_leakage()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_ellipticity"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_ellipticity()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_weights"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_weights()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_separation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_separation()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_additive_bias"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_additive_bias()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.c1"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.c1</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.c2"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.c2</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_2pcf"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_2pcf()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_2pcf"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_2pcf()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_ratio_xi_sys_xi"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_ratio_xi_sys_xi()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_aperture_mass_dispersion"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_aperture_mass_dispersion()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.map2"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.map2</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_aperture_mass_dispersion"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_aperture_mass_dispersion()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pure_eb"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_pure_eb()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_pure_eb"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_pure_eb()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_cosebis"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_cosebis()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_cosebis"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_cosebis()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_namaster_bin"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_namaster_bin()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_variance_map"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_variance_map()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_field_and_workspace_from_map"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_field_and_workspace_from_map()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_eb_cov"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_pseudo_cl_eb_cov()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_onecovariance"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_pseudo_cl_onecovariance()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._modify_onecov_config"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._modify_onecov_config()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_cov_from_onecov"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_cov_from_onecov()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._load_onecovariance_cov"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation._load_onecovariance_cov()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_g_ng_cov"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_pseudo_cl_g_ng_cov()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_pseudo_cl()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_map"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_pseudo_cl_map()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.calculate_pseudo_cl_catalog"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.calculate_pseudo_cl_catalog()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_n_gal_map"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_n_gal_map()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_gaussian_real"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_gaussian_real()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_sample"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_sample()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_pseudo_cls_map"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_pseudo_cls_map()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.get_pseudo_cls_catalog"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.get_pseudo_cls_catalog()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.apply_random_rotation"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.apply_random_rotation()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.save_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.save_pseudo_cl()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.plot_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.plot_pseudo_cl()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.summarize_bmodes"><code class="docutils literal notranslate"><span class="pre">CosmologyValidation.summarize_bmodes()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html#sp_validation.cosmology._ccl_to_camb"><code class="docutils literal notranslate"><span class="pre">_ccl_to_camb()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html#sp_validation.cosmology._camb_to_ccl"><code class="docutils literal notranslate"><span class="pre">_camb_to_ccl()</span></code></a></li>
@@ -383,7 +369,6 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.growth_factor"><code class="docutils literal notranslate"><span class="pre">growth_factor()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.ia_convergence"><code class="docutils literal notranslate"><span class="pre">ia_convergence()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.create_mask_from_catalogue"><code class="docutils literal notranslate"><span class="pre">create_mask_from_catalogue()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.powspace_bins"><code class="docutils literal notranslate"><span class="pre">powspace_bins()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_xi"><code class="docutils literal notranslate"><span class="pre">compute_two_point_xi()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl_map"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl_map()</span></code></a></li>
@@ -429,19 +414,19 @@
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform</span></code></a><ul>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.input_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.input_dims</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.output_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.output_dims</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.has_inverse</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.is_separable"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.is_separable</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.transform_non_affine"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.transform_non_affine()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.inverted"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.inverted()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.SquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.SquareRootTransform.has_inverse</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.has_inverse</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.input_dims</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.output_dims"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.output_dims</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.is_separable"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.is_separable</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.transform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.transform()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.inverted"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.inverted()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.has_inverse"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.InvertedSquareRootTransform.has_inverse</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.get_transform"><code class="docutils literal notranslate"><span class="pre">SquareRootScale.get_transform()</span></code></a></li>
@@ -455,6 +440,15 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.hsp_map_logical_or"><code class="docutils literal notranslate"><span class="pre">hsp_map_logical_or()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.plot_area_mask"><code class="docutils literal notranslate"><span class="pre">plot_area_mask()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html#sp_validation.plots.sky_plots"><code class="docutils literal notranslate"><span class="pre">sky_plots()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.pseudo_cl_geometry"><code class="docutils literal notranslate"><span class="pre">pseudo_cl_geometry()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.make_namaster_bin"><code class="docutils literal notranslate"><span class="pre">make_namaster_bin()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_n_gal_map"><code class="docutils literal notranslate"><span class="pre">get_n_gal_map()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.apply_random_rotation"><code class="docutils literal notranslate"><span class="pre">apply_random_rotation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pseudo_cls_map"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cls_map()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html#sp_validation.pseudo_cl.get_pseudo_cls_catalog"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cls_catalog()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a><ul>
@@ -481,6 +475,11 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.missing_tiles"><code class="docutils literal notranslate"><span class="pre">missing_tiles()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.write_tile_id_gal_counts"><code class="docutils literal notranslate"><span class="pre">write_tile_id_gal_counts()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.get_footprint"><code class="docutils literal notranslate"><span class="pre">get_footprint()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.area_from_coords"><code class="docutils literal notranslate"><span class="pre">area_from_coords()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.n_eff_density"><code class="docutils literal notranslate"><span class="pre">n_eff_density()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.ellipticity_dispersion"><code class="docutils literal notranslate"><span class="pre">ellipticity_dispersion()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.additive_bias"><code class="docutils literal notranslate"><span class="pre">additive_bias()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html#sp_validation.survey.effective_survey_stats"><code class="docutils literal notranslate"><span class="pre">effective_survey_stats()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
@@ -498,8 +497,8 @@
       </a>
 </div>
 <div class="ml-auto">
-<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.b_modes.html">
-        sp_validation.b_modes
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.cosmo_val.html">
+        sp_validation.cosmo_val
         <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
 <polyline points="9 18 15 12 9 6"></polyline>
 </svg>
@@ -508,6 +507,7 @@
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
+<li><a :data-current="activeSection === '#subpackages'" class="reference internal" href="#subpackages">Subpackages</a></li>
 <li><a :data-current="activeSection === '#submodules'" class="reference internal" href="#submodules">Submodules</a></li>
 </ul>
 </div>

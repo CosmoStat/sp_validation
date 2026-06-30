@@ -87,11 +87,20 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
@@ -100,6 +109,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.survey</a></li>
@@ -232,6 +242,123 @@ of the actual observed area.</p>
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.survey.area_from_coords">
+<span class="sig-name descname"><span class="pre">area_from_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/survey.html#area_from_coords"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.survey.area_from_coords" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.survey.area_from_coords'">¶</a></dt>
+<dd><p>Survey area from galaxy coordinates via HEALPix pixel counting.</p>
+<p>Bins the galaxy positions onto a HEALPix grid at resolution <code class="docutils literal notranslate"><span class="pre">nside</span></code> and
+sums the area of every occupied pixel. This ignores partial-pixel coverage
+and so overestimates the true observed area, but needs no external mask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ra</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Right-ascension coordinates in degrees.</p></li>
+<li><p><strong>dec</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Declination coordinates in degrees.</p></li>
+<li><p><strong>nside</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – HEALPix resolution parameter.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Area in square degrees.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.survey.n_eff_density">
+<span class="sig-name descname"><span class="pre">n_eff_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_deg2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/survey.html#n_eff_density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.survey.n_eff_density" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.survey.n_eff_density'">¶</a></dt>
+<dd><p>Effective galaxy number density per square arcminute.</p>
+<p>Uses the weighted definition <code class="docutils literal notranslate"><span class="pre">n_eff</span> <span class="pre">=</span> <span class="pre">(Σw)²</span> <span class="pre">/</span> <span class="pre">(A</span> <span class="pre">·</span> <span class="pre">Σw²)</span></code> where <code class="docutils literal notranslate"><span class="pre">A</span></code> is the
+survey area in square arcminutes (<code class="docutils literal notranslate"><span class="pre">area_deg2</span> <span class="pre">·</span> <span class="pre">3600</span></code>). Returns <code class="docutils literal notranslate"><span class="pre">0.0</span></code> when
+<code class="docutils literal notranslate"><span class="pre">Σw²</span> <span class="pre">==</span> <span class="pre">0</span></code> to avoid division by zero.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>w</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Per-galaxy weights.</p></li>
+<li><p><strong>area_deg2</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Survey area in square degrees.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Effective number density in galaxies per square arcminute.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.survey.ellipticity_dispersion">
+<span class="sig-name descname"><span class="pre">ellipticity_dispersion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/survey.html#ellipticity_dispersion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.survey.ellipticity_dispersion" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.survey.ellipticity_dispersion'">¶</a></dt>
+<dd><p>Per-component weighted ellipticity dispersion.</p>
+<p>Computes <code class="docutils literal notranslate"><span class="pre">sqrt(0.5</span> <span class="pre">·</span> <span class="pre">(⟨e1²⟩</span> <span class="pre">+</span> <span class="pre">⟨e2²⟩))</span></code> where each component average is
+weighted by <code class="docutils literal notranslate"><span class="pre">w²</span></code>. This is the <em>per-component</em> RMS convention; it differs by
+a factor <code class="docutils literal notranslate"><span class="pre">√2</span></code> from the summed-component <code class="docutils literal notranslate"><span class="pre">sigma_e</span></code> returned by
+<a class="reference internal" href="#sp_validation.survey.effective_survey_stats" title="sp_validation.survey.effective_survey_stats"><code class="xref py py-func docutils literal notranslate"><span class="pre">effective_survey_stats()</span></code></a>. Keep the two conventions distinct.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>e1</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ellipticity components.</p></li>
+<li><p><strong>e2</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ellipticity components.</p></li>
+<li><p><strong>w</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Per-galaxy weights.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Per-component ellipticity dispersion.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.survey.additive_bias">
+<span class="sig-name descname"><span class="pre">additive_bias</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">R</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/survey.html#additive_bias"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.survey.additive_bias" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.survey.additive_bias'">¶</a></dt>
+<dd><p>Weighted additive-bias estimates <code class="docutils literal notranslate"><span class="pre">(c1,</span> <span class="pre">c2)</span></code>.</p>
+<p>Returns the weighted mean of the response-corrected ellipticities
+<code class="docutils literal notranslate"><span class="pre">⟨e1</span> <span class="pre">/</span> <span class="pre">R⟩</span></code> and <code class="docutils literal notranslate"><span class="pre">⟨e2</span> <span class="pre">/</span> <span class="pre">R⟩</span></code>, weighted by <code class="docutils literal notranslate"><span class="pre">w</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>e1</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ellipticity components (before response correction).</p></li>
+<li><p><strong>e2</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ellipticity components (before response correction).</p></li>
+<li><p><strong>w</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Per-galaxy weights.</p></li>
+<li><p><strong>R</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Multiplicative shear response.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(c1,</span> <span class="pre">c2)</span></code> additive-bias estimates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a> of <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.survey.effective_survey_stats">
+<span class="sig-name descname"><span class="pre">effective_survey_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">e2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">w</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_deg2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/survey.html#effective_survey_stats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.survey.effective_survey_stats" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.survey.effective_survey_stats'">¶</a></dt>
+<dd><p>Effective survey statistics for a shear catalogue.</p>
+<p>Bundles the area-dependent number density and the summed-component shape
+noise. Here <code class="docutils literal notranslate"><span class="pre">sigma_e</span> <span class="pre">=</span> <span class="pre">sqrt(Σ[w²(e1²</span> <span class="pre">+</span> <span class="pre">e2²)]</span> <span class="pre">/</span> <span class="pre">Σw²)</span></code> sums over <em>both</em>
+components (no <code class="docutils literal notranslate"><span class="pre">0.5</span></code> factor); this is distinct from the per-component
+<a class="reference internal" href="#sp_validation.survey.ellipticity_dispersion" title="sp_validation.survey.ellipticity_dispersion"><code class="xref py py-func docutils literal notranslate"><span class="pre">ellipticity_dispersion()</span></code></a>, differing by a factor <code class="docutils literal notranslate"><span class="pre">√2</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>e1</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ellipticity components.</p></li>
+<li><p><strong>e2</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ellipticity components.</p></li>
+<li><p><strong>w</strong> (<em>array</em><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Per-galaxy weights.</p></li>
+<li><p><strong>area_deg2</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Survey area in square degrees.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Keys <code class="docutils literal notranslate"><span class="pre">n_eff</span></code>, <code class="docutils literal notranslate"><span class="pre">sigma_e</span></code>, <code class="docutils literal notranslate"><span class="pre">sum_w</span></code>, <code class="docutils literal notranslate"><span class="pre">sum_w2</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -257,6 +384,11 @@ of the actual observed area.</p>
 <li><a :data-current="activeSection === '#sp_validation.survey.missing_tiles'" class="reference internal" href="#sp_validation.survey.missing_tiles"><code class="docutils literal notranslate"><span class="pre">missing_tiles()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.survey.write_tile_id_gal_counts'" class="reference internal" href="#sp_validation.survey.write_tile_id_gal_counts"><code class="docutils literal notranslate"><span class="pre">write_tile_id_gal_counts()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.survey.get_footprint'" class="reference internal" href="#sp_validation.survey.get_footprint"><code class="docutils literal notranslate"><span class="pre">get_footprint()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.survey.area_from_coords'" class="reference internal" href="#sp_validation.survey.area_from_coords"><code class="docutils literal notranslate"><span class="pre">area_from_coords()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.survey.n_eff_density'" class="reference internal" href="#sp_validation.survey.n_eff_density"><code class="docutils literal notranslate"><span class="pre">n_eff_density()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.survey.ellipticity_dispersion'" class="reference internal" href="#sp_validation.survey.ellipticity_dispersion"><code class="docutils literal notranslate"><span class="pre">ellipticity_dispersion()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.survey.additive_bias'" class="reference internal" href="#sp_validation.survey.additive_bias"><code class="docutils literal notranslate"><span class="pre">additive_bias()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.survey.effective_survey_stats'" class="reference internal" href="#sp_validation.survey.effective_survey_stats"><code class="docutils literal notranslate"><span class="pre">effective_survey_stats()</span></code></a></li>
 </ul>
 </div>
 </aside>

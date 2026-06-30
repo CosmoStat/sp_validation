@@ -119,11 +119,20 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
@@ -132,6 +141,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../sp_validation.survey.html">sp_validation.survey</a></li>
@@ -282,45 +292,48 @@
 </span><span id="line-87"><span class="sd">        ``(chi2, reduced_chi2, pte)``.</span>
 </span><span id="line-88">
 </span><span id="line-89"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-90">    <span class="n">chi2</span> <span class="o">=</span> <span class="n">data_vector</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span> <span class="o">@</span> <span class="n">data_vector</span>
-</span><span id="line-91">    <span class="n">dof</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_vector</span><span class="p">)</span>
-</span><span id="line-92">    <span class="n">reduced_chi2</span> <span class="o">=</span> <span class="n">chi2</span> <span class="o">/</span> <span class="n">dof</span>
-</span><span id="line-93">    <span class="n">pte</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">chi2</span><span class="p">,</span> <span class="n">dof</span><span class="p">)</span>
-</span><span id="line-94">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
-</span><span id="line-95">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chi2: </span><span class="si">{</span><span class="n">chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-96">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reduced Chi2: </span><span class="si">{</span><span class="n">reduced_chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-97">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PTE: </span><span class="si">{</span><span class="n">pte</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</span><span id="line-98">    <span class="k">return</span> <span class="n">chi2</span><span class="p">,</span> <span class="n">reduced_chi2</span><span class="p">,</span> <span class="n">pte</span></div>
+</span><span id="line-90">    <span class="c1"># Solve the linear system rather than forming C^-1 explicitly (more stable,</span>
+</span><span id="line-91">    <span class="c1"># cheaper); use the survival function rather than 1 - cdf (avoids</span>
+</span><span id="line-92">    <span class="c1"># catastrophic cancellation in the high-chi2 / low-PTE tail).</span>
+</span><span id="line-93">    <span class="n">chi2</span> <span class="o">=</span> <span class="n">data_vector</span> <span class="o">@</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="n">data_vector</span><span class="p">)</span>
+</span><span id="line-94">    <span class="n">dof</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data_vector</span><span class="p">)</span>
+</span><span id="line-95">    <span class="n">reduced_chi2</span> <span class="o">=</span> <span class="n">chi2</span> <span class="o">/</span> <span class="n">dof</span>
+</span><span id="line-96">    <span class="n">pte</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">chi2</span><span class="o">.</span><span class="n">sf</span><span class="p">(</span><span class="n">chi2</span><span class="p">,</span> <span class="n">dof</span><span class="p">)</span>
+</span><span id="line-97">    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+</span><span id="line-98">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chi2: </span><span class="si">{</span><span class="n">chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-99">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reduced Chi2: </span><span class="si">{</span><span class="n">reduced_chi2</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-100">        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;PTE: </span><span class="si">{</span><span class="n">pte</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-101">    <span class="k">return</span> <span class="n">chi2</span><span class="p">,</span> <span class="n">reduced_chi2</span><span class="p">,</span> <span class="n">pte</span></div>
 
-</span><span id="line-99">
-</span><span id="line-100">
+</span><span id="line-102">
+</span><span id="line-103">
 <div class="viewcode-block" id="cov_from_one_covariance">
 <a class="viewcode-back" href="../../sp_validation.statistics.html#sp_validation.statistics.cov_from_one_covariance">[docs]</a>
-</span><span id="line-101"><span class="k">def</span><span class="w"> </span><span class="nf">cov_from_one_covariance</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="p">,</span> <span class="n">gaussian</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-</span><span id="line-102"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reshape a OneCovariance ``covariance_list`` table into a matrix.</span>
-</span><span id="line-103">
-</span><span id="line-104"><span class="sd">    Parameters</span>
-</span><span id="line-105"><span class="sd">    ----------</span>
-</span><span id="line-106"><span class="sd">    cov_one_cov : numpy.ndarray</span>
-</span><span id="line-107"><span class="sd">        Flat OneCovariance output (e.g. from ``covariance_list_..._Cell.dat``),</span>
-</span><span id="line-108"><span class="sd">        with one row per ``(i, j)`` element pair.</span>
-</span><span id="line-109"><span class="sd">    gaussian : bool, optional</span>
-</span><span id="line-110"><span class="sd">        If ``True`` use the Gaussian-only column, otherwise the</span>
-</span><span id="line-111"><span class="sd">        Gaussian+non-Gaussian column; default is ``True``.</span>
-</span><span id="line-112">
-</span><span id="line-113"><span class="sd">    Returns</span>
-</span><span id="line-114"><span class="sd">    -------</span>
-</span><span id="line-115"><span class="sd">    numpy.ndarray</span>
-</span><span id="line-116"><span class="sd">        Square covariance matrix.</span>
-</span><span id="line-117">
-</span><span id="line-118"><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="line-119">    <span class="n">n_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-</span><span id="line-120">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">))</span>
-</span><span id="line-121">    <span class="n">index_value</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="n">gaussian</span> <span class="k">else</span> <span class="mi">9</span>
-</span><span id="line-122">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
-</span><span id="line-123">        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
-</span><span id="line-124">            <span class="n">cov</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov_one_cov</span><span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="n">j</span><span class="p">,</span> <span class="n">index_value</span><span class="p">]</span>
-</span><span id="line-125">    <span class="k">return</span> <span class="n">cov</span></div>
+</span><span id="line-104"><span class="k">def</span><span class="w"> </span><span class="nf">cov_from_one_covariance</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="p">,</span> <span class="n">gaussian</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+</span><span id="line-105"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Reshape a OneCovariance ``covariance_list`` table into a matrix.</span>
+</span><span id="line-106">
+</span><span id="line-107"><span class="sd">    Parameters</span>
+</span><span id="line-108"><span class="sd">    ----------</span>
+</span><span id="line-109"><span class="sd">    cov_one_cov : numpy.ndarray</span>
+</span><span id="line-110"><span class="sd">        Flat OneCovariance output (e.g. from ``covariance_list_..._Cell.dat``),</span>
+</span><span id="line-111"><span class="sd">        with one row per ``(i, j)`` element pair.</span>
+</span><span id="line-112"><span class="sd">    gaussian : bool, optional</span>
+</span><span id="line-113"><span class="sd">        If ``True`` use the Gaussian-only column, otherwise the</span>
+</span><span id="line-114"><span class="sd">        Gaussian+non-Gaussian column; default is ``True``.</span>
+</span><span id="line-115">
+</span><span id="line-116"><span class="sd">    Returns</span>
+</span><span id="line-117"><span class="sd">    -------</span>
+</span><span id="line-118"><span class="sd">    numpy.ndarray</span>
+</span><span id="line-119"><span class="sd">        Square covariance matrix.</span>
+</span><span id="line-120">
+</span><span id="line-121"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-122">    <span class="n">n_bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">cov_one_cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="line-123">    <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_bins</span><span class="p">,</span> <span class="n">n_bins</span><span class="p">))</span>
+</span><span id="line-124">    <span class="n">index_value</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="n">gaussian</span> <span class="k">else</span> <span class="mi">9</span>
+</span><span id="line-125">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
+</span><span id="line-126">        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_bins</span><span class="p">):</span>
+</span><span id="line-127">            <span class="n">cov</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">cov_one_cov</span><span class="p">[</span><span class="n">i</span> <span class="o">*</span> <span class="n">n_bins</span> <span class="o">+</span> <span class="n">j</span><span class="p">,</span> <span class="n">index_value</span><span class="p">]</span>
+</span><span id="line-128">    <span class="k">return</span> <span class="n">cov</span></div>
 
 </span></code></pre></div>
     </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">

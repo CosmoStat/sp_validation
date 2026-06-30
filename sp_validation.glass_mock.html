@@ -87,11 +87,20 @@
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
@@ -100,6 +109,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
@@ -324,14 +334,6 @@ applied to the matter overdensity <code class="docutils literal notranslate"><sp
 <p>Pixels containing at least one object get 1.0, everything else 0.0.</p>
 </dd></dl>
 <dl class="py function">
-<dt class="sig sig-object py" id="sp_validation.glass_mock.powspace_bins">
-<span class="sig-name descname"><span class="pre">powspace_bins</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#powspace_bins"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.powspace_bins" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.powspace_bins'">¶</a></dt>
-<dd><p>NaMaster powspace bandpower binning used across the mock harmonic stats.</p>
-<p>Returns <code class="docutils literal notranslate"><span class="pre">(bin,</span> <span class="pre">ell_eff,</span> <span class="pre">lmax,</span> <span class="pre">b_lmax)</span></code>: the NaMaster <code class="docutils literal notranslate"><span class="pre">NmtBin</span></code> built on
-square-root-spaced bandpowers between <code class="docutils literal notranslate"><span class="pre">lmin</span></code> and <code class="docutils literal notranslate"><span class="pre">lmax</span> <span class="pre">=</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">nside</span></code>,
-plus the effective ells and the two lmax values the callers reuse.</p>
-</dd></dl>
-<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.glass_mock.compute_two_point_xi">
 <span class="sig-name descname"><span class="pre">compute_two_point_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#compute_two_point_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.compute_two_point_xi" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.compute_two_point_xi'">¶</a></dt>
 <dd><p>Configuration-space shear 2PCF (treecorr <code class="docutils literal notranslate"><span class="pre">GGCorrelation</span></code>) for a mock.</p>
@@ -341,6 +343,13 @@ plus the effective ells and the two lmax values the callers reuse.</p>
 <span class="sig-name descname"><span class="pre">compute_two_point_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nside</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#compute_two_point_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.compute_two_point_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.compute_two_point_cl'">¶</a></dt>
 <dd><p>Catalogue-based NaMaster pseudo-Cl for a mock shear field.</p>
 <p>Returns <code class="docutils literal notranslate"><span class="pre">(cl_coupled,</span> <span class="pre">cl_all)</span></code>, each with the ell axis prepended.</p>
+<p>Deliberately keeps its own <code class="docutils literal notranslate"><span class="pre">NmtFieldCatalog</span></code> construction rather than
+delegating to the <code class="docutils literal notranslate"><span class="pre">pseudo_cl.get_pseudo_cls_catalog</span></code> primitive: the mock
+field is UNWEIGHTED (<code class="docutils literal notranslate"><span class="pre">weights</span> <span class="pre">=</span> <span class="pre">ones</span></code>, no per-object shear weight) and this
+function returns the COUPLED pseudo-Cl alongside the decoupled one (both with
+an ell axis prepended), which the primitive’s <code class="docutils literal notranslate"><span class="pre">(ell_eff,</span> <span class="pre">cl_all,</span> <span class="pre">wsp)</span></code>
+contract does not expose. The shared piece — the powspace binning — is taken
+from <code class="docutils literal notranslate"><span class="pre">_mock_powspace_bin</span></code> so the bandpower drift is gone.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.glass_mock.compute_two_point_cl_map">
@@ -349,11 +358,22 @@ plus the effective ells and the two lmax values the callers reuse.</p>
 <p>Bins the galaxies onto a HEALPix shear map (count-weighted mean per pixel)
 and runs the MCM on the resulting masked field. Returns
 <code class="docutils literal notranslate"><span class="pre">(cl_coupled,</span> <span class="pre">cl_all)</span></code> with the ell axis prepended.</p>
+<p>Deliberately keeps its own <code class="docutils literal notranslate"><span class="pre">NmtField</span></code> construction rather than delegating
+to the <code class="docutils literal notranslate"><span class="pre">pseudo_cl.get_pseudo_cls_map</span></code> primitive: the mock shear map is
+built from UNWEIGHTED galaxy counts (the mask is the count map and the
+per-pixel mean divides by counts, not summed shear weights), and this
+function returns the COUPLED pseudo-Cl alongside the decoupled one (both with
+an ell axis prepended), which the primitive’s <code class="docutils literal notranslate"><span class="pre">(ell_eff,</span> <span class="pre">cl_all,</span> <span class="pre">wsp)</span></code>
+contract does not expose. The shared pieces — the powspace binning and the
+galaxy-count map — come from <code class="docutils literal notranslate"><span class="pre">_mock_powspace_bin</span></code> and <code class="docutils literal notranslate"><span class="pre">get_n_gal_map</span></code>.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.glass_mock.get_n_gal_map">
 <span class="sig-name descname"><span class="pre">get_n_gal_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nside</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ra</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dec</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/glass_mock.html#get_n_gal_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.glass_mock.get_n_gal_map" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.glass_mock.get_n_gal_map'">¶</a></dt>
 <dd><p>Galaxy-count HEALPix map plus the unique-pixel bookkeeping arrays.</p>
+<p>The unweighted twin of the pseudo-Cl <code class="docutils literal notranslate"><span class="pre">get_n_gal_map</span></code> primitive: delegates
+to it with <code class="docutils literal notranslate"><span class="pre">weights=None</span></code> (counts). Imported lazily so this module keeps
+resolving in CAMB-only environments without the harmonic stack.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.glass_mock.compute_leakage_harmony">
@@ -417,7 +437,6 @@ decoupled pseudo-Cl, each with the effective-ell axis prepended.</p>
 <li><a :data-current="activeSection === '#sp_validation.glass_mock.growth_factor'" class="reference internal" href="#sp_validation.glass_mock.growth_factor"><code class="docutils literal notranslate"><span class="pre">growth_factor()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.glass_mock.ia_convergence'" class="reference internal" href="#sp_validation.glass_mock.ia_convergence"><code class="docutils literal notranslate"><span class="pre">ia_convergence()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.glass_mock.create_mask_from_catalogue'" class="reference internal" href="#sp_validation.glass_mock.create_mask_from_catalogue"><code class="docutils literal notranslate"><span class="pre">create_mask_from_catalogue()</span></code></a></li>
-<li><a :data-current="activeSection === '#sp_validation.glass_mock.powspace_bins'" class="reference internal" href="#sp_validation.glass_mock.powspace_bins"><code class="docutils literal notranslate"><span class="pre">powspace_bins()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.glass_mock.compute_two_point_xi'" class="reference internal" href="#sp_validation.glass_mock.compute_two_point_xi"><code class="docutils literal notranslate"><span class="pre">compute_two_point_xi()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.glass_mock.compute_two_point_cl'" class="reference internal" href="#sp_validation.glass_mock.compute_two_point_cl"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.glass_mock.compute_two_point_cl_map'" class="reference internal" href="#sp_validation.glass_mock.compute_two_point_cl_map"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl_map()</span></code></a></li>

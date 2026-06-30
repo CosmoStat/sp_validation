@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.catalog\_characterization
+---------------------------------------------------
+
+.. automodule:: sp_validation.cosmo_val.catalog_characterization
+   :members:
+   :show-inheritance:
+   :undoc-members:

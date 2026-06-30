@@ -1,0 +1,7 @@
+sp\_validation.cosmo\_val.cosebis
+---------------------------------
+
+.. automodule:: sp_validation.cosmo_val.cosebis
+   :members:
+   :show-inheritance:
+   :undoc-members:
