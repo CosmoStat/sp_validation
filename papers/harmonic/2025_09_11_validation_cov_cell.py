@@ -872,16 +872,3 @@ plt.savefig(
 plt.show()
 
 # %%
-# Save gaussian simulation covariance for bb
-cov_gaussian_bb = cov_sim_gaussian[96:, 96:]
-np.save(
-    "/home/guerrini/sp_validation/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_BB.npy",
-    cov_gaussian_bb,
-)
-cov_gaussian_eb = cov_sim_gaussian[64:96, 64:96]
-np.save(
-    "/home/guerrini/sp_validation/cosmo_val/harmonic_covariance_gaussian_sims/cov_gaussian_sims_EB.npy",
-    cov_gaussian_eb,
-)
-
-# %%

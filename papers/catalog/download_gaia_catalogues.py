@@ -46,14 +46,14 @@ def do_query(do_async=True, nmax=3_000_000):
     query = dedent(
         f"""
         SELECT TOP {nmax} ra, dec, phot_g_mean_mag, ruwe
-		FROM gaiadr3.gaia_source
-		WHERE dec > 30
-			AND dec < 75
-			AND phot_g_mean_mag < 20
-    		AND phot_g_mean_mag IS NOT NULL
+        FROM gaiadr3.gaia_source
+        WHERE dec > 30
+            AND dec < 75
+            AND phot_g_mean_mag < 20
+            AND phot_g_mean_mag IS NOT NULL
             AND ruwe < 1.4
         ORDER BY random_index
-	"""
+        """
     ).strip()
 
     # Launch the query

@@ -1,18 +1,46 @@
-# Lint + format guards, plus bloat guards: notebook outputs are stripped on
-# commit and oversized files are rejected. Activate once per clone with
-# `pre-commit install` (see CONTRIBUTING.md).
+# Pre-commit hooks. The posture: auto-apply what ruff can fix safely, WARN
+# (never block) on what it can't, and hard-block only on repo bloat.
+#
+#   * ruff auto-applies everything that's automatically applicable — `ruff
+#     format` (layout) and `ruff check --fix`'s SAFE fixes (import sorting,
+#     unused imports, …). When it rewrites a staged file the commit stops once
+#     so you re-`git add` the result; that's pre-commit's modify→re-stage step,
+#     not a lint failure.
+#   * What ruff WON'T safely fix — undefined names (F821), unused variables
+#     (F841), and other judgement calls — is printed as a WARNING and never
+#     blocks the commit. Those get enforced on the `develop` gate
+#     (.github/workflows/lint.yml), not at your keyboard.
+#   * Bloat guards (notebook outputs, oversized files) DO block — heavy content
+#     is expensive to undo once in history.
+#
+# ruff is pinned to the SAME version CI uses — keep them in lockstep.
+# Activate once per clone with `pre-commit install` (see CONTRIBUTING.md).
 repos:
-  # Lint + format. `ruff` is scoped to the library (src/sp_validation/) so it
-  # only BLOCKS commits on library lint; `ruff-format` runs repo-wide so the
-  # whole tree stays formatted. CI (.github/workflows/lint.yml) gates the full
-  # repo at the agreed per-file-ignores policy.
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.18
+  # --- ruff: auto-apply the safe stuff, warn on the rest, never hard-block ----
+  - repo: local
     hooks:
-      - id: ruff
-        args: ["--fix"]
-        files: "^src/sp_validation/"
+      # Linter: applies ruff's SAFE autofixes (and re-stages like a formatter).
+      # Everything it won't safely fix is printed as a warning; `|| true` keeps
+      # those from ever blocking the commit. Runs before the formatter so layout
+      # gets the final word.
+      - id: ruff-fix
+        name: ruff check --fix (safe fixes auto-applied; the rest only warn)
+        entry: bash -c 'ruff check --fix "$@" || true' --
+        language: python
+        additional_dependencies: ["ruff==0.15.18"]
+        types_or: [python, pyi]
+        require_serial: true
+        verbose: true
+      # Formatter: auto-applies. If it reformats your staged files the commit
+      # stops once so you re-`git add` — not a lint failure, just a re-stage.
       - id: ruff-format
+        name: ruff format (auto-applies)
+        entry: ruff format
+        language: python
+        additional_dependencies: ["ruff==0.15.18"]
+        types_or: [python, pyi]
+
+  # --- Bloat guards: BLOCKING (intentional) ----------------------------------
   - repo: https://github.com/kynan/nbstripout
     rev: 0.8.1
     hooks:
