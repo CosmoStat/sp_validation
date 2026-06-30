@@ -4,16 +4,9 @@ import json
 import re
 from pathlib import Path
 
-COSMO_VAL = Path(
-    "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
-)
-COSMO_INFERENCE = Path(
-    "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
-)
-CAT_CONFIG = (
-    "/n17data/cdaley/unions/code/sp_validation/cosmo_val/"
-    "cat_config.yaml"
-)
+COSMO_VAL = Path("/n17data/cdaley/unions/code/sp_validation/cosmo_val/output")
+COSMO_INFERENCE = Path("/n17data/cdaley/unions/code/sp_validation/cosmo_inference")
+CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -93,9 +86,7 @@ def covariance_base(
         mask_suffix
         if mask_suffix is not None
         else (
-            DEFAULT_MASK_SUFFIX
-            if default_mask_suffix is None
-            else default_mask_suffix
+            DEFAULT_MASK_SUFFIX if default_mask_suffix is None else default_mask_suffix
         )
     )
     cov_version = resolve_covariance_version(version) if resolve_version else version
@@ -162,8 +153,7 @@ def build_redshift_path(version, blind):
         base_version = "SP_v1.4.6"
     version_dir = base_version.replace("SP_", "")
     return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/"
-        f"nz_{base_version}_{blind}.txt"
+        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
     )
 
 

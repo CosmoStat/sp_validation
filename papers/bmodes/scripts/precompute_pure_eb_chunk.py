@@ -7,9 +7,8 @@ from pathlib import Path
 import numpy as np
 import pyccl as ccl
 import tqdm
-from scipy import sparse
-
 from IPython import get_ipython
+from scipy import sparse
 
 ipython = get_ipython()
 
@@ -70,6 +69,7 @@ def _load_xi(path, min_sep, max_sep, nbins):
 
 def main():
     from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+
     from sp_validation.cosmo_val import CosmologyValidation
     from sp_validation.cosmology import get_theo_xi
 
@@ -80,10 +80,14 @@ def main():
     # Compute this chunk's sample range
     samples_per_chunk = n_samples_total // n_chunks
     start_idx = chunk_id * samples_per_chunk
-    end_idx = start_idx + samples_per_chunk if chunk_id < n_chunks - 1 else n_samples_total
+    end_idx = (
+        start_idx + samples_per_chunk if chunk_id < n_chunks - 1 else n_samples_total
+    )
     n_samples_chunk = end_idx - start_idx
 
-    print(f"Chunk {chunk_id}/{n_chunks}: samples {start_idx}-{end_idx} ({n_samples_chunk} samples)")
+    print(
+        f"Chunk {chunk_id}/{n_chunks}: samples {start_idx}-{end_idx} ({n_samples_chunk} samples)"
+    )
 
     numeric_params = {
         "min_sep": float(params["min_sep"]),
@@ -137,16 +141,21 @@ def main():
 
     binning_matrix = sparse.csr_matrix(
         (np.ones(len(row_indices)), (row_indices, col_indices)),
-        shape=(len(gg["meanr"]), nbins_int)
+        shape=(len(gg["meanr"]), nbins_int),
     )
     row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
-    binning_matrix = sparse.diags(1/row_sums) @ binning_matrix
+    binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
 
     # Get theoretical mean (same as b_modes.py)
-    mean_int = np.concatenate(get_theo_xi(
-        theta=theta_int, z=z_dist[:, 0], nz=z_dist[:, 1],
-        backend="ccl", cosmo=cosmo_cov
-    ))
+    mean_int = np.concatenate(
+        get_theo_xi(
+            theta=theta_int,
+            z=z_dist[:, 0],
+            nz=z_dist[:, 1],
+            backend="ccl",
+            cosmo=cosmo_cov,
+        )
+    )
 
     # Set seed based on chunk_id for reproducibility
     rng = np.random.default_rng(seed=42 + chunk_id)
@@ -163,12 +172,18 @@ def main():
     max_sep = numeric_params["max_sep"]
 
     transformed_samples = [
-        np.concatenate(get_pure_EB_modes(
-            theta=gg["meanr"], theta_int=gg_int["meanr"],
-            xip=samples_rep_xip[i], xim=samples_rep_xim[i],
-            xip_int=samples_int_xip[i], xim_int=samples_int_xim[i],
-            tmin=min_sep, tmax=max_sep
-        ))
+        np.concatenate(
+            get_pure_EB_modes(
+                theta=gg["meanr"],
+                theta_int=gg_int["meanr"],
+                xip=samples_rep_xip[i],
+                xim=samples_rep_xim[i],
+                xip_int=samples_int_xip[i],
+                xim_int=samples_int_xim[i],
+                tmin=min_sep,
+                tmax=max_sep,
+            )
+        )
         for i in tqdm.tqdm(range(n_samples_chunk), desc=f"Chunk {chunk_id}")
     ]
 

@@ -10,24 +10,20 @@ Produces 9 figures:
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 import treecorr
-
-from sp_validation.b_modes import calculate_cosebis
-
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     iter_version_figures,
 )
 
+from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -110,7 +106,9 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     ax.set_xticks(np.arange(1, nmodes + 1))
     ax.set_xticklabels(
         [str(i) for i in range(1, nmodes + 1)],
-        rotation=45, ha="right", rotation_mode="anchor",
+        rotation=45,
+        ha="right",
+        rotation_mode="anchor",
     )
     ax.tick_params(axis="both", width=0.5, length=3)
 
@@ -192,9 +190,7 @@ def main():
         gg.read(xi_paths[xi_key])
 
         # Compute COSEBIS datasets
-        datasets = _compute_cosebis_datasets(
-            gg, cov_paths[cov_key], nmodes, scale_cuts
-        )
+        datasets = _compute_cosebis_datasets(gg, cov_paths[cov_key], nmodes, scale_cuts)
 
         # Create figure with appropriate title
         fig = _create_single_panel_bmode_figure(

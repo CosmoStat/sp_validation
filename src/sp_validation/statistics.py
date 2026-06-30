@@ -26,7 +26,7 @@ def jackknif_weighted_average2(
     keep_size_pc = 1 - remove_size
 
     if keep_size_pc < 0:
-        raise ValueError('remove size should be in [0, 1]')
+        raise ValueError("remove size should be in [0, 1]")
 
     subsamp_size = int(samp_size * keep_size_pc)
 
@@ -36,7 +36,7 @@ def jackknif_weighted_average2(
     for i in range(n_realization):
         sub_data_ind = np.random.choice(all_ind, subsamp_size)
 
-        if (sum(data[sub_data_ind]) == 0):
+        if sum(data[sub_data_ind]) == 0:
             all_est.append(np.nan)
         else:
             all_est.append(

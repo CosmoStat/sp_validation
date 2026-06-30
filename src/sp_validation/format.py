@@ -6,12 +6,7 @@
 
 """
 
-
-import sys
-import os
-
 import math
-import numpy as np
 
 
 def millify(n):
@@ -30,18 +25,17 @@ def millify(n):
         output name
 
     """
-    millnames = ['', ' Thousand', ' Million', ' Billion', ' Trillion']
+    millnames = ["", " Thousand", " Million", " Billion", " Trillion"]
 
     n = float(n)
     millidx = max(
         0,
         min(
-            len(millnames) - 1,
-            int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))
-        )
+            len(millnames) - 1, int(math.floor(0 if n == 0 else math.log10(abs(n)) / 3))
+        ),
     )
 
-    return f'{n / 10**(3 * millidx):.0f}{millnames[millidx]}'
+    return f"{n / 10 ** (3 * millidx):.0f}{millnames[millidx]}"
 
 
 def print_millified(msg, n):

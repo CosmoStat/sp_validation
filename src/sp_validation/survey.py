@@ -7,9 +7,7 @@
 
 """
 
-
 import os
-
 from collections import Counter
 
 
@@ -39,23 +37,23 @@ def get_area(dd, area_tile, verbose=False):
         tile IDs
 
     """
-    if 'TILE_ID' in dd.dtype.names:
+    if "TILE_ID" in dd.dtype.names:
         # Get unique tile IDs
-        tile_IDs = set(dd['TILE_ID'])
+        tile_IDs = set(dd["TILE_ID"])
         n_tile = len(tile_IDs)
         if verbose:
-            print(f'Number of tiles found in galaxy catalogue = {n_tile}')
+            print(f"Number of tiles found in galaxy catalogue = {n_tile}")
     else:
         # Set to dummy values
         tile_IDs = None
-        n_tiles = 1
+        n_tile = 1
 
     # Compute area
     area_deg2 = n_tile * area_tile
     area_amin2 = area_deg2 * 3600
 
     if verbose:
-        print('Area [deg^2] = {}'.format(area_deg2))
+        print("Area [deg^2] = {}".format(area_deg2))
 
     return area_deg2, area_amin2, tile_IDs
 
@@ -92,7 +90,6 @@ def missing_tiles(
         number of tiles missing, -1 if ID file path not found
     """
     if os.path.exists(path_tile_ID):
-
         # Loop over input tile ID file
         found_IDs = []
         missing_IDs = []
@@ -112,29 +109,26 @@ def missing_tiles(
 
         if verbose:
             n_tile = len(tile_IDs)
-            print(
-                f'{n_missing}/{n_tile} = {n_missing / n_tile:.2%}'
-                + ' tiles missing'
-            )
+            print(f"{n_missing}/{n_tile} = {n_missing / n_tile:.2%}" + " tiles missing")
 
         # Create output files with found and missing IDs
         if n_found > 0:
             if verbose:
-                print(f'Creating file \'{path_found_ID}\'')
-            with open(path_found_ID, 'w') as f_out:
+                print(f"Creating file '{path_found_ID}'")
+            with open(path_found_ID, "w") as f_out:
                 for ID in found_IDs:
                     print(ID, file=f_out)
 
         if n_missing > 0:
             if verbose:
-                print('Creating file \'{path_missing_ID}\'')
-            with open(path_missing_ID, 'w') as f_out:
+                print("Creating file '{path_missing_ID}'")
+            with open(path_missing_ID, "w") as f_out:
                 for ID in missing_IDs:
                     print(ID, file=f_out)
 
     else:
         if verbose:
-            print(f'Tile ID file \'{path_tile_ID}\' not found')
+            print(f"Tile ID file '{path_tile_ID}' not found")
 
         # Set to dummy values
         n_found = -1
@@ -167,17 +161,14 @@ def write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname):
     galaxy_counts = Counter(galaxy_IDs)
     shape_counts = Counter(shape_IDs)
 
-    with open(fname, 'w') as f:
-
+    with open(fname, "w") as f:
         # Loop over tile IDs of detected objects
         for tile_id in detection_counts:
-
             # Write tile ID in CFIS tile format (`ABC.XYZ`)
-            print(f'{tile_id:007.3f}', end=' ', file=f)
+            print(f"{tile_id:007.3f}", end=" ", file=f)
 
             # Loop over counters
             for x in detection_counts, galaxy_counts, shape_counts:
-
                 # Get number of objects in corresponding counter
                 if tile_id in x:
                     num = x[tile_id]
@@ -185,7 +176,7 @@ def write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname):
                     num = 0
 
                 # Write number to file
-                print(num, end=' ', file=f)
+                print(num, end=" ", file=f)
             print(file=f)
 
 
@@ -223,50 +214,38 @@ def get_footprint(patch, ra, dec):
 
     # Check whether input matches one of the seven CFIS patch name.
     # Return coordinates within the patch
-    if patch == 'P1':
-
+    if patch == "P1":
         return (ra > 100) & (ra < ra_14) & (dec > dec_min) & (dec < dec_max)
 
-    elif patch == 'P2':
-
+    elif patch == "P2":
         # -30 < ra < 60
-        return (
-            ((ra > 0) & (ra < 60))
-            | ((ra > 330) & (ra < 360))
-            & (dec > dec_min) & (dec < dec_max)
+        return ((ra > 0) & (ra < 60)) | ((ra > 330) & (ra < 360)) & (dec > dec_min) & (
+            dec < dec_max
         )
 
-    elif patch == 'P3':
-
+    elif patch == "P3":
         return (ra > ra2_34) & (ra < ra_36) & (dec > dec_3456) & (dec < 70)
 
-    elif patch == 'P4':
-
+    elif patch == "P4":
         return (
             ((ra > ra_14) & (ra < ra_45) & (dec > dec_min) & (dec < dec_3456))
             | ((ra > ra_14) & (ra < ra2_34) & (dec > dec_min) & (dec < 70))
             | ((ra > ra_45) & (ra < ra2_45) * (dec > dec_min) & (dec < 36))
         )
 
-    elif patch == 'P5':
-
-        return (
-            ((ra > ra2_45) & (ra < 330) & (dec > dec_min) & (dec < dec_3456))
-            | ((ra > ra_45) & (ra < ra2_45) & (dec > 36) & (dec < dec_3456))
+    elif patch == "P5":
+        return ((ra > ra2_45) & (ra < 330) & (dec > dec_min) & (dec < dec_3456)) | (
+            (ra > ra_45) & (ra < ra2_45) & (dec > 36) & (dec < dec_3456)
         )
 
-    elif patch == 'P6':
-
+    elif patch == "P6":
         return (ra > ra_36) & (ra < 330) & (dec > dec_3456) & (dec > 70)
 
-    elif patch == 'P7':
-
+    elif patch == "P7":
         return (ra > 60) & (ra < 180) & (dec > 60) & (dec < 90)
 
-    elif patch == 'W3':
-
+    elif patch == "W3":
         return (ra > 208) & (ra < 221) & (dec > 51) & (dec < 58)
 
     else:
-
-        return (dec > dec_min)
+        return dec > dec_min

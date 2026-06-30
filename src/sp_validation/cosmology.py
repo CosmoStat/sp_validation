@@ -10,13 +10,10 @@
 
 """
 
+import camb
 import numpy as np
 import pyccl as ccl
-import camb
-
-from astropy import cosmology
 from astropy.cosmology import Planck18
-
 
 # =============================================================================
 # Fiducial Cosmology: astropy Planck18
@@ -31,13 +28,13 @@ from astropy.cosmology import Planck18
 #         use A_s=2.1e-9 for CAMB-based predictions.
 # =============================================================================
 PLANCK18 = {
-    "Omega_m": Planck18.Om0,              # 0.30966
-    "Omega_b": Planck18.Ob0,              # 0.04897
-    "h": Planck18.h,                      # 0.6766
-    "n_s": Planck18.meta["n"],            # 0.9665
-    "sigma_8": Planck18.meta["sigma8"],   # 0.8102
-    "A_s": 2.1e-9,                        # ln(10^10 A_s) = 3.047
-    "m_nu": 0.06,                         # eV, sum of neutrino masses
+    "Omega_m": Planck18.Om0,  # 0.30966
+    "Omega_b": Planck18.Ob0,  # 0.04897
+    "h": Planck18.h,  # 0.6766
+    "n_s": Planck18.meta["n"],  # 0.9665
+    "sigma_8": Planck18.meta["sigma8"],  # 0.8102
+    "A_s": 2.1e-9,  # ln(10^10 A_s) = 3.047
+    "m_nu": 0.06,  # eV, sum of neutrino masses
     "w0": -1.0,
     "wa": 0.0,
 }
@@ -297,7 +294,7 @@ def get_cosmo(
         "w0": ccl_params.get("w0", w0 or planck_defaults["w0"]),
         "wa": ccl_params.get("wa", wa or planck_defaults["wa"]),
         "m_nu": mnu,
-        "extra_parameters": extra_params
+        "extra_parameters": extra_params,
     }
 
     return ccl.Cosmology(

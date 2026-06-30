@@ -16,12 +16,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import treecorr
+from cosmo_numba.B_modes.cosebis import COSEBIS
+from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
 from scipy.stats import chi2 as chi2_dist
 
-from cosmo_numba.B_modes.cosebis import COSEBIS
 from sp_validation.b_modes import scale_cut_to_bins
-
-from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -53,7 +52,9 @@ print(f"Loaded {n_mocks} mock COSEBIS results, {nmodes} modes each")
 # Analytic COSEBIS covariance from ξ± covariance
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-gg_ref = treecorr.GGCorrelation(min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin")
+gg_ref = treecorr.GGCorrelation(
+    min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin"
+)
 gg_ref.read(xi_ref_path)
 
 start, stop = scale_cut_to_bins(gg_ref, theta_min, theta_max)
@@ -104,7 +105,9 @@ modes = np.arange(1, nmodes + 1)
 color = sns.color_palette("husl", 4)[0]
 
 fig, (ax_bn, ax_ratio) = plt.subplots(
-    2, 1, figsize=(FIG_WIDTH_SINGLE, 3.5),
+    2,
+    1,
+    figsize=(FIG_WIDTH_SINGLE, 3.5),
     gridspec_kw={"height_ratios": [3, 1], "hspace": 0.08},
     sharex=True,
 )
@@ -113,20 +116,31 @@ ax_bn.axhline(0, color="black", lw=0.8, ls="--", alpha=0.5)
 ax_bn.axhspan(-2, 2, color="0.92", alpha=0.5, zorder=0, label=r"$\pm 2\sigma$")
 
 for i in range(n_mocks):
-    ax_bn.plot(modes, all_Bn[i] / sigma_analytic, "o", color=color,
-               ms=2, alpha=0.15, zorder=1)
+    ax_bn.plot(
+        modes, all_Bn[i] / sigma_analytic, "o", color=color, ms=2, alpha=0.15, zorder=1
+    )
 
 ax_bn.errorbar(
-    modes, mean_Bn / sigma_analytic,
+    modes,
+    mean_Bn / sigma_analytic,
     yerr=np.full(nmodes, 1.0 / np.sqrt(n_mocks)),
-    fmt="o", color=color, ms=4, lw=0.8, capsize=2, zorder=5,
+    fmt="o",
+    color=color,
+    ms=4,
+    lw=0.8,
+    capsize=2,
+    zorder=5,
     label=rf"Mean ($N={n_mocks}$)",
 )
 
 ax_bn.text(
-    0.98, 0.95,
+    0.98,
+    0.95,
     rf"$\chi^2/{nmodes} = {chi2_val:.1f}$, PTE $= {pte:.2f}$",
-    transform=ax_bn.transAxes, fontsize=7, ha="right", va="top",
+    transform=ax_bn.transAxes,
+    fontsize=7,
+    ha="right",
+    va="top",
 )
 
 ax_bn.set_ylabel(r"$B_n / \sigma_n$")
@@ -142,7 +156,8 @@ ax_ratio.set_xticks(modes)
 
 fig.suptitle(
     rf"COSEBIS $B_n$ bias test: {n_mocks} zero-B GLASS mocks",
-    fontsize=8, y=0.98,
+    fontsize=8,
+    y=0.98,
 )
 
 Path(figure_path).parent.mkdir(parents=True, exist_ok=True)

@@ -13,12 +13,10 @@ for modes n = 1 through 20, across a dense ℓ grid.
 Author: Claude Code
 """
 
-import numpy as np
-from scipy import special
-from scipy import integrate
 import matplotlib.pyplot as plt
-
+import numpy as np
 from cosmo_numba.B_modes.cosebis import COSEBIS
+from scipy import integrate, special
 
 
 def direct_Wn_integration(ell_val, theta_arcmin, Tp):
@@ -40,6 +38,7 @@ def direct_Wn_quad(ell_val, theta_arcmin, Tp):
     Interpolates T_+^log and uses scipy.integrate.quad.
     """
     from scipy.interpolate import CubicSpline
+
     theta_rad = np.deg2rad(theta_arcmin / 60)
     cs = CubicSpline(theta_rad, Tp)
 
@@ -47,8 +46,12 @@ def direct_Wn_quad(ell_val, theta_arcmin, Tp):
         return t * cs(t) * special.j0(ell_val * t)
 
     result, _ = integrate.quad(
-        integrand, theta_rad[0], theta_rad[-1],
-        limit=500, epsrel=1e-10, epsabs=0,
+        integrand,
+        theta_rad[0],
+        theta_rad[-1],
+        limit=500,
+        epsrel=1e-10,
+        epsabs=0,
     )
     return result
 
@@ -58,9 +61,9 @@ def validate_scale_cut(theta_min, theta_max, nmodes, ell_test, n_theta=200_000):
 
     Returns dict with keys 'fftlog', 'direct', 'ratio' — each (nmodes, n_ell).
     """
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Scale cut: [{theta_min}, {theta_max}] arcmin, modes 1-{nmodes}")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     cosebis = COSEBIS(theta_min, theta_max, nmodes)
 
@@ -83,7 +86,7 @@ def validate_scale_cut(theta_min, theta_max, nmodes, ell_test, n_theta=200_000):
             Wn_direct[n, i] = direct_Wn_integration(ell, theta, Tp[n])
 
     # Ratio
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         ratio = np.where(
             np.abs(Wn_direct) > 1e-30,
             Wn_fftlog / Wn_direct,
@@ -91,11 +94,11 @@ def validate_scale_cut(theta_min, theta_max, nmodes, ell_test, n_theta=200_000):
         )
 
     return {
-        'fftlog': Wn_fftlog,
-        'direct': Wn_direct,
-        'ratio': ratio,
-        'Tp': Tp,
-        'theta': theta,
+        "fftlog": Wn_fftlog,
+        "direct": Wn_direct,
+        "ratio": ratio,
+        "Tp": Tp,
+        "theta": theta,
     }
 
 
@@ -107,12 +110,12 @@ def print_table(ell_test, result, nmodes, indices=None, spot_modes=None):
         indices = list(range(len(ell_test)))
 
     for n in spot_modes:
-        print(f"\n--- Mode n={n+1} ---")
+        print(f"\n--- Mode n={n + 1} ---")
         print(f"{'ell':>8} {'FFT-log':>14} {'Direct':>14} {'Ratio':>10}")
         print("-" * 50)
 
         for i in indices:
-            r = result['ratio'][n, i]
+            r = result["ratio"][n, i]
             print(
                 f"{ell_test[i]:>8.0f} "
                 f"{result['fftlog'][n, i]:>14.6e} "
@@ -123,9 +126,9 @@ def print_table(ell_test, result, nmodes, indices=None, spot_modes=None):
 
 def quad_spot_check(theta_min, theta_max, nmodes, ell_spot):
     """Spot-check a few (mode, ℓ) values with adaptive quadrature."""
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"Adaptive quadrature spot check: [{theta_min}, {theta_max}]'")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     cosebis = COSEBIS(theta_min, theta_max, nmodes)
     theta_fine = np.logspace(np.log10(theta_min), np.log10(theta_max), 500_000)
@@ -133,7 +136,9 @@ def quad_spot_check(theta_min, theta_max, nmodes, ell_spot):
 
     Wn_fftlog = cosebis.get_Wn_log(np.array(ell_spot, dtype=float))
 
-    print(f"{'mode':>6} {'ell':>8} {'FFT-log':>14} {'quad':>14} {'trapz(500k)':>14} {'FFT/quad':>10} {'trapz/quad':>10}")
+    print(
+        f"{'mode':>6} {'ell':>8} {'FFT-log':>14} {'quad':>14} {'trapz(500k)':>14} {'FFT/quad':>10} {'trapz/quad':>10}"
+    )
     print("-" * 80)
 
     for n in range(min(nmodes, 5)):
@@ -144,7 +149,7 @@ def quad_spot_check(theta_min, theta_max, nmodes, ell_spot):
             r_fft = wn_fft / wn_quad if abs(wn_quad) > 1e-30 else np.nan
             r_trapz = wn_trapz / wn_quad if abs(wn_quad) > 1e-30 else np.nan
             print(
-                f"{n+1:>6d} {ell:>8.0f} {wn_fft:>14.6e} {wn_quad:>14.6e} "
+                f"{n + 1:>6d} {ell:>8.0f} {wn_fft:>14.6e} {wn_quad:>14.6e} "
                 f"{wn_trapz:>14.6e} {r_fft:>10.6f} {r_trapz:>10.6f}"
             )
 
@@ -154,28 +159,31 @@ def plot_results(ell_test, results, output_path):
     fig, axes = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
 
     for ax, (label, result) in zip(axes, results.items()):
-        nmodes = result['ratio'].shape[0]
-        cmap = plt.get_cmap('viridis', nmodes)
+        nmodes = result["ratio"].shape[0]
+        cmap = plt.get_cmap("viridis", nmodes)
 
         for n in range(nmodes):
-            valid = np.isfinite(result['ratio'][n])
+            valid = np.isfinite(result["ratio"][n])
             ax.plot(
-                ell_test[valid], result['ratio'][n, valid],
-                color=cmap(n), alpha=0.7, lw=1.2,
-                label=f"n={n+1}" if n < 10 else None,
+                ell_test[valid],
+                result["ratio"][n, valid],
+                color=cmap(n),
+                alpha=0.7,
+                lw=1.2,
+                label=f"n={n + 1}" if n < 10 else None,
             )
 
-        ax.axhline(1.0, color='k', ls='--', lw=0.8)
-        ax.axhspan(0.99, 1.01, color='green', alpha=0.1)
+        ax.axhline(1.0, color="k", ls="--", lw=0.8)
+        ax.axhspan(0.99, 1.01, color="green", alpha=0.1)
         ax.set_ylabel("FFT-log / Direct")
         ax.set_title(rf"$W_n(\ell)$ accuracy: {label}")
         ax.set_ylim(0.9, 1.1)
-        ax.legend(ncol=5, fontsize=7, loc='lower left')
+        ax.legend(ncol=5, fontsize=7, loc="lower left")
 
     axes[1].set_xlabel(r"$\ell$")
-    axes[1].set_xscale('log')
+    axes[1].set_xscale("log")
     fig.tight_layout()
-    fig.savefig(output_path, dpi=150, bbox_inches='tight')
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
     print(f"\nFigure saved: {output_path}")
     plt.close(fig)
 
@@ -200,17 +208,20 @@ def main():
     print_table(ell_test, result_fid, nmodes, indices=spot_idx)
 
     # --- Summary statistics ---
-    for label, result in [("Full [1,250]'", result_full), ("Fiducial [12,83]'", result_fid)]:
-        print(f"\n{'='*70}")
+    for label, result in [
+        ("Full [1,250]'", result_full),
+        ("Fiducial [12,83]'", result_fid),
+    ]:
+        print(f"\n{'=' * 70}")
         print(f"Summary: {label}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         for n in range(nmodes):
-            valid = np.isfinite(result['ratio'][n])
+            valid = np.isfinite(result["ratio"][n])
             if valid.any():
-                r = result['ratio'][n, valid]
+                r = result["ratio"][n, valid]
                 print(
-                    f"  n={n+1:>2d}: ratio range [{r.min():.4f}, {r.max():.4f}], "
-                    f"median={np.median(r):.4f}, |1-ratio| max={np.max(np.abs(1-r)):.4f}"
+                    f"  n={n + 1:>2d}: ratio range [{r.min():.4f}, {r.max():.4f}], "
+                    f"median={np.median(r):.4f}, |1-ratio| max={np.max(np.abs(1 - r)):.4f}"
                 )
 
     # --- Adaptive quadrature spot checks ---
@@ -227,14 +238,16 @@ def main():
     plot_results(ell_test, results, output_path)
 
     # --- Verdict ---
-    all_ratios = np.concatenate([
-        result_full['ratio'][np.isfinite(result_full['ratio'])],
-        result_fid['ratio'][np.isfinite(result_fid['ratio'])],
-    ])
+    all_ratios = np.concatenate(
+        [
+            result_full["ratio"][np.isfinite(result_full["ratio"])],
+            result_fid["ratio"][np.isfinite(result_fid["ratio"])],
+        ]
+    )
     max_err = np.max(np.abs(1 - all_ratios))
-    print(f"\n{'='*70}")
-    print(f"VERDICT")
-    print(f"{'='*70}")
+    print(f"\n{'=' * 70}")
+    print("VERDICT")
+    print(f"{'=' * 70}")
     print(f"Maximum |1 - ratio| across all modes, scale cuts, ℓ: {max_err:.6f}")
     if max_err < 0.01:
         print("PASS: FFT-log W_n(ℓ) accurate to <1%")

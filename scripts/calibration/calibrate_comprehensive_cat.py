@@ -36,7 +36,6 @@ obj = sp_joint.CalibrateCat()
 config = obj.read_config_set_params("config_mask.yaml")
 
 
-
 # %%
 obj._params
 
@@ -46,7 +45,7 @@ dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 # %%
 n_test = -1
-#n_test = 100000
+# n_test = 100000
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
@@ -57,12 +56,7 @@ if n_test > 0:
 
 # %%
 # ### Pre-processing ShapePipe flags
-masks, labels = sp_joint.get_masks_from_config(
-    config,
-    dat,
-    dat_ext,
-    verbose=True
-)
+masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext, verbose=True)
 
 mask_combined = sp_joint.Mask.from_list(
     masks,
@@ -75,7 +69,6 @@ mask_combined = sp_joint.Mask.from_list(
 sp_joint.print_mask_stats(dat.shape[0], masks, mask_combined)
 
 if obj._params["sky_regions"]:
-
     # MKDBEUG TODO: zooms as list in config
     zoom_ra = [200, 205]
     zoom_dec = [55, 60]
@@ -104,8 +97,8 @@ gal_metacal = metacal(
 )
 
 # %%
-g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = (
-    calibration.get_calibrated_m_c(gal_metacal)
+g_corr_mc, g_uncorr, w, mask_metacal, c, c_err = calibration.get_calibrated_m_c(
+    gal_metacal
 )
 
 num_ok = len(g_corr_mc[0])
@@ -166,7 +159,9 @@ mag = cat.get_col(dat, "mag", mask_combined._mask, mask_metacal)
 if "binned_mask" in config:
     cbm = config["binned_mask"]
     print("Binning data to obtain mask...")
-    area_deg2, pix = cs_cat.get_binned_area(ra, dec, nside=cbm["nside"], return_pix=True)
+    area_deg2, pix = cs_cat.get_binned_area(
+        ra, dec, nside=cbm["nside"], return_pix=True
+    )
     healpix_map = np.full(hp.nside2npix(cbm["nside"]), not cbm["good"])
     healpix_map[pix] = cbm["good"]
     print(f"Writing binned mask to file {cbm['output_path']}...")
@@ -195,12 +190,7 @@ add_cols = [
 ]
 add_cols_data = {}
 for key in add_cols:
-    add_cols_data[key] = cat.get_col(
-        dat,
-        key,
-        mask_combined._mask,
-        mask_metacal
-    )
+    add_cols_data[key] = cat.get_col(dat, key, mask_combined._mask, mask_metacal)
 
 # Keep original NOSHEAR column, override with 1P PSF values (FHP/MK hack)
 print(
@@ -243,9 +233,7 @@ for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
 
 # %%
-output_shape_cat_path = obj._params["input_path"].replace(
-    "comprehensive", "cut"
-)
+output_shape_cat_path = obj._params["input_path"].replace("comprehensive", "cut")
 output_shape_cat_path = output_shape_cat_path.replace("hdf5", "fits")
 
 cat.write_shape_catalog(
@@ -302,7 +290,6 @@ n_key = len(all_masks)
 cms = np.zeros((n_key, n_key, 2, 2))
 for idx in range(n_key):
     for jdx in range(n_key):
-
         if idx == jdx:
             continue
 
@@ -325,7 +312,6 @@ matrix_elements = ["True", "False"]
 
 for idx in range(n_key):
     for jdx in range(n_key):
-
         if idx == jdx:
             continue
 

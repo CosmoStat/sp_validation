@@ -8,43 +8,40 @@ functions. Built on the catalogue data layer in ``catalog`` (imported here as
 :Author: Martin Kilbinger
 """
 
-import sys
-import os
-
-import numpy as np
-import yaml
-
 import datetime
-from tqdm import tqdm
-
-from optparse import OptionParser
+import os
 from importlib.metadata import version
 
 import h5py
 import healsparse as hsp
 import numpy as np
-
+import yaml
 from astropy.io import fits
-from astropy.table import Column
-
-from cs_util import logging
-from cs_util import cat
 from cs_util import args as cs_args
-
-from . import format
-from . import calibration
-from . import catalog as sp_cat
+from cs_util import logging
 
 # Spatial-masking primitives now live in ``masks``; re-exported here so external
 # code using ``from sp_validation import catalog_builders as sp_joint`` keeps
 # resolving ``sp_joint.Mask``, ``sp_joint.get_masks_from_config``, etc.
 from sp_validation.masks import (
     Mask,
+    confusion_matrix,
+    correlation_matrix,
     get_masks_from_config,
     print_mask_stats,
-    correlation_matrix,
-    confusion_matrix,
 )
+
+from . import calibration, format
+from . import catalog as sp_cat
+
+# Names re-exported for external code that resolves them off this module.
+__all__ = [
+    "Mask",
+    "get_masks_from_config",
+    "print_mask_stats",
+    "correlation_matrix",
+    "confusion_matrix",
+]
 
 
 class BaseCat(object):
@@ -64,8 +61,8 @@ class BaseCat(object):
         Does not work from ipython or jupyter.
 
         """
-        # Read command line options
-        options = cs_args.parse_options(
+        # Read command line options (parses sys.argv; may exit on --help)
+        cs_args.parse_options(
             self._params,
             self._short_options,
             self._types,
@@ -74,17 +71,17 @@ class BaseCat(object):
 
         # Save calling command
         logging.log_command(args)
-        
+
     def read_config_set_params(self, fpath):
         """Read Config Set Params.
-        
+
         Read configuration file and sets class parameters.
-        
+
         Parameters
         ----------
         fpath : str
             inpput file path
-            
+
         Returns
         -------
         dict
@@ -101,7 +98,7 @@ class BaseCat(object):
             # Copy parameters to object
             for key in params:
                 self._params[key] = params[key]
-                
+
         return config
 
     def read_cat(self, load_into_memory=False, mode="r", hdu=1, name="data"):
@@ -200,7 +197,7 @@ class BaseCat(object):
         """
         if path is None:
             path = self._params["output_path"]
-            
+
         with h5py.File(path, "r") as f:
             header = dict(f.attrs)
         return header
@@ -226,14 +223,13 @@ class BaseCat(object):
             print("Creating hdf5 file")
 
         with h5py.File(output_path, "w") as f:
-
             self.write_hdf5_header(f)
 
             dset = f.create_dataset("data", data=dat)
             dset[:] = dat
 
         if self._params["verbose"]:
-            print(f"Done.")
+            print("Done.")
 
     def close_hd5(self):
         """Close HD5.
@@ -372,11 +368,11 @@ class JointCat(BaseCat):
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
                 hdu_list = fits.open(input_path)
-            except:
+            except Exception as err:
                 raise ValueError(
                     f"Could not open file {input_path} at HDU"
                     + f" #{self._params['hdu']}"
-                )
+                ) from err
             hdu_lists.append(hdu_list)
 
             this_n = int(hdu_list[self._params["hdu"]].header["NAXIS2"])
@@ -421,9 +417,7 @@ class JointCat(BaseCat):
         n_col += 1
 
         if self._params["verbose"]:
-            print(
-                f"Number of input (output) columns = {len(col_names)} ({n_col})"
-            )
+            print(f"Number of input (output) columns = {len(col_names)} ({n_col})")
 
         return col_names, formats, ndim, n_col
 
@@ -494,9 +488,7 @@ class JointCat(BaseCat):
         dtype_tmp_list = []
         for name in ndim:
             if ndim[name] == 1:
-                dtype_tmp_list.append(
-                    (name, self.dtype_out(name, dat[name].dtype))
-                )
+                dtype_tmp_list.append((name, self.dtype_out(name, dat[name].dtype)))
             else:
                 for jdx in range(ndim[name]):
                     dtype_tmp_list.append(
@@ -540,7 +532,6 @@ class JointCat(BaseCat):
         )
 
         with h5py.File(output_path, "w") as f:
-
             self.write_hdf5_header(f)
 
             dset = f.create_dataset("data", data=dat_all)
@@ -592,22 +583,20 @@ class JointCat(BaseCat):
         # Read data
         start = end = 0
         for idx, patch in enumerate(patches):
-
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
                 dat = fits.getdata(input_path, self._params["hdu"])
                 # dat = hdu_lists[idx][self._params["hdu"]].data
 
                 hdu_lists[idx].close()
-            except:
+            except Exception as err:
                 raise ValueError(
                     f"Could not read data of file {input_path} at HDU"
                     + f" #{self._params['hdu']}"
-                )
+                ) from err
 
             # Create empty lists if first patch
             if idx == 0:
-
                 col_names, formats, ndim, n_col = self.get_col_info(dat)
                 dat_all = self.init_data(n_col, n_obj, ndim, dat)
 
@@ -624,22 +613,19 @@ class JointCat(BaseCat):
                 else:
                     # Copy all components of multi-D column
                     for jdx in range(ndim[name]):
-                        dat_all[names_out[i_col + jdx]][start:end] = dat[name][
-                            :, jdx
-                        ]
+                        dat_all[names_out[i_col + jdx]][start:end] = dat[name][:, jdx]
                 i_col += ndim[name]
             # Add patch number
             dat_all["patch"][start:end] = patch[1:]
 
             if i_col + 1 != n_col:
                 raise ValueError(
-                    "Inconsistent number of columns, {i_col + 1}"
-                    + f" != {n_col}"
+                    "Inconsistent number of columns, {i_col + 1}" + f" != {n_col}"
                 )
             if self._params["verbose"]:
                 print(
                     f"{patch}: Added {len(dat)} (~{format.millify(len(dat))})"
-                    + f" objects (from {start} to {end-1})."
+                    + f" objects (from {start} to {end - 1})."
                 )
             start = end
 
@@ -790,9 +776,7 @@ class ApplyHspMasks(BaseCat):
                 stop=True,
                 sep="\\",
             )
-            self._params["aux_mask_num"] = len(
-                self._params["aux_mask_file_list"]
-            )
+            self._params["aux_mask_num"] = len(self._params["aux_mask_file_list"])
             self._params["aux_mask_label_list"] = cs_args.my_string_split(
                 self._params["aux_mask_labels"],
                 verbose=self._params["verbose"],
@@ -802,7 +786,7 @@ class ApplyHspMasks(BaseCat):
             )
         else:
             self._params["aux_mask_file_list"] = []
-            
+
         if "verbose" not in self._params:
             self._params["verbose"] = False
 
@@ -850,22 +834,22 @@ class ApplyHspMasks(BaseCat):
                 + f"nside{self._params['nside']}_n{bit}.hsp"
             )
         return paths
-    
+
     def get_mask(self, path):
         """Get Mask.
-        
+
         Read from file and return healsparse mask.
-        
+
         Parameters
         ----------
         path: str
             input path
-        
+
         Returns
         -------
         hsp.HealSparseMap
             mask
-    
+
         """
         if self._params["verbose"]:
             print(f"Reading mask file {path}...")
@@ -1006,9 +990,9 @@ class ApplyHspMasks(BaseCat):
 
     def write_hdf5_file(self, dat, dat_new=None, masks=None):
         """Write HDF5 File.
-        
+
         Save data to a hdf5 file on disk.
-        
+
         Parameters
         ----------
         dat : h5py dataset
@@ -1022,7 +1006,6 @@ class ApplyHspMasks(BaseCat):
         -------
         """
         with h5py.File(self._params["output_path"], "w") as f:
-
             self.write_hdf5_header(f)
 
             dset = f.create_dataset(
@@ -1044,17 +1027,17 @@ class ApplyHspMasks(BaseCat):
                 dset[i:end] = dat[i:end]  # Write chunk to dataset
                 if dat_new is not None:
                     dset_new[i:end] = dat_new[i:end]  # Write chunk to dataset
-                    
+
             if masks is not None:
                 # Adding mask descriptions to header
                 dtype = np.dtype([("expr", "S20"), ("desc", "S20")])
                 descr_arr = np.zeros(len(masks), dtype=dtype)
                 for idx, mask in enumerate(masks):
                     descr_arr[idx] = (
-                        (mask._descr.encode("utf-8"), mask._label.encode("utf-8"))
+                        mask._descr.encode("utf-8"),
+                        mask._label.encode("utf-8"),
                     )
                 f.create_dataset("applied_masks", data=descr_arr)
-                
 
     def write_hdf5_header(self, hd5file):
         """Write HDF5 Header.
@@ -1168,7 +1151,7 @@ class CalibrateCat(BaseCat):
                 return dat[()]
         else:
             return dat, dat_ext
-        
+
     def add_params_to_FITS_header(self, header, cm=None):
 
         header_new = fits.Header()
@@ -1178,15 +1161,15 @@ class CalibrateCat(BaseCat):
         descriptions = ["input comprehensive catalogue"]
         for key, descr in zip(keys, descriptions):
             header_new[key] = (key, descr)
-            
+
         # Metacal parameters
         if cm is not None:
             for idx, (descr, value) in enumerate(cm.items()):
                 key = f"mc_par_{idx}"
-                header_new[key] = (descr, value)             
-        
+                header_new[key] = (descr, value)
+
         header.update(header_new)
-        
+
     def run(self):
         """Run.
 
@@ -1196,7 +1179,6 @@ class CalibrateCat(BaseCat):
 
 
 class ReadCat:
-
     def __init__(self):
         self.params_default()
 
@@ -1239,9 +1221,9 @@ def compute_weights_gatti(
     size_ratio_max=3,
 ):
     """Compute Weights Gatti.
-    
+
     Compute Gatti et al. (2021) DES-like weights.
-    
+
     """
     calibration.fill_cat_gal(
         cat_gal,
@@ -1250,7 +1232,7 @@ def compute_weights_gatti(
         gal_metacal,
         mask_combined._mask,
         mask_metacal,
-        purpose="weights"
+        purpose="weights",
     )
 
     cat_gal["w_des"] = calibration.get_w_des(
@@ -1271,17 +1253,11 @@ def compute_PSF_leakage(
     mask_metacal,
     num_bins=20,
 ):
-    """Compute PSF Leakage.
-    
-    """
+    """Compute PSF Leakage."""
     cat_gal["e1"] = g_corr_mc[0]
     cat_gal["e2"] = g_corr_mc[1]
-    cat_gal["e1_PSF"] = sp_cat.get_col(
-        dat, "e1_PSF", mask_combined._mask, mask_metacal
-    )
-    cat_gal["e2_PSF"] = sp_cat.get_col(
-        dat, "e2_PSF", mask_combined._mask, mask_metacal
-    )
+    cat_gal["e1_PSF"] = sp_cat.get_col(dat, "e1_PSF", mask_combined._mask, mask_metacal)
+    cat_gal["e2_PSF"] = sp_cat.get_col(dat, "e2_PSF", mask_combined._mask, mask_metacal)
 
     weight_type = "des"
     key = f"w_{weight_type}"
@@ -1292,7 +1268,7 @@ def compute_PSF_leakage(
         alpha_1, alpha_2 = calibration.get_alpha_leakage_per_object(
             cat_gal, num_bins, weight_type
         )
-    except:
+    except Exception:
         alpha_1, alpha_2 = -99, -99
 
     return alpha_1, alpha_2

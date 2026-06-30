@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 import treecorr
-
 from plotting_utils import compute_chi2_pte
+
 from sp_validation.b_modes import calculate_cosebis
 
 
@@ -49,7 +49,9 @@ def main():
 
     # Load precomputed fine-binned 2PCF
     t0 = time.time()
-    gg = treecorr.GGCorrelation(min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin")
+    gg = treecorr.GGCorrelation(
+        min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin"
+    )
     gg.read(snakemake.input.xi_integration)
     print(f"[TIMING] Load 2PCF: {time.time() - t0:.2f}s")
 
@@ -73,15 +75,22 @@ def main():
         )
     except Exception as e:
         if "NoConvergence" in str(type(e).__name__) or "NoConvergence" in str(e):
-            print(f"WARNING: polyroots convergence failure for ({i_min}, {i_max}), writing NaN PTEs")
+            print(
+                f"WARNING: polyroots convergence failure for ({i_min}, {i_max}), writing NaN PTEs"
+            )
             nan = float("nan")
             output = {
-                "i_min": i_min, "i_max": i_max,
-                "theta_min": float(theta_min), "theta_max": float(theta_max),
-                "En": [], "Bn": [],
+                "i_min": i_min,
+                "i_max": i_max,
+                "theta_min": float(theta_min),
+                "theta_max": float(theta_max),
+                "En": [],
+                "Bn": [],
                 "nmodes_6": {"chi2_E": nan, "chi2_B": nan, "pte_E": nan, "pte_B": nan},
                 "nmodes_20": {"chi2_E": nan, "chi2_B": nan, "pte_E": nan, "pte_B": nan},
-                "pte_B": nan, "chi2_B": nan, "chi2_E": nan,
+                "pte_B": nan,
+                "chi2_B": nan,
+                "chi2_E": nan,
                 "convergence_failure": True,
             }
             output_path = Path(snakemake.output.pte_json)
@@ -102,7 +111,7 @@ def main():
 
     # Compute PTEs for both 6 and 20 modes
     # 6 modes: use first 6
-    cov_B_6 = cov_full[nmodes:nmodes+6, nmodes:nmodes+6]
+    cov_B_6 = cov_full[nmodes : nmodes + 6, nmodes : nmodes + 6]
     cov_E_6 = cov_full[:6, :6]
     chi2_B_6, pte_B_6, _ = compute_chi2_pte(Bn_full[:6], cov_B_6)
     chi2_E_6, pte_E_6, _ = compute_chi2_pte(En_full[:6], cov_E_6)

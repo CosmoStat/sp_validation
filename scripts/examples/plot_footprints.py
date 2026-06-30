@@ -43,7 +43,9 @@ for ver in versions:
 
 def create_sp_map(ra, dec, nside_coverage=32, nside_map=2048):
 
-    sp_map = hsp.HealSparseMap.make_empty(nside_coverage, nside_map, dtype=np.float32, sentinel=np.nan)
+    sp_map = hsp.HealSparseMap.make_empty(
+        nside_coverage, nside_map, dtype=np.float32, sentinel=np.nan
+    )
 
     # Get pixel list corresponding to coordinates
     hpix = hp.ang2pix(nside_map, ra, dec, nest=True, lonlat=True)
@@ -55,7 +57,9 @@ def create_sp_map(ra, dec, nside_coverage=32, nside_map=2048):
     unique_hpix = np.array(list(pixel_counts.keys()))
 
     # Number of objects
-    values = np.array(list(pixel_counts.values()), dtype=np.float32)  # Use float32 to match dtype
+    values = np.array(
+        list(pixel_counts.values()), dtype=np.float32
+    )  # Use float32 to match dtype
 
     # Create maps with numbers per pixel
     sp_map[unique_hpix] = values
@@ -80,22 +84,14 @@ def plot_area(
     extend = [ra_low, ra_high, dec_low, dec_high]
 
     projection = skyproj.McBrydeSkyproj(
-        ax=ax,
-        lon_0=ra_0,
-        extent=extend,
-        autorescale=True,
-        vmax=vmax
+        ax=ax, lon_0=ra_0, extent=extend, autorescale=True, vmax=vmax
     )
 
-    _ = projection.draw_hspmap(
-        hsp_map, lon_range=extend[0:2],
-        lat_range=extend[2:]
-    )
+    _ = projection.draw_hspmap(hsp_map, lon_range=extend[0:2], lat_range=extend[2:])
 
 
 # +
 for ver in versions:
-
     ra = cats[ver]["RA"]
     dec = cats[ver]["Dec"]
 
@@ -108,7 +104,6 @@ for ver in versions:
     dec_high = 70
 
     vmax = 60
-
 
     plt.clf()
 
@@ -125,5 +120,3 @@ for ver in versions:
 
 
 # -
-
-

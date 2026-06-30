@@ -346,9 +346,9 @@ class TestGetTheoCell:
             rel_diff = np.abs(cl_camb - cl_ccl) / cl_ccl
             max_rel_diff = rel_diff.max()
 
-            assert (
-                max_rel_diff < 0.08
-            ), f"CCL and CAMB backends differ by >8%: {max_rel_diff:.1%}"
+            assert max_rel_diff < 0.08, (
+                f"CCL and CAMB backends differ by >8%: {max_rel_diff:.1%}"
+            )
         except ImportError:
             pytest.skip("CAMB not available")
 

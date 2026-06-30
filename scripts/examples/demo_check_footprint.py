@@ -55,7 +55,7 @@ obj.update_params()
 # -
 
 # Read catalogue
-#dat = obj.read_cat(load_into_memory=False, mode="r")
+# dat = obj.read_cat(load_into_memory=False, mode="r")
 hdu_list = fits.open(obj._params["input_path"])
 dat = hdu_list[hdu].data
 
@@ -68,7 +68,7 @@ nside_coverage = footprint.nside_coverage
 ipix = hp.ang2pix(nside_coverage, dat[key_ra], dat[key_dec], lonlat=True)
 
 ## Get pixels in footprint, where mask is "good_value"
-in_footprint = (footprint[ipix] == good_value)
+in_footprint = footprint[ipix] == good_value
 
 # Get numbers of pixels in footprint
 ipix_in_footprint = ipix[in_footprint]
@@ -76,11 +76,11 @@ ipix_in_footprint = ipix[in_footprint]
 # Get indices of coordinates in footprint
 idx_np = np.where(in_footprint)[0]
 
-if obj._params['verbose']:
+if obj._params["verbose"]:
     n_in_footprint = len(idx_np)
     print(
-        f'{n_in_footprint}/{len(dat[key_ra])} ='
-        + f' {n_in_footprint/len(dat[key_ra]):.2%} objects in footprint'
+        f"{n_in_footprint}/{len(dat[key_ra])} ="
+        + f" {n_in_footprint / len(dat[key_ra]):.2%} objects in footprint"
     )
 
 # Restrict data to footprint
@@ -88,9 +88,13 @@ dat_in_footprint = dat[idx_np]
 
 #  Write data in footprint to disk
 t = Table(dat_in_footprint)
-if obj._params['verbose']:
-    print(f'Writing objects in footprint to {obj._params["output_path"]}')
+if obj._params["verbose"]:
+    print(f"Writing objects in footprint to {obj._params['output_path']}")
 cols = []
-for col_ind,key in enumerate(t.keys()):
-    cols.append(fits.Column(name=key, array=t[key], format=dat_in_footprint.columns[col_ind].format))
+for col_ind, key in enumerate(t.keys()):
+    cols.append(
+        fits.Column(
+            name=key, array=t[key], format=dat_in_footprint.columns[col_ind].format
+        )
+    )
 cs_cat.write_fits_BinTable_file(cols, obj._params["output_path"])

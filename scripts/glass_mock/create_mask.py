@@ -16,24 +16,37 @@ def get_parser():
         fromfile_prefix_chars="@",
     )
     parser.add_argument(
-        "-n", "--nside",
-        help="Nside for the simulation. Nside=Lmax", type=int, default=32,
+        "-n",
+        "--nside",
+        help="Nside for the simulation. Nside=Lmax",
+        type=int,
+        default=32,
     )
     parser.add_argument(
-        "-p", "--path",
+        "-p",
+        "--path",
         help="Path to the galaxy catalog used to generate the mask",
-        type=str, default="./",
+        type=str,
+        default="./",
     )
     parser.add_argument(
-        "-o", "--output", help="Output path for the mask", type=str, default="./",
+        "-o",
+        "--output",
+        help="Output path for the mask",
+        type=str,
+        default="./",
     )
     parser.add_argument(
-        "--ra_col", help="Column name for the right ascension",
-        type=str, default="RA",
+        "--ra_col",
+        help="Column name for the right ascension",
+        type=str,
+        default="RA",
     )
     parser.add_argument(
-        "--dec_col", help="Column name for the declination",
-        type=str, default="DEC",
+        "--dec_col",
+        help="Column name for the declination",
+        type=str,
+        default="DEC",
     )
     return parser
 

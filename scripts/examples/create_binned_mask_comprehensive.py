@@ -68,9 +68,7 @@ hsp_obj._params["verbose"] = True
 
 # %%
 # Load and initialise masks
-masks, labels = sp_joint.get_masks_from_config(
-    config, dat, dat_ext, verbose=True
-)
+masks, labels = sp_joint.get_masks_from_config(config, dat, dat_ext, verbose=True)
 
 mask_combined = sp_joint.Mask.from_list(
     masks,
@@ -98,9 +96,7 @@ for my_mask in masks:
     my_mask.add_summary_to_FITS_header(header)
 
 # Transform in list form
-extra_header = [
-    (key, header[key], header.comments[key]) for key in header.keys()
-]
+extra_header = [(key, header[key], header.comments[key]) for key in header.keys()]
 
 hp.write_map(
     output_path,

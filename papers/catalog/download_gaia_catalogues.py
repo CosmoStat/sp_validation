@@ -12,12 +12,11 @@ if ipython is not None:
     ipython.run_line_magic("autoreload", "2")
     ipython.run_line_magic("reload_ext", "log_cell_time")
 
-import numpy as np
 import time
-from astroquery.gaia import Gaia
-import astropy.units
-from astropy.coordinates import SkyCoord
 from textwrap import dedent
+
+import numpy as np
+from astroquery.gaia import Gaia
 
 
 def get_bins(results, key="phot_g_mean_mag", n_bins=3):
@@ -35,7 +34,7 @@ def get_bins(results, key="phot_g_mean_mag", n_bins=3):
         subsets.append(this_subset)
 
         print(
-            f"  Bin {i+1}: {quantiles[i]:.2f}, {quantiles[i+1]:.2f}, N={len(this_subset)}"
+            f"  Bin {i + 1}: {quantiles[i]:.2f}, {quantiles[i + 1]:.2f}, N={len(this_subset)}"
         )
 
     return subsets, quantiles
@@ -47,16 +46,15 @@ def do_query(do_async=True, nmax=3_000_000):
     query = dedent(
         f"""
         SELECT TOP {nmax} ra, dec, phot_g_mean_mag, ruwe
-		FROM gaiadr3.gaia_source
-		WHERE dec > 30
-			AND dec < 75
-			AND phot_g_mean_mag < 20
-    		AND phot_g_mean_mag IS NOT NULL
+        FROM gaiadr3.gaia_source
+        WHERE dec > 30
+            AND dec < 75
+            AND phot_g_mean_mag < 20
+            AND phot_g_mean_mag IS NOT NULL
             AND ruwe < 1.4
         ORDER BY random_index
-	"""
+        """
     ).strip()
-
 
     # Launch the query
     if not do_async:
@@ -81,7 +79,6 @@ def do_query(do_async=True, nmax=3_000_000):
 def write_subsets(subsets, quantiles):
 
     for idx, subset in enumerate(subsets):
-
         if idx == 0:
             out_path = f"gaia_stars_g_smaller_{quantiles[idx + 1]}.fits"
         elif idx == len(subsets) - 1:

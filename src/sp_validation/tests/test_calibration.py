@@ -29,8 +29,7 @@ import pytest
 from astropy.table import Table
 
 from sp_validation import calibration
-from sp_validation.calibration import metacal, mask_gal_size, mask_gal_SNR
-
+from sp_validation.calibration import mask_gal_size, mask_gal_SNR, metacal
 
 # Fixed, compact inputs shared across the tests.
 #
@@ -53,9 +52,11 @@ def make_fake_gal_metacal(R=R, g1=G1, g2=G2, w=W, mask=MASK):
     """
     return types.SimpleNamespace(
         R=np.asarray(R, dtype=float),
-        ns={"g1": np.asarray(g1, dtype=float),
+        ns={
+            "g1": np.asarray(g1, dtype=float),
             "g2": np.asarray(g2, dtype=float),
-            "w": np.asarray(w, dtype=float)},
+            "w": np.asarray(w, dtype=float),
+        },
         mask_dict={"ns": np.asarray(mask, dtype=bool)},
     )
 
@@ -82,18 +83,27 @@ def test_get_calibrated_quantities_pins_inv_R_application(gal_metacal):
     # Masked uncalibrated shears: indices 0, 1, 3, 4 of G1 / G2.
     npt.assert_allclose(
         g_uncorr,
-        [[0.10, -0.20, 0.05, -0.15],
-         [-0.05, 0.15, 0.20, 0.10]],
+        [[0.10, -0.20, 0.05, -0.15], [-0.05, 0.15, 0.20, 0.10]],
         rtol=1e-12,
     )
 
     # Calibrated shears: committed literals from an observed estimator run.
     npt.assert_allclose(
         g_corr,
-        [[0.1482587064676617, -0.30149253731343284,
-          0.05174129353233831, -0.22487562189054724],
-         [-0.07562189054726369, 0.2208955223880597,
-          0.2756218905472637, 0.1482587064676617]],
+        [
+            [
+                0.1482587064676617,
+                -0.30149253731343284,
+                0.05174129353233831,
+                -0.22487562189054724,
+            ],
+            [
+                -0.07562189054726369,
+                0.2208955223880597,
+                0.2756218905472637,
+                0.1482587064676617,
+            ],
+        ],
         rtol=1e-12,
     )
 
@@ -136,27 +146,33 @@ def test_get_calibrated_m_c_pins_additive_bias_and_corrected_shear(gal_metacal):
     refactor that changed the additive-bias subtraction (e.g. subtracting the
     uncorrected c instead of inv(R) @ c) would break the closed-form check.
     """
-    g_corr_mc, g_uncorr, w, mask, c, c_err = calibration.get_calibrated_m_c(
-        gal_metacal
-    )
+    g_corr_mc, g_uncorr, w, mask, c, c_err = calibration.get_calibrated_m_c(gal_metacal)
 
     # Additive bias = component-wise mean of the masked uncalibrated shears.
     npt.assert_allclose(c, [-0.05, 0.10], rtol=1e-12)
     npt.assert_allclose(c, np.mean(g_uncorr, axis=1), rtol=1e-12)
 
     # Error = population std (ddof=0).
-    npt.assert_allclose(
-        c_err, [0.12747548783981963, 0.09354143466934854], rtol=1e-12
-    )
+    npt.assert_allclose(c_err, [0.12747548783981963, 0.09354143466934854], rtol=1e-12)
     npt.assert_allclose(c_err, np.std(g_uncorr, axis=1), rtol=1e-12)
 
     # m+c-corrected shear: committed literals.
     npt.assert_allclose(
         g_corr_mc,
-        [[0.22985074626865673, -0.21990049751243781,
-          0.13333333333333333, -0.14328358208955222],
-         [-0.21791044776119406, 0.07860696517412935,
-          0.13333333333333336, 0.005970149253731349]],
+        [
+            [
+                0.22985074626865673,
+                -0.21990049751243781,
+                0.13333333333333333,
+                -0.14328358208955222,
+            ],
+            [
+                -0.21791044776119406,
+                0.07860696517412935,
+                0.13333333333333336,
+                0.005970149253731349,
+            ],
+        ],
         rtol=1e-12,
     )
 
@@ -292,7 +308,7 @@ def test_metacal_R_matrix_recovers_injected_response():
         masking_type="gal",
         step=0.01,
         prefix="NGMIX",
-        size_corr_ell=False,   # avoid the in-place T mutation; clean linear cut
+        size_corr_ell=False,  # avoid the in-place T mutation; clean linear cut
         global_R_weight=None,  # unweighted mean over objects
     )
 
@@ -367,9 +383,7 @@ def test_mask_gal_size_boolean_mask():
 
     mask = mask_gal_size(T, Tpsf, rel_size_min=0.5, rel_size_max=3.0)
 
-    expected = np.array(
-        [False, False, False, True, True, True, False, False, False]
-    )
+    expected = np.array([False, False, False, True, True, True, False, False, False])
     npt.assert_array_equal(mask, expected)
 
     # TEETH: tightening the lower bound to 1.0 drops the 0.75 element.

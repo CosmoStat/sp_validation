@@ -17,17 +17,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import treecorr
-from scipy import stats
-
 from cosmo_numba.B_modes.cosebis import COSEBIS
-from sp_validation.b_modes import calculate_cosebis, scale_cut_to_bins
-
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
 )
 
+from sp_validation.b_modes import calculate_cosebis, scale_cut_to_bins
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -108,7 +105,9 @@ def main():
     print("Loading 1,000-bin ξ±...")
     gg_1k = _load_gg(snakemake.input.xi_1k, min_sep_int, max_sep_int, nbins_1k)
     print("Loading 10,000-bin ξ±...")
-    gg_10k = _load_gg(snakemake.input.xi_10k, min_sep_int, max_sep_int, nbins_10k, columns_only=True)
+    gg_10k = _load_gg(
+        snakemake.input.xi_10k, min_sep_int, max_sep_int, nbins_10k, columns_only=True
+    )
 
     # Compute COSEBIS from 1,000-bin ξ± (with covariance for PTE baseline)
     print("\nComputing COSEBIS from 1,000-bin ξ±...")

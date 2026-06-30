@@ -19,8 +19,19 @@ import pytest
 
 # Binary/output extensions that should never be tracked under a scripts/ dir.
 _OUTPUT_SUFFIXES = {
-    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".pdf",
-    ".fits", ".fits.gz", ".npy", ".npz", ".h5", ".hdf5", ".pkl",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".svg",
+    ".pdf",
+    ".fits",
+    ".fits.gz",
+    ".npy",
+    ".npz",
+    ".h5",
+    ".hdf5",
+    ".pkl",
 }
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -31,7 +42,9 @@ def _tracked_files():
     try:
         out = subprocess.run(
             ["git", "-C", str(_REPO_ROOT), "ls-files"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None

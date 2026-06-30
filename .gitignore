@@ -134,6 +134,9 @@ uv.lock
 # mkdocs documentation
 /site
 
+# ruff
+.ruff_cache/
+
 # mypy
 .mypy_cache/
 .dmypy.json
@@ -192,3 +195,6 @@ papers/catalog/plots/*.pdf
 
 # SLURM run logs from cosmo_val validation runs
 papers/cosmo_val/logs/
+
+# Ignore scratch notebooks
+scratch/*/*.ipynb

@@ -5,7 +5,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-
 from plotting_utils import PAPER_MPLSTYLE
 
 

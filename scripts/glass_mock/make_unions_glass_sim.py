@@ -45,39 +45,61 @@ def get_parser():
     parser.add_argument("-s", "--seed", help="Random seed", type=int, default=42)
     parser.add_argument("-N", "--number", help="Mock Number", type=int, default=0)
     parser.add_argument(
-        "-n", "--nside",
-        help="Nside for the simulation. Nside=Lmax", type=int, default=32,
+        "-n",
+        "--nside",
+        help="Nside for the simulation. Nside=Lmax",
+        type=int,
+        default=32,
     )
     parser.add_argument(
-        "-ne", "--neff",
-        help="Effective number of galaxies per arcmin^2", type=float, default=6.0905,
+        "-ne",
+        "--neff",
+        help="Effective number of galaxies per arcmin^2",
+        type=float,
+        default=6.0905,
     )
     parser.add_argument(
-        "-p", "--path", help="Output path to save the mocks", type=str, default="./",
+        "-p",
+        "--path",
+        help="Output path to save the mocks",
+        type=str,
+        default="./",
     )
     parser.add_argument(
-        "-c", "--cls",
-        help="Pre-compute and saves the matter shell cls", action="store_true",
+        "-c",
+        "--cls",
+        help="Pre-compute and saves the matter shell cls",
+        action="store_true",
     )
     parser.add_argument("-t", "--test", help="Test run", action="store_true")
     parser.add_argument(
-        "-sg", "--sigmae",
-        help="Set sigma of intrinsic ellipticity", type=float, default=0.2684,
+        "-sg",
+        "--sigmae",
+        help="Set sigma of intrinsic ellipticity",
+        type=float,
+        default=0.2684,
     )
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
     parser.add_argument(
-        "-nz", "--pathnz",
-        help="Path to the n(z) file", type=str,
+        "-nz",
+        "--pathnz",
+        help="Path to the n(z) file",
+        type=str,
         default="/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt",
     )
     parser.add_argument(
-        "-m", "--mask",
-        help="Path to the mask", type=str,
+        "-m",
+        "--mask",
+        help="Path to the mask",
+        type=str,
         default="/n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits",
     )
     parser.add_argument(
-        "-ia", "--ia_bias",
-        help="Intrinsic alignment bias for CCL", type=float, default=None,
+        "-ia",
+        "--ia_bias",
+        help="Intrinsic alignment bias for CCL",
+        type=float,
+        default=None,
     )
     return parser
 
@@ -93,13 +115,21 @@ class Sky:
         if args.test:
             print("[!!!] Running in test mode [!!!]")
             self.config = GlassMockConfig.from_planck18(
-                nside=32, seed=args.seed, n_arcmin2=0.0824,
-                dx=120.0, zmax=0.5, sigma_e=args.sigmae, ia_bias=args.ia_bias,
+                nside=32,
+                seed=args.seed,
+                n_arcmin2=0.0824,
+                dx=120.0,
+                zmax=0.5,
+                sigma_e=args.sigmae,
+                ia_bias=args.ia_bias,
             )
         else:
             self.config = GlassMockConfig.from_planck18(
-                nside=args.nside, seed=args.seed, n_arcmin2=args.neff,
-                sigma_e=args.sigmae, ia_bias=args.ia_bias,
+                nside=args.nside,
+                seed=args.seed,
+                n_arcmin2=args.neff,
+                sigma_e=args.sigmae,
+                ia_bias=args.ia_bias,
             )
 
         self.test = args.test
@@ -184,8 +214,18 @@ class Sky:
         fits = fitsio.FITS(out_file, "rw", clobber=True)
         fits.write(None)
         fits.create_table_hdu(
-            names=["RA", "Dec", "e1", "e2", "w", "n1", "n2",
-                   "TOM_BIN_ID", "TRUE_Z", "PHOTO_Z"],
+            names=[
+                "RA",
+                "Dec",
+                "e1",
+                "e2",
+                "w",
+                "n1",
+                "n2",
+                "TOM_BIN_ID",
+                "TRUE_Z",
+                "PHOTO_Z",
+            ],
             formats=["D", "D", "E", "E", "D", "E", "E", "J", "D", "D"],
             extname="SOURCE_CATALOGUE",
         )
@@ -215,7 +255,9 @@ class Sky:
                     gal_lon, gal_lat, gal_ellip, kappa_i, gamm1_i, gamm2_i
                 )
                 noise_she = glass.galaxies.galaxy_shear(
-                    gal_lon, gal_lat, gal_ellip,
+                    gal_lon,
+                    gal_lat,
+                    gal_ellip,
                     np.zeros(np.shape(kappa_i)),
                     np.zeros(np.shape(gamm1_i)),
                     np.zeros(np.shape(gamm2_i)),

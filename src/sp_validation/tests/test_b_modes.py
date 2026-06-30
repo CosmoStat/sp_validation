@@ -68,6 +68,7 @@ def _eb_inputs():
 # 1. correlation_from_covariance
 # ---------------------------------------------------------------------------
 
+
 def test_correlation_from_covariance_exact():
     """Pin the correlation matrix derived from a known SPD covariance.
 
@@ -80,18 +81,22 @@ def test_correlation_from_covariance_exact():
     correlation, and the unit-diagonal / known off-diagonal structure would
     break under any rescaling bug in the normalization.
     """
-    cov = np.array([
-        [4.0, 2.0, 0.0],
-        [2.0, 9.0, -3.0],
-        [0.0, -3.0, 16.0],
-    ])
+    cov = np.array(
+        [
+            [4.0, 2.0, 0.0],
+            [2.0, 9.0, -3.0],
+            [0.0, -3.0, 16.0],
+        ]
+    )
     corr = b_modes.correlation_from_covariance(cov)
 
-    expected = np.array([
-        [1.0, 1.0 / 3.0, 0.0],
-        [1.0 / 3.0, 1.0, -1.0 / 4.0],
-        [0.0, -1.0 / 4.0, 1.0],
-    ])
+    expected = np.array(
+        [
+            [1.0, 1.0 / 3.0, 0.0],
+            [1.0 / 3.0, 1.0, -1.0 / 4.0],
+            [0.0, -1.0 / 4.0, 1.0],
+        ]
+    )
     npt.assert_allclose(corr, expected, rtol=1e-12, atol=0)
     # Diagonal is exactly unity, off-diagonal symmetric.
     npt.assert_allclose(np.diag(corr), np.ones(3), rtol=0, atol=1e-14)
@@ -104,11 +109,13 @@ def test_correlation_from_covariance_has_teeth():
     Flipping the sign of cov[0,1] flips the (0,1) correlation; the pinned
     +1/3 must NOT survive this perturbation.
     """
-    cov = np.array([
-        [4.0, 2.0, 0.0],
-        [2.0, 9.0, -3.0],
-        [0.0, -3.0, 16.0],
-    ])
+    cov = np.array(
+        [
+            [4.0, 2.0, 0.0],
+            [2.0, 9.0, -3.0],
+            [0.0, -3.0, 16.0],
+        ]
+    )
     cov_perturbed = cov.copy()
     cov_perturbed[0, 1] = cov_perturbed[1, 0] = -2.0
     corr_perturbed = b_modes.correlation_from_covariance(cov_perturbed)
@@ -119,6 +126,7 @@ def test_correlation_from_covariance_has_teeth():
 # ---------------------------------------------------------------------------
 # 2. scale_cut_to_bins
 # ---------------------------------------------------------------------------
+
 
 def test_scale_cut_to_bins_known_cuts():
     """Pin (start_bin, stop_bin) for known cuts on the log grid.
@@ -182,16 +190,19 @@ def test_find_conservative_scale_cut_key_conservative_and_fallthrough():
       req (4, 20): no key fits inside [4,20]; closest is (5,30)
                    (dist |5-4|+|30-20| = 11, beats all others).
     """
-    assert b_modes.find_conservative_scale_cut_key(
-        _SCALE_CUT_KEYS, (2.0, 80.0)
-    ) == (2.0, 80.0)
-    assert b_modes.find_conservative_scale_cut_key(
-        _SCALE_CUT_KEYS, (1.5, 60.0)
-    ) == (2.0, 50.0)
+    assert b_modes.find_conservative_scale_cut_key(_SCALE_CUT_KEYS, (2.0, 80.0)) == (
+        2.0,
+        80.0,
+    )
+    assert b_modes.find_conservative_scale_cut_key(_SCALE_CUT_KEYS, (1.5, 60.0)) == (
+        2.0,
+        50.0,
+    )
     # No conservative match -> closest-by-distance fallthrough.
-    assert b_modes.find_conservative_scale_cut_key(
-        _SCALE_CUT_KEYS, (4.0, 20.0)
-    ) == (5.0, 30.0)
+    assert b_modes.find_conservative_scale_cut_key(_SCALE_CUT_KEYS, (4.0, 20.0)) == (
+        5.0,
+        30.0,
+    )
 
 
 def test_find_conservative_scale_cut_key_has_teeth():
@@ -212,6 +223,7 @@ def test_find_conservative_scale_cut_key_has_teeth():
 # ---------------------------------------------------------------------------
 # 4. calculate_eb_statistics  (headline)
 # ---------------------------------------------------------------------------
+
 
 def test_calculate_eb_statistics_pte_matrices():
     """Pin representative PTE-matrix entries from the full 2D E/B analysis.
@@ -244,7 +256,7 @@ def test_calculate_eb_statistics_pte_matrices():
     # Structural pins: off the valid upper triangle the matrices are NaN.
     for key in ("xip_B", "xim_B", "combined"):
         m = pm[key]
-        assert np.isnan(m[1, 0])   # start > stop-1 region is invalid
+        assert np.isnan(m[1, 0])  # start > stop-1 region is invalid
         assert np.isnan(m[2, 0])
         assert np.all(np.isfinite(np.diag(m)))  # single-bin cuts are valid
 

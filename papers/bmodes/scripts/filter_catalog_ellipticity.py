@@ -11,8 +11,12 @@ import sys
 import numpy as np
 from astropy.io import fits
 
-sys.stdout = sys.stdout if hasattr(sys, "ps1") else open(sys.stdout.fileno(), "w", buffering=1)
-sys.stderr = sys.stderr if hasattr(sys, "ps1") else open(sys.stderr.fileno(), "w", buffering=1)
+sys.stdout = (
+    sys.stdout if hasattr(sys, "ps1") else open(sys.stdout.fileno(), "w", buffering=1)
+)
+sys.stderr = (
+    sys.stderr if hasattr(sys, "ps1") else open(sys.stderr.fileno(), "w", buffering=1)
+)
 
 from snakemake.script import snakemake  # noqa: E402
 
@@ -39,7 +43,9 @@ with fits.open(input_path, memmap=True) as hdul:
     mask = e_mag < e_max
     del e_mag
     n_kept = int(np.sum(mask))
-    print(f"Ellipticity cut |e| < {e_max}: {n_kept}/{n_total} galaxies kept ({100*n_kept/n_total:.1f}%)")
+    print(
+        f"Ellipticity cut |e| < {e_max}: {n_kept}/{n_total} galaxies kept ({100 * n_kept / n_total:.1f}%)"
+    )
 
     # Compute survey properties from masked columns (memory-efficient)
     w = np.asarray(data[w_col][mask], dtype=np.float64)
@@ -73,7 +79,7 @@ props = {
 }
 
 print(f"Survey properties: n_eff={n_eff:.3f} gal/arcmin², sigma_e={sigma_e:.4f}")
-print(f"  (parent n_eff and sigma_e should be compared to assess impact)")
+print("  (parent n_eff and sigma_e should be compared to assess impact)")
 
 with open(output_props, "w") as f:
     json.dump(props, f, indent=2)

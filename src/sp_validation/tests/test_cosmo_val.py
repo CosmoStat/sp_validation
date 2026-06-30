@@ -38,9 +38,7 @@ class TestCosmologyValidation:
         repo_root = os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         )
-        catalog_config = os.path.join(
-            repo_root, "cosmo_val", "cat_config.yaml"
-        )
+        catalog_config = os.path.join(repo_root, "cosmo_val", "cat_config.yaml")
 
         # Use temporary directory for outputs
         output_dir = tmp_path / "test_output"
@@ -214,9 +212,7 @@ class TestCosmologyValidation:
         repo_root = os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         )
-        catalog_config_path = os.path.join(
-            repo_root, "cosmo_val", "cat_config.yaml"
-        )
+        catalog_config_path = os.path.join(repo_root, "cosmo_val", "cat_config.yaml")
 
         config = yaml.safe_load(Path(catalog_config_path).read_text())
 
@@ -265,8 +261,7 @@ class TestCosmologyValidation:
                 print(f"  - {v}: missing {nonfunctional[v]}")
 
         assert not nonfunctional, (
-            "Catalog configuration references missing files: "
-            f"{dict(nonfunctional)}"
+            f"Catalog configuration references missing files: {dict(nonfunctional)}"
         )
 
     def test_seed_variant_updates_shear_path(self, tmp_path):
@@ -414,9 +409,9 @@ class TestCosmologyValidation:
         w = rng.uniform(0.5, 1.0, n_gal)
 
         shear_path = cat_dir / "shear.fits"
-        Table(
-            {"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}
-        ).write(shear_path, overwrite=True)
+        Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}).write(
+            shear_path, overwrite=True
+        )
 
         star_path = cat_dir / "star.fits"
         Table(
@@ -438,9 +433,7 @@ class TestCosmologyValidation:
         # column "z" holds bin edges (n+1), "dn_dz" the densities.
         z_edges = np.linspace(0.05, 3.0, 31)
         dndz = np.exp(-(((z_edges - 0.7) / 0.3) ** 2))
-        dndz_lines = ["# z dn_dz"] + [
-            f"{zz} {nn}" for zz, nn in zip(z_edges, dndz)
-        ]
+        dndz_lines = ["# z dn_dz"] + [f"{zz} {nn}" for zz, nn in zip(z_edges, dndz)]
         (nz_dir / "dndz_SP_A.txt").write_text("\n".join(dndz_lines) + "\n")
 
         shear_cfg = {
@@ -642,26 +635,46 @@ class TestCosmologyValidation:
         # running calculate_pure_eb with the setup above and printing repr() of
         # results[key]. Tolerances justified in the docstring.
         expected = {
-            "xip_E": np.array([
-                1.6688018692521218e-06, -1.8392317186434428e-05,
-                1.4170916007248522e-06, 8.1454486560987474e-06,
-                6.2050467269160570e-06, 2.6649478149110497e-06,
-            ]),
-            "xim_E": np.array([
-                -4.4552381788304276e-05, -1.1082898248960663e-04,
-                -9.2495668600755951e-05, -5.8456322151105526e-05,
-                -4.4270469941501174e-05, -2.4236697154723798e-05,
-            ]),
-            "xip_B": np.array([
-                1.8508958599700601e-05, 3.8264056862769537e-05,
-                -1.0482698132038303e-05, -7.3081832089716533e-06,
-                -9.1621105374021936e-06, -6.4075815485457576e-06,
-            ]),
-            "xim_B": np.array([
-                -1.1129938750754923e-04, -4.7967477760986883e-05,
-                -3.4334760596175194e-05, -1.4776328993077835e-05,
-                -4.0078671892721522e-06, -8.3202301900417799e-07,
-            ]),
+            "xip_E": np.array(
+                [
+                    1.6688018692521218e-06,
+                    -1.8392317186434428e-05,
+                    1.4170916007248522e-06,
+                    8.1454486560987474e-06,
+                    6.2050467269160570e-06,
+                    2.6649478149110497e-06,
+                ]
+            ),
+            "xim_E": np.array(
+                [
+                    -4.4552381788304276e-05,
+                    -1.1082898248960663e-04,
+                    -9.2495668600755951e-05,
+                    -5.8456322151105526e-05,
+                    -4.4270469941501174e-05,
+                    -2.4236697154723798e-05,
+                ]
+            ),
+            "xip_B": np.array(
+                [
+                    1.8508958599700601e-05,
+                    3.8264056862769537e-05,
+                    -1.0482698132038303e-05,
+                    -7.3081832089716533e-06,
+                    -9.1621105374021936e-06,
+                    -6.4075815485457576e-06,
+                ]
+            ),
+            "xim_B": np.array(
+                [
+                    -1.1129938750754923e-04,
+                    -4.7967477760986883e-05,
+                    -3.4334760596175194e-05,
+                    -1.4776328993077835e-05,
+                    -4.0078671892721522e-06,
+                    -8.3202301900417799e-07,
+                ]
+            ),
         }
 
         for key in ("xip_E", "xim_E", "xip_B", "xim_B"):
@@ -672,7 +685,10 @@ class TestCosmologyValidation:
             assert np.all(np.isfinite(vec)), f"{key} not finite"
             # Value-drift pins -- the deterministic-mode teeth.
             np.testing.assert_allclose(
-                vec, expected[key], rtol=1e-6, atol=1e-12,
+                vec,
+                expected[key],
+                rtol=1e-6,
+                atol=1e-12,
                 err_msg=f"{key} drifted from pinned reference",
             )
 

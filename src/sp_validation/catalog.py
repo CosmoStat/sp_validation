@@ -11,24 +11,17 @@
 
 """
 
-import os
-import re
-import numpy as np
 import getpass
 
 import h5py
+import numpy as np
 import tqdm
-
-from datetime import datetime
-
-from astropy.io import fits
 from astropy import coordinates as coords
 from astropy import units as u
-
+from astropy.io import fits
 from cs_util import cat
 
-from sp_validation import format
-from sp_validation import io
+from sp_validation import format, io
 from sp_validation.survey import get_footprint
 from sp_validation.version import __version__
 
@@ -96,8 +89,8 @@ def print_mean_ellipticity(
     io.print_stats(msg, stats_file, verbose=verbose)
 
     msg = (
-        f"Fraction of invalid objects = {n_tot-n_tot_val}/{n_tot}"
-        + f" = {(n_tot-n_tot_val)/n_tot:.3%}"
+        f"Fraction of invalid objects = {n_tot - n_tot_val}/{n_tot}"
+        + f" = {(n_tot - n_tot_val) / n_tot:.3%}"
     )
     io.print_stats(msg, stats_file, verbose=verbose)
 
@@ -252,10 +245,9 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
     n_all = len(dd)
 
     for i in range(len(key)):
-
         w = dd[key[i]][:, comp[i]] == val[i]
         n_inv_psf = len(np.where(w)[0])
-        msg = "Invalid {} found for {}/{} = {:.1g}% objects" "".format(
+        msg = "Invalid {} found for {}/{} = {:.1g}% objects".format(
             name[i], n_inv_psf, n_all, n_inv_psf / n_all
         )
         io.print_stats(msg, stats_file, verbose=verbose)
@@ -404,7 +396,6 @@ def read_shape_catalog(
     ra = dat[hdu_no].data["RA"]
     dec = dat[hdu_no].data["Dec"]
 
-    g = [np.empty_like(ra), np.empty_like(ra)]
     g1 = dat[hdu_no].data["e1_uncal"]
     g2 = dat[hdu_no].data["e2_uncal"]
     w = dat[hdu_no].data[w_name]
@@ -537,8 +528,8 @@ def write_shape_catalog(
         for idx in (0, 1):
             col_info_arr.append(
                 (
-                    fits.Column(name=f"e{idx+1}", array=g[idx], format="D"),
-                    f"Calibrated reduced shear estimate comp {idx+1}",
+                    fits.Column(name=f"e{idx + 1}", array=g[idx], format="D"),
+                    f"Calibrated reduced shear estimate comp {idx + 1}",
                 )
             )
     # Signal-to-noise ratio
@@ -562,9 +553,7 @@ def write_shape_catalog(
         ],
     ):
         if x is not None:
-            col_info_arr.append(
-                (fits.Column(name=name, array=x, format="D"), descr)
-            )
+            col_info_arr.append((fits.Column(name=name, array=x, format="D"), descr))
 
     if add_cols is not None:
         for idx, name in enumerate(add_cols):
@@ -578,9 +567,7 @@ def write_shape_catalog(
                     my_format = f"{shape[1]}D"
             col_info_arr.append(
                 (
-                    fits.Column(
-                        name=name, array=add_cols[name], format=my_format
-                    ),
+                    fits.Column(name=name, array=add_cols[name], format=my_format),
                     name,
                 )
             )
@@ -593,14 +580,14 @@ def write_shape_catalog(
 
     # Add human-readable descriptions
     for idx, col_info in enumerate(col_info_arr):
-        table_hdu.header[f"TTYPE{idx+1}"] = (
+        table_hdu.header[f"TTYPE{idx + 1}"] = (
             col_info[0].name,
             col_info[1],
         )
 
     # Primary HDU with information in header
     primary_header = fits.Header()
-    
+
     if add_header:
         primary_header.update(add_header)
 
@@ -735,9 +722,7 @@ def read_param_file(path, verbose=False):
     return param_list_unique
 
 
-def read_hdf5_file(
-    file_path, name, stats_file, check_only=False, param_path=None
-):
+def read_hdf5_file(file_path, name, stats_file, check_only=False, param_path=None):
     """Read HDF5 File.
 
     Read hdf5 file and return contained data.
@@ -759,16 +744,12 @@ def read_hdf5_file(
         data
 
     """
-    param_list = (
-        read_param_file(param_path, verbose=True) if param_path else None
-    )
+    param_list = read_param_file(param_path, verbose=True) if param_path else None
 
     with h5py.File(file_path, "r") as hdf5_file:
         # Find patch group in hierarchical structure
-        if not f"patches/{name}" in hdf5_file:
-            raise KeyError(
-                f"Entry patches/{name} not found in file {file_path}"
-            )
+        if f"patches/{name}" not in hdf5_file:
+            raise KeyError(f"Entry patches/{name} not found in file {file_path}")
         patch_group = hdf5_file[f"patches/{name}"]
 
         # Get size of data array
@@ -786,7 +767,6 @@ def read_hdf5_file(
         data_list = []
         ID_pbl = set()
         for ID in tqdm.tqdm(patch_group):
-
             # Get data for this ID from file
             data = patch_group[ID][()]
 
@@ -829,7 +809,7 @@ def get_maked_col(dat, col, mask):
         Requested column from the data, filtered by the mask.
 
     """
-    
+
     return dat[col][mask]
 
 
@@ -874,7 +854,7 @@ def get_col(dat, col, m_sel=None, m_flg=None):
     else:
         return dat[col][m_sel][m_flg]
         # The following does not work
-        #return get_maked_col(dat, col, mask_combined)
+        # return get_maked_col(dat, col, mask_combined)
 
 
 def get_snr(sh, dat, m_sel, m_flg):

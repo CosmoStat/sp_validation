@@ -24,11 +24,17 @@ def get_parser():
     )
     parser.add_argument("-N", "--number", help="Mock Number", type=int, default=0)
     parser.add_argument(
-        "-n", "--nside",
-        help="Nside for the simulation. Nside=Lmax", type=int, default=32,
+        "-n",
+        "--nside",
+        help="Nside for the simulation. Nside=Lmax",
+        type=int,
+        default=32,
     )
     parser.add_argument(
-        "-p", "--path", help="Path to the simulation data", type=str,
+        "-p",
+        "--path",
+        help="Path to the simulation data",
+        type=str,
         default="/n09data/guerrini/glass_mock_v1.4.6/results/",
     )
     return parser

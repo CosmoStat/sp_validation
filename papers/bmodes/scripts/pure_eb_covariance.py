@@ -15,10 +15,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns  # Registers seaborn colormaps (icefire, etc.) with matplotlib
-
 from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
-
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -48,7 +45,7 @@ def _analyze_block(covariance, start_idx, end_idx, name):
     min_eig = float(eigenvalues[0])
     max_eig = float(eigenvalues[-1])
     is_positive_definite = bool(min_eig > 0)
-    condition_number = max_eig / min_eig if min_eig > 0 else float('inf')
+    condition_number = max_eig / min_eig if min_eig > 0 else float("inf")
 
     return {
         "condition_number": condition_number,
@@ -93,25 +90,27 @@ def main():
     # Matrix is 6*nbins x 6*nbins:
     # Block structure: [E+, E-, B+, B-, amb+, amb-]
     # Each block is nbins x nbins
-    assert cov_pure_eb.shape == (6*nbins, 6*nbins), f"Expected ({6*nbins}, {6*nbins}), got {cov_pure_eb.shape}"
+    assert cov_pure_eb.shape == (6 * nbins, 6 * nbins), (
+        f"Expected ({6 * nbins}, {6 * nbins}), got {cov_pure_eb.shape}"
+    )
 
     # Analyze full matrix
     eigenvalues = np.linalg.eigvalsh(cov_pure_eb)
     min_eig = float(eigenvalues[0])
     max_eig = float(eigenvalues[-1])
     is_positive_definite = bool(min_eig > 0)
-    condition_number = max_eig / min_eig if min_eig > 0 else float('inf')
+    condition_number = max_eig / min_eig if min_eig > 0 else float("inf")
 
     # Analyze blocks
     block_analysis = {
         "xi_E": _analyze_block(
-            cov_pure_eb, 0, 2*nbins, "xi_+^E and xi_-^E combined (40x40)"
+            cov_pure_eb, 0, 2 * nbins, "xi_+^E and xi_-^E combined (40x40)"
         ),
         "xi_B": _analyze_block(
-            cov_pure_eb, 2*nbins, 4*nbins, "xi_+^B and xi_-^B combined (40x40)"
+            cov_pure_eb, 2 * nbins, 4 * nbins, "xi_+^B and xi_-^B combined (40x40)"
         ),
         "xi_amb": _analyze_block(
-            cov_pure_eb, 4*nbins, 6*nbins, "xi_+^amb and xi_-^amb combined (40x40)"
+            cov_pure_eb, 4 * nbins, 6 * nbins, "xi_+^amb and xi_-^amb combined (40x40)"
         ),
     }
 
@@ -143,7 +142,10 @@ def main():
     # Compute block boundaries and centers
     block_sizes = [nbins] * 6
     boundaries = np.cumsum(block_sizes)
-    centers = [0.5 * (start + end) - 0.5 for start, end in zip([0] + list(boundaries[:-1]), boundaries)]
+    centers = [
+        0.5 * (start + end) - 0.5
+        for start, end in zip([0] + list(boundaries[:-1]), boundaries)
+    ]
 
     # Set ticks at block centers with labels (no axis labels, tick labels only)
     ax.set_xticks(centers)
@@ -205,11 +207,11 @@ def main():
     print(f"Saved evidence to {evidence_path}")
 
     # Print summary
-    print(f"\nCovariance Matrix Summary:")
+    print("\nCovariance Matrix Summary:")
     print(f"  Shape: {cov_pure_eb.shape}")
     print(f"  Full matrix condition number: {condition_number:.2e}")
     print(f"  Positive definite: {is_positive_definite}")
-    print(f"\nBlock Analysis:")
+    print("\nBlock Analysis:")
     for block_name, stats in block_analysis.items():
         print(f"  {block_name}:")
         print(f"    Condition number: {stats['condition_number']:.2e}")

@@ -47,5 +47,5 @@ def test_create_hsp_map_preserves_counts():
     counts = counts[~np.isnan(counts)]
 
     assert counts.sum() == len(ra)  # every object counted once
-    assert counts.max() == 2        # the coincident pixel
-    assert len(counts) == 2         # two distinct populated pixels
+    assert counts.max() == 2  # the coincident pixel
+    assert len(counts) == 2  # two distinct populated pixels

@@ -13,7 +13,6 @@ import numpy.testing as npt
 
 
 class GalaxyTestCase(TestCase):
-
     def test_galaxy_imports(self):
         """Test that the galaxy module imports.
 

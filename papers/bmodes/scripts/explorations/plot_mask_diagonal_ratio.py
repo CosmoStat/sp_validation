@@ -5,25 +5,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-
 STYLE_PATH = Path(
     "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
 )
 
 
-def compute_ratio(mask_path: Path, nomask_path: Path, data_out: Path, plot_out: Path) -> None:
+def compute_ratio(
+    mask_path: Path, nomask_path: Path, data_out: Path, plot_out: Path
+) -> None:
     mask_cov = np.loadtxt(mask_path)
     nomask_cov = np.loadtxt(nomask_path)
 
     if mask_cov.shape != nomask_cov.shape:
-        raise ValueError(f"Mask and no-mask covariances have mismatched shapes {mask_cov.shape} vs {nomask_cov.shape}")
+        raise ValueError(
+            f"Mask and no-mask covariances have mismatched shapes {mask_cov.shape} vs {nomask_cov.shape}"
+        )
 
     nomask_diag = np.diag(nomask_cov)
     mask_diag = np.diag(mask_cov)
 
     if np.any(nomask_diag == 0):
         zero_indices = np.where(nomask_diag == 0)[0]
-        raise ValueError(f"Zero variance entries at indices {zero_indices.tolist()} prevent ratio evaluation.")
+        raise ValueError(
+            f"Zero variance entries at indices {zero_indices.tolist()} prevent ratio evaluation."
+        )
 
     ratio = mask_diag / nomask_diag
 
@@ -56,10 +61,22 @@ def run_from_snakemake() -> None:
 
 
 def run_from_cli() -> None:
-    parser = argparse.ArgumentParser(description="Plot ratio of covariance diagonals with and without mask.")
-    parser.add_argument("mask", type=Path, help="Path to Gaussian covariance matrix generated with mask.")
-    parser.add_argument("nomask", type=Path, help="Path to Gaussian covariance matrix generated without mask.")
-    parser.add_argument("data", type=Path, help="Output path for diagonal ratio text file.")
+    parser = argparse.ArgumentParser(
+        description="Plot ratio of covariance diagonals with and without mask."
+    )
+    parser.add_argument(
+        "mask",
+        type=Path,
+        help="Path to Gaussian covariance matrix generated with mask.",
+    )
+    parser.add_argument(
+        "nomask",
+        type=Path,
+        help="Path to Gaussian covariance matrix generated without mask.",
+    )
+    parser.add_argument(
+        "data", type=Path, help="Output path for diagonal ratio text file."
+    )
     parser.add_argument("plot", type=Path, help="Output path for diagonal ratio plot.")
     args = parser.parse_args()
 

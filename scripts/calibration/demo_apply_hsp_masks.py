@@ -90,14 +90,18 @@ obj.update_params()
 
 if trace_mem:
     current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
+    print(
+        f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB"
+    )
 
 # Read catalogue
 dat = obj.read_cat(load_into_memory=False, mode="r")
 
 if trace_mem:
     current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
+    print(
+        f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB"
+    )
 
 # Get bit-coded masks
 masks = obj.get_masks(dat=dat)
@@ -107,7 +111,9 @@ dat_new = obj.append_masks(dat, masks)
 
 if trace_mem:
     current, peak = tracemalloc.get_traced_memory()
-    print(f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB")
+    print(
+        f"Current (peak) memory usage: {current / 1024**2:.2f} ({peak / 1024**2:.2f}) MB"
+    )
 
 # Write extended data to new HDF5 file
 obj.write_hdf5_file(dat, dat_new)

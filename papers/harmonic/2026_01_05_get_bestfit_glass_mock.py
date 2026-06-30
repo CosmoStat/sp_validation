@@ -1,12 +1,10 @@
 # %%
-import os
-import sys
 import configparser
+import os
 import subprocess
+import sys
 
-sys.path.append(
-    "/home/guerrini/sp_validation/cosmo_inference/scripts/"
-)
+sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts/")
 
 from IPython import get_ipython
 
@@ -16,20 +14,13 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-import numpy as np
-from astropy.io import fits
-import scipy.stats as stats
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-from tqdm import tqdm
-
-from getdist import plots, MCSamples
 import chain_postprocessing as cp
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+from getdist import plots
 
-plt.style.use(
-    './matplotlib_config/paper.mplstyle'
-)
+plt.style.use("./matplotlib_config/paper.mplstyle")
 
 sns.set_palette("husl")
 
@@ -37,23 +28,21 @@ if ipython is not None:
     ipython.run_line_magic("matplotlib", "inline")
 
 g = plots.get_subplot_plotter(width_inch=30)
-g.settings.axes_fontsize=30
-g.settings.axes_labelsize=30
+g.settings.axes_fontsize = 30
+g.settings.axes_labelsize = 30
 g.settings.alpha_filled_add = 0.7
 g.settings.legend_fontsize = 40
 
 # %%
 root_dir = "/n09data/guerrini/glass_mock_chains/"
-chain_version = "v6" # choose v0 or v1
+chain_version = "v6"  # choose v0 or v1
 
-#Path to the ini config files
-path_ini_files = f'/home/guerrini/sp_validation/cosmo_inference/cosmosis_config/glass_mocks_{chain_version}/'
+# Path to the ini config files
+path_ini_files = f"/home/guerrini/sp_validation/cosmo_inference/cosmosis_config/glass_mocks_{chain_version}/"
 
 # Create the list of mocks
 max_sim = 350
-failed_simulations = [
-    82, 83, 281, 282, 283,284, 285, 286, 287
-]
+failed_simulations = [82, 83, 281, 282, 283, 284, 285, 286, 287]
 roots = []
 for i in range(1, max_sim + 1):
     if i in failed_simulations:
@@ -63,47 +52,74 @@ for i in range(1, max_sim + 1):
 lower_boud_cell_ee = 300.0
 upper_bound_cell_ee = 1600.0
 
-run_best_fit_type = "2Dkde" 
+run_best_fit_type = "2Dkde"
 
 # %%
 # Retrieve the chains
 for root in roots:
-    with open(root_dir + '{}/{}/samples_{}_cell.txt'.format(root, root, root)) as file:
-        params = file.readline()[1:].split('\t')[:-4]
+    with open(root_dir + "{}/{}/samples_{}_cell.txt".format(root, root, root)) as file:
+        params = file.readline()[1:].split("\t")[:-4]
         file.close()
 
-    with open(root_dir + '{}/{}/getdist_{}_cell.paramnames'.format(root, root, root), "w") as file:
+    with open(
+        root_dir + "{}/{}/getdist_{}_cell.paramnames".format(root, root, root), "w"
+    ) as file:
         for i in range(len(params)):
-            if len(params[i].split('--')) > 1:
-                file.write(params[i].split('--')[1] + '\n')
+            if len(params[i].split("--")) > 1:
+                file.write(params[i].split("--")[1] + "\n")
             else:
-                file.write(params[i].split('--')[0] + '\n')
+                file.write(params[i].split("--")[0] + "\n")
         file.close()
 
 # Read chain
-chains=[]
+chains = []
 
 for root in roots:
-
-    samples = np.loadtxt(root_dir + '{}/{}/samples_{}_cell.txt'.format(root,root,root))
+    samples = np.loadtxt(
+        root_dir + "{}/{}/samples_{}_cell.txt".format(root, root, root)
+    )
     print(len(samples))
-    if 'nautilus' in root:
-        samples = np.column_stack((np.exp(samples[:,-3]),samples[:,-1]-samples[:,-2],samples[:,0:-3]))
+    if "nautilus" in root:
+        samples = np.column_stack(
+            (np.exp(samples[:, -3]), samples[:, -1] - samples[:, -2], samples[:, 0:-3])
+        )
     else:
-        samples = np.column_stack((samples[:,-1],samples[:,-3],samples[:,0:-4]))
-    np.savetxt(root_dir + '{}/{}/getdist_{}_cell.txt'.format(root,root,root), samples)
+        samples = np.column_stack((samples[:, -1], samples[:, -3], samples[:, 0:-4]))
+    np.savetxt(root_dir + "{}/{}/getdist_{}_cell.txt".format(root, root, root), samples)
 
-    chain = g.samples_for_root(root_dir + '{}/{}/getdist_{}_cell'.format(root,root,root),
-                               cache=False,
-                               settings={'ignore_rows':0,
-                                         'smooth_scale_2D':0.3,
-                                         'smooth_scale_1D':0.3})
+    chain = g.samples_for_root(
+        root_dir + "{}/{}/getdist_{}_cell".format(root, root, root),
+        cache=False,
+        settings={"ignore_rows": 0, "smooth_scale_2D": 0.3, "smooth_scale_1D": 0.3},
+    )
 
     chains.append(chain)
 
 # %%
-name_list = ['OMEGA_M','ombh2','h0','n_s','SIGMA_8','s_8_input', 'logt_agn','a','m1','bias_1']
-label_list = ['\Omega_m', '\omega_b h^2', 'h_0', 'n_s', '\sigma_8', 'S_8', 'log T_{AGN}', 'A_{IA}', 'm_1', '\Delta z_1']
+name_list = [
+    "OMEGA_M",
+    "ombh2",
+    "h0",
+    "n_s",
+    "SIGMA_8",
+    "s_8_input",
+    "logt_agn",
+    "a",
+    "m1",
+    "bias_1",
+]
+label_list = [
+    r"\Omega_m",
+    r"\omega_b h^2",
+    "h_0",
+    "n_s",
+    r"\sigma_8",
+    "S_8",
+    "log T_{AGN}",
+    "A_{IA}",
+    "m_1",
+    r"\Delta z_1",
+]
 
 for chain in chains:
     param_names = chain.getParamNames()
@@ -111,7 +127,7 @@ for chain in chains:
         param_names.parWithName(name).label = label
 
 # %%
-#Extract the best fit parameters
+# Extract the best fit parameters
 best_fit = {}
 
 for root, chain in zip(roots, chains):
@@ -122,11 +138,10 @@ for root, chain in zip(roots, chains):
     )
 
 
-
 # %%
 # Run CosmoSis in test mode to get the data vectors
 
-if not os.path.exists(path_ini_files+'/values_empty.ini'):
+if not os.path.exists(path_ini_files + "/values_empty.ini"):
     content = """[cosmological_parameters]
 
 tau          =  0.0544
@@ -147,36 +162,39 @@ wa           =  0.0
 [psf_leakage_parameters]
 """
 
-    with open(path_ini_files+'/values_empty.ini', 'w') as f:
+    with open(path_ini_files + "/values_empty.ini", "w") as f:
         f.write(content)
         f.close()
 
-    print('File created successfully')
+    print("File created successfully")
 
 section_map = {
-    'omch2': 'cosmological_parameters',
-    'ombh2': 'cosmological_parameters',
-    'h0': 'cosmological_parameters',
-    'n_s': 'cosmological_parameters',
-    's_8_input': 'cosmological_parameters',
-    'logt_agn': 'halo_model_parameters',
-    'a': 'intrinsic_alignment_parameters',
-    'm1': 'shear_calibration_parameters',
-    'bias_1': 'nofz_shifts',
-    'alpha': 'psf_leakage_parameters',
-    'beta': 'psf_leakage_parameters',
+    "omch2": "cosmological_parameters",
+    "ombh2": "cosmological_parameters",
+    "h0": "cosmological_parameters",
+    "n_s": "cosmological_parameters",
+    "s_8_input": "cosmological_parameters",
+    "logt_agn": "halo_model_parameters",
+    "a": "intrinsic_alignment_parameters",
+    "m1": "shear_calibration_parameters",
+    "bias_1": "nofz_shifts",
+    "alpha": "psf_leakage_parameters",
+    "beta": "psf_leakage_parameters",
 }
 
 env = os.environ.copy()
-env["LD_LIBRARY_PATH"] = "/home/guerrini/.conda/envs/sp_validation_3.11/lib/python3.11/site-packages/cosmosis/datablock:" + env.get("LD_LIBRARY_PATH", "")
+env["LD_LIBRARY_PATH"] = (
+    "/home/guerrini/.conda/envs/sp_validation_3.11/lib/python3.11/site-packages/cosmosis/datablock:"
+    + env.get("LD_LIBRARY_PATH", "")
+)
 
-os.chdir('/home/guerrini/sp_validation/cosmo_inference/')
+os.chdir("/home/guerrini/sp_validation/cosmo_inference/")
 
 for idx, root in enumerate(roots):
     print(root)
     config = configparser.ConfigParser()
     config.optionxform = str  # Preserve case sensitivity of option names
-    config.read(path_ini_files+'/values_empty.ini')
+    config.read(path_ini_files + "/values_empty.ini")
     for param, value in best_fit[root].items():
         section = section_map.get(param)
         if section is None:
@@ -185,39 +203,38 @@ for idx, root in enumerate(roots):
             config.add_section(section)
         config[section][param] = str(value)
 
-    with open(path_ini_files+'/values_empty.ini', 'w') as configfile:
+    with open(path_ini_files + "/values_empty.ini", "w") as configfile:
         config.write(configfile)
 
-    #Modify the ini file to run in test mode at the best fit
+    # Modify the ini file to run in test mode at the best fit
     config = configparser.ConfigParser()
     config.optionxform = str  # Preserve case sensitivity of option names
-    config_file_path = path_ini_files+f'/cosmosis_pipeline_glass_mocks_{chain_version}_glass_mock_{root[-5:]}_cell.ini'
+    config_file_path = (
+        path_ini_files
+        + f"/cosmosis_pipeline_glass_mocks_{chain_version}_glass_mock_{root[-5:]}_cell.ini"
+    )
     config.read(config_file_path)
-    sampler = config['runtime']['sampler']
-    config['runtime']['sampler'] = 'test'
-    values = config['pipeline']['values']
-    config['pipeline']['values'] = path_ini_files + '/values_empty.ini'
-    config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell_{run_best_fit_type}"
+    sampler = config["runtime"]["sampler"]
+    config["runtime"]["sampler"] = "test"
+    values = config["pipeline"]["values"]
+    config["pipeline"]["values"] = path_ini_files + "/values_empty.ini"
+    config["test"]["save_dir"] = f"%(SCRATCH)s/best_fit/{root}_cell_{run_best_fit_type}"
 
-
-    with open(config_file_path, 'w') as configfile:
+    with open(config_file_path, "w") as configfile:
         config.write(configfile)
 
-    #Run cosmosis
+    # Run cosmosis
     result = subprocess.run(
-        ['cosmosis',  config_file_path],
-        env=env,
-        capture_output=True,
-        text=True
+        ["cosmosis", config_file_path], env=env, capture_output=True, text=True
     )
     print(f"STDOUT:\n{result.stdout}")
     print(f"STDERR:\n{result.stderr}")
 
-    #Modify the ini file to the previous one
-    config['pipeline']['values'] = values
-    config['runtime']['sampler'] = sampler
-    config['test']['save_dir'] = f"%(SCRATCH)s/best_fit/{root}_cell"
+    # Modify the ini file to the previous one
+    config["pipeline"]["values"] = values
+    config["runtime"]["sampler"] = sampler
+    config["test"]["save_dir"] = f"%(SCRATCH)s/best_fit/{root}_cell"
 
-    with open(config_file_path, 'w') as configfile:
+    with open(config_file_path, "w") as configfile:
         config.write(configfile)
 # %%

@@ -15,7 +15,9 @@ from snakemake.script import snakemake
 _unbuffer_streams()
 cv = make_cv(snakemake)
 cv.calculate_additive_bias()
-additive_bias = {ver: {"c1": float(cv.c1[ver]), "c2": float(cv.c2[ver])} for ver in cv.versions}
+additive_bias = {
+    ver: {"c1": float(cv.c1[ver]), "c2": float(cv.c2[ver])} for ver in cv.versions
+}
 with open(snakemake.output["additive_bias"], "w") as f:
     json.dump(additive_bias, f, indent=2)
 verify_outputs(snakemake)

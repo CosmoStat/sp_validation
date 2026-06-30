@@ -10,19 +10,16 @@
 
 import numpy as np
 import pandas as pd
-
-from astropy.io import fits
 import statsmodels.api as sm
 import tqdm
+from astropy.io import fits
+from shear_psf_leakage import leakage, run_object
 
-from sp_validation.statistics import jackknif_weighted_average2
 from sp_validation import catalog as sp_cat
-
-from shear_psf_leakage import leakage
-from shear_psf_leakage import run_object
+from sp_validation.statistics import jackknif_weighted_average2
 
 
-def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
+def get_calibrated_quantities(gal_metacal, shape_method="ngmix"):
     """Get Calibrated Quantities.
 
     Return catalogue quantities for objects calibrated for multiplicative
@@ -47,24 +44,21 @@ def get_calibrated_quantities(gal_metacal, shape_method='ngmix'):
         mask to indicate valid objects in "no-shear" sample
     """
     # mask for 'no shear' images
-    mask = gal_metacal.mask_dict['ns']
+    mask = gal_metacal.mask_dict["ns"]
 
     # uncalibrated shear estimates
-    g_uncorr = np.array([
-        gal_metacal.ns['g1'][mask],
-        gal_metacal.ns['g2'][mask]
-    ])
+    g_uncorr = np.array([gal_metacal.ns["g1"][mask], gal_metacal.ns["g2"][mask]])
 
     # calibratied shear estimates: multiply with inverse response matrix
     g_corr = np.linalg.inv(gal_metacal.R).dot(g_uncorr)
 
     # weights
-    w = gal_metacal.ns['w'][mask]
+    w = gal_metacal.ns["w"][mask]
 
     return g_corr, g_uncorr, w, mask
 
 
-def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
+def get_calibrated_m_c(gal_metacal, shape_method="ngmix"):
     """Get Calibrated C.
 
     Return catalogue quantities for objects calibrated for multiplicative and
@@ -76,17 +70,17 @@ def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
         galaxy metacalibration catalogue
     shape_method : string, optional, default='ngmix'
         shape measurement method, one in 'ngmix', 'galsim'
-        
+
     Returns
     -------
     numpy.ndarray :
         shear estimates calibrated for multiplicative and additive bias;
         array(2, ngal) of float
-    numpy.ndarray : 
+    numpy.ndarray :
         uncalibrated shear estimates; array(2, ngal) of float
     numpy.ndarray :
         weights; array of float
-    numpy.ndarray : 
+    numpy.ndarray :
         mask to indicate valid objects in "no-shear" sample; array of bool
     numpy.ndarray :
         additive bias for both components;
@@ -95,9 +89,7 @@ def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
 
     """
     # Get m-calibrated quantities
-    g_corr, g_uncorr, w, mask_metacal = get_calibrated_quantities(
-        gal_metacal
-    )
+    g_corr, g_uncorr, w, mask_metacal = get_calibrated_quantities(gal_metacal)
 
     # Additive bias
     c = np.zeros(2)
@@ -115,7 +107,7 @@ def get_calibrated_m_c(gal_metacal, shape_method='ngmix'):
     c_corr = np.linalg.inv(gal_metacal.R).dot(c)
     for comp in (0, 1):
         g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
-        
+
     return g_corr_mc, g_uncorr, w, mask_metacal, c, c_err
 
 
@@ -142,14 +134,14 @@ def create_bins(x, num_bins, type="log", x_min=None, x_max=None):
         xmax = x.max() if not x_max else x_max
         return np.logspace(np.log10(xmin), np.log10(xmax), num_bins + 1)
     else:
-        raise ValueError("Type not supported")     
+        raise ValueError("Type not supported")
 
 
 def cut_to_bins(df, key, num_bins, type="log", x_min=None, x_max=None):
     """Cut To Bins.
-    
+
     Cut a given array into bins. Create a new column in the DataFrame with the binning.
-    
+
     Parameters
     ----------
     df : pandas.DataFrame
@@ -171,17 +163,17 @@ def cut_to_bins(df, key, num_bins, type="log", x_min=None, x_max=None):
         bin edges
     """
     key_cut = f"{key}_{type}_bins"
-    
+
     bin_edges = create_bins(df[key], num_bins, type=type, x_min=x_min, x_max=x_max)
     df[key_cut] = pd.cut(df[key], bin_edges, labels=False)
-    
+
     df.loc[np.isnan(df[key_cut]), key_cut] = num_bins - 1
 
     return bin_edges
 
 
 def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask1, mask2, purpose="weights"):
-    
+
     cat_gal["e1_uncal"] = g_uncorr[0]
     cat_gal["e2_uncal"] = g_uncorr[1]
     cat_gal["R_g11"] = gal_metacal.R11
@@ -189,39 +181,30 @@ def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask1, mask2, purpose="wei
     cat_gal["R_g21"] = gal_metacal.R21
     cat_gal["R_g22"] = gal_metacal.R22
 
-    cat_gal["NGMIX_T_NOSHEAR"] = (
-        sp_cat.get_col(dat, "NGMIX_T_NOSHEAR", mask1, mask2)
+    cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(dat, "NGMIX_T_NOSHEAR", mask1, mask2)
+    cat_gal["NGMIX_Tpsf_NOSHEAR"] = sp_cat.get_col(
+        dat, "NGMIX_Tpsf_NOSHEAR", mask1, mask2
     )
-    cat_gal["NGMIX_Tpsf_NOSHEAR"] = (
-        sp_cat.get_col(dat, "NGMIX_Tpsf_NOSHEAR", mask1, mask2)
-    )
-    cat_gal["size_ratio"] = (
-        cat_gal['NGMIX_T_NOSHEAR'] / cat_gal['NGMIX_Tpsf_NOSHEAR']
-    )
+    cat_gal["size_ratio"] = cat_gal["NGMIX_T_NOSHEAR"] / cat_gal["NGMIX_Tpsf_NOSHEAR"]
 
-    cat_gal["snr"] = (
-        sp_cat.get_col(dat, "NGMIX_FLUX_NOSHEAR", mask1, mask2)
-        / sp_cat.get_col(dat, "NGMIX_FLUX_ERR_NOSHEAR", mask1, mask2)
-    )
-    
+    cat_gal["snr"] = sp_cat.get_col(
+        dat, "NGMIX_FLUX_NOSHEAR", mask1, mask2
+    ) / sp_cat.get_col(dat, "NGMIX_FLUX_ERR_NOSHEAR", mask1, mask2)
+
     if purpose == "weights":
         pass
     elif purpose == "leakage":
         cat_gal["w"] = sp_cat.get_col(dat, "w_iv", mask1, mask2)
         for idx in (1, 2):
-            cat_gal[f"e{idx}_PSF"] = (
-                sp_cat.get_col(dat, f"e{idx}_PSF", mask1, mask2)
-            )
-        cat_gal["fwhm_PSF"] = (
-            sp_cat.get_col(dat, "fwhm_PSF", mask1, mask2)
-        )
+            cat_gal[f"e{idx}_PSF"] = sp_cat.get_col(dat, f"e{idx}_PSF", mask1, mask2)
+        cat_gal["fwhm_PSF"] = sp_cat.get_col(dat, "fwhm_PSF", mask1, mask2)
 
 
 def build_df(cat_gal):
     """Build DF.
-    
+
     Build pandas dataframe.
-    
+
     Parameters
     ----------
     cat_gal : dict
@@ -233,13 +216,10 @@ def build_df(cat_gal):
         collected data
 
     """
-    #Build a pandas dataframe to perform the binning and the computation of the weights
-    arr = np.array([
-        np.array(cat_gal[key], dtype=np.float64)
-        for key in cat_gal
-    ]).T
+    # Build a pandas dataframe to perform the binning and the computation of the weights
+    arr = np.array([np.array(cat_gal[key], dtype=np.float64) for key in cat_gal]).T
     return pd.DataFrame(arr, columns=cat_gal.keys())
-    
+
 
 def get_w_des(
     cat_gal,
@@ -278,7 +258,7 @@ def get_w_des(
     """
     df_gal = build_df(cat_gal)
 
-    #Create logarithmic bins in size and SNR
+    # Create logarithmic bins in size and SNR
     cut_to_bins(
         df_gal,
         "snr",
@@ -299,27 +279,26 @@ def get_w_des(
     # Compute shape noise and the shear response in each bin
     for i in range(num_bins):
         for j in range(num_bins):
-            bin_mask = (
-                (df_gal['snr_log_bins'] == i)
-                & (df_gal['size_ratio_log_bins'] == j)
+            bin_mask = (df_gal["snr_log_bins"] == i) & (
+                df_gal["size_ratio_log_bins"] == j
             )
             ngal = np.sum(bin_mask)
             if ngal == 0:
                 print(f"Zero galaxies in snr/size_ratio bin ({i},{j})")
             shape_noise = 0.5 * (
-                np.sum(df_gal[bin_mask]['e1_uncal'] ** 2) / ngal
-                + np.sum(df_gal[bin_mask]['e2_uncal'] ** 2) / ngal
+                np.sum(df_gal[bin_mask]["e1_uncal"] ** 2) / ngal
+                + np.sum(df_gal[bin_mask]["e2_uncal"] ** 2) / ngal
             )
             response = 0.5 * (
-                np.average(df_gal[bin_mask]['R_g11'])
-                + np.average(df_gal[bin_mask]['R_g22'])
+                np.average(df_gal[bin_mask]["R_g11"])
+                + np.average(df_gal[bin_mask]["R_g22"])
             )
-            df_gal.loc[bin_mask, 'w_des'] = response ** 2 / shape_noise     
-        
-    return np.array(df_gal['w_des'])
+            df_gal.loc[bin_mask, "w_des"] = response**2 / shape_noise
+
+    return np.array(df_gal["w_des"])
 
 
-def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
+def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type="des"):
     """
     Compute the leakage per object (Li et al. 2024)
     Return an array of leakage coefficients obtained by binning in
@@ -341,190 +320,222 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type='des'):
         Array containing the correction coefficient for the PSF leakage
         per object for the second component.
     """
-    assert weight_type in ['des', 'iv'], "weight_type must be either 'des' or 'iv'"
+    assert weight_type in ["des", "iv"], "weight_type must be either 'des' or 'iv'"
     # Compute the size ratio
-    size_ratio = (
-        cat_gal['NGMIX_Tpsf_NOSHEAR']
-        / (cat_gal['NGMIX_T_NOSHEAR'] + cat_gal['NGMIX_Tpsf_NOSHEAR'])
+    size_ratio = cat_gal["NGMIX_Tpsf_NOSHEAR"] / (
+        cat_gal["NGMIX_T_NOSHEAR"] + cat_gal["NGMIX_Tpsf_NOSHEAR"]
     )
 
-    df_gal = pd.DataFrame(np.array([
-        np.array(cat_gal['e1'], dtype=np.float64),
-        np.array(cat_gal['e2'], dtype=np.float64),
-        np.array(cat_gal['e1_PSF'], dtype=np.float64),
-        np.array(cat_gal['e2_PSF'], dtype=np.float64),
-        np.array(cat_gal['snr'], dtype=np.float64),
-        np.array(cat_gal[f'w_{weight_type}'], dtype=np.float64),
-        np.array(size_ratio, dtype=np.float64)
-    ]).T, columns=['e1', 'e2', 'e1_PSF', 'e2_PSF', 'snr', 'w', 'size_ratio'])
+    df_gal = pd.DataFrame(
+        np.array(
+            [
+                np.array(cat_gal["e1"], dtype=np.float64),
+                np.array(cat_gal["e2"], dtype=np.float64),
+                np.array(cat_gal["e1_PSF"], dtype=np.float64),
+                np.array(cat_gal["e2_PSF"], dtype=np.float64),
+                np.array(cat_gal["snr"], dtype=np.float64),
+                np.array(cat_gal[f"w_{weight_type}"], dtype=np.float64),
+                np.array(size_ratio, dtype=np.float64),
+            ]
+        ).T,
+        columns=["e1", "e2", "e1_PSF", "e2_PSF", "snr", "w", "size_ratio"],
+    )
 
     del size_ratio
 
     n_bins_snr = num_bins
     n_bins_r = num_bins
 
-    #Create logarithmic bins in size and SNR
-    df_gal.loc[:, 'bin_R'] = pd.qcut(df_gal['size_ratio'], n_bins_r, labels=False, retbins=False)
+    # Create logarithmic bins in size and SNR
+    df_gal.loc[:, "bin_R"] = pd.qcut(
+        df_gal["size_ratio"], n_bins_r, labels=False, retbins=False
+    )
 
-    #initialize bin snr
-    df_gal.loc[:, 'bin_snr'] = -999
+    # initialize bin snr
+    df_gal.loc[:, "bin_snr"] = -999
 
     for ibin_r in range(n_bins_r):
-        #select galaxies in the bin
-        mask_binr = df_gal['bin_R'].values == ibin_r
+        # select galaxies in the bin
+        mask_binr = df_gal["bin_R"].values == ibin_r
 
-        #bin in snr
-        df_gal.loc[mask_binr, 'bin_snr'] = pd.qcut(
-            df_gal.loc[mask_binr, 'snr'],
-            n_bins_snr,
-            labels=False,
-            retbins=False
+        # bin in snr
+        df_gal.loc[mask_binr, "bin_snr"] = pd.qcut(
+            df_gal.loc[mask_binr, "snr"], n_bins_snr, labels=False, retbins=False
         )
 
-    #group by bin
-    df_gal_grouped = df_gal.groupby(['bin_R', 'bin_snr'])
+    # group by bin
+    df_gal_grouped = df_gal.groupby(["bin_R", "bin_snr"])
     ngroups = df_gal_grouped.ngroups
 
-    #Performing first round calibration
+    # Performing first round calibration
     alpha_df = pd.DataFrame(
-        0.,
+        0.0,
         index=np.arange(ngroups),
-        columns=['R', 'SNR','alpha_1', 'alpha_2', 'alpha_1_err', 'alpha_2_err'],
+        columns=["R", "SNR", "alpha_1", "alpha_2", "alpha_1_err", "alpha_2_err"],
     )
-    
+
     i_group = 0
     for name, group in df_gal_grouped:
+        # Save weighted average
+        alpha_df.loc[i_group, "R"] = np.average(group["size_ratio"], weights=group["w"])
+        alpha_df.loc[i_group, "SNR"] = np.average(group["snr"], weights=group["w"])
 
-        #Save weighted average
-        alpha_df.loc[i_group, 'R'] = np.average(group['size_ratio'], weights=group['w'])
-        alpha_df.loc[i_group, 'SNR'] = np.average(group['snr'], weights=group['w'])
-
-        #Fit linear model to compute alpha
-        e1_out = np.array(group['e1'])
-        e2_out = np.array(group['e2'])
-        weight_out = np.array(group['w'])
-        e1_PSF = np.array(group['e1_PSF'])
-        e2_PSF = np.array(group['e2_PSF'])
+        # Fit linear model to compute alpha
+        e1_out = np.array(group["e1"])
+        e2_out = np.array(group["e2"])
+        weight_out = np.array(group["w"])
+        e1_PSF = np.array(group["e1_PSF"])
+        e2_PSF = np.array(group["e2_PSF"])
         del group
 
-        #Fit e1
+        # Fit e1
         mod_wls = sm.WLS(e1_out, sm.add_constant(e1_PSF), weights=weight_out)
         try:
             res_wls = mod_wls.fit()
-        except:
-            raise RunTimeError("Linear regression fit for PSF leakage failed")
-        alpha_df.loc[i_group, 'alpha_1'] = res_wls.params[1]
-        alpha_df.loc[i_group, 'alpha_1_err'] = np.sqrt(res_wls.cov_params()[1, 1])
+        except Exception as err:
+            raise RuntimeError("Linear regression fit for PSF leakage failed") from err
+        alpha_df.loc[i_group, "alpha_1"] = res_wls.params[1]
+        alpha_df.loc[i_group, "alpha_1_err"] = np.sqrt(res_wls.cov_params()[1, 1])
         del res_wls, mod_wls
 
-        #Fit e2
+        # Fit e2
         mod_wls = sm.WLS(e2_out, sm.add_constant(e2_PSF), weights=weight_out)
         res_wls = mod_wls.fit()
-        alpha_df.loc[i_group, 'alpha_2'] = res_wls.params[1]
-        alpha_df.loc[i_group, 'alpha_2_err'] = np.sqrt(res_wls.cov_params()[1, 1])
+        alpha_df.loc[i_group, "alpha_2"] = res_wls.params[1]
+        alpha_df.loc[i_group, "alpha_2_err"] = np.sqrt(res_wls.cov_params()[1, 1])
         del weight_out, res_wls, mod_wls
 
         i_group += 1
 
-        #Fit polynomial to remove general trend
-    fitting_weight = 1./np.square(alpha_df['alpha_1_err'].values)
-    A = np.vstack([fitting_weight*1,
-    fitting_weight*np.power(alpha_df['SNR'].values, -2),
-    fitting_weight*np.power(alpha_df['SNR'].values, -3),
-    fitting_weight*alpha_df['R'].values,
-    fitting_weight*alpha_df['R'].values*np.power(alpha_df['SNR'].values, -2)]).T
-    poly1 = np.linalg.lstsq(A, fitting_weight*alpha_df['alpha_1'].values, rcond=None)[0]
+        # Fit polynomial to remove general trend
+    fitting_weight = 1.0 / np.square(alpha_df["alpha_1_err"].values)
+    A = np.vstack(
+        [
+            fitting_weight * 1,
+            fitting_weight * np.power(alpha_df["SNR"].values, -2),
+            fitting_weight * np.power(alpha_df["SNR"].values, -3),
+            fitting_weight * alpha_df["R"].values,
+            fitting_weight
+            * alpha_df["R"].values
+            * np.power(alpha_df["SNR"].values, -2),
+        ]
+    ).T
+    poly1 = np.linalg.lstsq(A, fitting_weight * alpha_df["alpha_1"].values, rcond=None)[
+        0
+    ]
     del fitting_weight, A
 
-    fitting_weight = 1./np.square(alpha_df['alpha_2_err'].values)
-    A = np.vstack([fitting_weight*1,
-    fitting_weight*np.power(alpha_df['SNR'].values, -2),
-    fitting_weight*np.power(alpha_df['SNR'].values, -3),
-    fitting_weight*alpha_df['R'].values,
-    fitting_weight*alpha_df['R'].values*np.power(alpha_df['SNR'].values, -2)]).T
-    poly2 = np.linalg.lstsq(A, fitting_weight*alpha_df['alpha_2'].values, rcond=None)[0]
+    fitting_weight = 1.0 / np.square(alpha_df["alpha_2_err"].values)
+    A = np.vstack(
+        [
+            fitting_weight * 1,
+            fitting_weight * np.power(alpha_df["SNR"].values, -2),
+            fitting_weight * np.power(alpha_df["SNR"].values, -3),
+            fitting_weight * alpha_df["R"].values,
+            fitting_weight
+            * alpha_df["R"].values
+            * np.power(alpha_df["SNR"].values, -2),
+        ]
+    ).T
+    poly2 = np.linalg.lstsq(A, fitting_weight * alpha_df["alpha_2"].values, rcond=None)[
+        0
+    ]
     del fitting_weight, A
 
-    #Compute alpha to remove the general trend
-    #e1
-    alpha_1 = poly1[0] \
-        + poly1[1] * np.power(df_gal['snr'], -2) \
-        + poly1[2] * np.power(df_gal['snr'], -3) \
-        + poly1[3] * df_gal['size_ratio'] \
-        + poly1[4] * df_gal['size_ratio'] * np.power(df_gal['snr'], -2)
+    # Compute alpha to remove the general trend
+    # e1
+    alpha_1 = (
+        poly1[0]
+        + poly1[1] * np.power(df_gal["snr"], -2)
+        + poly1[2] * np.power(df_gal["snr"], -3)
+        + poly1[3] * df_gal["size_ratio"]
+        + poly1[4] * df_gal["size_ratio"] * np.power(df_gal["snr"], -2)
+    )
 
-    df_gal.loc[:, 'e1_cor'] = df_gal['e1'].values - alpha_1 * df_gal['e1_PSF'].values
+    df_gal.loc[:, "e1_cor"] = df_gal["e1"].values - alpha_1 * df_gal["e1_PSF"].values
     del poly1
 
-    #e2
-    alpha_2 = poly2[0] \
-        + poly2[1] * np.power(df_gal['snr'], -2) \
-        + poly2[2] * np.power(df_gal['snr'], -3) \
-        + poly2[3] * df_gal['size_ratio'] \
-        + poly2[4] * df_gal['size_ratio'] * np.power(df_gal['snr'], -2)
-    df_gal.loc[:, 'e2_cor'] = df_gal['e2'].values - alpha_2 * df_gal['e2_PSF'].values
+    # e2
+    alpha_2 = (
+        poly2[0]
+        + poly2[1] * np.power(df_gal["snr"], -2)
+        + poly2[2] * np.power(df_gal["snr"], -3)
+        + poly2[3] * df_gal["size_ratio"]
+        + poly2[4] * df_gal["size_ratio"] * np.power(df_gal["snr"], -2)
+    )
+    df_gal.loc[:, "e2_cor"] = df_gal["e2"].values - alpha_2 * df_gal["e2_PSF"].values
     del poly2
 
-    #Initialise second run of calibration
-    df_gal.loc[:, 'alpha_1_cor'] = -999.
-    df_gal.loc[:, 'alpha_2_cor'] = -999.
-    alpha_df.loc[:, 'alpha_1_corr'] = -999.
-    alpha_df.loc[:, 'alpha_2_corr'] = -999.
-    alpha_df.loc[:, 'alpha_1_corr_err'] = -999.
-    alpha_df.loc[:, 'alpha_2_corr_err'] = -999.
+    # Initialise second run of calibration
+    df_gal.loc[:, "alpha_1_cor"] = -999.0
+    df_gal.loc[:, "alpha_2_cor"] = -999.0
+    alpha_df.loc[:, "alpha_1_corr"] = -999.0
+    alpha_df.loc[:, "alpha_2_corr"] = -999.0
+    alpha_df.loc[:, "alpha_1_corr_err"] = -999.0
+    alpha_df.loc[:, "alpha_2_corr_err"] = -999.0
 
-    #Second run of calibration
-    for i_group in range(n_bins_r*n_bins_snr):
-        #Get the mask
-        mask_group = (df_gal['bin_R'].values == i_group//n_bins_snr) & (df_gal['bin_snr'].values == i_group%n_bins_snr)
-        #Fit linear model to compute alpha
-        e1_out = np.array(df_gal.loc[mask_group, 'e1_cor'])
-        e2_out = np.array(df_gal.loc[mask_group, 'e2_cor'])
-        weight_out = np.array(df_gal.loc[mask_group, 'w'])
-        e1_PSF = np.array(df_gal.loc[mask_group, 'e1_PSF'])
-        e2_PSF = np.array(df_gal.loc[mask_group, 'e2_PSF'])
-        
-        #Fit e1
+    # Second run of calibration
+    for i_group in range(n_bins_r * n_bins_snr):
+        # Get the mask
+        mask_group = (df_gal["bin_R"].values == i_group // n_bins_snr) & (
+            df_gal["bin_snr"].values == i_group % n_bins_snr
+        )
+        # Fit linear model to compute alpha
+        e1_out = np.array(df_gal.loc[mask_group, "e1_cor"])
+        e2_out = np.array(df_gal.loc[mask_group, "e2_cor"])
+        weight_out = np.array(df_gal.loc[mask_group, "w"])
+        e1_PSF = np.array(df_gal.loc[mask_group, "e1_PSF"])
+        e2_PSF = np.array(df_gal.loc[mask_group, "e2_PSF"])
+
+        # Fit e1
         mod_wls = sm.WLS(e1_out, sm.add_constant(e1_PSF), weights=weight_out)
         res_wls = mod_wls.fit()
-        alpha_df.loc[i_group, 'alpha_1_corr'] = res_wls.params[1]
-        alpha_df.loc[i_group, 'alpha_1_corr_err'] = np.sqrt(res_wls.cov_params()[1, 1])
+        alpha_df.loc[i_group, "alpha_1_corr"] = res_wls.params[1]
+        alpha_df.loc[i_group, "alpha_1_corr_err"] = np.sqrt(res_wls.cov_params()[1, 1])
         del res_wls, mod_wls
 
-        #Fit e2
+        # Fit e2
         mod_wls = sm.WLS(e2_out, sm.add_constant(e2_PSF), weights=weight_out)
         res_wls = mod_wls.fit()
-        alpha_df.loc[i_group, 'alpha_2_corr'] = res_wls.params[1]
-        alpha_df.loc[i_group, 'alpha_2_corr_err'] = np.sqrt(res_wls.cov_params()[1, 1])
+        alpha_df.loc[i_group, "alpha_2_corr"] = res_wls.params[1]
+        alpha_df.loc[i_group, "alpha_2_corr_err"] = np.sqrt(res_wls.cov_params()[1, 1])
         del weight_out, res_wls, mod_wls
 
-        df_gal.loc[mask_group, 'alpha_1_corr'] = alpha_df.loc[i_group, 'alpha_1_corr']
-        df_gal.loc[mask_group, 'alpha_2_corr'] = alpha_df.loc[i_group, 'alpha_2_corr']
+        df_gal.loc[mask_group, "alpha_1_corr"] = alpha_df.loc[i_group, "alpha_1_corr"]
+        df_gal.loc[mask_group, "alpha_2_corr"] = alpha_df.loc[i_group, "alpha_2_corr"]
 
-    alpha_1 += df_gal['alpha_1_corr'].values
-    alpha_2 += df_gal['alpha_2_corr'].values
+    alpha_1 += df_gal["alpha_1_corr"].values
+    alpha_2 += df_gal["alpha_2_corr"].values
 
     return alpha_1, alpha_2
 
 
-def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response", "number", "leakage"], verbose=True):
+def get_quantities_binned(
+    cat_gal,
+    num_bins_x,
+    num_bins_y=None,
+    which=["response", "number", "leakage"],
+    verbose=True,
+):
 
     if verbose:
         print("Compute binned quantities")
 
     if num_bins_y is None:
         num_bins_y = num_bins_x
-        
-    bin_keys = ['snr', 'size_ratio']  
 
     # Create input dataframe
     df_gal = build_df(cat_gal)
-    
+
     # Create logarithmic bins in size and SNR
     bin_edges = {}
-    bin_edges["snr"] = cut_to_bins(df_gal, "snr", num_bins_x, type="log", x_min=2, x_max=700)
-    bin_edges["size_ratio"] = cut_to_bins(df_gal, "size_ratio", num_bins_y, type="log", x_min=0.3, x_max=10)
-    
+    bin_edges["snr"] = cut_to_bins(
+        df_gal, "snr", num_bins_x, type="log", x_min=2, x_max=700
+    )
+    bin_edges["size_ratio"] = cut_to_bins(
+        df_gal, "size_ratio", num_bins_y, type="log", x_min=0.3, x_max=10
+    )
+
     # Initialize output dict
     quantities = {}
     for key in which:
@@ -542,38 +553,43 @@ def get_quantities_binned(cat_gal, num_bins_x, num_bins_y=None, which=["response
             quantities[key] = np.zeros((num_bins_x, num_bins_y, 2, 2))
         else:
             quantities[key] = np.zeros((num_bins_x, num_bins_y))
-        
-        
+
     # Iniitialize parameter for minimizations
     params = leakage.init_parameters()
 
     # Loop over bins
-    for i in tqdm.tqdm(range(num_bins_x), position=0, disable=not verbose, desc="bins_x"):
+    for i in tqdm.tqdm(
+        range(num_bins_x), position=0, disable=not verbose, desc="bins_x"
+    ):
         for j in tqdm.tqdm(range(num_bins_y), position=1, leave=False, desc="bins_y"):
-            
             # Get indices for bin (i, j)
-            bin_mask = (df_gal['snr_log_bins'] == i) & (df_gal['size_ratio_log_bins'] == j)
+            bin_mask = (df_gal["snr_log_bins"] == i) & (
+                df_gal["size_ratio_log_bins"] == j
+            )
             if any(bin_mask):
-                
                 # Compute quantity
                 for key in which:
                     if key == "response":
                         for idx in (0, 1):
                             for jdx in (0, 1):
-                                quantities["response"][i, j, idx, jdx] = np.mean(df_gal[bin_mask][f"R_g{idx+1}{jdx+1}"])
+                                quantities["response"][i, j, idx, jdx] = np.mean(
+                                    df_gal[bin_mask][f"R_g{idx + 1}{jdx + 1}"]
+                                )
                     elif key == "number":
-                        quantities["number"][i,j] = np.sum(bin_mask)
+                        quantities["number"][i, j] = np.sum(bin_mask)
                     elif key == "leakage":
                         obj._dat = df_gal[bin_mask]
                         obj.PSF_leakage(params=params, do_plots=False)
                         for idx in (0, 1):
                             for jdx in (0, 1):
-                                quantities["leakage"][i, j, idx, jdx] = obj.par_best_fit[f"a{idx+1}{jdx+1}"].value
+                                quantities["leakage"][i, j, idx, jdx] = (
+                                    obj.par_best_fit[f"a{idx + 1}{jdx + 1}"].value
+                                )
 
     return quantities, bin_edges
 
 
-def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
+def get_calibrate_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
     """
     Calibrates ellipticities from a galaxy catalog with a certain weight type.
 
@@ -591,40 +607,44 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
     g_cal : np.array
         Calibrated ellipticities
     """
-    assert (weight_type in ['iv', 'des']), "The weight_type is not correct. Options 'iv' (inverse variance) or 'des'."
-    
+    assert weight_type in ["iv", "des"], (
+        "The weight_type is not correct. Options 'iv' (inverse variance) or 'des'."
+    )
+
     hdu_gal = fits.open(path_cat_gal)
 
     cat_gal = hdu_gal[1].data
 
-    R_select = np.array([
-        [hdu_gal[0].header['R_S11'], hdu_gal[0].header['R_S12']],
-        [hdu_gal[0].header['R_S21'], hdu_gal[0].header['R_S22']]
-    ])
+    R_select = np.array(
+        [
+            [hdu_gal[0].header["R_S11"], hdu_gal[0].header["R_S12"]],
+            [hdu_gal[0].header["R_S21"], hdu_gal[0].header["R_S22"]],
+        ]
+    )
 
     if verbose:
-        print('R_select\n', R_select)
+        print("R_select\n", R_select)
 
-    g = np.array([cat_gal['e1_uncal'], cat_gal['e2_uncal']])
+    g = np.array([cat_gal["e1_uncal"], cat_gal["e2_uncal"]])
 
-    c = np.average(g, axis=1, weights=cat_gal['w_'+weight_type])
+    c = np.average(g, axis=1, weights=cat_gal["w_" + weight_type])
 
     if verbose:
-        print('Additive bias\n', c)
+        print("Additive bias\n", c)
 
     R_shear = np.zeros((2, 2))
     for iidx in range(2):
         for jidx in range(2):
-            R_shear[iidx, jidx] = np.mean(cat_gal[f'R_g{iidx+1}{jidx+1}'])
+            R_shear[iidx, jidx] = np.mean(cat_gal[f"R_g{iidx + 1}{jidx + 1}"])
 
     if verbose:
-        print('R_shear\n', R_shear)
+        print("R_shear\n", R_shear)
 
     R = R_shear + R_select
 
     if verbose:
-        print('R\n', R)
-    
+        print("R\n", R)
+
     c_corr = np.linalg.inv(R) @ c
     g_cal = np.linalg.inv(R) @ g
 
@@ -634,7 +654,7 @@ def get_calibrate_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
     return g_cal[0], g_cal[1]
 
 
-def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type='des', verbose=False):
+def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type="des", verbose=False):
     """
     Calibrate ellipticities and removes leakage from a galaxy catalog with a certain weight type.
 
@@ -646,7 +666,7 @@ def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type='des', verbose
         Type of weight to use. Options are 'des' (DES weight) or 'iv' (inverse variance)
     verbose : bool, optional, default=False
         If True, print intermediate results
-    
+
     Returns
     -------
     e1_noleak : np.array
@@ -657,8 +677,8 @@ def get_calibrate_no_leakage_e_from_cat(path_cat_gal, weight_type='des', verbose
     e1, e2 = get_calibrate_e_from_cat(path_cat_gal, weight_type, verbose)
 
     cat_gal = fits.getdata(path_cat_gal)
-    e1_noleak = e1 - cat_gal['alpha_1']*cat_gal['e1_PSF']
-    e2_noleak = e2 - cat_gal['alpha_2']*cat_gal['e2_PSF']
+    e1_noleak = e1 - cat_gal["alpha_1"] * cat_gal["e1_PSF"]
+    e2_noleak = e2 - cat_gal["alpha_2"] * cat_gal["e2_PSF"]
 
     return e1_noleak, e2_noleak
 
@@ -707,9 +727,9 @@ class metacal:
         self,
         data,
         mask,
-        masking_type='gal',
+        masking_type="gal",
         step=0.01,
-        prefix='NGMIX',
+        prefix="NGMIX",
         snr_min=10,
         snr_max=500,
         rel_size_min=0.5,
@@ -732,12 +752,12 @@ class metacal:
         self._size_corr_ell = size_corr_ell
         if verbose:
             print(
-                f'Metacal cuts: {snr_min}<snr<{snr_max}, '
-                + f'rel_size_min={rel_size_min}, '
-                + f'rel_size_max={rel_size_max}, '
-                + f'size_corr_ell={size_corr_ell}'
+                f"Metacal cuts: {snr_min}<snr<{snr_max}, "
+                + f"rel_size_min={rel_size_min}, "
+                + f"rel_size_max={rel_size_max}, "
+                + f"size_corr_ell={size_corr_ell}"
             )
-            
+
         self._global_R_weight = global_R_weight
 
         self._sigma_eps = sigma_eps
@@ -762,7 +782,7 @@ class metacal:
         ns = {}
 
         masked_data = data[mask]
-        if self._prefix == 'NGMIX':
+        if self._prefix == "NGMIX":
             m1, p1, m2, p2, ns = self._read_data_ngmix(
                 masked_data,
                 m1,
@@ -771,7 +791,7 @@ class metacal:
                 p2,
                 ns,
             )
-        elif self._prefix == 'GALSIM':
+        elif self._prefix == "GALSIM":
             m1, p1, m2, p2, ns = self._read_data_galsim(
                 masked_data,
                 m1,
@@ -799,42 +819,36 @@ class metacal:
         """Read Data Ngmix.
 
         Read data from ngmix catalogue.
-        
+
         """
 
         for name_shear, dict_tmp in zip(
-            ['1M', '1P', '2M', '2P', 'NOSHEAR'],
-            [m1, p1, m2, p2, ns]
+            ["1M", "1P", "2M", "2P", "NOSHEAR"], [m1, p1, m2, p2, ns]
         ):
-
             if self._verbose:
-                print('Extracting {}'.format(name_shear))
+                print("Extracting {}".format(name_shear))
 
-            dict_tmp['flag'] = (
-                masked_data[f'{self._prefix}_FLAGS_{name_shear}']
-            )
+            dict_tmp["flag"] = masked_data[f"{self._prefix}_FLAGS_{name_shear}"]
 
             if self._col_2d:
                 # Ellipticity in one 2D column
                 for comp in (0, 1):
-                    dict_tmp[f"g{comp+1}"] = (
-                        masked_data[f"{self._prefix}_ELL_{name_shear}"][:, comp]
-                    )
+                    dict_tmp[f"g{comp + 1}"] = masked_data[
+                        f"{self._prefix}_ELL_{name_shear}"
+                    ][:, comp]
             else:
                 # Ellipcitiy in two different columns
                 for comp in (0, 1):
-                    dict_tmp[f"g{comp+1}"] = (
-                        masked_data[f"{self._prefix}_ELL_{name_shear}_{comp}"]
-                    )
+                    dict_tmp[f"g{comp + 1}"] = masked_data[
+                        f"{self._prefix}_ELL_{name_shear}_{comp}"
+                    ]
 
             for key in ("flux", "flux_err", "T", "T_err"):
-                dict_tmp[key] = (
-                    masked_data[f'{self._prefix}_{key.upper()}_{name_shear}']
-                )
+                dict_tmp[key] = masked_data[
+                    f"{self._prefix}_{key.upper()}_{name_shear}"
+                ]
 
-            dict_tmp['Tpsf'] = (
-                masked_data[f'{self._prefix}_Tpsf_{name_shear}']
-            )
+            dict_tmp["Tpsf"] = masked_data[f"{self._prefix}_Tpsf_{name_shear}"]
 
         ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
             masked_data,
@@ -845,14 +859,14 @@ class metacal:
         )
 
         self._n_input = len(masked_data)
-        self._n_after_gal_mask = len(dict_tmp['flag'])
+        self._n_after_gal_mask = len(dict_tmp["flag"])
         if self._verbose:
             print(f"Number of objects on metacal input = {self._n_input}")
             print(
                 "Number of objects after galaxy selection masking ="
                 + f" {self._n_after_gal_mask}"
             )
-        
+
         return m1, p1, m2, p2, ns
 
     @staticmethod
@@ -901,7 +915,7 @@ class metacal:
                 C11 = data[f"{prefix}_ELL_ERR_NOSHEAR_0"]
                 C22 = data[f"{prefix}_ELL_ERR_NOSHEAR_1"]
 
-        iv_w = 1 / (2 * sigma_eps ** 2 + C11 + C22)
+        iv_w = 1 / (2 * sigma_eps**2 + C11 + C22)
 
         return C11, C22, iv_w
 
@@ -911,39 +925,31 @@ class metacal:
         Read data from galsim catalogue.
 
         """
-        prefix_mom = 'GALSIM_GAL'
+        prefix_mom = "GALSIM_GAL"
 
         for name_shear, dict_tmp in zip(
-            ['1m', '1p', '2m', '2p', 'noshear'],
-            [m1, p1, m2, p2, ns]
+            ["1m", "1p", "2m", "2p", "noshear"], [m1, p1, m2, p2, ns]
         ):
-
             if self._verbose:
-                print('Extracting {}'.format(name_shear))
+                print("Extracting {}".format(name_shear))
 
-            dict_tmp['flag'] = (
-                masked_data[f'{self._prefix}_FLAGS_{name_shear.upper()}']
-            )
-            dict_tmp['g1'] = masked_data[
-                f'{prefix_mom}_ELL_UNCORR_{name_shear.upper()}'
+            dict_tmp["flag"] = masked_data[f"{self._prefix}_FLAGS_{name_shear.upper()}"]
+            dict_tmp["g1"] = masked_data[
+                f"{prefix_mom}_ELL_UNCORR_{name_shear.upper()}"
             ][:, 0]
-            dict_tmp['g2'] = masked_data[
-                f'{prefix_mom}_ELL_UNCORR_{name_shear.upper()}'
+            dict_tmp["g2"] = masked_data[
+                f"{prefix_mom}_ELL_UNCORR_{name_shear.upper()}"
             ][:, 1]
 
-            dict_tmp['T'] = (
-                masked_data[f'{prefix_mom}_SIGMA_{name_shear.upper()}']
-            )
-            dict_tmp['Tpsf'] = (
-                masked_data[f'{self._prefix}_PSF_SIGMA_{name_shear.upper()}']
-            )
+            dict_tmp["T"] = masked_data[f"{prefix_mom}_SIGMA_{name_shear.upper()}"]
+            dict_tmp["Tpsf"] = masked_data[
+                f"{self._prefix}_PSF_SIGMA_{name_shear.upper()}"
+            ]
 
-        self.snr_sextractor = masked_data['SNR_WIN']
-        ns['C11'] = masked_data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 0]
-        ns['C22'] = masked_data[f'{prefix_mom}_ELL_ERR_NOSHEAR'][:, 1]
-        ns['w'] = (
-            1. / (2 * self._sigma_eps ** 2 + dict_tmp['C11'] + dict_tmp['C22'])
-        )
+        self.snr_sextractor = masked_data["SNR_WIN"]
+        ns["C11"] = masked_data[f"{prefix_mom}_ELL_ERR_NOSHEAR"][:, 0]
+        ns["C22"] = masked_data[f"{prefix_mom}_ELL_ERR_NOSHEAR"][:, 1]
+        ns["w"] = 1.0 / (2 * self._sigma_eps**2 + dict_tmp["C11"] + dict_tmp["C22"])
 
         return m1, p1, m2, p2, ns
 
@@ -952,14 +958,14 @@ class metacal:
 
         Perform masking and compute calibration.
         """
-        if self._masking_type == 'gal':
+        if self._masking_type == "gal":
             self._masking_gal()
-        elif self._masking_type == 'galmom':
+        elif self._masking_type == "galmom":
             self._masking_gal_mom()
-        elif self._masking_type == 'star':
+        elif self._masking_type == "star":
             self._masking_star()
         else:
-            raise ValueError(f'Invalid masking type \'{self._masking_type}\'')
+            raise ValueError(f"Invalid masking type '{self._masking_type}'")
 
         self._shear_response()
         self._selection_response()
@@ -967,17 +973,19 @@ class metacal:
         # self._shear_response_std(stat_operator=lambda x:
         # jackknif_weighted_average(x, np.ones_like(x)))
 
-    def add_cuts(self, snr_min=10, snr_max=500, rel_size_min=0.5):
+    def add_cuts(self, snr_min=10, snr_max=500, rel_size_min=0.5, rel_size_max=3.0):
         """Add Cuts.
 
         Apply additional cuts to metacal galaxy catalogue.
         """
-        if snr_min < self._snr_min or \
-           snr_max > self._snr_max or \
-           rel_size_min < self._rel_size_min:
+        if (
+            snr_min < self._snr_min
+            or snr_max > self._snr_max
+            or rel_size_min < self._rel_size_min
+            or rel_size_max > self._rel_size_max
+        ):
             print(
-                'At least on cut is less stringend than existing one, '
-                + 'skipping...'
+                "At least on cut is less stringend than existing one, " + "skipping..."
             )
             return
 
@@ -987,8 +995,8 @@ class metacal:
         self._rel_size_max = rel_size_max
         if self._verbose:
             print(
-                f'Metacal new cuts: {snr_min}<snr<{snr_max}, '
-                + f'rel_size_min={rel_size_min}'
+                f"Metacal new cuts: {snr_min}<snr<{snr_max}, "
+                + f"rel_size_min={rel_size_min}"
             )
 
         self._compute_calibration()
@@ -1001,23 +1009,22 @@ class metacal:
         self.mask_dict = {}
         for data, name in zip(
             [self.ns, self.m1, self.p1, self.m2, self.p2],
-            ['ns', 'm1', 'p1', 'm2', 'p2']
+            ["ns", "m1", "p1", "m2", "p2"],
         ):
-            Tr_tmp = data['T']
+            Tr_tmp = data["T"]
             if self._size_corr_ell:
-                Tr_tmp *= (
-                    (1 - (data['g1'] ** 2 + data['g2'] ** 2))
-                    / (1 + (data['g1'] ** 2 + data['g2'] ** 2))
+                Tr_tmp *= (1 - (data["g1"] ** 2 + data["g2"] ** 2)) / (
+                    1 + (data["g1"] ** 2 + data["g2"] ** 2)
                 )
-            if hasattr(self, 'snr_sextractor'):
+            if hasattr(self, "snr_sextractor"):
                 snr_flux = self.snr_sextractor
             else:
-                snr_flux = data['flux'] / data['flux_err']
+                snr_flux = data["flux"] / data["flux_err"]
 
-            Tpsf = data['Tpsf']
+            Tpsf = data["Tpsf"]
 
             mask_tmp = (
-                (data['flag'] == 0)
+                (data["flag"] == 0)
                 & (Tr_tmp / Tpsf > self._rel_size_min)
                 & (Tr_tmp / Tpsf < self._rel_size_max)
                 & (snr_flux > self._snr_min)
@@ -1038,23 +1045,21 @@ class metacal:
         self.mask_dict = {}
         for data, name in zip(
             [self.ns, self.m1, self.p1, self.m2, self.p2],
-            ['ns', 'm1', 'p1', 'm2', 'p2']
+            ["ns", "m1", "p1", "m2", "p2"],
         ):
-            Tr_tmp = data['T']
+            Tr_tmp = data["T"]
             if self._size_corr_ell:
-                Tr_tmp *= (
-                    (1 - (data['g1'] ** 2 + data['g2'] ** 2))
-                    / (1 + (data['g1'] ** 2 + data['g2'] ** 2))
+                Tr_tmp *= (1 - (data["g1"] ** 2 + data["g2"] ** 2)) / (
+                    1 + (data["g1"] ** 2 + data["g2"] ** 2)
                 )
-            snr_flux = data['flux'] / data['flux_err']
 
             mask_tmp = (
-                (data['flag'] == 0)
-                & (1 - data['Tpsf'] / data['T'] > self._rel_size_min)
-                & (data['s2n'] > self._snr_min)
-                & (data['s2n'] < self._snr_max)
-                & (data['g1'] != -10)
-                & (data['g1'] != 0)
+                (data["flag"] == 0)
+                & (1 - data["Tpsf"] / data["T"] > self._rel_size_min)
+                & (data["s2n"] > self._snr_min)
+                & (data["s2n"] < self._snr_max)
+                & (data["g1"] != -10)
+                & (data["g1"] != 0)
             )
 
             # Take care of rotated version
@@ -1071,13 +1076,13 @@ class metacal:
         self.mask_dict = {}
         for data, name in zip(
             [self.ns, self.m1, self.p1, self.m2, self.p2],
-            ['ns', 'm1', 'p1', 'm2', 'p2']
+            ["ns", "m1", "p1", "m2", "p2"],
         ):
-            if hasattr(self, 'snr_sextractor'):
+            if hasattr(self, "snr_sextractor"):
                 snr_flux = self.snr_sextractor
             else:
-                snr_flux = data['flux'] / data['flux_err']
-            mask_tmp = (data['flag'] == 0) & (snr_flux > 10) & (snr_flux < 500)
+                snr_flux = data["flux"] / data["flux_err"]
+            mask_tmp = (data["flag"] == 0) & (snr_flux > 10) & (snr_flux < 500)
 
             # Take care of rotated version
             ind_masked = np.where(mask_tmp == True)[0]
@@ -1090,50 +1095,48 @@ class metacal:
         Compute shear response matrix
         """
         sign = 1
-        if self._prefix == 'GALSIM':
+        if self._prefix == "GALSIM":
             sign = -1
 
-        ma = self.mask_dict['ns']
+        ma = self.mask_dict["ns"]
         h2 = 2 * self._step
 
-        self.R11 = (self.p1['g1'][ma] - self.m1['g1'][ma]) / h2
-        self.R22 = sign * (self.p2['g2'][ma] - self.m2['g2'][ma]) / h2
-        self.R12 = (self.p2['g1'][ma] - self.m2['g1'][ma]) / h2
-        self.R21 = (self.p1['g2'][ma] - self.m1['g2'][ma]) / h2
+        self.R11 = (self.p1["g1"][ma] - self.m1["g1"][ma]) / h2
+        self.R22 = sign * (self.p2["g2"][ma] - self.m2["g2"][ma]) / h2
+        self.R12 = (self.p2["g1"][ma] - self.m2["g1"][ma]) / h2
+        self.R21 = (self.p1["g2"][ma] - self.m1["g2"][ma]) / h2
 
         self.R_shear = np.array([[self.R11, self.R12], [self.R21, self.R22]])
 
     def _shear_response_std(
-        self,
-        stat_operator=lambda x: jackknif_weighted_average2(x, np.ones_like(x))
+        self, stat_operator=lambda x: jackknif_weighted_average2(x, np.ones_like(x))
     ):
         """Shear Response Std.
 
         Standard deviation of shear response
         """
-        ma = self.mask_dict['ns']
+        ma = self.mask_dict["ns"]
         h2 = 2 * self._step
 
-        if len(self.ns['g1'][ma]) == 0:
+        if len(self.ns["g1"][ma]) == 0:
             self.R_shear_std = np.array([[np.nan, np.nan], [np.nan, np.nan]])
         else:
-            self.R11_stds = stat_operator(
-                (self.p1['g1'][ma] - self.m1['g1'][ma]) / h2
-            )[1]
-            self.R22_stds = stat_operator(
-                (self.p2['g2'][ma] - self.m2['g2'][ma]) / h2
-            )[1]
-            self.R12_stds = stat_operator(
-                (self.p2['g1'][ma] - self.m2['g1'][ma]) / h2
-            )[1]
-            self.R21_stds = stat_operator(
-                (self.p1['g2'][ma] - self.m1['g2'][ma]) / h2
-            )[1]
+            self.R11_stds = stat_operator((self.p1["g1"][ma] - self.m1["g1"][ma]) / h2)[
+                1
+            ]
+            self.R22_stds = stat_operator((self.p2["g2"][ma] - self.m2["g2"][ma]) / h2)[
+                1
+            ]
+            self.R12_stds = stat_operator((self.p2["g1"][ma] - self.m2["g1"][ma]) / h2)[
+                1
+            ]
+            self.R21_stds = stat_operator((self.p1["g2"][ma] - self.m1["g2"][ma]) / h2)[
+                1
+            ]
 
-            self.R_shear_std = np.array([
-                [self.R11_stds, self.R12_stds],
-                [self.R21_stds, self.R22_stds]
-            ])
+            self.R_shear_std = np.array(
+                [[self.R11_stds, self.R12_stds], [self.R21_stds, self.R22_stds]]
+            )
 
     def _selection_response(self):
         """Add docstring.
@@ -1142,36 +1145,31 @@ class metacal:
 
         """
         sign = 1
-        if self._prefix == 'GALSIM':
+        if self._prefix == "GALSIM":
             sign = -1
 
-        ma_p1 = self.mask_dict['p1']
-        ma_m1 = self.mask_dict['m1']
-        ma_p2 = self.mask_dict['p2']
-        ma_m2 = self.mask_dict['m2']
+        ma_p1 = self.mask_dict["p1"]
+        ma_m1 = self.mask_dict["m1"]
+        ma_p2 = self.mask_dict["p2"]
+        ma_m2 = self.mask_dict["m2"]
         h2 = 2 * self._step
 
         self.R11_s = (
-            np.mean(self.ns['g1'][ma_p1])
-            - np.mean(self.ns['g1'][ma_m1])
+            np.mean(self.ns["g1"][ma_p1]) - np.mean(self.ns["g1"][ma_m1])
         ) / h2
-        self.R22_s = sign * (
-            np.mean(self.ns['g2'][ma_p2])
-            - np.mean(self.ns['g2'][ma_m2])
-        ) / h2
+        self.R22_s = (
+            sign * (np.mean(self.ns["g2"][ma_p2]) - np.mean(self.ns["g2"][ma_m2])) / h2
+        )
         self.R12_s = (
-            np.mean(self.ns['g1'][ma_p2])
-            - np.mean(self.ns['g1'][ma_m2])
+            np.mean(self.ns["g1"][ma_p2]) - np.mean(self.ns["g1"][ma_m2])
         ) / h2
         self.R21_s = (
-            np.mean(self.ns['g2'][ma_p1])
-            - np.mean(self.ns['g2'][ma_m1])
+            np.mean(self.ns["g2"][ma_p1]) - np.mean(self.ns["g2"][ma_m1])
         ) / h2
 
-        self.R_selection = np.array([
-            [self.R11_s, self.R12_s],
-            [self.R21_s, self.R22_s]
-        ])
+        self.R_selection = np.array(
+            [[self.R11_s, self.R12_s], [self.R21_s, self.R22_s]]
+        )
 
     def _total_response(self):
         """Add docstring.
@@ -1185,37 +1183,27 @@ class metacal:
         else:
             print("Computing response weighted by", self._global_R_weight)
             # Get weights of masked no-shear objects
-            weights = self.ns[self._global_R_weight][self.mask_dict['ns']]
+            weights = self.ns[self._global_R_weight][self.mask_dict["ns"]]
             self.R_shear_global = np.average(self.R_shear, axis=2, weights=weights)
 
         self.R = self.R_shear_global + self.R_selection
 
 
-def mask_gal_size(T, Tpsf, rel_size_min, rel_size_max, size_corr_ell=False, g1=None, g2=None):
+def mask_gal_size(
+    T, Tpsf, rel_size_min, rel_size_max, size_corr_ell=False, g1=None, g2=None
+):
 
     Tr_tmp = T
     if size_corr_ell:
-        Tr_tmp *= (
-            (1 - g1 **2 + g2 ** 2) / (1 + g1 ** 2 + g2 **2)
-        )
+        Tr_tmp *= (1 - g1**2 + g2**2) / (1 + g1**2 + g2**2)
 
-    mask = (
-        (Tr_tmp / Tpsf > rel_size_min)
-        & (Tr_tmp / Tpsf < rel_size_max)
-    )
+    mask = (Tr_tmp / Tpsf > rel_size_min) & (Tr_tmp / Tpsf < rel_size_max)
 
     return mask
-
-
 
 
 def mask_gal_SNR(SNR, snr_min, snr_max):
 
-    mask = (
-        (SNR > snr_min)
-        & (SNR < snr_max)
-    )
+    mask = (SNR > snr_min) & (SNR < snr_max)
 
     return mask
-
-

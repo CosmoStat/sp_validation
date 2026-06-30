@@ -6,7 +6,6 @@ Statistical evidence (PTEs) is in cosebis_pte_matrix.
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -14,8 +13,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import treecorr
-
-from sp_validation.b_modes import calculate_cosebis
 from plotting_utils import (
     ERRORBAR_DEFAULTS,
     FIG_WIDTH_FULL,
@@ -28,15 +25,21 @@ from plotting_utils import (
     version_label,
 )
 
+from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
 
 
-
-
-
-def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale_cuts, fiducial_idx,
-                                  y_limits=None, x_offsets=None, box_style=None):
+def _create_stacked_bmode_figure(
+    fiducial_datasets,
+    full_datasets,
+    nmodes,
+    scale_cuts,
+    fiducial_idx,
+    y_limits=None,
+    x_offsets=None,
+    box_style=None,
+):
     """Create a vertically stacked B-mode COSEBIS comparison figure.
 
     Plots B_n / sigma_n (dimensionless, in units of standard deviation).
@@ -55,7 +58,9 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
         x_offsets = np.array([-0.20, -0.07, 0.07, 0.20])
     x_offsets = np.array(x_offsets)
 
-    fig, axes = plt.subplots(2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.4), sharex=True)
+    fig, axes = plt.subplots(
+        2, 1, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.4), sharex=True
+    )
 
     modes = np.arange(1, nmodes + 1)
     scale_labels = {"fiducial": "Fiducial", "full": "Full"}
@@ -71,14 +76,20 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
     for panel_idx, (scale_key, datasets, ax, scale_cut) in enumerate(panels):
         # Draw version spread boxes (before data points)
         draw_normalized_boxes_linear_scale(
-            ax, modes, datasets,
-            y_norm_key="Bn_normalized", fiducial_idx=fiducial_idx,
-            x_offsets=x_offsets, box_style=box_style
+            ax,
+            modes,
+            datasets,
+            y_norm_key="Bn_normalized",
+            fiducial_idx=fiducial_idx,
+            x_offsets=x_offsets,
+            box_style=box_style,
         )
 
         for i, data in enumerate(datasets):
             offset = x_offsets[i] if i < len(x_offsets) else 0
-            marker = data.get("marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o")
+            marker = data.get(
+                "marker", MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
+            )
             fillstyle = data.get("fillstyle", "full")
             mfc = data["color"] if fillstyle == "full" else "none"
             line = ax.errorbar(
@@ -107,10 +118,12 @@ def _create_stacked_bmode_figure(fiducial_datasets, full_datasets, nmodes, scale
 
         label = scale_labels[scale_key]
         ax.text(
-            0.98, 0.95,
+            0.98,
+            0.95,
             rf"{label} $\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$",
             transform=ax.transAxes,
-            ha="right", va="top",
+            ha="right",
+            va="top",
             bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
         )
 
@@ -146,7 +159,8 @@ def main():
 
     # Which version gets the fiducial reference line in boxes
     fiducial_for_comparison = getattr(
-        snakemake.params, "fiducial_for_comparison",
+        snakemake.params,
+        "fiducial_for_comparison",
         plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"]),
     )
 
@@ -172,7 +186,6 @@ def main():
     max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_int = int(config["fiducial"]["nbins_int"])
 
-
     # Color/marker assignment: pair by parent version if ecut versions present
     has_ecut = any("_ecut" in v for v in versions)
     if has_ecut:
@@ -194,11 +207,13 @@ def main():
     for scale_key, scale_cut in scale_cuts.items():
         datasets = []
 
-        for i, (version, xi_path, cov_path) in enumerate(zip(
-            versions,
-            snakemake.input["xi_integration"],
-            snakemake.input["cov_integration"],
-        )):
+        for i, (version, xi_path, cov_path) in enumerate(
+            zip(
+                versions,
+                snakemake.input["xi_integration"],
+                snakemake.input["cov_integration"],
+            )
+        ):
             if has_ecut:
                 parent = version.split("_ecut")[0].replace("_leak_corr", "")
                 color = parent_color_map[parent]
@@ -237,15 +252,19 @@ def main():
             all_ptes[version][f"chi2_B_{scale_key}"] = float(chi2)
             all_ptes[version][f"dof_B_{scale_key}"] = int(dof)
 
-            datasets.append({
-                "version": version,
-                "label": version_label(version, version_labels),
-                "color": color,
-                "marker": marker,
-                "fillstyle": fillstyle,
-                "alpha": get_version_alpha(version, fiducial_for_comparison, plotting_config),
-                "Bn_normalized": Bn / sigma_B,
-            })
+            datasets.append(
+                {
+                    "version": version,
+                    "label": version_label(version, version_labels),
+                    "color": color,
+                    "marker": marker,
+                    "fillstyle": fillstyle,
+                    "alpha": get_version_alpha(
+                        version, fiducial_for_comparison, plotting_config
+                    ),
+                    "Bn_normalized": Bn / sigma_B,
+                }
+            )
 
         all_datasets[scale_key] = datasets
 
@@ -259,7 +278,9 @@ def main():
     y_limits = (min(all_y) - 0.1 * y_range, max(all_y) + 0.1 * y_range)
 
     # Find fiducial version index for box highlighting (use fiducial datasets)
-    fiducial_idx = find_fiducial_index(all_datasets["fiducial"], fiducial_for_comparison)
+    fiducial_idx = find_fiducial_index(
+        all_datasets["fiducial"], fiducial_for_comparison
+    )
 
     # Create output
     output_dir = Path(snakemake.output["evidence"]).parent

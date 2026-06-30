@@ -3,12 +3,11 @@
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
-from matplotlib.colors import BoundaryNorm, ListedColormap
-from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
+from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.patches import Rectangle
 from scipy import stats
-
 
 # Shared constants
 PAPER_MPLSTYLE = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
@@ -39,8 +38,9 @@ PTE_COLORBAR_TICKS = [0.0, 0.05, 0.5, 0.95, 1.0]
 PTE_COLORBAR_TICKLABELS = ["0", "0.05", "0.5", "0.95", "1"]
 
 
-def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85),
-                      n_gradient=PTE_GRADIENT_LEVELS):
+def make_pte_colormap(
+    low=0.05, high=0.95, gradient_range=(0.15, 0.85), n_gradient=PTE_GRADIENT_LEVELS
+):
     """Create a discrete PTE colormap with exact threshold breaks.
 
     Values below `low` and above `high` remain solid colors. The interval
@@ -51,9 +51,7 @@ def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85),
     solid_blue = vlag(0.0)
     solid_red = vlag(1.0)
     g_lo, g_hi = gradient_range
-    gradient_colors = [
-        vlag(val) for val in np.linspace(g_lo, g_hi, n_gradient)
-    ]
+    gradient_colors = [vlag(val) for val in np.linspace(g_lo, g_hi, n_gradient)]
     cmap = ListedColormap(
         [solid_blue] + gradient_colors + [solid_red],
         name="pte_threshold",
@@ -64,11 +62,13 @@ def make_pte_colormap(low=0.05, high=0.95, gradient_range=(0.15, 0.85),
 
 def make_pte_norm(low=0.05, high=0.95, n_gradient=PTE_GRADIENT_LEVELS):
     """Create exact threshold normalization for PTE heatmaps."""
-    boundaries = np.concatenate((
-        [0.0],
-        np.linspace(low, high, n_gradient + 1),
-        [1.0],
-    ))
+    boundaries = np.concatenate(
+        (
+            [0.0],
+            np.linspace(low, high, n_gradient + 1),
+            [1.0],
+        )
+    )
     return BoundaryNorm(boundaries, ncolors=n_gradient + 2, clip=True)
 
 
@@ -142,9 +142,7 @@ def get_powspace_bin_edges(ell_eff, lmin=8, lmax=2048, power=0.5):
     ells = np.arange(lmin, lmax + 1)
     start = np.power(lmin, power)
     end = np.power(lmax, power)
-    bins_ell = np.power(
-        np.linspace(start, end, n_ell_bins + 1), 1 / power
-    )
+    bins_ell = np.power(np.linspace(start, end, n_ell_bins + 1), 1 / power)
     bpws = np.digitize(ells.astype(float), bins_ell) - 1
     bpws[0] = 0
     bpws[-1] = n_ell_bins - 1
@@ -263,7 +261,9 @@ def version_label(version, version_labels):
     str
         Human-readable label, or cleaned version string if not in mapping.
     """
-    return version_labels.get(version, version.replace("SP_", "").replace("_leak_corr", ""))
+    return version_labels.get(
+        version, version.replace("SP_", "").replace("_leak_corr", "")
+    )
 
 
 def find_fiducial_index(datasets, fiducial_version, key="version"):
@@ -283,10 +283,7 @@ def find_fiducial_index(datasets, fiducial_version, key="version"):
     int
         Index of fiducial version, or 0 if not found.
     """
-    return next(
-        (i for i, d in enumerate(datasets) if d[key] == fiducial_version),
-        0
-    )
+    return next((i for i, d in enumerate(datasets) if d[key] == fiducial_version), 0)
 
 
 def get_version_alpha(version, fiducial_version, plotting_config):
@@ -330,9 +327,15 @@ def get_box_style(box_style=None):
     style = box_style or {}
     return {
         "edge_color": style.get("edge_color", VERSION_BOX_DEFAULTS["edge_color"]),
-        "edge_linewidth": style.get("edge_linewidth", VERSION_BOX_DEFAULTS["edge_linewidth"]),
-        "fiducial_line_color": style.get("fiducial_line_color", VERSION_BOX_DEFAULTS["fiducial_line_color"]),
-        "fiducial_line_width": style.get("fiducial_line_width", VERSION_BOX_DEFAULTS["fiducial_line_width"]),
+        "edge_linewidth": style.get(
+            "edge_linewidth", VERSION_BOX_DEFAULTS["edge_linewidth"]
+        ),
+        "fiducial_line_color": style.get(
+            "fiducial_line_color", VERSION_BOX_DEFAULTS["fiducial_line_color"]
+        ),
+        "fiducial_line_width": style.get(
+            "fiducial_line_width", VERSION_BOX_DEFAULTS["fiducial_line_width"]
+        ),
     }
 
 
@@ -363,7 +366,7 @@ def draw_normalized_version_box(ax, x_left, x_right, y_vals, fiducial_val, style
         (x_left, box_bottom),
         x_right - x_left,
         box_top - box_bottom,
-        facecolor='none',
+        facecolor="none",
         edgecolor=style["edge_color"],
         linewidth=style["edge_linewidth"],
         zorder=1,
@@ -371,15 +374,18 @@ def draw_normalized_version_box(ax, x_left, x_right, y_vals, fiducial_val, style
     ax.add_patch(rect)
 
     ax.hlines(
-        fiducial_val, x_left, x_right,
+        fiducial_val,
+        x_left,
+        x_right,
         colors=style["fiducial_line_color"],
         linewidth=style["fiducial_line_width"],
-        zorder=1
+        zorder=1,
     )
 
 
-def draw_normalized_boxes_log_scale(ax, x_centers, datasets, y_norm_key, fiducial_idx,
-                                     x_offset_range, box_style=None):
+def draw_normalized_boxes_log_scale(
+    ax, x_centers, datasets, y_norm_key, fiducial_idx, x_offset_range, box_style=None
+):
     """Draw version boxes for log-scale x-axis (e.g., theta).
 
     For each bin, draws a box spanning the range of values across versions,
@@ -413,11 +419,14 @@ def draw_normalized_boxes_log_scale(ax, x_centers, datasets, y_norm_key, fiducia
         y_vals = np.array([data[y_norm_key][i] for data in datasets])
         x_left = x_i * box_left_factor
         x_right = x_i * box_right_factor
-        draw_normalized_version_box(ax, x_left, x_right, y_vals, y_vals[fiducial_idx], style)
+        draw_normalized_version_box(
+            ax, x_left, x_right, y_vals, y_vals[fiducial_idx], style
+        )
 
 
-def draw_normalized_boxes_linear_scale(ax, x_centers, datasets, y_norm_key, fiducial_idx,
-                                        x_offsets, box_style=None):
+def draw_normalized_boxes_linear_scale(
+    ax, x_centers, datasets, y_norm_key, fiducial_idx, x_offsets, box_style=None
+):
     """Draw version boxes for linear-scale x-axis (e.g., COSEBIS modes).
 
     For each bin, draws a box spanning the range of values across versions,
@@ -449,11 +458,22 @@ def draw_normalized_boxes_linear_scale(ax, x_centers, datasets, y_norm_key, fidu
         y_vals = np.array([data[y_norm_key][i] for data in datasets])
         x_left = x_i - box_half_width
         x_right = x_i + box_half_width
-        draw_normalized_version_box(ax, x_left, x_right, y_vals, y_vals[fiducial_idx], style)
+        draw_normalized_version_box(
+            ax, x_left, x_right, y_vals, y_vals[fiducial_idx], style
+        )
 
 
-def draw_normalized_boxes_ell_scale(ax, ell, ell_widths, datasets, y_norm_key, fiducial_idx,
-                                     jitter_fraction, n_versions, box_style=None):
+def draw_normalized_boxes_ell_scale(
+    ax,
+    ell,
+    ell_widths,
+    datasets,
+    y_norm_key,
+    fiducial_idx,
+    jitter_fraction,
+    n_versions,
+    box_style=None,
+):
     """Draw version boxes for ell-space plots with variable bin widths.
 
     For each multipole bin, draws a box spanning the range of values across
@@ -489,7 +509,9 @@ def draw_normalized_boxes_ell_scale(ax, ell, ell_widths, datasets, y_norm_key, f
         half_width = ell_widths[i] * box_half_width_factor
         x_left = ell_i - half_width
         x_right = ell_i + half_width
-        draw_normalized_version_box(ax, x_left, x_right, y_vals, y_vals[fiducial_idx], style)
+        draw_normalized_version_box(
+            ax, x_left, x_right, y_vals, y_vals[fiducial_idx], style
+        )
 
 
 def extract_version_number(version_string):
@@ -511,7 +533,8 @@ def extract_version_number(version_string):
         Short version number (e.g., "v1.4.5").
     """
     import re
-    match = re.search(r'(v[\d.]+)', version_string)
+
+    match = re.search(r"(v[\d.]+)", version_string)
     return match.group(1) if match else version_string
 
 

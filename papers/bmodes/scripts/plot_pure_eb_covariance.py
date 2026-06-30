@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 from plotting_utils import PAPER_MPLSTYLE
 
 # Unbuffered output for Snakemake log streaming
@@ -61,8 +60,12 @@ def main():
     # Configure tick labels for E/B modes
     tick_positions = np.arange(nbins / 2, nbins * 6, nbins)
     tick_labels = [
-        r"$\xi_+^{\mathrm{E}}$", r"$\xi_-^{\mathrm{E}}$", r"$\xi_+^{\mathrm{B}}$",
-        r"$\xi_-^{\mathrm{B}}$", r"$\xi_+^{\mathrm{amb}}$", r"$\xi_-^{\mathrm{amb}}$"
+        r"$\xi_+^{\mathrm{E}}$",
+        r"$\xi_-^{\mathrm{E}}$",
+        r"$\xi_+^{\mathrm{B}}$",
+        r"$\xi_-^{\mathrm{B}}$",
+        r"$\xi_+^{\mathrm{amb}}$",
+        r"$\xi_-^{\mathrm{amb}}$",
     ]
 
     for ticks in (plt.xticks, plt.yticks):

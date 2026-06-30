@@ -33,6 +33,7 @@ params = snakemake.params
 
 class FakeGG:
     """Minimal GGCorrelation-like object for calculate_eb_statistics."""
+
     def __init__(self, nbins, npatch):
         self.nbins = nbins
         self.npatch1 = npatch

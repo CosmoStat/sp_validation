@@ -60,8 +60,7 @@ masks_to_apply = [
 ]
 
 # List of masks not to apply and not to copy to minimal catalogue
-masks_not_to_include = [
-]
+masks_not_to_include = []
 # -
 
 # ### Pre-processing ShapePipe flags
@@ -81,7 +80,6 @@ mask_combined = sp_joint.Mask.from_list(
 )
 
 if obj._params["sky_regions"]:
-
     # MKDBEUG TODO: zooms as list in config
     zoom_ra = [200, 205]
     zoom_dec = [55, 60]
@@ -94,12 +92,14 @@ if obj._params["sky_regions"]:
 num_obj = dat.shape[0]
 
 with open("masks.txt", "w") as f_out:
-
     for my_mask in masks:
         my_mask.print_summary(f_out)
 
     sp_joint.Mask.print_strings(
-        "flag", "label", f"{'num_ok':>10}", f"{'num_ok[%]':>10}",
+        "flag",
+        "label",
+        f"{'num_ok':>10}",
+        f"{'num_ok[%]':>10}",
         f_out=f_out,
     )
     print(file=f_out)
@@ -124,7 +124,7 @@ def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):
         if isinstance(dt, tuple):
             cleaned_fields.append((name, dt[0]))  # keep only the base dtype string
         else:
-            cleaned_fields.append((name, dt))     # use as-is
+            cleaned_fields.append((name, dt))  # use as-is
     return cleaned_fields
 
 
@@ -132,20 +132,19 @@ def strip_h5py_metadata_dtype(dat_dtype, dat_ext_dtype):
 # Remove mask columns that were applied earlier
 
 # Columns to keep
-names_to_keep = [name for name in dat.dtype.names + dat_ext.dtype.names if name not in masks_not_to_include]
+names_to_keep = [
+    name
+    for name in dat.dtype.names + dat_ext.dtype.names
+    if name not in masks_not_to_include
+]
 
 # Remove metadata from the dtype (in particular, encoding for TILE_ID)
 clean_dtype_descr = strip_h5py_metadata_dtype(dat.dtype, dat_ext.dtype)
 
-new_dtype = [
-    (name, dt) for name, dt in
-    clean_dtype_descr
-    if name in names_to_keep
-]
+new_dtype = [(name, dt) for name, dt in clean_dtype_descr if name in names_to_keep]
 
 # Create a new structured array
-new_dat = np.zeros(len(dat[mask_combined._mask]), dtype=new_dtype
-)
+new_dat = np.zeros(len(dat[mask_combined._mask]), dtype=new_dtype)
 
 # Copy relevant columns and lines from each source array
 for name in names_to_keep:
@@ -174,7 +173,7 @@ for my_mask in masks:
 obj_appl = sp_joint.ApplyHspMasks()
 
 # Replace "c" (comprehensive) with "m" (minimal)
-output_path = re.sub(r'1\.[A-Za-z0-9]\.c', '1.X.m', obj._params["input_path"])
+output_path = re.sub(r"1\.[A-Za-z0-9]\.c", "1.X.m", obj._params["input_path"])
 obj_appl._params["output_path"] = output_path
 obj_appl._params["aux_mask_file_liast"] = []
 
@@ -201,9 +200,7 @@ def correlation_matrix(masks, confidence_level=0.9):
         for jdx, mask_jdx in enumerate(masks):
             res = stats.pearsonr(mask_idx._mask, mask_jdx._mask)
             r_val[idx][jdx] = res.statistic
-            r_cl[idx][jdx] = res.confidence_interval(
-                confidence_level=confidence_level
-            )
+            r_cl[idx][jdx] = res.confidence_interval(confidence_level=confidence_level)
 
     return r_val, r_cl
 
@@ -238,11 +235,8 @@ def confusion_matrix(prediction, observation):
 
     result = {}
 
-    pred_pos = sum(prediction)
     result["true_pos"] = sum(prediction & observation)
-    result["true_neg"] = sum(
-        np.logical_not(prediction) & np.logical_not(observation)
-    )
+    result["true_neg"] = sum(np.logical_not(prediction) & np.logical_not(observation))
     result["false_neg"] = sum(prediction & np.logical_not(observation))
     result["false_pos"] = sum(np.logical_not(prediction) & observation)
     result["false_pos_rate"] = result["false_pos"] / (
@@ -273,7 +267,6 @@ n_key = len(all_masks)
 cms = np.zeros((n_key, n_key, 2, 2))
 for idx in range(n_key):
     for jdx in range(n_key):
-
         if idx == jdx:
             continue
 
@@ -296,7 +289,6 @@ matrix_elements = ["True", "False"]
 
 for idx in range(n_key):
     for jdx in range(n_key):
-
         if idx == jdx:
             continue
 

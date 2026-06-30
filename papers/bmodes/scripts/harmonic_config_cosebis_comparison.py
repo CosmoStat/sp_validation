@@ -12,7 +12,6 @@ Modes > reliable_mode_max shown with gray band.
 """
 
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -21,9 +20,7 @@ import numpy as np
 import seaborn as sns
 import treecorr
 from astropy.io import fits
-
 from cosmo_numba.B_modes.cosebis import COSEBIS
-from sp_validation.b_modes import calculate_cosebis
 from plotting_utils import (
     FIG_WIDTH_FULL,
     FIG_WIDTH_SINGLE,
@@ -32,6 +29,8 @@ from plotting_utils import (
     iter_version_figures,
     version_label,
 )
+
+from sp_validation.b_modes import calculate_cosebis
 
 plt.style.use(PAPER_MPLSTYLE)
 
@@ -83,10 +82,16 @@ def _build_transforms(cosebis_obj, ell):
         basis[idx] = 1.0
 
         ce_basis, _ = cosebis_obj.cosebis_from_Cell(
-            ell=ell, Cell_E=basis, Cell_B=zeros, cache=True,
+            ell=ell,
+            Cell_E=basis,
+            Cell_B=zeros,
+            cache=True,
         )
         _, cb_basis = cosebis_obj.cosebis_from_Cell(
-            ell=ell, Cell_E=zeros, Cell_B=basis, cache=True,
+            ell=ell,
+            Cell_E=zeros,
+            Cell_B=basis,
+            cache=True,
         )
 
         T_E[:, idx] = ce_basis
@@ -95,7 +100,9 @@ def _build_transforms(cosebis_obj, ell):
     return T_E, T_B
 
 
-def _compute_harmonic_cosebis(pseudo_cl_path, pseudo_cov_path, nmodes, theta_min, theta_max):
+def _compute_harmonic_cosebis(
+    pseudo_cl_path, pseudo_cov_path, nmodes, theta_min, theta_max
+):
     """Compute COSEBIS from pseudo-C_ell and propagate covariance."""
     with fits.open(pseudo_cl_path) as hdul:
         data = hdul["PSEUDO_CELL"].data
@@ -106,7 +113,10 @@ def _compute_harmonic_cosebis(pseudo_cl_path, pseudo_cov_path, nmodes, theta_min
     cosebis_obj = COSEBIS(theta_min, theta_max, nmodes)
 
     ce_harm, cb_harm = cosebis_obj.cosebis_from_Cell(
-        ell=ell, Cell_E=cl_ee, Cell_B=cl_bb, cache=True,
+        ell=ell,
+        Cell_E=cl_ee,
+        Cell_B=cl_bb,
+        cache=True,
     )
 
     T_E, T_B = _build_transforms(cosebis_obj, ell)
@@ -131,11 +141,16 @@ def _compute_config_cosebis(xi_path, cov_path, nmodes, scale_cut, config):
     nbins_int = int(config["fiducial"]["nbins_int"])
 
     gg = treecorr.GGCorrelation(
-        min_sep=min_sep_int, max_sep=max_sep_int, nbins=nbins_int, sep_units="arcmin",
+        min_sep=min_sep_int,
+        max_sep=max_sep_int,
+        nbins=nbins_int,
+        sep_units="arcmin",
     )
     gg.read(xi_path)
 
-    results = calculate_cosebis(gg, nmodes=nmodes, scale_cuts=[scale_cut], cov_path=cov_path)
+    results = calculate_cosebis(
+        gg, nmodes=nmodes, scale_cuts=[scale_cut], cov_path=cov_path
+    )
     r = results[scale_cut]
     return r["En"], r["Bn"], r["cov"]
 
@@ -145,7 +160,9 @@ def _shade_reliable(ax, reliable_mode_max=6):
     ax.axvspan(0.5, reliable_mode_max + 0.5, color="0.95", alpha=0.5, zorder=0)
 
 
-def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=None, reliable_mode_max=6):
+def _make_data_vector_figure(
+    harm_data, config_data, nmodes, scale_cut, title=None, reliable_mode_max=6
+):
     """Data vector figure: E and B from both methods (single scale cut).
 
     Two rows (E-modes, B-modes).
@@ -163,19 +180,40 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     sigma_harm_E = harm_data["sigma_E"]
     sigma_harm_B = np.where(harm_data["sigma_B"] > 0, harm_data["sigma_B"], 1.0)
 
-    fig, (ax_e, ax_b) = plt.subplots(2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.85), sharex=True)
+    fig, (ax_e, ax_b) = plt.subplots(
+        2, 1, figsize=(FIG_WIDTH_SINGLE, FIG_WIDTH_SINGLE * 0.85), sharex=True
+    )
 
     # --- E-modes (factored by 10^10 for readability) ---
     e_scale = 1e10
     ax_e.errorbar(
-        modes - 0.1, ce_config * e_scale, yerr=sigma_config_E * e_scale,
-        fmt="o", color=c_cfg, mfc=c_cfg, ms=4, alpha=0.8,
-        capsize=2, capthick=0.8, elinewidth=0.8, label="Config-space",
+        modes - 0.1,
+        ce_config * e_scale,
+        yerr=sigma_config_E * e_scale,
+        fmt="o",
+        color=c_cfg,
+        mfc=c_cfg,
+        ms=4,
+        alpha=0.8,
+        capsize=2,
+        capthick=0.8,
+        elinewidth=0.8,
+        label="Config-space",
     )
     ax_e.errorbar(
-        modes + 0.1, ce_harm * e_scale, yerr=sigma_harm_E * e_scale,
-        fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
-        capsize=2, capthick=0.8, elinewidth=0.8, label="Harmonic-space",
+        modes + 0.1,
+        ce_harm * e_scale,
+        yerr=sigma_harm_E * e_scale,
+        fmt="s",
+        color=c_harm,
+        mfc="white",
+        mew=0.8,
+        ms=4,
+        alpha=0.8,
+        capsize=2,
+        capthick=0.8,
+        elinewidth=0.8,
+        label="Harmonic-space",
     )
 
     ax_e.axhline(0.0, color="black", lw=0.8, alpha=0.6)
@@ -189,14 +227,31 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
 
     # --- B-modes (B_n / sigma units) ---
     ax_b.errorbar(
-        modes - 0.1, cb_config / sigma_config_B, yerr=np.ones(nmodes),
-        fmt="o", color=c_cfg, mfc=c_cfg, ms=4, alpha=0.8,
-        capsize=2, capthick=0.8, elinewidth=0.8,
+        modes - 0.1,
+        cb_config / sigma_config_B,
+        yerr=np.ones(nmodes),
+        fmt="o",
+        color=c_cfg,
+        mfc=c_cfg,
+        ms=4,
+        alpha=0.8,
+        capsize=2,
+        capthick=0.8,
+        elinewidth=0.8,
     )
     ax_b.errorbar(
-        modes + 0.1, cb_harm / sigma_harm_B, yerr=np.ones(nmodes),
-        fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
-        capsize=2, capthick=0.8, elinewidth=0.8,
+        modes + 0.1,
+        cb_harm / sigma_harm_B,
+        yerr=np.ones(nmodes),
+        fmt="s",
+        color=c_harm,
+        mfc="white",
+        mew=0.8,
+        ms=4,
+        alpha=0.8,
+        capsize=2,
+        capthick=0.8,
+        elinewidth=0.8,
     )
 
     ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
@@ -208,9 +263,12 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     ax_b.tick_params(axis="both", width=0.5, length=3)
 
     ax_b.text(
-        0.98, 0.95,
+        0.98,
+        0.95,
         rf"$\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$",
-        transform=ax_b.transAxes, ha="right", va="top",
+        transform=ax_b.transAxes,
+        ha="right",
+        va="top",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
     )
 
@@ -219,21 +277,29 @@ def _make_data_vector_figure(harm_data, config_data, nmodes, scale_cut, title=No
     return fig
 
 
-def _make_combined_data_vector_figure(harm_data_full, config_data_full,
-                                       harm_data_fid, config_data_fid,
-                                       nmodes, scale_cut_full, scale_cut_fid,
-                                       title=None, reliable_mode_max=6):
+def _make_combined_data_vector_figure(
+    harm_data_full,
+    config_data_full,
+    harm_data_fid,
+    config_data_fid,
+    nmodes,
+    scale_cut_full,
+    scale_cut_fid,
+    title=None,
+    reliable_mode_max=6,
+):
     """Combined 2x2 data vector figure: rows=E/B, columns=full/fiducial.
 
     Column titles show the theta range. Gray band over reliable modes (1-6).
     Dark2 palette, filled circles for config-space, open squares for harmonic.
     """
     modes = np.arange(1, nmodes + 1)
-    c_cfg = "#2c5f8a"   # steel blue (config-space)
+    c_cfg = "#2c5f8a"  # steel blue (config-space)
     c_harm = "#c45a2c"  # burnt orange (harmonic-space)
 
-    fig, axes = plt.subplots(2, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.4),
-                             sharex=True)
+    fig, axes = plt.subplots(
+        2, 2, figsize=(FIG_WIDTH_FULL, FIG_WIDTH_FULL * 0.4), sharex=True
+    )
 
     datasets = [
         (config_data_full, harm_data_full, scale_cut_full),
@@ -257,15 +323,32 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
         # E-modes
         ax_e = axes[0, col]
         ax_e.errorbar(
-            modes - 0.1, ce_cfg * e_scale, yerr=sigma_cfg_E * e_scale,
-            fmt="o", color=c_cfg, mfc=c_cfg, ms=4, alpha=0.8,
-            capsize=2, capthick=0.8, elinewidth=0.8,
+            modes - 0.1,
+            ce_cfg * e_scale,
+            yerr=sigma_cfg_E * e_scale,
+            fmt="o",
+            color=c_cfg,
+            mfc=c_cfg,
+            ms=4,
+            alpha=0.8,
+            capsize=2,
+            capthick=0.8,
+            elinewidth=0.8,
             label="Config-space" if col == 0 else None,
         )
         ax_e.errorbar(
-            modes + 0.1, ce_h * e_scale, yerr=sigma_h_E * e_scale,
-            fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
-            capsize=2, capthick=0.8, elinewidth=0.8,
+            modes + 0.1,
+            ce_h * e_scale,
+            yerr=sigma_h_E * e_scale,
+            fmt="s",
+            color=c_harm,
+            mfc="white",
+            mew=0.8,
+            ms=4,
+            alpha=0.8,
+            capsize=2,
+            capthick=0.8,
+            elinewidth=0.8,
             label="Harmonic-space" if col == 0 else None,
         )
         ax_e.axhline(0.0, color="black", lw=0.8, alpha=0.6)
@@ -276,14 +359,31 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
         # B-modes
         ax_b = axes[1, col]
         ax_b.errorbar(
-            modes - 0.1, cb_cfg / sigma_cfg_B, yerr=np.ones(nmodes),
-            fmt="o", color=c_cfg, mfc=c_cfg, ms=4, alpha=0.8,
-            capsize=2, capthick=0.8, elinewidth=0.8,
+            modes - 0.1,
+            cb_cfg / sigma_cfg_B,
+            yerr=np.ones(nmodes),
+            fmt="o",
+            color=c_cfg,
+            mfc=c_cfg,
+            ms=4,
+            alpha=0.8,
+            capsize=2,
+            capthick=0.8,
+            elinewidth=0.8,
         )
         ax_b.errorbar(
-            modes + 0.1, cb_h / sigma_h_B, yerr=np.ones(nmodes),
-            fmt="s", color=c_harm, mfc="white", mew=0.8, ms=4, alpha=0.8,
-            capsize=2, capthick=0.8, elinewidth=0.8,
+            modes + 0.1,
+            cb_h / sigma_h_B,
+            yerr=np.ones(nmodes),
+            fmt="s",
+            color=c_harm,
+            mfc="white",
+            mew=0.8,
+            ms=4,
+            alpha=0.8,
+            capsize=2,
+            capthick=0.8,
+            elinewidth=0.8,
         )
         ax_b.axhline(0.0, color="black", lw=0.8, alpha=0.6)
         _shade_reliable(ax_b, reliable_mode_max)
@@ -291,7 +391,9 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
         ax_b.set_xticks(np.arange(1, nmodes + 1))
         ax_b.set_xticklabels(
             [str(i) for i in range(1, nmodes + 1)],
-            rotation=45, ha="right", rotation_mode="anchor",
+            rotation=45,
+            ha="right",
+            rotation_mode="anchor",
         )
         ax_b.set_xlim(0.5, nmodes + 0.5)
         ax_b.tick_params(axis="both", width=0.5, length=3)
@@ -316,7 +418,9 @@ def _make_combined_data_vector_figure(harm_data_full, config_data_full,
     return fig
 
 
-def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version_labels_map, reliable_mode_max=6):
+def _make_version_comparison_figure(
+    all_version_data, nmodes, scale_cut, version_labels_map, reliable_mode_max=6
+):
     """Version comparison: all versions, both methods, B-modes in B_n/sigma.
 
     Single panel, full angular range only.
@@ -338,18 +442,37 @@ def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version
         sigma_config_B = _safe_sigma(np.diag(cov_config[nmodes:, nmodes:]))
 
         cb_harm = vdata["harm"]["Bn"]
-        sigma_harm_B = np.where(vdata["harm"]["sigma_B"] > 0, vdata["harm"]["sigma_B"], 1.0)
+        sigma_harm_B = np.where(
+            vdata["harm"]["sigma_B"] > 0, vdata["harm"]["sigma_B"], 1.0
+        )
 
         ax.errorbar(
-            modes + offset - 0.03, cb_config / sigma_config_B, yerr=np.ones(nmodes),
-            fmt="o", color=color, mfc=color, ms=3.5, alpha=0.85,
-            capsize=1.5, capthick=0.6, elinewidth=0.6,
+            modes + offset - 0.03,
+            cb_config / sigma_config_B,
+            yerr=np.ones(nmodes),
+            fmt="o",
+            color=color,
+            mfc=color,
+            ms=3.5,
+            alpha=0.85,
+            capsize=1.5,
+            capthick=0.6,
+            elinewidth=0.6,
             label=f"{label} (config)",
         )
         ax.errorbar(
-            modes + offset + 0.03, cb_harm / sigma_harm_B, yerr=np.ones(nmodes),
-            fmt="s", color=color, mfc="white", ms=3.5, alpha=0.85,
-            capsize=1.5, capthick=0.6, elinewidth=0.6, mew=0.8,
+            modes + offset + 0.03,
+            cb_harm / sigma_harm_B,
+            yerr=np.ones(nmodes),
+            fmt="s",
+            color=color,
+            mfc="white",
+            ms=3.5,
+            alpha=0.85,
+            capsize=1.5,
+            capthick=0.6,
+            elinewidth=0.6,
+            mew=0.8,
             label=f"{label} (harmonic)",
         )
 
@@ -362,16 +485,22 @@ def _make_version_comparison_figure(all_version_data, nmodes, scale_cut, version
     ax.tick_params(axis="both", width=0.5, length=3)
 
     ax.text(
-        0.98, 0.95,
+        0.98,
+        0.95,
         rf"$\theta = {scale_cut[0]:.0f}$--${scale_cut[1]:.0f}'$",
-        transform=ax.transAxes, ha="right", va="top",
+        transform=ax.transAxes,
+        ha="right",
+        va="top",
         bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8),
     )
 
     ax.legend(
-        loc="upper center", ncol=4,
-        frameon=True, framealpha=0.9,
-        handletextpad=0.3, columnspacing=0.8,
+        loc="upper center",
+        ncol=4,
+        frameon=True,
+        framealpha=0.9,
+        handletextpad=0.3,
+        columnspacing=0.8,
     )
 
     plt.tight_layout()
@@ -388,15 +517,22 @@ def main():
 
     cosebis_nbins = int(config["cl"].get("cosebis_nbins", 32))
     reliable_mode_max = _RELIABLE_MODE_MAX_BY_NBINS.get(
-        cosebis_nbins, 8 if cosebis_nbins >= 64 else 6,
+        cosebis_nbins,
+        8 if cosebis_nbins >= 64 else 6,
     )
     print(f"Using {cosebis_nbins}-bin pseudo-Cl, reliable modes 1-{reliable_mode_max}")
 
     versions_leak_corr = [v for v in config["versions"] if "_leak_corr" in v]
 
     # Build input path lookups from snakemake inputs
-    pseudo_cl_paths = {k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_") and not k.startswith("pseudo_cl_cov_")}
-    pseudo_cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_cov_")}
+    pseudo_cl_paths = {
+        k: v
+        for k, v in snakemake.input.items()
+        if k.startswith("pseudo_cl_") and not k.startswith("pseudo_cl_cov_")
+    }
+    pseudo_cov_paths = {
+        k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_cov_")
+    }
     xi_paths = {k: v for k, v in snakemake.input.items() if k.startswith("xi_")}
     cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("cov_")}
 
@@ -425,28 +561,42 @@ def main():
         xi_key = f"xi_{ver}"
         cov_key = f"cov_{ver}"
 
-        print(f"Processing {ver} ({'corrected' if fig_spec['leak_corrected'] else 'uncorrected'})...")
+        print(
+            f"Processing {ver} ({'corrected' if fig_spec['leak_corrected'] else 'uncorrected'})..."
+        )
 
         # Config-space
         ce_cfg, cb_cfg, cov_cfg = _compute_config_cosebis(
-            xi_paths[xi_key], cov_paths[cov_key], nmodes, scale_cut, config,
+            xi_paths[xi_key],
+            cov_paths[cov_key],
+            nmodes,
+            scale_cut,
+            config,
         )
 
         # Harmonic-space
         ce_h, cb_h, cov_h = _compute_harmonic_cosebis(
-            pseudo_cl_paths[pseudo_cl_key], pseudo_cov_paths[pseudo_cov_key],
-            nmodes, scale_cut[0], scale_cut[1],
+            pseudo_cl_paths[pseudo_cl_key],
+            pseudo_cov_paths[pseudo_cov_key],
+            nmodes,
+            scale_cut[0],
+            scale_cut[1],
         )
         harm = {
-            "En": ce_h, "Bn": cb_h,
+            "En": ce_h,
+            "Bn": cb_h,
             "sigma_E": np.sqrt(np.clip(np.diag(cov_h[:nmodes, :nmodes]), 0, None)),
             "sigma_B": np.sqrt(np.clip(np.diag(cov_h[nmodes:, nmodes:]), 0, None)),
         }
 
         # Create figure
         fig = _make_data_vector_figure(
-            harm, (ce_cfg, cb_cfg, cov_cfg), nmodes, scale_cut,
-            title=fig_spec["title"], reliable_mode_max=reliable_mode_max,
+            harm,
+            (ce_cfg, cb_cfg, cov_cfg),
+            nmodes,
+            scale_cut,
+            title=fig_spec["title"],
+            reliable_mode_max=reliable_mode_max,
         )
         fig_path = output_dir / fig_spec["filename"]
         fig.savefig(fig_path, dpi=300, bbox_inches="tight")
@@ -474,29 +624,52 @@ def main():
 
             # Compute COSEBIS at the other scale cut for this version
             ce_cfg_other, cb_cfg_other, cov_cfg_other = _compute_config_cosebis(
-                xi_paths[xi_key], cov_paths[cov_key], nmodes, other_cut, config,
+                xi_paths[xi_key],
+                cov_paths[cov_key],
+                nmodes,
+                other_cut,
+                config,
             )
             ce_h_other, cb_h_other, cov_h_other = _compute_harmonic_cosebis(
-                pseudo_cl_paths[pseudo_cl_key], pseudo_cov_paths[pseudo_cov_key],
-                nmodes, other_cut[0], other_cut[1],
+                pseudo_cl_paths[pseudo_cl_key],
+                pseudo_cov_paths[pseudo_cov_key],
+                nmodes,
+                other_cut[0],
+                other_cut[1],
             )
             harm_other = {
-                "En": ce_h_other, "Bn": cb_h_other,
-                "sigma_E": np.sqrt(np.clip(np.diag(cov_h_other[:nmodes, :nmodes]), 0, None)),
-                "sigma_B": np.sqrt(np.clip(np.diag(cov_h_other[nmodes:, nmodes:]), 0, None)),
+                "En": ce_h_other,
+                "Bn": cb_h_other,
+                "sigma_E": np.sqrt(
+                    np.clip(np.diag(cov_h_other[:nmodes, :nmodes]), 0, None)
+                ),
+                "sigma_B": np.sqrt(
+                    np.clip(np.diag(cov_h_other[nmodes:, nmodes:]), 0, None)
+                ),
             }
 
             # Arrange: full on left, fiducial on right
             if scale_cut == scale_cut_full:
                 harm_full, cfg_full = harm, (ce_cfg, cb_cfg, cov_cfg)
-                harm_fid, cfg_fid = harm_other, (ce_cfg_other, cb_cfg_other, cov_cfg_other)
+                harm_fid, cfg_fid = (
+                    harm_other,
+                    (ce_cfg_other, cb_cfg_other, cov_cfg_other),
+                )
             else:
                 harm_fid, cfg_fid = harm, (ce_cfg, cb_cfg, cov_cfg)
-                harm_full, cfg_full = harm_other, (ce_cfg_other, cb_cfg_other, cov_cfg_other)
+                harm_full, cfg_full = (
+                    harm_other,
+                    (ce_cfg_other, cb_cfg_other, cov_cfg_other),
+                )
 
             fig_combined = _make_combined_data_vector_figure(
-                harm_full, cfg_full, harm_fid, cfg_fid,
-                nmodes, scale_cut_full, scale_cut_fid,
+                harm_full,
+                cfg_full,
+                harm_fid,
+                cfg_fid,
+                nmodes,
+                scale_cut_full,
+                scale_cut_fid,
                 title=fig_spec["title"] if fig_spec["title"] else None,
                 reliable_mode_max=reliable_mode_max,
             )
@@ -511,16 +684,20 @@ def main():
             n_rel = reliable_mode_max
             # Harmonic-space PTE
             cb_h_rel = cb_h[:n_rel]
-            cov_h_B_rel = cov_h[nmodes:nmodes + n_rel, nmodes:nmodes + n_rel]
+            cov_h_B_rel = cov_h[nmodes : nmodes + n_rel, nmodes : nmodes + n_rel]
             chi2, pte, dof = compute_chi2_pte(cb_h_rel, cov_h_B_rel)
             harmonic_ptes[ver] = {"chi2": chi2, "pte": pte, "dof": dof}
-            print(f"  Harmonic B-mode PTE (modes 1-{n_rel}): {pte:.4f} (chi2={chi2:.2f}, dof={dof})")
+            print(
+                f"  Harmonic B-mode PTE (modes 1-{n_rel}): {pte:.4f} (chi2={chi2:.2f}, dof={dof})"
+            )
             # Config-space PTE
             cb_cfg_rel = cb_cfg[:n_rel]
-            cov_cfg_B_rel = cov_cfg[nmodes:nmodes + n_rel, nmodes:nmodes + n_rel]
+            cov_cfg_B_rel = cov_cfg[nmodes : nmodes + n_rel, nmodes : nmodes + n_rel]
             chi2_c, pte_c, dof_c = compute_chi2_pte(cb_cfg_rel, cov_cfg_B_rel)
             config_ptes[ver] = {"chi2": chi2_c, "pte": pte_c, "dof": dof_c}
-            print(f"  Config B-mode PTE (modes 1-{n_rel}): {pte_c:.4f} (chi2={chi2_c:.2f}, dof={dof_c})")
+            print(
+                f"  Config B-mode PTE (modes 1-{n_rel}): {pte_c:.4f} (chi2={chi2_c:.2f}, dof={dof_c})"
+            )
 
         # Cache leak-corrected results for version comparison figure
         if fig_spec["leak_corrected"] and ver not in all_version_data:
@@ -530,7 +707,10 @@ def main():
             }
 
     fig_vc = _make_version_comparison_figure(
-        all_version_data, nmodes, scale_cut, version_labels_map,
+        all_version_data,
+        nmodes,
+        scale_cut,
+        version_labels_map,
         reliable_mode_max=reliable_mode_max,
     )
     fig_vc_path = Path(snakemake.output["figure_versions"])

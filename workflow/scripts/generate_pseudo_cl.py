@@ -66,14 +66,16 @@ def generate_pseudo_cl(
     else:
         bin_str = f"nbins={nbins}, power={power}"
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Generating pseudo-Cl for {version}{blind_str}")
     print(f"Binning: {binning} ({bin_str})")
     if cosmo_params:
-        print(f"Cosmology: Om={cosmo_params.get('Omega_m')}, s8={cosmo_params.get('sigma_8')}")
+        print(
+            f"Cosmology: Om={cosmo_params.get('Omega_m')}, s8={cosmo_params.get('sigma_8')}"
+        )
     else:
         print("Cosmology: Planck 2018 defaults")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # Remap config cosmology param names to get_cosmo() expected names
     if cosmo_params:

@@ -8,16 +8,16 @@ Usage:
     python workflow/scripts/update_survey_stats.py \
         --mask-standard <path> --mask-starhalo <path>
 """
+
 import argparse
 import gc
-import sys
 import os
+from pathlib import Path
 
 import healpy as hp
 import numpy as np
-from astropy.io import fits
-from pathlib import Path
 import yaml
+from astropy.io import fits
 
 os.chdir("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val")
 
@@ -60,7 +60,7 @@ def compute_stats_chunked(catalog_path, w_col, e1_col, e2_col, chunk_size=1_000_
             e2 = np.asarray(data[e2_col][start:stop], dtype=np.float64)
 
             sum_w += np.sum(w)
-            w2 = w ** 2
+            w2 = w**2
             sum_w2 += np.sum(w2)
             sum_w2_e2 += np.sum(w2 * (e1**2 + e2**2))
 
@@ -87,10 +87,13 @@ def main():
     print(f"Standard footprint area: {area_standard:.2f} deg²")
     print(f"Star-halo footprint area: {area_starhalo:.2f} deg²\n")
 
-    all_versions = [(v, area_standard) for v in STANDARD_VERSIONS] + \
-                   [(v, area_starhalo) for v in STARHALO_VERSIONS]
+    all_versions = [(v, area_standard) for v in STANDARD_VERSIONS] + [
+        (v, area_starhalo) for v in STARHALO_VERSIONS
+    ]
 
-    print(f"{'Version':<30} {'Area (deg²)':>12} {'n_eff':>10} {'sigma_e':>10}  {'Old A':>10} {'Old n_e':>10} {'Old σ_e':>10}")
+    print(
+        f"{'Version':<30} {'Area (deg²)':>12} {'n_eff':>10} {'sigma_e':>10}  {'Old A':>10} {'Old n_e':>10} {'Old σ_e':>10}"
+    )
     print("-" * 105)
 
     for ver, area_deg2 in all_versions:
@@ -126,7 +129,9 @@ def main():
         n_eff = (sum_w**2) / (area_arcmin2 * sum_w2) if sum_w2 > 0 else 0.0
         sigma_e = np.sqrt(sum_w2_e2 / sum_w2) if sum_w2 > 0 else 0.0
 
-        print(f"{ver:<30} {area_deg2:>12.2f} {n_eff:>10.6f} {sigma_e:>10.6f}  {old_A:>10.2f} {old_ne:>10.6f} {old_se:>10.6f}")
+        print(
+            f"{ver:<30} {area_deg2:>12.2f} {n_eff:>10.6f} {sigma_e:>10.6f}  {old_A:>10.2f} {old_ne:>10.6f} {old_se:>10.6f}"
+        )
 
         if not args.dry_run:
             if "cov_th" not in cc[ver]:

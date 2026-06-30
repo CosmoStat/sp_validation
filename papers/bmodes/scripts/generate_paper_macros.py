@@ -14,7 +14,14 @@ from pathlib import Path
 
 # Version number to word mapping for TeX-safe macro names
 # (avoids cleveref/siunitx conflict with numeric names)
-VERSION_WORDS = {"5": "Five", "6": "Six", "6.3": "SixThree", "8": "Eight", "11.2": "ElevenTwo", "11.3": "ElevenThree"}
+VERSION_WORDS = {
+    "5": "Five",
+    "6": "Six",
+    "6.3": "SixThree",
+    "8": "Eight",
+    "11.2": "ElevenTwo",
+    "11.3": "ElevenThree",
+}
 
 
 def _parse_version_short(version: str) -> str:
@@ -87,20 +94,28 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         fid_versions = fiducial.get("versions", {})
         fid_data = fid_versions.get(fiducial_version, {})
         if "pte_6_min" in fid_data:
-            macros.append(f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}")
+            macros.append(
+                f"\\newcommand{{\\cosebisfiducialPte}}{{{_format_value(fid_data['pte_6_min'])}}}"
+            )
 
         # Full range
         full = cosebis_ev.get("full", {})
         full_versions = full.get("versions", {})
         full_data = full_versions.get(fiducial_version, {})
         if "pte_6_min" in full_data:
-            macros.append(f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'])}}}")
+            macros.append(
+                f"\\newcommand{{\\cosebisfullPte}}{{{_format_value(full_data['pte_6_min'])}}}"
+            )
 
         # Scale cuts from fiducial
         if "scale_cut_arcmin" in fiducial:
             cuts = fiducial["scale_cut_arcmin"]
-            macros.append(f"\\newcommand{{\\cosebisthetaMin}}{{{_format_value(cuts[0])}}}")
-            macros.append(f"\\newcommand{{\\cosebisthetaMax}}{{{_format_value(cuts[1])}}}")
+            macros.append(
+                f"\\newcommand{{\\cosebisthetaMin}}{{{_format_value(cuts[0])}}}"
+            )
+            macros.append(
+                f"\\newcommand{{\\cosebisthetaMax}}{{{_format_value(cuts[1])}}}"
+            )
 
         macros.append("")
 
@@ -116,12 +131,16 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         # Fiducial PTEs - use pte_joint_min (conservative across blinds)
         eb_fid = eb_ev.get("fiducial", {})
         if "pte_joint_min" in eb_fid:
-            macros.append(f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint_min'])}}}")
+            macros.append(
+                f"\\newcommand{{\\ebfiducialPte}}{{{_format_value(eb_fid['pte_joint_min'])}}}"
+            )
 
         # Full range PTEs
         full = eb_ev.get("full", {})
         if "pte_joint_min" in full:
-            macros.append(f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint_min'])}}}")
+            macros.append(
+                f"\\newcommand{{\\ebfullPte}}{{{_format_value(full['pte_joint_min'])}}}"
+            )
 
         # Scale cuts from fiducial
         if "scale_cut_xip" in eb_fid:
@@ -158,7 +177,9 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
         # Full matrix
         if "condition_number" in ev:
-            macros.append(f"\\newcommand{{\\ebcovCondFull}}{{\\num{{{ev['condition_number']:.1e}}}}}")
+            macros.append(
+                f"\\newcommand{{\\ebcovCondFull}}{{\\num{{{ev['condition_number']:.1e}}}}}"
+            )
         if "n_bins" in ev:
             macros.append(f"\\newcommand{{\\ebcovNbins}}{{\\num{{{ev['n_bins']}}}}}")
 
@@ -176,20 +197,36 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         # Max deviations across blinds
         xip = ev.get("xip", {})
         xim = ev.get("xim", {})
-        xip_max = max(xip.get("B_to_A", {}).get("max_dev", 0), xip.get("C_to_A", {}).get("max_dev", 0))
-        xim_max = max(xim.get("B_to_A", {}).get("max_dev", 0), xim.get("C_to_A", {}).get("max_dev", 0))
-        macros.append(f"\\newcommand{{\\covXipMaxDev}}{{{_format_value(xip_max * 100)}\\%}}")
-        macros.append(f"\\newcommand{{\\covXimMaxDev}}{{{_format_value(xim_max * 100)}\\%}}")
+        xip_max = max(
+            xip.get("B_to_A", {}).get("max_dev", 0),
+            xip.get("C_to_A", {}).get("max_dev", 0),
+        )
+        xim_max = max(
+            xim.get("B_to_A", {}).get("max_dev", 0),
+            xim.get("C_to_A", {}).get("max_dev", 0),
+        )
+        macros.append(
+            f"\\newcommand{{\\covXipMaxDev}}{{{_format_value(xip_max * 100)}\\%}}"
+        )
+        macros.append(
+            f"\\newcommand{{\\covXimMaxDev}}{{{_format_value(xim_max * 100)}\\%}}"
+        )
 
         macros.append("")
 
     # PTE variation across blinds (reuse eb_fid cached above)
     if eb_fid:
-        joint_ptes = [eb_fid.get(f"pte_joint_{b}") for b in ["A", "B", "C"] if f"pte_joint_{b}" in eb_fid]
+        joint_ptes = [
+            eb_fid.get(f"pte_joint_{b}")
+            for b in ["A", "B", "C"]
+            if f"pte_joint_{b}" in eb_fid
+        ]
         if joint_ptes:
             macros.append("% PTE variation across blinds (fiducial scale cuts)")
             joint_delta = max(joint_ptes) - min(joint_ptes)
-            macros.append(f"\\newcommand{{\\ebJointPteDelta}}{{{_format_value(joint_delta)}}}")
+            macros.append(
+                f"\\newcommand{{\\ebJointPteDelta}}{{{_format_value(joint_delta)}}}"
+            )
             macros.append("")
 
     # Config-space PTE matrices - generate table
@@ -219,29 +256,48 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
             cosebis_20 = ver_data.get("cosebis_20_stats", {})
 
             # Fiducial PTEs
-            bold = 0.05
             if "pte_at_fiducial" in xip:
-                macros.append(f"\\newcommand{{\\{prefix}Xip}}{{{_format_value(xip['pte_at_fiducial'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}Xip}}{{{_format_value(xip['pte_at_fiducial'])}}}"
+                )
             if "pte_at_fiducial" in xim:
-                macros.append(f"\\newcommand{{\\{prefix}Xim}}{{{_format_value(xim['pte_at_fiducial'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}Xim}}{{{_format_value(xim['pte_at_fiducial'])}}}"
+                )
             if "pte_at_fiducial" in combined:
-                macros.append(f"\\newcommand{{\\{prefix}Combined}}{{{_format_value(combined['pte_at_fiducial'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}Combined}}{{{_format_value(combined['pte_at_fiducial'])}}}"
+                )
             if "pte_at_fiducial" in cosebis:
-                macros.append(f"\\newcommand{{\\{prefix}Cosebis}}{{{_format_value(cosebis['pte_at_fiducial'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}Cosebis}}{{{_format_value(cosebis['pte_at_fiducial'])}}}"
+                )
             if "pte_at_fiducial" in cosebis_20:
-                macros.append(f"\\newcommand{{\\{prefix}CosebisTwenty}}{{{_format_value(cosebis_20['pte_at_fiducial'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}CosebisTwenty}}{{{_format_value(cosebis_20['pte_at_fiducial'])}}}"
+                )
 
             # Full-range PTEs
             if "pte_at_full_range" in xip:
-                macros.append(f"\\newcommand{{\\{prefix}XipFull}}{{{_format_value(xip['pte_at_full_range'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}XipFull}}{{{_format_value(xip['pte_at_full_range'])}}}"
+                )
             if "pte_at_full_range" in xim:
-                macros.append(f"\\newcommand{{\\{prefix}XimFull}}{{{_format_value(xim['pte_at_full_range'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}XimFull}}{{{_format_value(xim['pte_at_full_range'])}}}"
+                )
             if "pte_at_full_range" in combined:
-                macros.append(f"\\newcommand{{\\{prefix}CombinedFull}}{{{_format_value(combined['pte_at_full_range'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}CombinedFull}}{{{_format_value(combined['pte_at_full_range'])}}}"
+                )
             if "pte_at_full_range" in cosebis:
-                macros.append(f"\\newcommand{{\\{prefix}CosebisFull}}{{{_format_value(cosebis['pte_at_full_range'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}CosebisFull}}{{{_format_value(cosebis['pte_at_full_range'])}}}"
+                )
             if "pte_at_full_range" in cosebis_20:
-                macros.append(f"\\newcommand{{\\{prefix}CosebisTwentyFull}}{{{_format_value(cosebis_20['pte_at_full_range'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}CosebisTwentyFull}}{{{_format_value(cosebis_20['pte_at_full_range'])}}}"
+                )
 
         macros.append("")
 
@@ -260,8 +316,7 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         # duplicate macro definitions — both SP_v1.4.6_ecut07_leak_corr and
         # SP_v1.4.6_leak_corr would map to the same clPteSix prefix.
         leak_corr_versions = {
-            k: v for k, v in versions.items()
-            if "leak_corr" in k and "ecut" not in k
+            k: v for k, v in versions.items() if "leak_corr" in k and "ecut" not in k
         }
 
         for ver, ver_data in leak_corr_versions.items():
@@ -270,17 +325,25 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
 
             # Fiducial PTEs
             if "pte_at_fiducial" in ver_data:
-                macros.append(f"\\newcommand{{\\{prefix}Fid}}{{{_format_value(ver_data['pte_at_fiducial'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}Fid}}{{{_format_value(ver_data['pte_at_fiducial'])}}}"
+                )
 
             # Full-range PTEs
             if "pte_at_full_range" in ver_data:
-                macros.append(f"\\newcommand{{\\{prefix}Full}}{{{_format_value(ver_data['pte_at_full_range'])}}}")
+                macros.append(
+                    f"\\newcommand{{\\{prefix}Full}}{{{_format_value(ver_data['pte_at_full_range'])}}}"
+                )
 
         macros.append("")
 
     # Harmonic-config COSEBIS comparison - B-mode PTEs (modes 1-N) per angular range
     for angular_range in ["full", "fiducial"]:
-        harm_cosebis_path = claims_dir / f"harmonic_config_cosebis_comparison_{angular_range}" / "evidence.json"
+        harm_cosebis_path = (
+            claims_dir
+            / f"harmonic_config_cosebis_comparison_{angular_range}"
+            / "evidence.json"
+        )
         if not harm_cosebis_path.exists():
             continue
         with open(harm_cosebis_path) as f:
@@ -288,10 +351,15 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         ev = data.get("evidence", {})
         range_suffix = "Full" if angular_range == "full" else "Fid"
 
-        macros.append(f"% harmonic_config_cosebis_comparison_{angular_range} (B-mode COSEBIS PTEs)")
+        macros.append(
+            f"% harmonic_config_cosebis_comparison_{angular_range} (B-mode COSEBIS PTEs)"
+        )
         macros.append("")
 
-        for method, method_prefix in [("harmonic_b_mode_ptes", "harmCosebis"), ("config_b_mode_ptes", "cfgCosebis")]:
+        for method, method_prefix in [
+            ("harmonic_b_mode_ptes", "harmCosebis"),
+            ("config_b_mode_ptes", "cfgCosebis"),
+        ]:
             ptes = ev.get(method, {})
             for ver, pte_data in ptes.items():
                 short_ver = _parse_version_short(ver)
@@ -299,9 +367,13 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
                 pte = pte_data.get("pte")
                 chi2 = pte_data.get("chi2")
                 if pte is not None:
-                    macros.append(f"\\newcommand{{\\{method_prefix}Pte{word}{range_suffix}}}{{{_format_value(pte)}}}")
+                    macros.append(
+                        f"\\newcommand{{\\{method_prefix}Pte{word}{range_suffix}}}{{{_format_value(pte)}}}"
+                    )
                 if chi2 is not None:
-                    macros.append(f"\\newcommand{{\\{method_prefix}Chisq{word}{range_suffix}}}{{{_format_value(chi2)}}}")
+                    macros.append(
+                        f"\\newcommand{{\\{method_prefix}Chisq{word}{range_suffix}}}{{{_format_value(chi2)}}}"
+                    )
 
         macros.append("")
 
@@ -312,7 +384,13 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         print(f"  → {output_path}")
 
 
-_CONFIG_STATS = ["cosebis_stats", "cosebis_20_stats", "xip_stats", "xim_stats", "combined_stats"]
+_CONFIG_STATS = [
+    "cosebis_stats",
+    "cosebis_20_stats",
+    "xip_stats",
+    "xim_stats",
+    "combined_stats",
+]
 
 
 def _pte_row_cells(pte_key, cfg, harm, bold, italic=None):
@@ -341,12 +419,23 @@ def _pte_row_cells(pte_key, cfg, harm, bold, italic=None):
     cells = []
     for stat in _CONFIG_STATS:
         s = cfg.get(stat, {})
-        cells.append(f"& {_format_value(s.get(pte_key, float('nan')), bold_threshold=bold, italic_threshold=italic)}")
-    cells.append(f"& {_format_value(harm.get(pte_key, float('nan')), bold_threshold=bold, italic_threshold=italic)}")
+        cells.append(
+            f"& {_format_value(s.get(pte_key, float('nan')), bold_threshold=bold, italic_threshold=italic)}"
+        )
+    cells.append(
+        f"& {_format_value(harm.get(pte_key, float('nan')), bold_threshold=bold, italic_threshold=italic)}"
+    )
     return cells
 
 
-def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: str, versions: list, version_labels: dict, config: dict):
+def generate_pte_tables(
+    claims_dir: Path,
+    output_dir: Path,
+    fiducial_version: str,
+    versions: list,
+    version_labels: dict,
+    config: dict,
+):
     """Generate LaTeX table files from PTE evidence.
 
     Creates:
@@ -378,29 +467,37 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         with open(harmonic_pte_path) as f:
             harmonic_data = json.load(f).get("evidence", {}).get("versions", {})
 
-    # Get table label for caption
-    fid_label = table_labels.get(fiducial_version, version_labels.get(fiducial_version, fiducial_version))
-
     # Results table (fiducial only) — grouped by statistic family
     if fiducial_version in config_data or fiducial_version in harmonic_data:
         results_table = []
         results_table.append("% Auto-generated PTE summary tabular (Results section)")
         results_table.append("% Regenerate: snakemake paper_macros")
-        results_table.append(r"% Wrap in table*/table environment in main tex for float control")
+        results_table.append(
+            r"% Wrap in table*/table environment in main tex for float control"
+        )
         # Column layout: Scale | COSEBIS n≤6 | COSEBIS n≤20 || ξ+^B | ξ-^B | ξ_tot^B ||| C_ℓ^BB
         results_table.append(r"\begin{tabular}{l cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
         results_table.append(r"    \hline\hline")
         results_table.append(r"    \noalign{\vskip 3pt}")
-        results_table.append(r"    & \multicolumn{2}{c}{COSEBIs} & \multicolumn{3}{c}{Pure E/B} & $C_\ell$ \\")
-        results_table.append(r"    \cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(l){7-7}")
-        results_table.append(r"    Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\")
+        results_table.append(
+            r"    & \multicolumn{2}{c}{COSEBIs} & \multicolumn{3}{c}{Pure E/B} & $C_\ell$ \\"
+        )
+        results_table.append(
+            r"    \cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(l){7-7}"
+        )
+        results_table.append(
+            r"    Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\"
+        )
         results_table.append(r"    \hline")
         results_table.append(r"    \noalign{\vskip 3pt}")
 
         cfg = config_data.get(fiducial_version, {})
         harm = harmonic_data.get(fiducial_version, {})
 
-        for pte_key, cut_label in [("pte_at_fiducial", "Fiducial"), ("pte_at_full_range", "Full range")]:
+        for pte_key, cut_label in [
+            ("pte_at_fiducial", "Fiducial"),
+            ("pte_at_full_range", "Full range"),
+        ]:
             row = [f"    {cut_label}"]
             row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
             row.append(r" \\")
@@ -419,13 +516,23 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
         appendix_table = []
         appendix_table.append("% Auto-generated PTE comparison tabular (Appendix)")
         appendix_table.append("% Regenerate: snakemake paper_macros")
-        appendix_table.append(r"% Wrap in table*/table environment in main tex for float control")
-        appendix_table.append(r"\begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}")
+        appendix_table.append(
+            r"% Wrap in table*/table environment in main tex for float control"
+        )
+        appendix_table.append(
+            r"\begin{tabular}{ll cc @{\hskip 8pt} ccc @{\hskip 8pt} c}"
+        )
         appendix_table.append(r"    \hline\hline")
         appendix_table.append(r"    \noalign{\vskip 3pt}")
-        appendix_table.append(r"    & & \multicolumn{2}{c}{COSEBIs} & \multicolumn{3}{c}{Pure E/B} & $C_\ell$ \\")
-        appendix_table.append(r"    \cmidrule(lr){3-4} \cmidrule(lr){5-7} \cmidrule(l){8-8}")
-        appendix_table.append(r"    Version & Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\")
+        appendix_table.append(
+            r"    & & \multicolumn{2}{c}{COSEBIs} & \multicolumn{3}{c}{Pure E/B} & $C_\ell$ \\"
+        )
+        appendix_table.append(
+            r"    \cmidrule(lr){3-4} \cmidrule(lr){5-7} \cmidrule(l){8-8}"
+        )
+        appendix_table.append(
+            r"    Version & Scale cuts & $B_n$ ($n \leq 6$) & $B_n$ ($n \leq 20$) & $\xi_+^{\mathrm{B}}$ & $\xi_-^{\mathrm{B}}$ & $\xi_{\mathrm{tot}}^{\mathrm{B}}$ & $C_\ell^{BB}$ \\"
+        )
         appendix_table.append(r"    \hline")
         appendix_table.append(r"    \noalign{\vskip 3pt}")
 
@@ -436,7 +543,10 @@ def generate_pte_tables(claims_dir: Path, output_dir: Path, fiducial_version: st
             if ver == fiducial_version:
                 label = f"{label} (fiducial)"
 
-            for pte_key, cut_label in [("pte_at_fiducial", "Fiducial"), ("pte_at_full_range", "Full range")]:
+            for pte_key, cut_label in [
+                ("pte_at_fiducial", "Fiducial"),
+                ("pte_at_full_range", "Full range"),
+            ]:
                 # Only show version label on first row of each pair
                 row_label = label if pte_key == "pte_at_fiducial" else ""
                 row = [f"    {row_label} & {cut_label}"]
@@ -511,7 +621,9 @@ if __name__ == "__main__":
     # Separate macro file from PTE tables and evidence
     # Only claims_macros.tex gets macro content; PTE tables generated separately
     macro_file = [Path(p) for p in snakemake.output if p.endswith("claims_macros.tex")]  # noqa: F821
-    evidence_outputs = [Path(p) for p in snakemake.output if p.endswith("evidence.json")]  # noqa: F821
+    evidence_outputs = [
+        Path(p) for p in snakemake.output if p.endswith("evidence.json")
+    ]  # noqa: F821
 
     print(f"Generating macros from {tapestry_dir}")
     generate_macros(tapestry_dir, macro_file, fiducial_version)
@@ -520,12 +632,16 @@ if __name__ == "__main__":
     if macro_file:
         paper_dir = macro_file[0].parent
         print(f"Generating PTE tables to {paper_dir}")
-        generate_pte_tables(tapestry_dir, paper_dir, fiducial_version, versions, version_labels, config)
+        generate_pte_tables(
+            tapestry_dir, paper_dir, fiducial_version, versions, version_labels, config
+        )
 
     # Generate evidence.json if requested
     # Dependencies derived from snakemake inputs (rules.X.output declarations)
     rule_inputs = snakemake.input.keys()  # noqa: F821
-    input_deps = [k for k in rule_inputs if k.endswith("_evidence") or k == "covariance_evidence"]
+    input_deps = [
+        k for k in rule_inputs if k.endswith("_evidence") or k == "covariance_evidence"
+    ]
     depends_on = [d.replace("_evidence", "") for d in input_deps]
 
     for evidence_path in evidence_outputs:

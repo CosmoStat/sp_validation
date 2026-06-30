@@ -29,11 +29,11 @@ from astropy import wcs
 from astropy.io import fits
 from IPython.display import clear_output
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
 # List of FITS mask files
 directory = f"{os.environ['HOME']}/arc/projects/unions/catalogues/unions/GAaP_photometry/extfinalmask_UNIONS5000"
-#directory = "."
+# directory = "."
 fits_mask_files = glob.glob(f"{directory}/UNIONS.*_extfinalmask.fits")
 
 # Define HealSparse parameters
@@ -52,10 +52,11 @@ def interpol(ra_step, dec_step, x, y, x_step, y_step):
     dec_values = dec_step.flatten()
 
     # Interpolate RA and Dec values to the fine grid
-    ra = griddata(points, ra_values, (x, y), method='cubic')
-    dec = griddata(points, dec_values, (x, y), method='cubic')
+    ra = griddata(points, ra_values, (x, y), method="cubic")
+    dec = griddata(points, dec_values, (x, y), method="cubic")
 
     return ra, dec
+
 
 def process(fits_mask_file, nside_sparse, nside_coverage, step=1):
 
@@ -74,7 +75,6 @@ def process(fits_mask_file, nside_sparse, nside_coverage, step=1):
     x_mesh, y_mesh = np.meshgrid(x, y)
 
     if step > 1:
-
         # Note: Use nx+1, ny+1 to add additional point at x_ar=nx, y_ar=ny.
         # Required to
         # reduce extrapolation errors towards large x, y.
@@ -82,42 +82,44 @@ def process(fits_mask_file, nside_sparse, nside_coverage, step=1):
         y_ar = np.arange(0, ny + 1, step)
         x_step, y_step = np.meshgrid(x_ar, y_ar, indexing="ij")
 
-        #start = timer()
+        # start = timer()
         ra_step, dec_step = WCS.wcs_pix2world(x_step, y_step, 0)
-        #end = timer()
-        #print(f"WCS pix2 world course {end - start:.1f}s")
+        # end = timer()
+        # print(f"WCS pix2 world course {end - start:.1f}s")
 
-        #start = timer()
+        # start = timer()
         ra_interp = RectBivariateSpline(y_ar, x_ar, ra_step, ky=2, kx=2)
         dec_interp = RectBivariateSpline(y_ar, x_ar, dec_step, ky=2, kx=2)
-        #end = timer()
-        #print(f"create spline {end - start:.1f}s")
+        # end = timer()
+        # print(f"create spline {end - start:.1f}s")
 
-        #start = timer()
+        # start = timer()
         ra = ra_interp(y, x).T
         dec = dec_interp(y, x).T
-        #end = timer()
-        #print(f"interpolate {end - start:.1f}s")
+        # end = timer()
+        # print(f"interpolate {end - start:.1f}s")
 
     else:
-        #start = timer()
+        # start = timer()
         ra, dec = WCS.wcs_pix2world(x_mesh, y_mesh, 0)
-        #end = timer()
-        #print(f"WCS pix2 world {end - start:.1f}s")
+        # end = timer()
+        # print(f"WCS pix2 world {end - start:.1f}s")
 
     # coordinates in deg
     return ra, dec, mask
 
+
 def update_map(hs_map, ra, dec, mask):
 
     # Add pixels to healsparse map
-    #start = timer()
+    # start = timer()
     hs_map.update_values_pos(ra, dec, mask, lonlat=True, operation="or")
-    #end = timer()
-    #print(f"update map {end - start:.1f}s")
+    # end = timer()
+    # print(f"update map {end - start:.1f}s")
 
 
 # -
+
 
 def flatten(ra, dec, mask):
     ra_flatten = np.ravel(np.radians(ra))
@@ -128,7 +130,9 @@ def flatten(ra, dec, mask):
 
 
 # Initialise map (first time)
-hs_map = hs.HealSparseMap.make_empty(nside_coverage, nside_sparse, dtype="int16", sentinel=0)
+hs_map = hs.HealSparseMap.make_empty(
+    nside_coverage, nside_sparse, dtype="int16", sentinel=0
+)
 
 do_plot = False
 do_gif = True
@@ -142,8 +146,9 @@ batch_ra, batch_dec, batch_mask = [], [], []
 
 # Loop over mask files
 idx = 0
-for fits_mask_file in tqdm.tqdm(fits_mask_files, total=len(fits_mask_files), disable=False):
-
+for fits_mask_file in tqdm.tqdm(
+    fits_mask_files, total=len(fits_mask_files), disable=False
+):
     # Check for zero file size
     if os.stat(fits_mask_file).st_size == 0:
         print(f"File {fits_mask_file} has zero size, continuing")
@@ -152,7 +157,6 @@ for fits_mask_file in tqdm.tqdm(fits_mask_files, total=len(fits_mask_files), dis
     ra, dec, mask = process(fits_mask_files[0], nside_sparse, nside_coverage, step=step)
 
     ra_flatten, dec_flatten, mask_flatten = flatten(ra, dec, mask)
-
 
     # Append to batch
     batch_ra.append(ra_flatten)
@@ -174,7 +178,6 @@ for fits_mask_file in tqdm.tqdm(fits_mask_files, total=len(fits_mask_files), dis
         batch_ra, batch_dec, batch_mask = [], [], []
 
         if do_gif:
-
             map_lowres = hs_map.generate_healpix_map(nside=256)
             hp.mollview(map_lowres)
             fname = f"map_lowres_{idx:04d}.jpg"
@@ -194,42 +197,4 @@ for fits_mask_file in tqdm.tqdm(fits_mask_files, total=len(fits_mask_files), dis
         plt.show()
 # -
 
-hs_map.write('mask_all.fits', clobber=False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+hs_map.write("mask_all.fits", clobber=False)
