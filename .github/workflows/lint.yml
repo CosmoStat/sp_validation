@@ -39,7 +39,7 @@ on:
   push:
     branches: [develop]
   pull_request_target:
-    branches: [develop]
+    branches: [test/lint-gate-base]
   workflow_dispatch:
 
 # One lint run per branch / PR; newer pushes cancel older in-flight runs.
