@@ -38,8 +38,8 @@ name: Lint
 on:
   push:
     branches: [develop]
-  pull_request_target:
-    branches: [test/lint-gate-base]
+  pull_request:        # TEST ONLY (throwaway branch): pull_request reads the
+                       # workflow from the PR head, so it actually fires pre-merge
   workflow_dispatch:
 
 # One lint run per branch / PR; newer pushes cancel older in-flight runs.
@@ -118,7 +118,7 @@ jobs:
             const report = passed ? '' : fs.readFileSync('report.md', 'utf8');
 
             // ---- PR: speak on the PR itself (comment, auto-updating) ----------
-            if (context.eventName === 'pull_request_target') {
+            if (context.eventName === 'pull_request_target' || context.eventName === 'pull_request') {
               const pr = context.payload.pull_request;
               const author = pr.user.login;
               const MARKER = '<!-- ruff-lint-gate -->';
