@@ -182,10 +182,12 @@ def fill_cat_gal(cat_gal, dat, g_uncorr, gal_metacal, mask1, mask2, purpose="wei
     cat_gal["R_g22"] = gal_metacal.R22
 
     cat_gal["NGMIX_T_NOSHEAR"] = sp_cat.get_col(dat, "NGMIX_T_NOSHEAR", mask1, mask2)
-    cat_gal["NGMIX_Tpsf_NOSHEAR"] = sp_cat.get_col(
-        dat, "NGMIX_Tpsf_NOSHEAR", mask1, mask2
+    cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"] = sp_cat.get_col(
+        dat, "NGMIX_T_PSF_RECONV_NOSHEAR", mask1, mask2
     )
-    cat_gal["size_ratio"] = cat_gal["NGMIX_T_NOSHEAR"] / cat_gal["NGMIX_Tpsf_NOSHEAR"]
+    cat_gal["size_ratio"] = (
+        cat_gal["NGMIX_T_NOSHEAR"] / cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"]
+    )
 
     cat_gal["snr"] = sp_cat.get_col(
         dat, "NGMIX_FLUX_NOSHEAR", mask1, mask2
@@ -322,8 +324,8 @@ def get_alpha_leakage_per_object(cat_gal, num_bins, weight_type="des"):
     """
     assert weight_type in ["des", "iv"], "weight_type must be either 'des' or 'iv'"
     # Compute the size ratio
-    size_ratio = cat_gal["NGMIX_Tpsf_NOSHEAR"] / (
-        cat_gal["NGMIX_T_NOSHEAR"] + cat_gal["NGMIX_Tpsf_NOSHEAR"]
+    size_ratio = cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"] / (
+        cat_gal["NGMIX_T_NOSHEAR"] + cat_gal["NGMIX_T_PSF_RECONV_NOSHEAR"]
     )
 
     df_gal = pd.DataFrame(
@@ -715,9 +717,6 @@ class metacal:
     sigma_eps : float, optional
         ellipticity dispersion (one component) for computation
         of weights; default is 0.34
-    col_2d : bool, optional
-        if `True` (default, ellipticity in one 2D column;
-        if `False`, ellipticity in two columns ELL_0, ELL_1
     verbose : bool, optional, default=False
         verbose output if True
 
@@ -737,7 +736,6 @@ class metacal:
         size_corr_ell=True,
         global_R_weight=None,
         sigma_eps=0.34,
-        col_2d=True,
         verbose=False,
     ):
 
@@ -761,7 +759,6 @@ class metacal:
         self._global_R_weight = global_R_weight
 
         self._sigma_eps = sigma_eps
-        self._col_2d = col_2d
 
         self._verbose = verbose
 
@@ -803,7 +800,7 @@ class metacal:
 
         print("FHP/MK hack using p1 PSF for ns in cuts")
         indices = np.where(mask)[0]
-        col_1p = f"{self._prefix}_Tpsf_1P"
+        col_1p = f"{self._prefix}_T_PSF_RECONV_1P"
         new_psf = data[col_1p][indices]
 
         # Overwriting incorrect no-shear PSF size to the one from 1p
@@ -830,32 +827,24 @@ class metacal:
 
             dict_tmp["flag"] = masked_data[f"{self._prefix}_FLAGS_{name_shear}"]
 
-            if self._col_2d:
-                # Ellipticity in one 2D column
-                for comp in (0, 1):
-                    dict_tmp[f"g{comp + 1}"] = masked_data[
-                        f"{self._prefix}_ELL_{name_shear}"
-                    ][:, comp]
-            else:
-                # Ellipcitiy in two different columns
-                for comp in (0, 1):
-                    dict_tmp[f"g{comp + 1}"] = masked_data[
-                        f"{self._prefix}_ELL_{name_shear}_{comp}"
-                    ]
+            # Ellipticity in named scalar components (ShapePipe-v2 grammar)
+            for comp in (0, 1):
+                dict_tmp[f"g{comp + 1}"] = masked_data[
+                    f"{self._prefix}_G{comp + 1}_{name_shear}"
+                ]
 
             for key in ("flux", "flux_err", "T", "T_err"):
                 dict_tmp[key] = masked_data[
                     f"{self._prefix}_{key.upper()}_{name_shear}"
                 ]
 
-            dict_tmp["Tpsf"] = masked_data[f"{self._prefix}_Tpsf_{name_shear}"]
+            dict_tmp["Tpsf"] = masked_data[f"{self._prefix}_T_PSF_RECONV_{name_shear}"]
 
         ns["C11"], ns["C22"], ns["w"] = self.get_variance_ivweights(
             masked_data,
             self._sigma_eps,
             self._prefix,
             mask=None,
-            col_2d=self._col_2d,
         )
 
         self._n_input = len(masked_data)
@@ -870,7 +859,7 @@ class metacal:
         return m1, p1, m2, p2, ns
 
     @staticmethod
-    def get_variance_ivweights(data, sigma_eps, prefix="NGMIX", mask=None, col_2d=True):
+    def get_variance_ivweights(data, sigma_eps, prefix="NGMIX", mask=None):
         """Get Variance IVWEIGHTS.
 
         Compute variance and inverse-variance weights.
@@ -886,9 +875,6 @@ class metacal:
         mask : list, optional
             indicates valid objects with ``True`` values; default is ``None`` = use all objects
             type has to be bool
-        col_2d : bool, optional
-            if ``True`` (default), ellipticity is given in single 2D column;
-            if ``False``, ellipticity is expected in two 1D columns.
 
         Returns
         -------
@@ -900,20 +886,11 @@ class metacal:
             weight
 
         """
+        C11 = data[f"{prefix}_G1_ERR_NOSHEAR"]
+        C22 = data[f"{prefix}_G2_ERR_NOSHEAR"]
         if mask is not None:
-            if col_2d:
-                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 0][mask]
-                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 1][mask]
-            else:
-                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR_0"][mask]
-                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR_1"][mask]
-        else:
-            if col_2d:
-                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 0]
-                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR"][:, 1]
-            else:
-                C11 = data[f"{prefix}_ELL_ERR_NOSHEAR_0"]
-                C22 = data[f"{prefix}_ELL_ERR_NOSHEAR_1"]
+            C11 = C11[mask]
+            C22 = C22[mask]
 
         iv_w = 1 / (2 * sigma_eps**2 + C11 + C22)
 

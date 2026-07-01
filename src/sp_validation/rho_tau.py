@@ -10,15 +10,6 @@ from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 # `from sp_validation.rho_tau import SquareRootScale` keeps working.
 from sp_validation.plots import SquareRootScale  # noqa: F401
 
-not_square_size = [
-    "DES",
-    "SP_v1.3_LFmask_8k",
-    "SP_v1.3_LFmask_8k_no_alpha",
-    "SP_v1.3_LFmask_8k_li_2024",
-    "SP_v1.3_LFmask_8k_SN8",
-    "SP_v1.3_LFmask_8k_F2",
-]
-
 
 def _extract_xip(correlations):
     """Return flattened array of xip values from a list of correlations."""
@@ -49,7 +40,8 @@ def get_params_rho_tau(cat, survey="other"):
     params["e2_star_col"] = cat["psf"]["e2_star_col"]
     params["PSF_size"] = cat["psf"]["PSF_size"]
     params["star_size"] = cat["psf"]["star_size"]
-    params["square_size"] = survey not in not_square_size
+    # ShapePipe-v2 stores every size as T = 2σ² (an area); nothing to square.
+    params["square_size"] = False
     if survey != "DES":
         params["PSF_flag"] = cat["psf"]["PSF_flag"]
         params["star_flag"] = cat["psf"]["star_flag"]
