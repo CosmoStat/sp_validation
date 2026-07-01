@@ -300,8 +300,8 @@ if scenario == 0:
             "FLAGS",
             "IMAFLAGS_ISO",
             "NGMIX_MOM_FAIL",
-            "NGMIX_ELL_PSFo_NOSHEAR_0",
-            "NGMIX_ELL_PSFo_NOSHEAR_1",
+            "NGMIX_G1_PSF_ORIG_NOSHEAR",
+            "NGMIX_G2_PSF_ORIG_NOSHEAR",
             "4_Stars",
             "8_Manual",
             "1024_Maximask",
@@ -316,8 +316,8 @@ elif scenario == 1:
             "IMAFLAGS_ISO",
             "FLAGS",
             "NGMIX_MOM_FAIL",
-            "NGMIX_ELL_PSFo_NOSHEAR_0",
-            "NGMIX_ELL_PSFo_NOSHEAR_1",
+            "NGMIX_G1_PSF_ORIG_NOSHEAR",
+            "NGMIX_G2_PSF_ORIG_NOSHEAR",
             "4_Stars",
             "8_Manual",
             "1024_Maximask",
@@ -330,8 +330,8 @@ elif scenario == 1:
     combine_cols = {
         "ngmix failures": [
             "NGMIX_MOM_FAIL",
-            "NGMIX_ELL_PSFo_NOSHEAR_0",
-            "NGMIX_ELL_PSFo_NOSHEAR_1",
+            "NGMIX_G1_PSF_ORIG_NOSHEAR",
+            "NGMIX_G2_PSF_ORIG_NOSHEAR",
         ]
     }
 
@@ -415,7 +415,7 @@ def get_info_for_metacal_masking(dat, mask, prefix="NGMIX", name_shear="NOSHEAR"
 
     for key in ("flux", "flux_err", "T"):
         res[key] = dat[mask][f"{prefix}_{key.upper()}_{name_shear}"]
-    res["Tpsf"] = dat[mask][f"{prefix}_Tpsf_{name_shear}"]
+    res["Tpsf"] = dat[mask][f"{prefix}_T_PSF_RECONV_{name_shear}"]
 
     return res
 
@@ -439,7 +439,6 @@ if dat is not None:
         size_corr_ell=cm["gal_size_corr_ell"],
         sigma_eps=cm["sigma_eps_prior"],
         global_R_weight=cm["global_R_weight"],
-        col_2d=False,
         verbose=True,
     )
 

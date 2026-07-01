@@ -79,14 +79,21 @@ print_stats(
 
 # PSF keys
 key_base = shape.upper()
-key_PSF_ell = f"{key_base}_ELL_PSFo_NOSHEAR"
-key_PSF_size = f"{key_base}_T_PSFo_NOSHEAR"
+key_PSF_g1 = f"{key_base}_G1_PSF_ORIG_NOSHEAR"
+key_PSF_g2 = f"{key_base}_G2_PSF_ORIG_NOSHEAR"
+key_PSF_size = f"{key_base}_T_PSF_ORIG_NOSHEAR"
 size_to_fwhm = T_to_fwhm
 
 print_stats("Galaxies:", stats_file, verbose=verbose)
 n_tot = spv_cat.print_some_quantities(dd, stats_file, verbose=verbose)
 spv_cat.print_mean_ellipticity(
-    dd, f"{key_base}_ELL_NOSHEAR", 2, n_tot, stats_file, invalid=-10, verbose=verbose
+    dd,
+    [f"{key_base}_G1_NOSHEAR", f"{key_base}_G2_NOSHEAR"],
+    1,
+    n_tot,
+    stats_file,
+    invalid=-10,
+    verbose=verbose,
 )
 
 # #### Survey area and potential missing tiles
@@ -110,7 +117,7 @@ if star_cat_path:
     n_tot = spv_cat.print_some_quantities(d_star, stats_file, verbose=verbose)
     spv_cat.print_mean_ellipticity(
         d_star,
-        ["E1_PSF_HSM", "E2_PSF_HSM"],
+        ["HSM_G1_PSF", "HSM_G2_PSF"],
         1,
         n_tot,
         stats_file,
@@ -121,7 +128,7 @@ if star_cat_path:
 # ### 3. Matching of stars
 
 # ### Matching of star catalogues
-# Match the star catalogue `d_star` (selected on individual exposures using size-magnitude diagram) to catalogue from tile. Uses some simple criteria to select stars from tile catalogue such as SPREAD_CLASS.
+# Match the star catalogue `d_star` (selected on individual exposures using size-magnitude diagram) to catalogue from tile. Uses some simple criteria to select stars from tile catalogue.
 #
 # This is mainly for testing, this match will not be used later.
 
@@ -148,7 +155,7 @@ m_star = (
     (dd["FLAGS"][ind_star] == 0)
     & (dd["IMAFLAGS_ISO"][ind_star] == 0)
     & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
-    & (dd["NGMIX_ELL_PSFo_NOSHEAR"][:, 0][ind_star] != -10)
+    & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
 )
 
 ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
@@ -156,7 +163,8 @@ ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
     ind_star,
     m_star,
     [col_name_ra, col_name_dec],
-    key_PSF_ell,
+    key_PSF_g1,
+    key_PSF_g2,
     n_star_tot,
     stats_file,
     verbose=verbose,
@@ -175,24 +183,11 @@ spv_cat.write_PSF_cat(
     g_star_psf[1],
 )
 
-#### Refine: Match to SPREAD_CLASS samples
-if "SPREAD_CLASS" in dd.dtype.names:
-    spv_cat.match_spread_class(
-        dd, ind_star, m_star, stats_file, len(ra_star), verbose=verbose
-    )
-else:
-    print_stats(
-        "No SPREAD_CLASS in input, skipping star-gal matching",
-        stats_file,
-        verbose=verbose,
-    )
-
 # ## Check for objects with invalid PSF
 
 spv_cat.check_invalid(
     dd,
-    [key_PSF_ell, f"{key_base}_ELL_NOSHEAR"],
-    [0, 0],
+    [key_PSF_g1, f"{key_base}_G1_NOSHEAR"],
     [-10, -10],
     stats_file,
     name=["`PSF", "galaxy ellipticity"],
@@ -243,16 +238,16 @@ ext_cols_pre_cal["overlap"] = cut_overlap
 add_cols_pre_cal_format["overlap"] = "I"
 
 # Additional columns {e1, e2, size}_PSF
-ext_cols_pre_cal["e1_PSF"] = dd[key_PSF_ell][:, 0]
-ext_cols_pre_cal["e2_PSF"] = dd[key_PSF_ell][:, 1]
+ext_cols_pre_cal["e1_PSF"] = dd[key_PSF_g1]
+ext_cols_pre_cal["e2_PSF"] = dd[key_PSF_g2]
 ext_cols_pre_cal["fwhm_PSF"] = size_to_fwhm(dd[key_PSF_size])
 
-_, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None, col_2d=True)
+_, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None)
 
 mag = spv_cat.get_col(dd, "MAG_AUTO", None, None)
 snr = spv_cat.get_snr(shape, dd, None, None)
-g1_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 0]
-g2_uncal = dd[f"{key_base}_ELL_NOSHEAR"][:, 1]
+g1_uncal = dd[f"{key_base}_G1_NOSHEAR"]
+g2_uncal = dd[f"{key_base}_G2_NOSHEAR"]
 
 # Comprehensive catalogue without cuts nor mask applied
 if verbose:
@@ -300,7 +295,6 @@ cut_common = classification_galaxy_base(
     gal_mag_faint=gal_mag_faint,
     flags_keep=flags_keep,
     n_epoch_min=n_epoch_min,
-    do_spread_model=do_spread_model,
 )
 if shape == "ngmix":
     m_gal = classification_galaxy_ngmix(
@@ -608,7 +602,7 @@ x_cut = gal_rel_size_min
 labels = []
 if shape == "ngmix":
     # Do not apply `mask_ns`, so use all galaxies
-    xs = [dd["NGMIX_T_NOSHEAR"][m_gal] / dd["NGMIX_Tpsf_NOSHEAR"][m_gal]]
+    xs = [dd["NGMIX_T_NOSHEAR"][m_gal] / dd["NGMIX_T_PSF_RECONV_NOSHEAR"][m_gal]]
     labels.append("size ratio")
 
 else:
@@ -878,8 +872,7 @@ x_range = (-0.15, 0.15)
 n_bin = 250
 
 # +
-key = key_PSF_ell
-xs = [dd[key][:, 0][mask_ns_stars], dd[key][:, 1][mask_ns_stars]]
+xs = [dd[key_PSF_g1][mask_ns_stars], dd[key_PSF_g2][mask_ns_stars]]
 title = "PSF"
 out_name = f"ell_PSF_{shape}.pdf"
 out_path = os.path.join(plot_dir, out_name)
@@ -990,8 +983,8 @@ if mask_external_path:
 # +
 # Additional columns:
 # {e1, e2, size}_PSF
-ext_cols["e1_PSF"] = dd[key_PSF_ell][:, 0][m_gal][mask]
-ext_cols["e2_PSF"] = dd[key_PSF_ell][:, 1][m_gal][mask]
+ext_cols["e1_PSF"] = dd[key_PSF_g1][m_gal][mask]
+ext_cols["e2_PSF"] = dd[key_PSF_g2][m_gal][mask]
 ext_cols["fwhm_PSF"] = size_to_fwhm(dd[key_PSF_size][m_gal][mask])
 if mask_external_path:
     ext_cols["mask_extern"] = m_extern

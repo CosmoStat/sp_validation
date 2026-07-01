@@ -54,8 +54,8 @@ masks_to_apply = [
     "overlap",
     "IMAFLAGS_ISO",
     "NGMIX_MOM_FAIL",
-    "NGMIX_ELL_PSFo_NOSHEAR_0",
-    "NGMIX_ELL_PSFo_NOSHEAR_1",
+    "NGMIX_G1_PSF_ORIG_NOSHEAR",
+    "NGMIX_G2_PSF_ORIG_NOSHEAR",
     "8_Manual",
 ]
 

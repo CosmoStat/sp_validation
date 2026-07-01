@@ -53,8 +53,8 @@ masks_to_apply = [
     "N_EPOCH",
     "mag",
     "NGMIX_MOM_FAIL",
-    "NGMIX_ELL_PSFo_NOSHEAR_0",
-    "NGMIX_ELL_PSFo_NOSHEAR_1",
+    "NGMIX_G1_PSF_ORIG_NOSHEAR",
+    "NGMIX_G2_PSF_ORIG_NOSHEAR",
 ]
 
 masks, labels = sp_joint.get_masks_from_config(
@@ -104,7 +104,6 @@ gal_metacal = metacal(
     rel_size_max=cm["gal_rel_size_max"],
     size_corr_ell=cm["gal_size_corr_ell"],
     sigma_eps=cm["sigma_eps_prior"],
-    col_2d=False,
     verbose=True,
 )
 # -

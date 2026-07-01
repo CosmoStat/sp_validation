@@ -33,7 +33,7 @@ num_bins = 20
 cat_gal = fits.getdata(path_cat)
 
 # %%
-psf_size = "NGMIX_Tpsf_NOSHEAR"
+psf_size = "NGMIX_T_PSF_RECONV_NOSHEAR"
 gal_size = "NGMIX_T_NOSHEAR"
 size_ratio = cat_gal[psf_size] / (cat_gal[gal_size] + cat_gal[psf_size])
 
