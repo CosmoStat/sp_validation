@@ -42,7 +42,7 @@ dat:
     value: [15, 30]
 
   # ngmix flags
-  - col_name: NGMIX_MOM_FAIL
+  - col_name: NGMIX_MCAL_TYPES_FAIL
     label: "ngmix moments failure"
     kind: equal
     value: 0
