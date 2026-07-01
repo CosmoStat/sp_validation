@@ -279,8 +279,7 @@ else:
 # ## 4. Select galaxies
 
 # #### Common flags and cuts
-# First, set cuts common to ngmix and galsim:
-#   - spread model: select objects well larger than the PSF
+# First, set cuts common to all objects:
 #   - magnitude: cut galaxies that are too faint (= too noisy, likely to be
 #     artefacts), and too bright (might be too large for postage stamp)
 #   - flags: cut objects that were flagged as invalid or masked

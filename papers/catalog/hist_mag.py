@@ -299,7 +299,7 @@ if scenario == 0:
         [
             "FLAGS",
             "IMAFLAGS_ISO",
-            "NGMIX_MOM_FAIL",
+            "NGMIX_MCAL_TYPES_FAIL",
             "NGMIX_G1_PSF_ORIG_NOSHEAR",
             "NGMIX_G2_PSF_ORIG_NOSHEAR",
             "4_Stars",
@@ -315,7 +315,7 @@ elif scenario == 1:
         [
             "IMAFLAGS_ISO",
             "FLAGS",
-            "NGMIX_MOM_FAIL",
+            "NGMIX_MCAL_TYPES_FAIL",
             "NGMIX_G1_PSF_ORIG_NOSHEAR",
             "NGMIX_G2_PSF_ORIG_NOSHEAR",
             "4_Stars",
@@ -329,7 +329,7 @@ elif scenario == 1:
 
     combine_cols = {
         "ngmix failures": [
-            "NGMIX_MOM_FAIL",
+            "NGMIX_MCAL_TYPES_FAIL",
             "NGMIX_G1_PSF_ORIG_NOSHEAR",
             "NGMIX_G2_PSF_ORIG_NOSHEAR",
         ]

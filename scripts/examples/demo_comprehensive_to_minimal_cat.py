@@ -53,7 +53,7 @@ if False:
 masks_to_apply = [
     "overlap",
     "IMAFLAGS_ISO",
-    "NGMIX_MOM_FAIL",
+    "NGMIX_MCAL_TYPES_FAIL",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
     "NGMIX_G2_PSF_ORIG_NOSHEAR",
     "8_Manual",

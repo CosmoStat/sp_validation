@@ -52,7 +52,7 @@ masks_to_apply = [
     "1024_Maximask",
     "N_EPOCH",
     "mag",
-    "NGMIX_MOM_FAIL",
+    "NGMIX_MCAL_TYPES_FAIL",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
     "NGMIX_G2_PSF_ORIG_NOSHEAR",
 ]

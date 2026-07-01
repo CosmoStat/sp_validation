@@ -35,9 +35,8 @@ area_tile = 0.25
 ## Pixel size in arcsec
 pixel_size = 0.187
 
-## Shape measurement method, implemented is
-##  'ngix': multi-epoch model fitting
-##  'galsim': stacked-image moments (experimental)
+## Shape measurement method (only 'ngmix' is supported):
+##  'ngmix': multi-epoch model fitting
 shape = "ngmix"
 
 # Paths
@@ -129,7 +128,7 @@ add_cols_pre_cal = [
     "IMAFLAGS_ISO",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
-    "NGMIX_MOM_FAIL",
+    "NGMIX_MCAL_TYPES_FAIL",
     "N_EPOCH",
     "NGMIX_N_EPOCH",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
@@ -145,7 +144,7 @@ for key in (
     "IMAFLAGS_ISO",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
-    "NGMIX_MOM_FAIL",
+    "NGMIX_MCAL_TYPES_FAIL",
     "N_EPOCH",
     "NGMIX_N_EPOCH",
 ):
