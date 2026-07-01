@@ -10,7 +10,7 @@
 # -c, --config: Path to the configuration file to generate the simulation (Required)
 
 # --- Cosmological parameters (CAMB) ---
-#h: 0.6766
+#h: 0.7
 #Om: 0.30966
 #Ob: 0.04897
 #ns: 0.9665
@@ -23,13 +23,10 @@
 # --- Resolution ---
 nside: 32
 dx: 200.0
-zmax: 0.5
-
-# --- Sampling ---
-seed: 42   
+zmax: 3
 
 # --- galaxy population (downstream of map generation) ---
-nbins: 1
+nbins: 6
 n_arcmin2: 0.0824
 sigma_e: 0.2684
 bias: 1.2
@@ -39,5 +36,6 @@ phz_sigma_0: 0.03
 # --- Runtime options ---
 limber: True
 mask_path: /n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits
-nz_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
+nz_path: /home/guerrini/sp_validation_cosmostat/config/glass_mock/redshift_distribution_tomo.txt
 output_path: /n09data/guerrini/glass_mock_test/
+output_prefix: unions

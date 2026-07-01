@@ -86,6 +86,7 @@ class GlassMockConfig:
     mask_path: str | None = None
     nz_path: str | None = None
     output_path: str | None = None
+    output_prefix: str | None = None
 
     @classmethod
     def from_planck18(cls, **overrides) -> "GlassMockConfig":

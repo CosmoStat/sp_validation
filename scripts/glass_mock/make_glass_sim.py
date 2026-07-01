@@ -96,6 +96,7 @@ class Sky:
                 mask_path="config/glass_mock/test_data/mask.fits",
                 nz_path="config/glass_mock/test_data/redshift_distribution.txt",
                 output_path="config/glass_mock/test_data",
+                output_prefix="test",
             )
         else:
             # Load the configuration from the config file in the parser
@@ -119,6 +120,7 @@ class Sky:
 
         # Output path
         self.path = self.config.output_path
+        self.prefix = self.config.output_prefix
 
         print("-" * 66)
         print(
@@ -150,48 +152,95 @@ class Sky:
         print("-" * 66)
 
         self.z = None
-        self.bin_nz = None
+        self.bin_nz = []
+        self.ngal_per_bin = []
         self.camb_cls = None
+
+    def read_mask(self):
+        """Read the survey mask from the specified path."""
+        mask = hp.read_map(self.path_mask)
+        mask_file_name = f"{self.path}/mask_nside_{self.config.nside}.fits"
+        if not os.path.isfile(mask_file_name):
+            os.makedirs(self.path, exist_ok=True)
+            mask = downgrade_mask(mask, self.config.nside)
+            hp.write_map(mask_file_name, mask, overwrite=True)
+        else:
+            mask = hp.read_map(mask_file_name).astype(np.float64)
+        return mask
+
+    def get_cl_matter_shells(self, shells):
+        """Get the matter power spectrum for the simulation."""
+        cls_path = f"{self.root}/cls_{self.config.nside}_limber_{self.limber}.npy"
+        try:
+            cls = np.load(cls_path)
+        except FileNotFoundError:
+            print(f"[!] cls file {cls_path} missing; computing matter cls ...")
+            cls = matter_shell_cls(self.config, self.pars, shells, limber=self.limber)
+            np.save(cls_path, cls)
+            print("[!] Done.")
+        return cls
+
+    def read_redshift_distributions(self, shells):
+        """Read the redshift distributions from the specified path.
+
+        The convention used here is that the non-tomographic redshift distribution sums to one.
+        All the per bin distributions will sum to a lower value than 1.
+        """
+        nz = np.loadtxt(self.path_nz)
+        nz = nz[nz[:, 0] <= self.config.zmax]
+        self.z = nz[:, 0]
+
+        # Check that the number of nz columns corresponds to what is expected.
+        dndz_cols = nz[:, 1:]
+        assert self.config.nbins == dndz_cols.shape[1], (
+            f"Number of bins ({self.config.nbins}) does not match n(z) columns ({dndz_cols.shape[1]})"
+        )
+
+        # Check that the per bin integrals sum together to one
+        per_bin_integral = np.trapezoid(dndz_cols, self.z.T, axis=0)
+        assert np.isclose(per_bin_integral.sum(), 1.0, atol=1e-2), (
+            f"Per bin integrals do not sum to one: {per_bin_integral.sum()}. Integrals per bin: {per_bin_integral}"
+        )
+
+        for b in range(self.config.nbins):
+            dndz_b = (
+                dndz_cols[:, b] * self.config.n_arcmin2
+            )  # TODO: Implement different densities per tomo bin
+            ngal_b = glass.partition(self.z, dndz_b, shells)
+            self.ngal_per_bin.append(ngal_b)
+            self.bin_nz.append(dndz_b)
 
     def galaxies_simulation(self):
         """Create a source catalogue from the GLASS mock maps."""
         config = self.config
 
         # Read + downgrade the survey mask.
-        unions_mask = hp.read_map(self.path_mask)
-        mask_file_name = f"{self.path}/mask_nside{config.nside}.fits"
-        if not os.path.isfile(mask_file_name):
-            os.makedirs(self.path, exist_ok=True)
-            unions_mask = downgrade_mask(unions_mask, config.nside)
-            hp.write_map(mask_file_name, unions_mask, overwrite=True)
-        else:
-            unions_mask = hp.read_map(mask_file_name).astype(np.float64)
+        mask = self.read_mask()
 
         # Shells + matter spectra from the library core (cached cls on disk).
         shells = build_shells(config, self.pars)
-        cls_path = f"{self.root}/cls_{config.nside}.npy"
-        try:
-            cls = np.load(cls_path)
-        except FileNotFoundError:
-            print(f"[!] cls file {cls_path} missing; computing matter cls ...")
-            cls = matter_shell_cls(config, self.pars, shells, limber=self.limber)
-            np.save(cls_path, cls)
-            print("[!] Done.")
 
+        # Generate the file for the matter shells if not done already
+        cls = self.get_cl_matter_shells(shells)
+
+        # Apply discretisation to the full set of spectra
+        cls = glass.discretized_cls(cls, nside=config.nside, lmax=config.lmax, ncorr=3)
+
+        # Generate the matter maps
         fields = glass.lognormal_fields(shells)
         gls = glass.solve_gaussian_spectra(fields, cls)
         matter = glass.generate(fields, gls, config.nside, ncorr=3, rng=self.rng)
         convergence = glass.MultiPlaneConvergence(Cosmology_from_camb(self.pars))
 
         # n(z) and per-shell galaxy partition.
-        nz = np.loadtxt(self.path_nz)
-        nz = nz[nz[:, 0] <= config.zmax]
-        self.z = nz[:, 0]
-        dndz = nz[:, 1] * config.n_arcmin2
-        ngal = glass.partition(self.z, dndz, shells)
-        zbins = glass.equal_dens_zbins(self.z, dndz, nbins=config.nbins)
+        self.read_redshift_distributions(shells)
 
-        out_file = f"{self.root}/unions_glass_sim_{self.n_sim}_{config.nside}.fits"
+        # Name of the output file
+        out_file = (
+            f"{self.root}/{self.prefix}_glass_sim_{self.n_sim}_{config.nside}.fits"
+        )
+
+        # Open the FITS file to save the catalogue
         fits = fitsio.FITS(out_file, "rw", clobber=True)
         fits.write(None)
         fits.create_table_hdu(
@@ -222,41 +271,52 @@ class Sky:
                 kappa_i = kappa_i + ia_convergence(delta_i, shells[i], config)
             gamm1_i, gamm2_i = glass.shear_from_convergence(kappa_i)
 
-            for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(
-                ngal[i], delta_i, config.bias, unions_mask, rng=self.rng
-            ):
-                ngal_tot += gal_count
-                gal_z = glass.redshifts(gal_count, shells[i], rng=self.rng)
-                gal_phz = glass.gaussian_phz(gal_z, config.phz_sigma_0, rng=self.rng)
-                tomo_id = np.digitize(gal_phz, np.unique(zbins)) - 1
-                gal_ellip = glass.ellipticity_intnorm(
-                    gal_count, config.sigma_e, rng=self.rng, xp=np
-                )
-                gal_she = glass.galaxy_shear(
-                    gal_lon, gal_lat, gal_ellip, kappa_i, gamm1_i, gamm2_i
-                )
-                noise_she = glass.galaxies.galaxy_shear(
-                    gal_lon,
-                    gal_lat,
-                    gal_ellip,
-                    np.zeros(np.shape(kappa_i)),
-                    np.zeros(np.shape(gamm1_i)),
-                    np.zeros(np.shape(gamm2_i)),
-                )
+            # Sample each tomographic bin against the same matter/convergence
+            # realisation for this shell
+            for b in range(config.nbins):
+                bias_b = config.bias  # TODO: implement a per bin bias
 
-                catalogue = np.empty(gal_count, dtype=cat_dtype)
-                catalogue["RA"] = gal_lon
-                catalogue["Dec"] = gal_lat
-                catalogue["e1"] = gal_she.real
-                catalogue["e2"] = -gal_she.imag
-                catalogue["w"] = np.ones_like(gal_lon)
-                catalogue["n1"] = noise_she.real
-                catalogue["n2"] = noise_she.imag
-                catalogue["TOM_BIN_ID"] = tomo_id
-                catalogue["TRUE_Z"] = gal_z
-                catalogue["PHOTO_Z"] = gal_phz
-                fits["SOURCE_CATALOGUE"].append(catalogue)
-                c += 1
+                for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(
+                    self.ngal_per_bin[b][i], delta_i, bias_b, mask, rng=self.rng
+                ):
+                    ngal_tot += gal_count
+                    gal_z = glass.redshifts(gal_count, shells[i], rng=self.rng)
+                    gal_phz = glass.gaussian_phz(
+                        gal_z, config.phz_sigma_0, rng=self.rng
+                    )
+
+                    gal_ellip = glass.ellipticity_intnorm(
+                        gal_count,
+                        config.sigma_e,
+                        rng=self.rng,
+                        xp=np,  # TODO: Implement different shape noise per tomo bin
+                    )
+                    gal_she = glass.galaxy_shear(
+                        gal_lon, gal_lat, gal_ellip, kappa_i, gamm1_i, gamm2_i
+                    )
+                    noise_she = glass.galaxies.galaxy_shear(
+                        gal_lon,
+                        gal_lat,
+                        gal_ellip,
+                        np.zeros(np.shape(kappa_i)),
+                        np.zeros(np.shape(gamm1_i)),
+                        np.zeros(np.shape(gamm2_i)),
+                    )
+
+                    catalogue = np.empty(gal_count, dtype=cat_dtype)
+                    catalogue["RA"] = gal_lon
+                    catalogue["Dec"] = gal_lat
+                    catalogue["e1"] = gal_she.real
+                    catalogue["e2"] = -gal_she.imag
+                    catalogue["w"] = np.ones_like(gal_lon)
+                    catalogue["n1"] = noise_she.real
+                    catalogue["n2"] = noise_she.imag
+                    catalogue["TOM_BIN_ID"] = b
+                    catalogue["TRUE_Z"] = gal_z
+                    catalogue["PHOTO_Z"] = gal_phz
+                    fits["SOURCE_CATALOGUE"].append(catalogue)
+
+            c += 1
 
         print("[DONE] \n")
         print(f"Total number of galaxies sampled: {ngal_tot} using {c} z-shells")
@@ -265,6 +325,9 @@ class Sky:
 
         if self.camb:
             self.get_camb_cls()
+
+        # TODO: Add a script to perform some final validation tests that are printed
+        # TODO: This would essentially include computing shape noise and number density.
 
     def get_camb_cls(self, sav=True):
         """Lensing C_ell from CAMB source windows for the mock n(z)."""

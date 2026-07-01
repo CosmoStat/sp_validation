@@ -200,3 +200,4 @@ papers/cosmo_val/logs/
 
 # Ignore scratch work notebooks
 scratch/guerrini/work_notebooks
+scratch/guerrini/launch_scripts
