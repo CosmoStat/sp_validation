@@ -855,7 +855,7 @@ def get_snr(sh, dat, m_sel, m_flg):
         my_snr = get_col(dat, "NGMIX_FLUX_NOSHEAR", m_sel, m_flg) / get_col(
             dat, "NGMIX_FLUX_ERR_NOSHEAR", m_sel, m_flg
         )
-    elif sh == "galsim":
-        my_snr = get_col(dat, "SNR_WIN", m_sel, m_flg)
+    else:
+        raise ValueError(f"Unsupported shape method '{sh}'; only 'ngmix' is supported")
 
     return my_snr

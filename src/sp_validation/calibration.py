@@ -19,7 +19,7 @@ from sp_validation import catalog as sp_cat
 from sp_validation.statistics import jackknif_weighted_average2
 
 
-def get_calibrated_quantities(gal_metacal, shape_method="ngmix"):
+def get_calibrated_quantities(gal_metacal):
     """Get Calibrated Quantities.
 
     Return catalogue quantities for objects calibrated for multiplicative
@@ -29,8 +29,6 @@ def get_calibrated_quantities(gal_metacal, shape_method="ngmix"):
     ----------
     gal_metacal : dict
         galaxy metacalibration catalogue
-    shape_method : string, optional, default='ngmix'
-        shape measurement method, one in 'ngmix', 'galsim'
 
     Returns
     -------
@@ -58,7 +56,7 @@ def get_calibrated_quantities(gal_metacal, shape_method="ngmix"):
     return g_corr, g_uncorr, w, mask
 
 
-def get_calibrated_m_c(gal_metacal, shape_method="ngmix"):
+def get_calibrated_m_c(gal_metacal):
     """Get Calibrated C.
 
     Return catalogue quantities for objects calibrated for multiplicative and
@@ -68,8 +66,6 @@ def get_calibrated_m_c(gal_metacal, shape_method="ngmix"):
     ----------
     gal_metacal : dict
         galaxy metacalibration catalogue
-    shape_method : string, optional, default='ngmix'
-        shape measurement method, one in 'ngmix', 'galsim'
 
     Returns
     -------
@@ -788,14 +784,9 @@ class metacal:
                 p2,
                 ns,
             )
-        elif self._prefix == "GALSIM":
-            m1, p1, m2, p2, ns = self._read_data_galsim(
-                masked_data,
-                m1,
-                p1,
-                m2,
-                p2,
-                ns,
+        else:
+            raise ValueError(
+                f"Unsupported shape prefix '{self._prefix}'; only 'NGMIX' is supported"
             )
 
         print("FHP/MK hack using p1 PSF for ns in cuts")
@@ -895,40 +886,6 @@ class metacal:
         iv_w = 1 / (2 * sigma_eps**2 + C11 + C22)
 
         return C11, C22, iv_w
-
-    def _read_data_galsim(self, masked_data, m1, p1, m2, p2, ns):
-        """Read Data Galsim.
-
-        Read data from galsim catalogue.
-
-        """
-        prefix_mom = "GALSIM_GAL"
-
-        for name_shear, dict_tmp in zip(
-            ["1m", "1p", "2m", "2p", "noshear"], [m1, p1, m2, p2, ns]
-        ):
-            if self._verbose:
-                print("Extracting {}".format(name_shear))
-
-            dict_tmp["flag"] = masked_data[f"{self._prefix}_FLAGS_{name_shear.upper()}"]
-            dict_tmp["g1"] = masked_data[
-                f"{prefix_mom}_ELL_UNCORR_{name_shear.upper()}"
-            ][:, 0]
-            dict_tmp["g2"] = masked_data[
-                f"{prefix_mom}_ELL_UNCORR_{name_shear.upper()}"
-            ][:, 1]
-
-            dict_tmp["T"] = masked_data[f"{prefix_mom}_SIGMA_{name_shear.upper()}"]
-            dict_tmp["Tpsf"] = masked_data[
-                f"{self._prefix}_PSF_SIGMA_{name_shear.upper()}"
-            ]
-
-        self.snr_sextractor = masked_data["SNR_WIN"]
-        ns["C11"] = masked_data[f"{prefix_mom}_ELL_ERR_NOSHEAR"][:, 0]
-        ns["C22"] = masked_data[f"{prefix_mom}_ELL_ERR_NOSHEAR"][:, 1]
-        ns["w"] = 1.0 / (2 * self._sigma_eps**2 + dict_tmp["C11"] + dict_tmp["C22"])
-
-        return m1, p1, m2, p2, ns
 
     def _compute_calibration(self):
         """Compute Calibration.
@@ -1071,15 +1028,11 @@ class metacal:
 
         Compute shear response matrix
         """
-        sign = 1
-        if self._prefix == "GALSIM":
-            sign = -1
-
         ma = self.mask_dict["ns"]
         h2 = 2 * self._step
 
         self.R11 = (self.p1["g1"][ma] - self.m1["g1"][ma]) / h2
-        self.R22 = sign * (self.p2["g2"][ma] - self.m2["g2"][ma]) / h2
+        self.R22 = (self.p2["g2"][ma] - self.m2["g2"][ma]) / h2
         self.R12 = (self.p2["g1"][ma] - self.m2["g1"][ma]) / h2
         self.R21 = (self.p1["g2"][ma] - self.m1["g2"][ma]) / h2
 
@@ -1121,10 +1074,6 @@ class metacal:
         ...
 
         """
-        sign = 1
-        if self._prefix == "GALSIM":
-            sign = -1
-
         ma_p1 = self.mask_dict["p1"]
         ma_m1 = self.mask_dict["m1"]
         ma_p2 = self.mask_dict["p2"]
@@ -1135,8 +1084,8 @@ class metacal:
             np.mean(self.ns["g1"][ma_p1]) - np.mean(self.ns["g1"][ma_m1])
         ) / h2
         self.R22_s = (
-            sign * (np.mean(self.ns["g2"][ma_p2]) - np.mean(self.ns["g2"][ma_m2])) / h2
-        )
+            np.mean(self.ns["g2"][ma_p2]) - np.mean(self.ns["g2"][ma_m2])
+        ) / h2
         self.R12_s = (
             np.mean(self.ns["g1"][ma_p2]) - np.mean(self.ns["g1"][ma_m2])
         ) / h2

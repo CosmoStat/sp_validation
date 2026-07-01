@@ -193,7 +193,7 @@ def classification_galaxy_ngmix(
         cut_common
         & (dd["NGMIX_MCAL_FLAGS"] == 0)
         & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"] != -10)
-        & (dd["NGMIX_MOM_FAIL"] == 0)
+        & (dd["NGMIX_MCAL_TYPES_FAIL"] == 0)
     )
 
     n_gal_ngmix = len(np.where(m_gal_ngmix)[0])
@@ -209,28 +209,6 @@ def classification_galaxy_ngmix(
         )
 
     return m_gal_ngmix
-
-
-def classification_galaxy_galsim(dd, cut_common, stats_file, verbose=False):
-    """Classification Galaxy Galsim.
-
-    Return mask corresponding to galsim classification of galaxies
-
-    """
-    m_gal_galsim = cut_common & (dd["GALSIM_PSF_ELL_ORIGINAL_PSF"][:, 0] != -10)
-
-    n_gal_galsim = len(np.where(m_gal_galsim)[0])
-    n_tot = len(dd)
-
-    io.print_ratio(
-        "galsim: Objects selected as galaxies",
-        n_gal_galsim,
-        n_tot,
-        stats_file,
-        verbose=verbose,
-    )
-
-    return m_gal_galsim
 
 
 def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):
