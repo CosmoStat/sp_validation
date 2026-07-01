@@ -104,6 +104,9 @@ class Sky:
                 yaml_config=yaml_config, seed=args.seed
             )
 
+        # Check consistency of the config for the tomographic bins
+        self.config.check_consistency()
+
         # Runtime options
         self.test = args.test
         self.camb = args.camb
@@ -192,9 +195,6 @@ class Sky:
 
         # Check that the number of nz columns corresponds to what is expected.
         dndz_cols = nz[:, 1:]
-        assert self.config.nbins == dndz_cols.shape[1], (
-            f"Number of bins ({self.config.nbins}) does not match n(z) columns ({dndz_cols.shape[1]})"
-        )
 
         # Check that the per bin integrals sum together to one
         per_bin_integral = np.trapezoid(dndz_cols, self.z.T, axis=0)
@@ -203,8 +203,13 @@ class Sky:
         )
 
         for b in range(self.config.nbins):
+            n_arcmin2 = (
+                self.config.n_arcmin2[b]
+                if isinstance(self.config.n_arcmin2, list)
+                else self.config.n_arcmin2
+            )
             dndz_b = (
-                dndz_cols[:, b] * self.config.n_arcmin2
+                dndz_cols[:, b] * n_arcmin2
             )  # TODO: Implement different densities per tomo bin
             ngal_b = glass.partition(self.z, dndz_b, shells)
             self.ngal_per_bin.append(ngal_b)
@@ -274,7 +279,14 @@ class Sky:
             # Sample each tomographic bin against the same matter/convergence
             # realisation for this shell
             for b in range(config.nbins):
-                bias_b = config.bias  # TODO: implement a per bin bias
+                bias_b = (
+                    config.bias[b] if isinstance(config.bias, list) else config.bias
+                )
+                sigma_e = (
+                    config.sigma_e[b]
+                    if isinstance(config.sigma_e, list)
+                    else config.sigma_e
+                )
 
                 for gal_lon, gal_lat, gal_count in glass.points.positions_from_delta(
                     self.ngal_per_bin[b][i], delta_i, bias_b, mask, rng=self.rng
@@ -287,9 +299,9 @@ class Sky:
 
                     gal_ellip = glass.ellipticity_intnorm(
                         gal_count,
-                        config.sigma_e,
+                        sigma_e,
                         rng=self.rng,
-                        xp=np,  # TODO: Implement different shape noise per tomo bin
+                        xp=np,
                     )
                     gal_she = glass.galaxy_shear(
                         gal_lon, gal_lat, gal_ellip, kappa_i, gamm1_i, gamm2_i

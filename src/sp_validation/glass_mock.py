@@ -75,9 +75,9 @@ class GlassMockConfig:
     As_init: float = 2.1e-9  # seed As before sigma8 rescaling
     kmax: float = 20.0
     # --- galaxy population (downstream of map generation) ---
-    n_arcmin2: float = 6.0905
-    sigma_e: float = 0.2684
-    bias: float = 1.2  # constant linear galaxy bias b(z)
+    n_arcmin2: float | list = 6.0905
+    sigma_e: float | list = 0.2684
+    bias: float | list = 1.2  # constant linear galaxy bias b(z)
     phz_sigma_0: float = 0.03
     nbins: int = 1  # number of tomographic bins
     ia_bias: float | None = None
@@ -130,6 +130,34 @@ class GlassMockConfig:
     def Oc(self) -> float:
         """Cold dark matter density (CDM = matter - baryons), pre-neutrino."""
         return self.Om - self.Ob
+
+    def check_consistency(self):
+        """Check that the configuration in terms of bins is internally consistent"""
+        redshift_distributions = np.loadtxt(self.nz_path)
+        if redshift_distributions.shape[1] - 1 != self.nbins:
+            raise ValueError(
+                f"The number of tomographic bins is inconsistent with the redshift distribution: {redshift_distributions.ndim - 1}."
+            )
+
+        if isinstance(self.n_arcmin2, list) and len(self.n_arcmin2) != self.nbins:
+            raise ValueError(
+                f"Number of elements in n_arcmin2 {len(self.n_arcmin2)} "
+                f"does not match number of bins {self.nbins}"
+            )
+
+        if isinstance(self.sigma_e, list) and len(self.sigma_e) != self.nbins:
+            raise ValueError(
+                f"Number of elements in sigma_e {len(self.sigma_e)} "
+                f"does not match number of bins {self.nbins}"
+            )
+
+        if isinstance(self.bias, list) and len(self.bias) != self.nbins:
+            raise ValueError(
+                f"Number of elements in bias {len(self.bias)} "
+                f"does not match number of bins {self.nbins}"
+            )
+
+        print("The number of tomographic bins is consistent across inputs...")
 
 
 def build_camb_params(config: GlassMockConfig):

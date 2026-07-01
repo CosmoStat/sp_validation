@@ -26,8 +26,8 @@ dx: 120.0
 zmax: 3.0
 
 # --- galaxy population (downstream of map generation) ---
-nbins: 1
-n_arcmin2: 6.0905
+nbins: 6
+n_arcmin2: [1, 1.02, 1.05, 0.85, 0.9, 1.2]
 sigma_e: 0.2684
 bias: 1.2
 phz_sigma_0: 0.03
@@ -36,6 +36,6 @@ phz_sigma_0: 0.03
 # --- Runtime options ---
 limber: True
 mask_path: /n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits
-nz_path: /home/guerrini/sp_validation_cosmostat/config/glass_mock/redshift_distribution_tomo.txt
+nz_path: /home/guerrini/sp_validation_cosmostat/config/glass_mock/test_data/redshift_distribution_tomo.txt
 output_path: /n09data/guerrini/glass_mock_test/
 output_prefix: tomo_test
