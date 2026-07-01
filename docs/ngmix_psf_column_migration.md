@@ -1,12 +1,23 @@
 # ShapePipe-v2 column-grammar migration (shapepipe → sp_validation)
 
-**Status:** code staged on `migrate/ngmix-psf-column-names` (draft PR
-[#201](https://github.com/CosmoStat/sp_validation/pull/201)). The renames, the
-σ→T units change and the `spread_model` removal are complete and the test suite
-is green against synthetic catalogues carrying the new columns. The one item
-that genuinely needs a *regenerated* catalogue — re-validating the `*_PSF_ORIG`
-value change — is deferred until [CosmoStat/shapepipe#761](https://github.com/CosmoStat/shapepipe/pull/761)
-lands in #741 and a v2 catalogue is produced.
+**Status:** code-complete on `migrate/ngmix-psf-column-names` (draft PR
+[#201](https://github.com/CosmoStat/sp_validation/pull/201)). Every shape-column
+read in the live package, configs, calibration scripts, paper figures, and
+notebooks uses the ShapePipe-v2 grammar; the σ→T units change and the
+`spread_model` removal are in; the dead `galsim` estimator path is removed; and
+the suite is green against synthetic catalogues carrying the new columns.
+
+**No code work is left waiting on a regenerated catalogue.** The one *value*
+change — `*_PSF_ORIG` now holds a true original-PSF fit (shapepipe#749) rather
+than the reconvolved-kernel alias the old columns silently held — is a straight
+column rename at the code level and is already in place; the code does not care
+that the numbers moved. All a v2 catalogue enables is a *look-at-the-numbers*
+sanity check (do the α-leakage / size-ratio cuts still behave), which is analysis,
+not code, and does not gate the PR. **The real merge gate is cutover timing:**
+merging this branch makes `develop` *require* v2 columns and stop reading today's
+catalogues, so #201 should land together with — or just after —
+[shapepipe#761](https://github.com/CosmoStat/shapepipe/pull/761)→#741 and the
+first v2 catalogue.
 
 shapepipe#761 turns the shape-measurement output into **one column grammar for
 the whole catalogue**: every estimator names its outputs
@@ -40,6 +51,17 @@ repo needs a genuine e↔g conversion; sp_validation does not.
 | `NGMIX_FLUX_{shear}` / `_ERR` | unchanged | |
 | `NGMIX_FLAGS_{shear}`, `NGMIX_SNR_{shear}` | unchanged | |
 | `NGMIX_MCAL_FLAGS`, `NGMIX_N_EPOCH` | unchanged | OBJECT/SHEAR-less metadata |
+| `NGMIX_MOM_FAIL` | `NGMIX_MCAL_TYPES_FAIL` | **renamed + semantics change** (see below) |
+
+`NGMIX_MOM_FAIL` → `NGMIX_MCAL_TYPES_FAIL` is more than a rename: in ngmix v1 the
+column counted moments-initial-guess failures from `get_guess`, which no longer
+exists in v2, so the producer reused the slot for a *failed-metacal-types* count.
+sp_validation only ever cuts on it as `== 0` (keep objects with no failure), and
+that cut stays correct — but the underlying failure mode changed, so if the
+post-cut galaxy count looks off against a regenerated v2 catalogue, this is the
+first line to check. The cut lives in `galaxy.classification_galaxy_ngmix`; the
+column is also carried through `params.add_cols_pre_cal` and every
+`config/calibration/mask_v1.X.*.yaml`.
 
 ### ngmix — reconvolved PSF (metacal kernel; value-safe rename)
 
@@ -47,12 +69,14 @@ repo needs a genuine e↔g conversion; sp_validation does not.
 |---|---|---|
 | `NGMIX_Tpsf_{shear}` | `NGMIX_T_PSF_RECONV_{shear}` | same value (the `T/Tpsf` size-ratio cut) |
 
-### ngmix — original PSF (⚠ **value change** — shapepipe#749 fix)
+### ngmix — original PSF (value change — shapepipe#749 fix — *not a code blocker*)
 
 `*_PSF_ORIG` now carries a *true* fit to the original image PSF, no longer the
-reconvolved-kernel alias the old `ELL_PSFo`/`T_PSFo` columns silently held. A
-mechanical rename is correct for the *names*; the *numbers* move, so any size-ratio
-or leakage cut fed by these must be re-validated against a regenerated catalogue.
+reconvolved-kernel alias the old `ELL_PSFo`/`T_PSFo` columns silently held. The
+rename is a straight column rename in sp_validation and is correct as-is — the
+code does not care that the numbers moved. The only thing a regenerated catalogue
+buys is a *look-at-the-numbers* check that the α-leakage / size-ratio cuts still
+behave; that is analysis, not code, and it does not gate this PR (see Status).
 
 | Old | New |
 |---|---|
@@ -116,21 +140,42 @@ repo's own migration.
   `scripts/apply_alpha_snr_size_bin.py`, `scripts/examples/demo_*.py`.
 - **Papers** — `papers/catalog/2025_12_*`, `papers/catalog/{hist_mag,2025_09_19_alpha_leakage_correction}.py`,
   `papers/harmonic/2025_09_11_psf_leakage_cell.py`.
+- **Notebooks** — `cosmo_inference/notebooks/cfis_analysis.ipynb`
+  (`E1/E2_PSF_HSM` → `HSM_G1/G2_PSF`); a sweep of all tracked notebooks found no
+  other old tokens.
 - **Tests** — `src/sp_validation/tests/{test_calibration,test_cosmo_val}.py`
   (synthetic catalogues + configs updated in lock-step; this is the migration's
   internal-consistency check).
 
-## Deferred / coordinated
+## galsim estimator path — removed as dead code
 
-- **`*_PSF_ORIG` value re-validation** — blocked on a #761-regenerated catalogue.
-  The rename is staged; the "does the size-ratio / leakage cut still behave"
-  check waits for real v2 data.
-- **`NGMIX_MOM_FAIL`** (read at `galaxy.py`) was not found in the #761 producer
-  code; left as-is pending confirmation against a regenerated header.
-- **galsim family** (`GALSIM_*` reads in `calibration.py`, `galaxy.py`) is renamed
-  on the producer side too but is out of this constitution's ngmix+HSM scope and
-  is left untouched here — flagged for a follow-up if the galsim path is live.
+shapepipe#761 renamed the galsim column family too (`GALSIM_GAL_ELL_*` /
+`GALSIM_*_SIGMA_*` → scalar `GALSIM_G1/G2_*`, `GALSIM_T*`), but sp_validation's
+galsim reader is **dead code**: `shape` is hardcoded to `"ngmix"`,
+`extract_info.py` raises for any other value, and nothing outside `scratch/`
+instantiates `metacal(prefix="GALSIM")` or calls `classification_galaxy_galsim`.
+Migrating it would produce an untestable path — and the shared
+`col_1p = f"{prefix}_T_PSF_RECONV_1P"` read in `metacal._read_data` never matched
+the galsim producer output (galsim writes `GALSIM_T_PSF_*`, not
+`..._T_PSF_RECONV_*`), so the path was already broken. So instead of migrating it,
+this branch **removes** it:
+
+- `calibration.metacal._read_data_galsim`, the `prefix == "GALSIM"` dispatch
+  branch (now `else: raise` — unknown prefixes fail loudly), and the two galsim
+  ellipticity-sign flips in `_shear_response` / `_selection_response`;
+- `galaxy.classification_galaxy_galsim`;
+- the `sh == "galsim"` branch in `catalog.get_snr` (now `else: raise`);
+- the unused `shape_method` argument on `get_calibrated_quantities` /
+  `get_calibrated_m_c`, and the `galsim` mentions in `params.py` / `extract_info.py`.
+
+ngmix is the sole estimator sp_validation supports; the `prefix` parameter stays
+(it names the column family and could serve a future `NGMIXm` moments family).
+
+## Coordinated (not this repo)
+
 - **`shear_psf_leakage`** ρ/τ internals are Sacha Guerrini's separate PR; this
   migration only sets the `square_size=False` interface and passes `T`-columns.
+  Passing an already-`T` column with no squaring is correct independently of that
+  repo's own migration; the size-residual semantics there are worth a joint look.
 
 — Claude on behalf of Cail
