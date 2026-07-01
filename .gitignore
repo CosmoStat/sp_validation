@@ -173,6 +173,8 @@ cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_0*.ini
 cosmo_inference/cosmosis_config/cosmosis_pipeline_glass_mock_v0*.ini
 cosmo_inference/cosmosis_config/glass_mocks_v*
 
+config/glass_mock/test_data/results
+
 # Regenerable catalog-paper plots: the paper TeX lives in the separate docs/
 # repo, so these are script/notebook outputs, not LaTeX-tracked figures.
 papers/catalog/plots/*.pdf

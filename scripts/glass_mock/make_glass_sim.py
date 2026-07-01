@@ -106,6 +106,7 @@ class Sky:
         # Runtime options
         self.test = args.test
         self.camb = args.camb
+        self.limber = self.config.limber
 
         # Number label and random seed
         self.number = args.number
@@ -173,7 +174,7 @@ class Sky:
             cls = np.load(cls_path)
         except FileNotFoundError:
             print(f"[!] cls file {cls_path} missing; computing matter cls ...")
-            cls = matter_shell_cls(config, self.pars, shells)
+            cls = matter_shell_cls(config, self.pars, shells, limber=self.limber)
             np.save(cls_path, cls)
             print("[!] Done.")
 

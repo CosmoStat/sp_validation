@@ -82,6 +82,7 @@ class GlassMockConfig:
     nbins: int = 1  # number of tomographic bins
     ia_bias: float | None = None
     # --- Runtime options ---
+    limber: bool = False
     mask_path: str | None = None
     nz_path: str | None = None
     output_path: str | None = None
