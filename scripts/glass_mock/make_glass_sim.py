@@ -25,6 +25,7 @@ import numpy as np
 from tqdm import tqdm
 
 from sp_validation.glass_mock import (
+    Cosmology_from_camb,
     GlassMockConfig,
     build_camb_params,
     build_shells,
@@ -69,6 +70,21 @@ class Sky:
         # Test mode shrinks the box; otherwise CLI overrides config fields.
         if args.test:
             print("[!!!] Running in test mode: ignore the configuration file [!!!]")
+            if not os.path.exists("config/glass_mock/test_data/"):
+                raise FileNotFoundError(
+                    "The test must be run from the root of the repository."
+                )
+            if not os.path.exists("config/glass_mock/test_data/mask.fits"):
+                raise FileNotFoundError(
+                    "Check that you downloaded the test mask from the repository."
+                )
+            if not os.path.exists(
+                "config/glass_mock/test_data/redshift_distribution.txt"
+            ):
+                raise FileNotFoundError(
+                    "Check that you downloaded the test redshift distribution from the repository."
+                )
+
             self.config = GlassMockConfig.from_planck18(
                 nside=32,
                 seed=args.seed,
@@ -77,6 +93,9 @@ class Sky:
                 zmax=0.5,
                 sigma_e=0.26,
                 ia_bias=None,
+                mask_path="config/glass_mock/test_data/mask.fits",
+                nz_path="config/glass_mock/test_data/redshift_distribution.txt",
+                output_path="config/glass_mock/test_data",
             )
         else:
             # Load the configuration from the config file in the parser
@@ -94,11 +113,11 @@ class Sky:
         self.rng = np.random.default_rng(self.config.seed)
 
         # Input paths
-        self.path_mask = args.mask
-        self.path_nz = args.pathnz
+        self.path_mask = self.config.mask_path
+        self.path_nz = self.config.nz_path
 
         # Output path
-        self.path = args.path
+        self.path = self.config.output_path
 
         print("-" * 66)
         print(
@@ -161,7 +180,7 @@ class Sky:
         fields = glass.lognormal_fields(shells)
         gls = glass.solve_gaussian_spectra(fields, cls)
         matter = glass.generate(fields, gls, config.nside, ncorr=3, rng=self.rng)
-        convergence = glass.MultiPlaneConvergence(_cosmology(self.pars))
+        convergence = glass.MultiPlaneConvergence(Cosmology_from_camb(self.pars))
 
         # n(z) and per-shell galaxy partition.
         nz = np.loadtxt(self.path_nz)
@@ -210,7 +229,7 @@ class Sky:
                 gal_phz = glass.gaussian_phz(gal_z, config.phz_sigma_0, rng=self.rng)
                 tomo_id = np.digitize(gal_phz, np.unique(zbins)) - 1
                 gal_ellip = glass.ellipticity_intnorm(
-                    gal_count, config.sigma_e, rng=self.rng
+                    gal_count, config.sigma_e, rng=self.rng, xp=np
                 )
                 gal_she = glass.galaxy_shear(
                     gal_lon, gal_lat, gal_ellip, kappa_i, gamm1_i, gamm2_i
@@ -275,13 +294,6 @@ class Sky:
             fits.close()
         self.camb_cls = dic
         return dic
-
-
-def _cosmology(pars):
-    """GLASS cosmology wrapper from CAMB params (lazy import)."""
-    from cosmology import Cosmology
-
-    return Cosmology.from_camb(pars)
 
 
 if __name__ == "__main__":

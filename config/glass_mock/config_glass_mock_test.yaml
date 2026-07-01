@@ -37,6 +37,7 @@ phz_sigma_0: 0.03
 #ia_bias: null
 
 # --- Runtime options ---
+limber: True
 mask_path: /n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits
 nz_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
 output_path: /n09data/guerrini/glass_mock_test/

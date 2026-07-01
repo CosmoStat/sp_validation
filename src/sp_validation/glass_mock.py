@@ -81,6 +81,10 @@ class GlassMockConfig:
     phz_sigma_0: float = 0.03
     nbins: int = 1  # number of tomographic bins
     ia_bias: float | None = None
+    # --- Runtime options ---
+    mask_path: str | None = None
+    nz_path: str | None = None
+    output_path: str | None = None
 
     @classmethod
     def from_planck18(cls, **overrides) -> "GlassMockConfig":
@@ -192,19 +196,21 @@ def build_shells(config: GlassMockConfig, pars):
     Returns the GLASS shell list (``(z, w, zeff)`` windows). Lazily imports
     GLASS; only callable where GLASS is installed.
     """
+    import camb
     import glass
-    from cosmology import Cosmology
+    from cosmology.compat.camb import Cosmology
 
-    cosmo = Cosmology.from_camb(pars)
+    results = camb.get_background(pars)
+    cosmo = Cosmology(results)
     zb = glass.distance_grid(cosmo, 0.0, config.zmax, dx=config.dx)
     return glass.linear_windows(zb)
 
 
-def matter_shell_cls(config: GlassMockConfig, pars, shells):
+def matter_shell_cls(config: GlassMockConfig, pars, shells, limber=False):
     """Matter angular power spectra for the shells, from CAMB via GLASS."""
     import glass.ext.camb
 
-    return glass.ext.camb.matter_cls(pars, config.lmax, shells)
+    return glass.ext.camb.matter_cls(pars, config.lmax, shells, limber=limber)
 
 
 def generate_matter_maps(config: GlassMockConfig, pars, shells, cls):
@@ -236,9 +242,12 @@ def generate_matter_maps(config: GlassMockConfig, pars, shells, cls):
 
 def Cosmology_from_camb(pars):
     """Thin indirection so the convergence cosmology is built once, lazily."""
-    from cosmology import Cosmology
+    import camb
+    from cosmology.compat.camb import Cosmology
 
-    return Cosmology.from_camb(pars)
+    results = camb.get_background(pars)
+
+    return Cosmology(results)
 
 
 # --- mask / galaxy-sampling helpers (used by the generation runner) ---------
