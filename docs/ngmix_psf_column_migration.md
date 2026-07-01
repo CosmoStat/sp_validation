@@ -122,11 +122,13 @@ truly held σ) now reads `HSM_T_*` directly.
 The σ→T change makes the old squaring dead: `HSM_T_*` (and DES's `piff_T`) already
 hold `T`, so nothing squares. The per-dataset `square_size:` flags in
 `cat_config.yaml` are dropped, the `not_square_size` list in `rho_tau.py` is
-removed, and both param builders (`rho_tau.get_params_rho_tau`,
-`cosmo_val/compute_theory_cov.py`) set `square_size = False`. The `square_size`
-argument to `shear_psf_leakage`'s `build_cat_to_compute_{rho,tau}` is now always
-`False`; passing a `T`-column with no squaring is correct independently of that
-repo's own migration.
+removed, and the `square_size` key is gone from both param builders
+(`rho_tau.get_params_rho_tau`, `cosmo_val/compute_theory_cov.py`). The parameter
+is also removed from `shear_psf_leakage`'s `build_cat_to_compute_{rho,tau}` and
+`CovTauTh` ([PR #27](https://github.com/CosmoStat/shear_psf_leakage/pull/27)), so
+sp_validation no longer *passes* it — the two migrations are coordinated. (Passing
+`square_size=False` into the post-#27 leakage handlers would raise `TypeError`;
+dropping the argument here is what keeps the container green once #27 lands.)
 
 ## Consumer sites in sp_validation
 
@@ -149,16 +151,24 @@ repo's own migration.
 
 ## galsim estimator path — removed as dead code
 
-shapepipe#761 renamed the galsim column family too (`GALSIM_GAL_ELL_*` /
-`GALSIM_*_SIGMA_*` → scalar `GALSIM_G1/G2_*`, `GALSIM_T*`), but sp_validation's
-galsim reader is **dead code**: `shape` is hardcoded to `"ngmix"`,
-`extract_info.py` raises for any other value, and nothing outside `scratch/`
-instantiates `metacal(prefix="GALSIM")` or calls `classification_galaxy_galsim`.
-Migrating it would produce an untestable path — and the shared
+**ShapePipe cannot produce galsim shapes.** There is no galsim shape-measurement
+runner in the pipeline — `ngmix_runner` measures shapes and writes `NGMIX_*`, but
+no galsim analogue exists. The only trace of galsim-as-shapes is a dormant
+serialization hook in `make_cat` (`SHAPE_MEASUREMENT_TYPE=galsim` reads shapes from
+an optional 5th input catalogue that nothing upstream fills), and every production
+config sets `SHAPE_MEASUREMENT_TYPE=ngmix` with galsim commented out. shapepipe#761
+did rename the `GALSIM_*` family onto the grammar (`GALSIM_GAL_ELL_*` /
+`GALSIM_*_SIGMA_*` → scalar `GALSIM_G1/G2_*`, `GALSIM_T*`), but that is cheap
+serialization symmetry, not a live capability.
+
+On the consumer side the galsim reader was **dead and already broken**: `shape` is
+hardcoded to `"ngmix"`, `extract_info.py` raises for any other value, nothing
+outside `scratch/` instantiates `metacal(prefix="GALSIM")` or calls
+`classification_galaxy_galsim`, and the shared
 `col_1p = f"{prefix}_T_PSF_RECONV_1P"` read in `metacal._read_data` never matched
-the galsim producer output (galsim writes `GALSIM_T_PSF_*`, not
-`..._T_PSF_RECONV_*`), so the path was already broken. So instead of migrating it,
-this branch **removes** it:
+the galsim producer output (`GALSIM_T_PSF_*`, not `..._T_PSF_RECONV_*`). Carrying
+an untestable, already-broken path onto the new grammar is a worse end state than
+deleting it, so this branch **removes** it:
 
 - `calibration.metacal._read_data_galsim`, the `prefix == "GALSIM"` dispatch
   branch (now `else: raise` — unknown prefixes fail loudly), and the two galsim
@@ -170,12 +180,21 @@ this branch **removes** it:
 
 ngmix is the sole estimator sp_validation supports; the `prefix` parameter stays
 (it names the column family and could serve a future `NGMIXm` moments family).
+To revive galsim shapes, the capability must return **end-to-end**: a galsim
+shape-measurement runner in ShapePipe (so the columns are producible at all), then
+a migrated-and-tested consumer here — restore commit `e0eaa9f`, rename onto the
+grammar, and add coverage — not the dead stub that was removed.
 
-## Coordinated (not this repo)
+## Coordinated repos
 
-- **`shear_psf_leakage`** ρ/τ internals are Sacha Guerrini's separate PR; this
-  migration only sets the `square_size=False` interface and passes `T`-columns.
-  Passing an already-`T` column with no squaring is correct independently of that
-  repo's own migration; the size-residual semantics there are worth a joint look.
+- **`shear_psf_leakage`** ([PR #27](https://github.com/CosmoStat/shear_psf_leakage/pull/27),
+  "Adopt ShapePipe-v2 HSM column grammar, retire square_size") is the sibling
+  consumer migration. It lands on the same HSM grammar
+  (`HSM_G1/G2_{PSF,STAR}`, `HSM_T_*`, `HSM_FLAG_*`) and removed the `square_size`
+  parameter from `build_cat_to_compute_{rho,tau}` and `CovTauTh`; this PR drops the
+  matching argument, so the two land together (see "`square_size` is retired").
+- **shapepipe#761** (producer) still renames the `GALSIM_*` family onto the grammar
+  for columns nothing can create. If the goal is to simplify the grammar,
+  retiring that serialization is a producer-side follow-up worth raising there.
 
 — Claude on behalf of Cail

@@ -40,8 +40,6 @@ def get_params_rho_tau(cat, survey="other"):
     params["e2_star_col"] = cat["psf"]["e2_star_col"]
     params["PSF_size"] = cat["psf"]["PSF_size"]
     params["star_size"] = cat["psf"]["star_size"]
-    # ShapePipe-v2 stores every size as T = 2σ² (an area); nothing to square.
-    params["square_size"] = False
     if survey != "DES":
         params["PSF_flag"] = cat["psf"]["PSF_flag"]
         params["star_flag"] = cat["psf"]["star_flag"]
@@ -167,12 +165,10 @@ def get_rho_tau(
         rho_stat_handler.catalogs.set_params(params, outdir)
 
         mask = version != "DES"
-        square_size = params["square_size"]
 
         rho_stat_handler.build_cat_to_compute_rho(
             config[version]["psf"]["path"],
             catalog_id=catalog_id,
-            square_size=square_size,
             mask=mask,
             hdu=(
                 config[version]["psf"]["hdu"]
@@ -210,15 +206,12 @@ def get_rho_tau(
 
         mask = version != "DES"
 
-        square_size = params["square_size"]
-
         # Build the different catalogs if necessary
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(
                 config[version]["psf"]["path"],
                 cat_type="psf",
                 catalog_id=version,
-                square_size=square_size,
                 mask=mask,
                 hdu=(
                     config[version]["psf"]["hdu"]
@@ -232,7 +225,6 @@ def get_rho_tau(
             config[version]["shear"]["path"],
             cat_type="gal",
             catalog_id=version,
-            square_size=square_size,
             mask=mask,
         )
 
@@ -346,8 +338,6 @@ def get_jackknife_cov(
 
     rho_stat_handler.catalogs.set_params(params, outdir)
 
-    square_size = params["square_size"]
-
     tau_stat_handler = TauStat(
         catalogs=rho_stat_handler.catalogs,
         output=outdir,
@@ -368,7 +358,6 @@ def get_jackknife_cov(
                 rho_stat_handler.build_cat_to_compute_rho(
                     config[version]["psf"]["path"],
                     catalog_id=version + str(i),
-                    square_size=square_size,
                     mask=False,
                     hdu=config[version]["psf"]["hdu"],
                 )
@@ -382,7 +371,6 @@ def get_jackknife_cov(
                     config[version]["shear"]["path"],
                     cat_type="gal",
                     catalog_id=version + str(i),
-                    square_size=square_size,
                     mask=False,
                 )
 
