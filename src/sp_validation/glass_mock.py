@@ -100,6 +100,21 @@ class GlassMockConfig:
         base.update(overrides)
         return cls(**base)
 
+    @classmethod
+    def from_yaml(cls, yaml_config, seed=42) -> "GlassMockConfig":
+        """
+        Build a config for the GLASS mock generation from a YAML configuration file.
+
+        Reads the dataclass fields from the YAML file. If absent, the field is kept at its default value.
+        """
+        import yaml
+
+        with open(yaml_config, "r") as f:
+            data = yaml.safe_load(f)
+
+        overrides = {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
+        return cls(**{**overrides, "seed": seed})
+
     @property
     def lmax(self) -> int:
         """``lmax`` is tied to ``nside`` in the production mocks."""

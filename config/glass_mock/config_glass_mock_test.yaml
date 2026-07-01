@@ -1,0 +1,42 @@
+# Config file to generate a GLASS mock.
+# Example config file, uncomment and modify the inplace value if needed.
+
+# To run this configuration run the script `make_glass_sim.py`
+# Options:
+# -s, --seed: Random seed
+# -N, --number: Mock Number for labelling
+# -t, --test: Run in test mode
+# -cb, --camb: get Camb C_ell
+# -c, --config: Path to the configuration file to generate the simulation (Required)
+
+# --- Cosmological parameters (CAMB) ---
+#h: 0.6766
+#Om: 0.30966
+#Ob: 0.04897
+#ns: 0.9665
+#sigma8: 0.8102
+#mnu: 0.06
+#log_T_AGN: 7.8
+#As_init: 2.1e-9 #seed As before sigma8 rescaling
+#kmax: 20.0
+
+# --- Resolution ---
+nside: 32
+dx: 200.0
+zmax: 0.5
+
+# --- Sampling ---
+seed: 42   
+
+# --- galaxy population (downstream of map generation) ---
+nbins: 1
+n_arcmin2: 0.0824
+sigma_e: 0.2684
+bias: 1.2
+phz_sigma_0: 0.03
+#ia_bias: null
+
+# --- Runtime options ---
+mask_path: /n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits
+nz_path: /n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt
+output_path: /n09data/guerrini/glass_mock_test/

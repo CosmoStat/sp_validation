@@ -1,4 +1,4 @@
-"""Generate a UNIONS GLASS mock source catalogue.
+"""Generate a GLASS mock source catalogue.
 
 Thin CLI wrapper around the generation core in ``sp_validation.glass_mock``:
 this script owns argument parsing, the mask downgrade, galaxy sampling, and FITS
@@ -39,68 +39,21 @@ def get_parser():
     """Create the argument parser."""
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Creates a UNIONS simulation using GLASS",
+        description="Creates a weak lensing catalogue simulation using GLASS",
         fromfile_prefix_chars="@",
     )
     parser.add_argument("-s", "--seed", help="Random seed", type=int, default=42)
     parser.add_argument("-N", "--number", help="Mock Number", type=int, default=0)
-    parser.add_argument(
-        "-n",
-        "--nside",
-        help="Nside for the simulation. Nside=Lmax",
-        type=int,
-        default=32,
-    )
-    parser.add_argument(
-        "-ne",
-        "--neff",
-        help="Effective number of galaxies per arcmin^2",
-        type=float,
-        default=6.0905,
-    )
-    parser.add_argument(
-        "-p",
-        "--path",
-        help="Output path to save the mocks",
-        type=str,
-        default="./",
-    )
-    parser.add_argument(
-        "-c",
-        "--cls",
-        help="Pre-compute and saves the matter shell cls",
-        action="store_true",
-    )
     parser.add_argument("-t", "--test", help="Test run", action="store_true")
-    parser.add_argument(
-        "-sg",
-        "--sigmae",
-        help="Set sigma of intrinsic ellipticity",
-        type=float,
-        default=0.2684,
-    )
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
     parser.add_argument(
-        "-nz",
-        "--pathnz",
-        help="Path to the n(z) file",
+        "-c",
+        "--config",
+        help="Path to the configuration file to generate the simulation",
         type=str,
-        default="/n17data/sguerrini/UNIONS/WL/nz/v1.4.6.3/nz_SP_v1.4.6.3_A.txt",
+        required=True,
     )
-    parser.add_argument(
-        "-m",
-        "--mask",
-        help="Path to the mask",
-        type=str,
-        default="/n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits",
-    )
-    parser.add_argument(
-        "-ia",
-        "--ia_bias",
-        help="Intrinsic alignment bias for CCL",
-        type=float,
-        default=None,
-    )
+
     return parser
 
 
@@ -111,42 +64,50 @@ class Sky:
         parser = get_parser()
         args = parser.parse_args()
 
+        yaml_config = args.config
+
         # Test mode shrinks the box; otherwise CLI overrides config fields.
         if args.test:
-            print("[!!!] Running in test mode [!!!]")
+            print("[!!!] Running in test mode: ignore the configuration file [!!!]")
             self.config = GlassMockConfig.from_planck18(
                 nside=32,
                 seed=args.seed,
                 n_arcmin2=0.0824,
                 dx=120.0,
                 zmax=0.5,
-                sigma_e=args.sigmae,
-                ia_bias=args.ia_bias,
+                sigma_e=0.26,
+                ia_bias=None,
             )
         else:
-            self.config = GlassMockConfig.from_planck18(
-                nside=args.nside,
-                seed=args.seed,
-                n_arcmin2=args.neff,
-                sigma_e=args.sigmae,
-                ia_bias=args.ia_bias,
+            # Load the configuration from the config file in the parser
+            self.config = GlassMockConfig.from_yaml(
+                yaml_config=yaml_config, seed=args.seed
             )
 
+        # Runtime options
         self.test = args.test
         self.camb = args.camb
-        self.pre_cls = args.cls
+
+        # Number label and random seed
         self.number = args.number
         self.n_sim = str(args.number).zfill(5)
-        self.path = args.path
-        self.path_mask = args.mask
-        self.path_nz = args.pathnz
         self.rng = np.random.default_rng(self.config.seed)
 
+        # Input paths
+        self.path_mask = args.mask
+        self.path_nz = args.pathnz
+
+        # Output path
+        self.path = args.path
+
         print("-" * 66)
-        print(f"Creating a UNIONS GLASS simulation with NSide = {self.config.nside}")
+        print(
+            f"Creating a weak lensing catalogue GLASS simulation with NSide = {self.config.nside}"
+        )
         print(f"Mock number: {self.number}")
         print(f"Random seed: {self.config.seed}")
-        print(f"Test mode or not: {self.test}")
+        if self.test:
+            print("[!] Running in test mode [!]")
         print("-" * 66)
 
         self.root = f"{self.path}/results"
@@ -173,7 +134,7 @@ class Sky:
         self.camb_cls = None
 
     def galaxies_simulation(self):
-        """Create a UNIONS source catalogue from the GLASS mock maps."""
+        """Create a source catalogue from the GLASS mock maps."""
         config = self.config
 
         # Read + downgrade the survey mask.
