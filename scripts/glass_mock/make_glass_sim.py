@@ -350,7 +350,10 @@ class Sky:
         print("Saved simulation to: ", out_file)
 
         if self.camb:
+            print("-" * 66)
+            print("Compute the associated theory power spectra...")
             self.get_camb_cls()
+            print("-" * 66)
 
         if self.validation:
             print("-" * 66)
@@ -370,7 +373,7 @@ class Sky:
             for i in range(self.config.nbins)
         ]
         self.pars.SourceWindows = sources
-        self.pars.InitPower.set_params(As=2.1e-9, ns=0.965)
+
         results = camb.get_results(self.pars)
         cl_camb = results.get_source_cls_dict(lmax=lmax, raw_cl=True)
 
@@ -380,9 +383,10 @@ class Sky:
                 a, b = key.replace("W", "").replace("x", "-").split("-")
                 dic[f"{int(a) - 1}-{int(b) - 1}"] = cl_camb[key]
         if sav:
-            out = f"{self.root}/camb_cls.fits"
+            out = f"{self.root}/{self.prefix}_camb_cls_{self.n_sim}_{self.config.nside}.fits"
             fits = fitsio.FITS(out, "rw", clobber=True)
             fits.write(dic)
+            print("Saved CAMB power spectra to: ", out)
             fits.close()
         self.camb_cls = dic
         return dic

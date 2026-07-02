@@ -7,6 +7,7 @@
 # -N, --number: Mock Number for labelling
 # -t, --test: Run in test mode
 # -cb, --camb: get Camb C_ell
+# -v, --validation: Run some validation checks
 # -c, --config: Path to the configuration file to generate the simulation (Required)
 
 # --- Cosmological parameters (CAMB) ---
@@ -27,11 +28,11 @@ zmax: 3
 
 # --- galaxy population (downstream of map generation) ---
 nbins: 6
-n_arcmin2: [4.0, 3.8, 4.2, 3.95, 4.05, 4.0]
-sigma_e: 0.2684
-bias: 1.2
+n_arcmin2: [4.0, 3.8, 4.2, 3.95, 4.05, 4.0] # number density in arcmin^-2. Input can be a float or a list (a number density for each bin)
+sigma_e: 0.2684 # intrinsic ellipticity dispersion. Input can be a float or a list (a shape noise for each bin)
+bias: 1.2 # galaxy bias. Input can be a float or a list (a galaxy bias for each bin)
 phz_sigma_0: 0.03
-#ia_bias: null
+#ia_bias: null # Intrinsic alignment amplitude. Warning: this feature has not been robustly tested.
 
 # --- Runtime options ---
 limber: True

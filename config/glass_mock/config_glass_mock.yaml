@@ -21,7 +21,7 @@
 #kmax: 20.0
 
 # --- Resolution ---
-nside: 4096
+nside: 1024
 dx: 120.0
 zmax: 3.0
 
@@ -38,4 +38,4 @@ limber: True
 mask_path: /n09data/guerrini/glass_mock_v1.4.6_rerun/mask_nside4096.fits
 nz_path: /home/guerrini/sp_validation_cosmostat/config/glass_mock/test_data/redshift_distribution_tomo.txt
 output_path: /n09data/guerrini/glass_mock_test/
-output_prefix: tomo_test
+output_prefix: tomo_test_2
