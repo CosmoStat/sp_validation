@@ -33,6 +33,8 @@ from sp_validation.glass_mock import (
     downgrade_mask,
     ia_convergence,
     matter_shell_cls,
+    validate_number_density,
+    validate_shape_noise,
 )
 
 
@@ -47,6 +49,9 @@ def get_parser():
     parser.add_argument("-N", "--number", help="Mock Number", type=int, default=0)
     parser.add_argument("-t", "--test", help="Test run", action="store_true")
     parser.add_argument("-cb", "--camb", help="get Camb C_ell", action="store_true")
+    parser.add_argument(
+        "-v", "--validation", help="Run some validation checks", action="store_true"
+    )
     parser.add_argument(
         "-c",
         "--config",
@@ -110,6 +115,7 @@ class Sky:
         # Runtime options
         self.test = args.test
         self.camb = args.camb
+        self.validation = args.validation
         self.limber = self.config.limber
 
         # Number label and random seed
@@ -152,6 +158,10 @@ class Sky:
         print(f"sigma_8: {camb_sigma8(self.pars)}")
         print(f"Omega_m: {self.pars.omegam}")
         print(f"ia_bias: {self.config.ia_bias}")
+        print("-" * 66)
+        print(f"number density: {self.config.n_arcmin2}")
+        print(f"shape noise: {self.config.sigma_e}")
+        print(f"galaxy bias: {self.config.bias}")
         print("-" * 66)
 
         self.z = None
@@ -209,8 +219,12 @@ class Sky:
                 else self.config.n_arcmin2
             )
             dndz_b = (
-                dndz_cols[:, b] * n_arcmin2
-            )  # TODO: Implement different densities per tomo bin
+                dndz_cols[:, b]
+                * n_arcmin2
+                / per_bin_integral[
+                    b
+                ]  # Normalize the per bin redshift distribution to have the correct number density
+            )
             ngal_b = glass.partition(self.z, dndz_b, shells)
             self.ngal_per_bin.append(ngal_b)
             self.bin_nz.append(dndz_b)
@@ -323,7 +337,7 @@ class Sky:
                     catalogue["w"] = np.ones_like(gal_lon)
                     catalogue["n1"] = noise_she.real
                     catalogue["n2"] = noise_she.imag
-                    catalogue["TOM_BIN_ID"] = b
+                    catalogue["TOM_BIN_ID"] = b + 1
                     catalogue["TRUE_Z"] = gal_z
                     catalogue["PHOTO_Z"] = gal_phz
                     fits["SOURCE_CATALOGUE"].append(catalogue)
@@ -338,8 +352,10 @@ class Sky:
         if self.camb:
             self.get_camb_cls()
 
-        # TODO: Add a script to perform some final validation tests that are printed
-        # TODO: This would essentially include computing shape noise and number density.
+        if self.validation:
+            print("-" * 66)
+            self.run_validation_checks(out_file, mask)
+            print("-" * 66)
 
     def get_camb_cls(self, sav=True):
         """Lensing C_ell from CAMB source windows for the mock n(z)."""
@@ -370,6 +386,19 @@ class Sky:
             fits.close()
         self.camb_cls = dic
         return dic
+
+    def run_validation_checks(self, out_file, mask):
+        print("Running validation checks...")
+
+        cat_glass = fitsio.FITS(out_file)["SOURCE_CATALOGUE"].read()
+
+        # First estimate the non-tomographic and tomographic shape noise.
+        validate_shape_noise(cat_glass)
+
+        # Next, validate the number density.
+        validate_number_density(cat_glass, mask)
+
+        print("Validation checks completed.")
 
 
 if __name__ == "__main__":

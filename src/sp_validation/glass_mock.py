@@ -375,6 +375,55 @@ def create_mask_from_catalogue(nside, path, output, ra_col="RA", dec_col="DEC"):
     hp.write_map(output, mask, dtype=np.float32, overwrite=True)
 
 
+# --- shape noise and number density on mock catalogues ----------------------
+def shape_noise(e1, e2, w):
+    return np.sqrt(
+        0.5
+        * (np.sum(e1**2 * w**2) / np.sum(w**2) + np.sum(e2**2 * w**2) / np.sum(w**2))
+    )
+
+
+def number_density(w, area):
+    return np.sum(w) ** 2 / np.sum(w**2) / area
+
+
+def validate_shape_noise(cat, tomo=True, e1_col="e1", e2_col="e2", w_col="w"):
+    # First compute and print the non-tomographic shape noise
+    e1 = cat[e1_col]
+    e2 = cat[e2_col]
+    w = cat[w_col]
+    sigma_e = shape_noise(e1, e2, w)
+    print(f"Non-tomographic shape noise: {sigma_e}")
+
+    if tomo:
+        # Now compute and print the tomographic shape noise
+        for b in range(1, cat["TOM_BIN_ID"].max() + 1):
+            e1_bin = e1[cat["TOM_BIN_ID"] == b]
+            e2_bin = e2[cat["TOM_BIN_ID"] == b]
+            w_bin = w[cat["TOM_BIN_ID"] == b]
+            sigma_e_bin = shape_noise(e1_bin, e2_bin, w_bin)
+            print(f"Tomographic shape noise (bin {b}): {sigma_e_bin}")
+
+
+def validate_number_density(cat, mask, tomo=True, w_col="w"):
+    import healpy as hp
+
+    # First compute and print the non-tomographic shape noise
+    w = cat[w_col]
+    nside = hp.npix2nside(mask.shape[0])
+    area = (
+        np.sum(mask) * hp.nside2pixarea(nside, degrees=True) * 60 * 60
+    )  # area in arcmin^2
+    n_gal = number_density(w, area)
+    print(f"Non-tomographic number density: {n_gal}")
+
+    if tomo:
+        for b in range(1, cat["TOM_BIN_ID"].max() + 1):
+            w_bin = w[cat["TOM_BIN_ID"] == b]
+            n_gal_bin = number_density(w_bin, area)
+            print(f"Tomographic number density (bin {b}): {n_gal_bin}")
+
+
 # --- two-point statistics on mock catalogues --------------------------------
 
 # Configuration-space treecorr defaults for the GLASS-mock 2PCF.
