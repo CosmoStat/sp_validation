@@ -140,6 +140,194 @@ def apply_random_rotation(e1, e2, rng=None):
     return e1_out, e2_out
 
 
+def get_field_and_workspace_from_map(
+    b,
+    mask_a,
+    e1_map_a=None,
+    e2_map_a=None,
+    mask_b=None,
+    e1_map_b=None,
+    e2_map_b=None,
+    pol_factor=-1,
+):
+    """Compute a NaMaster field and workspace object from the input maps.
+
+    If the shear maps are None, returns field objects but only the workspace objects is relevant and contains the mixing matrix.
+    If the second mask and shear maps (indexed b) are provided, the mixing matrix is computed between the two fields.
+
+    Parameters
+    ----------
+    b : nmt.NmtBin
+        NaMaster binning object.
+    mask_a : np.ndarray
+        Field mask for the first map.
+    e1_map_a : np.ndarray, optional
+        E1 map for the first field.
+    e2_map_a : np.ndarray, optional
+        E2 map for the first field.
+    mask_b : np.ndarray, optional
+        Field mask for the second map.
+    e1_map_b : np.ndarray, optional
+        E1 map for the second field.
+    e2_map_b : np.ndarray, optional
+        E2 map for the second field.
+    pol_factor : float, optional
+        Polarization factor to apply to the E2 map.
+
+    Returns
+    -------
+    field_a : nmt.NmtField
+        NaMaster field object for the first map.
+    field_b : nmt.NmtField
+        NaMaster field object for the second map (if provided, same than the first map otherwise).
+    wsp : nmt.NmtWorkspace
+        NaMaster workspace object containing the mixing matrix.
+
+    """
+    nside = hp.npix2nside(len(mask_a))
+    lmax = b.get_ell_max()
+    if e1_map_a is None or e2_map_a is None:
+        e1_map_a = np.zeros(hp.nside2npix(nside))
+        e2_map_a = np.zeros(hp.nside2npix(nside))
+
+    # Create NaMaster field
+    field_a = nmt.NmtField(
+        mask=mask_a, maps=[e1_map_a, pol_factor * e2_map_a], lmax=lmax
+    )
+
+    if mask_b is not None:
+        if e1_map_b is None or e2_map_b is None:
+            e1_map_b = np.zeros(hp.nside2npix(nside))
+            e2_map_b = np.zeros(hp.nside2npix(nside))
+
+        field_b = nmt.NmtField(
+            mask=mask_b, maps=[e1_map_b, pol_factor * e2_map_b], lmax=lmax
+        )
+    else:
+        field_b = field_a
+    # Create NaMaster workspace
+    wsp = nmt.NmtWorkspace.from_fields(field_a, field_b, b)
+
+    return field_a, field_b, wsp
+
+
+def get_field_and_workspace_from_catalog(
+    b,
+    ra_a,
+    dec_a,
+    e1_a,
+    e2_a,
+    w_a,
+    ra_b=None,
+    dec_b=None,
+    e1_b=None,
+    e2_b=None,
+    w_b=None,
+    pol_factor=-1,
+):
+    """Create a NaMaster field and workspace from the input catalog.
+
+    If the second catalog is provided, the mixing matrix is computed between the two fields.
+
+    Parameters
+    ----------
+    b : nmt.NmtBin
+        NaMaster binning object.
+    ra_a : np.ndarray
+        Right ascension of sources in the first catalog.
+    dec_a : np.ndarray
+        Declination of sources in the first catalog.
+    e1_a : np.ndarray
+        E1 shear component of sources in the first catalog.
+    e2_a : np.ndarray
+        E2 shear component of sources in the first catalog.
+    w_a : np.ndarray
+        Weights of sources in the first catalog.
+    ra_b : np.ndarray, optional
+        Right ascension of sources in the second catalog.
+    dec_b : np.ndarray, optional
+        Declination of sources in the second catalog.
+    e1_b : np.ndarray, optional
+        E1 shear component of sources in the second catalog.
+    e2_b : np.ndarray, optional
+        E2 shear component of sources in the second catalog.
+    w_b : np.ndarray, optional
+        Weights of sources in the second catalog.
+    pol_factor : float, optional
+        Polarization factor to apply to the E2 component.
+
+    Returns
+    -------
+    field_a : nmt.NmtFieldCatalog
+        NaMaster field object for the first catalog.
+    field_b : nmt.NmtFieldCatalog
+        NaMaster field object for the second catalog (if provided, same as the first catalog otherwise).
+    wsp : nmt.NmtWorkspace
+        NaMaster workspace object containing the mixing matrix.
+
+    """
+    lmax = b.get_ell_max()
+    # Get field for input catalog a
+    field_a = nmt.NmtFieldCatalog(
+        positions=[ra_a, dec_a],
+        weights=w_a,
+        field=[e1_a, pol_factor * e2_a],
+        lmax=lmax,
+        lmax_mask=lmax,
+        spin=2,
+        lonlat=True,
+    )
+
+    if (
+        ra_b is not None
+        and dec_b is not None
+        and e1_b is not None
+        and e2_b is not None
+        and w_b is not None
+    ):
+        field_b = nmt.NmtFieldCatalog(
+            positions=[ra_b, dec_b],
+            weights=w_b,
+            field=[e1_b, pol_factor * e2_b],
+            lmax=lmax,
+            lmax_mask=lmax,
+            spin=2,
+            lonlat=True,
+        )
+    else:
+        field_b = field_a
+
+    wsp = nmt.NmtWorkspace.from_fields(field_a, field_b, b)
+    return field_a, field_b, wsp
+
+
+def compute_cl_from_field_and_workspace(field_a, field_b, wsp, b):
+    """Compute the angular power spectrum from the input NaMaster field and workspace
+
+    Parameters
+    ----------
+    field_a : nmt.NmtField
+        NaMaster field object for the first catalog.
+    field_b : nmt.NmtField
+        NaMaster field object for the second catalog.
+    wsp : nmt.NmtWorkspace
+        NaMaster workspace object containing the mixing matrix.
+    b : nmt.NmtBin
+        NaMaster binning object.
+
+    Returns
+    -------
+    cl_coupled : np.ndarray
+        Coupled angular power spectrum.
+    cl_decoupled : np.ndarray
+        Decoupled angular power spectrum.
+    """
+    cl_coupled = nmt.compute_coupled_cell(field_a, field_b)
+    cl_decoupled = wsp.decouple_cell(cl_coupled)
+
+    return cl_coupled, cl_decoupled
+
+
 def get_pseudo_cls_map(
     shear_map,
     mask,
