@@ -1,5 +1,6 @@
 # %%
 import copy
+import itertools
 import os
 import re
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 import colorama
 import numpy as np
 import yaml
+from astropy.io import fits
 from shear_psf_leakage import run_object, run_scale
 
 from ..b_modes import (
@@ -96,6 +98,10 @@ class CosmologyValidation(
         noise debiasing, making those realizations reproducible run-to-run.
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
+    compute_tomography : bool, default False
+        Whether to compute tomographic correlation functions and pseudo-C_ell.
+    force_run : bool, default False
+        If True, forces re-computation of results even if cached outputs exist.
 
     Attributes
     ----------
@@ -222,6 +228,8 @@ class CosmologyValidation(
         path_onecovariance=None,
         cosmo_params=None,
         blind=None,
+        compute_tomography=False,
+        force_run=False,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -251,6 +259,8 @@ class CosmologyValidation(
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
         self.blind = blind
+        self.compute_tomography = compute_tomography
+        self.force_run = force_run
 
         assert self.cell_method in ["map", "catalog"], (
             "cell_method must be 'map' or 'catalog'"
@@ -631,3 +641,36 @@ class CosmologyValidation(
         print()
 
         return summary
+
+    def _get_tomo_bins(self, version):
+        """
+        Return the tomo_bin_ids for a given version. If the version does not have tomography, return None.
+
+        Returns
+        -------
+        tomo_bin_ids : list or None
+            List of unique tomographic bin IDs for the version, or None if no tomography is available
+        tomo_bin_pairs : list of tuples or None
+            List of unique pairs of tomographic bin IDs (including self-pairs) for the version, or None if no tomography is available
+        """
+        if "tomo_bin_ids" in self.cc[version]["shear"]:
+            self.print_cyan(
+                f"Extracting tomography information from version {version}."
+            )
+            cat_gal = fits.getdata(self.cc[version]["shear"]["path"])
+            tomo_bin = cat_gal[self.cc[version]["shear"]["tomo_bin_ids"]]
+            tomo_bin_ids = np.unique(tomo_bin)
+            tomo_bin_ids = tomo_bin_ids[
+                tomo_bin_ids > 0
+            ]  # Exclude zero or negative bins
+            self.print_cyan(
+                f"Found {len(tomo_bin_ids)} tomographic bins for version {version}: {tomo_bin_ids}."
+            )
+
+            tomo_bin_pairs = list(
+                itertools.combinations_with_replacement(tomo_bin_ids, 2)
+            )
+            return tomo_bin_ids, tomo_bin_pairs
+        else:
+            self.print_cyan(f"Version {version} does not have tomography information.")
+            return None, None

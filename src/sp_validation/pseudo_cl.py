@@ -21,6 +21,7 @@ import pymaster as nmt
 LMIN = 8
 
 
+# ---------------------- Binning utility functions ----------------------
 def pseudo_cl_geometry(nside):
     """Return ``(lmin, lmax, b_lmax)`` for the pseudo-Cl estimator at ``nside``.
 
@@ -87,7 +88,38 @@ def make_namaster_bin(
     return b
 
 
-def get_n_gal_map(nside, ra, dec, weights=None):
+# ---------------------- Map computation utility functions ----------------------
+def get_pixels(ra, dec, nside):
+    """
+    Get the HEALPix pixel indices for given RA and Dec.
+
+    Parameters
+    ----------
+    ra : np.ndarray
+        Right ascension in degrees.
+    dec : np.ndarray
+        Declination in degrees.
+    nside : int
+        HEALPix nside parameter.
+
+    Returns
+    -------
+    unique_pix : np.ndarray
+        Sorted unique pixel indices.
+    idx : np.ndarray
+        First-occurrence indices into the input from ``np.unique``.
+    idx_rep : np.ndarray
+        Inverse map: pixel-group index for each input object.
+    """
+    pixels = hp.ang2pix(nside, theta=np.radians(90 - dec), phi=np.radians(ra))
+
+    unique_pix, idx, idx_rep = np.unique(pixels, return_index=True, return_inverse=True)
+    return unique_pix, idx, idx_rep
+
+
+def get_n_gal_map(
+    nside, ra, dec, weights=None, unique_pix=None, idx=None, idx_rep=None
+):
     """Weighted galaxy number-density HEALPix map plus pixel bookkeeping.
 
     Bins ``(ra, dec)`` (degrees) onto an ``nside`` HEALPix grid. With
@@ -98,21 +130,106 @@ def get_n_gal_map(nside, ra, dec, weights=None):
     -------
     n_gal : np.ndarray
         Map of summed weights (or counts) per pixel, shape ``(npix,)``.
-    unique_pix : np.ndarray
-        Sorted unique occupied pixel indices.
-    idx : np.ndarray
-        First-occurrence indices into the input from ``np.unique``.
-    idx_rep : np.ndarray
-        Inverse map: pixel-group index for each input object.
     """
-    theta = (90.0 - dec) * np.pi / 180.0
-    phi = ra * np.pi / 180.0
-    pix = hp.ang2pix(nside, theta, phi)
+    if unique_pix is None or idx is None or idx_rep is None:
+        unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
 
-    unique_pix, idx, idx_rep = np.unique(pix, return_index=True, return_inverse=True)
     n_gal = np.zeros(hp.nside2npix(nside))
     n_gal[unique_pix] = np.bincount(idx_rep, weights=weights)
-    return n_gal, unique_pix, idx, idx_rep
+    return n_gal
+
+
+def get_shear_map(
+    ra, dec, e1, e2, w, nside, unique_pix=None, idx=None, idx_rep=None, n_gal_map=None
+):
+    """Weighted shear HEALPix maps plus pixel bookkeeping.
+
+    Bins ``(ra, dec)`` (degrees) onto an ``nside`` HEALPix grid. The shear
+    components ``(e1, e2)`` are weighted by ``w`` and summed per pixel. If
+    ``unique_pix``, ``idx``, and ``idx_rep`` are provided, they are used to
+    avoid recomputing the pixel indices.
+    If ``n_gal_map`` is provided, it is used to normalize the shear maps by the galaxy density.
+
+    Returns
+    -------
+    e1_map : np.ndarray
+        Weighted sum of E1 per pixel, shape ``(npix,)``.
+    e2_map : np.ndarray
+        Weighted sum of E2 per pixel, shape ``(npix,)``.
+    """
+    if unique_pix is None or idx is None or idx_rep is None:
+        unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
+
+    if n_gal_map is None:
+        n_gal_map = get_n_gal_map(
+            nside, ra, dec, weights=w, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
+        )
+
+    npix = hp.nside2npix(nside)
+    e1_map = np.zeros(npix)
+    e2_map = np.zeros(npix)
+
+    e1_map[unique_pix] = np.bincount(idx_rep, weights=e1 * w)
+    e2_map[unique_pix] = np.bincount(idx_rep, weights=e2 * w)
+
+    non_zero = n_gal_map > 0
+    e1_map[non_zero] /= n_gal_map[non_zero]
+    e2_map[non_zero] /= n_gal_map[non_zero]
+
+    return e1_map, e2_map
+
+
+def get_variance_map(
+    nside, ra, dec, e1, e2, w, unique_pix=None, idx=None, idx_rep=None
+):
+    """Compute the variance map of the shear components.
+
+    The variance is computed as the weighted variance of the shear components in each pixel.
+
+    Returns
+    -------
+    variance_map : np.ndarray
+        Variance map of the shear components, shape ``(npix,)``.
+    """
+    if unique_pix is None or idx is None or idx_rep is None:
+        unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
+
+    npix = hp.nside2npix(nside)
+    variance_map = np.zeros(npix)
+
+    variance_map[unique_pix] = np.bincount(
+        idx_rep, weights=0.5 * (e1**2 + e2**2) * w**2
+    )
+
+    return variance_map
+
+
+def get_noise_bias_analytical(
+    ra, dec, e1, e2, w, lmax, nside=1024, unique_pix=None, idx=None, idx_rep=None
+):
+    """
+    Compute the analytical noise bias for shear power spectrum.
+    """
+    variance_map = get_variance_map(
+        nside=nside,
+        ra=ra,
+        dec=dec,
+        e1=e1,
+        e2=e2,
+        w=w,
+        unique_pix=unique_pix,
+        idx=idx,
+        idx_rep=idx_rep,
+    )
+
+    noise_bias = hp.nside2pixarea(nside) * np.mean(variance_map)
+
+    noise_bias_cl = np.zeros((4, lmax))
+
+    noise_bias_cl[0, :] = noise_bias  # EE
+    noise_bias_cl[3, :] = noise_bias  # BB
+
+    return noise_bias_cl
 
 
 def apply_random_rotation(e1, e2, rng=None):
@@ -140,6 +257,63 @@ def apply_random_rotation(e1, e2, rng=None):
     return e1_out, e2_out
 
 
+def get_noise_realisation(
+    ra,
+    dec,
+    e1,
+    e2,
+    w,
+    nside,
+    unique_pix=None,
+    idx=None,
+    idx_rep=None,
+    n_gal_map=None,
+    rng=None,
+):
+    """
+    Generate a random noise realisation of the shear maps by applying a random rotation to the ellipticity components.
+
+    Parameters
+    ----------
+    ra, dec : np.ndarray
+        Right ascension and declination of the sources.
+    e1, e2 : np.ndarray
+        Ellipticity components.
+    w : np.ndarray
+        Weights of the sources.
+    nside : int
+        HEALPix resolution.
+    unique_pix, idx, idx_rep : np.ndarray, optional
+        Pixel indices and bookkeeping arrays. If not provided, they will be computed.
+    n_gal_map : np.ndarray, optional
+        Galaxy number density map. If not provided, it will be computed.
+
+    Returns
+    -------
+    noise_map_e1, noise_map_e2 : np.ndarray
+        Noise map for ellipticity components.
+    """
+    # Apply random rotation to the ellipticity components
+    e1_rot, e2_rot = apply_random_rotation(e1, e2, rng=rng)
+
+    # Compute the noise maps using the rotated ellipticity components
+    noise_map_e1, noise_map_e2 = get_shear_map(
+        ra=ra,
+        dec=dec,
+        e1=e1_rot,
+        e2=e2_rot,
+        w=w,
+        nside=nside,
+        unique_pix=unique_pix,
+        idx=idx,
+        idx_rep=idx_rep,
+        n_gal_map=n_gal_map,
+    )
+
+    return noise_map_e1, noise_map_e2
+
+
+# ---------------------- Cl computation functions ----------------------
 def get_field_and_workspace_from_map(
     b,
     mask_a,
@@ -149,6 +323,7 @@ def get_field_and_workspace_from_map(
     e1_map_b=None,
     e2_map_b=None,
     pol_factor=-1,
+    return_wsp=True,
 ):
     """Compute a NaMaster field and workspace object from the input maps.
 
@@ -173,6 +348,8 @@ def get_field_and_workspace_from_map(
         E2 map for the second field.
     pol_factor : float, optional
         Polarization factor to apply to the E2 map.
+    return_wsp : bool, optional
+        If True, return the NaMaster workspace object containing the mixing matrix.
 
     Returns
     -------
@@ -205,10 +382,14 @@ def get_field_and_workspace_from_map(
         )
     else:
         field_b = field_a
-    # Create NaMaster workspace
-    wsp = nmt.NmtWorkspace.from_fields(field_a, field_b, b)
 
-    return field_a, field_b, wsp
+    if return_wsp:
+        # Create NaMaster workspace
+        wsp = nmt.NmtWorkspace.from_fields(field_a, field_b, b)
+
+        return field_a, field_b, wsp
+    else:
+        return field_a, field_b, None
 
 
 def get_field_and_workspace_from_catalog(
@@ -224,6 +405,7 @@ def get_field_and_workspace_from_catalog(
     e2_b=None,
     w_b=None,
     pol_factor=-1,
+    return_wsp=True,
 ):
     """Create a NaMaster field and workspace from the input catalog.
 
@@ -255,6 +437,8 @@ def get_field_and_workspace_from_catalog(
         Weights of sources in the second catalog.
     pol_factor : float, optional
         Polarization factor to apply to the E2 component.
+    return_wsp : bool, optional
+        If True, return the NaMaster workspace object containing the mixing matrix.
 
     Returns
     -------
@@ -297,8 +481,11 @@ def get_field_and_workspace_from_catalog(
     else:
         field_b = field_a
 
-    wsp = nmt.NmtWorkspace.from_fields(field_a, field_b, b)
-    return field_a, field_b, wsp
+    if return_wsp:
+        wsp = nmt.NmtWorkspace.from_fields(field_a, field_b, b)
+        return field_a, field_b, wsp
+    else:
+        return field_a, field_b, None
 
 
 def compute_cl_from_field_and_workspace(field_a, field_b, wsp, b):
@@ -329,12 +516,14 @@ def compute_cl_from_field_and_workspace(field_a, field_b, wsp, b):
 
 
 def get_pseudo_cls_map(
-    shear_map,
-    mask,
+    shear_map_a,
+    mask_a,
     nside,
     binning,
     *,
-    pol_factor=True,
+    shear_map_b=None,
+    mask_b=None,
+    pol_factor=-1,
     wsp=None,
     ell_step=10,
     n_ell_bins=32,
@@ -344,16 +533,20 @@ def get_pseudo_cls_map(
 
     Parameters
     ----------
-    shear_map : np.ndarray
+    shear_map_a : np.ndarray
         Complex shear map (``e1 + 1j * e2``).
-    mask : np.ndarray
+    mask_a : np.ndarray
         Field mask (the galaxy number-density map).
     nside : int
         HEALPix resolution; fixes the harmonic geometry.
     binning : str
         Binning scheme passed to :func:`make_namaster_bin`.
-    pol_factor : bool, optional
-        If ``True`` flip the sign of the imaginary (e2) component.
+    shear_map_b : np.ndarray, optional
+        Complex shear map for the second field (``e1 + 1j * e2``).
+    mask_b : np.ndarray, optional
+        Field mask for the second field (the galaxy number-density map).
+    pol_factor : float, optional
+        Polarization factor to apply to the E2 component.
     wsp : nmt.NmtWorkspace, optional
         Reuse a coupling workspace; built from the field if ``None``.
     ell_step, n_ell_bins, power : optional
@@ -368,6 +561,27 @@ def get_pseudo_cls_map(
     wsp : nmt.NmtWorkspace
         The coupling workspace (newly built or the one passed in).
     """
+    # First do some assertion checks
+    if shear_map_b is not None:
+        assert mask_b is not None, "mask_b must be provided if shear_map_b is provided"
+        assert shear_map_a.shape == shear_map_b.shape, (
+            "shear_map_a and shear_map_b must have the same shape"
+        )
+        assert mask_a.shape == mask_b.shape, (
+            "mask_a and mask_b must have the same shape"
+        )
+
+    if mask_b is not None:
+        assert shear_map_b is not None, (
+            "shear_map_b must be provided if mask_b is provided"
+        )
+        assert shear_map_a.shape == shear_map_b.shape, (
+            "shear_map_a and shear_map_b must have the same shape"
+        )
+        assert mask_a.shape == mask_b.shape, (
+            "mask_a and mask_b must have the same shape"
+        )
+
     lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
 
     b = make_namaster_bin(
@@ -381,18 +595,36 @@ def get_pseudo_cls_map(
     )
     ell_eff = b.get_effective_ells()
 
-    factor = -1 if pol_factor else 1
-
-    f_all = nmt.NmtField(
-        mask=mask, maps=[shear_map.real, factor * shear_map.imag], lmax=b_lmax
-    )
     if wsp is None:
-        wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+        field_a, field_b, wsp = get_field_and_workspace_from_map(
+            b,
+            mask_a,
+            e1_map_a=shear_map_a.real,
+            e2_map_a=shear_map_a.imag,
+            mask_b=mask_b,
+            e1_map_b=shear_map_b.real if shear_map_b is not None else None,
+            e2_map_b=shear_map_b.imag if shear_map_b is not None else None,
+            pol_factor=pol_factor,
+            return_wsp=True,
+        )
+    else:
+        field_a, field_b, _ = get_field_and_workspace_from_map(
+            b,
+            mask_a,
+            e1_map_a=shear_map_a.real,
+            e2_map_a=shear_map_a.imag,
+            mask_b=mask_b,
+            e1_map_b=shear_map_b.real if shear_map_b is not None else None,
+            e2_map_b=shear_map_b.imag if shear_map_b is not None else None,
+            pol_factor=pol_factor,
+            return_wsp=False,
+        )
 
-    cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
-    cl_all = wsp.decouple_cell(cl_coupled)
+    cl_coupled, cl_decoupled = compute_cl_from_field_and_workspace(
+        field_a, field_b, wsp, b
+    )
 
-    return ell_eff, cl_all, wsp
+    return ell_eff, cl_decoupled, wsp
 
 
 def get_pseudo_cls_catalog(
@@ -401,7 +633,9 @@ def get_pseudo_cls_catalog(
     nside,
     binning,
     *,
-    pol_factor=True,
+    tomo_bin_a=None,
+    tomo_bin_b=None,
+    pol_factor=-1,
     wsp=None,
     ell_step=10,
     n_ell_bins=32,
@@ -420,8 +654,8 @@ def get_pseudo_cls_catalog(
         HEALPix resolution; fixes the harmonic geometry.
     binning : str
         Binning scheme passed to :func:`make_namaster_bin`.
-    pol_factor : bool, optional
-        If ``True`` flip the sign of the e2 component.
+    pol_factor : int, optional
+        Polarization factor to apply to the E2 component.
     wsp : nmt.NmtWorkspace, optional
         Reuse a coupling workspace; built from the field if ``None``.
     ell_step, n_ell_bins, power : optional
@@ -436,6 +670,11 @@ def get_pseudo_cls_catalog(
     wsp : nmt.NmtWorkspace
         The coupling workspace (newly built or the one passed in).
     """
+    # First make some assertion checks reagarding the run mode
+    assert (tomo_bin_a is None and tomo_bin_b is None) or (
+        tomo_bin_a is not None and tomo_bin_b is not None
+    ), "Both tomo_bin_a and tomo_bin_b must be provided or both must be None"
+
     lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
 
     b = make_namaster_bin(
@@ -449,22 +688,49 @@ def get_pseudo_cls_catalog(
     )
     ell_eff = b.get_effective_ells()
 
-    factor = -1 if pol_factor else 1
-
-    f_all = nmt.NmtFieldCatalog(
-        positions=[catalog[params["ra_col"]], catalog[params["dec_col"]]],
-        weights=catalog[params["w_col"]],
-        field=[catalog[params["e1_col"]], factor * catalog[params["e2_col"]]],
-        lmax=b_lmax,
-        lmax_mask=b_lmax,
-        spin=2,
-        lonlat=True,
-    )
+    is_tomography = tomo_bin_a is not None and tomo_bin_b is not None
+    if is_tomography:
+        mask_tomo_a = catalog[params["tomo_bin_col"]] == tomo_bin_a
+        mask_tomo_b = catalog[params["tomo_bin_col"]] == tomo_bin_b
+    else:
+        mask_tomo_a = np.ones(len(catalog), dtype=bool)
+        mask_tomo_b = np.ones(len(catalog), dtype=bool)
 
     if wsp is None:
-        wsp = nmt.NmtWorkspace.from_fields(f_all, f_all, b)
+        field_a, field_b, wsp = get_field_and_workspace_from_catalog(
+            b,
+            ra_a=catalog[params["ra_col"]][mask_tomo_a],
+            dec_a=catalog[params["dec_col"]][mask_tomo_a],
+            e1_a=catalog[params["e1_col"]][mask_tomo_a],
+            e2_a=catalog[params["e2_col"]][mask_tomo_a],
+            w_a=catalog[params["w_col"]][mask_tomo_a],
+            ra_b=catalog[params["ra_col"]][mask_tomo_b],
+            dec_b=catalog[params["dec_col"]][mask_tomo_b],
+            e1_b=catalog[params["e1_col"]][mask_tomo_b],
+            e2_b=catalog[params["e2_col"]][mask_tomo_b],
+            w_b=catalog[params["w_col"]][mask_tomo_b],
+            pol_factor=pol_factor,
+            return_wsp=True,
+        )
+    else:
+        field_a, field_b, _ = get_field_and_workspace_from_catalog(
+            b,
+            ra_a=catalog[params["ra_col"]][mask_tomo_a],
+            dec_a=catalog[params["dec_col"]][mask_tomo_a],
+            e1_a=catalog[params["e1_col"]][mask_tomo_a],
+            e2_a=catalog[params["e2_col"]][mask_tomo_a],
+            w_a=catalog[params["w_col"]][mask_tomo_a],
+            ra_b=catalog[params["ra_col"]][mask_tomo_b],
+            dec_b=catalog[params["dec_col"]][mask_tomo_b],
+            e1_b=catalog[params["e1_col"]][mask_tomo_b],
+            e2_b=catalog[params["e2_col"]][mask_tomo_b],
+            w_b=catalog[params["w_col"]][mask_tomo_b],
+            pol_factor=pol_factor,
+            return_wsp=False,
+        )
 
-    cl_coupled = nmt.compute_coupled_cell(f_all, f_all)
-    cl_all = wsp.decouple_cell(cl_coupled)
+    cl_coupled, cl_decoupled = compute_cl_from_field_and_workspace(
+        field_a, field_b, wsp, b
+    )
 
-    return ell_eff, cl_all, wsp
+    return ell_eff, cl_decoupled, wsp
