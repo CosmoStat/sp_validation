@@ -308,6 +308,35 @@ def match_subsample(
     return ra, dec, g
 
 
+def match_catalogs_radec(ra1, dec1, ra2, dec2, thresh_deg=0.0002):
+    """Match two catalogues by RA/Dec.
+
+    Match each object in catalogue 2 to the nearest in catalogue 1
+    within a threshold.
+
+    Parameters
+    ----------
+    ra1, dec1 : array_like
+        coordinates of reference catalogue [deg]
+    ra2, dec2 : array_like
+        coordinates of catalogue to match [deg]
+    thresh_deg : float, optional
+        maximum separation [deg], default 0.0002
+
+    Returns
+    -------
+    idx1 : ndarray of int
+        indices into catalogue 1 of matched objects
+    idx2 : ndarray of int
+        indices into catalogue 2 of matched objects
+    """
+    coord1 = coords.SkyCoord(ra=ra1 * u.degree, dec=dec1 * u.degree)
+    coord2 = coords.SkyCoord(ra=ra2 * u.degree, dec=dec2 * u.degree)
+    idx1, sep, _ = coord2.match_to_catalog_sky(coord1)
+    mask = sep.deg < thresh_deg
+    return idx1[mask], np.where(mask)[0]
+
+
 def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
     """Add docstring.
 
