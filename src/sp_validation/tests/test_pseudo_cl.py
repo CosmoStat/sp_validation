@@ -415,7 +415,9 @@ def test_get_pseudo_cls_map(cv, cat_and_params):
 # ===========================================================================
 def test_get_pseudo_cls_catalog(cv, cat_and_params):
     cat_gal, params = cat_and_params
-    ell_eff, cl_all, wsp = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
+    ell_eff, cl_all, wsp = cv.get_pseudo_cls_catalog(
+        catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
+    )
 
     assert cl_all.shape == (4, N_ELL_BINS)
     # Effective ells share the binning math with the map path: bitwise-stable.
@@ -521,8 +523,8 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
     c1, _ = apply_random_rotation(e1, e2, np.random.default_rng(7))
     assert not np.allclose(a1, c1)
 
-    d1, _ = apply_random_rotation(e1, e2, None)
-    f1, _ = apply_random_rotation(e1, e2, None)
+    d1, _ = apply_random_rotation(e1, e2)
+    f1, _ = apply_random_rotation(e1, e2)
     assert not np.allclose(d1, f1)
 
 
@@ -537,9 +539,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     (it drops the BE row); we pin the round-tripped table.
     """
     ver = cv._test_version
-    cv._pseudo_cls = {ver: {"non_tomo": {}}}
+    cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
-    cv.calculate_pseudo_cl_catalog(ver, out_path)
+    cv.calculate_pseudo_cl_catalog(ver, out_path, tomo_bin_a="all", tomo_bin_b="all")
 
     assert os.path.exists(out_path)
     d = fits.getdata(out_path)
@@ -610,5 +612,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     # (same computation, FITS round-trip) -- consistency, not an independent pin.
     cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
     params = get_params_rho_tau(cv.cc[ver], survey=ver)
-    _, cl_prim, _ = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
+    _, cl_prim, _ = cv.get_pseudo_cls_catalog(
+        catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
+    )
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)

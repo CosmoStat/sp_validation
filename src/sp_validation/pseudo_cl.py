@@ -17,6 +17,8 @@ import healpy as hp
 import numpy as np
 import pymaster as nmt
 
+from sp_validation.cosmology import get_theo_c_ell
+
 # Lowest multipole retained by the pseudo-Cl estimators.
 LMIN = 8
 
@@ -635,8 +637,8 @@ def get_pseudo_cls_catalog(
     nside,
     binning,
     *,
-    tomo_bin_a=None,
-    tomo_bin_b=None,
+    tomo_bin_a="all",
+    tomo_bin_b="all",
     pol_factor=-1,
     wsp=None,
     ell_step=10,
@@ -656,6 +658,8 @@ def get_pseudo_cls_catalog(
         HEALPix resolution; fixes the harmonic geometry.
     binning : str
         Binning scheme passed to :func:`make_namaster_bin`.
+    tomo_bin_a, tomo_bin_b : str or int or None, optional
+        Tomographic bin IDs for the two fields.
     pol_factor : int, optional
         Polarization factor to apply to the E2 component.
     wsp : nmt.NmtWorkspace, optional
@@ -673,9 +677,9 @@ def get_pseudo_cls_catalog(
         The coupling workspace (newly built or the one passed in).
     """
     # First make some assertion checks reagarding the run mode
-    assert (tomo_bin_a is None and tomo_bin_b is None) or (
-        tomo_bin_a is not None and tomo_bin_b is not None
-    ), "Both tomo_bin_a and tomo_bin_b must be provided or both must be None"
+    assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+        tomo_bin_a != "all" and tomo_bin_b != "all"
+    ), "Both tomo_bin_a and tomo_bin_b must be provided or both must be 'all'"
 
     lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
 
@@ -690,7 +694,7 @@ def get_pseudo_cls_catalog(
     )
     ell_eff = b.get_effective_ells()
 
-    is_tomography = tomo_bin_a is not None and tomo_bin_b is not None
+    is_tomography = tomo_bin_a != "all" and tomo_bin_b != "all"
     if is_tomography:
         mask_tomo_a = catalog[params["tomo_bin_col"]] == tomo_bin_a
         mask_tomo_b = catalog[params["tomo_bin_col"]] == tomo_bin_b
@@ -742,3 +746,85 @@ def get_pseudo_cls_catalog(
     )
 
     return ell_eff, cl_decoupled, wsp
+
+
+# ---------------------- Covariance computation functions ----------------------
+def get_fiducial_cl(z, dndz, lmax, cosmo):
+    """
+    Get the fiducial Cl's using the redshift distribution.
+    Cosmology is determined by the input cosmo object.
+    """
+    ell = np.arange(1, lmax + 1)
+
+    fiducial_cl = get_theo_c_ell(ell=ell, z=z, dndz=dndz, backend="camb", cosmo=cosmo)
+
+    return fiducial_cl
+
+
+def get_pseudo_cl_iNKA_covariance(
+    input_cl_a1_b1,
+    input_cl_a1_b2,
+    input_cl_a2_b1,
+    input_cl_a2_b2,
+    field_a1,
+    field_a2,
+    field_b1,
+    field_b2,
+    wsp_a,
+    wsp_b,
+    b,
+):
+    """Compute the iNKA covariance for pseudo-Cl.
+
+    Parameters
+    ----------
+    input_cl_a1_b1 : np.ndarray
+        Input Cl for field a1 and b1.
+    input_cl_a1_b2 : np.ndarray
+        Input Cl for field a1 and b2.
+    input_cl_a2_b1 : np.ndarray
+        Input Cl for field a2 and b1.
+    input_cl_a2_b2 : np.ndarray
+        Input Cl for field a2 and b2.
+    field_a1 : nmt.NmtField
+        NaMaster field object for the first catalog (a1).
+    field_a2 : nmt.NmtField
+        NaMaster field object for the second catalog (a2).
+    field_b1 : nmt.NmtField
+        NaMaster field object for the first catalog (b1).
+    field_b2 : nmt.NmtField
+        NaMaster field object for the second catalog (b2).
+    wsp_a : nmt.NmtWorkspace
+        NaMaster workspace object containing the mixing matrix for fields a.
+    wsp_b : nmt.NmtWorkspace
+        NaMaster workspace object containing the mixing matrix for fields b.
+    b : nmt.NmtBin
+        NaMaster binning object.
+
+    Returns
+    -------
+    cov_matrix : np.ndarray
+        Covariance matrix of the pseudo-Cl, shape ``(n_bins, n_bins)``.
+    """
+    # Compute the coupling coefficients for the covariance
+    cw = nmt.NmtCovarianceWorkspace.from_fields(field_a1, field_a2, field_b1, field_b2)
+
+    # Get actual number of ell bins from binning scheme
+    n_ell_actual = b.get_n_bands()
+
+    # Compute the covariance using NaMaster's built-in function
+    cov_matrix = nmt.compute_covariance(
+        cw,
+        2,
+        2,
+        2,
+        2,
+        input_cl_a1_b1,
+        input_cl_a1_b2,
+        input_cl_a2_b1,
+        input_cl_a2_b2,
+        wsp_a,
+        wb=wsp_b,
+    ).reshape([n_ell_actual, 4, n_ell_actual, 4])
+
+    return cov_matrix

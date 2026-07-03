@@ -9,7 +9,6 @@ on pymaster (NaMaster), healpy, and OneCovariance.
 
 import configparser
 import os
-import warnings
 
 import healpy as hp
 import matplotlib.pyplot as plt
@@ -97,12 +96,15 @@ class PseudoClMixin:
             if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
-            out_path = self._output_path(f"pseudo_cl_cov_{ver}.fits")
+            if "non_tomo" not in self._pseudo_cls[ver].keys():
+                self._pseudo_cls[ver].update({"non_tomo": {}})
+
+            out_path = self._output_path_pseudo_cl_cov(ver, "iNKA")
             if os.path.exists(out_path) and not self.force_run:
                 self.print_done(
                     f"Skipping Pseudo-Cl covariance calculation, {out_path} exists"
                 )
-                self._pseudo_cls[ver]["cov"] = fits.open(out_path)
+                self._pseudo_cls[ver]["non_tomo"]["cov"] = fits.open(out_path)
             else:
                 params = get_params_rho_tau(self.cc[ver], survey=ver)
 
@@ -447,48 +449,14 @@ class PseudoClMixin:
             f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
 
-    def calculate_pseudo_cl(self):
-        """
-        Compute the pseudo-Cl of given catalogs.
-        """
-        self.print_start("Computing pseudo-Cl's")
-
-        nside = self.nside
-
-        self._pseudo_cls = getattr(self, "_pseudo_cls", {})
-        for ver in self.versions:
-            self.print_magenta(ver)
-
-            if ver not in self._pseudo_cls.keys():
-                self._pseudo_cls[ver] = {}
-
-            if "non_tomo" not in self._pseudo_cls[ver].keys():
-                self._pseudo_cls[ver].update({"non_tomo": {}})
-
-            out_path = self._output_path_pseudo_cl(ver, tomo_bin_pair=None)
-            if os.path.exists(out_path) and not self.force_run:
-                self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
-                cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]["non_tomo"]["pseudo_cl"] = cl_shear
-            elif self.cell_method == "map":
-                self.calculate_pseudo_cl_map(ver, nside, out_path)
-            elif self.cell_method == "catalog":
-                self.calculate_pseudo_cl_catalog(ver, out_path)
-            else:
-                raise ValueError(f"Unknown cell method: {self.cell_method}")
-
-        self.print_done("Done pseudo-Cl's")
-
-    def calculate_pseudo_cl_tomo(self):
+    def calculate_pseudo_cl(self, compute_tomography=True):
         """
         Compute the pseudo-Cl of a `CosmologyValidation` inputs with tomography.
         """
-        if not self.compute_tomography:
-            warnings.warn(
-                "``compute_tomography`` is set to False but tomography will be computed. Check that this is intentional."
-            )
-
-        self.print_start("Computing tomographic pseudo-Cl's")
+        if compute_tomography:
+            self.print_start("Computing tomographic pseudo-Cl's")
+        else:
+            self.print_start("Computing non-tomographic pseudo-Cl's")
 
         self._pseudo_cls = getattr(self, "_pseudo_cls", {})
 
@@ -498,10 +466,16 @@ class PseudoClMixin:
             if ver not in self.pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
-            tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+            if compute_tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
-            if tomo_bin_ids is None or tomo_bin_pairs is None:
-                raise ValueError(f"Version {ver} does not have tomography information.")
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+
+            else:
+                tomo_bin_pairs = [("all", "all")]
 
             # Loop on the different tomographic bin pairs
             for bin_key1, bin_key2 in tomo_bin_pairs:
@@ -529,99 +503,41 @@ class PseudoClMixin:
                     continue
 
                 if self.cell_method == "map":
-                    self.calculate_pseudo_cl_map_tomo(
+                    self.calculate_pseudo_cl_map(
                         ver, self.nside, out_path, bin_key1, bin_key2
                     )
                 elif self.cell_method == "catalog":
-                    ...
+                    self.calculate_pseudo_cl_catalog(ver, out_path, bin_key1, bin_key2)
                 else:
                     raise ValueError(f"Unknown cell method: {self.cell_method}")
 
-    def calculate_pseudo_cl_map(self, ver, nside, out_path):
-        params = get_params_rho_tau(self.cc[ver], survey=ver)
+    def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
+        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+            isinstance(tomo_bin_a, int) and isinstance(tomo_bin_b, int)
+        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
 
-        # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-        self.print_cyan("Creating maps and computing Cl's...")
-
-        # Get the pixels and indices for the catalog
-        unique_pix, idx, idx_rep = self.get_pixels(params, nside, cat_gal)
-
-        n_gal_map = self.get_n_gal_map(
-            params, nside, cat_gal, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
-        )
-
-        shear_map_e1, shear_map_e2 = self.get_shear_map(
-            params,
-            nside,
-            cat_gal,
-            unique_pix=unique_pix,
-            idx=idx,
-            idx_rep=idx_rep,
-            n_gal_map=n_gal_map,
-        )
-
-        shear_map = shear_map_e1 + 1j * shear_map_e2
-
-        del shear_map_e1, shear_map_e2
-
-        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map, n_gal_map)
-
-        # Estimate the noise bias component and subtract
-        cl_noise = self.get_noise_bias_from_gaussian_real(
-            params,
-            nside,
-            cat_gal,
-            n_gal_map,
-            unique_pix=unique_pix,
-            idx=idx,
-            idx_rep=idx_rep,
-            wsp=wsp,
-        )
-
-        # Noise realizations are now reproducible (seeded rng from self.cell_seed).
-        cl_shear = cl_shear - cl_noise
-
-        self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
-
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["non_tomo"]["pseudo_cl"] = cl_shear
-
-    def calculate_pseudo_cl_catalog(self, ver, out_path):
-        params = get_params_rho_tau(self.cc[ver], survey=ver)
-
-        # Load data and create shear and noise maps
-        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-        ell_eff, cl_shear, _ = self.get_pseudo_cls_catalog(
-            catalog=cat_gal, params=params
-        )
-
-        self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
-
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["non_tomo"]["pseudo_cl"] = cl_shear
-
-    def calculate_pseudo_cl_map_tomo(
-        self, ver, nside, out_path, tomo_bin_a, tomo_bin_b
-    ):
         params = get_params_rho_tau(self.cc[ver])
 
+        self.print_cyan(
+            f"Computing pseudo-Cl's for tomographic bins {tomo_bin_a} and {tomo_bin_b}..."
+        )
+
         # Load data and create shear and noise maps
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-        tomo_bin_id = cat_gal[self.cc[ver]["shear"]["tomo_bin_ids"]]
-        mask_a = tomo_bin_id == tomo_bin_a
-        mask_b = tomo_bin_id == tomo_bin_b
-        cat_gal_a = cat_gal[mask_a]
-        cat_gal_b = cat_gal[mask_b]
+        if tomo_bin_a != "all" and tomo_bin_b != "all":
+            cat_gal_a = cat_gal
+            cat_gal_b = cat_gal
+        else:
+            tomo_bin_id = cat_gal[self.cc[ver]["shear"]["tomo_bin_ids"]]
+            mask_a = tomo_bin_id == tomo_bin_a
+            mask_b = tomo_bin_id == tomo_bin_b
+            cat_gal_a = cat_gal[mask_a]
+            cat_gal_b = cat_gal[mask_b]
 
         del cat_gal
 
-        print("Creating maps and computing Cl's...")
+        self.print_cyan("Creating maps and computing Cl's...")
         # Get the pixels and indices for the catalogs
         unique_pix_a, idx_a, idx_rep_a = self.get_pixels(params, nside, cat_gal_a)
         unique_pix_b, idx_b, idx_rep_b = self.get_pixels(params, nside, cat_gal_b)
@@ -697,7 +613,11 @@ class PseudoClMixin:
             "pseudo_cl"
         ] = cl_shear
 
-    def calculate_pseudo_cl_catalog_tomo(self, ver, out_path, tomo_bin_a, tomo_bin_b):
+    def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
+        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+            isinstance(tomo_bin_a, int) and isinstance(tomo_bin_b, int)
+        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
+
         params = get_params_rho_tau(self.cc[ver])
 
         # Load data and create shear and noise maps
@@ -870,6 +790,17 @@ class PseudoClMixin:
             bin_key1, bin_key2 = tomo_bin_pair
             return self._output_path(
                 f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits"
+            )
+
+    def _output_path_pseudo_cl_cov(self, ver, method, tomo_bin_pair=None):
+        if tomo_bin_pair is None:
+            return self._output_path(
+                f"pseudo_cl_cov_from_{method}_non_tomo_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits"
+            )
+        else:
+            bin_key1, bin_key2 = tomo_bin_pair
+            return self._output_path(
+                f"pseudo_cl_cov_from_{method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits"
             )
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
