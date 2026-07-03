@@ -362,7 +362,7 @@ def get_field_and_workspace_from_map(
 
     """
     nside = hp.npix2nside(len(mask_a))
-    lmax = b.get_ell_max()
+    lmax = b.lmax
     if e1_map_a is None or e2_map_a is None:
         e1_map_a = np.zeros(hp.nside2npix(nside))
         e2_map_a = np.zeros(hp.nside2npix(nside))
@@ -406,6 +406,7 @@ def get_field_and_workspace_from_catalog(
     w_b=None,
     pol_factor=-1,
     return_wsp=True,
+    same_bin=False,
 ):
     """Create a NaMaster field and workspace from the input catalog.
 
@@ -450,7 +451,7 @@ def get_field_and_workspace_from_catalog(
         NaMaster workspace object containing the mixing matrix.
 
     """
-    lmax = b.get_ell_max()
+    lmax = b.lmax
     # Get field for input catalog a
     field_a = nmt.NmtFieldCatalog(
         positions=[ra_a, dec_a],
@@ -468,6 +469,7 @@ def get_field_and_workspace_from_catalog(
         and e1_b is not None
         and e2_b is not None
         and w_b is not None
+        and not same_bin
     ):
         field_b = nmt.NmtFieldCatalog(
             positions=[ra_b, dec_b],
@@ -692,41 +694,47 @@ def get_pseudo_cls_catalog(
     if is_tomography:
         mask_tomo_a = catalog[params["tomo_bin_col"]] == tomo_bin_a
         mask_tomo_b = catalog[params["tomo_bin_col"]] == tomo_bin_b
+        catalog_a = catalog[mask_tomo_a]
+        catalog_b = catalog[mask_tomo_b]
+        same_bin = tomo_bin_a == tomo_bin_b
     else:
-        mask_tomo_a = np.ones(len(catalog), dtype=bool)
-        mask_tomo_b = np.ones(len(catalog), dtype=bool)
+        catalog_a = catalog
+        catalog_b = catalog
+        same_bin = True
 
     if wsp is None:
         field_a, field_b, wsp = get_field_and_workspace_from_catalog(
             b,
-            ra_a=catalog[params["ra_col"]][mask_tomo_a],
-            dec_a=catalog[params["dec_col"]][mask_tomo_a],
-            e1_a=catalog[params["e1_col"]][mask_tomo_a],
-            e2_a=catalog[params["e2_col"]][mask_tomo_a],
-            w_a=catalog[params["w_col"]][mask_tomo_a],
-            ra_b=catalog[params["ra_col"]][mask_tomo_b],
-            dec_b=catalog[params["dec_col"]][mask_tomo_b],
-            e1_b=catalog[params["e1_col"]][mask_tomo_b],
-            e2_b=catalog[params["e2_col"]][mask_tomo_b],
-            w_b=catalog[params["w_col"]][mask_tomo_b],
+            ra_a=catalog_a[params["ra_col"]],
+            dec_a=catalog_a[params["dec_col"]],
+            e1_a=catalog_a[params["e1_col"]],
+            e2_a=catalog_a[params["e2_col"]],
+            w_a=catalog_a[params["w_col"]],
+            ra_b=catalog_b[params["ra_col"]],
+            dec_b=catalog_b[params["dec_col"]],
+            e1_b=catalog_b[params["e1_col"]],
+            e2_b=catalog_b[params["e2_col"]],
+            w_b=catalog_b[params["w_col"]],
             pol_factor=pol_factor,
             return_wsp=True,
+            same_bin=same_bin,
         )
     else:
         field_a, field_b, _ = get_field_and_workspace_from_catalog(
             b,
-            ra_a=catalog[params["ra_col"]][mask_tomo_a],
-            dec_a=catalog[params["dec_col"]][mask_tomo_a],
-            e1_a=catalog[params["e1_col"]][mask_tomo_a],
-            e2_a=catalog[params["e2_col"]][mask_tomo_a],
-            w_a=catalog[params["w_col"]][mask_tomo_a],
-            ra_b=catalog[params["ra_col"]][mask_tomo_b],
-            dec_b=catalog[params["dec_col"]][mask_tomo_b],
-            e1_b=catalog[params["e1_col"]][mask_tomo_b],
-            e2_b=catalog[params["e2_col"]][mask_tomo_b],
-            w_b=catalog[params["w_col"]][mask_tomo_b],
+            ra_a=catalog_a[params["ra_col"]],
+            dec_a=catalog_a[params["dec_col"]],
+            e1_a=catalog_a[params["e1_col"]],
+            e2_a=catalog_a[params["e2_col"]],
+            w_a=catalog_a[params["w_col"]],
+            ra_b=catalog_b[params["ra_col"]],
+            dec_b=catalog_b[params["dec_col"]],
+            e1_b=catalog_b[params["e1_col"]],
+            e2_b=catalog_b[params["e2_col"]],
+            w_b=catalog_b[params["w_col"]],
             pol_factor=pol_factor,
             return_wsp=False,
+            same_bin=same_bin,
         )
 
     cl_coupled, cl_decoupled = compute_cl_from_field_and_workspace(

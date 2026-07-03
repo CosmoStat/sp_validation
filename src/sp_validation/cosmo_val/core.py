@@ -89,7 +89,7 @@ class CosmologyValidation(
         Number of ell bins for pseudo-C_ell analysis (used with binning='powspace').
     ell_step : int, default 10
         Bin width in ell for linear binning (used with binning='linear').
-    pol_factor : bool, default True
+    pol_factor : int, default -1
         Apply polarization correction factor in pseudo-C_ell calculations.
     nrandom_cell : int, default 10
         Number of random realizations for C_ell error estimation.
