@@ -141,23 +141,12 @@ def classification_galaxy_base(
     gal_mag_faint=26,
     flags_keep=None,
     n_epoch_min=1,
-    do_spread_model=True,
 ):
     """Classification Galaxy Base.
 
     Return mask corresponding to basic classification for galaxies.
 
     """
-    if do_spread_model:
-        # spread model class, add two times the uncertainty to be conservative
-        sm_classif = dd["SPREAD_MODEL"] + 2 * dd["SPREADERR_MODEL"]
-        cut_sm = sm_classif > 0.0035
-
-        cut_sm_all = cut_sm & (dd["SPREAD_MODEL"] > 0) & (dd["SPREAD_MODEL"] < 0.03)
-    else:
-        # Do not use spread model
-        cut_sm_all = True
-
     # SExtractor flags
     # Keep some flags if specified
     if flags_keep:
@@ -181,7 +170,6 @@ def classification_galaxy_base(
     cut_common = (
         cut_overlap
         & cut_flags
-        & cut_sm_all
         & (dd["MAG_AUTO"] <= gal_mag_faint)
         & (dd["MAG_AUTO"] >= gal_mag_bright)
         & (dd["IMAFLAGS_ISO"] == 0)
@@ -204,8 +192,8 @@ def classification_galaxy_ngmix(
     m_gal_ngmix = (
         cut_common
         & (dd["NGMIX_MCAL_FLAGS"] == 0)
-        & (dd["NGMIX_ELL_PSFo_NOSHEAR"][:, 0] != -10)
-        & (dd["NGMIX_MOM_FAIL"] == 0)
+        & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"] != -10)
+        & (dd["NGMIX_MCAL_TYPES_FAIL"] == 0)
     )
 
     n_gal_ngmix = len(np.where(m_gal_ngmix)[0])
@@ -221,28 +209,6 @@ def classification_galaxy_ngmix(
         )
 
     return m_gal_ngmix
-
-
-def classification_galaxy_galsim(dd, cut_common, stats_file, verbose=False):
-    """Classification Galaxy Galsim.
-
-    Return mask corresponding to galsim classification of galaxies
-
-    """
-    m_gal_galsim = cut_common & (dd["GALSIM_PSF_ELL_ORIGINAL_PSF"][:, 0] != -10)
-
-    n_gal_galsim = len(np.where(m_gal_galsim)[0])
-    n_tot = len(dd)
-
-    io.print_ratio(
-        "galsim: Objects selected as galaxies",
-        n_gal_galsim,
-        n_tot,
-        stats_file,
-        verbose=verbose,
-    )
-
-    return m_gal_galsim
 
 
 def mask_overlap(ra, dec, tile_id_in, region_file_path, n_jobs=-1):

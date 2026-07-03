@@ -92,7 +92,6 @@ gal_metacal = metacal(
     size_corr_ell=cm["gal_size_corr_ell"],
     sigma_eps=cm["sigma_eps_prior"],
     global_R_weight=cm["global_R_weight"],
-    col_2d=False,
     verbose=True,
 )
 
@@ -185,7 +184,7 @@ add_cols = [
     "FLUX_APER",
     "FLUXERR_APER",
     "NGMIX_T_NOSHEAR",
-    "NGMIX_Tpsf_NOSHEAR",
+    "NGMIX_T_PSF_RECONV_NOSHEAR",
     "fwhm_PSF",
 ]
 add_cols_data = {}
@@ -197,8 +196,10 @@ print(
     "FHP/MK hack: explicit copying of the metacal no-shear (updated from 1p)"
     + " PSF size"
 )
-add_cols_data["NGMIX_Tpsf_NOSHEAR_orig"] = add_cols_data["NGMIX_Tpsf_NOSHEAR"]
-add_cols_data["NGMIX_Tpsf_NOSHEAR"] = gal_metacal.ns["Tpsf"][mask_metacal]
+add_cols_data["NGMIX_T_PSF_RECONV_NOSHEAR_orig"] = add_cols_data[
+    "NGMIX_T_PSF_RECONV_NOSHEAR"
+]
+add_cols_data["NGMIX_T_PSF_RECONV_NOSHEAR"] = gal_metacal.ns["Tpsf"][mask_metacal]
 
 # %%
 # Additional post-processing columns to write to output cat
