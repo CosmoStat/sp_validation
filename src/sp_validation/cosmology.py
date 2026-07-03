@@ -29,6 +29,10 @@ from astropy.cosmology import Planck18
 # =============================================================================
 PLANCK18 = {
     "Omega_m": Planck18.Om0,  # 0.30966
+    # Flat-universe dark-energy density (1 - Omega_m = 0.69034, matching the
+    # paper-era planck18.json and CosmoCov's flat-LCDM convention; astropy's
+    # Ode0 = 0.68885 differs by the radiation/neutrino contributions).
+    "Omega_v": 1.0 - Planck18.Om0,  # 0.69034
     "Omega_b": Planck18.Ob0,  # 0.04897
     "h": Planck18.h,  # 0.6766
     "n_s": Planck18.meta["n"],  # 0.9665
