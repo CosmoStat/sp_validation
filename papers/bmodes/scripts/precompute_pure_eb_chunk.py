@@ -118,7 +118,10 @@ def main():
     cv = CosmologyValidation(
         versions=[params["version"]],
         catalog_config="/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/cat_config.yaml",
-        output_dir="/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output",
+        output_dir=os.environ.get(
+            "COSMO_VAL",
+            "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output",
+        ),
     )
     cv.blind = blind
     z, nz = cv.get_redshift(params["version"])
