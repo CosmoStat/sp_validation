@@ -1,0 +1,52 @@
+# Image-simulation m-bias workflow configuration.
+#
+# Every path the workflow touches is set here: a fresh user edits this file
+# and nothing else.  Defaults point at the shared candide assets (world-
+# readable) used to develop the workflow.
+
+image_sims:
+
+  # --- containers -------------------------------------------------------
+  # ShapePipe image (pipeline + merge) and sp_validation image (extract,
+  # calibrate, m-bias).  Rebuild from the retargeted #766 / this branch when
+  # newer images are available.
+  shapepipe_sif: /n17data/mkilbing/shapepipe_im_sims.sif
+  sp_validation_sif: /n17data/mkilbing/sp_validation_im_sims.sif
+  # Apptainer bind mounts.  /automnt is required when repos/data are
+  # automounted (candide gotcha); harmless otherwise.
+  binds: /n17data,/n09data,/home,/automnt
+
+  # --- repositories -----------------------------------------------------
+  # Bound into the images; the sp_validation src is put on PYTHONPATH so this
+  # branch's code (image_sims.py, catalog.match_catalogs_radec) is used.
+  shapepipe_repo: /n17data/cdaley/unions/code/shapepipe
+  sp_validation_repo: /n17data/cdaley/unions/code/sp_validation
+
+  # --- data and run directories ----------------------------------------
+  # grids_base is the run/output root: one sub-directory per simulation.
+  grids_base: /n17data/cdaley/unions/scratch-wf/imsims-run/grids
+  input_sims_base: /n09data/hervas/skills_out
+  psf_dict: /home/hervas/fhervas/workdir_skills/input/psf_files/Full_psf_dict.pickle
+
+  # --- simulation grid --------------------------------------------------
+  sims_type: grid        # 'grid' -> *_grid_{num}; anything else -> *_{num}
+  num: 1
+  # Tiles to process.  Give an explicit list (example below) or point
+  # tile_ids_file at a one-tile-per-line file for a production run.
+  tile_ids: ["233.293", "237.292", "238.292"]
+  # tile_ids_file: /path/to/tile_numbers.txt
+
+  # --- calibration ------------------------------------------------------
+  shape: ngmix
+  mask_config: config/calibration/mask_v1.X.9_im_sim.yaml  # relative to sp_validation_repo
+  # ShapePipe cfis configs (final_cat.param etc.); default is
+  # {shapepipe_repo}/example/cfis_image_sims once #766 lands.
+  config_dir: /n17data/cdaley/unions/scratch-wf/imsims-run/grids/_cfis_image_sims
+  psf_model: psfex
+  n_smp: -1
+
+  # --- m-bias -----------------------------------------------------------
+  shear_amplitude: 0.02      # input |g| of the +/- shear grids
+  match_radius_deg: 0.0002
+  w_col: w_des
+  n_bootstrap: 500

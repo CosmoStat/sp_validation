@@ -1,0 +1,28 @@
+"""Standalone entry point for the image-simulation m-bias workflow.
+
+Run the sp_validation-side chain (merge -> extract -> calibrate -> m-bias),
+optionally including the ShapePipe pipeline stage, without pulling in the
+cosmology-validation config the top-level ``workflow/Snakefile`` requires.
+
+    snakemake -s workflow/image_sims/Snakefile \\
+        --configfile workflow/image_sims/config.yaml \\
+        -j 4 im_mbias
+
+The same rules are also available inside the main workflow: they are included
+there under ``if "image_sims" in config``.
+"""
+
+configfile: "workflow/image_sims/config.yaml"
+
+
+# The image-sims rules own their container invocation explicitly, so no
+# top-level container is needed here.
+container: None
+
+
+include: "../rules/image_sims.smk"
+
+
+rule all:
+    input:
+        f"{GRIDS_BASE}/results/m_bias_results.yaml",
