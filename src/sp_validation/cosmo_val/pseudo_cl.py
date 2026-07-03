@@ -15,8 +15,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pymaster as nmt
 from astropy.io import fits
+from cs_util.cosmo import get_theo_c_ell
 
-from ..cosmology import get_theo_c_ell
 from ..pseudo_cl import (
     apply_random_rotation,
     get_n_gal_map,

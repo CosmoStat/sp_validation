@@ -25,7 +25,11 @@ dependencies = [
     "camb>=1.6",
     "clmm",
     "colorama",
-    "cs_util>=0.2.1",
+    # TEMPORARY: sourced from cs_util PR #76's branch (CosmoStat/cs_util#76),
+    # which brings the cosmology theory-curve machinery this PR repoints onto
+    # (get_cosmo, get_theo_c_ell, get_theo_xi, PLANCK18 in cs_util.cosmo).
+    # Restore "cs_util>=0.2.2" once #76 merges and 0.2.2 is released to PyPI.
+    "cs_util @ git+https://github.com/CosmoStat/cs_util.git@feat/cosmo-from-sp_validation",
     "emcee",
     # SHA-pinned snapshot of getdist branch `upper_triangle_whisker`.
     "getdist @ git+https://github.com/benabed/getdist.git@113cd22a9a0d013b6f72fe734be81f260f3d3be5",

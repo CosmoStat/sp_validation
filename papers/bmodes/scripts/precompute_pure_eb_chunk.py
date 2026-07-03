@@ -69,9 +69,9 @@ def _load_xi(path, min_sep, max_sep, nbins):
 
 def main():
     from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+    from cs_util.cosmo import get_theo_xi
 
     from sp_validation.cosmo_val import CosmologyValidation
-    from sp_validation.cosmology import get_theo_xi
 
     chunk_id = int(params["chunk_id"])
     n_chunks = int(params["n_chunks"])
