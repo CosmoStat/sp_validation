@@ -42,6 +42,13 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p "$OUT"
+# Absolutize OUT before any `cd` below: the CosmoCov binary writes its block
+# files into cwd, so we cd into OUT (line ~61); every other OUT-relative path
+# ($INI, block logs, covariance.txt, cosmocov_process output) must therefore be
+# absolute or it re-resolves against the new cwd and double-nests. lc templates
+# {output} as a project-relative path, so this makes the recipe robust to both
+# relative (lc) and absolute (direct-run) --out.
+OUT="$(cd "$OUT" && pwd)"
 INI="$OUT/covariance.ini"
 
 echo "[cosmocov] generating .ini"
