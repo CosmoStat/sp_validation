@@ -146,11 +146,18 @@ rule im_calibrate_all:
 # Rules
 # ==========================================================================
 rule im_init:
-    """Stage per-sim run directory: params.py, mask config, ShapePipe configs.
+    """Stage per-sim run directory: params.py, mask config, ShapePipe configs,
+    and the raw SKiLLS image inputs.
 
     ``params_im_sim.py`` derives the field name from the directory basename, so
     the same template serves every sim; ``config_mask.yaml`` and ``cfis`` are
     symlinks the downstream calibration and merge steps read from cwd.
+
+    ``input_tiles``/``input_exp`` are top-level symlinks to the raw SKiLLS tile
+    and exposure images; ShapePipe's ``get_images_runner`` resolves them via
+    ``$SP_DIR/input_{tiles,exp}`` (``$SP_DIR`` is the run dir). ``run_job`` does
+    not stage these, so ``im_init`` must -- this is what makes ``im_pipeline``
+    runnable from raw images, not just from pre-staged intermediates.
     """
     output:
         params=f"{GRIDS_BASE}/{{sim}}/params.py",
@@ -159,15 +166,20 @@ rule im_init:
         template=PARAMS_TEMPLATE,
         mask_src=lambda wc: os.path.join(SPV_REPO, MASK_CONFIG),
         config_dir=CONFIG_DIR,
+        run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
         cfis=lambda wc: f"{GRIDS_BASE}/{wc.sim}/cfis",
+        sim_tiles=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_tiles",
+        sim_exp=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_exp",
     shell:
-        # cfis is a stable read-only symlink to the ShapePipe configs (used by
-        # merge/extract); created here but not tracked as a directory output,
-        # which snakemake will not accept for a symlink.
+        # cfis / input_tiles / input_exp are stable read-only symlinks (used by
+        # get_images, merge, extract); created here but not tracked as outputs,
+        # which snakemake will not accept for a symlink/directory.
         "mkdir -p $(dirname {output.params}) && "
         "cp {params.template} {output.params} && "
         "ln -sf {params.mask_src} {output.mask} && "
-        "ln -sfT {params.config_dir} {params.cfis}"
+        "ln -sfT {params.config_dir} {params.cfis} && "
+        "ln -sfT {params.sim_tiles} {params.run_dir}/input_tiles && "
+        "ln -sfT {params.sim_exp} {params.run_dir}/input_exp"
 
 
 rule im_pipeline:
