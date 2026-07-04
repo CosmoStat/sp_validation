@@ -8,6 +8,7 @@ CLI:
     python pure_eb_data_vector.py \
         --config config.yaml \
         --pure-eb-data <version>_<blind>_pure_eb_semianalytic.npz \
+        --reporting-cov <cov_reporting_ng>/covariance_processed.txt \
         --out <output_dir> [--specs spec.md ...]
 """
 
@@ -48,8 +49,9 @@ def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross, n_samples=
     return pte, chi2, dof
 
 
-def _load_pure_eb_data(pure_eb_path):
-    """Load pure E/B decomposition and the 6-block MC covariance."""
+def _load_pure_eb_data(pure_eb_path, cov_path):
+    """Load pure E/B decomposition, the 6-block MC covariance, and the
+    reporting-grid CosmoCov ξ± covariance used for the total-curve error bars."""
     dataset = np.load(pure_eb_path)
     theta = dataset["theta"]
     return {
@@ -64,6 +66,9 @@ def _load_pure_eb_data(pure_eb_path):
         "xip_amb": dataset["xip_amb"],
         "xim_amb": dataset["xim_amb"],
         "cov_pure_eb": dataset["cov_pure_eb"],
+        # Reporting (masked, non-Gaussian) CosmoCov ξ± covariance, 2×nbins
+        # (xi+ / xi- blocks) — the total-signal error bars in the paper.
+        "cov_xi": np.loadtxt(cov_path),
     }
 
 
@@ -78,12 +83,13 @@ def _create_pure_eb_figure(
     theta = data["theta"]
     nbins = data["nbins"]
     cov_pure_eb = data["cov_pure_eb"]
+    cov_xi = data["cov_xi"]
 
-    # Extract error bars. Total ξ± reuses the pure E-mode covariance block as a
-    # proxy (E dominates the signal); the standalone CLI takes no separate
-    # reporting covariance, matching the pure E/B version-comparison plot.
-    sigma_xip_total = _extract_sigma(cov_pure_eb, 0, nbins)
-    sigma_xim_total = _extract_sigma(cov_pure_eb, 1, nbins)
+    # Total ξ± error bars come from the reporting-grid CosmoCov covariance
+    # (xi+ block = 0, xi- block = 1); E/B/amb come from the MC-propagated
+    # pure-mode covariance blocks.
+    sigma_xip_total = _extract_sigma(cov_xi, 0, nbins)
+    sigma_xim_total = _extract_sigma(cov_xi, 1, nbins)
     sigma_xip_E = _extract_sigma(cov_pure_eb, 0, nbins)
     sigma_xim_E = _extract_sigma(cov_pure_eb, 1, nbins)
     sigma_xip_B = _extract_sigma(cov_pure_eb, 2, nbins)
@@ -211,7 +217,7 @@ def _create_pure_eb_figure(
     return fig
 
 
-def main(config, pure_eb_path, out_dir, specs=()):
+def main(config, pure_eb_path, cov_path, out_dir, specs=()):
     blind = config["fiducial"]["blind"]
     version = config["fiducial"]["version"]
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
@@ -221,7 +227,7 @@ def main(config, pure_eb_path, out_dir, specs=()):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # Fiducial (leak-corrected) decomposition -> paper figure (no title)
-    data = _load_pure_eb_data(pure_eb_path)
+    data = _load_pure_eb_data(pure_eb_path, cov_path)
     fig = _create_pure_eb_figure(
         data, fiducial_xip_scale_cut, fiducial_xim_scale_cut, title_suffix=""
     )
@@ -339,6 +345,12 @@ def _from_cli(argv=None):
         help="Fiducial <version>_<blind>_pure_eb_semianalytic.npz "
         "(decomposed ξ± + 6-block MC covariance)",
     )
+    ap.add_argument(
+        "--reporting-cov",
+        required=True,
+        help="Reporting-grid (masked, non-Gaussian) CosmoCov ξ± covariance "
+        "(covariance_processed.txt) for the total ξ± error bars",
+    )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
         "--specs",
@@ -349,7 +361,7 @@ def _from_cli(argv=None):
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.pure_eb_data, a.out, specs=a.specs)
+    main(config, a.pure_eb_data, a.reporting_cov, a.out, specs=a.specs)
 
 
 if __name__ == "__main__":
