@@ -5,6 +5,7 @@ Visualizes C_ell^BB and C_ell^EB normalized by error bars (C_ell / sigma).
 Statistical PTEs reported separately in evidence.json.
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -32,29 +33,29 @@ from plotting_utils import (
 plt.style.use(PAPER_MPLSTYLE)
 
 
-def main():
-    # Read config
-    import yaml
+def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
+    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
 
-    with open(snakemake.input["config"]) as f:
-        config = yaml.safe_load(f)
 
-    # Scale cuts from params (passed from rule, originally Guerrini et al.)
-    ell_min_cut = int(snakemake.params.ell_min_cut)
-    ell_max_cut = int(snakemake.params.ell_max_cut)
+def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
+    return (
+        f"{results_dir}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
+    )
 
-    version_labels = snakemake.params.version_labels
-    # Version list: from params if provided (ecut comparison), else from config
-    versions = getattr(snakemake.params, "versions", None)
-    if versions is None:
-        versions = [v for v in config["versions"] if "_leak_corr" in v]
+
+def main(config, results_dir, out_dir):
+    # Scale cuts (Guerrini et al. fiducial ell range)
+    ell_min_cut = int(config["cl"]["fiducial_ell_min"])
+    ell_max_cut = int(config["cl"]["fiducial_ell_max"])
+
     plotting_config = config["plotting"]
+    version_labels = plotting_config["version_labels"]
+    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
 
     # Which version gets the fiducial reference line in boxes
-    fiducial_for_comparison = getattr(
-        snakemake.params,
-        "fiducial_for_comparison",
-        plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"]),
+    fiducial_for_comparison = plotting_config.get(
+        "fiducial_for_comparison", config["fiducial"]["version"]
     )
     box_style = plotting_config.get("version_box", {})
 
@@ -86,7 +87,7 @@ def main():
             marker = MARKER_STYLES[i] if i < len(MARKER_STYLES) else "o"
             fillstyle = "full"
 
-        hdu = fits.open(snakemake.input["pseudo_cl"][i])
+        hdu = fits.open(_pseudo_cl(results_dir, version))
         data = hdu["PSEUDO_CELL"].data
         hdu.close()
 
@@ -94,7 +95,7 @@ def main():
         cl_bb = data["BB"]
         cl_eb = data["EB"]
 
-        hdu_cov = fits.open(snakemake.input["pseudo_cl_cov"][i])
+        hdu_cov = fits.open(_pseudo_cl_cov(results_dir, version))
         cov_bb = hdu_cov["COVAR_BB_BB"].data
         cov_eb = hdu_cov["COVAR_EB_EB"].data
         hdu_cov.close()
@@ -274,16 +275,15 @@ def main():
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.08)
 
-    # Save outputs
-    output_dir = Path(snakemake.output["evidence"]).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Save outputs into the lc output directory
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    fig_path = Path(snakemake.output["figure"])
+    fig_path = out_dir / "figure.png"
     fig.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
 
-    paper_path = Path(snakemake.output["paper_figure"])
-    paper_path.parent.mkdir(parents=True, exist_ok=True)
+    paper_path = out_dir / "cl_versions.pdf"
     fig.savefig(paper_path, bbox_inches="tight")
     print(f"Saved {paper_path}")
 
@@ -306,11 +306,8 @@ def main():
         evidence_versions[f"{v}_chi2_eb_cut"] = float(data["chi2_eb_cut"])
         evidence_versions[f"{v}_dof_eb_cut"] = int(data["dof_eb_cut"])
 
-    spec_paths = snakemake.input["specs"]
-
     evidence_data = {
         "spec_id": "cl_version_comparison",
-        "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": evidence_versions,
@@ -320,11 +317,32 @@ def main():
         },
     }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = out_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="Harmonic-space Cl^BB/Cl^EB version-comparison figure (4 leak-corrected catalogs)."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--results-dir",
+        required=True,
+        help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(config, a.results_dir, a.out)
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()

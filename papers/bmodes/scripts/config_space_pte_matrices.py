@@ -5,15 +5,32 @@ Produces 3-panel composites (xi+^B, xi-^B, COSEBIS) for:
 - Appendix: all versions (from config.versions with labels from config.plotting.version_labels)
 
 Each composite has shared axes and a single colorbar.
+
+Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
+object supplies config/inputs/outputs; as a standalone CLI (argparse) the same
+compute runs from explicit flags — the version sweep lives *inside* this script,
+so the CLI reads the per-version PTE intermediates (pure E/B ``*_pure_eb_ptes.npz``
+and the COSEBI ``pte_*.json`` scatter tree) directly from absolute directories
+and writes every product (evidence.json + PNG/PDF composites) under ``--out``.
+This is the form the lightcone/ASTRA recipe calls:
+
+    python config_space_pte_matrices.py \
+        --config /path/to/config.yaml \
+        --pte-intermediate-dir /abs/.../paper_plots/intermediate \
+        --cosebis-pte-dir /abs/.../tapestry/cosebis_pte_matrix/pte_values \
+        --blind A --out <output_dir>
 """
 
+import argparse
+import glob
 import json
-import sys
+import os
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 from matplotlib.patches import Rectangle
 from plotting_utils import (
     PAPER_MPLSTYLE,
@@ -23,22 +40,6 @@ from plotting_utils import (
 )
 
 plt.style.use(PAPER_MPLSTYLE)
-
-
-def _load_snakemake():
-    if hasattr(sys, "ps1"):
-        from snakemake_helpers import snakemake_interactive
-
-        return snakemake_interactive(
-            "results/tapestry/config_space_pte_matrices/evidence.json",
-            str(Path.cwd()),
-        )
-    from snakemake.script import snakemake
-
-    return snakemake
-
-
-snakemake = _load_snakemake()
 
 
 def _path_matches_version(path, version):
@@ -682,8 +683,7 @@ def create_9panel_composite(
     return fig, all_stats, all_full_range_ptes
 
 
-def main():
-    config = snakemake.config
+def main(config, pure_eb_pte_files, cosebis_pte_files, output_dir, spec_path=None):
     # Both corrected and uncorrected versions (exclude ecut variants)
     versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
@@ -696,21 +696,16 @@ def main():
         config["fiducial"]["fiducial_max_scale"],
     )
 
-    # Output paths
-    output_dir = Path(snakemake.output["evidence"]).parent
+    # Output paths — every product lands under a single output directory.
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    paper_dir = Path(snakemake.output["paper_figure_appendix"]).parent
-    paper_dir.mkdir(parents=True, exist_ok=True)
-
-    # Get input files as lists
-    pure_eb_pte_files = snakemake.input["pure_eb_pte"]
-    if isinstance(pure_eb_pte_files, str):
-        pure_eb_pte_files = [pure_eb_pte_files]
-    else:
-        pure_eb_pte_files = list(pure_eb_pte_files)
-
-    cosebis_pte_files = list(snakemake.input["cosebis_pte_files"])
+    out = {
+        "evidence": output_dir / "evidence.json",
+        "figure_fiducial": output_dir / "figure_fiducial.png",
+        "figure_appendix": output_dir / "figure_appendix.png",
+        "paper_figure_fiducial": output_dir / "config_space_pte_fiducial.pdf",
+        "paper_figure_appendix": output_dir / "config_space_pte_composite_appendix.pdf",
+    }
 
     all_stats = {}
     all_full_range_ptes = {}
@@ -730,11 +725,11 @@ def main():
         )
 
         # Save fiducial figure
-        fig_fid_path = Path(snakemake.output["figure_fiducial"])
+        fig_fid_path = out["figure_fiducial"]
         fig_fid.savefig(fig_fid_path, dpi=300, bbox_inches="tight", facecolor="white")
         print(f"  Saved {fig_fid_path}", flush=True)
 
-        paper_fid_path = Path(snakemake.output["paper_figure_fiducial"])
+        paper_fid_path = out["paper_figure_fiducial"]
         fig_fid.savefig(paper_fid_path, bbox_inches="tight", facecolor="white")
         print(f"  Saved {paper_fid_path}", flush=True)
 
@@ -769,11 +764,11 @@ def main():
         )
 
         # Save appendix figure
-        fig_path = Path(snakemake.output["figure_appendix"])
+        fig_path = out["figure_appendix"]
         fig.savefig(fig_path, dpi=300, bbox_inches="tight", facecolor="white")
         print(f"  Saved {fig_path}", flush=True)
 
-        paper_path = Path(snakemake.output["paper_figure_appendix"])
+        paper_path = out["paper_figure_appendix"]
         fig.savefig(paper_path, bbox_inches="tight", facecolor="white")
         print(f"  Saved {paper_path}", flush=True)
 
@@ -848,11 +843,9 @@ def main():
                 traceback.print_exc()
 
     # Build evidence
-    spec_paths = snakemake.input["specs"]
-
     evidence_data = {
         "spec_id": "config_space_pte_matrices",
-        "spec_path": spec_paths[0],
+        "spec_path": spec_path or "papers/bmodes/config/config_space_pte_matrices.md",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "versions": {},
@@ -893,18 +886,87 @@ def main():
             },
         }
 
-    evidence_data["output"]["figure_fiducial"] = Path(
-        snakemake.output["figure_fiducial"]
-    ).name
-    evidence_data["output"]["figure_appendix"] = Path(
-        snakemake.output["figure_appendix"]
-    ).name
+    evidence_data["output"]["figure_fiducial"] = out["figure_fiducial"].name
+    evidence_data["output"]["figure_appendix"] = out["figure_appendix"].name
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = out["evidence"]
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"\nSaved evidence to {evidence_path}")
 
 
+def _versions_config_space(config):
+    """Reproduce VERSIONS_CONFIG_SPACE_PTES from the Snakemake claims.smk:
+    leak-corrected (non-ecut) versions plus their uncorrected counterparts."""
+    leak_corr = [
+        v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v
+    ]
+    uncorrected = [v.replace("_leak_corr", "") for v in leak_corr]
+    return leak_corr + uncorrected
+
+
+def _from_snakemake(smk):
+    pure_eb_pte_files = smk.input["pure_eb_pte"]
+    if isinstance(pure_eb_pte_files, str):
+        pure_eb_pte_files = [pure_eb_pte_files]
+    else:
+        pure_eb_pte_files = list(pure_eb_pte_files)
+    cosebis_pte_files = list(smk.input["cosebis_pte_files"])
+    spec_paths = smk.input["specs"]
+    main(
+        config=smk.config,
+        pure_eb_pte_files=pure_eb_pte_files,
+        cosebis_pte_files=cosebis_pte_files,
+        output_dir=Path(smk.output["evidence"]).parent,
+        spec_path=spec_paths[0],
+    )
+
+
+def _from_cli(argv=None):
+    ap = argparse.ArgumentParser(
+        description="Configuration-space PTE matrix composites for the B-modes paper."
+    )
+    ap.add_argument("--config", required=True, help="Absolute path to config.yaml")
+    ap.add_argument(
+        "--pte-intermediate-dir",
+        required=True,
+        help="Directory holding {version}_{blind}_pure_eb_ptes.npz",
+    )
+    ap.add_argument(
+        "--cosebis-pte-dir",
+        required=True,
+        help="COSEBI PTE scatter tree: {version}/{blind}/pte_{i:03d}_{j:03d}.json",
+    )
+    ap.add_argument("--blind", default="A", help="Fiducial blind (paper: A)")
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+
+    versions = _versions_config_space(config)
+    pure_eb_pte_files = [
+        os.path.join(a.pte_intermediate_dir, f"{v}_{a.blind}_pure_eb_ptes.npz")
+        for v in versions
+    ]
+    pure_eb_pte_files = [p for p in pure_eb_pte_files if os.path.exists(p)]
+
+    cosebis_pte_files = sorted(
+        glob.glob(os.path.join(a.cosebis_pte_dir, "*", a.blind, "pte_*.json"))
+    )
+
+    main(
+        config=config,
+        pure_eb_pte_files=pure_eb_pte_files,
+        cosebis_pte_files=cosebis_pte_files,
+        output_dir=a.out,
+    )
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        snakemake  # noqa: F821 — injected by Snakemake's script: directive
+    except NameError:
+        _from_cli()
+    else:
+        _from_snakemake(snakemake)  # noqa: F821

@@ -7,8 +7,8 @@ Produces:
 Uses fiducial blind covariance only (blind independence validated elsewhere).
 """
 
+import argparse
 import json
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -30,20 +30,14 @@ from plotting_utils import (
 plt.style.use(PAPER_MPLSTYLE)
 
 
-def _load_snakemake():
-    if hasattr(sys, "ps1"):
-        from snakemake_helpers import snakemake_interactive
-
-        return snakemake_interactive(
-            "results/tapestry/harmonic_space_pte_matrices/evidence.json",
-            str(Path.cwd()),
-        )
-    from snakemake.script import snakemake
-
-    return snakemake
+def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
+    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
 
 
-snakemake = _load_snakemake()
+def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
+    return (
+        f"{results_dir}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
+    )
 
 
 def compute_pte_matrix(
@@ -353,8 +347,7 @@ def create_npanel_composite(matrices, ells, panel_labels, fid_indices=None):
     return fig
 
 
-def main():
-    config = snakemake.config
+def main(config, results_dir, out_dir):
     versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
     fiducial_blind = config["fiducial"]["blind"]
@@ -363,38 +356,18 @@ def main():
     fiducial_ell_min = config["cl"]["fiducial_ell_min"]
     fiducial_ell_max = config["cl"]["fiducial_ell_max"]
 
-    # Output paths
-    output_dir = Path(snakemake.output["evidence"]).parent
+    # Output paths (single lc {output} dir holds data NPZ + figures + evidence)
+    output_dir = Path(out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    paper_dir = Path(snakemake.output["paper_figure_fiducial"]).parent
-    paper_dir.mkdir(parents=True, exist_ok=True)
-
-    # Get input files
-    pseudo_cl_files = snakemake.input["pseudo_cl"]
-    pseudo_cl_cov_files = snakemake.input["pseudo_cl_cov"]
-
-    if isinstance(pseudo_cl_files, str):
-        pseudo_cl_files = [pseudo_cl_files]
-    if isinstance(pseudo_cl_cov_files, str):
-        pseudo_cl_cov_files = [pseudo_cl_cov_files]
-
-    # Map versions to their files (sort by length descending to match longer version strings first)
-    sorted_versions = sorted(versions, key=len, reverse=True)
-
-    version_to_cl = {}
-    for cl_file in pseudo_cl_files:
-        for ver in sorted_versions:
-            if ver in cl_file:
-                version_to_cl[ver] = cl_file
-                break
-
-    version_to_cov = {}
-    for cov_file in pseudo_cl_cov_files:
-        for ver in sorted_versions:
-            if ver in cov_file:
-                version_to_cov[ver] = cov_file
-                break
+    # Per-version pseudo-Cl / covariance files (canonical COSMO_VAL tree, blind A).
+    # Mirrors _pseudo_cl_path(ver) / _pseudo_cl_cov_path(ver, blind) in claims.smk.
+    version_to_cl = {
+        ver: _pseudo_cl(results_dir, ver, blind=fiducial_blind) for ver in versions
+    }
+    version_to_cov = {
+        ver: _pseudo_cl_cov(results_dir, ver, blind=fiducial_blind) for ver in versions
+    }
 
     # Compute PTE matrices for all versions using fiducial blind
     all_stats = {}
@@ -426,8 +399,23 @@ def main():
         print(f"  PTE at fiducial: {stats.get('pte_at_fiducial', 'N/A'):.4f}")
         print(f"  PTE at full range: {stats.get('pte_at_full_range', 'N/A'):.4f}")
 
-    # Get version labels from params
-    version_labels = snakemake.params.version_labels
+    # Get version labels from config
+    version_labels = config["plotting"]["version_labels"]
+
+    # Persist the per-version PTE matrices as the cl_pte_per_cut data artifact.
+    npz_payload = {
+        "versions": np.array(list(all_matrices.keys())),
+        "fiducial_version": fiducial_version,
+        "fiducial_blind": fiducial_blind,
+        "fiducial_ell_min": fiducial_ell_min,
+        "fiducial_ell_max": fiducial_ell_max,
+    }
+    for version in all_matrices:
+        npz_payload[f"{version}__pte_matrix"] = all_matrices[version]
+        npz_payload[f"{version}__ell"] = all_ells[version]
+    npz_path = output_dir / f"cl_pte_matrices_{fiducial_blind}.npz"
+    np.savez(npz_path, **npz_payload)
+    print(f"Saved PTE matrices to {npz_path}")
 
     # Compute fiducial ell indices per version using bin edges
     version_fid_indices = {}
@@ -446,11 +434,11 @@ def main():
             fid_i_max=fi_fid[1],
         )
 
-        fig_path = Path(snakemake.output["figure_fiducial"])
+        fig_path = output_dir / "figure_fiducial.png"
         fig_fiducial.savefig(fig_path, dpi=300, bbox_inches="tight")
         print(f"\nSaved fiducial figure: {fig_path}")
 
-        paper_path = Path(snakemake.output["paper_figure_fiducial"])
+        paper_path = output_dir / "cl_pte_heatmap.pdf"
         fig_fiducial.savefig(paper_path, bbox_inches="tight")
         print(f"Saved {paper_path}")
 
@@ -472,30 +460,27 @@ def main():
             matrices, ells, labels, fid_indices=fid_indices
         )
 
-        fig_path = Path(snakemake.output["figure_appendix"])
+        fig_path = output_dir / "figure_appendix.png"
         fig_appendix.savefig(fig_path, dpi=300, bbox_inches="tight", facecolor="white")
         print(f"\nSaved appendix figure: {fig_path}")
 
-        paper_path = Path(snakemake.output["paper_figure_appendix"])
+        paper_path = output_dir / "cl_pte_composite_appendix.pdf"
         fig_appendix.savefig(paper_path, bbox_inches="tight", facecolor="white")
         print(f"Saved {paper_path}")
 
         plt.close(fig_appendix)
 
     # Build evidence
-    spec_paths = snakemake.input["specs"]
-
     evidence_data = {
         "spec_id": "harmonic_space_pte_matrices",
-        "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             "blind": fiducial_blind,
             "versions": {},
         },
         "output": {
-            "figure_fiducial": Path(snakemake.output["figure_fiducial"]).name,
-            "figure_appendix": Path(snakemake.output["figure_appendix"]).name,
+            "figure_fiducial": "figure_fiducial.png",
+            "figure_appendix": "figure_appendix.png",
         },
     }
 
@@ -506,11 +491,35 @@ def main():
             **stats,
         }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = output_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"\nSaved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description=(
+            "Harmonic-space Cl^BB PTE matrices (data NPZ + fiducial/appendix "
+            "heatmap figures) over the (ell_min, ell_max) bandpower-cut grid."
+        )
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--results-dir",
+        required=True,
+        help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(config, a.results_dir, a.out)
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()
