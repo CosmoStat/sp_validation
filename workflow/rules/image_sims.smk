@@ -160,12 +160,16 @@ rule im_init:
     not stage these, so ``im_init`` must -- this is what makes ``im_pipeline``
     runnable from raw images, not just from pre-staged intermediates.
     """
+    input:
+        # Tracked so that editing the params template or mask config re-stages
+        # them into every run dir (a plain params: value would not retrigger,
+        # silently leaving stale params.py behind after a grammar change).
+        template=PARAMS_TEMPLATE,
+        mask_src=os.path.join(SPV_REPO, MASK_CONFIG),
     output:
         params=f"{GRIDS_BASE}/{{sim}}/params.py",
         mask=f"{GRIDS_BASE}/{{sim}}/config_mask.yaml",
     params:
-        template=PARAMS_TEMPLATE,
-        mask_src=lambda wc: os.path.join(SPV_REPO, MASK_CONFIG),
         config_dir=CONFIG_DIR,
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
         cfis=lambda wc: f"{GRIDS_BASE}/{wc.sim}/cfis",
@@ -176,8 +180,8 @@ rule im_init:
         # get_images, merge, extract); created here but not tracked as outputs,
         # which snakemake will not accept for a symlink/directory.
         "mkdir -p $(dirname {output.params}) && "
-        "cp {params.template} {output.params} && "
-        "ln -sf {params.mask_src} {output.mask} && "
+        "cp {input.template} {output.params} && "
+        "ln -sf {input.mask_src} {output.mask} && "
         "ln -sfT {params.config_dir} {params.cfis} && "
         "ln -sfT {params.sim_tiles} {params.run_dir}/input_tiles && "
         "ln -sfT {params.sim_exp} {params.run_dir}/input_exp"
