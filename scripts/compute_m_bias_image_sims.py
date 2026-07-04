@@ -35,7 +35,7 @@ def get_n_tiles(grids_dir, num):
     try:
         import h5py
         # Count tiles in first sim's final_cat
-        for sim in ['1z2z_grid', '1m2z_grid', '1p2z_grid', '1z2m_grid', '1z2p_grid']:
+        for sim in ['1m2z_grid', '1p2z_grid', '1z2m_grid', '1z2p_grid']:
             sim_name = f"{sim}_{num}"
             final_cat = os.path.join(grids_dir, sim_name, f"final_cat_{sim_name}.hdf5")
             if os.path.isfile(final_cat):

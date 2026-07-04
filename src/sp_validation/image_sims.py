@@ -57,11 +57,11 @@ class ImageSimMBias:
         self.cats = {}
 
     def load_catalogs(self, verbose=True):
-        """Load the 5 sheared and reference catalogues."""
+        """Load the 4 sheared catalogues (1p2z, 1m2z, 1z2p, 1z2m)."""
         grids_dir = self.cfg["grids_dir"]
         num = self.cfg["num"]
         cat_name = self.cfg["catalog_name"]
-        sim_names = ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
+        sim_names = ["1p2z", "1m2z", "1z2p", "1z2m"]
 
         for name in sim_names:
             path = f"{grids_dir}/{name}_grid_{num}/{cat_name}"
@@ -71,23 +71,15 @@ class ImageSimMBias:
             if verbose:
                 print(f"    {len(self.cats[name]['ra'])} objects")
 
-    def _match_to_ref(self, name):
-        """Return (idx_ref, idx_sim) matched indices between name and 1z2z."""
-        ref = self.cats["1z2z"]
-        sim = self.cats[name]
-        idx_ref, idx_sim = match_catalogs_radec(
-            ref["ra"], ref["dec"],
-            sim["ra"], sim["dec"],
-            thresh_deg=self.thresh,
-        )
-        return idx_ref, idx_sim
-
     def _m_c_pair(self, name_p, name_m, comp, verbose=True):
         """Compute m and c for one shear pair and component (0=g1, 1=g2)."""
         e_key = f"e{comp + 1}"
 
-        idx_ref_p, idx_p = self._match_to_ref(name_p)
-        idx_ref_m, idx_m = self._match_to_ref(name_m)
+        idx_p, idx_m = match_catalogs_radec(
+            self.cats[name_p]["ra"], self.cats[name_p]["dec"],
+            self.cats[name_m]["ra"], self.cats[name_m]["dec"],
+            thresh_deg=self.thresh,
+        )
 
         if verbose:
             print(f"  {name_p}: {len(idx_p)} matched  |  {name_m}: {len(idx_m)} matched")
