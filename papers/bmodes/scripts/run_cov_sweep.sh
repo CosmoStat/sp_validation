@@ -59,7 +59,7 @@ for ver in $VERSIONS; do
   base="covariance_${ver}_${BLIND}_g_minsep=${MINSEP}_maxsep=${MAXSEP}_nbins=${NBINS}_masked"
   # Version dir key: strip SP_, _leak_corr, _ecutNN (mirrors get_mask_cls_path).
   vdir=$(echo "$ver" | sed -e 's/_leak_corr//' -e 's/^SP_//' -e 's/_ecut[0-9]*//')
-  if [ "$vdir" = "1.4.8" ]; then
+  if [ "$vdir" = "v1.4.8" ]; then
     mask="$MASKBASE/mask_cls_footprint_starhalo_nside_4096_norm.txt"
   else
     mask="$MASKBASE/mask_cls_footprint_nside_4096_norm.txt"
