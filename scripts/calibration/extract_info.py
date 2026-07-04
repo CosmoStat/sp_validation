@@ -149,39 +149,44 @@ if star_cat_path:
 # #### Refine: Match to valid, unflagged galaxy sample
 
 # +
-# Flags to indicate valid star sample
+# Flags to indicate valid star sample.
+# Star matching, PSF-catalogue output and star metacalibration are all
+# diagnostics that require an input star catalogue; the image-simulation
+# pipeline has none (star_cat_path is None), so every star-dependent block
+# below is guarded and simply skipped for the sims.
 
-m_star = (
-    (dd["FLAGS"][ind_star] == 0)
-    & (dd["IMAFLAGS_ISO"][ind_star] == 0)
-    & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
-    & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
-)
+if star_cat_path:
+    m_star = (
+        (dd["FLAGS"][ind_star] == 0)
+        & (dd["IMAFLAGS_ISO"][ind_star] == 0)
+        & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
+        & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
+    )
 
-ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
-    dd,
-    ind_star,
-    m_star,
-    [col_name_ra, col_name_dec],
-    key_PSF_g1,
-    key_PSF_g2,
-    n_star_tot,
-    stats_file,
-    verbose=verbose,
-)
-# -
+    ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
+        dd,
+        ind_star,
+        m_star,
+        [col_name_ra, col_name_dec],
+        key_PSF_g1,
+        key_PSF_g2,
+        n_star_tot,
+        stats_file,
+        verbose=verbose,
+    )
+    # -
 
-# MKDEBUG: Moved from end of this script
+    # MKDEBUG: Moved from end of this script
 
-# ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
+    # ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
 
-spv_cat.write_PSF_cat(
-    f"{output_PSF_cat_base}_{shape}.fits",
-    ra_star,
-    dec_star,
-    g_star_psf[0],
-    g_star_psf[1],
-)
+    spv_cat.write_PSF_cat(
+        f"{output_PSF_cat_base}_{shape}.fits",
+        ra_star,
+        dec_star,
+        g_star_psf[0],
+        g_star_psf[1],
+    )
 
 # ## Check for objects with invalid PSF
 
@@ -628,23 +633,24 @@ plot_histograms(
 
 # ## Metacalibration for stars
 
-star_metacal = metacal(dd[ind_star], m_star, masking_type="star", verbose=verbose)
+if star_cat_path:
+    star_metacal = metacal(dd[ind_star], m_star, masking_type="star", verbose=verbose)
 
-# #### Number density
+    # #### Number density
 
-# +
-# mask for 'no shear' images
+    # +
+    # mask for 'no shear' images
 
-mask_ns_stars = star_metacal.mask_dict["ns"]
-n_star = len(star_metacal.ns["g1"][mask_ns_stars])
+    mask_ns_stars = star_metacal.mask_dict["ns"]
+    n_star = len(star_metacal.ns["g1"][mask_ns_stars])
 
-print_stats(f"Number of stars = {n_star}", stats_file, verbose=verbose)
-print_stats(
-    "Star density = {:.2f} stars/deg2".format(n_star / area_deg2),
-    stats_file,
-    verbose=verbose,
-)
-# -
+    print_stats(f"Number of stars = {n_star}", stats_file, verbose=verbose)
+    print_stats(
+        "Star density = {:.2f} stars/deg2".format(n_star / area_deg2),
+        stats_file,
+        verbose=verbose,
+    )
+    # -
 
 # ## Additive bias
 # Use raw, uncorrected ellipticities.
@@ -730,20 +736,21 @@ rs = np.array2string(gal_metacal.R_selection)
 print_stats(rs, stats_file, verbose=verbose)
 
 # +
-print_stats("stars:", stats_file, verbose=verbose)
+if star_cat_path:
+    print_stats("stars:", stats_file, verbose=verbose)
 
-print_stats("total response matrix:", stats_file, verbose=verbose)
-rs = np.array2string(star_metacal.R)
-print_stats(rs, stats_file, verbose=verbose)
+    print_stats("total response matrix:", stats_file, verbose=verbose)
+    rs = np.array2string(star_metacal.R)
+    print_stats(rs, stats_file, verbose=verbose)
 
-print_stats("shear response matrix:", stats_file, verbose=verbose)
-R_shear_stars = np.mean(star_metacal.R_shear, 2)
-rs = np.array2string(R_shear_stars)
-print_stats(rs, stats_file, verbose=verbose)
+    print_stats("shear response matrix:", stats_file, verbose=verbose)
+    R_shear_stars = np.mean(star_metacal.R_shear, 2)
+    rs = np.array2string(R_shear_stars)
+    print_stats(rs, stats_file, verbose=verbose)
 
-print_stats("selection response matrix:", stats_file, verbose=verbose)
-rs = np.array2string(star_metacal.R_selection)
-print_stats(rs, stats_file, verbose=verbose)
+    print_stats("selection response matrix:", stats_file, verbose=verbose)
+    rs = np.array2string(star_metacal.R_selection)
+    print_stats(rs, stats_file, verbose=verbose)
 # -
 
 # ### Plot distribution of response matrix elements
@@ -757,14 +764,11 @@ colors = ["blue", "red", "blue", "red"]
 linestyles = ["-", "-", ":", ":"]
 
 # +
-labels = ["$R_{11}$ galaxies", "$R_{22}$ galaxies", "$R_{11}$ stars", "$R_{22}$ stars"]
-
-xs = [
-    gal_metacal.R_shear[0, 0],
-    gal_metacal.R_shear[1, 1],
-    star_metacal.R_shear[0, 0],
-    star_metacal.R_shear[1, 1],
-]
+labels = ["$R_{11}$ galaxies", "$R_{22}$ galaxies"]
+xs = [gal_metacal.R_shear[0, 0], gal_metacal.R_shear[1, 1]]
+if star_cat_path:
+    labels += ["$R_{11}$ stars", "$R_{22}$ stars"]
+    xs += [star_metacal.R_shear[0, 0], star_metacal.R_shear[1, 1]]
 title = shape
 
 out_name = f"R_{shape}_diag.pdf"
@@ -779,19 +783,16 @@ plot_histograms(
     x_range,
     n_bin,
     out_path,
-    colors=colors,
-    linestyles=linestyles,
+    colors=colors[: len(xs)],
+    linestyles=linestyles[: len(xs)],
 )
 
 # +
-labels = ["$R_{12}$ galaxies", "$R_{21}$ galaxies", "$R_{12}$ stars", "$R_{21}$ stars"]
-
-xs = [
-    gal_metacal.R_shear[0, 1],
-    gal_metacal.R_shear[1, 0],
-    star_metacal.R_shear[0, 1],
-    star_metacal.R_shear[1, 0],
-]
+labels = ["$R_{12}$ galaxies", "$R_{21}$ galaxies"]
+xs = [gal_metacal.R_shear[0, 1], gal_metacal.R_shear[1, 0]]
+if star_cat_path:
+    labels += ["$R_{12}$ stars", "$R_{21}$ stars"]
+    xs += [star_metacal.R_shear[0, 1], star_metacal.R_shear[1, 0]]
 title = shape
 out_name = f"R_{shape}_offdiag.pdf"
 out_path = os.path.join(plot_dir, out_name)
@@ -805,8 +806,8 @@ plot_histograms(
     x_range,
     n_bin,
     out_path,
-    colors=colors,
-    linestyles=linestyles,
+    colors=colors[: len(xs)],
+    linestyles=linestyles[: len(xs)],
 )
 # -
 
@@ -845,49 +846,50 @@ plot_histograms(
 )
 
 # +
-xs = [star_metacal.ns["g1"][mask_ns_stars], star_metacal.ns["g2"][mask_ns_stars]]
-weights = [star_metacal.ns["w"][mask_ns_stars]] * 2
+if star_cat_path:
+    xs = [star_metacal.ns["g1"][mask_ns_stars], star_metacal.ns["g2"][mask_ns_stars]]
+    weights = [star_metacal.ns["w"][mask_ns_stars]] * 2
 
-title = "stars"
-out_name = f"ell_stars_{shape}.pdf"
-out_path = os.path.join(plot_dir, out_name)
+    title = "stars"
+    out_name = f"ell_stars_{shape}.pdf"
+    out_path = os.path.join(plot_dir, out_name)
 
-plot_histograms(
-    xs,
-    labels,
-    title,
-    x_label,
-    y_label,
-    x_range,
-    n_bin,
-    out_path,
-    weights=weights,
-    colors=colors,
-    linestyles=linestyles,
-)
-# -
+    plot_histograms(
+        xs,
+        labels,
+        title,
+        x_label,
+        y_label,
+        x_range,
+        n_bin,
+        out_path,
+        weights=weights,
+        colors=colors,
+        linestyles=linestyles,
+    )
+    # -
 
-x_range = (-0.15, 0.15)
-n_bin = 250
+    x_range = (-0.15, 0.15)
+    n_bin = 250
 
-# +
-xs = [dd[key_PSF_g1][mask_ns_stars], dd[key_PSF_g2][mask_ns_stars]]
-title = "PSF"
-out_name = f"ell_PSF_{shape}.pdf"
-out_path = os.path.join(plot_dir, out_name)
+    # +
+    xs = [dd[key_PSF_g1][mask_ns_stars], dd[key_PSF_g2][mask_ns_stars]]
+    title = "PSF"
+    out_name = f"ell_PSF_{shape}.pdf"
+    out_path = os.path.join(plot_dir, out_name)
 
-plot_histograms(
-    xs,
-    labels,
-    title,
-    x_label,
-    y_label,
-    x_range,
-    n_bin,
-    out_path,
-    colors=colors,
-    linestyles=linestyles,
-)
+    plot_histograms(
+        xs,
+        labels,
+        title,
+        x_label,
+        y_label,
+        x_range,
+        n_bin,
+        out_path,
+        colors=colors,
+        linestyles=linestyles,
+    )
 # -
 
 # ## Magnitudes

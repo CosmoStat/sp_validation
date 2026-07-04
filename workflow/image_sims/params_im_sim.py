@@ -122,20 +122,28 @@ add_cols = [
     "FLUX_APER",
     "FLUXERR_APER",
     "NGMIX_T_NOSHEAR",
-    "NGMIX_Tpsf_NOSHEAR",
+    "NGMIX_T_PSF_RECONV_NOSHEAR",
 ]
 
-## Pre-calibration catalogue, including masked objects and mask flags
+## Pre-calibration catalogue, including masked objects and mask flags.
+## ShapePipe-v2 (post-#761) ngmix grammar: ellipticity in named scalar
+## components NGMIX_G{1,2}_*, PSF size split into NGMIX_T_PSF_ORIG/RECONV.
+## IMAFLAGS_ISO (present in the data-path params) is omitted: the simulation
+## pipeline runs no imaging-flag masking stage, so the column does not exist.
+## NGMIX_MCAL_TYPES_FAIL is kept -- it is the metacal moments-failure flag the
+## calibration mask cuts on, identically to the data path.
 add_cols_pre_cal = [
     "TILE_ID",
     "NUMBER",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
-    "NGMIX_MOM_FAIL",
+    "NGMIX_MCAL_TYPES_FAIL",
     "N_EPOCH",
     "NGMIX_N_EPOCH",
-    "NGMIX_ELL_PSFo_NOSHEAR",
-    "NGMIX_ELL_ERR_NOSHEAR",
+    "NGMIX_G1_PSF_ORIG_NOSHEAR",
+    "NGMIX_G2_PSF_ORIG_NOSHEAR",
+    "NGMIX_G1_ERR_NOSHEAR",
+    "NGMIX_G2_ERR_NOSHEAR",
 ]
 
 ### Set flag columns as integer format
@@ -144,7 +152,7 @@ for key in (
     "NUMBER",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
-    "NGMIX_MOM_FAIL",
+    "NGMIX_MCAL_TYPES_FAIL",
     "N_EPOCH",
     "NGMIX_N_EPOCH",
 ):
@@ -156,7 +164,7 @@ add_cols_pre_cal_format["NUMBER"] = "J"
 # Create key names for metacal information
 prefix = "NGMIX"
 suffixes = ["1M", "1P", "2M", "2P", "NOSHEAR"]
-centers = ["FLAGS", "ELL", "FLUX", "FLUX_ERR", "T", "T_ERR", "Tpsf"]
+centers = ["FLAGS", "G1", "G2", "FLUX", "FLUX_ERR", "T", "T_ERR", "T_PSF_RECONV"]
 for center in centers:
     for suffix in suffixes:
         add_cols_pre_cal.append(f"{prefix}_{center}_{suffix}")

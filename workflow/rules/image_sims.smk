@@ -74,13 +74,15 @@ CONFIG_DIR = IMSIM.get(
 # ShapePipe scripts live in the ShapePipe repo (also baked into its image).
 CREATE_FINAL_CAT = f"{SHAPEPIPE_REPO}/scripts/python/create_final_cat.py"
 RUN_JOB = f"{SHAPEPIPE_REPO}/scripts/sh/run_job_sp_canfar_v2.0.bash"
-# Extract/calibrate run inside the sp_validation image's own, self-consistent
-# calibration environment (its baked scripts + baked sp_validation), so the
-# ngmix column grammar matches whatever produced the catalogues. Overridable
-# for a host checkout.
-EXTRACT_INFO = IMSIM.get("extract_script", "/sp_validation/notebooks/extract_info.py")
+# Extract/calibrate run from the sp_validation *repo* checkout (bind-mounted),
+# not the baked copies: the container tracks the branch but lags it, and the
+# image-sims path needs branch-only fixes (star-catalogue-optional extract,
+# FITS-aware CalibrateCat.read_cat). Overridable for a different checkout.
+EXTRACT_INFO = IMSIM.get(
+    "extract_script", f"{SPV_REPO}/scripts/calibration/extract_info.py"
+)
 CALIBRATE = IMSIM.get(
-    "calibrate_script", "/sp_validation/notebooks/calibrate_comprehensive_cat.py"
+    "calibrate_script", f"{SPV_REPO}/scripts/calibration/calibrate_comprehensive_cat.py"
 )
 # m-bias is *this branch's* extracted core, injected on PYTHONPATH.
 COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
@@ -89,13 +91,12 @@ COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 # ShapePipe stages. MPI/SLURM env vars are stripped so OpenMPI inside the
 # image does not try to attach to the host launcher (cf. apptainer_noslurm.sh).
 SP_EXEC = f"env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID apptainer exec --bind {BINDS} {SHAPEPIPE_SIF}"
-# sp_validation calibration stages: the image's own environment, no override.
-SPV_EXEC = f"apptainer exec --bind {BINDS} {SPV_SIF}"
-# m-bias stage: inject this branch's src so the extracted ImageSimMBias +
-# catalog.match_catalogs_radec win over anything baked into the image.
-SPV_EXEC_MBIAS = (
-    f"apptainer exec --bind {BINDS} --env PYTHONPATH={SPV_REPO}/src {SPV_SIF}"
-)
+# sp_validation calibration stages: inject the branch source on PYTHONPATH so
+# the repo's sp_validation package (newer than the baked one) wins -- the
+# image-sims path depends on branch-only fixes to catalog_builders/extract.
+SPV_EXEC = f"apptainer exec --bind {BINDS} --env PYTHONPATH={SPV_REPO}/src {SPV_SIF}"
+# m-bias stage uses the same injected environment.
+SPV_EXEC_MBIAS = SPV_EXEC
 
 JOB_MASK = sum([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
 
@@ -130,7 +131,7 @@ rule im_merge_all:
 rule im_extract_all:
     input:
         expand(
-            f"{GRIDS_BASE}/{{sim}}/shape_catalog_comprehensive_{SHAPE}.hdf5",
+            f"{GRIDS_BASE}/{{sim}}/shape_catalog_comprehensive_{SHAPE}.fits",
             sim=SIMS,
         ),
 
@@ -241,7 +242,7 @@ rule im_extract:
         cat=f"{GRIDS_BASE}/{{sim}}/final_cat_{{sim}}.hdf5",
         params=f"{GRIDS_BASE}/{{sim}}/params.py",
     output:
-        cat=f"{GRIDS_BASE}/{{sim}}/shape_catalog_comprehensive_{SHAPE}.hdf5",
+        cat=f"{GRIDS_BASE}/{{sim}}/shape_catalog_comprehensive_{SHAPE}.fits",
     params:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
     shell:
@@ -256,7 +257,7 @@ rule im_calibrate:
     ``shape_catalog_cut_{shape}.fits``.
     """
     input:
-        cat=f"{GRIDS_BASE}/{{sim}}/shape_catalog_comprehensive_{SHAPE}.hdf5",
+        cat=f"{GRIDS_BASE}/{{sim}}/shape_catalog_comprehensive_{SHAPE}.fits",
         mask=f"{GRIDS_BASE}/{{sim}}/config_mask.yaml",
     output:
         cat=f"{GRIDS_BASE}/{{sim}}/shape_catalog_cut_{SHAPE}.fits",

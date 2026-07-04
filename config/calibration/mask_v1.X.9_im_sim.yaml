@@ -3,7 +3,7 @@
 
 # General parameters (can also given on command line)
 params:
-  input_path: shape_catalog_comprehensive_ngmix.hdf5
+  input_path: shape_catalog_comprehensive_ngmix.fits
   cmatrices: False
   sky_regions: False
   verbose: True
@@ -36,17 +36,17 @@ dat:
     value: [15, 30]
 
   # ngmix flags
-  - col_name: NGMIX_MOM_FAIL
+  - col_name: NGMIX_MCAL_TYPES_FAIL
     label: "ngmix moments failure"
     kind: equal
     value: 0
 
-  # invalid PSF ellipticities
-  - col_name: NGMIX_ELL_PSFo_NOSHEAR_0
+  # invalid PSF ellipticities (ShapePipe-v2 grammar: scalar G1/G2 components)
+  - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 1"
     kind: not_equal
     value: -10
-  - col_name: NGMIX_ELL_PSFo_NOSHEAR_1
+  - col_name: NGMIX_G2_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 2"
     kind: not_equal
     value: -10
