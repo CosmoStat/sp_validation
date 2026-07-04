@@ -347,7 +347,14 @@ def create_npanel_composite(matrices, ells, panel_labels, fid_indices=None):
     return fig
 
 
-def main(config, results_dir, out_dir):
+def main(
+    config,
+    results_dir,
+    out_dir,
+    fiducial_version_override=None,
+    fiducial_pseudo_cl_path=None,
+    fiducial_pseudo_cl_cov_path=None,
+):
     versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
     fiducial_blind = config["fiducial"]["blind"]
@@ -362,11 +369,25 @@ def main(config, results_dir, out_dir):
 
     # Per-version pseudo-Cl / covariance files (canonical COSMO_VAL tree, blind A).
     # Mirrors _pseudo_cl_path(ver) / _pseudo_cl_cov_path(ver, blind) in claims.smk.
+    # Fiducial-provenance repoint: when --fiducial-version matches and an explicit
+    # lc override path is set, read that path instead of the reconstructed pattern
+    # (lc files lack the blind=/powspace_nbins= tokens, distinguished by directory).
     version_to_cl = {
-        ver: _pseudo_cl(results_dir, ver, blind=fiducial_blind) for ver in versions
+        ver: (
+            fiducial_pseudo_cl_path
+            if ver == fiducial_version_override and fiducial_pseudo_cl_path is not None
+            else _pseudo_cl(results_dir, ver, blind=fiducial_blind)
+        )
+        for ver in versions
     }
     version_to_cov = {
-        ver: _pseudo_cl_cov(results_dir, ver, blind=fiducial_blind) for ver in versions
+        ver: (
+            fiducial_pseudo_cl_cov_path
+            if ver == fiducial_version_override
+            and fiducial_pseudo_cl_cov_path is not None
+            else _pseudo_cl_cov(results_dir, ver, blind=fiducial_blind)
+        )
+        for ver in versions
     }
 
     # Compute PTE matrices for all versions using fiducial blind
@@ -515,10 +536,34 @@ def _from_cli(argv=None):
         help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help="Version whose inputs are read from explicit lc override paths below",
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-path",
+        default=None,
+        help="Explicit path to fiducial pseudo-Cl FITS produced by lc "
+        "(overrides pattern reconstruction for --fiducial-version)",
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-cov-path",
+        default=None,
+        help="Explicit path to fiducial pseudo-Cl covariance FITS produced by lc "
+        "(overrides pattern reconstruction for --fiducial-version)",
+    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.results_dir, a.out)
+    main(
+        config,
+        a.results_dir,
+        a.out,
+        fiducial_version_override=a.fiducial_version,
+        fiducial_pseudo_cl_path=a.fiducial_pseudo_cl_path,
+        fiducial_pseudo_cl_cov_path=a.fiducial_pseudo_cl_cov_path,
+    )
 
 
 if __name__ == "__main__":

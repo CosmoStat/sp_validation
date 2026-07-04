@@ -58,7 +58,39 @@ def _path_matches_version(path, version):
     return True
 
 
-def load_cosebis_pte_matrix(pte_files, version, config, nmodes=6):
+def _resolve_overrides(version, fiducial_overrides):
+    """Fiducial-provenance source paths for this version, else ``(None, None)``.
+
+    Only the fiducial version is repointed to explicit lc outputs; every other
+    version keeps reading the old-tree file lists. Either element may be None.
+    """
+    if fiducial_overrides and version == fiducial_overrides["version"]:
+        return fiducial_overrides["pure_eb"], fiducial_overrides["cosebis"]
+    return None, None
+
+
+def _cosebis_matrix_from_npz(npz_path, nmodes):
+    """Adapt lc's gathered COSEBI PTE NPZ to the per-pair-JSON PTE matrix.
+
+    The lc producer (compute_cosebis_pte_single.py) writes one NPZ holding
+    ``pte_B_6``/``pte_B_20`` as (nbins+1, nbins+1) matrices already indexed by
+    ``[i_min, i_max]`` — the same layout ``load_cosebis_pte_matrix`` builds cell
+    by cell from the JSON glob. The one structural difference is that the NPZ
+    also fills single-bin cuts (``i_max - i_min == 1``), which the JSON loader
+    skips; re-imposing that mask makes the fiducial column numerically identical
+    whichever provenance feeds it.
+    """
+    npz = np.load(npz_path)
+    theta_grid = npz["theta_grid"]
+    pte_matrix = npz[f"pte_B_{nmodes}"].copy()
+    i_idx, j_idx = np.indices(pte_matrix.shape)
+    pte_matrix[(j_idx - i_idx) < 2] = np.nan
+    return pte_matrix, theta_grid
+
+
+def load_cosebis_pte_matrix(
+    pte_files, version, config, nmodes=6, cosebis_npz_override=None
+):
     """Load COSEBIS PTE values from JSON files into matrix.
 
     Uses fiducial blind only (data vectors identical across blinds).
@@ -81,6 +113,9 @@ def load_cosebis_pte_matrix(pte_files, version, config, nmodes=6):
     theta_grid : ndarray
         Angular scale grid (nbins+1 values).
     """
+    if cosebis_npz_override is not None:
+        return _cosebis_matrix_from_npz(cosebis_npz_override, nmodes)
+
     fid = config["fiducial"]
     theta_grid = np.geomspace(fid["min_sep"], fid["max_sep"], fid["nbins"] + 1)
     n_theta = len(theta_grid)
@@ -117,7 +152,7 @@ def load_cosebis_pte_matrix(pte_files, version, config, nmodes=6):
     return pte_matrix, theta_grid
 
 
-def load_pure_eb_pte_matrices(pte_files, version):
+def load_pure_eb_pte_matrices(pte_files, version, override_path=None):
     """Load Pure E/B PTE matrices from npz files.
 
     Uses fiducial blind only (data vectors identical across blinds).
@@ -140,6 +175,11 @@ def load_pure_eb_pte_matrices(pte_files, version):
     pte_combined : ndarray or None
         PTE matrix for combined ξ_tot^B, or None if not available.
     """
+    if override_path is not None:
+        data = np.load(override_path)
+        pte_combined = data["pte_combined"] if "pte_combined" in data else None
+        return data["pte_xip_B"], data["pte_xim_B"], data["theta"], pte_combined
+
     for pte_file in pte_files:
         # Filter to this version (exact match, no substring false positives)
         if not _path_matches_version(pte_file, version):
@@ -152,7 +192,9 @@ def load_pure_eb_pte_matrices(pte_files, version):
     raise ValueError(f"No PTE file found for version {version}")
 
 
-def _load_version_pte_data(pure_eb_pte_files, cosebis_pte_files, version, config):
+def _load_version_pte_data(
+    pure_eb_pte_files, cosebis_pte_files, version, config, fiducial_overrides=None
+):
     """Load all PTE matrices for a single version.
 
     Returns
@@ -160,14 +202,23 @@ def _load_version_pte_data(pure_eb_pte_files, cosebis_pte_files, version, config
     dict with keys: pte_xip_B, pte_xim_B, pte_combined (or None),
         pte_cosebis, pte_cosebis_20, theta_pure_eb, theta_cosebis.
     """
+    pure_eb_override, cosebis_override = _resolve_overrides(version, fiducial_overrides)
     pte_xip_B, pte_xim_B, theta_pure_eb, pte_combined = load_pure_eb_pte_matrices(
-        pure_eb_pte_files, version
+        pure_eb_pte_files, version, override_path=pure_eb_override
     )
     pte_cosebis, theta_cosebis = load_cosebis_pte_matrix(
-        cosebis_pte_files, version, config, nmodes=6
+        cosebis_pte_files,
+        version,
+        config,
+        nmodes=6,
+        cosebis_npz_override=cosebis_override,
     )
     pte_cosebis_20, _ = load_cosebis_pte_matrix(
-        cosebis_pte_files, version, config, nmodes=20
+        cosebis_pte_files,
+        version,
+        config,
+        nmodes=20,
+        cosebis_npz_override=cosebis_override,
     )
     return {
         "pte_xip_B": pte_xip_B,
@@ -293,7 +344,9 @@ def compute_stats(pte_matrix, fid_start, fid_stop):
     }
 
 
-def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
+def extract_full_range_ptes(
+    pure_eb_pte_files, cosebis_pte_files, version, fiducial_overrides=None
+):
     """Extract full-range PTEs from npz and JSON files.
 
     Takes minimum PTE across blinds for each statistic.
@@ -312,13 +365,18 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
     ptes : dict
         Full-range PTEs for xip, xim, and cosebis (fiducial blind).
     """
+    pure_eb_override, cosebis_override = _resolve_overrides(version, fiducial_overrides)
+
     # Get full-range PTEs from pure E/B (fiducial blind)
     xip_ptes = []
     xim_ptes = []
     combined_ptes = []
-    for pte_file in pure_eb_pte_files:
-        if not _path_matches_version(pte_file, version):
-            continue
+    pure_eb_sources = (
+        [pure_eb_override]
+        if pure_eb_override
+        else [p for p in pure_eb_pte_files if _path_matches_version(p, version)]
+    )
+    for pte_file in pure_eb_sources:
         pte_data = np.load(pte_file)
         theta = pte_data["theta"]
         full_range_idx = (0, len(theta) - 1)
@@ -341,7 +399,17 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
         "cosebis_20": float("nan"),  # Default for n=20
     }
 
-    # Load COSEBIS full-range PTE (pte_000_020.json for full theta range, min across blinds)
+    # Load COSEBIS full-range PTE (pair (0, 20) — the full theta range).
+    if cosebis_override is not None:
+        npz = np.load(cosebis_override)
+        pte6, pte20 = float(npz["pte_B_6"][0, 20]), float(npz["pte_B_20"][0, 20])
+        if not np.isnan(pte6):
+            ptes["cosebis"] = pte6
+        if not np.isnan(pte20):
+            ptes["cosebis_20"] = pte20
+        return ptes
+
+    # Old tree: pte_000_020.json for full theta range, min across blinds.
     cosebis_ptes_6 = []
     cosebis_ptes_20 = []
     for pte_file in cosebis_pte_files:
@@ -371,7 +439,14 @@ def extract_full_range_ptes(pure_eb_pte_files, cosebis_pte_files, version):
 
 
 def create_3panel_composite(
-    version, pure_eb_pte_files, cosebis_pte_files, xip_fid, xim_fid, cosebis_fid, config
+    version,
+    pure_eb_pte_files,
+    cosebis_pte_files,
+    xip_fid,
+    xim_fid,
+    cosebis_fid,
+    config,
+    fiducial_overrides=None,
 ):
     """Create a 1×3 composite figure for the fiducial version (main text).
 
@@ -418,7 +493,7 @@ def create_3panel_composite(
 
     # Load all PTE data for this version
     matrices = _load_version_pte_data(
-        pure_eb_pte_files, cosebis_pte_files, version, config
+        pure_eb_pte_files, cosebis_pte_files, version, config, fiducial_overrides
     )
     pte_xip_B = matrices["pte_xip_B"]
     pte_xim_B = matrices["pte_xim_B"]
@@ -504,7 +579,7 @@ def create_3panel_composite(
 
     # Extract full-range PTEs
     full_range_ptes = extract_full_range_ptes(
-        pure_eb_pte_files, cosebis_pte_files, version
+        pure_eb_pte_files, cosebis_pte_files, version, fiducial_overrides
     )
 
     return fig, stats, full_range_ptes
@@ -519,6 +594,7 @@ def create_9panel_composite(
     cosebis_fid,
     version_labels,
     config,
+    fiducial_overrides=None,
 ):
     """Create a Nx3 composite figure for all versions (appendix).
 
@@ -572,7 +648,7 @@ def create_9panel_composite(
     for row_idx, version in enumerate(versions):
         # Load all PTE data for this version
         matrices = _load_version_pte_data(
-            pure_eb_pte_files, cosebis_pte_files, version, config
+            pure_eb_pte_files, cosebis_pte_files, version, config, fiducial_overrides
         )
         pte_xip_B = matrices["pte_xip_B"]
         pte_xim_B = matrices["pte_xim_B"]
@@ -658,7 +734,7 @@ def create_9panel_composite(
 
         # Extract full-range PTEs
         full_range_ptes = extract_full_range_ptes(
-            pure_eb_pte_files, cosebis_pte_files, version
+            pure_eb_pte_files, cosebis_pte_files, version, fiducial_overrides
         )
         all_full_range_ptes[version] = full_range_ptes
 
@@ -683,7 +759,14 @@ def create_9panel_composite(
     return fig, all_stats, all_full_range_ptes
 
 
-def main(config, pure_eb_pte_files, cosebis_pte_files, output_dir, spec_path=None):
+def main(
+    config,
+    pure_eb_pte_files,
+    cosebis_pte_files,
+    output_dir,
+    spec_path=None,
+    fiducial_overrides=None,
+):
     # Both corrected and uncorrected versions (exclude ecut variants)
     versions = [v for v in config["versions"] if "_ecut" not in v]
     fiducial_version = config["fiducial"]["version"]
@@ -722,6 +805,7 @@ def main(config, pure_eb_pte_files, cosebis_pte_files, output_dir, spec_path=Non
             xim_fid=xim_fid,
             cosebis_fid=cosebis_fid,
             config=config,
+            fiducial_overrides=fiducial_overrides,
         )
 
         # Save fiducial figure
@@ -761,6 +845,7 @@ def main(config, pure_eb_pte_files, cosebis_pte_files, output_dir, spec_path=Non
             cosebis_fid=cosebis_fid,
             version_labels=config["plotting"]["version_labels"],
             config=config,
+            fiducial_overrides=fiducial_overrides,
         )
 
         # Save appendix figure
@@ -798,7 +883,11 @@ def main(config, pure_eb_pte_files, cosebis_pte_files, output_dir, spec_path=Non
         for version in uncorrected_versions:
             try:
                 matrices = _load_version_pte_data(
-                    pure_eb_pte_files, cosebis_pte_files, version, config
+                    pure_eb_pte_files,
+                    cosebis_pte_files,
+                    version,
+                    config,
+                    fiducial_overrides,
                 )
                 theta_pe = matrices["theta_pure_eb"]
                 theta_co = matrices["theta_cosebis"]
@@ -825,7 +914,7 @@ def main(config, pure_eb_pte_files, cosebis_pte_files, output_dir, spec_path=Non
                     ),
                 }
                 full_range_ptes = extract_full_range_ptes(
-                    pure_eb_pte_files, cosebis_pte_files, version
+                    pure_eb_pte_files, cosebis_pte_files, version, fiducial_overrides
                 )
 
                 all_stats[version] = stats
@@ -939,7 +1028,41 @@ def _from_cli(argv=None):
     )
     ap.add_argument("--blind", default="A", help="Fiducial blind (paper: A)")
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help="Version whose inputs are repointed to explicit lc outputs "
+        "(e.g. SP_v1.4.6.3_leak_corr); all other versions keep the old tree",
+    )
+    ap.add_argument(
+        "--fiducial-pure-eb-pte-path",
+        default=None,
+        help="lc pure_eb PTE NPZ for the fiducial version "
+        "(same format as old-tree {version}_{blind}_pure_eb_ptes.npz)",
+    )
+    ap.add_argument(
+        "--fiducial-cosebis-pte-path",
+        default=None,
+        help="lc gathered COSEBI PTE NPZ for the fiducial version "
+        "(adapted back to the per-pair JSON PTE-matrix structure)",
+    )
     a = ap.parse_args(argv)
+
+    if (
+        a.fiducial_pure_eb_pte_path or a.fiducial_cosebis_pte_path
+    ) and not a.fiducial_version:
+        ap.error(
+            "--fiducial-version is required when a fiducial override path is given"
+        )
+    fiducial_overrides = (
+        {
+            "version": a.fiducial_version,
+            "pure_eb": a.fiducial_pure_eb_pte_path,
+            "cosebis": a.fiducial_cosebis_pte_path,
+        }
+        if a.fiducial_version
+        else None
+    )
 
     with open(a.config) as f:
         config = yaml.safe_load(f)
@@ -960,6 +1083,7 @@ def _from_cli(argv=None):
         pure_eb_pte_files=pure_eb_pte_files,
         cosebis_pte_files=cosebis_pte_files,
         output_dir=a.out,
+        fiducial_overrides=fiducial_overrides,
     )
 
 

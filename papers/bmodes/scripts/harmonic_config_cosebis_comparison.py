@@ -868,6 +868,48 @@ def _from_cli(argv=None):
         "--blind", default="A", help="Blind for pseudo-Cl / covariance (paper: A)"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help=(
+            "Fiducial catalog version (paper: SP_v1.4.6.3_leak_corr). When set "
+            "together with one of --fiducial-*-path below, this version's inputs "
+            "are read from the given lc-reproduced path instead of the "
+            "--cosmo-val-dir / --covariance-dir pattern lookup. Every other "
+            "version is unaffected."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial 96-bin pseudo-Cl FITS reproduced by lc "
+            "(from lc's cl_bandpowers_fine; e.g. pseudo_cl_SP_v1.4.6.3_leak_corr.fits), "
+            "overriding the --cosmo-val-dir pattern lookup for --fiducial-version."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-xi-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial 1000-bin integration xi_pm text file "
+            "reproduced by lc (e.g. SP_v1.4.6.3_leak_corr_xi_minsep=0.5_maxsep=300.0_"
+            "nbins=1000_npatch=1.txt), overriding the --cosmo-val-dir pattern lookup "
+            "for --fiducial-version."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-cov-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial Gaussian integration covariance "
+            "reproduced by lc (covariance_processed.txt), overriding the "
+            "--covariance-dir pattern lookup for --fiducial-version. NOTE: there is "
+            "no equivalent override for the 96-bin pseudo-Cl covariance — lc did "
+            "not reproduce it (only a 32-bin cl_cov_reporting exists) — so that "
+            "input always reads from the old tree, even for the fiducial version."
+        ),
+    )
     a = ap.parse_args(argv)
 
     with open(a.config) as f:
@@ -885,21 +927,39 @@ def _from_cli(argv=None):
     versions = _versions_all_for_plots(config)
     inputs = {"specs": ["papers/bmodes/config/harmonic_config_cosebis_comparison.md"]}
     for ver in versions:
-        inputs[f"pseudo_cl_{ver}"] = os.path.join(
-            a.cosmo_val_dir,
-            f"pseudo_cl_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+        is_fiducial = ver == a.fiducial_version
+
+        inputs[f"pseudo_cl_{ver}"] = (
+            a.fiducial_pseudo_cl_path
+            if is_fiducial and a.fiducial_pseudo_cl_path
+            else os.path.join(
+                a.cosmo_val_dir,
+                f"pseudo_cl_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+            )
         )
+        # 96-bin pseudo-Cl covariance is intentionally NOT lc-repointed: lc did not
+        # reproduce a 96-bin pseudo-Cl covariance (only 32-bin cl_cov_reporting
+        # exists), so this always reads from the old tree, even for the fiducial
+        # version.
         inputs[f"pseudo_cl_cov_{ver}"] = os.path.join(
             a.cosmo_val_dir,
             f"pseudo_cl_cov_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
         )
-        inputs[f"xi_{ver}"] = os.path.join(
-            a.cosmo_val_dir,
-            f"{ver}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
-            f"_nbins={nbins_int}_npatch={npatch}.txt",
+        inputs[f"xi_{ver}"] = (
+            a.fiducial_xi_path
+            if is_fiducial and a.fiducial_xi_path
+            else os.path.join(
+                a.cosmo_val_dir,
+                f"{ver}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
+                f"_nbins={nbins_int}_npatch={npatch}.txt",
+            )
         )
-        inputs[f"cov_{ver}"] = _cov_integration_path(
-            a.covariance_dir, ver, a.blind, min_sep_int, max_sep_int, nbins_int
+        inputs[f"cov_{ver}"] = (
+            a.fiducial_cov_path
+            if is_fiducial and a.fiducial_cov_path
+            else _cov_integration_path(
+                a.covariance_dir, ver, a.blind, min_sep_int, max_sep_int, nbins_int
+            )
         )
 
     scale_cut = _angular_ranges(config)[a.angular_range]

@@ -172,7 +172,43 @@ def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
     )
 
 
-def main(config, results_dir, out_dir):
+def _resolve_pseudo_cl_paths(
+    results_dir,
+    ver,
+    fiducial_version=None,
+    fiducial_pseudo_cl_path=None,
+    fiducial_pseudo_cl_cov_path=None,
+    blind="A",
+    nbins=32,
+):
+    """Resolve the pseudo-Cl and covariance paths for one version in the sweep.
+
+    Every version is read from the reconstructed COSMO_VAL pattern, except the
+    fiducial version when explicit override paths are supplied: the lc-produced
+    fiducial FITS files are named `pseudo_cl_{version}.fits` /
+    `pseudo_cl_cov_{version}.fits` (no blind=/nbins= tokens), so pattern
+    reconstruction can't find them and an explicit path is required instead.
+    """
+    if (
+        ver == fiducial_version
+        and fiducial_pseudo_cl_path
+        and fiducial_pseudo_cl_cov_path
+    ):
+        return fiducial_pseudo_cl_path, fiducial_pseudo_cl_cov_path
+    return (
+        _pseudo_cl(results_dir, ver, blind, nbins),
+        _pseudo_cl_cov(results_dir, ver, blind, nbins),
+    )
+
+
+def main(
+    config,
+    results_dir,
+    out_dir,
+    fiducial_version=None,
+    fiducial_pseudo_cl_path=None,
+    fiducial_pseudo_cl_cov_path=None,
+):
     version = config["fiducial"]["version"]
     version_labels = config["plotting"]["version_labels"]
     ell_min_cut = int(config["cl"]["fiducial_ell_min"])
@@ -193,8 +229,15 @@ def main(config, results_dir, out_dir):
         )
 
         # Load data
+        pseudo_cl_path, pseudo_cl_cov_path = _resolve_pseudo_cl_paths(
+            results_dir,
+            ver,
+            fiducial_version,
+            fiducial_pseudo_cl_path,
+            fiducial_pseudo_cl_cov_path,
+        )
         ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
-            _pseudo_cl(results_dir, ver), _pseudo_cl_cov(results_dir, ver)
+            pseudo_cl_path, pseudo_cl_cov_path
         )
 
         # Create figure with appropriate title
@@ -225,8 +268,15 @@ def main(config, results_dir, out_dir):
             print(f"Saved {paper_path}")
 
     # Compute PTEs for evidence (fiducial version, leak-corrected only)
+    pseudo_cl_path, pseudo_cl_cov_path = _resolve_pseudo_cl_paths(
+        results_dir,
+        version,
+        fiducial_version,
+        fiducial_pseudo_cl_path,
+        fiducial_pseudo_cl_cov_path,
+    )
     ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
-        _pseudo_cl(results_dir, version), _pseudo_cl_cov(results_dir, version)
+        pseudo_cl_path, pseudo_cl_cov_path
     )
 
     # Compute PTEs (null tests) using full ell range
@@ -286,10 +336,42 @@ def _from_cli(argv=None):
         help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help=(
+            "Version string whose pseudo-Cl inputs should be read from explicit "
+            "override paths instead of the reconstructed COSMO_VAL pattern "
+            "(e.g. SP_v1.4.6.3_leak_corr)."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial version's pseudo-Cl FITS (lc output). "
+            "Requires --fiducial-version and --fiducial-pseudo-cl-cov-path."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-cov-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial version's pseudo-Cl covariance FITS "
+            "(lc output). Requires --fiducial-version and --fiducial-pseudo-cl-path."
+        ),
+    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.results_dir, a.out)
+    main(
+        config,
+        a.results_dir,
+        a.out,
+        fiducial_version=a.fiducial_version,
+        fiducial_pseudo_cl_path=a.fiducial_pseudo_cl_path,
+        fiducial_pseudo_cl_cov_path=a.fiducial_pseudo_cl_cov_path,
+    )
 
 
 if __name__ == "__main__":

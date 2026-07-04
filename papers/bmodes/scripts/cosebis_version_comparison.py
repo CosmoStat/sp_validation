@@ -156,7 +156,15 @@ def _cov_integration(cov_dir, ver, blind):
     return f"{cov_dir}/{base}/{base}_processed.txt"
 
 
-def main(config, results_dir, cov_dir, out_dir):
+def main(
+    config,
+    results_dir,
+    cov_dir,
+    out_dir,
+    fiducial_version=None,
+    fiducial_xi_path=None,
+    fiducial_cov_path=None,
+):
     # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
     versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
     nmodes = config["fiducial"]["nmodes"]
@@ -164,9 +172,23 @@ def main(config, results_dir, cov_dir, out_dir):
     version_labels = plotting_config["version_labels"]
     blind = config["fiducial"]["blind"]
 
-    # Per-version integration-grid xi and Gaussian covariance (canonical trees)
-    xi_paths_list = [_xi_integration(results_dir, v) for v in versions]
-    cov_paths_list = [_cov_integration(cov_dir, v, blind) for v in versions]
+    # Fiducial version whose inputs may be overridden with explicit lc paths
+    fiducial_version = fiducial_version or config["fiducial"]["version"]
+
+    # Per-version integration-grid xi and Gaussian covariance (canonical trees),
+    # with explicit-path overrides for the fiducial version when provided.
+    xi_paths_list = [
+        fiducial_xi_path
+        if v == fiducial_version and fiducial_xi_path
+        else _xi_integration(results_dir, v)
+        for v in versions
+    ]
+    cov_paths_list = [
+        fiducial_cov_path
+        if v == fiducial_version and fiducial_cov_path
+        else _cov_integration(cov_dir, v, blind)
+        for v in versions
+    ]
 
     # Which version gets the fiducial reference line in boxes
     fiducial_for_comparison = plotting_config.get(
@@ -356,10 +378,36 @@ def _from_cli(argv=None):
         help="COSMO_INFERENCE data/covariance dir with per-version 1000-bin Gaussian covariances",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help="Version whose xi/cov inputs may be overridden by --fiducial-xi-path "
+        "and --fiducial-cov-path (default: config['fiducial']['version'])",
+    )
+    ap.add_argument(
+        "--fiducial-xi-path",
+        default=None,
+        help="Explicit path to the fiducial version's 1000-bin integration-grid "
+        "xi (e.g. lc output), overriding the canonical-tree path pattern",
+    )
+    ap.add_argument(
+        "--fiducial-cov-path",
+        default=None,
+        help="Explicit path to the fiducial version's Gaussian integration "
+        "covariance (e.g. lc output), overriding the canonical-tree path pattern",
+    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.results_dir, a.cov_dir, a.out)
+    main(
+        config,
+        a.results_dir,
+        a.cov_dir,
+        a.out,
+        fiducial_version=a.fiducial_version,
+        fiducial_xi_path=a.fiducial_xi_path,
+        fiducial_cov_path=a.fiducial_cov_path,
+    )
 
 
 if __name__ == "__main__":
