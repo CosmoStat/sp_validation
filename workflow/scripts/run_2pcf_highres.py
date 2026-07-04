@@ -11,18 +11,23 @@ Reference: Asgari et al. 2017 — minimum 10,000 bins for E_7 at 0.5% accuracy.
 
 Usage:
     # MPI (via Slurm submission script):
-    mpiexec --map-by ppr:1:node python run_2pcf_highres.py
+    mpiexec --map-by ppr:1:node python run_2pcf_highres.py \
+        --cat-config /path/to/cosmo_val/cat_config.yaml --out <output_dir>
 
-    # Single-node fallback:
-    python run_2pcf_highres.py
+    # Single-process fallback:
+    python run_2pcf_highres.py \
+        --cat-config /path/to/cosmo_val/cat_config.yaml --out <output_dir>
 """
 
+import argparse
 import os
 import time
 
 import numpy as np
 import treecorr
 from astropy.io import fits
+
+from sp_validation.cosmo_val import CosmologyValidation
 
 # ---------------------------------------------------------------------------
 # MPI setup (graceful fallback)
@@ -43,33 +48,60 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-CAT_PATH = (
-    "/n17data/UNIONS/WL/v1.4.x/v1.4.6.3/unions_shapepipe_cut_struc_2024_v1.4.6.3.fits"
-)
-VERSION = "SP_v1.4.6.3_leak_corr"
-
-# Ellipticity columns (leak-corrected)
-E1_COL = "e1_leak_corrected"
-E2_COL = "e2_leak_corrected"
-W_COL = "w_des"
-
 # Shear response (R=1 for all SP catalogs)
 R = 1.0
 
-# TreeCorr parameters
-TMIN = 0.5  # arcmin
-TMAX = 300.0  # arcmin
-NBINS = 10_000
-NPATCH = 50
 # Detect threads from Slurm or fall back to OS count
 NUM_THREADS = int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 24))
 
-# Output
-OUTPUT_DIR = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output"
-PATCH_FILE = os.path.join(
-    OUTPUT_DIR,
-    f"patch_centers_{VERSION}_{NPATCH}_{TMIN}_{TMAX}.dat",
-)
+# The catalog path, ellipticity/weight columns, TreeCorr grid, patch count and
+# output directory are resolved from the CLI in main() (defaults reproduce the
+# historical hardcoded values for a no-arg run). They are declared here as
+# module globals so the rank-aware helpers below resolve them at call time; the
+# catalog path + columns come from cat_config + version exactly as run_2pcf.py
+# resolves them (via CosmologyValidation).
+CAT_PATH = None
+VERSION = None
+E1_COL = None
+E2_COL = None
+W_COL = None
+TMIN = None  # arcmin
+TMAX = None  # arcmin
+NBINS = None
+NPATCH = None
+OUTPUT_DIR = None
+PATCH_FILE = None
+
+
+def parse_args(argv=None):
+    """CLI mirroring run_xi_sweep's signature; defaults reproduce prior behavior."""
+    ap = argparse.ArgumentParser(
+        description="High-resolution TreeCorr ξ± measurement for COSEBIS integration."
+    )
+    ap.add_argument(
+        "--config",
+        default=None,
+        help="Path to bmodes config.yaml (accepted for signature parity with "
+        "run_xi_sweep; not read by this measurement).",
+    )
+    ap.add_argument(
+        "--cat-config", required=True, help="Absolute path to cat_config.yaml"
+    )
+    ap.add_argument(
+        "--version",
+        default="SP_v1.4.6.3_leak_corr",
+        help="Catalog version key in cat_config",
+    )
+    ap.add_argument("--nbins", type=int, default=10000, help="Number of log bins")
+    ap.add_argument("--npatch", type=int, default=50, help="TreeCorr patch count")
+    ap.add_argument(
+        "--min-sep", type=float, default=0.5, help="Min separation [arcmin]"
+    )
+    ap.add_argument(
+        "--max-sep", type=float, default=300.0, help="Max separation [arcmin]"
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    return ap.parse_args(argv)
 
 
 def log(msg):
@@ -161,6 +193,35 @@ def write_xi_fits(gg, prefix, xi_data):
 
 
 def main():
+    global CAT_PATH, VERSION, E1_COL, E2_COL, W_COL
+    global TMIN, TMAX, NBINS, NPATCH, OUTPUT_DIR, PATCH_FILE
+
+    args = parse_args()
+    VERSION = args.version
+    NBINS = args.nbins
+    NPATCH = args.npatch
+    TMIN = args.min_sep
+    TMAX = args.max_sep
+    OUTPUT_DIR = args.out
+
+    # Resolve catalog path + ellipticity/weight columns from cat_config + version
+    # exactly as run_2pcf.py does: hand versions/catalog_config/output_dir to
+    # CosmologyValidation and read back the resolved shear config (this applies
+    # the _leak_corr column swap and the subdir path resolution). R stays fixed.
+    cv = CosmologyValidation(
+        versions=[VERSION], catalog_config=args.cat_config, output_dir=OUTPUT_DIR
+    )
+    shear_cfg = cv.cc[VERSION]["shear"]
+    CAT_PATH = shear_cfg["path"]
+    E1_COL = shear_cfg["e1_col"]
+    E2_COL = shear_cfg["e2_col"]
+    W_COL = shear_cfg["w_col"]
+
+    PATCH_FILE = os.path.join(
+        OUTPUT_DIR,
+        f"patch_centers_{VERSION}_{NPATCH}_{TMIN}_{TMAX}.dat",
+    )
+
     t0 = time.time()
 
     log("=" * 60)
