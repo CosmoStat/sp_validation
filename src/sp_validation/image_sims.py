@@ -70,54 +70,61 @@ class ImageSimMBias:
             if verbose:
                 print(f"    {len(self.cats[name]['ra'])} objects")
 
-    def _match_to_ref(self, name):
-        """Return (idx_ref, idx_sim) matched indices between name and 1z2z."""
-        ref = self.cats["1z2z"]
-        sim = self.cats[name]
-        idx_ref, idx_sim = match_catalogs_radec(
-            ref["ra"],
-            ref["dec"],
-            sim["ra"],
-            sim["dec"],
-            thresh_deg=self.thresh,
-        )
-        return idx_ref, idx_sim
-
     def _m_c_pair(self, name_p, name_m, comp, verbose=True):
-        """Compute m and c for one shear pair and component (0=g1, 1=g2)."""
+        """Compute m and c for one shear pair and component (0=g1, 1=g2).
+
+        Paired ("pool") estimator. The +g and -g simulations inject opposite
+        input shear on the *same* galaxies, so matching them directly by
+        RA/Dec yields a one-to-one correspondence. Differencing the two
+        ellipticities per object,
+
+            m = <(e_+ - e_-) / (2 g_in) - 1> ,   c = <(e_+ + e_-) / 2> ,
+
+        cancels the intrinsic shape (sigma_e ~ 0.3) object-by-object in the
+        multiplicative term, leaving only measurement noise -- so sigma(m)
+        shrinks by ~sigma_e/sigma_meas relative to differencing two
+        independent means. (The additive term c is a *sum*, so intrinsic
+        shape does not cancel there and its error stays shape-noise limited.)
+        """
         e_key = f"e{comp + 1}"
 
-        idx_ref_p, idx_p = self._match_to_ref(name_p)
-        idx_ref_m, idx_m = self._match_to_ref(name_m)
+        # Match the +g and -g sims to each other: same galaxies, opposite shear.
+        idx_p, idx_m = match_catalogs_radec(
+            self.cats[name_p]["ra"],
+            self.cats[name_p]["dec"],
+            self.cats[name_m]["ra"],
+            self.cats[name_m]["dec"],
+            thresh_deg=self.thresh,
+        )
 
         if verbose:
-            print(
-                f"  {name_p}: {len(idx_p)} matched  |  {name_m}: {len(idx_m)} matched"
-            )
+            print(f"  {name_p} <-> {name_m}: {len(idx_p)} paired objects")
 
         e_p = self.cats[name_p][e_key][idx_p]
         w_p = self.cats[name_p]["w"][idx_p]
         e_m = self.cats[name_m][e_key][idx_m]
         w_m = self.cats[name_m]["w"][idx_m]
 
-        mean_ep = np.average(e_p, weights=w_p)
-        mean_em = np.average(e_m, weights=w_m)
+        # Per-object shear-differenced (-> m) and summed (-> c) ellipticity,
+        # with a symmetric per-pair weight.
+        w = 0.5 * (w_p + w_m)
+        d = (e_p - e_m) / (2 * self.g_in) - 1
+        s = (e_p + e_m) / 2
 
-        m = (mean_ep - mean_em) / (2 * self.g_in) - 1
-        c = (mean_ep + mean_em) / 2
+        m = np.average(d, weights=w)
+        c = np.average(s, weights=w)
 
-        # Bootstrap errors
+        # Paired bootstrap: resample objects once and apply the same draw to
+        # both sims, so the per-object cancellation in `d` is preserved in
+        # the error estimate.
         rng = np.random.default_rng(seed=42)
+        n = len(d)
         m_boot = np.empty(self.n_boot)
         c_boot = np.empty(self.n_boot)
-        n_p, n_m = len(e_p), len(e_m)
         for i in range(self.n_boot):
-            ib_p = rng.integers(0, n_p, n_p)
-            ib_m = rng.integers(0, n_m, n_m)
-            ep_b = np.average(e_p[ib_p], weights=w_p[ib_p])
-            em_b = np.average(e_m[ib_m], weights=w_m[ib_m])
-            m_boot[i] = (ep_b - em_b) / (2 * self.g_in) - 1
-            c_boot[i] = (ep_b + em_b) / 2
+            ib = rng.integers(0, n, n)
+            m_boot[i] = np.average(d[ib], weights=w[ib])
+            c_boot[i] = np.average(s[ib], weights=w[ib])
 
         return m, np.std(m_boot), c, np.std(c_boot)
 

@@ -6,10 +6,13 @@ additive shear-bias estimator used by the image-simulation workflow -- and the
 
 The estimator recovers ``m`` and ``c`` from five calibrated catalogues named
 ``1z2z`` (reference, no input shear), ``1p2z``/``1m2z`` (input shear
-``g1 = +-|g|``) and ``1z2p``/``1z2m`` (``g2 = +-|g|``). Objects are matched to
-the reference by RA/Dec, then, per component,
+``g1 = +-|g|``) and ``1z2p``/``1z2m`` (``g2 = +-|g|``). The +g and -g sims are
+matched to *each other* by RA/Dec -- same galaxies, opposite input shear -- and
+the bias is the object-paired ("pool") average
 
-    m = (<e_+> - <e_->) / (2 |g|) - 1 ,   c = (<e_+> + <e_->) / 2 .
+    m = <(e_+ - e_-) / (2 |g|) - 1> ,   c = <(e_+ + e_-) / 2> ,
+
+so the intrinsic shape cancels object-by-object in ``m``.
 
 We build synthetic catalogues in which the measured ellipticity is exactly
 ``e = (1 + m_true) g_in + c_true`` at shared positions, so the recovered m/c
@@ -112,3 +115,63 @@ def test_mbias_recovers_injected_values(tmp_path):
     # Bootstrap errors are non-negative and finite.
     for key in ("m1_err", "m2_err", "c1_err", "c2_err"):
         assert np.isfinite(res[key]) and res[key] >= 0
+
+
+def test_mbias_pool_cancels_shape_noise(tmp_path):
+    """The paired estimator cancels intrinsic shape noise in m.
+
+    With realistic per-galaxy intrinsic ellipticity (sigma_e ~ 0.3) shared
+    between the +g and -g sims plus small independent measurement noise, the
+    object-paired difference cancels the intrinsic shape, so sigma(m) is set by
+    the measurement noise (~1e-2), not the shape noise. An *unpaired* estimator
+    (differencing two independently-drawn means) would instead return
+    sigma(m) ~ sigma_e / (2 |g| sqrt(N)) -- an order of magnitude larger. We
+    assert the recovered error sits well below that shape-noise floor, which is
+    the property the pooling exists to deliver.
+    """
+    num = 3
+    rng = np.random.default_rng(1)
+    ra = 30.0 + rng.uniform(0, 0.1, N_GAL)
+    dec = rng.uniform(0, 0.1, N_GAL)
+    w = np.ones(N_GAL)
+    sigma_e, sigma_meas = 0.3, 0.01
+    e1_int = rng.normal(0, sigma_e, N_GAL)  # intrinsic shape, shared across sims
+    e2_int = rng.normal(0, sigma_e, N_GAL)
+
+    def measured(g1_in, g2_in):
+        """Measured ellipticity = intrinsic + (1 + m) * input shear + noise."""
+        e1 = e1_int + (1 + M_TRUE) * g1_in + rng.normal(0, sigma_meas, N_GAL)
+        e2 = e2_int + (1 + M_TRUE) * g2_in + rng.normal(0, sigma_meas, N_GAL)
+        return e1, e2
+
+    sims = {
+        "1z2z": measured(0, 0),
+        "1p2z": measured(+A, 0),
+        "1m2z": measured(-A, 0),
+        "1z2p": measured(0, +A),
+        "1z2m": measured(0, -A),
+    }
+    for name, (e1, e2) in sims.items():
+        sim_dir = tmp_path / f"{name}_grid_{num}"
+        sim_dir.mkdir(parents=True, exist_ok=True)
+        _write_cat(sim_dir / "cat.fits", ra, dec, e1, e2, w)
+
+    config = {
+        "grids_dir": str(tmp_path),
+        "num": num,
+        "catalog_name": "cat.fits",
+        "shear_amplitude": A,
+        "match_radius_deg": 0.0002,
+        "w_col": "w_des",
+        "n_bootstrap": 200,
+    }
+    mb = ImageSimMBias(config)
+    mb.load_catalogs(verbose=False)
+    res = mb.run(verbose=False)
+
+    shape_noise_floor = sigma_e / (2 * A * np.sqrt(N_GAL))  # the unpaired error
+    for comp in (1, 2):
+        # m recovered within a few sigma of truth...
+        assert abs(res[f"m{comp}"] - M_TRUE) < 5 * res[f"m{comp}_err"]
+        # ...and its error is far below what an unpaired estimator would give.
+        assert res[f"m{comp}_err"] < 0.1 * shape_noise_floor
