@@ -27,7 +27,18 @@ import numpy as np
 import treecorr
 from astropy.io import fits
 
-from sp_validation.cosmo_val import CosmologyValidation
+try:
+    # In-container path: full sp_validation stack available.
+    from sp_validation.cosmo_val import CosmologyValidation
+
+    _HAVE_COSMO_VAL = True
+except ImportError:
+    # Bare-host path (host OpenMPI + host python for the 10k-bin MPI run): the
+    # full sp_validation stack (cs_util.plots -> healpy/healsparse) is not
+    # installed. This measurement only needs the shear catalog path + column
+    # names, which are a pure cat_config.yaml lookup — resolve them standalone.
+    CosmologyValidation = None
+    _HAVE_COSMO_VAL = False
 
 # ---------------------------------------------------------------------------
 # MPI setup (graceful fallback)
@@ -137,6 +148,28 @@ def load_catalog():
     return ra, dec, g1, g2, w
 
 
+def _wait_for_file(path, timeout=300, interval=1.0):
+    """Block until `path` is visible to this node, defeating NFS dir caching.
+
+    On a multi-node run the rank that wrote `path` sees it immediately, but
+    peer nodes can carry a stale negative directory-cache entry past an MPI
+    Barrier. Re-listing the parent directory forces an NFS attribute refresh;
+    poll that until the entry appears (or raise after `timeout` seconds).
+    """
+    parent = os.path.dirname(path) or "."
+    name = os.path.basename(path)
+    waited = 0.0
+    while waited < timeout:
+        try:
+            if name in os.listdir(parent):
+                return
+        except FileNotFoundError:
+            pass
+        time.sleep(interval)
+        waited += interval
+    raise TimeoutError(f"patch-center file not visible after {timeout}s: {path}")
+
+
 def compute_patch_centers(ra, dec):
     """Compute patch centers from subsampled catalog (rank 0 only)."""
     if os.path.exists(PATCH_FILE):
@@ -192,6 +225,54 @@ def write_xi_fits(gg, prefix, xi_data):
     log(f"  Wrote {out_path}")
 
 
+def resolve_shear_config(cat_config_path, version):
+    """Standalone shear-config resolver (bare-host fallback for CosmologyValidation).
+
+    Reproduces exactly the ``cc[version]["shear"]`` fields this measurement reads
+    (path, e1_col, e2_col, w_col), replicating CosmologyValidation's two
+    transforms: (1) subdir-relative path resolution, and (2) the ``_leak_corr``
+    virtual version — deep-copy the base version and swap
+    e1_col/e2_col -> e1_col_corrected/e2_col_corrected. See
+    sp_validation/cosmo_val/core.py.
+    """
+    import copy
+
+    import yaml
+
+    with open(cat_config_path) as fh:
+        cc = yaml.load(fh, Loader=yaml.FullLoader)
+
+    def resolve_paths(ver):
+        subdir = os.fspath(cc[ver]["subdir"])
+        for section in cc[ver].values():
+            if isinstance(section, dict) and "path" in section:
+                p = section["path"]
+                if not os.path.isabs(p):
+                    section["path"] = os.path.join(subdir, p)
+
+    leak_suffix = "_leak_corr"
+    if version in cc:
+        resolve_paths(version)
+    elif version.endswith(leak_suffix):
+        base = version[: -len(leak_suffix)]
+        if base not in cc:
+            raise ValueError(f"Base version '{base}' not in cat_config for '{version}'")
+        resolve_paths(base)
+        base_shear = cc[base]["shear"]
+        if "e1_col_corrected" not in base_shear or "e2_col_corrected" not in base_shear:
+            raise ValueError(
+                f"{base} lacks e1_col_corrected/e2_col_corrected; cannot form {version}"
+            )
+        cc[version] = copy.deepcopy(cc[base])
+        cc[version]["shear"]["e1_col"] = base_shear["e1_col_corrected"]
+        cc[version]["shear"]["e2_col"] = base_shear["e2_col_corrected"]
+        resolve_paths(version)
+    else:
+        raise ValueError(f"Version '{version}' not found in cat_config")
+
+    return cc[version]["shear"]
+
+
 def main():
     global CAT_PATH, VERSION, E1_COL, E2_COL, W_COL
     global TMIN, TMAX, NBINS, NPATCH, OUTPUT_DIR, PATCH_FILE
@@ -205,13 +286,17 @@ def main():
     OUTPUT_DIR = args.out
 
     # Resolve catalog path + ellipticity/weight columns from cat_config + version
-    # exactly as run_2pcf.py does: hand versions/catalog_config/output_dir to
-    # CosmologyValidation and read back the resolved shear config (this applies
-    # the _leak_corr column swap and the subdir path resolution). R stays fixed.
-    cv = CosmologyValidation(
-        versions=[VERSION], catalog_config=args.cat_config, output_dir=OUTPUT_DIR
-    )
-    shear_cfg = cv.cc[VERSION]["shear"]
+    # exactly as run_2pcf.py does (applies the _leak_corr column swap and the
+    # subdir path resolution). In-container this uses CosmologyValidation; bare-
+    # host (10k-bin MPI run) it uses the standalone cat_config resolver, which is
+    # byte-identical for the shear-config fields this measurement reads.
+    if _HAVE_COSMO_VAL:
+        cv = CosmologyValidation(
+            versions=[VERSION], catalog_config=args.cat_config, output_dir=OUTPUT_DIR
+        )
+        shear_cfg = cv.cc[VERSION]["shear"]
+    else:
+        shear_cfg = resolve_shear_config(args.cat_config, VERSION)
     CAT_PATH = shear_cfg["path"]
     E1_COL = shear_cfg["e1_col"]
     E2_COL = shear_cfg["e2_col"]
@@ -239,6 +324,11 @@ def main():
     compute_patch_centers(ra, dec)
     if USE_MPI:
         comm.Barrier()
+        # Cross-node visibility: rank 0 wrote PATCH_FILE on its node, but on a
+        # multi-node allocation the other ranks' nodes may not see it yet (NFS
+        # close-to-open + negative-dir caching persists past the Barrier). Poll
+        # with a forced directory refresh until it appears before reading it.
+        _wait_for_file(PATCH_FILE)
 
     # Create TreeCorr catalog with patch centers
     log("Creating TreeCorr catalog with patches...")
