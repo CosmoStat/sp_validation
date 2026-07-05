@@ -372,7 +372,15 @@ def main():
             OUTPUT_DIR,
             f"{VERSION}_xi_minsep={TMIN}_maxsep={TMAX}_nbins={NBINS}_npatch=1.txt",
         )
-        gg.write(out_txt, write_patch_results=True, write_cov=True)
+        # Write only the main per-bin correlation. The convergence consumer
+        # (cosebis_binning_comparison.py) reads just the per-bin columns
+        # (np.loadtxt max_rows=nbins) and the 1000-bin covariance — the 10k
+        # jackknife cov is used nowhere. write_patch_results/write_cov=True
+        # serialised a 20000x20000 cov + 180 patch blocks (~10 GB) that nothing
+        # reads and also cost the estimate_cov compute; drop both. The patches
+        # still parallelise gg.process; gg.xip/gg.xim (values, FITS) are
+        # unaffected.
+        gg.write(out_txt, write_patch_results=False, write_cov=False)
         log(f"  Wrote {out_txt}")
 
         write_xi_fits(gg, "xi_plus", gg.xip)
