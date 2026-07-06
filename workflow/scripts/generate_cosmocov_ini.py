@@ -2,7 +2,7 @@
 
 CLI refactor of the former ``rule covariance_ini`` heredoc. Cosmology is read
 from the frozen ``planck18.json`` snapshot (the cosmology_snapshot lc output —
-source of truth is sp_validation.cosmology.PLANCK18); survey (area, n_eff,
+source of truth is cs_util.cosmo.PLANCK18); survey (area, n_eff,
 sigma_e) from the catalog config's per-version ``cov_th``; n(z) via the same
 path convention as workflow/common.build_redshift_path; the footprint mask
 power spectrum is passed explicitly (empty string for the unmasked variant).

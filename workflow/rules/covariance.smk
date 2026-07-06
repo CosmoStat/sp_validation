@@ -37,14 +37,14 @@ rule cosmology_params:
     """Generate cosmology parameters JSON from sp_validation.
 
     This decouples snakemake parse-time from sp_validation import.
-    Source of truth remains sp_validation.cosmology.PLANCK18.
+    Source of truth remains cs_util.cosmo.PLANCK18.
     """
     output:
         COSMOLOGY_PARAMS
     shell:
         """
         python -c "
-from sp_validation.cosmology import PLANCK18
+from cs_util.cosmo import PLANCK18
 import json
 from pathlib import Path
 
