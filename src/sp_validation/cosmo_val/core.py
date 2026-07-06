@@ -219,7 +219,7 @@ class CosmologyValidation(
         power=1 / 2,
         n_ell_bins=32,
         ell_step=10,
-        pol_factor=True,
+        pol_factor=-1,
         cell_method="map",
         noise_bias_method="analytic",
         fiducial_input_inka="coupled",
@@ -250,7 +250,10 @@ class CosmologyValidation(
         self.power = power
         self.n_ell_bins = n_ell_bins
         self.ell_step = ell_step
+
+        assert pol_factor in (-1, 1), "The polarisatio factor must be -1 or 1."
         self.pol_factor = pol_factor
+
         self.nrandom_cell = nrandom_cell
         self.cell_seed = cell_seed
         self.cell_method = cell_method

@@ -513,7 +513,8 @@ class PseudoClMixin:
 
     def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
-            isinstance(tomo_bin_a, int) and isinstance(tomo_bin_b, int)
+            isinstance(tomo_bin_a, (int, np.integer))
+            and isinstance(tomo_bin_b, (int, np.integer))
         ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
 
         params = get_params_rho_tau(self.cc[ver])
@@ -525,11 +526,11 @@ class PseudoClMixin:
         # Load data and create shear and noise maps
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-        if tomo_bin_a != "all" and tomo_bin_b != "all":
+        if tomo_bin_a == "all" and tomo_bin_b == "all":
             cat_gal_a = cat_gal
             cat_gal_b = cat_gal
         else:
-            tomo_bin_id = cat_gal[self.cc[ver]["shear"]["tomo_bin_ids"]]
+            tomo_bin_id = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]]
             mask_a = tomo_bin_id == tomo_bin_a
             mask_b = tomo_bin_id == tomo_bin_b
             cat_gal_a = cat_gal[mask_a]
@@ -600,6 +601,7 @@ class PseudoClMixin:
                 idx=idx_a,
                 idx_rep=idx_rep_a,
                 wsp=wsp,
+                n_el_bins=cl_shear.shape[1],
             )
 
             # Subtract the noise bias from the pseudo-Cl's
@@ -716,12 +718,13 @@ class PseudoClMixin:
         nside,
         cat_gal,
         n_gal_map,
+        n_ell_bins,
         unique_pix=None,
         idx=None,
         idx_rep=None,
         wsp=None,
     ):
-        cl_noise = np.zeros_like()
+        cl_noise = np.zeros_like(n_ell_bins)
         rng = np.random.default_rng(self.cell_seed)
 
         for _ in range(self.nrandom_cell):

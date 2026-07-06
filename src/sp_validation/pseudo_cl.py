@@ -696,6 +696,9 @@ def get_pseudo_cls_catalog(
 
     is_tomography = tomo_bin_a != "all" and tomo_bin_b != "all"
     if is_tomography:
+        assert params["tomo_bin_col"] is not None, (
+            "The column of tomographic bin ids is not specified."
+        )
         mask_tomo_a = catalog[params["tomo_bin_col"]] == tomo_bin_a
         mask_tomo_b = catalog[params["tomo_bin_col"]] == tomo_bin_b
         catalog_a = catalog[mask_tomo_a]
