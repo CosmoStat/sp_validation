@@ -61,7 +61,10 @@ def get_params_rho_tau(cat, survey="other"):
     params["w_col"] = cat["shear"]["w_col"]
     params["e1_col"] = cat["shear"]["e1_col"]
     params["e2_col"] = cat["shear"]["e2_col"]
-    params["tomo_bin_col"] = cat["shear"]["tomo_bin_col"]
+    try:
+        params["tomo_bin_col"] = cat["shear"]["tomo_bin_col"]
+    except KeyError:
+        params["tomo_bin_col"] = None
     params["R11"] = cat["shear"].get("R11")
     params["R22"] = cat["shear"].get("R22")
 
