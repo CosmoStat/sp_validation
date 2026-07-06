@@ -47,8 +47,8 @@ obj._params
 dat, dat_ext = obj.read_cat(load_into_memory=False)
 
 # %%
-n_test = -1
-#n_test = 100000
+#n_test = -1
+n_test = 100000
 if n_test > 0:
     print(f"MKDEBUG testing only first {n_test} objects")
     dat = dat[:n_test]
