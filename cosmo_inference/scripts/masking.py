@@ -8,6 +8,8 @@ import healpy as hp
 import numpy as np
 import yaml
 
+from sp_validation.masks import apply_condition
+
 # -------------------------
 # Spatially-structured cuts: these define the survey footprint.
 # All other cuts (FLAGS, mag, SNR, shape measurement, PSF ellipticity,
@@ -28,29 +30,6 @@ SPATIAL_CUTS = {
 
 # -------------------------
 # Masking logic
-
-
-def apply_condition(array, kind, value):
-    """
-    Apply a logical condition to a NumPy array and return a boolean mask, based
-    on the "kind" key in the mask config YAML file.
-    """
-    if kind == "equal":
-        return array == value
-    elif kind == "not_equal":
-        return array != value
-    elif kind == "greater_equal":
-        return array >= value
-    elif kind == "greater":
-        return array > value
-    elif kind == "less_equal":
-        return array <= value
-    elif kind == "less":
-        return array < value
-    elif kind == "range":
-        return (array >= value[0]) & (array <= value[1])
-    else:
-        raise ValueError(f"Unknown kind: {kind}")
 
 
 def apply_masks(data, data_ext, mask_config, footprint_only=False):
