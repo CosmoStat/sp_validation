@@ -133,7 +133,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
@@ -204,13 +203,13 @@
 </span><span id="line-7"><span class="kn">import</span><span class="w"> </span><span class="nn">colorama</span>
 </span><span id="line-8"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-9"><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
-</span><span id="line-10"><span class="kn">from</span><span class="w"> </span><span class="nn">shear_psf_leakage</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_object</span><span class="p">,</span> <span class="n">run_scale</span>
-</span><span id="line-11">
-</span><span id="line-12"><span class="kn">from</span><span class="w"> </span><span class="nn">..b_modes</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-</span><span id="line-13">    <span class="n">_get_pte_from_scale_cut</span><span class="p">,</span>
-</span><span id="line-14">    <span class="n">find_conservative_scale_cut_key</span><span class="p">,</span>
-</span><span id="line-15"><span class="p">)</span>
-</span><span id="line-16"><span class="kn">from</span><span class="w"> </span><span class="nn">..cosmology</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cosmo</span>
+</span><span id="line-10"><span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.cosmo</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_cosmo</span>
+</span><span id="line-11"><span class="kn">from</span><span class="w"> </span><span class="nn">shear_psf_leakage</span><span class="w"> </span><span class="kn">import</span> <span class="n">run_object</span><span class="p">,</span> <span class="n">run_scale</span>
+</span><span id="line-12">
+</span><span id="line-13"><span class="kn">from</span><span class="w"> </span><span class="nn">..b_modes</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-14">    <span class="n">_get_pte_from_scale_cut</span><span class="p">,</span>
+</span><span id="line-15">    <span class="n">find_conservative_scale_cut_key</span><span class="p">,</span>
+</span><span id="line-16"><span class="p">)</span>
 </span><span id="line-17"><span class="kn">from</span><span class="w"> </span><span class="nn">..statistics</span><span class="w"> </span><span class="kn">import</span> <span class="n">chi2_and_pte</span>
 </span><span id="line-18"><span class="kn">from</span><span class="w"> </span><span class="nn">.catalog_characterization</span><span class="w"> </span><span class="kn">import</span> <span class="n">CatalogCharacterizationMixin</span>
 </span><span id="line-19"><span class="kn">from</span><span class="w"> </span><span class="nn">.cosebis</span><span class="w"> </span><span class="kn">import</span> <span class="n">CosebisMixin</span>

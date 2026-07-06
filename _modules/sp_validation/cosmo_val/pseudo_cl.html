@@ -133,7 +133,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.cosmology.html">sp_validation.cosmology</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
@@ -212,8 +211,8 @@
 </span><span id="line-15"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 </span><span id="line-16"><span class="kn">import</span><span class="w"> </span><span class="nn">pymaster</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nmt</span>
 </span><span id="line-17"><span class="kn">from</span><span class="w"> </span><span class="nn">astropy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">fits</span>
-</span><span id="line-18">
-</span><span id="line-19"><span class="kn">from</span><span class="w"> </span><span class="nn">..cosmology</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_theo_c_ell</span>
+</span><span id="line-18"><span class="kn">from</span><span class="w"> </span><span class="nn">cs_util.cosmo</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_theo_c_ell</span>
+</span><span id="line-19">
 </span><span id="line-20"><span class="kn">from</span><span class="w"> </span><span class="nn">..pseudo_cl</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
 </span><span id="line-21">    <span class="n">apply_random_rotation</span><span class="p">,</span>
 </span><span id="line-22">    <span class="n">get_n_gal_map</span><span class="p">,</span>
