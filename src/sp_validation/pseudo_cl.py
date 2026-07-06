@@ -315,6 +315,219 @@ def get_noise_realisation(
     return noise_map_e1, noise_map_e2
 
 
+def get_noise_bias_from_gaussian_real(
+    ra,
+    dec,
+    e1,
+    e2,
+    w,
+    nside,
+    nrandom_cell,
+    binning,
+    ell_step=10,
+    n_ell_bins=32,
+    power=0.5,
+    unique_pix=None,
+    idx=None,
+    idx_rep=None,
+    n_gal_map=None,
+    wsp=None,
+    seed=42,
+):
+    """
+    Compute the power spectrum of the noise bias from random realisations.
+
+    Parameters
+    ----------
+    ra, dec : np.ndarray
+        Right ascension and declination of the sources.
+    e1, e2 : np.ndarray
+        Ellipticity components.
+    w : np.ndarray
+        Weights of the sources.
+    nside : int
+        HEALPix resolution.
+    nrandom_cell : int
+        Number of random cells to use for the noise estimation.
+    binning, ell_step, n_ell_bins, power : str, int, int, float
+        Binning scheme and parameters.
+    unique_pix, idx, idx_rep : np.ndarray, optional
+        Pixel indices and bookkeeping arrays. If not provided, they will be computed.
+    n_gal_map : np.ndarray, optional
+        Galaxy number density map. If not provided, it will be computed.
+
+    Returns
+    -------
+    noise_bias_cl : np.ndarray
+        Power spectrum of the noise bias.
+    """
+    lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
+
+    b = make_namaster_bin(
+        lmin,
+        lmax,
+        b_lmax,
+        binning,
+        ell_step=ell_step,
+        n_ell_bins=n_ell_bins,
+        power=power,
+    )
+
+    ell_eff = b.get_effective_ells()
+    noise_bias_cl = np.zeros_like(ell_eff)
+
+    rng = np.random.default_rng(seed)
+
+    if unique_pix is None or idx is None or idx_rep is None:
+        unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
+
+    if n_gal_map is None:
+        n_gal_map = get_n_gal_map(
+            nside, ra, dec, weights=w, unique_pix=unique_pix, idx=idx, idx_rep=idx_rep
+        )
+
+    if wsp is None:
+        _, _, wsp = get_field_and_workspace_from_map(b, mask_a=n_gal_map_a)
+
+    for _ in range(nrandom_cell):
+        noise_map_e1, noise_map_e2 = get_noise_realisation(
+            ra,
+            dec,
+            e1,
+            e2,
+            w,
+            nside,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            n_gal_map=n_gal_map,
+            rng=rng,
+        )
+
+        noise_map = noise_map_e1 + 1j * noise_map_e2
+        del noise_map_e1, noise_map_e2
+
+        _, cl_noise_, _ = get_pseudo_cls_map(
+            noise_map,
+            n_gal_map,
+            nside,
+            binning,
+            ell_step=ell_step,
+            n_ell_bins=n_ell_bins,
+            power=power,
+            wsp=wsp,
+        )
+
+        noise_bias_cl += cl_noise_
+
+    noise_bias_cl /= nrandom_cell
+
+    return noise_bias_cl
+
+
+def get_noise_bias(
+    ra,
+    dec,
+    e1,
+    e2,
+    w,
+    nside,
+    noise_bias_method,
+    binnning,
+    *,
+    ell_step=10,
+    n_ell_bins=32,
+    power=0.5,
+    nrandom_cell=100,
+    seed=42,
+):
+    """
+    Compute the noise bias from object positions and ellipticities.
+
+    Parameters
+    ----------
+    ra, dec : np.ndarray
+        Right ascension and declination of the sources.
+    e1, e2 : np.ndarray
+        Ellipticity components.
+    w : np.ndarray
+        Weights of the sources.
+    nside : int
+        HEALPix resolution.
+    noise_bias_method : {'randoms', 'analytic'}
+        Method used to estimate the noise bias.
+    binning : {'linear', 'logspace', 'powspace'}
+        Binning scheme.
+    ell_step : int, optional
+        Bin width in ell for ``'linear'`` binning.
+    n_ell_bins : int, optional
+        Number of ell bins for ``'logspace'`` / ``'powspace'`` binning.
+    power : float, optional
+        Exponent for ``'powspace'`` binning.
+
+    Returns
+    -------
+    noise_bias_cl : np.ndarray
+        Power spectrum of the noise bias.
+    """
+    assert noise_bias_method in ["randoms", "analytic"]
+
+    lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
+
+    b = make_namaster_bin(
+        lmin,
+        lmax,
+        b_lmax,
+        binning,
+        ell_step=ell_step,
+        n_ell_bins=n_ell_bins,
+        power=power,
+    )
+
+    unique_pix, idx, idx_rep = get_pixels(ra, dec, nside)
+
+    if noise_bias_method == "analytic":
+        noise_bias_cl = get_noise_bias_analytical(
+            ra,
+            dec,
+            e1,
+            e2,
+            w,
+            lmax,
+            nside,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+        )
+
+    elif noise_bias_method == "randoms":
+        noise_bias_cl = get_noise_bias_from_gaussian_real(
+            ra,
+            dec,
+            e1,
+            e2,
+            w,
+            nside,
+            nrandom_cell,
+            binning,
+            ell_step=ell_step,
+            n_ell_bins=n_ell_bins,
+            power=power,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            seed=42,
+        )
+
+        noise_bias_cl = b.unbin_cell(noise_bias_cl)
+    else:
+        raise ValueError(
+            f"Invalid noise bias method `{noise_bias_method}`. Must be 'analytic' or 'randoms'."
+        )
+
+    return noise_bias_cl
+
+
 # ---------------------- Cl computation functions ----------------------
 def get_field_and_workspace_from_map(
     b,
@@ -752,14 +965,14 @@ def get_pseudo_cls_catalog(
 
 
 # ---------------------- Covariance computation functions ----------------------
-def get_fiducial_cl(z, dndz, lmax, cosmo):
+def get_fiducial_cl(z, dndz, lmax, cosmo, backend="camb"):
     """
     Get the fiducial Cl's using the redshift distribution.
     Cosmology is determined by the input cosmo object.
     """
     ell = np.arange(1, lmax + 1)
 
-    fiducial_cl = get_theo_c_ell(ell=ell, z=z, dndz=dndz, backend="camb", cosmo=cosmo)
+    fiducial_cl = get_theo_c_ell(ell=ell, z=z, dndz=dndz, backend=backend, cosmo=cosmo)
 
     return fiducial_cl
 
