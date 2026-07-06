@@ -387,7 +387,7 @@ def get_noise_bias_from_gaussian_real(
         )
 
     if wsp is None:
-        _, _, wsp = get_field_and_workspace_from_map(b, mask_a=n_gal_map_a)
+        _, _, wsp = get_field_and_workspace_from_map(b, mask_a=n_gal_map)
 
     for _ in range(nrandom_cell):
         noise_map_e1, noise_map_e2 = get_noise_realisation(
@@ -433,7 +433,7 @@ def get_noise_bias(
     w,
     nside,
     noise_bias_method,
-    binnning,
+    binning,
     *,
     ell_step=10,
     n_ell_bins=32,

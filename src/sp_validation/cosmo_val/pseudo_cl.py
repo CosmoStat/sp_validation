@@ -40,7 +40,7 @@ class PseudoClMixin:
 
     # ---------------- Pseudo-Cl calculation methods ---------------- #
     # TODO: some cleaning to clearly separate DV, covariance, and utility functions.
-    def calculate_pseudo_cl_eb_cov(self):
+    def calculate_pseudo_cl_eb_cov(self, compute_tomography=True):
         """
         Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
         """
@@ -56,7 +56,7 @@ class PseudoClMixin:
                 self._pseudo_cls[ver] = {}
 
             if compute_tomography:
-                tom_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
                 if tomo_bin_ids is None or tomo_bin_pairs is None:
                     raise ValueError(
@@ -110,7 +110,7 @@ class PseudoClMixin:
                     f"Computing fields and workspaces for {bin_key1}, {bin_key2}"
                 )
                 lmin, lmax, b_lmax = spv_pseudo_cl.pseudo_cl_geometry(self.nside)
-                b = get_namaster_bin(lmin, lmax, b_lmax)
+                b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
                 # Get the tomographic bins
                 cat_gal_a = self._get_tomographic_bin(params, cat_gal, bin_key1)
@@ -786,7 +786,7 @@ class PseudoClMixin:
             power=self.power,
         )
 
-    def read_redshift_distribution(ver, is_tomography):
+    def read_redshift_distribution(self, ver, is_tomography):
         path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
         z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
 
@@ -796,9 +796,8 @@ class PseudoClMixin:
 
         return z, dndz
 
-    def get_fiducial_cl(ver, is_tomography):
+    def get_fiducial_cl(self, ver, is_tomography):
         lmax = 2 * self.nside
-        ell = np.arange(1, lmax + 1)
 
         z, dndz = self.read_redshift_distribution(ver, is_tomography)
 
@@ -870,9 +869,7 @@ class PseudoClMixin:
         hdu = fits.HDUList()
         for i, pa in enumerate(pols):
             for j, pb in enumerate(pols):
-                hdu.append(
-                    fits.ImageHDU(covar_22_22[:, i, :, j], name=f"COVAR_{pa}_{pb}")
-                )
+                hdu.append(fits.ImageHDU(covar[:, i, :, j], name=f"COVAR_{pa}_{pb}"))
 
         hdu.writeto(out_path, overwrite=True)
 
