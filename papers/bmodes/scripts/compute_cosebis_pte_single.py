@@ -79,11 +79,15 @@ def _compute_pair(gg, cov_path, nmodes, theta_min, theta_max):
     }
 
 
-def main(config, xi_integration, cov_integration, out_dir):
+def main(config, xi_integration, cov_integration, out_dir, version=None, blind=None):
     t_start = time.time()
     fid = config["fiducial"]
-    version = fid["version"]
-    blind = fid["blind"]
+    # Version/blind tag only the output filename + provenance record; the theta
+    # grid, nmodes and per-pair COSEBI compute are version-independent (they read
+    # from config["fiducial"]), so a sweep call over a non-fiducial catalog stays
+    # bit-identical to the fiducial call save for the xi/cov inputs and the tag.
+    version = version if version is not None else fid["version"]
+    blind = blind if blind is not None else fid["blind"]
     nmodes = int(fid["nmodes"])  # 20 for full computation
 
     min_sep_int = fid["min_sep_int"]
@@ -189,10 +193,28 @@ def _from_cli(argv=None):
         help="Fiducial 1000-bin Gaussian covariance (processed .txt)",
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--version",
+        default=None,
+        help="Catalog version tag (default: config.fiducial.version). Overridden "
+        "by the version sweep to name the non-fiducial output NPZ.",
+    )
+    ap.add_argument(
+        "--blind",
+        default=None,
+        help="Blind tag (default: config.fiducial.blind)",
+    )
     a = ap.parse_args(argv)
     with open(a.config) as f:
         config = yaml.safe_load(f)
-    main(config, a.xi_integration, a.cov_integration, a.out)
+    main(
+        config,
+        a.xi_integration,
+        a.cov_integration,
+        a.out,
+        version=a.version,
+        blind=a.blind,
+    )
 
 
 if __name__ == "__main__":

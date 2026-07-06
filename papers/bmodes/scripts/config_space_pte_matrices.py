@@ -59,14 +59,25 @@ def _path_matches_version(path, version):
 
 
 def _resolve_overrides(version, fiducial_overrides):
-    """Fiducial-provenance source paths for this version, else ``(None, None)``.
+    """lc-provenance source paths for this version, else ``(None, None)``.
 
-    Only the fiducial version is repointed to explicit lc outputs; every other
-    version keeps reading the old-tree file lists. Either element may be None.
+    The fiducial version is repointed to its explicit lc single-output paths;
+    every non-fiducial sweep version resolves its COSEBI gathered-NPZ from the
+    per-version map (``cosebis_by_version``) built off ``--cosebis-pte-dir`` when
+    that directory holds the lc cosebis_ptes sweep. This keeps the fiducial and
+    the sweep versions on the *same* gathered-NPZ provenance (adapted back to the
+    per-pair PTE matrix by ``_cosebis_matrix_from_npz``) rather than the old
+    per-pair-JSON scatter tree. Pure E/B has no such split — the sweep emits the
+    old-tree ``{ver}_{blind}_pure_eb_ptes.npz`` name, so non-fiducial versions
+    read it straight from the ``--pte-intermediate-dir`` file list (override None).
+    Either element may be None.
     """
-    if fiducial_overrides and version == fiducial_overrides["version"]:
+    if not fiducial_overrides:
+        return None, None
+    if version == fiducial_overrides.get("version"):
         return fiducial_overrides["pure_eb"], fiducial_overrides["cosebis"]
-    return None, None
+    cosebis_by_version = fiducial_overrides.get("cosebis_by_version") or {}
+    return None, cosebis_by_version.get(version)
 
 
 def _cosebis_matrix_from_npz(npz_path, nmodes):
@@ -1024,7 +1035,9 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--cosebis-pte-dir",
         required=True,
-        help="COSEBI PTE scatter tree: {version}/{blind}/pte_{i:03d}_{j:03d}.json",
+        help="COSEBI PTE source dir. lc cosebis_ptes sweep: gathered "
+        "cosebis_ptes_{version}_{blind}.npz per version (auto-detected, preferred). "
+        "Old tree fallback: {version}/{blind}/pte_{i:03d}_{j:03d}.json scatter.",
     )
     ap.add_argument("--blind", default="A", help="Fiducial blind (paper: A)")
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
@@ -1054,16 +1067,6 @@ def _from_cli(argv=None):
         ap.error(
             "--fiducial-version is required when a fiducial override path is given"
         )
-    fiducial_overrides = (
-        {
-            "version": a.fiducial_version,
-            "pure_eb": a.fiducial_pure_eb_pte_path,
-            "cosebis": a.fiducial_cosebis_pte_path,
-        }
-        if a.fiducial_version
-        else None
-    )
-
     with open(a.config) as f:
         config = yaml.safe_load(f)
 
@@ -1074,9 +1077,32 @@ def _from_cli(argv=None):
     ]
     pure_eb_pte_files = [p for p in pure_eb_pte_files if os.path.exists(p)]
 
-    cosebis_pte_files = sorted(
-        glob.glob(os.path.join(a.cosebis_pte_dir, "*", a.blind, "pte_*.json"))
+    # COSEBI provenance: prefer the lc cosebis_ptes sweep (gathered NPZ per
+    # version, same layout as the fiducial single-output) so fiducial and sweep
+    # versions share provenance; fall back to the old per-pair-JSON scatter tree.
+    cosebis_by_version = {
+        v: os.path.join(a.cosebis_pte_dir, f"cosebis_ptes_{v}_{a.blind}.npz")
+        for v in versions
+        if os.path.exists(
+            os.path.join(a.cosebis_pte_dir, f"cosebis_ptes_{v}_{a.blind}.npz")
+        )
+    }
+    cosebis_pte_files = (
+        []
+        if cosebis_by_version
+        else sorted(
+            glob.glob(os.path.join(a.cosebis_pte_dir, "*", a.blind, "pte_*.json"))
+        )
     )
+
+    fiducial_overrides = None
+    if a.fiducial_version or cosebis_by_version:
+        fiducial_overrides = {
+            "version": a.fiducial_version,
+            "pure_eb": a.fiducial_pure_eb_pte_path,
+            "cosebis": a.fiducial_cosebis_pte_path,
+            "cosebis_by_version": cosebis_by_version,
+        }
 
     main(
         config=config,
