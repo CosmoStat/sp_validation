@@ -330,6 +330,7 @@ class Sky:
                     )
 
                     catalogue = np.empty(gal_count, dtype=cat_dtype)
+                    gal_lon[gal_lon < 0] += 360
                     catalogue["RA"] = gal_lon
                     catalogue["Dec"] = gal_lat
                     catalogue["e1"] = gal_she.real
