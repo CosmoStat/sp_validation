@@ -22,7 +22,7 @@ BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
-# Source of truth: sp_validation.cosmology.PLANCK18
+# Source of truth: cs_util.cosmo.PLANCK18
 # Regenerate with: snakemake results/cosmology/planck18.json
 # Resolved relative to the run directory at configure() time.
 COSMOLOGY_PARAMS = "results/cosmology/planck18.json"

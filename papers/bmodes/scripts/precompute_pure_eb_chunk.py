@@ -79,9 +79,9 @@ def compute_chunk(
     cosmo_params=None,
 ):
     from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+    from cs_util.cosmo import PLANCK18, get_theo_xi
 
     from sp_validation.cosmo_val import CosmologyValidation
-    from sp_validation.cosmology import PLANCK18, get_theo_xi
 
     if cosmo_params is None:
         cosmo_params = dict(PLANCK18)
