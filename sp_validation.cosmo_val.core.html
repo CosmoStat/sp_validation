@@ -163,7 +163,8 @@ version creates a virtual catalog using leakage-corrected ellipticity columns
 (e1_col_corrected/e2_col_corrected) from the base version configuration.</p></li>
 <li><p><strong>catalog_config</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>default './cat_config.yaml'</em>) – Path to catalog configuration YAML defining survey metadata, file paths,
 and analysis settings for each version.</p></li>
-<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Override for output directory. If None, uses catalog config’s paths.output.</p></li>
+<li><p><strong>output_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Override for output directory. If None, falls back to the COSMO_VAL
+environment variable, then to the catalog config’s paths.output.</p></li>
 <li><p><strong>rho_tau_method</strong> (<em>{'lsq'</em><em>, </em><em>'mcmc'}</em><em>, </em><em>default 'lsq'</em>) – Fitting method for PSF leakage systematics parameters.</p></li>
 <li><p><strong>cov_estimate_method</strong> (<em>{'th'</em><em>, </em><em>'jk'}</em><em>, </em><em>default 'th'</em>) – Covariance estimation: ‘th’ for semi-analytic theory, ‘jk’ for jackknife.</p></li>
 <li><p><strong>compute_cov_rho</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default True</em>) – Whether to compute covariance for rho statistics during PSF analysis.</p></li>
@@ -459,7 +460,7 @@ fiducial scale cut. Statistics that haven’t been computed show ‘–‘.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 03 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 06 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
