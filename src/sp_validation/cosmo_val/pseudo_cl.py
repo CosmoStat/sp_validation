@@ -27,9 +27,10 @@ class PseudoClMixin:
     def pseudo_cls(self):
         if not hasattr(self, "_pseudo_cls"):
             self.calculate_pseudo_cl(compute_tomography=False)
-            self.calculate_pseudo_cl_eb_cov(compute_tomography=False)
+            self.calculate_pseudo_cl_inka_cov(compute_tomography=False)
             if self.compute_tomography:
-                self.calculate_pseudo_cl_tomo(compute_tomography=True)
+                self.calculate_pseudo_cl(compute_tomography=True)
+                self.calculate_pseudo_cl_inka_cov(compute_tomography=True)
         return self._pseudo_cls
 
     @property
@@ -40,7 +41,7 @@ class PseudoClMixin:
 
     # ---------------- Pseudo-Cl calculation methods ---------------- #
     # TODO: some cleaning to clearly separate DV, covariance, and utility functions.
-    def calculate_pseudo_cl_eb_cov(self, compute_tomography=True):
+    def calculate_pseudo_cl_inka_cov(self, compute_tomography=True):
         """
         Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
         """
@@ -89,7 +90,7 @@ class PseudoClMixin:
                     noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
 
                 else:
-                    noise_bias_cl = np.zeros_like((4, 2 * nside))
+                    noise_bias_cl = np.zeros((4, 2 * nside))
 
                 # Update the fiducial_cl dictionnary
                 fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = (
@@ -131,18 +132,16 @@ class PseudoClMixin:
                 # Get the shear maps
                 shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
                     params,
-                    nside,
-                    cat_gal_a,
                     self.nside,
+                    cat_gal_a,
                     unique_pix=unique_pix_a,
                     idx=idx_a,
                     idx_rep=idx_rep_a,
                 )
                 shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
                     params,
-                    nside,
-                    cat_gal_b,
                     self.nside,
+                    cat_gal_b,
                     unique_pix=unique_pix_b,
                     idx=idx_b,
                     idx_rep=idx_rep_b,
@@ -162,17 +161,15 @@ class PseudoClMixin:
                 )
 
                 # Save in the dictionnaries
-                if not hasattr(n_gal_map_dict, f"W{bin_key1}"):
+                if not f"W{bin_key1}" not in n_gal_map_dict:
                     n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
-                if not hasattr(n_gal_map_dict, f"W{bin_key2}"):
+                if f"W{bin_key2}" not in n_gal_map_dict:
                     n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
-                if not hasattr(field_dict, f"W{bin_key1}"):
+                if f"W{bin_key1}" not in field_dict:
                     field_dict[f"W{bin_key1}"] = field_a
-                if not hasattr(field_dict, f"W{bin_key2}"):
+                if f"W{bin_key2}" not in field_dict:
                     field_dict[f"W{bin_key2}"] = field_b
-                if bin_key1 <= bin_key2 and not hasattr(
-                    wsp_dict, f"W{bin_key1}xW{bin_key2}"
-                ):
+                if bin_key1 <= bin_key2 and f"W{bin_key1}xW{bin_key2}" not in wsp_dict:
                     wsp_dict[f"W{bin_key1}xW{bin_key2}"] = wsp
 
             for bin_key1, bin_key2 in tomo_bin_pairs:
@@ -237,9 +234,9 @@ class PseudoClMixin:
 
                 self.print_cyan("Saving Pseudo-Cl covariance")
 
-                self._pseudo_cls[ver]["cov"] = self._save_iNKA_covariance(
-                    covar_22_22, out_path
-                )
+                self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
+                    "cov"
+                ] = self._save_iNKA_covariance(covar_22_22, out_path)
 
         self.print_done("Done Pseudo-Cl covariance")
 
@@ -533,6 +530,7 @@ class PseudoClMixin:
 
         # Create shear maps for each tomographic bin
         shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+            params,
             nside,
             cat_gal_a,
             unique_pix=unique_pix_a,
@@ -544,6 +542,7 @@ class PseudoClMixin:
         del shear_map_a_e1, shear_map_a_e2
 
         shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+            params,
             nside,
             cat_gal_b,
             unique_pix=unique_pix_b,
@@ -556,7 +555,7 @@ class PseudoClMixin:
 
         # Compute the pseudo-Cl's
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(
-            shear_map_a, n_gal_map_a, shear_map_b=shear_map_b, n_gal_map_b=n_gal_map_b
+            shear_map_a, n_gal_map_a, shear_map_b=shear_map_b, mask_b=n_gal_map_b
         )
 
         # Remove the noise bias for auto-correlations.
@@ -640,7 +639,14 @@ class PseudoClMixin:
         )
 
     def get_shear_map(
-        self, params, nside, cat_gal, unique_pix=None, idx=None, idx_rep=None
+        self,
+        params,
+        nside,
+        cat_gal,
+        unique_pix=None,
+        idx=None,
+        idx_rep=None,
+        n_gal_map=None,
     ):
         """Weighted shear map (thin wrapper -> primitive)."""
         return spv_pseudo_cl.get_shear_map(
@@ -653,6 +659,7 @@ class PseudoClMixin:
             unique_pix=unique_pix,
             idx=idx,
             idx_rep=idx_rep,
+            n_gal_map=n_gal_map,
         )
 
     def get_noise_realisation(
@@ -676,7 +683,7 @@ class PseudoClMixin:
             cat_gal[params["e2_col"]],
             cat_gal[params["w_col"]],
             nside,
-            n_gal=n_gal,
+            n_gal_map=n_gal,
             unique_pix=unique_pix,
             idx=idx,
             idx_rep=idx_rep,
@@ -860,7 +867,7 @@ class PseudoClMixin:
 
         cell_hdu.writeto(out_path, overwrite=True)
 
-    def _save_iNKA_covariance(covar, out_path):
+    def _save_iNKA_covariance(self, covar, out_path):
         # covar_22_22 is indexed [ell, pol_a, ell, pol_b]; store each of the
         # 16 EE/EB/BE/BB cross-blocks as a named HDU (row-major pol order).
         # Append rather than construct from a list so astropy promotes the

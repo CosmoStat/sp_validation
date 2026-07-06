@@ -374,7 +374,7 @@ def get_noise_bias_from_gaussian_real(
     )
 
     ell_eff = b.get_effective_ells()
-    noise_bias_cl = np.zeros_like(ell_eff)
+    noise_bias_cl = np.zeros((4, ell_eff.size))
 
     rng = np.random.default_rng(seed)
 
@@ -464,13 +464,18 @@ def get_noise_bias(
         Number of ell bins for ``'logspace'`` / ``'powspace'`` binning.
     power : float, optional
         Exponent for ``'powspace'`` binning.
+    nrandom_cell : int, optional
+        Number of random cells to use for the noise estimation. (only for the `randoms` method)
+    seed : int, optional
+        Random seed for reproducibility. (only for the `randoms` method)
 
     Returns
     -------
     noise_bias_cl : np.ndarray
         Power spectrum of the noise bias.
     """
-    assert noise_bias_method in ["randoms", "analytic"]
+    if noise_bias_method not in ["randoms", "analytic"]:
+        raise ValueError("noise_bias_method must be 'randoms' or 'analytic'")
 
     lmin, lmax, b_lmax = pseudo_cl_geometry(nside)
 
@@ -516,7 +521,7 @@ def get_noise_bias(
             unique_pix=unique_pix,
             idx=idx,
             idx_rep=idx_rep,
-            seed=42,
+            seed=seed,
         )
 
         noise_bias_cl = b.unbin_cell(noise_bias_cl)

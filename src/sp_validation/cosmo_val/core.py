@@ -656,12 +656,12 @@ class CosmologyValidation(
         tomo_bin_pairs : list of tuples or None
             List of unique pairs of tomographic bin IDs (including self-pairs) for the version, or None if no tomography is available
         """
-        if "tomo_bin_ids" in self.cc[version]["shear"]:
+        if "tomo_bin_col" in self.cc[version]["shear"]:
             self.print_cyan(
                 f"Extracting tomography information from version {version}."
             )
             cat_gal = fits.getdata(self.cc[version]["shear"]["path"])
-            tomo_bin = cat_gal[self.cc[version]["shear"]["tomo_bin_ids"]]
+            tomo_bin = cat_gal[self.cc[version]["shear"]["tomo_bin_col"]]
             tomo_bin_ids = np.unique(tomo_bin)
             tomo_bin_ids = tomo_bin_ids[
                 tomo_bin_ids > 0
