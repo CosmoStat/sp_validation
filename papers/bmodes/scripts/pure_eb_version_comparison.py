@@ -6,6 +6,7 @@ Bottom row: xi_B +/- normalized by error (B / sigma)
 Data outside fiducial scale cuts shown greyed out.
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -241,21 +242,39 @@ def _create_version_comparison_figure(
     return fig
 
 
-def main():
-    config = snakemake.config
-    version_labels = snakemake.params.version_labels
-    # Version list: from params if provided (ecut comparison), else from config
-    versions = getattr(snakemake.params, "versions", None)
-    if versions is None:
-        versions = [v for v in config["versions"] if "_leak_corr" in v]
-    fiducial_version = config["fiducial"]["version"]
+def _pure_eb_npz(results_dir, ver, blind):
+    return f"{results_dir}/{ver}_{blind}_pure_eb_semianalytic.npz"
+
+
+def main(
+    config,
+    results_dir,
+    out_dir,
+    specs=(),
+    fiducial_version=None,
+    fiducial_pure_eb_data=None,
+):
     plotting_config = config["plotting"]
+    version_labels = plotting_config["version_labels"]
+    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
+    blind = config["fiducial"]["blind"]
+
+    # Fiducial version whose NPZ may be overridden with an explicit lc path
+    fiducial_version = fiducial_version or config["fiducial"]["version"]
+
+    # Per-version pure E/B NPZ paths reconstructed from the results dir, with an
+    # explicit-path override for the fiducial version when provided.
+    data_paths = [
+        fiducial_pure_eb_data
+        if v == fiducial_version and fiducial_pure_eb_data
+        else _pure_eb_npz(results_dir, v, blind)
+        for v in versions
+    ]
 
     # Which version gets the fiducial reference line in boxes
-    fiducial_for_comparison = getattr(
-        snakemake.params,
-        "fiducial_for_comparison",
-        plotting_config.get("fiducial_for_comparison", fiducial_version),
+    fiducial_for_comparison = plotting_config.get(
+        "fiducial_for_comparison", fiducial_version
     )
 
     # Tighter x-offsets for pure E/B (log scale, many bins)
@@ -291,12 +310,7 @@ def main():
     # Load data for all versions
     datasets = []
 
-    for i, (version, data_path) in enumerate(
-        zip(
-            versions,
-            snakemake.input["pure_eb_data"],
-        )
-    ):
+    for i, (version, data_path) in enumerate(zip(versions, data_paths)):
         if has_ecut:
             parent = version.split("_ecut")[0].replace("_leak_corr", "")
             color = parent_color_map[parent]
@@ -389,7 +403,7 @@ def main():
         )
 
     # Create output directory
-    output_dir = Path(snakemake.output["evidence"]).parent
+    output_dir = Path(out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate figure
@@ -406,17 +420,11 @@ def main():
     fig.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
 
-    # Copy to paper figures
-    if "paper_figure" in snakemake.output.keys():
-        paper_path = Path(snakemake.output["paper_figure"])
-        paper_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(paper_path, bbox_inches="tight")
-        print(f"Saved {paper_path}")
+    paper_path = output_dir / "pure_eb_versions.pdf"
+    fig.savefig(paper_path, bbox_inches="tight")
+    print(f"Saved {paper_path}")
 
     plt.close(fig)
-
-    # Write evidence
-    spec_paths = snakemake.input["specs"]
 
     # Build flat evidence dict
     evidence_versions = {}
@@ -441,7 +449,7 @@ def main():
 
     evidence_data = {
         "spec_id": "pure_eb_version_comparison",
-        "spec_path": spec_paths[0],
+        **({"spec_path": specs[0]} if specs else {}),
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": {k: list(v) for k, v in scale_cuts.items()},
@@ -450,11 +458,58 @@ def main():
         "output": {"figure": fig_name},
     }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = output_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="Pure E/B ξ±^B version-comparison figure (4 leak-corrected catalogs)."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--results-dir",
+        required=True,
+        help="Directory holding per-version "
+        "<version>_<blind>_pure_eb_semianalytic.npz files",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--specs",
+        nargs="*",
+        default=[],
+        help="Optional spec markdown paths recorded in evidence.json for provenance",
+    )
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help="Version whose NPZ may be overridden by --fiducial-pure-eb-data "
+        "(default: config['fiducial']['version'])",
+    )
+    ap.add_argument(
+        "--fiducial-pure-eb-data",
+        default=None,
+        help="Explicit path to the fiducial version's pure E/B NPZ (e.g. lc "
+        "output), overriding the reconstructed results-dir path",
+    )
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(
+        config,
+        a.results_dir,
+        a.out,
+        specs=a.specs,
+        fiducial_version=a.fiducial_version,
+        fiducial_pure_eb_data=a.fiducial_pure_eb_data,
+    )
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()

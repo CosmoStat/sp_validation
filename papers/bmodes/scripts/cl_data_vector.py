@@ -8,6 +8,7 @@ Produces 9 figures:
 - figure_v{X.Y.Z}_uncorrected.png: version X.Y.Z, uncorrected, with title
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -156,43 +157,87 @@ def _create_cl_figure(
     return fig
 
 
-def main():
-    config = snakemake.config
+# ---------------------------------------------------------------------------
+# Canonical per-version file paths (COSMO_VAL results tree). The DAG read these
+# via _pseudo_cl_path() in claims.smk; the CLI reconstructs them from --results-dir
+# so the version sweep is self-contained (lc produces only the fiducial version).
+# ---------------------------------------------------------------------------
+def _pseudo_cl(results_dir, ver, blind="A", nbins=32):
+    return f"{results_dir}/pseudo_cl_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
+
+
+def _pseudo_cl_cov(results_dir, ver, blind="A", nbins=32):
+    return (
+        f"{results_dir}/pseudo_cl_cov_{ver}_blind={blind}_powspace_nbins={nbins}.fits"
+    )
+
+
+def _resolve_pseudo_cl_paths(
+    results_dir,
+    ver,
+    fiducial_version=None,
+    fiducial_pseudo_cl_path=None,
+    fiducial_pseudo_cl_cov_path=None,
+    blind="A",
+    nbins=32,
+):
+    """Resolve the pseudo-Cl and covariance paths for one version in the sweep.
+
+    Every version is read from the reconstructed COSMO_VAL pattern, except the
+    fiducial version when explicit override paths are supplied: the lc-produced
+    fiducial FITS files are named `pseudo_cl_{version}.fits` /
+    `pseudo_cl_cov_{version}.fits` (no blind=/nbins= tokens), so pattern
+    reconstruction can't find them and an explicit path is required instead.
+    """
+    if (
+        ver == fiducial_version
+        and fiducial_pseudo_cl_path
+        and fiducial_pseudo_cl_cov_path
+    ):
+        return fiducial_pseudo_cl_path, fiducial_pseudo_cl_cov_path
+    return (
+        _pseudo_cl(results_dir, ver, blind, nbins),
+        _pseudo_cl_cov(results_dir, ver, blind, nbins),
+    )
+
+
+def main(
+    config,
+    results_dir,
+    out_dir,
+    fiducial_version=None,
+    fiducial_pseudo_cl_path=None,
+    fiducial_pseudo_cl_cov_path=None,
+):
     version = config["fiducial"]["version"]
     version_labels = config["plotting"]["version_labels"]
-    ell_min_cut = int(snakemake.params.ell_min_cut)
-    ell_max_cut = int(snakemake.params.ell_max_cut)
+    ell_min_cut = int(config["cl"]["fiducial_ell_min"])
+    ell_max_cut = int(config["cl"]["fiducial_ell_max"])
 
-    # Build input path lookup from snakemake inputs
-    cl_paths = {
-        k: v
-        for k, v in snakemake.input.items()
-        if k.startswith("pseudo_cl_") and not k.startswith("pseudo_cl_cov")
-    }
-    cov_paths = {
-        k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_cov_")
-    }
-
-    # Create output directory
-    output_dir = Path(snakemake.output["evidence"]).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     # Track generated artifacts
     output = {}
 
     # Generate all 9 figures
     for fig_spec in iter_version_figures(version_labels, version):
-        # Determine which input keys to use
-        if fig_spec["leak_corrected"]:
-            cl_key = f"pseudo_cl_{fig_spec['version_leak_corr']}"
-            cov_key = f"pseudo_cl_cov_{fig_spec['version_leak_corr']}"
-        else:
-            cl_key = f"pseudo_cl_{fig_spec['version_uncorr']}"
-            cov_key = f"pseudo_cl_cov_{fig_spec['version_uncorr']}"
+        ver = (
+            fig_spec["version_leak_corr"]
+            if fig_spec["leak_corrected"]
+            else fig_spec["version_uncorr"]
+        )
 
         # Load data
+        pseudo_cl_path, pseudo_cl_cov_path = _resolve_pseudo_cl_paths(
+            results_dir,
+            ver,
+            fiducial_version,
+            fiducial_pseudo_cl_path,
+            fiducial_pseudo_cl_cov_path,
+        )
         ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
-            cl_paths[cl_key], cov_paths[cov_key]
+            pseudo_cl_path, pseudo_cl_cov_path
         )
 
         # Create figure with appropriate title
@@ -208,7 +253,7 @@ def main():
         )
 
         # Save figure
-        fig_path = output_dir / fig_spec["filename"]
+        fig_path = out_dir / fig_spec["filename"]
         fig.savefig(fig_path, dpi=300, bbox_inches="tight")
         print(f"Saved {fig_path}")
         plt.close(fig)
@@ -216,16 +261,22 @@ def main():
         # Track artifact
         output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
 
-        # Copy paper figure to paper figures directory
-        if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
-            paper_path = Path(snakemake.output["paper_figure"])
-            paper_path.parent.mkdir(parents=True, exist_ok=True)
+        # Paper figure into the lc output directory
+        if fig_spec["is_paper_figure"]:
+            paper_path = out_dir / "cl_data_vector.pdf"
             fig.savefig(paper_path, bbox_inches="tight")
             print(f"Saved {paper_path}")
 
     # Compute PTEs for evidence (fiducial version, leak-corrected only)
+    pseudo_cl_path, pseudo_cl_cov_path = _resolve_pseudo_cl_paths(
+        results_dir,
+        version,
+        fiducial_version,
+        fiducial_pseudo_cl_path,
+        fiducial_pseudo_cl_cov_path,
+    )
     ell, cl_bb, cl_eb, cov_bb, cov_eb, sigma_bb, sigma_eb = _load_pseudo_cl_data(
-        cl_paths[f"pseudo_cl_{version}"], cov_paths[f"pseudo_cl_cov_{version}"]
+        pseudo_cl_path, pseudo_cl_cov_path
     )
 
     # Compute PTEs (null tests) using full ell range
@@ -240,12 +291,8 @@ def main():
         cl_bb, cov_bb, ell, ell_min_cut, ell_max_cut
     )
 
-    # Build evidence (based on leak-corrected fiducial data only)
-    spec_paths = snakemake.input["specs"]
-
     evidence_data = {
         "spec_id": "cl_data_vector",
-        "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             # Full range PTEs
@@ -268,11 +315,64 @@ def main():
         "output": output,
     }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = out_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="Harmonic-space Cl^BB/Cl^EB data vector figures (paper Fig 4 + 9-figure set)."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--results-dir",
+        required=True,
+        help="COSMO_VAL output dir with per-version pseudo_cl_* / pseudo_cl_cov_* FITS",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help=(
+            "Version string whose pseudo-Cl inputs should be read from explicit "
+            "override paths instead of the reconstructed COSMO_VAL pattern "
+            "(e.g. SP_v1.4.6.3_leak_corr)."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial version's pseudo-Cl FITS (lc output). "
+            "Requires --fiducial-version and --fiducial-pseudo-cl-cov-path."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-cov-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial version's pseudo-Cl covariance FITS "
+            "(lc output). Requires --fiducial-version and --fiducial-pseudo-cl-path."
+        ),
+    )
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(
+        config,
+        a.results_dir,
+        a.out,
+        fiducial_version=a.fiducial_version,
+        fiducial_pseudo_cl_path=a.fiducial_pseudo_cl_path,
+        fiducial_pseudo_cl_cov_path=a.fiducial_pseudo_cl_cov_path,
+    )
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()
