@@ -90,8 +90,9 @@ def plot_response(cats, out_dir, nbins=50):
     fig, axs = plt.subplots(2, 2, figsize=(12, 10))
     for ax, col in zip(axs.flat, cols):
         for name, d in cats.items():
-            ax.hist(d[col], bins=nbins, density=True,
+            ax.hist(d[col], bins=nbins, range=(-1, 2), density=True,
                     histtype="step", label=name, color=COLORS[name])
+        ax.set_xlim(-1, 2)
         ax.set_xlabel(col)
         ax.set_ylabel("normalised count")
         ax.legend(fontsize=7)
@@ -137,7 +138,7 @@ def main():
     with open(args.config) as f:
         config = yaml.safe_load(f)
 
-    grids_dir = config["grids_dir"]
+    grids_dir = config["base"]
     num       = config["num"]
     cat_name  = config.get("catalog_name", "shape_catalog_cut_ngmix.fits")
     out_dir   = config.get("diagnostics_dir", f"{grids_dir}/diagnostics")

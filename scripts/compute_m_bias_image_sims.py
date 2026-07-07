@@ -180,14 +180,14 @@ def main():
         config = yaml.safe_load(f)
 
     print(f"Config: {args.config}")
-    print(f"Grids : {config['grids_dir']}")
+    print(f"Grids : {config['base']}")
     print(f"Run   : grid_{config['num']}")
     print(f"g_in  : ±{config['shear_amplitude']}")
     print()
 
     # Auto-detect n_tiles if --cumulative
     if args.cumulative and not args.n_tiles:
-        n_tiles = get_n_tiles(config['grids_dir'], config['num'])
+        n_tiles = get_n_tiles(config['base'], config['num'])
         if n_tiles:
             args.n_tiles = n_tiles
             print(f"Auto-detected {n_tiles} tiles")
@@ -196,6 +196,9 @@ def main():
 
     print("Loading catalogues...")
     mb.load_catalogs(verbose=args.verbose)
+
+    if args.verbose:
+        mb.print_mean_ellipticities()
 
     results = mb.run(verbose=True)
 
@@ -211,7 +214,10 @@ def main():
 
     # Cumulative tracking
     if args.cumulative:
-        results_dir = config.get("diagnostics_dir", config.get("results_dir", "results"))
+        results_dir = config.get(
+            "diagnostics_dir",
+            config.get("results_dir", os.path.join(config["base"], "results")),
+        )
         os.makedirs(results_dir, exist_ok=True)
     else:
         results_dir = None

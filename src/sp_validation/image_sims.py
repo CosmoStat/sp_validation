@@ -39,11 +39,14 @@ class ImageSimMBias:
     ----------
     config : dict
         Configuration dictionary with keys:
-        - grids_dir : str, path to the grids directory
+        - base : str, path to the grids base directory
         - num : int, run number (e.g. 2 for *_grid_2)
         - catalog_name : str, filename of the cut catalogue
+          (default 'shape_catalog_cut_ngmix.fits')
         - shear_amplitude : float, input shear |g| (e.g. 0.02)
         - match_radius_deg : float, matching radius in degrees
+        - pair_match : bool, match objects between sheared catalogues
+          (default True); if False, use all objects of each catalogue
         - w_col : str, weight column name (default 'w_des')
         - n_bootstrap : int, number of bootstrap resamples for errors
     """
@@ -52,15 +55,16 @@ class ImageSimMBias:
         self.cfg = config
         self.g_in = config["shear_amplitude"]
         self.thresh = config.get("match_radius_deg", 0.0002)
+        self.pair_match = config.get("pair_match", True)
         self.w_col = config.get("w_col", "w_des")
         self.n_boot = config.get("n_bootstrap", 500)
         self.cats = {}
 
     def load_catalogs(self, verbose=True):
         """Load the 4 sheared catalogues (1p2z, 1m2z, 1z2p, 1z2m)."""
-        grids_dir = self.cfg["grids_dir"]
+        grids_dir = self.cfg["base"]
         num = self.cfg["num"]
-        cat_name = self.cfg["catalog_name"]
+        cat_name = self.cfg.get("catalog_name", "shape_catalog_cut_ngmix.fits")
         sim_names = ["1p2z", "1m2z", "1z2p", "1z2m"]
 
         for name in sim_names:
@@ -71,18 +75,34 @@ class ImageSimMBias:
             if verbose:
                 print(f"    {len(self.cats[name]['ra'])} objects")
 
+    def print_mean_ellipticities(self):
+        """Print weighted mean e1, e2 for each sheared catalogue, as check."""
+        print("\nMean weighted ellipticities (all objects):")
+        for name, cat in self.cats.items():
+            mean_e1 = np.average(cat["e1"], weights=cat["w"])
+            mean_e2 = np.average(cat["e2"], weights=cat["w"])
+            print(f"  {name}:  <e1> = {mean_e1:+.5f}   <e2> = {mean_e2:+.5f}")
+
     def _m_c_pair(self, name_p, name_m, comp, verbose=True):
         """Compute m and c for one shear pair and component (0=g1, 1=g2)."""
         e_key = f"e{comp + 1}"
 
-        idx_p, idx_m = match_catalogs_radec(
-            self.cats[name_p]["ra"], self.cats[name_p]["dec"],
-            self.cats[name_m]["ra"], self.cats[name_m]["dec"],
-            thresh_deg=self.thresh,
-        )
-
-        if verbose:
-            print(f"  {name_p}: {len(idx_p)} matched  |  {name_m}: {len(idx_m)} matched")
+        if self.pair_match:
+            idx_p, idx_m = match_catalogs_radec(
+                self.cats[name_p]["ra"], self.cats[name_p]["dec"],
+                self.cats[name_m]["ra"], self.cats[name_m]["dec"],
+                thresh_deg=self.thresh,
+            )
+            if verbose:
+                print(f"  {name_p}: {len(idx_p)} matched  |  {name_m}: {len(idx_m)} matched")
+        else:
+            idx_p = slice(None)
+            idx_m = slice(None)
+            if verbose:
+                print(
+                    f"  no pair-matching: {name_p}: {len(self.cats[name_p][e_key])}"
+                    f"  |  {name_m}: {len(self.cats[name_m][e_key])} objects"
+                )
 
         e_p = self.cats[name_p][e_key][idx_p]
         w_p = self.cats[name_p]["w"][idx_p]
