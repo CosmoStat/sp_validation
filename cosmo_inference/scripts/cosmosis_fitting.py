@@ -617,7 +617,7 @@ Example for glass mock v0 (mock data):
     parser.add_argument(
         "--template-dir",
         type=str,
-        default=str(cosmo_inference_root / "cosmosis_config"  / "templates" ),
+        default=str(cosmo_inference_root / "cosmosis_config" / "templates"),
         help=(
             "Directory containing CosmoSIS template INI files (defaults to the "
             "cosmosis_config folder next to this script)."
