@@ -399,8 +399,8 @@ def _generate_ini_file(
     modifications.append((r"^\[output\]", output_section))
 
     pipeline_section = (
-        f"[pipeline]\nvalues = cosmosis_config/{values_file}\npriors = "
-        f"cosmosis_config/{priors_file}"
+        f"[pipeline]\nvalues = cosmosis_config/templates/{values_file}\npriors = "
+        f"cosmosis_config/templates/{priors_file}"
     )
     modifications.append((r"^\[pipeline\]", pipeline_section))
 
@@ -617,7 +617,7 @@ Example for glass mock v0 (mock data):
     parser.add_argument(
         "--template-dir",
         type=str,
-        default=str(cosmo_inference_root / "cosmosis_config"),
+        default=str(cosmo_inference_root / "cosmosis_config"  / "templates" ),
         help=(
             "Directory containing CosmoSIS template INI files (defaults to the "
             "cosmosis_config folder next to this script)."
@@ -636,7 +636,7 @@ if __name__ == "__main__":
         template_dir_path = Path(args.template_dir).expanduser().resolve()
         output_basename_path = Path(output_basename)
         data_dir_root = output_root_path / "data" / output_basename_path
-        config_dir_root = output_root_path / "cosmosis_config"
+        config_dir_root = output_root_path / "cosmosis_config" / "output"
         data_dir_root.mkdir(parents=True, exist_ok=True)
         config_dir_root.mkdir(parents=True, exist_ok=True)
         out_file_path = data_dir_root / f"cosmosis_{args.cosmosis_root}.fits"
