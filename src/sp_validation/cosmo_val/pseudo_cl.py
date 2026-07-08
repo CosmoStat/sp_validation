@@ -8,6 +8,7 @@ on pymaster (NaMaster), healpy, and OneCovariance.
 """
 
 import configparser
+import itertools
 import os
 
 import healpy as hp
@@ -53,8 +54,22 @@ class PseudoClMixin:
         for ver in self.versions:
             self.print_magenta(ver)
 
+            out_dir_block = self._output_path(f"pseudo_cl/iNKA_block_{ver}/")
+            os.makedirs(out_dir_block, exist_ok=True)
+
             if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
+
+            out_path_merged = self._output_path_pseudo_cl_cov(
+                ver, "iNKA", tomography=compute_tomography
+            )
+
+            if os.path.exists(out_path_merged) and not self.force_run:
+                self.print_done(
+                    f"Skipping Pseudo-Cl iNKA covariance calculation, {out_path_merged} exists"
+                )
+                self._pseudo_cls[ver]["cov_iNKA"] = fits.open(out_path_merged)
+                continue
 
             if compute_tomography:
                 tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
@@ -79,6 +94,7 @@ class PseudoClMixin:
             self.print_cyan(
                 "Estimating and adding the noise bias to the fiducial power spectra"
             )
+            self.print_cyan(f"Method used: {self.noise_bias_method}")
 
             params = get_params_rho_tau(self.cc[ver])
             cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
@@ -172,10 +188,10 @@ class PseudoClMixin:
                 if bin_key1 <= bin_key2 and f"W{bin_key1}xW{bin_key2}" not in wsp_dict:
                     wsp_dict[f"W{bin_key1}xW{bin_key2}"] = wsp
 
-            for bin_key1, bin_key2 in tomo_bin_pairs:
+            if self.fiducial_input_inka == "coupled":
                 # Couple the cell if required
-                if self.fiducial_input_inka == "coupled":
-                    self.print_cyan("Coupling the fiducial Cls.")
+                self.print_cyan("Coupling the fiducial Cls.")
+                for bin_key1, bin_key2 in tomo_bin_pairs:
                     # Get the wsp object
                     n_gal_map_a = n_gal_map_dict[f"W{bin_key1}"]
                     n_gal_map_b = n_gal_map_dict[f"W{bin_key2}"]
@@ -191,53 +207,118 @@ class PseudoClMixin:
                         n_gal_map_a * n_gal_map_b
                     )  # couple and divide by the product of the mask
 
+            # To compute all the blocks in the covariance,
+            # we must compute all the (i, j, k, l) bin combinations
+            # Or equivalently, compute the covariance for all spectra pairs
+            n_spectra = len(tomo_bin_pairs)
+
+            # indices into tomo_bin_pairs for all unique covariance blocks
+            block_indices = list(
+                itertools.combinations_with_replacement(range(n_spectra), 2)
+            )
             # Loop on the different tomographic bin pairs to compute the covariance
-            for bin_key1, bin_key2 in tomo_bin_pairs:
-                self.print_cyan(f"Tomo Bin Pair: ({bin_key1}, {bin_key2})")
+            for index_a, index_b in block_indices:
+                bin_key_a1, bin_key_a2 = tomo_bin_pairs[index_a]
+                bin_key_b1, bin_key_b2 = tomo_bin_pairs[index_b]
+                self.print_cyan(
+                    f"Tomo Bin Quad: ({bin_key_a1}, {bin_key_a2}, {bin_key_b1}, {bin_key_b2})"
+                )
 
                 if (
-                    f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
+                    f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
                     not in self._pseudo_cls[ver].keys()
                 ):
                     self._pseudo_cls[ver][
-                        f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
+                        f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
                     ] = {}
 
-                out_path = self._output_path_pseudo_cl_cov(
-                    ver, "iNKA", tomo_bin_pair=(bin_key1, bin_key2)
+                if (
+                    bin_key_a1 == bin_key_b1
+                    and bin_key_a2 == bin_key_b2
+                    and (
+                        f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                        not in self._pseudo_cls[ver].keys()
+                    )
+                ):
+                    self._pseudo_cls[ver][
+                        f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                    ] = {}
+
+                out_path = self._output_path_iNKA_block_cov(
+                    ver, tomo_bin_quad=(bin_key_a1, bin_key_a2, bin_key_b1, bin_key_b2)
                 )
 
                 if os.path.exists(out_path) and not self.force_run:
                     self.print_done(
-                        f"Skipping Pseudo-Cl covariance calculation, {out_path} exists"
+                        f"Skipping Pseudo-Cl covariance block Cl ({bin_key_a1, bin_key_a2}), Cl ({bin_key_b1, bin_key_b2}) calculation, {out_path} exists"
                     )
-                    self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
-                        "cov"
+
+                    self._pseudo_cls[ver][
+                        f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
                     ] = fits.open(out_path)
+
+                    if bin_key_a1 == bin_key_b1 and bin_key_a2 == bin_key_b2:
+                        self._pseudo_cls[ver][
+                            f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                        ]["cov"] = fits.open(out_path)
+
                     continue
 
                 self.print_cyan("Computing the Pseudo-Cl covariance")
 
+                input_cl_a1_b1 = (
+                    fiducial_cl[f"W{bin_key_a1}xW{bin_key_b1}"]
+                    if bin_key_a1 <= bin_key_b1
+                    else fiducial_cl[f"W{bin_key_b1}xW{bin_key_a1}"]
+                )
+                input_cl_a1_b2 = (
+                    fiducial_cl[f"W{bin_key_a1}xW{bin_key_b2}"]
+                    if bin_key_a1 <= bin_key_a2
+                    else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a1}"]
+                )
+                input_cl_a2_b1 = (
+                    fiducial_cl[f"W{bin_key_a2}xW{bin_key_b1}"]
+                    if bin_key_a2 <= bin_key_b1
+                    else fiducial_cl[f"W{bin_key_b1}xW{bin_key_a2}"]
+                )
+                input_cl_a2_b2 = (
+                    fiducial_cl[f"W{bin_key_a2}xW{bin_key_b2}"]
+                    if bin_key_a2 <= bin_key_b2
+                    else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a2}"]
+                )
+
                 covar_22_22 = spv_pseudo_cl.get_pseudo_cl_iNKA_covariance(
-                    fiducial_cl[f"W{bin_key1}xW{bin_key1}"],
-                    fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
-                    fiducial_cl[f"W{bin_key2}xW{bin_key1}"],
-                    fiducial_cl[f"W{bin_key2}xW{bin_key2}"],
-                    field_dict[f"W{bin_key1}"],
-                    field_dict[f"W{bin_key2}"],
-                    field_dict[f"W{bin_key1}"],
-                    field_dict[f"W{bin_key2}"],
-                    wsp_a=wsp_dict[f"W{bin_key1}xW{bin_key2}"],
-                    wsp_b=wsp_dict[f"W{bin_key2}xW{bin_key1}"],
+                    input_cl_a1_b1,
+                    input_cl_a1_b2,
+                    input_cl_a2_b1,
+                    input_cl_a2_b2,
+                    field_dict[f"W{bin_key_a1}"],
+                    field_dict[f"W{bin_key_a2}"],
+                    field_dict[f"W{bin_key_b1}"],
+                    field_dict[f"W{bin_key_b2}"],
+                    wsp_a=wsp_dict[f"W{bin_key_a1}xW{bin_key_a2}"],
+                    wsp_b=wsp_dict[f"W{bin_key_b1}xW{bin_key_b2}"],
                     b=b,
                 )
 
                 self.print_cyan("Saving Pseudo-Cl covariance")
 
-                self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
-                    "cov"
+                self._pseudo_cls[ver][
+                    f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
                 ] = self._save_iNKA_covariance(covar_22_22, out_path)
 
+                if bin_key_a1 == bin_key_b1 and bin_key_a2 == bin_key_b2:
+                    self._pseudo_cls[ver][
+                        f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                    ]["cov"] = self._pseudo_cls[ver][
+                        f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
+                    ]
+
+            # Merge the covariance blocks
+            self._pseudo_cls[ver]["cov_iNKA"] = self._merge_iNKA_covariance(
+                ver, tomography=compute_tomography
+            )
+            self.print_done(f"Done Pseudo-Cl covariance calculation for {ver}")
         self.print_done("Done Pseudo-Cl covariance")
 
     def calculate_pseudo_cl_onecovariance(self):
@@ -426,6 +507,9 @@ class PseudoClMixin:
         """
         Compute the pseudo-Cl of a `CosmologyValidation` inputs with tomography.
         """
+        out_dir = self._output_path("pseudo_cl")
+        os.makedirs(out_dir, exist_ok=True)
+
         if compute_tomography:
             self.print_start("Computing tomographic pseudo-Cl's")
         else:
@@ -585,7 +669,8 @@ class PseudoClMixin:
 
     def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
         assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
-            isinstance(tomo_bin_a, int) and isinstance(tomo_bin_b, int)
+            isinstance(tomo_bin_a, (int, np.integer))
+            and isinstance(tomo_bin_b, (int, np.integer))
         ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
 
         params = get_params_rho_tau(self.cc[ver])
@@ -795,7 +880,9 @@ class PseudoClMixin:
 
     def read_redshift_distribution(self, ver, is_tomography):
         path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
-        z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
+        redshift_distribution = np.loadtxt(path_redshift_distr)
+        z = redshift_distribution[:, 0]
+        dndz = redshift_distribution[:, 1:]
 
         # Here it is assumed that the tomographic redshift distribution sum to the non-tomographic one and that the latter is normalised
         if not is_tomography:
@@ -804,6 +891,7 @@ class PseudoClMixin:
         return z, dndz
 
     def get_fiducial_cl(self, ver, is_tomography):
+        """Get a theory prediction for the angular power spectra (thin wrapper, state -> primitive)."""
         lmax = 2 * self.nside
 
         z, dndz = self.read_redshift_distribution(ver, is_tomography)
@@ -827,24 +915,30 @@ class PseudoClMixin:
     def _output_path_pseudo_cl(self, ver, tomo_bin_pair=None):
         if tomo_bin_pair is None:
             return self._output_path(
-                f"pseudo_cl_from_{self.cell_method}_non_tomo_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits"
+                "pseudo_cl",
+                f"pseudo_cl_from_{self.cell_method}_non_tomo_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
             )
         else:
             bin_key1, bin_key2 = tomo_bin_pair
             return self._output_path(
-                f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits"
+                "pseudo_cl",
+                f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
             )
 
-    def _output_path_pseudo_cl_cov(self, ver, method, tomo_bin_pair=None):
-        if tomo_bin_pair is None:
-            return self._output_path(
-                f"pseudo_cl_cov_from_{method}_non_tomo_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits"
-            )
-        else:
-            bin_key1, bin_key2 = tomo_bin_pair
-            return self._output_path(
-                f"pseudo_cl_cov_from_{method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits"
-            )
+    def _output_path_pseudo_cl_cov(self, ver, method, tomography):
+        is_tomo = "tomo" if tomography else "non_tomo"
+        return self._output_path(
+            "pseudo_cl",
+            f"pseudo_cl_cov_{is_tomo}_{ver}_from_{method}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+        )
+
+    def _output_path_iNKA_block_cov(self, ver, tomo_bin_quad):
+        bin_key_a1, bin_key_a2, bin_key_b1, bin_key_b2 = tomo_bin_quad
+        return self._output_path(
+            "pseudo_cl",
+            f"iNKA_block_{ver}",
+            f"pseudo_cl_cov_from_iNKA_tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}_tomo_bin_{bin_key_b1}_tomo_bin_{bin_key_b2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+        )
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
         """
@@ -881,6 +975,75 @@ class PseudoClMixin:
         hdu.writeto(out_path, overwrite=True)
 
         return hdu
+
+    def _merge_iNKA_covariance(self, ver, tomography):
+        """
+        Merge the iNKA covariance matrices for a given version to get the data vector covariance.
+        """
+        out_path = self._output_path_pseudo_cl_cov(
+            ver, method="iNKA", tomography=tomography
+        )
+
+        if tomography:
+            # Merge the tomographic covariance matrices
+            tomo_bin_ids, tomo_bin_pairs = self._get_tomographic_bin(ver)
+
+            # Get the number of bins from the pseudo_cls attribute
+            # The non-tomographic pseudo-cl are computed from the call
+            # to this attribute.
+            n_ell = self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"][
+                "pseudo_cl"
+            ].shape[1]
+
+            if tomo_bin_ids is None or tomo_bin_pairs is None:
+                raise AssertionError(
+                    f"Tomographic bin IDs of version {ver} is not available."
+                )
+
+            n_spectra = len(tomo_bin_pairs)
+            block_indices = list(
+                itertools.combinations_with_replacement(range(n_spectra), 2)
+            )
+
+            pols = ["EE", "EB", "BE", "BB"]
+            covar = fits.HDUList()
+            for pa in pols:
+                for pb in pols:
+                    full_cov = np.zeros((n_spectra * n_ell, n_spectra * n_ell))
+                    for index_a, index_b in block_indices:
+                        bin_key_a1, bin_key_a2 = tomo_bin_pairs[index_a]
+                        bin_key_b1, bin_key_b2 = tomo_bin_pairs[index_b]
+
+                        block_path = self._output_path_iNKA_block_cov(
+                            ver,
+                            tomo_bin_quad=(
+                                bin_key_a1,
+                                bin_key_a2,
+                                bin_key_b1,
+                                bin_key_b2,
+                            ),
+                        )
+                        block = fits.open(block_path)[f"COVAR_{pa}_{pb}"].data
+
+                        sl_a = slice(index_a * n_ell, (index_a + 1) * n_ell)
+                        sl_b = slice(index_b * n_ell, (index_b + 1) * n_ell)
+
+                        full_cov[sl_a, sl_b] = block
+
+                        if index_a != index_b:
+                            full_cov[sl_b, sl_a] = block.T
+
+                    covar.append(fits.ImageHDU(full_cov, name=f"COVAR_{pa}_{pb}"))
+
+        else:
+            block_path = self._output_path_iNKA_block_cov(
+                ver, tomo_bin_quad=(bin_key_a1, bin_key_a2, bin_key_b1, bin_key_b2)
+            )
+            covar = fits.open(block_path)
+
+        covar.writeto(out_path, overwrite=True)
+
+        return covar
 
     # ---------------- Plotting functions for pseudo-Cl's ---------------- #
     def plot_pseudo_cl(self):
@@ -1082,3 +1245,15 @@ class PseudoClMixin:
                 pte_bb=np.array(pte_bb),
             )
             print(f"  Saved BB data to {bb_out}")
+
+    def plot_pseudo_cl_ee(self, tomography=True):
+        """
+        Plot the pseudo-Cl for EE power spectrum.
+        """
+        pass
+
+    def plot_pseudo_cl_eb_bb(self, tomography=True, plot_eb=False, plot_bb=True):
+        """
+        Plot the pseudo-Cl for EB and BB power spectra.
+        """
+        pass

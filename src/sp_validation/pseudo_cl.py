@@ -16,8 +16,7 @@ triple so the binning and the fields stay in lockstep.
 import healpy as hp
 import numpy as np
 import pymaster as nmt
-
-from sp_validation.cosmology import get_theo_c_ell
+from cs_util.cosmo import get_theo_c_ell
 
 # Lowest multipole retained by the pseudo-Cl estimators.
 LMIN = 8
@@ -977,7 +976,7 @@ def get_fiducial_cl(z, dndz, lmax, cosmo, backend="camb"):
     """
     ell = np.arange(1, lmax + 1)
 
-    fiducial_cl = get_theo_c_ell(ell=ell, z=z, dndz=dndz, backend=backend, cosmo=cosmo)
+    fiducial_cl = get_theo_c_ell(ell=ell, z=z, nz=dndz, backend=backend, cosmo=cosmo)
 
     return fiducial_cl
 
@@ -1034,7 +1033,7 @@ def get_pseudo_cl_iNKA_covariance(
     n_ell_actual = b.get_n_bands()
 
     # Compute the covariance using NaMaster's built-in function
-    cov_matrix = nmt.compute_covariance(
+    cov_matrix = nmt.gaussian_covariance(
         cw,
         2,
         2,
