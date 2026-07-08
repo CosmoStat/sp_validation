@@ -7,7 +7,7 @@ import configparser
 import os
 import subprocess
 
-import cs_util 
+import cs_util
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
@@ -281,7 +281,7 @@ def compute_best_fit_xi_from_cell(output_folder, root, best_fit_params, theta_ra
     shear_cl = np.loadtxt(
         output_folder + "{}/best_fit/shear_cl/bin_1_1.txt".format(root)
     )
-    
+
     cosmo = cs_util.get_cosmo(
         Omega_c=best_fit_params["omch2"] / (best_fit_params["h0"] / 100) ** 2,
         Omega_b=best_fit_params["ombh2"] / (best_fit_params["h0"] / 100) ** 2,
@@ -298,7 +298,7 @@ def compute_best_fit_xi_from_cell(output_folder, root, best_fit_params, theta_ra
     )
 
     xi_p, xi_m = cs_util.c_ell_to_xi(cosmo, theta_rad, ell, shear_cl)
-    
+
     os.makedirs(
         output_folder + "{}/best_fit/shear_xi_minus".format(root), exist_ok=True
     )
