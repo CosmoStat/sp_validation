@@ -1,5 +1,3 @@
-
-
 import configparser
 import os
 import subprocess
@@ -18,7 +16,6 @@ from scipy.stats import chi2
 sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts")
 
 import chain_postprocessing
-
 
 plt.style.use("/home/guerrini/matplotlib_config/paper.mplstyle")
 
@@ -133,7 +130,7 @@ label_list = [
     "A_{\rm Planck}",
 ]
 
- 
+
 # ## Run `Cosmosis` in test mode to get the data vectors
 
 
@@ -472,9 +469,3 @@ ax2.text(
 ax2.set_xlabel(r"$\chi^2 (\xi_\pm)$")
 ax2.set_ylabel("Density")
 fig.savefig(f"{output_fig_path}/chi2_glass_mocks_p_value_xi_tau.pdf")
-
-
-
-
-
-

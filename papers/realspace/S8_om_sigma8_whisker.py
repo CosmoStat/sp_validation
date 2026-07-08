@@ -1,4 +1,4 @@
-# 
+#
 # This notebook plots the whisker plot of $S_8$, $\Omega_m$ and $\sigma_8$
 
 
@@ -551,9 +551,3 @@ plt.tight_layout()
 # plt.savefig("./plots/whisker_plot.png", dpi=300)
 # #Save pdf
 plt.savefig("../Plots/S8_whisker_plot.pdf", bbox_inches="tight")
-
-
-
-
-
-

@@ -1,5 +1,5 @@
 # # Nonlinear $k$ contributions
-# 
+#
 # This notebook plots the 2D heatmap of ratio of scale contributions to the $\xi_\pm$ 2PCF given angular scale $\theta$ and wavenumber $k$.
 
 
@@ -107,8 +107,3 @@ cbar = fig.colorbar(pcm, cax=cbar_ax)
 fig.savefig(
     curr_dir + f"/../Plots/theta_k_xip_xim_{ver}_{blind}.pdf", bbox_inches="tight"
 )
-
-
-
-
-

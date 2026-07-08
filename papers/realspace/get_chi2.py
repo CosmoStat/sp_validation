@@ -1,4 +1,3 @@
-
 import configparser
 import os
 import re
@@ -16,8 +15,6 @@ from scipy.interpolate import interp1d
 sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts")
 
 import chain_postprocessing
-
-
 
 plt.rc("mathtext", fontset="stix")
 plt.rc("font", family="sans-serif")
@@ -125,7 +122,7 @@ for i, root in enumerate(roots):
         "upper_bound_xi_minus": upper_bound_xi_minus,
     }
 
- 
+
 # ## Retrieve the chains
 
 
@@ -218,7 +215,7 @@ for chain in chains:
         if param_names.parWithName(name) is not None:
             param_names.parWithName(name).label = label
 
- 
+
 # ## Extract the best fit parameters
 
 
@@ -239,7 +236,7 @@ for root, chain in zip(roots, chains):
         if param_name == "S_8":
             print(f"{best_fit[root][param_name]}")
 
- 
+
 # ## Run `Cosmosis` in test mode to get the data vectors
 
 
@@ -349,7 +346,7 @@ for i, root in enumerate(roots):
     with open(ini_file, "w") as configfile:
         config.write(configfile)
 
- 
+
 # ## Compute the $\chi^2$
 
 
@@ -567,8 +564,3 @@ def display_markdown(metrics):
 
 
 markdown_source = display_markdown(metrics)
-
-
-
-
-

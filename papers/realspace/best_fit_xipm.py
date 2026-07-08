@@ -1,5 +1,3 @@
-
-
 import os
 import sys
 
@@ -363,8 +361,6 @@ plt.savefig(
 )
 
 
-
-
 root_to_plot = [fiducial_root_xi_chains]
 labels = [r"Best fit $\tau_{0,2}(\theta)$"]
 
@@ -504,10 +500,3 @@ plt.savefig(
     "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/Plots/best_fit_tau_02_SP_v1.4.6.3_B.pdf",
     bbox_inches="tight",
 )
-
-
-
-
-
-
-

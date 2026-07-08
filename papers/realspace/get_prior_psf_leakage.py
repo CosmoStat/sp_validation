@@ -1,6 +1,5 @@
- 
 # # Covariance matrix and PSF leakage
-# 
+#
 # This notebook plots the combined covariance matrix, and samples and plots the 2D marginalised posteriors of the PSF leakage parameters $\alpha$ and $\beta$.
 
 
@@ -91,7 +90,6 @@ for i, root in enumerate(roots):
     plt.savefig(f"./Plots/cov_matrix_{root}.png", bbox_inches="tight", dpi=300)
 
 
-
 # Create dummy rho and tau stat handler.
 
 # Inference of the xi_sys parameters
@@ -168,9 +166,3 @@ g.triangle_plot(
 )
 
 # plt.savefig(f"./Plots/psf_leakage_params.png", bbox_inches='tight', dpi=300)
-
-
-
-
-
-

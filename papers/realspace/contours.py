@@ -1,5 +1,5 @@
 # # 2D contour plots
-# 
+#
 # This notebook produces the plots for all the 2D contours in the results section.
 
 
@@ -86,7 +86,7 @@ roots_nonlin = {
 }
 roots = roots_ext
 
- 
+
 # ## Retrieve the chains
 
 
@@ -239,12 +239,11 @@ for chain in chains:
 
 legend_labels = list(roots.values())
 
- 
+
 # ## Plot the chains
 
- 
-# ### FIDUCIAL PLOT
 
+# ### FIDUCIAL PLOT
 
 
 colours = [
@@ -272,10 +271,8 @@ g.triangle_plot(
 
 g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot.pdf")
 
- 
+
 # ### FULL PLOT
-
-
 
 
 g.settings.axes_fontsize = 40
@@ -314,7 +311,7 @@ g.triangle_plot(
 
 g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_full.pdf")
 
- 
+
 # ### IA PLOT
 
 
@@ -344,7 +341,7 @@ g.triangle_plot(
 
 g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_ia.pdf")
 
- 
+
 # ### PSF PLOT
 
 
@@ -385,7 +382,7 @@ g.subplots[3, 2].scatter(
 
 g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_psf.pdf")
 
- 
+
 # ### DELTA Z PLOT
 
 
@@ -414,7 +411,7 @@ g.triangle_plot(
 
 g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_dz.pdf")
 
- 
+
 # ### EXTERNAL DATA
 
 
@@ -455,10 +452,8 @@ g.add_legend(legend_labels, legend_loc="upper right")
 
 g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_ext.pdf")
 
- 
+
 # ### Small scales
-
-
 
 
 colours = [
@@ -491,10 +486,8 @@ g.add_legend(legend_labels, legend_loc="upper right")
 
 g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_scales.pdf")
 
- 
+
 # ### BBN Prior
-
-
 
 
 from getdist.gaussian_mixtures import Gaussian1D
@@ -530,7 +523,7 @@ g.triangle_plot(
     filled=[True, False],
 )
 
- 
+
 # ## Plot the best-fit $\xi_\pm$
 
 
@@ -637,8 +630,6 @@ ax.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xip, fontsize=20)
 
 
 plt.savefig("/Plots/scale_cut_xipm_SP_v1.4.6.3_B.pdf", bbox_inches="tight")
-
-
 
 
 labels = roots_nonlin.values()
@@ -752,10 +743,3 @@ ax2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 ax2.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xim, fontsize=20)
 
 plt.savefig("/Plots/nonlin_xipm_SP_v1.4.6.3_B.pdf", bbox_inches="tight")
-
-
-
-
-
-
-

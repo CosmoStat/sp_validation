@@ -1,4 +1,3 @@
-
 import IPython
 
 ipython = IPython.get_ipython()
@@ -38,7 +37,7 @@ num_sims = 350
 roots = [f"glass_mock_{chain_version}_{i + 1:05d}" for i in range(num_sims)]
 
 
-# 
+#
 def load_samples_and_write_paramames(root_dir, root, chain_type="configuration"):
     assert chain_type in ["configuration", "harmonic"], (
         "chain_type must be 'configuration' or 'harmonic'"
@@ -264,7 +263,7 @@ for i, root in enumerate(tqdm(roots)):
             },
         )
         chain_config.append(chain_conf)
-# 
+#
 param_names = ["S_8", "OMEGA_M", "SIGMA_8", "a"]
 
 output_mocks_harm = np.array(
@@ -424,7 +423,6 @@ plt.savefig(
 )
 
 
-
 output_df_config["S8_MAP_2D"].shape
 output_df_harm["S8_MAP_2D"].shape
 
@@ -470,12 +468,3 @@ plt.savefig(
     "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/Plots/S8_vs_OmegaM_configuration_space_mocks.pdf",
     bbox_inches="tight",
 )
-
-
-
-
-
-
-
-
-
