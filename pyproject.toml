@@ -9,7 +9,10 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+# 3.12 floor set by Smokescreen 1.5.6 (and firecrown v1.15); the container base
+# (shapepipe:develop) is already python:3.12-slim-bookworm, so this aligns
+# pyproject with the actual runtime.
+requires-python = ">=3.12"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -52,6 +55,10 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
+    # SACC (LSST DESC's data-vector container) is the standard format for all
+    # data products from the tomographic round on (PRD #241); sp_validation.sacc_io
+    # is core library code, so sacc is a core dependency.
+    "sacc>=2.4,<3",
     # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
     # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to
     # shape-(1,) `array([x])`. camb's BBN Y_He predictor (bbn.py) wraps the
@@ -106,6 +113,22 @@ glass = [
     "glass.ext.camb==2023.6",
     "cosmology==2022.10.9",
 ]
+# Data-vector blinding (PRD #241 §3-§5): Smokescreen applies the Muir et al.
+# shift d → d + t(hidden) − t(fid), with firecrown + CCL as the theory engine
+# (only compute_theory_vector is used; sampling stays with CosmoSIS). The blind
+# must be exactly recomputable from the seed at unblinding time, so the whole
+# theory stack is pinned exactly, as a set. Smokescreen 1.5.6 + firecrown v1.15
+# both set the python floor (>=3.12).
+#
+# firecrown is not on PyPI and declares conda-forge-only / unused sampler
+# connectors as hard deps, so installing this extra requires the dependency
+# override file: `uv pip install --overrides uv-overrides.txt -e '.[blinding]'`
+# (see uv-overrides.txt; the Dockerfile does this for the container).
+blinding = [
+    "firecrown @ git+https://github.com/LSSTDESC/firecrown.git@v1.15.1",
+    "smokescreen==1.5.6",
+    "pyccl==3.3.4",
+]
 develop = ["sp_validation[test,docs]"]
 
 [tool.pytest.ini_options]
@@ -124,7 +147,7 @@ markers = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 
 # Snakemake injects a `snakemake` object into rule scripts at runtime, so ruff
 # can't see where it's defined. Declaring it a builtin silences the false

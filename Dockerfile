@@ -28,8 +28,11 @@ RUN uv pip install --no-cache-dir --upgrade 'cs_util>=0.2.1'
 WORKDIR /sp_validation
 COPY . /sp_validation
 
-# Install with the test + glass extras so the image can run the unit suite in CI
-# *and* the GLASS map-level mock test. `glass` (Generator for Large Scale
-# Structure) ships `glass.ext.camb`; `cosmology` provides the `Cosmology` wrapper
-# (`Cosmology.from_camb`) GLASS consumes. Both come in via the `[glass]` extra.
-RUN uv pip install --no-cache-dir -e '.[test,glass]'
+# Install with the test + glass + blinding extras so the image can run the unit
+# suite in CI, the GLASS map-level mock test, *and* the SACC/Smokescreen blinding
+# stack. `glass` (Generator for Large Scale Structure) ships `glass.ext.camb`;
+# `cosmology` provides the `Cosmology` wrapper (`Cosmology.from_camb`) GLASS
+# consumes. The `[blinding]` extra (firecrown + smokescreen) needs the override
+# file: firecrown declares conda-forge-only / unused sampler connectors as hard
+# deps — see uv-overrides.txt for the full story.
+RUN uv pip install --no-cache-dir --overrides uv-overrides.txt -e '.[test,glass,blinding]'
