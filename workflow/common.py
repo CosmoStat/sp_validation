@@ -1,17 +1,28 @@
 """Shared helpers for the B-modes Snakemake workflow."""
 
 import json
+import os
 import re
 from pathlib import Path
 
-COSMO_VAL = Path("/n17data/cdaley/unions/code/sp_validation/cosmo_val/output")
-COSMO_INFERENCE = Path("/n17data/cdaley/unions/code/sp_validation/cosmo_inference")
+# Output roots are env-overridable so a reproduction run can write into a
+# fresh tree without clobbering (or silently reusing) prior products.
+COSMO_VAL = Path(
+    os.environ.get(
+        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
+    )
+)
+COSMO_INFERENCE = Path(
+    os.environ.get(
+        "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
+    )
+)
 CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
 # Fiducial cosmology: Planck 2018 (astropy Planck18, Table 2 + BAO)
-# Source of truth: sp_validation.cosmology.PLANCK18
+# Source of truth: cs_util.cosmo.PLANCK18
 # Regenerate with: snakemake results/cosmology/planck18.json
 # Resolved relative to the run directory at configure() time.
 COSMOLOGY_PARAMS = "results/cosmology/planck18.json"

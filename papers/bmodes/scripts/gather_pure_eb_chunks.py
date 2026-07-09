@@ -1,66 +1,54 @@
-"""Gather MC sample chunks and compute final pure E/B covariance."""
+"""Gather MC sample chunks and compute the final pure E/B covariance.
 
+CLI refactor of the former Snakemake ``script:`` gather rule. Reads the actual
+ξ± data vectors (reporting + integration grids), computes the pure E/B/ambiguous
+decomposition (Schneider 2022), stacks the per-chunk MC sample blocks, and
+forms the empirical 6-block covariance. Writes the per-(version, blind)
+``<version>_<blind>_pure_eb_semianalytic.npz`` consumed by every downstream
+pure-mode plot / PTE.
+
+    python gather_pure_eb_chunks.py \
+        --version SP_v1.4.6.3_leak_corr --blind A \
+        --xi-reporting  <xi 20-bin .txt> \
+        --xi-integration <xi 1000-bin .txt> \
+        --chunks-dir <dir with pure_eb_chunk_*.npz> \
+        --min-sep 1.0 --max-sep 250.0 --nbins 20 \
+        --min-sep-int 0.5 --max-sep-int 300.0 --nbins-int 1000 \
+        --out <output_dir>
+"""
+
+import argparse
+import glob
 import os
-import sys
-from pathlib import Path
 
 import numpy as np
 
-# Unbuffered output for Snakemake log streaming
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
-sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
-
-
-def _load_snakemake():
-    if hasattr(sys, "ps1"):
-        from snakemake_helpers import snakemake_interactive
-
-        return snakemake_interactive(
-            "results/paper_plots/intermediate/SP_v1.4.6_leak_corr_A_pure_eb_semianalytic.npz",
-            str(Path.cwd()),
-        )
-    from snakemake.script import snakemake
-
-    return snakemake
-
-
-snakemake = _load_snakemake()
-params = snakemake.params
-
 
 def _load_xi(path, nbins):
-    """Load 2PCF from treecorr output file."""
-    # Treecorr files have header comments (##) and column names (#), then data,
-    # then ## cov followed by covariance matrix
+    """Load ξ± from a TreeCorr text dump."""
     data = np.loadtxt(path, comments="#", max_rows=nbins)
-    return {
-        "meanr": data[:, 1],
-        "xip": data[:, 3],
-        "xim": data[:, 4],
-    }
+    return {"meanr": data[:, 1], "xip": data[:, 3], "xim": data[:, 4]}
 
 
-def main():
+def gather(
+    version,
+    blind,
+    xi_reporting,
+    xi_integration,
+    chunk_files,
+    min_sep,
+    max_sep,
+    nbins,
+    nbins_int,
+    output_dir,
+):
     from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
 
-    numeric_params = {
-        "min_sep": float(params["min_sep"]),
-        "max_sep": float(params["max_sep"]),
-        "nbins": int(params["nbins"]),
-        "min_sep_int": float(params["min_sep_int"]),
-        "max_sep_int": float(params["max_sep_int"]),
-        "nbins_int": int(params["nbins_int"]),
-        "npatch": int(params["npatch"]),
-    }
-
-    blind = params.get("blind", "A")
     print(f"Gathering pure E/B for blind {blind}")
 
-    # Load precomputed correlation functions from Snakemake inputs
-    gg = _load_xi(snakemake.input["xi_reporting"], numeric_params["nbins"])
-    gg_int = _load_xi(snakemake.input["xi_integration"], numeric_params["nbins_int"])
+    gg = _load_xi(xi_reporting, nbins)
+    gg_int = _load_xi(xi_integration, nbins_int)
 
-    # Compute data vectors from correlation functions
     eb_results = get_pure_EB_modes(
         theta=gg["meanr"],
         xip=gg["xip"],
@@ -68,13 +56,12 @@ def main():
         theta_int=gg_int["meanr"],
         xip_int=gg_int["xip"],
         xim_int=gg_int["xim"],
-        tmin=numeric_params["min_sep"],
-        tmax=numeric_params["max_sep"],
+        tmin=min_sep,
+        tmax=max_sep,
     )
     xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = eb_results
 
-    # Load and concatenate all chunks
-    chunk_files = sorted(snakemake.input["chunks"])
+    chunk_files = sorted(chunk_files)
     all_samples = []
     for chunk_file in chunk_files:
         data = np.load(chunk_file)
@@ -84,10 +71,8 @@ def main():
     eb_samples = np.vstack(all_samples)
     print(f"Total samples: {len(eb_samples)}")
 
-    # Compute covariance from all samples
     cov_pure_eb = np.cov(eb_samples.T)
 
-    # Package results
     package = {
         "theta": gg["meanr"],
         "theta_int": gg_int["meanr"],
@@ -102,9 +87,53 @@ def main():
         "cov_pure_eb": cov_pure_eb,
     }
 
-    np.savez(snakemake.output[0], **package)
-    print(f"Saved to {snakemake.output[0]}")
+    os.makedirs(output_dir, exist_ok=True)
+    out_path = os.path.join(output_dir, f"{version}_{blind}_pure_eb_semianalytic.npz")
+    np.savez(out_path, **package)
+    print(f"Saved to {out_path}")
+    return out_path
+
+
+def _resolve_chunks(args):
+    if args.chunks:
+        files = args.chunks
+    else:
+        files = glob.glob(os.path.join(args.chunks_dir, "pure_eb_chunk_*.npz"))
+    if not files:
+        raise SystemExit(f"No chunk .npz found (chunks-dir={args.chunks_dir})")
+    return files
+
+
+def _from_cli(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--version", required=True)
+    ap.add_argument("--blind", default="A")
+    ap.add_argument("--xi-reporting", required=True)
+    ap.add_argument("--xi-integration", required=True)
+    ap.add_argument("--chunks-dir", help="Directory holding pure_eb_chunk_*.npz")
+    ap.add_argument("--chunks", nargs="+", help="Explicit chunk .npz paths")
+    ap.add_argument("--min-sep", type=float, default=1.0)
+    ap.add_argument("--max-sep", type=float, default=250.0)
+    ap.add_argument("--nbins", type=int, default=20)
+    ap.add_argument("--min-sep-int", type=float, default=0.5)
+    ap.add_argument("--max-sep-int", type=float, default=300.0)
+    ap.add_argument("--nbins-int", type=int, default=1000)
+    ap.add_argument("--npatch", type=int, default=1)
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+    gather(
+        version=a.version,
+        blind=a.blind,
+        xi_reporting=a.xi_reporting,
+        xi_integration=a.xi_integration,
+        chunk_files=_resolve_chunks(a),
+        min_sep=a.min_sep,
+        max_sep=a.max_sep,
+        nbins=a.nbins,
+        nbins_int=a.nbins_int,
+        output_dir=a.out,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    _from_cli()

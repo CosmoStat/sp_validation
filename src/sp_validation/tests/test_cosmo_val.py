@@ -418,14 +418,14 @@ class TestCosmologyValidation:
             {
                 "RA": rng.uniform(*ra_range, n_star),
                 "Dec": rng.uniform(*dec_range, n_star),
-                "E1_PSF_HSM": rng.normal(0, 0.03, n_star),
-                "E2_PSF_HSM": rng.normal(0, 0.03, n_star),
-                "E1_STAR_HSM": rng.normal(0, 0.03, n_star),
-                "E2_STAR_HSM": rng.normal(0, 0.03, n_star),
-                "SIGMA_PSF_HSM": rng.uniform(0.4, 0.6, n_star),
-                "SIGMA_STAR_HSM": rng.uniform(0.4, 0.6, n_star),
-                "FLAG_PSF_HSM": np.zeros(n_star, dtype=int),
-                "FLAG_STAR_HSM": np.zeros(n_star, dtype=int),
+                "HSM_G1_PSF": rng.normal(0, 0.03, n_star),
+                "HSM_G2_PSF": rng.normal(0, 0.03, n_star),
+                "HSM_G1_STAR": rng.normal(0, 0.03, n_star),
+                "HSM_G2_STAR": rng.normal(0, 0.03, n_star),
+                "HSM_T_PSF": rng.uniform(0.4, 0.6, n_star),
+                "HSM_T_STAR": rng.uniform(0.4, 0.6, n_star),
+                "HSM_FLAG_PSF": np.zeros(n_star, dtype=int),
+                "HSM_FLAG_STAR": np.zeros(n_star, dtype=int),
             }
         ).write(star_path, overwrite=True)
 
@@ -449,8 +449,8 @@ class TestCosmologyValidation:
             "path": "star.fits",
             "ra_col": "RA",
             "dec_col": "Dec",
-            "e1_col": "E1_PSF_HSM",
-            "e2_col": "E2_PSF_HSM",
+            "e1_col": "HSM_G1_PSF",
+            "e2_col": "HSM_G2_PSF",
         }
         version_cfg = {
             "subdir": str(cat_dir),
@@ -464,14 +464,14 @@ class TestCosmologyValidation:
                 "hdu": 1,
                 "ra_col": "RA",
                 "dec_col": "Dec",
-                "e1_PSF_col": "E1_PSF_HSM",
-                "e2_PSF_col": "E2_PSF_HSM",
-                "e1_star_col": "E1_STAR_HSM",
-                "e2_star_col": "E2_STAR_HSM",
-                "PSF_size": "SIGMA_PSF_HSM",
-                "star_size": "SIGMA_STAR_HSM",
-                "PSF_flag": "FLAG_PSF_HSM",
-                "star_flag": "FLAG_STAR_HSM",
+                "e1_PSF_col": "HSM_G1_PSF",
+                "e2_PSF_col": "HSM_G2_PSF",
+                "e1_star_col": "HSM_G1_STAR",
+                "e2_star_col": "HSM_G2_STAR",
+                "PSF_size": "HSM_T_PSF",
+                "star_size": "HSM_T_STAR",
+                "PSF_flag": "HSM_FLAG_PSF",
+                "star_flag": "HSM_FLAG_STAR",
             }
 
         config_data = {

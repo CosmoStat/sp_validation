@@ -1,16 +1,18 @@
-"""Pure E/B data vector claim.
+"""Pure E/B data vector claim (paper Figure 1).
 
-Shows B-mode signals consistent with zero at fiducial scale cuts.
-Writes evidence.json with PTE values including joint B-mode test.
+Fiducial catalog only: pure E/B/ambiguous decomposition of ξ± with B-modes
+consistent with zero at the fiducial scale cuts. Writes evidence.json with PTE
+values including the joint B-mode test (fiducial blind, config.fiducial.blind).
 
-Uses fiducial blind only (config.fiducial.blind) for PTE calculation.
-
-Produces 9 figures:
-- figure.png: fiducial version, leak-corrected, no title (paper)
-- figure_v{X.Y.Z}.png: version X.Y.Z, leak-corrected, with title
-- figure_v{X.Y.Z}_uncorrected.png: version X.Y.Z, uncorrected, with title
+CLI:
+    python pure_eb_data_vector.py \
+        --config config.yaml \
+        --pure-eb-data <version>_<blind>_pure_eb_semianalytic.npz \
+        --reporting-cov <cov_reporting_ng>/covariance_processed.txt \
+        --out <output_dir> [--specs spec.md ...]
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -21,7 +23,6 @@ from plotting_utils import (
     FIG_WIDTH_FULL,
     PAPER_MPLSTYLE,
     compute_chi2_pte,
-    iter_version_figures,
 )
 
 plt.style.use(PAPER_MPLSTYLE)
@@ -49,14 +50,13 @@ def _compute_joint_pte(xip_B, xim_B, cov_xip_B, cov_xim_B, cov_cross, n_samples=
 
 
 def _load_pure_eb_data(pure_eb_path, cov_path):
-    """Load pure E/B decomposition and covariances."""
+    """Load pure E/B decomposition, the 6-block MC covariance, and the
+    reporting-grid CosmoCov ξ± covariance used for the total-curve error bars."""
     dataset = np.load(pure_eb_path)
     theta = dataset["theta"]
-    nbins = len(theta)
-
-    data = {
+    return {
         "theta": theta,
-        "nbins": nbins,
+        "nbins": len(theta),
         "xip_total": dataset["xip_total"],
         "xim_total": dataset["xim_total"],
         "xip_E": dataset["xip_E"],
@@ -66,9 +66,10 @@ def _load_pure_eb_data(pure_eb_path, cov_path):
         "xip_amb": dataset["xip_amb"],
         "xim_amb": dataset["xim_amb"],
         "cov_pure_eb": dataset["cov_pure_eb"],
+        # Reporting (masked, non-Gaussian) CosmoCov ξ± covariance, 2×nbins
+        # (xi+ / xi- blocks) — the total-signal error bars in the paper.
         "cov_xi": np.loadtxt(cov_path),
     }
-    return data
 
 
 def _create_pure_eb_figure(
@@ -81,10 +82,12 @@ def _create_pure_eb_figure(
     """
     theta = data["theta"]
     nbins = data["nbins"]
-    cov_xi = data["cov_xi"]
     cov_pure_eb = data["cov_pure_eb"]
+    cov_xi = data["cov_xi"]
 
-    # Extract error bars
+    # Total ξ± error bars come from the reporting-grid CosmoCov covariance
+    # (xi+ block = 0, xi- block = 1); E/B/amb come from the MC-propagated
+    # pure-mode covariance blocks.
     sigma_xip_total = _extract_sigma(cov_xi, 0, nbins)
     sigma_xim_total = _extract_sigma(cov_xi, 1, nbins)
     sigma_xip_E = _extract_sigma(cov_pure_eb, 0, nbins)
@@ -214,69 +217,26 @@ def _create_pure_eb_figure(
     return fig
 
 
-def main():
-    config = snakemake.config
+def main(config, pure_eb_path, cov_path, out_dir, specs=()):
     blind = config["fiducial"]["blind"]
     version = config["fiducial"]["version"]
-    version_labels = config["plotting"]["version_labels"]
     fiducial_xip_scale_cut = tuple(config["fiducial"]["fiducial_xip_scale_cut"])
     fiducial_xim_scale_cut = tuple(config["fiducial"]["fiducial_xim_scale_cut"])
 
-    # Build input path lookup from snakemake inputs
-    pure_eb_paths = {
-        k: v for k, v in snakemake.input.items() if k.startswith("pure_eb_")
-    }
-    cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("cov_")}
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create output directory
-    output_dir = Path(snakemake.output["evidence"]).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Track generated artifacts
-    output = {}
-
-    # Generate all 9 figures
-    for fig_spec in iter_version_figures(version_labels, version):
-        # Determine which input keys to use
-        if fig_spec["leak_corrected"]:
-            pure_eb_key = f"pure_eb_{fig_spec['version_leak_corr']}"
-            cov_key = f"cov_{fig_spec['version_leak_corr']}"
-        else:
-            pure_eb_key = f"pure_eb_{fig_spec['version_uncorr']}"
-            cov_key = f"cov_{fig_spec['version_uncorr']}"
-
-        # Load data
-        data = _load_pure_eb_data(pure_eb_paths[pure_eb_key], cov_paths[cov_key])
-
-        # Create figure with appropriate title
-        title_suffix = f" ({fig_spec['title']})" if fig_spec["title"] else ""
-        fig = _create_pure_eb_figure(
-            data,
-            fiducial_xip_scale_cut,
-            fiducial_xim_scale_cut,
-            title_suffix=title_suffix,
-        )
-
-        # Save figure
-        fig_path = output_dir / fig_spec["filename"]
-        fig.savefig(fig_path, dpi=300, bbox_inches="tight")
-        print(f"Saved {fig_path}")
-        plt.close(fig)
-
-        # Track artifact
-        output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
-
-        # Copy paper figure to paper figures directory
-        if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
-            paper_path = Path(snakemake.output["paper_figure"])
-            paper_path.parent.mkdir(parents=True, exist_ok=True)
-            fig.savefig(paper_path, bbox_inches="tight")
-            print(f"Saved {paper_path}")
-
-    # Compute PTEs for evidence (fiducial version, leak-corrected only)
-    data = _load_pure_eb_data(
-        pure_eb_paths[f"pure_eb_{version}"], cov_paths[f"cov_{version}"]
+    # Fiducial (leak-corrected) decomposition -> paper figure (no title)
+    data = _load_pure_eb_data(pure_eb_path, cov_path)
+    fig = _create_pure_eb_figure(
+        data, fiducial_xip_scale_cut, fiducial_xim_scale_cut, title_suffix=""
     )
+    fig.savefig(out_dir / "figure.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out_dir / "pure_eb_data_vector.pdf", bbox_inches="tight")
+    print(f"Saved figure to {out_dir / 'figure.png'}")
+    plt.close(fig)
+
+    # Compute PTEs for evidence (fiducial version, leak-corrected)
     theta = data["theta"]
     nbins = data["nbins"]
     cov_pure_eb = data["cov_pure_eb"]
@@ -338,7 +298,7 @@ def main():
     # Write evidence.json (based on leak-corrected fiducial data only)
     evidence_data = {
         "spec_id": "pure_eb_data_vector",
-        "spec_path": snakemake.input["specs"][0],
+        **({"spec_path": specs[0]} if specs else {}),
         "generated": datetime.now().isoformat(),
         "evidence": {
             "fiducial": {
@@ -361,14 +321,48 @@ def main():
             "version": version,
             "blind": blind,
         },
-        "output": output,
+        "output": {"figure": "figure.png"},
     }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = out_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="Pure E/B ξ± data-vector paper figure + PTE evidence (fiducial catalog)."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--pure-eb-data",
+        required=True,
+        help="Fiducial <version>_<blind>_pure_eb_semianalytic.npz "
+        "(decomposed ξ± + 6-block MC covariance)",
+    )
+    ap.add_argument(
+        "--reporting-cov",
+        required=True,
+        help="Reporting-grid (masked, non-Gaussian) CosmoCov ξ± covariance "
+        "(covariance_processed.txt) for the total ξ± error bars",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--specs",
+        nargs="*",
+        default=[],
+        help="Optional spec markdown paths recorded in evidence.json for provenance",
+    )
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(config, a.pure_eb_data, a.reporting_cov, a.out, specs=a.specs)
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()

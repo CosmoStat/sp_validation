@@ -27,12 +27,12 @@ path_star = "/n17data/UNIONS/WL/v1.4.x/full_starcat-0000000.fits"
 cat_star = fits.getdata(path_star)
 
 # To be checked
-e1_star = cat_star["E1_STAR_HSM"]
-e2_star = cat_star["E2_STAR_HSM"]
-T_star = cat_star["SIGMA_STAR_HSM"] ** 2
-e1_psf = cat_star["E1_PSF_HSM"]
-e2_psf = cat_star["E2_PSF_HSM"]
-T_psf = cat_star["SIGMA_PSF_HSM"] ** 2
+e1_star = cat_star["HSM_G1_STAR"]
+e2_star = cat_star["HSM_G2_STAR"]
+T_star = cat_star["HSM_T_STAR"]
+e1_psf = cat_star["HSM_G1_PSF"]
+e2_psf = cat_star["HSM_G2_PSF"]
+T_psf = cat_star["HSM_T_PSF"]
 M_4_1_star = cat_star["M_4_STAR_1"]
 M_4_2_star = cat_star["M_4_STAR_2"]
 M_4_1_psf = cat_star["M_4_PSF_1"]

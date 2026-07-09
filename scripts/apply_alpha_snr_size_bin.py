@@ -40,7 +40,7 @@ def params_default():
         "e2_PSF_col": "e2_PSF",
         "snr_col": "snr",
         "w_col": "w",
-        "TPSF_col": "NGMIX_Tpsf_NOSHEAR",
+        "TPSF_col": "NGMIX_T_PSF_RECONV_NOSHEAR",
         "T_col": "NGMIX_T_NOSHEAR",
         "input_path_shear": "SP/unions_shapepipe_extended_2022_v1.0.fits",
         "output_path": "shape_cat_cor_alpha.fits",

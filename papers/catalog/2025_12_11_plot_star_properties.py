@@ -34,9 +34,9 @@ path_cat_star = "/n17data/UNIONS/WL/v1.4.x//full_starcat-0000000.fits"
 # Load catalog
 cat_stars = fits.open(path_cat_star)[1].data
 
-e1_star, e2_star = cat_stars["E1_STAR_HSM"], cat_stars["E2_STAR_HSM"]
-e1_psf, e2_psf = cat_stars["E1_PSF_HSM"], cat_stars["E2_PSF_HSM"]
-t_star, t_psf = cat_stars["SIGMA_STAR_HSM"] ** 2, cat_stars["SIGMA_PSF_HSM"] ** 2
+e1_star, e2_star = cat_stars["HSM_G1_STAR"], cat_stars["HSM_G2_STAR"]
+e1_psf, e2_psf = cat_stars["HSM_G1_PSF"], cat_stars["HSM_G2_PSF"]
+t_star, t_psf = cat_stars["HSM_T_STAR"], cat_stars["HSM_T_PSF"]
 mag = cat_stars["MAG"]
 
 # %%

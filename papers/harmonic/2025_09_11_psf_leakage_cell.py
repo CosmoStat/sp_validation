@@ -103,7 +103,7 @@ f_gal = nmt.NmtFieldCatalog(
 f_psf = nmt.NmtFieldCatalog(
     positions=[cat_star["RA"], cat_star["DEC"]],
     weights=np.ones_like(cat_star["RA"]),
-    field=[cat_star["E1_PSF_HSM"], -cat_star["E2_PSF_HSM"]],
+    field=[cat_star["HSM_G1_PSF"], -cat_star["HSM_G2_PSF"]],
     lmax=b_lmax,
     lmax_mask=b_lmax,
     spin=2,
@@ -235,7 +235,7 @@ def compute_iNKA_covariance(field1, field2, coupled=False):
 
 
 # %%
-field_psf_map = get_field_catalog(cat_star, "E1_PSF_HSM", "E2_PSF_HSM", nside=1024)
+field_psf_map = get_field_catalog(cat_star, "HSM_G1_PSF", "HSM_G2_PSF", nside=1024)
 field_gal_map = get_field_catalog(cat_gal, "e1", "e2", nside=1024, w_col="w_des")
 field_gal_corrected_map = get_field_catalog(
     cat_gal, "e1_leak_corrected", "e2_leak_corrected", nside=1024, w_col="w_des"

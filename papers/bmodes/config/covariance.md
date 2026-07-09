@@ -20,7 +20,7 @@ Gaussian-only approximation: non-Gaussian contributions computationally prohibit
 |-----------|--------|-------------|
 | Samples | `config.yaml: covariance.n_samples` | MC samples for propagation (default 2000) |
 | Use masked | `config.yaml: covariance.default_masked` | Whether to use masked covariance |
-| Cosmology | `Snakefile: PLANCK18` | astropy Planck18 via sp_validation.cosmology |
+| Cosmology | `Snakefile: PLANCK18` | astropy Planck18 via cs_util.cosmo |
 | Mask Cls | `covariance.smk: MASK_CLS_FILES` | Per-version mask power spectra |
 
 ## Survey Properties
