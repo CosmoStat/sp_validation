@@ -58,7 +58,6 @@ import pytest
 import yaml
 
 from sp_validation.cosmo_val import CosmologyValidation
-from sp_validation.pseudo_cl import apply_random_rotation
 from sp_validation.rho_tau import get_params_rho_tau
 
 # These tests need the full harmonic-space stack (pymaster/NaMaster + healpy),
@@ -166,7 +165,7 @@ def cv(tmp_path):
         binning="powspace",
         power=0.5,
         n_ell_bins=N_ELL_BINS,
-        pol_factor=-1,
+        pol_factor=True,
     )
     cv._test_version = version
     return cv
@@ -266,38 +265,18 @@ class TestGetNamasterBin:
             cv.get_namaster_bin(LMIN, LMAX, B_LMAX)
 
 
-# ==========================================================================
-# get_pixels -- fetch the pixels from ra, dec, and nside (HEALPix)
-# ==========================================================================
-def test_get_pixels(cv, cat_and_params):
-    """Pin the HEALPix pixelization of the synthetic catalog."""
-    cat_gal, params = cat_and_params
-    unique_pix, idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
-
-    # Structural invariants of the HEALPix occupancy map.
-    assert unique_pix.size == 485
-    assert idx_rep.size == 5000  # one entry per galaxy
-
-    # Pinned scalar summaries: total weight is conserved (sum of weights),
-    # peak occupancy, and the pixel index bookkeeping.
-    npt.assert_array_equal(unique_pix[:5], [12167, 12168, 12169, 12170, 12171])
-    assert int(unique_pix.sum()) == 7849989
-
-
 # ===========================================================================
 # get_n_gal_map -- weighted galaxy number-density map
 # ===========================================================================
 def test_get_n_gal_map(cv, cat_and_params):
     cat_gal, params = cat_and_params
-
-    unique_pix, idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
-    n_gal = cv.get_n_gal_map(
-        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=None, idx_rep=idx_rep
-    )
+    n_gal, unique_pix, idx, idx_rep = cv.get_n_gal_map(params, NSIDE, cat_gal)
 
     # Structural invariants of the HEALPix occupancy map.
     assert n_gal.shape == (healpy.nside2npix(NSIDE),)
     assert int(np.count_nonzero(n_gal)) == 485
+    assert unique_pix.size == 485
+    assert idx_rep.size == 5000  # one entry per galaxy
     # The map is supported exactly on the occupied pixels.
     npt.assert_array_equal(np.nonzero(n_gal)[0], np.sort(unique_pix))
 
@@ -305,6 +284,8 @@ def test_get_n_gal_map(cv, cat_and_params):
     # peak occupancy, and the pixel index bookkeeping.
     npt.assert_allclose(n_gal.sum(), 3760.657282591494, rtol=RTOL_DET)
     npt.assert_allclose(n_gal.max(), 16.063410433711447, rtol=RTOL_DET)
+    npt.assert_array_equal(unique_pix[:5], [12167, 12168, 12169, 12170, 12171])
+    assert int(unique_pix.sum()) == 7849989
     npt.assert_allclose(
         n_gal[unique_pix][:5],
         np.array(
@@ -326,10 +307,7 @@ def test_get_n_gal_map(cv, cat_and_params):
 # ===========================================================================
 def _build_shear_map(cv, cat_gal, params):
     """Replicate calculate_pseudo_cl_map's weighted shear-map construction."""
-    unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
-    n_gal = cv.get_n_gal_map(
-        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=None, idx_rep=idx_rep
-    )
+    n_gal, unique_pix, _idx, idx_rep = cv.get_n_gal_map(params, NSIDE, cat_gal)
     w = cat_gal[params["w_col"]]
     e1 = cat_gal[params["e1_col"]]
     e2 = cat_gal[params["e2_col"]]
@@ -415,9 +393,7 @@ def test_get_pseudo_cls_map(cv, cat_and_params):
 # ===========================================================================
 def test_get_pseudo_cls_catalog(cv, cat_and_params):
     cat_gal, params = cat_and_params
-    ell_eff, cl_all, wsp = cv.get_pseudo_cls_catalog(
-        catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
-    )
+    ell_eff, cl_all, wsp = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
 
     assert cl_all.shape == (4, N_ELL_BINS)
     # Effective ells share the binning math with the map path: bitwise-stable.
@@ -495,7 +471,7 @@ def test_apply_random_rotation_preserves_magnitude(cv, cat_and_params):
     e1 = np.asarray(cat_gal[params["e1_col"]], dtype=np.float64)
     e2 = np.asarray(cat_gal[params["e2_col"]], dtype=np.float64)
 
-    e1_rot, e2_rot = apply_random_rotation(e1, e2)
+    e1_rot, e2_rot = cv.apply_random_rotation(e1, e2)
 
     assert e1_rot.shape == e1.shape
     assert e2_rot.shape == e2.shape
@@ -515,16 +491,16 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
     e1 = np.asarray(cat_gal[params["e1_col"]], dtype=np.float64)
     e2 = np.asarray(cat_gal[params["e2_col"]], dtype=np.float64)
 
-    a1, a2 = apply_random_rotation(e1, e2, np.random.default_rng(42))
-    b1, b2 = apply_random_rotation(e1, e2, np.random.default_rng(42))
+    a1, a2 = cv.apply_random_rotation(e1, e2, np.random.default_rng(42))
+    b1, b2 = cv.apply_random_rotation(e1, e2, np.random.default_rng(42))
     npt.assert_array_equal(a1, b1)
     npt.assert_array_equal(a2, b2)
 
-    c1, _ = apply_random_rotation(e1, e2, np.random.default_rng(7))
+    c1, _ = cv.apply_random_rotation(e1, e2, np.random.default_rng(7))
     assert not np.allclose(a1, c1)
 
-    d1, _ = apply_random_rotation(e1, e2)
-    f1, _ = apply_random_rotation(e1, e2)
+    d1, _ = cv.apply_random_rotation(e1, e2)
+    f1, _ = cv.apply_random_rotation(e1, e2)
     assert not np.allclose(d1, f1)
 
 
@@ -539,9 +515,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     (it drops the BE row); we pin the round-tripped table.
     """
     ver = cv._test_version
-    cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
+    cv._pseudo_cls = {ver: {}}
     out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
-    cv.calculate_pseudo_cl_catalog(ver, out_path, tomo_bin_a="all", tomo_bin_b="all")
+    cv.calculate_pseudo_cl_catalog(ver, out_path)
 
     assert os.path.exists(out_path)
     d = fits.getdata(out_path)
@@ -612,7 +588,5 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     # (same computation, FITS round-trip) -- consistency, not an independent pin.
     cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
     params = get_params_rho_tau(cv.cc[ver], survey=ver)
-    _, cl_prim, _ = cv.get_pseudo_cls_catalog(
-        catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
-    )
+    _, cl_prim, _ = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
