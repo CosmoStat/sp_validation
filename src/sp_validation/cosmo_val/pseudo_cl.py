@@ -7,6 +7,7 @@ pseudo-Cl estimation, random-rotation noise debiasing, and plotting. It depends
 on pymaster (NaMaster), healpy, and OneCovariance.
 """
 
+import colorsys
 import configparser
 import itertools
 import os
@@ -15,11 +16,12 @@ import healpy as hp
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
+from matplotlib.colors import to_rgb
 
 import sp_validation.pseudo_cl as spv_pseudo_cl
 
 from ..rho_tau import get_params_rho_tau
-from ..statistics import chi2_and_pte, cov_from_one_covariance
+from ..statistics import cov_from_one_covariance
 
 
 class PseudoClMixin:
@@ -28,10 +30,14 @@ class PseudoClMixin:
     def pseudo_cls(self):
         if not hasattr(self, "_pseudo_cls"):
             self.calculate_pseudo_cl(compute_tomography=False)
-            self.calculate_pseudo_cl_inka_cov(compute_tomography=False)
+            self.calculate_pseudo_cl_inka_cov(
+                compute_tomography=False, load_all_block=True
+            )
             if self.compute_tomography:
                 self.calculate_pseudo_cl(compute_tomography=True)
-                self.calculate_pseudo_cl_inka_cov(compute_tomography=True)
+                self.calculate_pseudo_cl_inka_cov(
+                    compute_tomography=True, load_all_block=True
+                )
         return self._pseudo_cls
 
     @property
@@ -42,7 +48,9 @@ class PseudoClMixin:
 
     # ---------------- Pseudo-Cl calculation methods ---------------- #
     # TODO: some cleaning to clearly separate DV, covariance, and utility functions.
-    def calculate_pseudo_cl_inka_cov(self, compute_tomography=True):
+    def calculate_pseudo_cl_inka_cov(
+        self, compute_tomography=True, load_all_block=False
+    ):
         """
         Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
         """
@@ -64,13 +72,6 @@ class PseudoClMixin:
                 ver, "iNKA", tomography=compute_tomography
             )
 
-            if os.path.exists(out_path_merged) and not self.force_run:
-                self.print_done(
-                    f"Skipping Pseudo-Cl iNKA covariance calculation, {out_path_merged} exists"
-                )
-                self._pseudo_cls[ver]["cov_iNKA"] = fits.open(out_path_merged)
-                continue
-
             if compute_tomography:
                 tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
@@ -81,6 +82,51 @@ class PseudoClMixin:
 
             else:
                 tomo_bin_pairs = [("all", "all")]
+
+            if os.path.exists(out_path_merged) and not self.force_run:
+                self.print_done(
+                    f"Skipping Pseudo-Cl iNKA covariance calculation, {out_path_merged} exists"
+                )
+                self._pseudo_cls[ver]["cov_iNKA"] = fits.open(out_path_merged)
+
+                if load_all_block:
+                    self.print_done("Loading all the iNKA covariance blocks")
+                    n_spectra = len(tomo_bin_pairs)
+
+                    # indices into tomo_bin_pairs for all unique covariance blocks
+                    block_indices = list(
+                        itertools.combinations_with_replacement(range(n_spectra), 2)
+                    )
+
+                    for index_a, index_b in block_indices:
+                        bin_key_a1, bin_key_a2 = tomo_bin_pairs[index_a]
+                        bin_key_b1, bin_key_b2 = tomo_bin_pairs[index_b]
+
+                        load_path = self._output_path_iNKA_block_cov(
+                            ver,
+                            tomo_bin_quad=(
+                                bin_key_a1,
+                                bin_key_a2,
+                                bin_key_b1,
+                                bin_key_b2,
+                            ),
+                        )
+
+                        if os.path.exists(load_path):
+                            self._pseudo_cls[ver][
+                                f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
+                            ] = fits.open(load_path)
+
+                            if bin_key_a1 == bin_key_b1 and bin_key_a2 == bin_key_b2:
+                                self._pseudo_cls[ver][
+                                    f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                                ]["cov"] = fits.open(load_path)
+                        else:
+                            raise FileNotFoundError(
+                                "The file does not exist, please run `cosmo_val` with `force_run` to True."
+                            )
+
+                continue
 
             # Initialise dictionnary to store field and workspace
             n_gal_map_dict = {}
@@ -223,14 +269,6 @@ class PseudoClMixin:
                 self.print_cyan(
                     f"Tomo Bin Quad: ({bin_key_a1}, {bin_key_a2}, {bin_key_b1}, {bin_key_b2})"
                 )
-
-                if (
-                    f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
-                    not in self._pseudo_cls[ver].keys()
-                ):
-                    self._pseudo_cls[ver][
-                        f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
-                    ] = {}
 
                 if (
                     bin_key_a1 == bin_key_b1
@@ -905,6 +943,7 @@ class PseudoClMixin:
         return fiducial_cl
 
     def _get_tomographic_bin(self, params, cat_gal, tomo_bin):
+        """Extract tomographic bin from a given catalogue"""
         if tomo_bin == "all":
             return cat_gal
         else:
@@ -955,8 +994,9 @@ class PseudoClMixin:
         col1 = fits.Column(name="ELL", format="D", array=ell_eff)
         col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
         col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
-        col4 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
-        coldefs = fits.ColDefs([col1, col2, col3, col4])
+        col4 = fits.Column(name="BE", format="D", array=pseudo_cl[2])
+        col5 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
+        coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
         cell_hdu = fits.BinTableHDU.from_columns(coldefs, name="PSEUDO_CELL")
 
         cell_hdu.writeto(out_path, overwrite=True)
@@ -984,16 +1024,18 @@ class PseudoClMixin:
             ver, method="iNKA", tomography=tomography
         )
 
+        print(self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"])
+
         if tomography:
             # Merge the tomographic covariance matrices
-            tomo_bin_ids, tomo_bin_pairs = self._get_tomographic_bin(ver)
+            tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
             # Get the number of bins from the pseudo_cls attribute
             # The non-tomographic pseudo-cl are computed from the call
             # to this attribute.
-            n_ell = self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"][
-                "pseudo_cl"
-            ].shape[1]
+            n_ell = self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"][
+                "ELL"
+            ].shape[0]
 
             if tomo_bin_ids is None or tomo_bin_pairs is None:
                 raise AssertionError(
@@ -1046,214 +1088,346 @@ class PseudoClMixin:
         return covar
 
     # ---------------- Plotting functions for pseudo-Cl's ---------------- #
-    def plot_pseudo_cl(self):
-        """
-        Plot pseudo-Cl's for given catalogs.
-        """
-        self.print_cyan("Plotting pseudo-Cl's")
-
-        # Plotting EE
-        out_path = self._output_path("cell_ee.png")
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
-
-        ax[0].set_ylabel(r"$\ell C_\ell$")
-
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
-            )
-
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl EE (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Plotting EB
-        out_path = self._output_path("cell_eb.png")
-
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
-
-        ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel(r"$\ell C_\ell$")
-
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
-            )
-
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl EB (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Plotting BB
-        out_path = self._output_path("cell_bb.png")
-
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
-
-        ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel(r"$\ell C_\ell$")
-
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-            )
-
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl BB (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Print C_l^BB PTE for each version and save BB data
-        print("\nC_l^BB PTE summary:")
-        for ver in self.versions:
-            cl_bb = self.pseudo_cls[ver]["pseudo_cl"]["BB"]
-            cov_bb = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            chi2_bb, _, pte_bb = chi2_and_pte(cl_bb, cov_bb)
-            chi2_bb = float(chi2_bb)
-            print(
-                f"  {ver}: C_l^BB PTE = {pte_bb:.4f} "
-                f"(chi2/dof = {chi2_bb:.1f}/{len(cl_bb)})"
-            )
-
-            # Save BB data + covariance to .npz
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            bb_out = self._output_path(f"{ver}_cell_bb_data.npz")
-            np.savez(
-                bb_out,
-                ell=ell,
-                cl_bb=cl_bb,
-                cov_bb=cov_bb,
-                chi2_bb=np.array(chi2_bb),
-                pte_bb=np.array(pte_bb),
-            )
-            print(f"  Saved BB data to {bb_out}")
-
-    def plot_pseudo_cl_ee(self, tomography=True):
+    def plot_pseudo_cl(
+        self,
+        pol_list,
+        versions=None,
+        ell_factor="ell",
+        cov_type="iNKA",
+        offset=0.15,
+        tomography=True,
+        savefig=None,
+        show=True,
+    ):
         """
         Plot the pseudo-Cl for EE power spectrum.
-        """
-        pass
 
-    def plot_pseudo_cl_eb_bb(self, tomography=True, plot_eb=False, plot_bb=True):
+        Parameters
+        ----------
+        pol_list : list
+            List of polarization types to plot (e.g., ["EE", "BB"]).
+        ell_factor : {"None", "ell", "ell(ell+1)"}
+            Factor to multiply the ell values by.
+        cov_type : {"iNKA"}
+            Type of covariance to use.
+        tomography : bool, optional
+            Whether to plot tomographic power spectra.
+        savefig : str, optional
+            Path to save the figure.
+        show : bool, optional
+            Whether to show the figure.
+
+        Returns
+        -------
+        fig, ax : matplotlib.figure.Figure, matplotlib.axes.Axes
+            Figure and axes objects for the plot.
         """
-        Plot the pseudo-Cl for EB and BB power spectra.
+        if versions is None:
+            versions = self.versions
+        else:
+            for ver in versions:
+                if ver not in self.versions:
+                    raise ValueError(
+                        f"Version {ver} is not available. Available versions: {self.versions}"
+                    )
+        # Check that the method for the covariance is valid
+        if cov_type not in ["iNKA"]:
+            raise ValueError(
+                f"Invalid covariance type: {cov_type}. Valid options are: ['iNKA']"
+            )
+
+        # Check that the ell_factor is valid
+        if ell_factor not in ["None", "ell", "ell(ell+1)"]:
+            raise ValueError(
+                f"Invalid ell_factor: {ell_factor}. Valid options are: ['None', 'ell', 'ell(ell+1)']"
+            )
+
+        def get_ell_factor(ell):
+            """Given some ell, return the ell_factor for the plot."""
+            if ell_factor == "None":
+                return 1
+            elif ell_factor == "ell":
+                return ell
+            elif ell_factor == "ell(ell+1)":
+                return ell * (ell + 1)
+
+        # Check that all items in the list are valid polarisation
+        valid_pols = ["EE", "BB", "EB", "BE"]
+        for pol in pol_list:
+            if pol not in valid_pols:
+                raise ValueError(
+                    f"Invalid polarization type: {pol}. Valid options are: {valid_pols}"
+                )
+
+        fmt_dict = {"EE": "o", "BB": "s", "EB": "^", "BE": "v"}
+        # From all the versions, get the maximum number of tomo_bin_ids
+        tomo_bins = {}
+        for ver in versions:
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+            else:
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+
+            tomo_bins[ver] = {"ids": tomo_bin_ids, "pairs": tomo_bin_pairs}
+
+        n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
+
+        fig, axs = plt.subplots(
+            n_tomo_bins_plot,
+            n_tomo_bins_plot,
+            figsize=(12, 12),
+            sharex=True,
+            sharey=True,
+        )
+
+        for j, ver in enumerate(versions):
+            # Plot the pseudo-cl for each tomo bin of the considered version
+            for tomo_bin_a, tomo_bin_b in tomo_bins[ver]["pairs"]:
+                if tomography:
+                    ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
+                else:
+                    ax = axs
+                ver_tomo_info = self._pseudo_cls[ver][
+                    f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"
+                ]
+                ver_label = self.cc[ver]["label"] if "label" in self.cc[ver] else ver
+                ver_color = (
+                    self.cc[ver]["colour"] if "colour" in self.cc[ver] else "black"
+                )
+
+                pseudo_cls = ver_tomo_info["pseudo_cl"]
+                cov = ver_tomo_info["cov"]
+
+                ell = pseudo_cls["ell"]
+
+                ell_widths = np.diff(ell)
+                ell_widths = np.append(
+                    ell_widths, ell_widths[-1]
+                )  # Assume last bin width is same as second last
+
+                # Better jittering: symmetric around original ell values
+                jitter_fraction = (j - (len(versions) - 1) / 2) * offset
+                jittered_ell = ell + jitter_fraction * ell_widths
+                ell_factor_ = get_ell_factor(jittered_ell)
+
+                for pol in pol_list:
+                    pol_color = self.get_pol_color(ver_color, pol, pol_list)
+                    ax.errorbar(
+                        jittered_ell,
+                        ell_factor_ * pseudo_cls[pol],
+                        yerr=np.sqrt(np.diag(cov[f"COVAR_{pol}_{pol}"].data))
+                        * ell_factor_,
+                        fmt=fmt_dict[pol],
+                        label=ver_label + f" {pol}",
+                        color=pol_color,
+                        capsize=2,
+                    )
+
+        # Draw to extract the yaxis text offset
+        fig.canvas.draw()
+
+        if ell_factor == "None":
+            ell_label = r"$C_\ell$"
+        elif ell_factor == "ell":
+            ell_label = r"$\ell C_\ell$"
+        else:
+            ell_label = r"$\ell(\ell+1) C_\ell$"
+
+        for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
+            if tomography:
+                ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
+            else:
+                ax = axs
+            ax.text(
+                0.8,
+                0.95,
+                f"{tomo_bin_a}-{tomo_bin_b}",
+                transform=ax.transAxes,
+                verticalalignment="top",
+            )
+            ax.axhline(0, color="black", ls="--")
+            ax.set_xlim(ell.min(), ell.max())
+            ax.set_xscale("squareroot")
+            ax.set_xticks(np.array([100, 400, 900, 1600]))
+            ax.minorticks_on()
+            minor_ticks = [i * 10 for i in range(1, 10)] + [
+                i * 100 for i in range(1, 21)
+            ]
+            ax.xaxis.set_ticks(minor_ticks, minor=True)
+            ax.tick_params(axis="both", which="both", direction="in")
+            if tomo_bin_b == 6 or tomo_bin_b == "all":
+                ax.set_xlabel(r"$\ell$")
+            if tomo_bin_a == 1 or tomo_bin_a == "all":
+                text_offset = ax.yaxis.get_offset_text().get_text()
+                ax.yaxis.get_offset_text().set_visible(False)
+                ax.set_ylabel(f"{ell_label}{text_offset}")
+            else:
+                ax.yaxis.get_offset_text().set_visible(False)
+            if tomo_bin_a != tomo_bin_b:
+                ax = axs[tomo_bin_a - 1, tomo_bin_b - 1]
+                ax.set_visible(False)
+
+        # Setup the legend
+        plt.subplots_adjust(hspace=0.0, wspace=0.0)  # Remove space between subplots
+
+        legend_ax = self._add_grouped_legend(fig, versions, self.cc, pol_list, fmt_dict)
+
+        if savefig is not None:
+            plt.savefig(savefig, dpi=300, bbox_inches="tight")
+        if show:
+            plt.show()
+
+        return fig, axs, legend_ax
+
+    def _add_grouped_legend(
+        self,
+        fig,
+        versions,
+        cc,
+        pol_list,
+        fmt_dict,
+        row_height=0.35,
+        label_width=2,
+        col_width=0.9,
+        gap_below=0.10,
+        capsize=2,
+        fontsize=10,
+    ):
         """
-        pass
+        Add a custom legend below the figure with one row per version:
+            <version label>   <marker> <pol>   <marker> <pol>  ...
+
+        The box size (in inches) scales with the number of versions (rows)
+        and polarizations (columns), then gets converted to figure-fraction
+        coordinates so it works for any figsize.
+
+        Parameters
+        ----------
+        row_height : float
+            Height per row (per version), in inches.
+        label_width : float
+            Width reserved for the version label column, in inches.
+        col_width : float
+            Width per polarization column (marker + pol label), in inches.
+        gap_below : float
+            Vertical gap between the bottom of the subplot grid and the
+            top of the legend box, in inches.
+        """
+        n_rows = len(versions)
+        n_pol = len(pol_list)
+
+        # Desired box size in inches
+        box_width_in = label_width + n_pol * col_width
+        box_height_in = n_rows * row_height
+
+        fig_w_in, fig_h_in = fig.get_size_inches()
+
+        # Convert to figure-fraction
+        width_frac = box_width_in / fig_w_in
+        height_frac = box_height_in / fig_h_in
+        gap_frac = gap_below / fig_h_in
+
+        left = 0.5 - width_frac / 2  # centered horizontally
+        bottom = -gap_frac - height_frac  # just below the subplot grid (y=0)
+
+        legend_ax = fig.add_axes([left, bottom, width_frac, height_frac])
+        legend_ax.axis("off")
+        legend_ax.set_xlim(0, 1)
+        legend_ax.set_ylim(0, 1)
+
+        # Fractions *within* legend_ax's own 0-1 coordinate system, derived
+        # from the same inch-based proportions so columns stay consistent
+        label_frac = label_width / box_width_in
+        col_frac = col_width / box_width_in
+
+        dummy_yerr = 0.15 / n_rows
+
+        for i, ver in enumerate(versions):
+            y = 1.0 - (i + 0.5) / n_rows
+
+            ver_label = cc[ver]["label"] if "label" in cc[ver] else ver
+            ver_color = cc[ver]["colour"] if "colour" in cc[ver] else "black"
+
+            legend_ax.text(
+                0.02 * label_frac,
+                y,
+                ver_label,
+                ha="left",
+                va="center",
+                fontweight="bold",
+                fontsize=fontsize,
+            )
+
+            for k, pol in enumerate(pol_list):
+                pol_color = self.get_pol_color(ver_color, pol, pol_list)
+                x_marker = label_frac + k * col_frac + 0.15 * col_frac
+                x_text = x_marker + 0.15 * col_frac
+
+                legend_ax.errorbar(
+                    [x_marker],
+                    [y],
+                    yerr=dummy_yerr,
+                    fmt=fmt_dict[pol],
+                    color=pol_color,
+                    markersize=6,
+                    capsize=capsize,
+                    clip_on=False,
+                )
+                legend_ax.text(
+                    x_text,
+                    y,
+                    pol,
+                    ha="left",
+                    va="center",
+                    fontsize=fontsize - 1,
+                )
+
+        return legend_ax
+
+    def get_pol_color(self, base_color, pol, pol_list, lightness_range=(-0.25, 0.25)):
+        """
+        Given a base version color, return a shade variant for a given
+        polarization, by adjusting lightness in HLS space while keeping
+        hue and saturation fixed.
+
+        Parameters
+        ----------
+        base_color : str or tuple
+            Any matplotlib-recognized color (hex, name, RGB tuple, etc.)
+        pol : str
+            The polarization this color is for (e.g. "EE").
+        pol_list : list
+            Full list of polarizations being plotted, used to compute
+            this pol's relative position in the lightness range.
+        lightness_range : tuple of float
+            (min_offset, max_offset) added to the base lightness, spread
+            evenly across pol_list. Negative = darker, positive = lighter.
+            Values are in HLS lightness units (0-1 scale), so keep these
+            modest (e.g. +/-0.25) to avoid washing out to white or black.
+
+        Returns
+        -------
+        tuple
+            RGB color tuple in [0, 1] range, usable directly in matplotlib.
+        """
+        r, g, b = to_rgb(base_color)
+        h, lightness, s = colorsys.rgb_to_hls(r, g, b)
+
+        n_pol = len(pol_list)
+        idx = pol_list.index(pol)
+
+        if n_pol == 1:
+            l_offset = 0.0
+        else:
+            # spread idx evenly across [lightness_range[0], lightness_range[1]]
+            frac = idx / (n_pol - 1)  # 0 to 1
+            l_offset = lightness_range[0] + frac * (
+                lightness_range[1] - lightness_range[0]
+            )
+
+        lightness_new = min(
+            max(lightness + l_offset, 0.05), 0.95
+        )  # clamp to avoid pure black/white
+
+        r_new, g_new, b_new = colorsys.hls_to_rgb(h, lightness_new, s)
+        return (r_new, g_new, b_new)
