@@ -10,13 +10,16 @@ Compares:
 - Harmonic: cov(C_ell^BB) vs cov(C_ell^EE)
 """
 
+import argparse
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
+import yaml
 from astropy.io import fits
 from plotting_utils import PAPER_MPLSTYLE
 
@@ -382,28 +385,39 @@ def make_figure(
     plt.close(fig)
 
 
-def main(snakemake):
-    config = snakemake.config
+def main(
+    config,
+    pure_eb_paths,
+    harmonic_paths,
+    xi_integration_path,
+    cov_integration_paths,
+    pseudo_cl_path,
+    nmodes,
+    theta_min,
+    theta_max,
+    figure_path,
+    evidence_path,
+):
+    """Run the BB-covariance blind-independence cross-check.
+
+    ``pure_eb_paths`` / ``harmonic_paths`` / ``cov_integration_paths`` are dicts
+    keyed by blind (A/B/C). All paths are absolute; the per-blind mock-version
+    covariances are read directly, so the check is self-contained.
+    """
     version = config["fiducial"]["mock_version"]
 
     # Load pure E/B covariances for all blinds
     pure_eb_data = {}
     for blind in BLINDS:
-        path = snakemake.input[f"pure_eb_{blind}"]
-        pure_eb_data[blind] = load_pure_eb_diagonals(path)
+        pure_eb_data[blind] = load_pure_eb_diagonals(pure_eb_paths[blind])
 
     theta = pure_eb_data["A"]["theta"]
 
     # Load harmonic covariances for all blinds
     harmonic_data = {}
     for blind in BLINDS:
-        path = snakemake.input[f"harmonic_{blind}"]
-        harmonic_data[blind] = load_harmonic_diagonals(path)
+        harmonic_data[blind] = load_harmonic_diagonals(harmonic_paths[blind])
 
-    # Load COSEBIS covariances for all blinds
-    nmodes = snakemake.params.nmodes
-    theta_min = snakemake.params.theta_min
-    theta_max = snakemake.params.theta_max
     # Integration binning parameters from config
     min_sep_int = config["fiducial"]["min_sep_int"]
     max_sep_int = config["fiducial"]["max_sep_int"]
@@ -412,8 +426,8 @@ def main(snakemake):
     cosebis_data = {}
     for blind in BLINDS:
         cosebis_data[blind] = load_cosebis_diagonals(
-            snakemake.input.xi_integration,
-            snakemake.input[f"cov_integration_{blind}"],
+            xi_integration_path,
+            cov_integration_paths[blind],
             nmodes,
             theta_min,
             theta_max,
@@ -423,7 +437,7 @@ def main(snakemake):
         )
 
     # Read ell bin centers from pseudo-Cl data file
-    with fits.open(snakemake.input.pseudo_cl) as hdu:
+    with fits.open(pseudo_cl_path) as hdu:
         ell_eff = hdu["PSEUDO_CELL"].data["ELL"]
 
     # Compute ratios relative to blind A
@@ -461,7 +475,7 @@ def main(snakemake):
         pure_eb_results,
         harmonic_results,
         cosebis_results,
-        snakemake.output.figure,
+        figure_path,
         n_samples=n_samples,
     )
 
@@ -573,7 +587,7 @@ def main(snakemake):
             "version": version,
         },
         "output": {
-            "figure": Path(snakemake.output.figure).name,
+            "figure": Path(figure_path).name,
         },
     }
 
@@ -588,8 +602,8 @@ def main(snakemake):
     evidence["evidence"]["cosebis"] = clean_ratios(evidence["evidence"]["cosebis"])
 
     # Write evidence
-    Path(snakemake.output.evidence).parent.mkdir(parents=True, exist_ok=True)
-    with open(snakemake.output.evidence, "w") as f:
+    Path(evidence_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(evidence_path, "w") as f:
         json.dump(evidence, f, indent=2)
 
     # Print summary
@@ -604,5 +618,124 @@ def main(snakemake):
     print("    Note: MC sampling noise causes BB to vary similarly to EE")
 
 
+def _from_snakemake(smk):
+    config = smk.config
+    pure_eb_paths = {b: smk.input[f"pure_eb_{b}"] for b in BLINDS}
+    harmonic_paths = {b: smk.input[f"harmonic_{b}"] for b in BLINDS}
+    cov_integration_paths = {b: smk.input[f"cov_integration_{b}"] for b in BLINDS}
+    main(
+        config=config,
+        pure_eb_paths=pure_eb_paths,
+        harmonic_paths=harmonic_paths,
+        xi_integration_path=smk.input.xi_integration,
+        cov_integration_paths=cov_integration_paths,
+        pseudo_cl_path=smk.input.pseudo_cl,
+        nmodes=smk.params.nmodes,
+        theta_min=smk.params.theta_min,
+        theta_max=smk.params.theta_max,
+        figure_path=smk.output.figure,
+        evidence_path=smk.output.evidence,
+    )
+
+
+def _cov_integration_path(cov_dir, version, blind, min_sep, max_sep, nbins):
+    """Reproduce common.covariance_path for the Gaussian integration-grid,
+    masked covariance (suffix _processed.txt)."""
+    base = (
+        f"covariance_{version}_{blind}_g"
+        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+    )
+    return os.path.join(cov_dir, base, f"{base}_processed.txt")
+
+
+def _from_cli(argv=None):
+    ap = argparse.ArgumentParser(
+        description="BB-covariance blind-independence cross-check (mock version)."
+    )
+    ap.add_argument("--config", required=True, help="Absolute path to config.yaml")
+    ap.add_argument(
+        "--version",
+        default=None,
+        help="Mock (leak-corrected) version; default <fiducial.mock_version>_leak_corr",
+    )
+    ap.add_argument(
+        "--pure-eb-dir",
+        required=True,
+        help="Dir with {version}_{blind}_pure_eb_semianalytic.npz",
+    )
+    ap.add_argument(
+        "--cosmo-val-dir",
+        required=True,
+        help="COSMO_VAL output dir (pseudo_cl / pseudo_cl_cov FITS + xi_integration txt)",
+    )
+    ap.add_argument(
+        "--covariance-dir",
+        required=True,
+        help="COSMO_INFERENCE data/covariance dir (Gaussian integration covariances)",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+
+    version = a.version or f"{config['fiducial']['mock_version']}_leak_corr"
+    fid = config["fiducial"]
+    min_sep_int, max_sep_int, nbins_int = (
+        fid["min_sep_int"],
+        fid["max_sep_int"],
+        fid["nbins_int"],
+    )
+    npatch = fid["npatch"]
+
+    pure_eb_paths = {
+        b: os.path.join(a.pure_eb_dir, f"{version}_{b}_pure_eb_semianalytic.npz")
+        for b in BLINDS
+    }
+    harmonic_paths = {
+        b: os.path.join(
+            a.cosmo_val_dir,
+            f"pseudo_cl_cov_{version}_blind={b}_powspace_nbins=32.fits",
+        )
+        for b in BLINDS
+    }
+    cov_integration_paths = {
+        b: _cov_integration_path(
+            a.covariance_dir, version, b, min_sep_int, max_sep_int, nbins_int
+        )
+        for b in BLINDS
+    }
+    xi_integration_path = os.path.join(
+        a.cosmo_val_dir,
+        f"{version}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
+        f"_nbins={nbins_int}_npatch={npatch}.txt",
+    )
+    pseudo_cl_path = os.path.join(
+        a.cosmo_val_dir, f"pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"
+    )
+
+    out_dir = Path(a.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    main(
+        config=config,
+        pure_eb_paths=pure_eb_paths,
+        harmonic_paths=harmonic_paths,
+        xi_integration_path=xi_integration_path,
+        cov_integration_paths=cov_integration_paths,
+        pseudo_cl_path=pseudo_cl_path,
+        nmodes=fid["nmodes"],
+        theta_min=config["cosebis"]["theta_min"],
+        theta_max=config["cosebis"]["theta_max"],
+        figure_path=str(out_dir / "figure.png"),
+        evidence_path=str(out_dir / "evidence.json"),
+    )
+
+
 if __name__ == "__main__":
-    main(snakemake)  # noqa: F821
+    try:
+        snakemake  # noqa: F821 — injected by Snakemake's script: directive
+    except NameError:
+        _from_cli()
+    else:
+        _from_snakemake(snakemake)  # noqa: F821

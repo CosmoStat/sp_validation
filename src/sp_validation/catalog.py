@@ -217,7 +217,7 @@ def check_matching(
     return ind, mask_area_tiles, n_tot
 
 
-def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
+def check_invalid(dd, key, val, stats_file, name=None, verbose=False):
     """Check invalid objects.
 
     Check whether objects have invalid values.
@@ -227,9 +227,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
     dd : dict
         catalog
     key : list
-        key names of columns to check
-    comp : array of int
-        components for above columns
+        key names of (scalar) columns to check
     val : array of float
         values for above columns indicating invalid entries
     stats_file : file handler
@@ -245,7 +243,7 @@ def check_invalid(dd, key, comp, val, stats_file, name=None, verbose=False):
     n_all = len(dd)
 
     for i in range(len(key)):
-        w = dd[key[i]][:, comp[i]] == val[i]
+        w = dd[key[i]] == val[i]
         n_inv_psf = len(np.where(w)[0])
         msg = "Invalid {} found for {}/{} = {:.1g}% objects".format(
             name[i], n_inv_psf, n_all, n_inv_psf / n_all
@@ -258,7 +256,8 @@ def match_subsample(
     ind,
     mask,
     pos_key,
-    ell_key,
+    g1_key,
+    g2_key,
     n_ref,
     stats_file,
     verbose=False,
@@ -277,8 +276,8 @@ def match_subsample(
         boolean mask
     pos_key : list
         key names for position columns
-    ell_key : str
-        key name for ellipticity column
+    g1_key, g2_key : str
+        key names for the two scalar ellipticity components
     n_ref : int
         reference number of objects
     stats_file : file handler
@@ -302,40 +301,11 @@ def match_subsample(
 
     ra = dd[pos_key[0]][ind][mask]
     dec = dd[pos_key[1]][ind][mask]
-    g1 = dd[ell_key][:, 0][ind][mask]
-    g2 = dd[ell_key][:, 1][ind][mask]
+    g1 = dd[g1_key][ind][mask]
+    g2 = dd[g2_key][ind][mask]
     g = np.array([g1, g2])
 
     return ra, dec, g
-
-
-def match_spread_class(dd, ind, mask, stats_file, n_ref, verbose=False):
-    """Match spread class.
-
-    Match
-    """
-    tot_star = n_ref
-    tot_as_star = len(np.where(dd["SPREAD_CLASS"][ind][mask] == 0)[0])
-    tot_as_gal = len(np.where(dd["SPREAD_CLASS"][ind][mask] == 1)[0])
-    tot_as_other = len(np.where(dd["SPREAD_CLASS"][ind][mask] == 2)[0])
-
-    msg = (
-        "Number of stars selected as star (SPREAD_CLASS=0)   = "
-        + f"{tot_as_star}/{tot_star} = {tot_as_star / tot_star * 100:.1f}%"
-    )
-    io.print_stats(msg, stats_file, verbose=verbose)
-
-    msg = (
-        "Number of stars selected as galaxy (SPREAD_CLASS=1) = "
-        + f"{tot_as_gal}/{tot_star} = {tot_as_gal / tot_star * 100:.1f}%"
-    )
-    io.print_stats(msg, stats_file, verbose=verbose)
-
-    msg = (
-        "Number of stars selected as other (SPREAD_CLASS=2)  = "
-        + f"{tot_as_other}/{tot_star} = {tot_as_other / tot_star * 100:.1f}%"
-    )
-    io.print_stats(msg, stats_file, verbose=verbose)
 
 
 def match_stars2(ra_gal, dec_gal, ra_star, dec_star, thresh=0.0002):
@@ -885,7 +855,7 @@ def get_snr(sh, dat, m_sel, m_flg):
         my_snr = get_col(dat, "NGMIX_FLUX_NOSHEAR", m_sel, m_flg) / get_col(
             dat, "NGMIX_FLUX_ERR_NOSHEAR", m_sel, m_flg
         )
-    elif sh == "galsim":
-        my_snr = get_col(dat, "SNR_WIN", m_sel, m_flg)
+    else:
+        raise ValueError(f"Unsupported shape method '{sh}'; only 'ngmix' is supported")
 
     return my_snr

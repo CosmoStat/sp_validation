@@ -12,10 +12,9 @@ import numpy as np
 import seaborn as sns
 import tqdm
 import treecorr
+from cs_util.cosmo import get_theo_xi
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import sparse, stats
-
-from .cosmology import get_theo_xi
 
 _EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
 

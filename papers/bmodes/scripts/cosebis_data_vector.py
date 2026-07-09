@@ -9,6 +9,7 @@ Produces 9 figures:
 - figure_v{X.Y.Z}_uncorrected.png: version X.Y.Z, uncorrected, with title
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -20,7 +21,6 @@ import treecorr
 from plotting_utils import (
     FIG_WIDTH_SINGLE,
     PAPER_MPLSTYLE,
-    iter_version_figures,
 )
 
 from sp_validation.b_modes import calculate_cosebis
@@ -135,11 +135,9 @@ def _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None):
     return fig
 
 
-def main():
-    config = snakemake.config
+def main(config, xi_integration, cov_integration, out_dir):
     version = config["fiducial"]["version"]
     nmodes = config["fiducial"]["nmodes"]
-    version_labels = config["plotting"]["version_labels"]
 
     fiducial_scale_cut = (
         float(config["fiducial"]["fiducial_min_scale"]),
@@ -159,82 +157,98 @@ def main():
     max_sep_int = float(config["fiducial"]["max_sep_int"])
     nbins_int = int(config["fiducial"]["nbins_int"])
 
-    # Build input path lookup from snakemake inputs
-    xi_paths = {k: v for k, v in snakemake.input.items() if k.startswith("xi_")}
-    cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("cov_")}
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create output directory
-    output_dir = Path(snakemake.output["evidence"]).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Load the fiducial fine-binned 2PCF once (integration grid)
+    gg = treecorr.GGCorrelation(
+        min_sep=min_sep_int,
+        max_sep=max_sep_int,
+        nbins=nbins_int,
+        sep_units="arcmin",
+    )
+    gg.read(xi_integration)
 
-    # Track generated artifacts
-    output = {}
-
-    # Generate all 9 figures
-    for fig_spec in iter_version_figures(version_labels, version):
-        # Determine which input keys to use
-        if fig_spec["leak_corrected"]:
-            xi_key = f"xi_{fig_spec['version_leak_corr']}"
-            cov_key = f"cov_{fig_spec['version_leak_corr']}"
-        else:
-            xi_key = f"xi_{fig_spec['version_uncorr']}"
-            cov_key = f"cov_{fig_spec['version_uncorr']}"
-
-        # Load 2PCF for this version
-        gg = treecorr.GGCorrelation(
-            min_sep=min_sep_int,
-            max_sep=max_sep_int,
-            nbins=nbins_int,
-            sep_units="arcmin",
+    # Compute the E_n / B_n data vectors + T^T C_xi T mode covariance at both
+    # scale cuts. Same calculate_cosebis call as the original per-version loop.
+    npz_payload = {"nmodes": nmodes, "version": version}
+    datasets = {}
+    for scale_key, scale_cut in scale_cuts.items():
+        results = calculate_cosebis(
+            gg,
+            nmodes=nmodes,
+            scale_cuts=[scale_cut],
+            cov_path=cov_integration,
         )
-        gg.read(xi_paths[xi_key])
+        r = results[scale_cut]
+        En = r["En"]
+        Bn = r["Bn"]
+        cov = r["cov"]
+        sigma_E = np.sqrt(np.diag(cov[:nmodes, :nmodes]))
+        sigma_B = np.sqrt(np.diag(cov[nmodes:, nmodes:]))
+        datasets[scale_key] = {"Bn_normalized": Bn / sigma_B}
+        npz_payload[f"{scale_key}_En"] = En
+        npz_payload[f"{scale_key}_Bn"] = Bn
+        npz_payload[f"{scale_key}_cov"] = cov
+        npz_payload[f"{scale_key}_sigma_E"] = sigma_E
+        npz_payload[f"{scale_key}_sigma_B"] = sigma_B
+        npz_payload[f"{scale_key}_scale_cut"] = np.array(scale_cut)
 
-        # Compute COSEBIS datasets
-        datasets = _compute_cosebis_datasets(gg, cov_paths[cov_key], nmodes, scale_cuts)
+    # Primary data artifact (cosebis_modes_data)
+    npz_path = out_dir / f"cosebis_modes_{version}.npz"
+    np.savez(npz_path, **npz_payload)
+    print(f"Saved COSEBI modes data to {npz_path}")
 
-        # Create figure with appropriate title
-        fig = _create_single_panel_bmode_figure(
-            datasets, nmodes, scale_cuts, title=fig_spec["title"]
-        )
-
-        # Save figure
-        fig_path = output_dir / fig_spec["filename"]
-        fig.savefig(fig_path, dpi=300, bbox_inches="tight")
-        print(f"Saved {fig_path}")
-        plt.close(fig)
-
-        # Track artifact
-        output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
-
-        # Copy paper figure to paper figures directory
-        if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
-            paper_path = Path(snakemake.output["paper_figure"])
-            paper_path.parent.mkdir(parents=True, exist_ok=True)
-            fig.savefig(paper_path, bbox_inches="tight")
-            print(f"Saved {paper_path}")
-
-    # Write evidence
-    spec_paths = snakemake.input["specs"]
+    # Paper data-vector figure (fiducial version, both scale cuts overplotted)
+    fig = _create_single_panel_bmode_figure(datasets, nmodes, scale_cuts, title=None)
+    fig.savefig(out_dir / "figure.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out_dir / "cosebis_data_vector.pdf", bbox_inches="tight")
+    print(f"Saved figure to {out_dir / 'figure.png'}")
+    plt.close(fig)
 
     evidence_data = {
         "spec_id": "cosebis_data_vector",
-        "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             "version": version,
             "fiducial_scale_cut": list(fiducial_scale_cut),
             "full_scale_cut": list(full_scale_cut),
             "nmodes": nmodes,
-            "note": "Paper data vector figure. Statistical PTEs in cosebis_pte_matrix claim.",
+            "note": "COSEBI B_n/E_n data vector + paper figure. PTEs in cosebis_pte_per_cut.",
         },
-        "output": output,
+        "output": {"data": npz_path.name, "figure": "figure.png"},
     }
-
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = out_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="COSEBI E_n/B_n data vector (NPZ) + paper figure for the fiducial catalog."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--xi-integration",
+        required=True,
+        help="Fiducial fine-binned (1000-bin) TreeCorr xi_pm .txt dump",
+    )
+    ap.add_argument(
+        "--cov-integration",
+        required=True,
+        help="Fiducial 1000-bin Gaussian covariance (processed .txt) for the T^T C_xi T transform",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(config, a.xi_integration, a.cov_integration, a.out)
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()

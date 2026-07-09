@@ -259,20 +259,20 @@ def _build_ngmix_catalog(slope_11=2.0, slope_22=3.0, step=0.01):
     cols = {}
     for var in _VARIANTS:
         dg1, dg2 = shifts[var]
-        ell = np.zeros((n, 2))
-        ell[:, 0] = g1_base + dg1
-        ell[:, 1] = g2_base + dg2
-        cols[f"NGMIX_ELL_{var}"] = ell
+        # ShapePipe-v2 grammar: ellipticity in named scalar components.
+        cols[f"NGMIX_G1_{var}"] = np.full(n, g1_base + dg1)
+        cols[f"NGMIX_G2_{var}"] = np.full(n, g2_base + dg2)
         cols[f"NGMIX_FLAGS_{var}"] = np.zeros(n, dtype=int)
         cols[f"NGMIX_FLUX_{var}"] = np.full(n, 50.0)
         cols[f"NGMIX_FLUX_ERR_{var}"] = np.full(n, 1.0)
-        # T / Tpsf = 1.0 -> rel_size inside [0.5, 3.0].
+        # T / T_PSF_RECONV = 1.0 -> rel_size inside [0.5, 3.0].
         cols[f"NGMIX_T_{var}"] = np.full(n, 1.0)
         cols[f"NGMIX_T_ERR_{var}"] = np.full(n, 0.1)
-        cols[f"NGMIX_Tpsf_{var}"] = np.full(n, 1.0)
+        cols[f"NGMIX_T_PSF_RECONV_{var}"] = np.full(n, 1.0)
 
     # Per-component ellipticity errors -> inverse-variance weights.
-    cols["NGMIX_ELL_ERR_NOSHEAR"] = np.full((n, 2), 0.25)
+    cols["NGMIX_G1_ERR_NOSHEAR"] = np.full(n, 0.25)
+    cols["NGMIX_G2_ERR_NOSHEAR"] = np.full(n, 0.25)
 
     return Table(cols), n
 
