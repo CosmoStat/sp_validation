@@ -3,8 +3,8 @@
 """Prepare CosmoSIS inputs from UNIONS validation outputs.
 
 The script lives in ``cosmo_inference/scripts``. By default it reads templates
-from ``cosmo_inference/cosmosis_config`` and writes data products beneath
-``cosmo_inference/data`` and ``cosmo_inference/cosmosis_config``. Override
+from ``cosmo_inference/cosmosis_config/templates`` and writes data products beneath
+``cosmo_inference/data`` and ``cosmo_inference/cosmosis_config/output``. Override
 ``--template-dir`` or ``--output-root`` to use alternative locations.
 """
 

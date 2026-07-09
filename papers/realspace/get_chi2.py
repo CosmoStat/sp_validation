@@ -9,7 +9,6 @@ import numpy as np
 import scipy.stats as stats
 from astropy.io import fits
 from getdist import plots
-from IPython.display import Markdown, display
 from scipy.interpolate import interp1d
 
 sys.path.append("/home/guerrini/sp_validation/cosmo_inference/scripts")
@@ -559,7 +558,6 @@ def display_markdown(metrics):
         rows.append(row)
 
     # Display in Jupyter
-    display(Markdown(header + "\n".join(rows)))
     return header + "\n".join(rows)
 
 

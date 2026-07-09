@@ -283,13 +283,14 @@ def compute_best_fit_xi_from_cell(output_folder, root, best_fit_params, theta_ra
     )
 
     cosmo = cs_cosmo.get_cosmo(
-        Omega_c=best_fit_params["omch2"] / (best_fit_params["h0"] / 100) ** 2,
-        Omega_b=best_fit_params["ombh2"] / (best_fit_params["h0"] / 100) ** 2,
-        h=best_fit_params["h0"] / 100,
-        n_s=best_fit_params["n_s"],
-        sigma8=best_fit_params["SIGMA_8"],
-        matter_power_spectrum="camb",
-        extra_parameters={
+        camb_params={
+            "H0": best_fit_params["h0"],
+            "ombh2": best_fit_params["ombh2"],
+            "omch2": best_fit_params["omch2"],
+            "ns": best_fit_params["n_s"],
+            "sigma8": best_fit_params["SIGMA_8"],
+        },
+        extra_params={
             "camb": {
                 "halofit_version": "mead2020_feedback",
                 "HMCode_logT_AGN": best_fit_params["logt_agn"],
@@ -297,7 +298,7 @@ def compute_best_fit_xi_from_cell(output_folder, root, best_fit_params, theta_ra
         },
     )
 
-    xi_p, xi_m = cs_cosmo.c_ell_to_xi(cosmo, theta_rad, ell, shear_cl)
+    xi_p, xi_m = cs_cosmo.c_ell_to_xi(cosmo, np.rad2deg(theta_rad) * 60, ell, shear_cl)
 
     os.makedirs(
         output_folder + "{}/best_fit/shear_xi_minus".format(root), exist_ok=True

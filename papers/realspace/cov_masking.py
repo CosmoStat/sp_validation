@@ -64,7 +64,7 @@ plt.axvline(x=int(ndata / 2), color="white", linewidth=1.0)
 plt.axhline(y=int(ndata / 2), color="white", linewidth=1.0)
 
 plt.savefig(
-    f"./Plots/covmat_masked_unmasked_ratio_{catalog_ver}_{blind}.pdf",
+    f"./../../results/covmat_masked_unmasked_ratio_{catalog_ver}_{blind}.pdf",
     bbox_inches="tight",
 )
 
@@ -77,4 +77,4 @@ plt.plot(theta, np.diag(cov_masked)[20:] / np.diag(cov)[20:], label=r"$\xi_-$")
 plt.xlabel(r"$\theta$ (arcmin)")
 plt.ylabel("Cov masked / Cov unmasked")
 plt.legend(fontsize=20)
-plt.savefig("./Plots/covmat_masked_unmasked_ratio_diag.pdf", bbox_inches="tight")
+plt.savefig("./../../results/covmat_masked_unmasked_ratio_diag.pdf", bbox_inches="tight")

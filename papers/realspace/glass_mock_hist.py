@@ -1,11 +1,3 @@
-import IPython
-
-ipython = IPython.get_ipython()
-
-if ipython is not None:
-    ipython.run_line_magic("load_ext", "autoreload")
-    ipython.run_line_magic("autoreload", "2")
-
 import os
 
 import matplotlib.pyplot as plt
@@ -25,10 +17,6 @@ if os.path.exists("/home/guerrini/matplotlib_config/paper.mplstyle"):
 
 # Set default palette - will be updated per plot as needed
 sns.set_palette("husl")
-
-if ipython is not None:
-    ipython.run_line_magic("matplotlib", "inline")
-
 
 root_dir = "/n09data/guerrini/glass_mock_chains/"
 chain_version = "v6"
@@ -418,7 +406,7 @@ plt.legend(fontsize=12)
 
 plt.xlabel(r"$\Delta S_8$")
 plt.savefig(
-    "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/Plots/S8_comparison_harmonic_vs_configuration.pdf",
+    "./../../results/S8_comparison_harmonic_vs_configuration.pdf",
     bbox_inches="tight",
 )
 
@@ -465,6 +453,6 @@ g.set_axis_labels(
 # Optional styling tweaks
 g.ax_joint.tick_params(labelsize=12)
 plt.savefig(
-    "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/Plots/S8_vs_OmegaM_configuration_space_mocks.pdf",
+    "./../../results/S8_vs_OmegaM_configuration_space_mocks.pdf",
     bbox_inches="tight",
 )

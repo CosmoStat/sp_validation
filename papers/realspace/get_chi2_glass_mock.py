@@ -57,10 +57,7 @@ catalog_versions = [
 ]
 
 output_folder_chains = "/n23data1/n06data/lgoh/scratch/temp/"
-path_ini_files = "/home/guerrini/sp_validation/cosmo_inference/cosmosis_config/"
-output_fig_path = (
-    "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/Plots/"
-)
+path_ini_files = "/home/xguerrini/sp_validation/cosmo_inference/cosmosis_config/"
 
 ini_root = "blind_A/fiducial"
 
@@ -468,4 +465,4 @@ ax2.text(
 
 ax2.set_xlabel(r"$\chi^2 (\xi_\pm)$")
 ax2.set_ylabel("Density")
-fig.savefig(f"{output_fig_path}/chi2_glass_mocks_p_value_xi_tau.pdf")
+fig.savefig("./../../results/chi2_glass_mocks_p_value_xi_tau.pdf")

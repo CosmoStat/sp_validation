@@ -3,7 +3,6 @@
 # This notebook plots the 2D heatmap of ratio of scale contributions to the $\xi_\pm$ 2PCF given angular scale $\theta$ and wavenumber $k$.
 
 
-import os
 
 import matplotlib.pylab as plt
 import numpy as np
@@ -31,7 +30,6 @@ ver = "v1.4.6.3"
 
 
 data_dir = "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/data/"
-curr_dir = os.getcwd()
 
 # Read the 2D array from the text file
 
@@ -104,6 +102,5 @@ fig.tight_layout()
 cbar_ax = fig.add_axes([0.99, 0.15, 0.02, 0.7])
 cbar = fig.colorbar(pcm, cax=cbar_ax)
 
-fig.savefig(
-    curr_dir + f"/../Plots/theta_k_xip_xim_{ver}_{blind}.pdf", bbox_inches="tight"
+fig.savefig("./../../results/theta_k_xip_xim_{ver}_{blind}.pdf", bbox_inches="tight"
 )

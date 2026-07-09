@@ -279,6 +279,7 @@ for idx, (label, root) in enumerate(zip(labels, root_to_plot)):
         theta = theta[mask]
         ax.plot(theta, theta * xi_plus[mask], label=label, **line_args[idx], lw=2.5)
         ax2.plot(theta, theta * xi_minus[mask], label=label, **line_args[idx], lw=2.5)
+
 # XI PLUS PLOT SETTINGS
 
 # Plot the scale cuts for different k_max
@@ -355,10 +356,7 @@ ax2.yaxis.get_offset_text().set_fontsize(24)
 ax2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 ax2.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xim, fontsize=20)
 
-plt.savefig(
-    "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/2D_cosmic_shear_configuration_plots/best_fit_xipm_SP_v1.4.6.3_B.pdf",
-    bbox_inches="tight",
-)
+plt.savefig("./../../results/best_fit_xipm_SP_v1.4.6.3_B.pdf",bbox_inches="tight")
 
 
 root_to_plot = [fiducial_root_xi_chains]
@@ -496,7 +494,4 @@ ax2.yaxis.get_offset_text().set_fontsize(24)
 ax2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 ax2.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xim, fontsize=20)
 
-plt.savefig(
-    "/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/Plots/best_fit_tau_02_SP_v1.4.6.3_B.pdf",
-    bbox_inches="tight",
-)
+plt.savefig("./../../results/best_fit_tau_02_SP_v1.4.6.3_B.pdf",bbox_inches="tight")

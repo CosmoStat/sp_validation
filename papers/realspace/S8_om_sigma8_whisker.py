@@ -9,9 +9,6 @@ import sys
 os.environ["LD_LIBRARY_PATH"] = ""
 os.environ["CONDA_PREFIX"] = "/home/guerrini/.conda/envs/sp_validation_3.11"
 
-sys.path.append("/n23data1/n06data/lgoh/scratch/UNIONS/cosmo_inference/notebooks/")
-
-import sys
 import warnings
 
 import matplotlib.pyplot as plt
@@ -548,6 +545,5 @@ plt.gca().invert_yaxis()
 
 plt.tight_layout()
 
-# plt.savefig("./plots/whisker_plot.png", dpi=300)
 # #Save pdf
-plt.savefig("../Plots/S8_whisker_plot.pdf", bbox_inches="tight")
+plt.savefig("./../../results/S8_whisker_plot.pdf", bbox_inches="tight")

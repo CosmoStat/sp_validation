@@ -269,7 +269,7 @@ g.triangle_plot(
     filled=[True, True, False, False, True],
 )
 
-g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot.pdf")
+g.export("./../../results/SP_v1.4.6.3_B_fiducial_config_contour_plot.pdf")
 
 
 # ### FULL PLOT
@@ -309,7 +309,7 @@ g.triangle_plot(
     filled=True,
 )
 
-g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_full.pdf")
+g.export("./../../results/SP_v1.4.6.3_B_fiducial_config_contour_plot_full.pdf")
 
 
 # ### IA PLOT
@@ -339,7 +339,7 @@ g.triangle_plot(
     filled=[True, False, True],
 )
 
-g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_ia.pdf")
+g.export("./../../results/SP_v1.4.6.3_B_fiducial_config_contour_plot_ia.pdf")
 
 
 # ### PSF PLOT
@@ -380,7 +380,7 @@ g.subplots[3, 2].scatter(
     0.022, 0.798, color="k", marker="P", s=400, label="Fiducial config best-fit"
 )
 
-g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_psf.pdf")
+g.export("./../../results/SP_v1.4.6.3_B_fiducial_config_contour_plot_psf.pdf")
 
 
 # ### DELTA Z PLOT
@@ -409,7 +409,7 @@ g.triangle_plot(
     filled=[True, False, True],
 )
 
-g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_dz.pdf")
+g.export("./../../results/SP_v1.4.6.3_B_fiducial_config_contour_plot_dz.pdf")
 
 
 # ### EXTERNAL DATA
@@ -450,7 +450,7 @@ g.plot_2d(
 g.add_y_bands(0.2975, 0.0086, alpha2=0, color="k", label="BAO")
 g.add_legend(legend_labels, legend_loc="upper right")
 
-g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_ext.pdf")
+g.export("./../../results/SP_v1.4.6.3_B_fiducial_config_contour_plot_ext.pdf")
 
 
 # ### Small scales
@@ -484,7 +484,7 @@ g.plot_2d(
 )
 g.add_legend(legend_labels, legend_loc="upper right")
 
-g.export("../Plots/SP_v1.4.6.3_B_fiducial_config_contour_plot_scales.pdf")
+g.export("./../../results/SP_v1.4.6.3_B_fiducial_config_contour_plot_scales.pdf")
 
 
 # ### BBN Prior
@@ -629,7 +629,7 @@ ax.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 ax.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xip, fontsize=20)
 
 
-plt.savefig("/Plots/scale_cut_xipm_SP_v1.4.6.3_B.pdf", bbox_inches="tight")
+plt.savefig("./../../results/scale_cut_xipm_SP_v1.4.6.3_B.pdf", bbox_inches="tight")
 
 
 labels = roots_nonlin.values()
@@ -742,4 +742,4 @@ ax2.yaxis.get_offset_text().set_fontsize(24)
 ax2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 ax2.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xim, fontsize=20)
 
-plt.savefig("/Plots/nonlin_xipm_SP_v1.4.6.3_B.pdf", bbox_inches="tight")
+plt.savefig("./../../results/nonlin_xipm_SP_v1.4.6.3_B.pdf", bbox_inches="tight")

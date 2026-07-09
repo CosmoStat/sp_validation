@@ -3,10 +3,6 @@
 # This notebook plots the combined covariance matrix, and samples and plots the 2D marginalised posteriors of the PSF leakage parameters $\alpha$ and $\beta$.
 
 
-import os
-
-if not os.path.exists("./Plots"):
-    os.makedirs("./Plots")
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -87,7 +83,7 @@ for i, root in enumerate(roots):
     )
     fig.colorbar(im, ax=ax)
 
-    plt.savefig(f"./Plots/cov_matrix_{root}.png", bbox_inches="tight", dpi=300)
+    plt.savefig(f"./../../results/cov_matrix_{root}.png", bbox_inches="tight", dpi=300)
 
 
 # Create dummy rho and tau stat handler.
@@ -165,4 +161,4 @@ g.triangle_plot(
     legend_loc="upper right",
 )
 
-# plt.savefig(f"./Plots/psf_leakage_params.png", bbox_inches='tight', dpi=300)
+plt.savefig("./../../results/psf_leakage_params.png", bbox_inches='tight', dpi=300)
