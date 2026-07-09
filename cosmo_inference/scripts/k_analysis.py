@@ -76,7 +76,10 @@ def process_theta(theta, nz_file, output_root):
         scipy.interpolate.interp1d
             Interpolation function relating redshift and comoving distance.
         """
-        hz_integrand = lambda zz: c/Hz(zz)
+        
+        def hz_integrand(zz):
+            return c/Hz(zz)
+            
         rz_ref = np.array([integrate.quad(hz_integrand, 0, z)[0] for z in zs])
 
         if want_z == True:
