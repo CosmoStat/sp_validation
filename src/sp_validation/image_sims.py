@@ -11,15 +11,26 @@ from astropy.io import fits
 
 from sp_validation.catalog import match_catalogs_radec
 
-# Shear component for each simulation pair
-_PAIRS = [
+# Conventional campaign layout, used only when the config carries no branch map
+# (e.g. the synthetic-recovery tests).  In a workflow run the branches and pairs
+# come from manifest.yaml via the m_bias config; nothing about the injected
+# shear is hard-coded on the estimator's side.
+_DEFAULT_BRANCHES = ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
+_DEFAULT_PAIRS = [
     ("1p2z", "1m2z", 0),  # g1 component, index 0 → e1
     ("1z2p", "1z2m", 1),  # g2 component, index 1 → e2
 ]
 
 
 def _load_cat(path, e_col, w_col):
-    """Load RA, Dec, ellipticity component and weight from a FITS catalogue.
+    """Load RA, Dec, ellipticity components and weight from a FITS catalogue.
+
+    Reads the ``e1``/``e2`` columns, which the calibration stage writes as the
+    *calibrated* shear estimate ``g = R^-1 g_uncal - c`` (metacal response and
+    additive-bias corrected) -- not the raw ``e1_uncal``/``e2_uncal`` columns
+    that sit alongside them in the same catalogue.  The bias this estimator
+    measures is therefore the *residual* m/c left after the chain's own metacal
+    calibration, not the raw pre-calibration bias.
 
     ``w_col=None`` gives every object unit weight — the no-weighting mode for
     m-bias runs (#227: shape weights are excluded from sim calibration).
@@ -38,6 +49,11 @@ def _load_cat(path, e_col, w_col):
 class ImageSimMBias:
     """Compute multiplicative and additive shear bias from image simulations.
 
+    The estimator consumes the *calibrated* ``e1``/``e2`` columns (the metacal
+    response- and additive-bias-corrected shear ``g = R^-1 g_uncal - c``), so
+    the headline m/c is the **residual** bias remaining after the chain's own
+    metacal calibration, not the raw pre-calibration bias.
+
     Parameters
     ----------
     config : dict
@@ -46,23 +62,46 @@ class ImageSimMBias:
         - num : int, run number (e.g. 2 for *_grid_2)
         - catalog_name : str, filename of the cut catalogue
           (default 'shape_catalog_cut_ngmix.fits')
-        - shear_amplitude : float, input shear |g| (e.g. 0.02)
-        - match_radius_deg : float, matching radius in degrees
+        - shear_amplitude : float, input shear |g| (from manifest.yaml)
+        - branches : list of str, branch names in load order (incl. the
+          unsheared reference); defaults to the conventional 5-branch layout
+        - pairs : list of dicts {plus, minus, component}, the +/- sheared
+          branch pairing per component; defaults to the conventional pairs
+        - match_radius_deg : float, matching radius in degrees (required)
         - pair_match : bool, match objects between the +g and -g sheared
-          catalogues (default True); if False, use all objects of each
+          catalogues (required); if False, use all objects of each
           catalogue (the paired per-object cancellation is then unavailable)
-        - w_col : str or None, weight column name (default 'w_des');
-          None → unit weights (no weighting, per the #227 verdict)
-        - n_bootstrap : int, number of bootstrap resamples for errors
+        - w_col : str or None, weight column name (required); None → unit
+          weights (no weighting, per the #227 verdict)
+        - n_bootstrap : int, number of bootstrap resamples for errors (required)
+        - bootstrap_seed : int, seed for the per-pair bootstrap RNG (required);
+          makes the bootstrap errors bit-reproducible
+
+    The science knobs (``match_radius_deg``, ``pair_match``, ``w_col``,
+    ``n_bootstrap``, ``bootstrap_seed``) are read with no in-code default: a
+    missing one is a config bug and raises ``KeyError`` at construction, per the
+    fail-fast contract (the workflow emits every one into the m_bias config).
     """
 
     def __init__(self, config):
         self.cfg = config
         self.g_in = config["shear_amplitude"]
-        self.thresh = config.get("match_radius_deg", 0.0002)
-        self.pair_match = config.get("pair_match", True)
-        self.w_col = config.get("w_col", "w_des")
-        self.n_boot = config.get("n_bootstrap", 500)
+        self.thresh = config["match_radius_deg"]
+        self.pair_match = config["pair_match"]
+        self.w_col = config["w_col"]
+        self.n_boot = config["n_bootstrap"]
+        self.boot_seed = config["bootstrap_seed"]
+        # Branch list and pairing come from the manifest-derived config
+        # (``branches`` / ``pairs``); fall back to the conventional layout only
+        # when neither is given.  ``branches`` fixes the catalogue load order;
+        # ``pairs`` fixes which sims difference into which component.
+        self.sim_names = list(config.get("branches", _DEFAULT_BRANCHES))
+        if config.get("pairs"):
+            self.pairs = [
+                (p["plus"], p["minus"], p["component"]) for p in config["pairs"]
+            ]
+        else:
+            self.pairs = list(_DEFAULT_PAIRS)
         self.cats = {}
 
     def load_catalogs(self, verbose=True):
@@ -70,12 +109,10 @@ class ImageSimMBias:
         grids_dir = self.cfg["grids_dir"]
         num = self.cfg["num"]
         cat_name = self.cfg.get("catalog_name", "shape_catalog_cut_ngmix.fits")
-        # 1z2z is the unsheared reference. The +g/-g pool estimator does not use
-        # it (it pairs the sheared sims directly); it is loaded for completeness
-        # and for null-test diagnostics on the zero-shear catalogue.
-        sim_names = ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
-
-        for name in sim_names:
+        # ``sim_names`` (incl. the unsheared reference) comes from the config's
+        # branch map. The +g/-g pool estimator pairs the sheared sims directly;
+        # the reference is loaded for completeness and null-test diagnostics.
+        for name in self.sim_names:
             path = f"{grids_dir}/{name}_grid_{num}/{cat_name}"
             if verbose:
                 print(f"  Loading {path}")
@@ -150,7 +187,7 @@ class ImageSimMBias:
         e_m = self.cats[name_m][e_key][idx_m]
         w_m = self.cats[name_m]["w"][idx_m]
 
-        rng = np.random.default_rng(seed=42)
+        rng = np.random.default_rng(seed=self.boot_seed)
         m_boot = np.empty(self.n_boot)
         c_boot = np.empty(self.n_boot)
 
@@ -201,7 +238,7 @@ class ImageSimMBias:
         dict with keys m1, m1_err, c1, c1_err, m2, m2_err, c2, c2_err
         """
         results = {}
-        for name_p, name_m, comp in _PAIRS:
+        for name_p, name_m, comp in self.pairs:
             label = f"g{comp + 1}"
             if verbose:
                 print(f"\n--- {label}: {name_p} / {name_m} ---")

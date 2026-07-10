@@ -4,9 +4,27 @@ Run the sp_validation-side chain (merge -> extract -> calibrate -> m-bias),
 optionally including the ShapePipe pipeline stage, without pulling in the
 cosmology-validation config the top-level ``workflow/Snakefile`` requires.
 
-    snakemake -s workflow/image_sims/Snakefile \\
-        --configfile workflow/image_sims/config.yaml \\
-        -j 4 im_mbias
+Layer a run config over the operational defaults -- the workflow config.yaml
+carries operational defaults but *no* science keys, so it is incomplete on its
+own (by design); the run config supplies the science knobs.  The one drive
+command on candide, with the committed SLURM profile owning all scheduling:
+
+    snakemake --profile workflow/profiles/candide \\
+        -s workflow/image_sims/Snakefile \\
+        im_mbias --configfile my_run.yaml
+
+``configfile: "workflow/image_sims/config.yaml"`` below loads the operational
+defaults automatically, so only ``my_run.yaml`` (the science knobs, and any
+operational override that run wants) is passed on the command line; Snakemake
+deep-merges the two.  The profile supplies the executor, account, partition,
+node excludes and job floor -- no ``-j`` needed (the slurm executor sets the
+job cap).  Off-cluster, drop ``--profile`` and add ``-j N`` to run locally.
+
+The target (``im_mbias``) is given *before* ``--configfile``: Snakemake's
+``--configfile`` takes one-or-more paths, so a target placed after it is
+swallowed as a config path ("No such file: im_mbias").  Put targets ahead of
+``--configfile`` (or make ``--configfile`` the last flag on the line).  Always
+dry-run first with ``-n``.
 
 The same rules are also available inside the main workflow: they are included
 there under ``if "image_sims" in config``.

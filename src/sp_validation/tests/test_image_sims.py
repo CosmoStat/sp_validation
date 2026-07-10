@@ -103,6 +103,8 @@ def test_mbias_recovers_injected_values(tmp_path):
         "match_radius_deg": 0.0002,
         "w_col": "w_des",
         "n_bootstrap": 50,
+        "pair_match": True,
+        "bootstrap_seed": 42,
     }
     mb = ImageSimMBias(config)
     mb.load_catalogs(verbose=False)
@@ -164,6 +166,8 @@ def test_mbias_pool_cancels_shape_noise(tmp_path):
         "match_radius_deg": 0.0002,
         "w_col": "w_des",
         "n_bootstrap": 200,
+        "pair_match": True,
+        "bootstrap_seed": 42,
     }
     mb = ImageSimMBias(config)
     mb.load_catalogs(verbose=False)
