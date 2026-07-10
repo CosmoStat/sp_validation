@@ -124,15 +124,26 @@ def pure_eb_to_sacc(nz, metadata, theta, eb, covariance=None):
     return s
 
 
-def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov=None):
+def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
     """One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.
 
     ``rho_stats`` / ``tau_stats`` are the ``shear_psf_leakage`` handler tables
     (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, ``rho_{k}_m``, … and
-    the τ analogue). ρ carries a diagonal (varxip/varxim) covariance — a
-    diagnostic placeholder, not used by inference — while τ carries ``tau_cov``,
-    the theoretical ``CovTauTh`` block the CosmoSIS τ-likelihood consumes. The
-    block order matches insertion: ρ (all +then−, per k) then τ.
+    the τ analogue). Both diagnostics stay out of the blind and only τ enters
+    inference, so the covariance is a block-diagonal placeholder except for the
+    τ-plus theory block:
+
+    - ρ (all 6·nbin points): diagonal from ``varrho`` — a diagnostic placeholder,
+      not consumed by inference.
+    - τ (6·nbin points, per-k ``[τ+; τ−]``): the ``CovTauTh`` theory covariance
+      ``tau_cov_th`` scattered into the τ-plus rows/columns. ``CovTauTh.build_cov``
+      returns a ``(3·nbin, 3·nbin)`` k-major matrix over ``{τ0, τ2, τ5}`` with the
+      plus/minus contributions folded into one component per k (verified against
+      the write-side); it therefore aligns to our τ-plus points ``{τ0+, τ2+, τ5+}``
+      in k-major order, and today's CosmoSIS chain (``covdat_to_fits``) consumes
+      exactly this flavor for τ. The τ-minus points carry only a ``vartau``
+      diagonal (no theory covariance for them exists). ``tau_cov_th=None`` falls
+      back to a fully diagonal τ block (a flagged placeholder, not the design).
     """
     s = sio.new_sacc(nz, metadata)
     theta_rho = np.asarray(rho_stats["theta"])
@@ -154,6 +165,7 @@ def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov=None):
             np.asarray(tau_stats[f"tau_{k}_p"]),
             np.asarray(tau_stats[f"tau_{k}_m"]),
         )
+    nbin = len(theta_tau)
     rho_var = np.concatenate(
         [
             np.concatenate([rho_stats[f"varrho_{k}_p"], rho_stats[f"varrho_{k}_m"]])
@@ -166,22 +178,30 @@ def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov=None):
             for k in TAU_K
         ]
     )
-    if tau_cov is None:
-        # Pure diagnostic file: diagonal covariance across ρ and τ.
+    if tau_cov_th is None:
+        # Fully diagonal placeholder — a DiagonalCovariance (compact, honest) for
+        # the standalone diagnostic file; assemble reads it back via .dense.
         s.add_covariance(np.concatenate([rho_var, tau_var]))
-    else:
-        # ρ diagonal (diagnostic) + τ dense theoretical block (inference input).
-        n_rho, n_tau = len(rho_var), len(tau_var)
-        tau_cov = np.asarray(tau_cov)
-        if tau_cov.shape != (n_tau, n_tau):
-            raise ValueError(
-                f"tau_cov shape {tau_cov.shape} does not match the {n_tau} τ "
-                "data points"
-            )
-        full = np.zeros((n_rho + n_tau, n_rho + n_tau))
-        full[:n_rho, :n_rho] = np.diag(rho_var)
-        full[n_rho:, n_rho:] = tau_cov
-        s.add_covariance(full)
+        return s
+    tau_cov_th = np.asarray(tau_cov_th)
+    n_plus = len(TAU_K) * nbin
+    if tau_cov_th.shape != (n_plus, n_plus):
+        raise ValueError(
+            f"tau_cov_th shape {tau_cov_th.shape} does not match the "
+            f"{n_plus} τ-plus points ({len(TAU_K)} indices × {nbin} bins) — "
+            "CovTauTh.build_cov returns one (plus-folded) component per τ index"
+        )
+    n_rho, n_tau = len(rho_var), len(tau_var)
+    tau_block = np.diag(tau_var)
+    # τ-plus local positions in the τ block, k-major (per-k layout is [+; −]).
+    plus = np.concatenate(
+        [np.arange(2 * i * nbin, 2 * i * nbin + nbin) for i in range(len(TAU_K))]
+    )
+    tau_block[np.ix_(plus, plus)] = tau_cov_th
+    full = np.zeros((n_rho + n_tau, n_rho + n_tau))
+    full[:n_rho, :n_rho] = np.diag(rho_var)
+    full[n_rho:, n_rho:] = tau_block
+    s.add_covariance(full)
     return s
 
 

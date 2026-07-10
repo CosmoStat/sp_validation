@@ -192,32 +192,35 @@ def test_rho_tau_to_sacc_diagonal(tmp_path):
 
 
 def test_rho_tau_to_sacc_tau_theory_block(tmp_path):
+    """The (3·nbin) plus-only CovTauTh block scatters into the τ-plus rows/cols;
+    τ-minus keeps a vartau diagonal, and cross plus↔minus stays zero."""
     rho, tau, theta = _rho_tau_tables()
-    n_tau = 2 * len(sw.TAU_K) * len(theta)
-    tau_cov = _spd(n_tau, 11)
-    s = sw.rho_tau_to_sacc({0: _nz()}, META, rho, tau, tau_cov=tau_cov)
+    nbin = len(theta)
+    n_plus = len(sw.TAU_K) * nbin  # τ-plus points (k-major, one component per k)
+    tau_cov_th = _spd(n_plus, 11)
+    s = sw.rho_tau_to_sacc({0: _nz()}, META, rho, tau, tau_cov_th=tau_cov_th)
     assert type(s.covariance).__name__ == "FullCovariance"
-    # τ sub-block equals the supplied theory covariance.
     tr = ("source_0", sio.PSF_TRACER)
-    tau_idx = np.concatenate(
-        [
-            np.concatenate(
-                [
-                    s.indices(sio.TAU_PLUS.format(k=k), tr),
-                    s.indices(sio.TAU_MINUS.format(k=k), tr),
-                ]
-            )
-            for k in sw.TAU_K
-        ]
+    tau_plus = np.concatenate(
+        [s.indices(sio.TAU_PLUS.format(k=k), tr) for k in sw.TAU_K]
+    )
+    tau_minus = np.concatenate(
+        [s.indices(sio.TAU_MINUS.format(k=k), tr) for k in sw.TAU_K]
     )
     s2 = _roundtrip(s, tmp_path, "rttau")
-    assert np.allclose(s2.covariance.dense[np.ix_(tau_idx, tau_idx)], tau_cov)
+    dense = s2.covariance.dense
+    # τ-plus sub-block equals the supplied theory covariance (scatter is correct).
+    assert np.allclose(dense[np.ix_(tau_plus, tau_plus)], tau_cov_th)
+    # τ-minus is diagonal from vartau; plus↔minus cross is zero.
+    tau_minus_var = np.concatenate([np.asarray(tau[f"vartau_{k}_m"]) for k in sw.TAU_K])
+    assert np.allclose(np.diag(dense[np.ix_(tau_minus, tau_minus)]), tau_minus_var)
+    assert np.allclose(dense[np.ix_(tau_plus, tau_minus)], 0.0)
 
 
 def test_rho_tau_to_sacc_tau_cov_shape_mismatch():
     rho, tau, _ = _rho_tau_tables()
-    with pytest.raises(ValueError, match="tau_cov shape"):
-        sw.rho_tau_to_sacc({0: _nz()}, META, rho, tau, tau_cov=_spd(3, 1))
+    with pytest.raises(ValueError, match="tau_cov_th shape"):
+        sw.rho_tau_to_sacc({0: _nz()}, META, rho, tau, tau_cov_th=_spd(3, 1))
 
 
 # --------------------------------------------------------------------------- #

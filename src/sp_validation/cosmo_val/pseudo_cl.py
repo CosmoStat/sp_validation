@@ -17,6 +17,7 @@ import pymaster as nmt
 from astropy.io import fits
 from cs_util.cosmo import get_theo_c_ell
 
+from .. import sacc_io
 from ..pseudo_cl import (
     apply_random_rotation,
     get_n_gal_map,
@@ -26,6 +27,10 @@ from ..pseudo_cl import (
 )
 from ..rho_tau import get_params_rho_tau
 from ..statistics import chi2_and_pte, cov_from_one_covariance
+from .sacc_writers import BIN as SACC_BIN
+
+# NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).
+_NMT_EE, _NMT_EB, _NMT_BB = 0, 1, 3
 
 
 class PseudoClMixin:
@@ -454,6 +459,12 @@ class PseudoClMixin:
     def calculate_pseudo_cl(self):
         """
         Compute the pseudo-Cl of given catalogs.
+
+        Each version's spectra are born as a SACC part (``pseudo_cl_{ver}.sacc``)
+        via :func:`sacc_writers.pseudo_cl_to_sacc` — EE/BB/EB carrying the shared
+        NaMaster bandpower window. The in-memory ``self._pseudo_cls[ver]``
+        ``"pseudo_cl"`` entry keeps the ``ELL``/``EE``/``EB``/``BB`` arrays the
+        plotting and B-mode-summary consumers read by column name.
         """
         self.print_start("Computing pseudo-Cl's")
 
@@ -468,11 +479,10 @@ class PseudoClMixin:
 
             self._pseudo_cls[ver] = {}
 
-            out_path = self._output_path(f"pseudo_cl_{ver}.fits")
+            out_path = self._output_path(f"pseudo_cl_{ver}.sacc")
             if os.path.exists(out_path):
                 self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
-                cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+                self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
             elif self.cell_method == "map":
                 self.calculate_pseudo_cl_map(ver, nside, out_path)
             elif self.cell_method == "catalog":
@@ -481,6 +491,13 @@ class PseudoClMixin:
                 raise ValueError(f"Unknown cell method: {self.cell_method}")
 
         self.print_done("Done pseudo-Cl's")
+
+    @staticmethod
+    def _load_pseudo_cl_sacc(out_path):
+        """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict consumers use."""
+        s = sacc_io.load(out_path)
+        ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+        return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
 
     def calculate_pseudo_cl_map(self, ver, nside, out_path):
         params = get_params_rho_tau(self.cc[ver], survey=ver)
@@ -547,10 +564,9 @@ class PseudoClMixin:
         cl_shear = cl_shear - cl_noise
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+        self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
 
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+        self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
 
     def calculate_pseudo_cl_catalog(self, ver, out_path):
         params = get_params_rho_tau(self.cc[ver], survey=ver)
@@ -563,10 +579,9 @@ class PseudoClMixin:
         )
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+        self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
 
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+        self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
 
     def get_n_gal_map(self, params, nside, cat_gal):
         """Weighted galaxy number-density map (thin wrapper -> primitive)."""
