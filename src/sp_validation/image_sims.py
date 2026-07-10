@@ -11,8 +11,12 @@ from astropy.io import fits
 
 from sp_validation.catalog import match_catalogs_radec
 
-# Shear component for each simulation pair
-_PAIRS = [
+# Conventional campaign layout, used only when the config carries no branch map
+# (e.g. the synthetic-recovery tests).  In a workflow run the branches and pairs
+# come from manifest.yaml via the m_bias config; nothing about the injected
+# shear is hard-coded on the estimator's side.
+_DEFAULT_BRANCHES = ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
+_DEFAULT_PAIRS = [
     ("1p2z", "1m2z", 0),  # g1 component, index 0 → e1
     ("1z2p", "1z2m", 1),  # g2 component, index 1 → e2
 ]
@@ -46,7 +50,11 @@ class ImageSimMBias:
         - num : int, run number (e.g. 2 for *_grid_2)
         - catalog_name : str, filename of the cut catalogue
           (default 'shape_catalog_cut_ngmix.fits')
-        - shear_amplitude : float, input shear |g| (e.g. 0.02)
+        - shear_amplitude : float, input shear |g| (from manifest.yaml)
+        - branches : list of str, branch names in load order (incl. the
+          unsheared reference); defaults to the conventional 5-branch layout
+        - pairs : list of dicts {plus, minus, component}, the +/- sheared
+          branch pairing per component; defaults to the conventional pairs
         - match_radius_deg : float, matching radius in degrees
         - pair_match : bool, match objects between the +g and -g sheared
           catalogues (default True); if False, use all objects of each
@@ -63,6 +71,17 @@ class ImageSimMBias:
         self.pair_match = config.get("pair_match", True)
         self.w_col = config.get("w_col", "w_des")
         self.n_boot = config.get("n_bootstrap", 500)
+        # Branch list and pairing come from the manifest-derived config
+        # (``branches`` / ``pairs``); fall back to the conventional layout only
+        # when neither is given.  ``branches`` fixes the catalogue load order;
+        # ``pairs`` fixes which sims difference into which component.
+        self.sim_names = list(config.get("branches", _DEFAULT_BRANCHES))
+        if config.get("pairs"):
+            self.pairs = [
+                (p["plus"], p["minus"], p["component"]) for p in config["pairs"]
+            ]
+        else:
+            self.pairs = list(_DEFAULT_PAIRS)
         self.cats = {}
 
     def load_catalogs(self, verbose=True):
@@ -70,12 +89,10 @@ class ImageSimMBias:
         grids_dir = self.cfg["grids_dir"]
         num = self.cfg["num"]
         cat_name = self.cfg.get("catalog_name", "shape_catalog_cut_ngmix.fits")
-        # 1z2z is the unsheared reference. The +g/-g pool estimator does not use
-        # it (it pairs the sheared sims directly); it is loaded for completeness
-        # and for null-test diagnostics on the zero-shear catalogue.
-        sim_names = ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
-
-        for name in sim_names:
+        # ``sim_names`` (incl. the unsheared reference) comes from the config's
+        # branch map. The +g/-g pool estimator pairs the sheared sims directly;
+        # the reference is loaded for completeness and null-test diagnostics.
+        for name in self.sim_names:
             path = f"{grids_dir}/{name}_grid_{num}/{cat_name}"
             if verbose:
                 print(f"  Loading {path}")
@@ -201,7 +218,7 @@ class ImageSimMBias:
         dict with keys m1, m1_err, c1, c1_err, m2, m2_err, c2, c2_err
         """
         results = {}
-        for name_p, name_m, comp in _PAIRS:
+        for name_p, name_m, comp in self.pairs:
             label = f"g{comp + 1}"
             if verbose:
                 print(f"\n--- {label}: {name_p} / {name_m} ---")
