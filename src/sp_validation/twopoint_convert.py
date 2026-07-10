@@ -160,6 +160,33 @@ def _type_major_xi(s, bins):
     return sacc_io.get_xi(s, bins, grid="coarse")
 
 
+def _require_single_bin(s, n_bins):
+    """Fail fast unless the SACC is a valid single-bin ξ product.
+
+    The converter emits the single-bin 2pt-FITS today's CosmoSIS pipeline reads
+    (BIN1/BIN2 all 1, one NZ column). A tomographic SACC would otherwise slip
+    through silently — ``n_bins`` alone drives the NZDATA column count while the
+    ξ/covariance are read from bin ``(0, 0)`` only, so a 2-bin file would emit a
+    ``NBIN=2`` n(z) beside a data vector holding just the ``(0, 0)`` pair.
+    Guards both the empty-ξ case and the single-bin contract; tomographic
+    emission lands with the tomographic round.
+    """
+    pairs = s.get_tracer_combinations(sacc_io.XI_PLUS)
+    if not pairs:
+        raise ValueError(
+            f"SACC has no {sacc_io.XI_PLUS} points — nothing to convert; the "
+            "2pt-FITS data vector is built from the ξ± statistics"
+        )
+    expected = (sacc_io.source_name(0), sacc_io.source_name(0))
+    if n_bins != 1 or set(pairs) != {expected}:
+        raise ValueError(
+            f"converter is single-bin only (n_bins=1, ξ pairs == {{{expected}}}); "
+            f"got n_bins={n_bins} and ξ pairs {sorted(pairs)}. Tomographic "
+            "emission (multiple bin pairs, per-pair BIN1/BIN2, one NZ column per "
+            "bin) lands with the tomographic round."
+        )
+
+
 def sacc_to_twopoint_fits(
     s,
     path,
@@ -191,19 +218,30 @@ def sacc_to_twopoint_fits(
         alone cannot rebuild the ``varrho_*`` columns Sacha's fork reads. When
         omitted, a pure ξ (± Cℓ) product is written.
     n_bins : int, optional
-        Number of source tomographic bins (default 1, the current single-bin
-        analysis). Sets the NZDATA column count.
+        Number of source tomographic bins. Must be ``1``: this converter emits
+        the single-bin 2pt-FITS today's CosmoSIS pipeline consumes. Tomographic
+        emission (multiple bin pairs, per-pair BIN1/BIN2, one NZ column per bin)
+        lands with the tomographic round; the converter fails fast on anything
+        else rather than silently truncating to bin ``(0, 0)``.
 
     Returns
     -------
     astropy.io.fits.HDUList
         The assembled list, also written to ``path``.
+
+    Raises
+    ------
+    ValueError
+        If the SACC has no ξ points; if ``n_bins != 1`` or the SACC's ξ tracer
+        pairs are anything other than exactly ``{(source_0, source_0)}`` (the
+        single-bin contract); or if exactly one of the ρ/τ sidecars is supplied.
     """
     if (rho_stats_hdu is None) != (tau_stats_hdu is None):
         raise ValueError(
             "rho_stats_hdu and tau_stats_hdu must be supplied together "
             "(the ρ/τ product needs both, or neither for a pure-ξ product)"
         )
+    _require_single_bin(s, n_bins)
     use_rho_tau = rho_stats_hdu is not None
     bins = (0, 0)
 

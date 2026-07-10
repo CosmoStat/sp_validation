@@ -376,3 +376,97 @@ def test_rho_tau_sidecars_required_together(tmp_path):
         twopoint_convert.sacc_to_twopoint_fits(
             s, str(tmp_path / "x.fits"), rho_stats_hdu=rho_hdu, n_bins=1
         )
+
+
+# =============================================================================
+# Fail-fast guards and permutation teeth (adversarial-review hardening)
+# =============================================================================
+
+
+def test_tomographic_sacc_raises(tmp_path):
+    """A multi-bin SACC fails fast instead of silently truncating to (0, 0).
+
+    Review finding (HIGH): ``n_bins`` alone drove the NZDATA column count while
+    the data vector and covariance were read from bin ``(0, 0)`` only, so a
+    2-bin SACC + ``n_bins=2`` emitted a plausible-looking FITS carrying 1/3 of
+    the data. Both the ``n_bins`` and the tracer-pair mismatch must raise.
+    """
+    inp = _inputs(seed=30)
+    s = sacc_io.new_sacc({0: (inp["z"], inp["nz"]), 1: (inp["z"], inp["nz"])})
+    for pair in [(0, 0), (0, 1), (1, 1)]:
+        sacc_io.add_xi(s, pair, inp["theta"], inp["xip"], inp["xim"], grid="coarse")
+    s.add_covariance(np.eye(len(s.mean)))
+
+    with pytest.raises(ValueError, match="single-bin only"):
+        twopoint_convert.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=2)
+    with pytest.raises(ValueError, match="single-bin only"):
+        twopoint_convert.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=1)
+    assert not (tmp_path / "x.fits").exists()
+
+
+def test_sacc_without_xi_raises(tmp_path):
+    """A SACC with no ξ± points raises instead of writing an empty data vector."""
+    inp = _inputs(seed=31)
+    s = sacc_io.new_sacc({0: (inp["z"], inp["nz"])})
+    sacc_io.add_pseudo_cl(
+        s,
+        (0, 0),
+        inp["ell"],
+        inp["cl_ee"],
+        inp["cl_bb"],
+        inp["cl_eb"],
+        window_ells=np.arange(2, 102),
+        window_weights=np.random.default_rng(9).uniform(0, 1, (100, N_ELL)),
+    )
+    s.add_covariance(np.eye(len(s.mean)))
+
+    with pytest.raises(ValueError, match="nothing to convert"):
+        twopoint_convert.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"))
+    assert not (tmp_path / "x.fits").exists()
+
+
+def test_covmat_blocks_exact_gather_encoded_cov(tmp_path):
+    """Every COVMAT/COVMAT_CELL entry is the exact ``np.ix_`` gather of the SACC
+    covariance, pinned with a (row, col)-encoded matrix.
+
+    Review finding (MEDIUM): for a single bin pair the ξ gather happens to be
+    the identity permutation, so the byte-compares alone could pass with a
+    transposed or block-swapped gather. Encoding ``C[i, j] = i*n + j`` (asymmetric,
+    every entry unique) makes any transposition, offset, or wrong block produce
+    detectably wrong values; the τ gather is genuinely non-identity (τ_0− sits
+    between τ_0+ and τ_2+ in insertion order). Expected layout per
+    ``covdat_to_fits``: block_diag(ξ type-major gather, joint [τ_0+; τ_2+]
+    gather), with COVMAT_CELL the CELL_EE gather in its own HDU.
+    """
+    inp = _inputs(seed=32)
+    s = _sacc(inp, cl=True, rho_tau=True)
+    n = len(s.mean)
+    encoded = np.arange(n * n, dtype=float).reshape(n, n)
+    s.add_covariance(encoded, overwrite=True)
+    rho_hdu, tau_hdu = _sidecar_hdus(tmp_path, inp)
+
+    out = tmp_path / "encoded.fits"
+    twopoint_convert.sacc_to_twopoint_fits(
+        s, str(out), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
+    )
+
+    pair = (SOURCE, SOURCE)
+    xi_idx = np.concatenate(
+        [s.indices(sacc_io.XI_PLUS, pair), s.indices(sacc_io.XI_MINUS, pair)]
+    )
+    tau_idx = np.concatenate(
+        [
+            s.indices(sacc_io.TAU_PLUS.format(k=0), (SOURCE, PSF)),
+            s.indices(sacc_io.TAU_PLUS.format(k=2), (SOURCE, PSF)),
+        ]
+    )
+    expected = twopoint_convert._block_diag(
+        encoded[np.ix_(xi_idx, xi_idx)], encoded[np.ix_(tau_idx, tau_idx)]
+    )
+    cell_idx = s.indices(sacc_io.CL_EE, pair)
+
+    with fits.open(out) as hdul:
+        np.testing.assert_array_equal(hdul["COVMAT"].data, expected)
+        np.testing.assert_array_equal(
+            hdul["COVMAT_CELL"].data, encoded[np.ix_(cell_idx, cell_idx)]
+        )
