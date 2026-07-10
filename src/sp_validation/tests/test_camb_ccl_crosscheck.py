@@ -30,8 +30,8 @@ the P(k) recipe (HMCode2020) is consistent across stacks and the amplitude
 convention is correctly reconciled. It does *not* independently validate
 CCL's Limber+Hankel machinery — both paths use ``ccl.angular_cl`` +
 ``ccl.correlation`` (a standalone FFTLog library is not in the environment),
-so a common bug there would cancel. The residual we observe (~0.2–0.6%,
-larger for ξ− which weights small scales) is dominated by P(k)-representation
+so a common bug there would cancel. The residual we observe (0.21% for ξ+,
+0.10% for ξ− on the test fixture) is dominated by P(k)-representation
 and ℓ-grid differences between two independent-but-both-CCL projections, not
 by cosmology; it is the realistic floor of cross-implementation agreement,
 and the tolerances sit comfortably above it.
@@ -200,9 +200,9 @@ def test_sigma8_As_reconciliation():
 # The cross-check: firecrown+CCL vs independent CAMB, σ8-matched
 # --------------------------------------------------------------------------- #
 # Observed agreement floor on this fixture (12 θ ∈ [5, 250] arcmin, HMCode2020):
-# ξ+ ≈ 0.3%, ξ− ≈ 0.6% (converged in ℓ). Tolerances sit above the floor with
-# headroom; ξ− is looser because it weights smaller scales, where the
-# P(k)-representation and FFTLog differences between the two paths are largest.
+# ξ+ ≈ 0.21%, ξ− ≈ 0.10% (converged in ℓ). Tolerances sit above the floor with
+# headroom; ξ− keeps the looser tolerance as prudential margin for small-scale
+# P(k)/FFTLog sensitivity on other fixtures, even though it measures tighter here.
 XIP_RTOL = 0.005  # 0.5%
 XIM_RTOL = 0.010  # 1.0%
 
