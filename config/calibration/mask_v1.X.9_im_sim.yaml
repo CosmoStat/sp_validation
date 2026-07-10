@@ -69,3 +69,7 @@ metacal:
 
   # Weight for global response matrix, None for unweighted mean
   global_R_weight: w
+
+  # Subtract additive bias (mean shear)? Use False for constant-shear
+  # image sims
+  additive_correction: False

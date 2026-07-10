@@ -60,3 +60,7 @@ metacal:
 
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
+
+  # Subtract additive bias (mean shear)? Use False for constant-shear
+  # image sims
+  additive_correction: False
