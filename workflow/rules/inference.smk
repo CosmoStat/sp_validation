@@ -74,7 +74,15 @@ def pseudo_cl_assets(version):
 # The glass-mock rules below stay cosmosis_fitting.py-based; their SACC migration
 # is out of scope for PR 7.
 # ---------------------------------------------------------------------------
-INFERENCE_TEMPLATES = COSMO_INFERENCE_PROD / "cosmosis_config"
+# Generated per-version configs land in the (env-overridable) output root.
+INFERENCE_CONFIG_OUT = COSMO_INFERENCE_PROD / "cosmosis_config"
+# The ini TEMPLATES are source files: anchor them on the running checkout (repo
+# root = the workflow dir's parent, via WORKFLOW_SCRIPTS), NOT on the output root
+# — so a template edit in this checkout drives the DAG even when COSMO_INFERENCE
+# points elsewhere. In a normal (non-worktree) run the two roots coincide.
+INFERENCE_TEMPLATE_DIR = (
+    Path(os.path.dirname(WORKFLOW_SCRIPTS)).parent / "cosmo_inference" / "cosmosis_config"
+)
 
 
 def _csl_dir():
@@ -94,20 +102,23 @@ rule inference_prep:
         # The terminal assembled analysis SACC (cosmo_val.smk assemble_sacc). Bound
         # lazily through its helper so the filename tracks that rule, not a literal.
         sacc=lambda w: cv_analysis_sacc(w.version),
+        # The two pipeline ini templates are static repo files, but binding them as
+        # inputs (not params) puts them in the DAG, so editing a template
+        # regenerates the configs rather than leaving stale output on disk.
+        template_2pt=str(INFERENCE_TEMPLATE_DIR / "cosmosis_pipeline_A_ia.ini"),
+        template_sacc=str(INFERENCE_TEMPLATE_DIR / "cosmosis_pipeline_A_ia_sacc.ini"),
     output:
         fits_file=str(COSMO_INFERENCE_PROD / "data/{version}/cosmosis_{version}.fits"),
         config_file_2pt=str(
-            INFERENCE_TEMPLATES / "cosmosis_pipeline_{version}_A_ia.ini"
+            INFERENCE_CONFIG_OUT / "cosmosis_pipeline_{version}_A_ia.ini"
         ),
         config_file_sacc=str(
-            INFERENCE_TEMPLATES / "cosmosis_pipeline_{version}_A_ia_sacc.ini"
+            INFERENCE_CONFIG_OUT / "cosmosis_pipeline_{version}_A_ia_sacc.ini"
         ),
     params:
         # SCRATCH = the per-version chain output root the generated inis point at.
         scratch=lambda w: f"{CHAINS_DIR}/{w.version}",
         cosmosis_dir=lambda w: _csl_dir(),
-        template_2pt=str(INFERENCE_TEMPLATES / "cosmosis_pipeline_A_ia.ini"),
-        template_sacc=str(INFERENCE_TEMPLATES / "cosmosis_pipeline_A_ia_sacc.ini"),
     threads: 1
     resources:
         mem_mb=8000,
@@ -124,7 +135,7 @@ rule inference_prep:
         # (a) converter 2pt-FITS — pure ξ (A_ia scope; no rho/tau sidecars).
         sacc_to_twopoint_fits(sacc_io.load(input.sacc), output.fits_file, n_bins=1)
 
-        # (b) + (c) the two generated pipeline inis, from the existing templates.
+        # (b) + (c) the two generated pipeline inis, from the template inputs.
         # WORKFLOW_SCRIPTS (common.py) is the absolute generic-workflow scripts dir.
         sys.path.insert(0, WORKFLOW_SCRIPTS)
         from generate_inference_config import (
@@ -133,7 +144,7 @@ rule inference_prep:
         )
 
         generate_inference_config(
-            params.template_2pt,
+            input.template_2pt,
             output.config_file_2pt,
             _substitutions(
                 scratch=params.scratch,
@@ -142,7 +153,7 @@ rule inference_prep:
             ),
         )
         generate_inference_config(
-            params.template_sacc,
+            input.template_sacc,
             output.config_file_sacc,
             _substitutions(
                 scratch=params.scratch,

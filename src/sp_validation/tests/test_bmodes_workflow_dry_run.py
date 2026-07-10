@@ -115,6 +115,10 @@ def test_cosmo_val_inference_prep_dry_runs():
     assert "rule inference_fiducial:" in out, out
     # inference_prep consumes the assembled analysis SACC (not per-sign xi FITS).
     assert f"{version}.sacc" in out, out
+    # ...and both ini TEMPLATES, bound as inputs so a template edit regenerates the
+    # configs (Finding 2 — a template as params gave no DAG edge).
+    assert "cosmosis_pipeline_A_ia.ini" in out, out
+    assert "cosmosis_pipeline_A_ia_sacc.ini" in out, out
     # It emits the converter FITS + both engine inis.
     assert f"cosmosis_{version}.fits" in out, out
     assert f"cosmosis_pipeline_{version}_A_ia.ini" in out, out
