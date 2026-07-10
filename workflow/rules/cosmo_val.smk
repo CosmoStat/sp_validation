@@ -490,11 +490,16 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
-        # ξ± coarse block: documented diagonal placeholder until PR-3's converter
-        # sources the real CosmoCov theory covariance via --xi-cov. The pseudo-Cℓ
-        # block is real (pseudo_cl_cov input); COSEBIs / pure-E/B / ρ/τ carry
-        # their own. assemble_sacc.py reads pseudo_cl_cov's COVAR_* extensions.
-        placeholder_var=1.0,
+        # ξ± coarse has no real covariance wired yet (its CosmoCov theory block is
+        # PR-3's converter territory, plugging in via --xi-cov). By DEFAULT this
+        # is fatal: assemble_sacc.py raises rather than ship {version}.sacc — the
+        # terminal science file — with a var=1.0 placeholder as its LEADING
+        # covariance block (~20 orders off the real ξ± variance → silent
+        # catastrophic χ²/PTE for any consumer). Only an explicit config opt-in
+        # (cosmo_val.allow_placeholder_cov: true — dry-run / test configs) attaches
+        # the flagged diagonal placeholder. The pseudo-Cℓ block is real (from the
+        # pseudo_cl_cov input); COSEBIs / pure-E/B / ρ/τ carry their own.
+        placeholder_var=(1.0 if CV.get("allow_placeholder_cov", False) else None),
     resources:
         mem_mb=8000,
         runtime=20,
