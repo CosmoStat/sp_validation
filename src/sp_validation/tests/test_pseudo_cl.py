@@ -112,6 +112,7 @@ def _write_synthetic_config(tmp_path):
 
     shear_cfg = {
         "path": "shear.fits",
+        "redshift_path": str(nz_dir / "dndz_SP_A.txt"),
         "w_col": "w",
         "e1_col": "e1",
         "e2_col": "e2",
