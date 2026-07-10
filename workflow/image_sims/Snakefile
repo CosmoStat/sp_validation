@@ -4,9 +4,17 @@ Run the sp_validation-side chain (merge -> extract -> calibrate -> m-bias),
 optionally including the ShapePipe pipeline stage, without pulling in the
 cosmology-validation config the top-level ``workflow/Snakefile`` requires.
 
+Layer a run config over the operational defaults -- the workflow config.yaml
+carries operational defaults but *no* science keys, so it is incomplete on its
+own (by design); the run config supplies the science knobs:
+
     snakemake -s workflow/image_sims/Snakefile \\
         --configfile workflow/image_sims/config.yaml \\
+        --configfile my_run.yaml \\
         -j 4 im_mbias
+
+Snakemake deep-merges the two, so ``my_run.yaml`` need only carry the science
+keys (and whatever operational overrides that run wants).
 
 The same rules are also available inside the main workflow: they are included
 there under ``if "image_sims" in config``.

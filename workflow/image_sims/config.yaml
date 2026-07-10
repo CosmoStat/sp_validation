@@ -1,8 +1,24 @@
 # Image-simulation m-bias workflow configuration.
 #
-# Every path the workflow touches is set here: a fresh user edits this file
-# and nothing else.  Defaults point at the shared candide assets (world-
-# readable) used to develop the workflow.
+# Two kinds of keys live under `image_sims:`, and the split is the point:
+#
+#   * OPERATIONAL keys default here (active lines below) and *nowhere else* --
+#     the .smk reads them bare, so this file is their single home.  Override in
+#     a run config only when a run genuinely differs from the shared setup.
+#
+#   * SCIENCE keys have NO default -- not here, not in code.  They fix the
+#     estimator's scientific behaviour and must be stated per run, so they
+#     appear below only as commented template lines.  Supply them in a run
+#     config layered on top:
+#
+#         snakemake -s workflow/image_sims/Snakefile \
+#             --configfile workflow/image_sims/config.yaml \
+#             --configfile my_run.yaml \
+#             -j 4 im_mbias
+#
+# A run config that omits a science key fails at DAG parse, naming the key; an
+# unknown key under `image_sims:` fails as a typo.  The structural keys below
+# (SIFs, repos, data roots, num, tile_ids) also have no default and must be set.
 
 image_sims:
 
@@ -13,7 +29,7 @@ image_sims:
   shapepipe_sif: /n17data/mkilbing/shapepipe_im_sims.sif
   sp_validation_sif: /n17data/mkilbing/sp_validation_im_sims.sif
   # Apptainer bind mounts.  /automnt is required when repos/data are
-  # automounted (candide gotcha); harmless otherwise.
+  # automounted (candide gotcha); harmless otherwise.  [operational]
   binds: /n17data,/n09data,/home,/automnt
 
   # --- repositories -----------------------------------------------------
@@ -29,26 +45,37 @@ image_sims:
   psf_dict: /home/hervas/fhervas/workdir_skills/input/psf_files/Full_psf_dict.pickle
 
   # --- simulation grid --------------------------------------------------
-  sims_type: grid        # 'grid' -> *_grid_{num}; anything else -> *_{num}
+  sims_type: grid        # 'grid' -> *_grid_{num}; anything else -> *_{num}  [operational]
   num: 1
-  # Tiles to process.  Give an explicit list (example below) or point
-  # tile_ids_file at a one-tile-per-line file for a production run.
+  # Branches this run requests: the unsheared reference plus the four +/-
+  # sheared branches.  Injected shear is NOT set here -- it is parsed from each
+  # branch's basic_info.txt by im_manifest.  [operational]
+  branches: ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
+  # Tiles to process: an explicit list, the one tile-input mechanism.
   tile_ids: ["233.293", "237.292", "238.292"]
-  # tile_ids_file: /path/to/tile_numbers.txt
 
   # --- calibration ------------------------------------------------------
-  shape: ngmix
-  mask_config: config/calibration/mask_v1.X.9_im_sim.yaml  # relative to sp_validation_repo
+  shape: ngmix           # [operational]
   # ShapePipe cfis configs (final_cat.param etc.); default is
-  # {shapepipe_repo}/example/cfis_image_sims once #766 lands.
+  # {shapepipe_repo}/example/cfis_image_sims once #766 lands.  [operational]
   config_dir: /n17data/cdaley/unions/scratch-wf/imsims-run/grids/_cfis_image_sims
-  psf_model: psfex
-  n_smp: -1
+  psf_model: psfex       # [operational]
+  n_smp: -1              # [operational]
+  # Extract/calibrate scripts run from the sp_validation repo checkout (branch
+  # code, not the baked copies).  Point elsewhere for a different checkout.
+  # [operational]
+  extract_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/extract_info.py
+  calibrate_script: /n17data/cdaley/unions/code/sp_validation/scripts/calibration/calibrate_comprehensive_cat.py
 
-  # --- m-bias -----------------------------------------------------------
-  # No shear_amplitude here: the injected |g| is parsed from each branch's
-  # basic_info.txt by im_manifest and read back from manifest.yaml by im_mbias.
-  # basic_info.txt is the single source of truth for the injected shear.
-  match_radius_deg: 0.0002
-  w_col: w_des
-  n_bootstrap: 500
+  # --- science knobs (REQUIRED in the run config; no default) -----------
+  # Copy these into your run config and set them.  There is deliberately no
+  # default: each fixes the estimator's scientific behaviour, so a run must
+  # state it.  The injected |g| is separate -- parsed from basic_info.txt by
+  # im_manifest, never set here.
+  #
+  # mask_config: config/calibration/mask_v1.X.9_im_sim.yaml  # relative to sp_validation_repo
+  # match_radius_deg: 0.0002   # RA/Dec pair-match radius, degrees
+  # w_col: null                # weight column; null -> unit weights (#227)
+  # pair_match: true           # match +g/-g object-by-object (per-object cancellation)
+  # n_bootstrap: 500           # bootstrap resamples for the errors
+  # bootstrap_seed: 42         # seed for the bootstrap RNG (makes errors reproducible)

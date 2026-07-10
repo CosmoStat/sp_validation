@@ -55,22 +55,30 @@ class ImageSimMBias:
           unsheared reference); defaults to the conventional 5-branch layout
         - pairs : list of dicts {plus, minus, component}, the +/- sheared
           branch pairing per component; defaults to the conventional pairs
-        - match_radius_deg : float, matching radius in degrees
+        - match_radius_deg : float, matching radius in degrees (required)
         - pair_match : bool, match objects between the +g and -g sheared
-          catalogues (default True); if False, use all objects of each
+          catalogues (required); if False, use all objects of each
           catalogue (the paired per-object cancellation is then unavailable)
-        - w_col : str or None, weight column name (default 'w_des');
-          None → unit weights (no weighting, per the #227 verdict)
-        - n_bootstrap : int, number of bootstrap resamples for errors
+        - w_col : str or None, weight column name (required); None → unit
+          weights (no weighting, per the #227 verdict)
+        - n_bootstrap : int, number of bootstrap resamples for errors (required)
+        - bootstrap_seed : int, seed for the per-pair bootstrap RNG (required);
+          makes the bootstrap errors bit-reproducible
+
+    The science knobs (``match_radius_deg``, ``pair_match``, ``w_col``,
+    ``n_bootstrap``, ``bootstrap_seed``) are read with no in-code default: a
+    missing one is a config bug and raises ``KeyError`` at construction, per the
+    fail-fast contract (the workflow emits every one into the m_bias config).
     """
 
     def __init__(self, config):
         self.cfg = config
         self.g_in = config["shear_amplitude"]
-        self.thresh = config.get("match_radius_deg", 0.0002)
-        self.pair_match = config.get("pair_match", True)
-        self.w_col = config.get("w_col", "w_des")
-        self.n_boot = config.get("n_bootstrap", 500)
+        self.thresh = config["match_radius_deg"]
+        self.pair_match = config["pair_match"]
+        self.w_col = config["w_col"]
+        self.n_boot = config["n_bootstrap"]
+        self.boot_seed = config["bootstrap_seed"]
         # Branch list and pairing come from the manifest-derived config
         # (``branches`` / ``pairs``); fall back to the conventional layout only
         # when neither is given.  ``branches`` fixes the catalogue load order;
@@ -167,7 +175,7 @@ class ImageSimMBias:
         e_m = self.cats[name_m][e_key][idx_m]
         w_m = self.cats[name_m]["w"][idx_m]
 
-        rng = np.random.default_rng(seed=42)
+        rng = np.random.default_rng(seed=self.boot_seed)
         m_boot = np.empty(self.n_boot)
         c_boot = np.empty(self.n_boot)
 

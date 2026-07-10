@@ -18,11 +18,14 @@ different images:
   ``calibrate`` (-> cut cat) and ``m_bias`` (-> ``m_bias_results.yaml``).
 
 Everything is parameterised under ``config["image_sims"]`` -- container paths,
-repository roots, data roots, the PSF dictionary, tile list and sim/calibration
-knobs -- so a fresh user drives it from config alone, with no hard-coded clone
-layout.  The ``PYTHONPATH`` override on the sp_validation exec makes the
-*branch* source (``image_sims.py``, ``catalog.match_catalogs_radec``) win over
-whatever is baked into the image.
+repository roots, data roots, the PSF dictionary, the explicit ``tile_ids``
+list and the sim/calibration knobs -- so a fresh user drives it from config
+alone, with no hard-coded clone layout.  Configuration is fail-fast: a schema
+check at load rejects an unknown key (typo) and a missing science key (see
+``workflow/image_sims/config.yaml`` for the operational/science split).  The
+``PYTHONPATH`` override on the sp_validation exec makes the *branch* source
+(``image_sims.py``, ``catalog.match_catalogs_radec``) win over whatever is
+baked into the image.
 
 The five simulations per grid are the reference ``1z2z`` (no input shear) plus
 the ``+/-`` shear pairs ``1p2z``/``1m2z`` (g1) and ``1z2p``/``1z2m`` (g2); the
@@ -34,10 +37,81 @@ from pathlib import Path
 
 IMSIM = config["image_sims"]
 
+# --- fail-fast schema check ----------------------------------------------
+# One home for every fact: the run config carries the science knobs, the
+# workflow config.yaml carries the operational defaults, and *this* block is
+# where a typo or a missing knob dies -- at DAG parse, before any compute.
+#
+# Every key must be declared below.  An unknown key under ``image_sims:`` is a
+# hard error (typo protection); a missing *science* key is a hard error naming
+# the key (no silent code default anywhere).  Operational keys default in the
+# workflow config.yaml and nowhere else: the .smk reads them as bare
+# ``IMSIM[key]`` (never ``.get`` with a second literal), so their value comes
+# from config.yaml alone -- the single home for an operational default.
+#
+# Science keys: required from the *run* config; no default in config.yaml (only
+# a commented template line) and no default in code.  These fix the estimator's
+# scientific behaviour, so they must be stated per run, never inherited.
+_SCIENCE_KEYS = {
+    "w_col",
+    "pair_match",
+    "match_radius_deg",
+    "n_bootstrap",
+    "bootstrap_seed",
+    "mask_config",
+}
+# Operational keys: default (visibly) in the workflow config.yaml; the .smk
+# reads them bare, so config.yaml is their one home.
+_OPERATIONAL_KEYS = {
+    "binds",
+    "sims_type",
+    "branches",
+    "shape",
+    "config_dir",
+    "psf_model",
+    "n_smp",
+    "extract_script",
+    "calibrate_script",
+}
+# Structural keys: paths/identifiers the run must supply (no sensible default).
+_STRUCTURAL_KEYS = {
+    "shapepipe_sif",
+    "sp_validation_sif",
+    "shapepipe_repo",
+    "sp_validation_repo",
+    "grids_base",
+    "input_sims_base",
+    "psf_dict",
+    "num",
+    "tile_ids",
+}
+_ALLOWED_KEYS = _SCIENCE_KEYS | _OPERATIONAL_KEYS | _STRUCTURAL_KEYS
+
+_unknown = set(IMSIM) - _ALLOWED_KEYS
+if _unknown:
+    raise ValueError(
+        "image_sims: unknown config key(s) "
+        f"{sorted(_unknown)} -- check for a typo (allowed keys: "
+        f"{sorted(_ALLOWED_KEYS)})"
+    )
+_missing_science = sorted(_SCIENCE_KEYS - set(IMSIM))
+if _missing_science:
+    raise ValueError(
+        "image_sims: missing required science key(s) "
+        f"{_missing_science} -- these have no default and must be set in the "
+        "run config (see the commented template in workflow/image_sims/config.yaml)"
+    )
+_missing_structural = sorted(_STRUCTURAL_KEYS - set(IMSIM))
+if _missing_structural:
+    raise ValueError(
+        "image_sims: missing required key(s) "
+        f"{_missing_structural} -- set them in the run config"
+    )
+
 # --- containers -----------------------------------------------------------
 SHAPEPIPE_SIF = IMSIM["shapepipe_sif"]
 SPV_SIF = IMSIM["sp_validation_sif"]
-BINDS = IMSIM.get("binds", "/n17data,/n09data,/home,/automnt")
+BINDS = IMSIM["binds"]
 
 # --- repositories (bound into the images; branch code overrides) ----------
 SHAPEPIPE_REPO = IMSIM["shapepipe_repo"]
@@ -54,28 +128,23 @@ PSF_DICT = IMSIM["psf_dict"]  # Herve's Full_psf_dict.pickle
 # (g1,g2), pairing) is NOT a literal here: it lives only in manifest.yaml, built
 # by im_manifest from each branch's basic_info.txt and read back by im_mbias.
 NUM = IMSIM["num"]
-SIMS_TYPE = IMSIM.get("sims_type", "grid")
+SIMS_TYPE = IMSIM["sims_type"]
 _SUFFIX = f"_{SIMS_TYPE}_{NUM}" if SIMS_TYPE == "grid" else f"_{NUM}"
-SIM_BASES = IMSIM.get("branches", ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"])
+SIM_BASES = list(IMSIM["branches"])
 SIMS = [f"{base}{_SUFFIX}" for base in SIM_BASES]
 MANIFEST = f"{GRIDS_BASE}/manifest.yaml"
 BUILD_MANIFEST = f"{SPV_REPO}/workflow/scripts/im_build_manifest.py"
 
 # --- tiles ----------------------------------------------------------------
-if IMSIM.get("tile_ids"):
-    TILE_IDS = list(IMSIM["tile_ids"])
-else:
-    with open(IMSIM["tile_ids_file"]) as fh:
-        TILE_IDS = [line.strip() for line in fh if line.strip()]
+# tile_ids is the one tile-input mechanism: an explicit list in the run config.
+TILE_IDS = list(IMSIM["tile_ids"])
 
 # --- calibration / m-bias knobs ------------------------------------------
-SHAPE = IMSIM.get("shape", "ngmix")
+SHAPE = IMSIM["shape"]
 MASK_CONFIG = IMSIM["mask_config"]  # e.g. config/calibration/mask_v1.X.9_im_sim.yaml
 PARAMS_TEMPLATE = f"{SPV_REPO}/workflow/image_sims/params_im_sim.py"
 # ShapePipe cfis_image_sims config dir (per-tile/exposure configs + final_cat.param).
-CONFIG_DIR = IMSIM.get(
-    "config_dir", f"{SHAPEPIPE_REPO}/example/cfis_image_sims"
-)
+CONFIG_DIR = IMSIM["config_dir"]
 
 # ShapePipe scripts live in the ShapePipe repo (also baked into its image).
 CREATE_FINAL_CAT = f"{SHAPEPIPE_REPO}/scripts/python/create_final_cat.py"
@@ -84,12 +153,8 @@ RUN_JOB = f"{SHAPEPIPE_REPO}/scripts/sh/run_job_sp_canfar_v2.0.bash"
 # not the baked copies: the container tracks the branch but lags it, and the
 # image-sims path needs branch-only fixes (star-catalogue-optional extract,
 # FITS-aware CalibrateCat.read_cat). Overridable for a different checkout.
-EXTRACT_INFO = IMSIM.get(
-    "extract_script", f"{SPV_REPO}/scripts/calibration/extract_info.py"
-)
-CALIBRATE = IMSIM.get(
-    "calibrate_script", f"{SPV_REPO}/scripts/calibration/calibrate_comprehensive_cat.py"
-)
+EXTRACT_INFO = IMSIM["extract_script"]
+CALIBRATE = IMSIM["calibrate_script"]
 # m-bias is *this branch's* extracted core, injected on PYTHONPATH.
 COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 
@@ -242,8 +307,8 @@ rule im_pipeline:
         done=touch(f"{GRIDS_BASE}/{{sim}}/logs/pipeline_{{tile}}.done"),
     params:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
-        psf=IMSIM.get("psf_model", "psfex"),
-        n_smp=IMSIM.get("n_smp", -1),
+        psf=IMSIM["psf_model"],
+        n_smp=IMSIM["n_smp"],
     resources:
         mem_mb=16000,
         runtime=720,
@@ -335,9 +400,12 @@ rule im_mbias:
         grids_base=GRIDS_BASE,
         num=NUM,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
-        match_radius_deg=IMSIM.get("match_radius_deg", 0.0002),
-        w_col=IMSIM.get("w_col", "w_des"),
-        n_bootstrap=IMSIM.get("n_bootstrap", 500),
+        # Science knobs, read bare from the run config (no default here).
+        match_radius_deg=IMSIM["match_radius_deg"],
+        w_col=IMSIM["w_col"],
+        n_bootstrap=IMSIM["n_bootstrap"],
+        pair_match=IMSIM["pair_match"],
+        bootstrap_seed=IMSIM["bootstrap_seed"],
     run:
         import yaml
 
@@ -345,6 +413,10 @@ rule im_mbias:
             manifest = yaml.safe_load(fh)
 
         os.makedirs(os.path.dirname(output.results), exist_ok=True)
+        # Emit *every* key the estimator requires -- pair_match and
+        # bootstrap_seed included.  Requiring a key without emitting it would
+        # be a KeyError at run time, so the generated config is the complete
+        # contract between rule and estimator.
         mbias_cfg = {
             "grids_dir": params.grids_base,
             "num": params.num,
@@ -355,7 +427,9 @@ rule im_mbias:
             "pairs": manifest["pairs"],
             "match_radius_deg": params.match_radius_deg,
             "w_col": params.w_col,
+            "pair_match": params.pair_match,
             "n_bootstrap": params.n_bootstrap,
+            "bootstrap_seed": params.bootstrap_seed,
             "results_dir": os.path.dirname(output.results),
             "output_path": output.results,
         }
