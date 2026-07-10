@@ -105,8 +105,36 @@ def cv_cosebis_npz(version):
 
 
 def cv_pseudo_cl_sacc(version):
-    """Pseudo-Cl SACC part calculate_pseudo_cl writes (born as SACC)."""
+    """Untagged pseudo-Cl SACC part cv_pseudo_cl writes (B-mode diagnostic).
+
+    This is the harmonic-space BB diagnostic cv_summarize_bmodes reads. The
+    *analysis* file's pseudo-Cl part is the tagged, blinded inference product
+    instead (see cv_pseudo_cl_analysis_sacc) so {version}.sacc stays byte-
+    comparable against today's cosmosis_fitting.py assembly (PR-3's converter).
+    """
     return str(COSMO_VAL / f"pseudo_cl_{version}.sacc")
+
+
+# Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk rules
+# pseudo_cl / pseudo_cl_cov) stamps into the analysis-grade filename. Mirrors
+# inference.smk's PSEUDO_CL_TAG so the analysis file carries the same pseudo-Cl
+# the inference pipeline consumes (canonical: blind=A, powspace, nbins=32).
+_HARMONIC_FIDUCIAL = config["harmonic"]["fiducial"]
+_PSEUDO_CL_TAG = (
+    f"blind={_HARMONIC_FIDUCIAL['blind']}"
+    f"_{_HARMONIC_FIDUCIAL['binning']}"
+    f"_nbins={_HARMONIC_FIDUCIAL['nbins']}"
+)
+
+
+def cv_pseudo_cl_analysis_sacc(version):
+    """Tagged, blinded pseudo-Cl SACC part the analysis file carries."""
+    return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
+
+
+def cv_pseudo_cl_cov(version):
+    """NaMaster pseudo-Cl covariance FITS (COVAR_EE_EE/BB_BB/EB_EB extensions)."""
+    return str(COSMO_VAL / f"pseudo_cl_cov_{version}_{_PSEUDO_CL_TAG}.fits")
 
 
 def cv_cosebis_sacc(version):
@@ -418,21 +446,29 @@ rule cv_summarize_bmodes:
 # are each written by their own rule carrying its own covariance block, except
 # ξ± coarse and pseudo-Cℓ which are born cov-less by design. assemble_sacc.py
 # loads the parts in canonical order and rebuilds one {version}.sacc with a
-# single FullCovariance (point-insertion order = block order). The cov-less
-# ξ/pseudo-Cℓ blocks are supplied here: the real CosmoCov / NaMaster covariances
-# plug in via --xi-cov / --pseudo-cl-cov when the analysis needs them (that
-# sourcing is the PR-3 converter's territory); until then a documented diagonal
-# placeholder keeps the FullCovariance structurally valid. The placeholder is a
-# flagged stand-in, never a science covariance.
+# single FullCovariance (point-insertion order = block order).
+#
+# The pseudo-Cℓ part is the TAGGED, blinded inference product (blind=A, powspace,
+# nbins=32) — the same pseudo-Cℓ today's cosmosis_fitting.py consumes — so the
+# analysis file stays byte-comparable against it (PR-3's converter). Its real
+# NaMaster covariance is injected here from the matching pseudo_cl_cov FITS
+# (COVAR_EE_EE/BB_BB/EB_EB → block-diagonal, dropping cross-spectra, matching the
+# B-mode PTE's use of COVAR_BB_BB). The ξ± coarse block is the one piece not yet
+# sourced from its real covariance: the CosmoCov theory .txt is blind/gaussian/
+# mask-keyed and lives deep in the inference tree, so wiring it couples cosmo_val
+# to the whole inference covariance DAG — that sourcing is PR-3's converter
+# territory. Until then a documented diagonal placeholder keeps the ξ block (and
+# so the FullCovariance) structurally valid; it is a flagged stand-in, never a
+# science covariance, and plugs out via --xi-cov the moment PR 3 lands.
 
 
 def cv_assemble_inputs(version):
-    """The per-statistic SACC parts assemble_sacc consumes for a version.
+    """The per-statistic SACC parts + covariance inputs assemble_sacc consumes.
 
     Each part's filename carries enough to bind its producing rule's wildcards
-    (the coarse ξ± part its reporting binning, the ρ/τ part likewise). pseudo_cl
-    is included only when the config toggles the harmonic-space BB into the
-    analysis.
+    (the coarse ξ± and ρ/τ parts their reporting binning; the pseudo-Cℓ part its
+    fiducial harmonic tag). pseudo_cl (+ its cov) is included only when the
+    config toggles the harmonic-space BB into the analysis.
     """
     parts = dict(
         xi_coarse=cv_xi_coarse_sacc(version),
@@ -441,7 +477,8 @@ def cv_assemble_inputs(version):
         rho_tau=cv_rho_tau_sacc(version),
     )
     if CV.get("include_pseudo_cl", False):
-        parts["pseudo_cl"] = cv_pseudo_cl_sacc(version)
+        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
+        parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
     return parts
 
 
@@ -453,9 +490,10 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
-        # Real ξ / pseudo-Cℓ covariance sourcing (CosmoCov / NaMaster) plugs in
-        # here later; for now a documented diagonal placeholder keeps the
-        # assembled FullCovariance structurally valid.
+        # ξ± coarse block: documented diagonal placeholder until PR-3's converter
+        # sources the real CosmoCov theory covariance via --xi-cov. The pseudo-Cℓ
+        # block is real (pseudo_cl_cov input); COSEBIs / pure-E/B / ρ/τ carry
+        # their own. assemble_sacc.py reads pseudo_cl_cov's COVAR_* extensions.
         placeholder_var=1.0,
     resources:
         mem_mb=8000,

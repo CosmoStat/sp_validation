@@ -184,6 +184,42 @@ def test_assemble_sacc_injects_real_xi_covariance(tmp_path):
     assert np.allclose(s.covariance.dense[np.ix_(xi_idx, xi_idx)], xi_cov)
 
 
+def test_assemble_sacc_injects_pseudo_cl_covariance(tmp_path):
+    """The NaMaster cov FITS (COVAR_EE_EE/BB_BB/EB_EB) → block-diagonal pseudo-Cℓ
+    block (the live default: ξ± placeholder + real pseudo-Cℓ cov)."""
+    from astropy.io import fits
+
+    paths = _write_parts(tmp_path, cov_less=("xi_coarse", "pseudo_cl"))
+    # pseudo-Cℓ part is 3 ell × {EE, BB, EB} = 9 points; per-spectrum 3×3 blocks.
+    ee, bb, eb = _spd(3, 31), _spd(3, 32), _spd(3, 33)
+    cov_fits = tmp_path / "pseudo_cl_cov.fits"
+    fits.HDUList(
+        [
+            fits.PrimaryHDU(),
+            fits.ImageHDU(ee, name="COVAR_EE_EE"),
+            fits.ImageHDU(bb, name="COVAR_BB_BB"),
+            fits.ImageHDU(eb, name="COVAR_EB_EB"),
+        ]
+    ).writeto(str(cov_fits))
+
+    out = tmp_path / "vSYNTH.sacc"
+    s = asm.assemble_sacc(
+        "vSYNTH", paths, str(out), pseudo_cl_cov=str(cov_fits), placeholder_var=1.0
+    )
+    tr = ("source_0", "source_0")
+    cl_idx = np.concatenate(
+        [s.indices(sio.CL_EE, tr), s.indices(sio.CL_BB, tr), s.indices(sio.CL_EB, tr)]
+    )
+    dense = s.covariance.dense
+    expected = np.zeros((9, 9))
+    expected[0:3, 0:3], expected[3:6, 3:6], expected[6:9, 6:9] = ee, bb, eb
+    assert np.allclose(dense[np.ix_(cl_idx, cl_idx)], expected)
+    # ξ± stays the placeholder; the two blocks don't bleed into each other.
+    xi_idx = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
+    assert np.allclose(np.diag(dense[np.ix_(xi_idx, xi_idx)]), 1.0)
+    assert np.allclose(dense[np.ix_(xi_idx, cl_idx)], 0.0)
+
+
 def test_assemble_sacc_missing_cov_raises(tmp_path):
     """A cov-less part with no injected block and no placeholder fails loudly."""
     paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
