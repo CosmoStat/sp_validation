@@ -96,3 +96,28 @@ def test_cosmo_val_workflow_assemble_dry_runs():
     assert f"pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits" in out, out
     for part in ("_xi_coarse_", "_cosebis.sacc", "_pure_eb.sacc", "rho_tau_"):
         assert part in out, f"missing {part} part in assemble DAG:\n{out}"
+
+
+@requires_candide_data
+def test_cosmo_val_inference_prep_dry_runs():
+    """The revived (PR-7) inference_prep DAG resolves end to end from the SACC.
+
+    inference_fiducial must pull inference_prep, which consumes the assembled
+    {version}.sacc and emits the converter 2pt-FITS plus BOTH generated pipeline
+    inis (2pt_like and the native sacc_like). The old cosmosis_fitting.py real-
+    data assembly is retired from this path; the glass-mock rules keep it.
+    """
+    version = "SP_v1.4.6.3_leak_corr"
+    result = _dry_run(_repo_root() / "papers/cosmo_val", ["inference_fiducial"])
+    assert result.returncode == 0, result.stdout
+    out = result.stdout
+    assert "rule inference_prep:" in out, out
+    assert "rule inference_fiducial:" in out, out
+    # inference_prep consumes the assembled analysis SACC (not per-sign xi FITS).
+    assert f"{version}.sacc" in out, out
+    # It emits the converter FITS + both engine inis.
+    assert f"cosmosis_{version}.fits" in out, out
+    assert f"cosmosis_pipeline_{version}_A_ia.ini" in out, out
+    assert f"cosmosis_pipeline_{version}_A_ia_sacc.ini" in out, out
+    # The retired real-data assembly script must not appear in this DAG's prep.
+    assert "cosmosis_fitting.py --cosmosis-root" not in out, out
