@@ -90,7 +90,9 @@ COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 # --- container exec prefixes ---------------------------------------------
 # ShapePipe stages. MPI/SLURM env vars are stripped so OpenMPI inside the
 # image does not try to attach to the host launcher (cf. apptainer_noslurm.sh).
-SP_EXEC = f"env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID apptainer exec --bind {BINDS} {SHAPEPIPE_SIF}"
+# PSF_DICT is injected into the container env so the fake_psf module's config
+# (PSF_DICT_PATH = $PSF_DICT, expanded via getexpanded) resolves to this path.
+SP_EXEC = f"env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID apptainer exec --bind {BINDS} --env PSF_DICT={PSF_DICT} {SHAPEPIPE_SIF}"
 # sp_validation calibration stages: inject the branch source on PYTHONPATH so
 # the repo's sp_validation package (newer than the baked one) wins -- the
 # image-sims path depends on branch-only fixes to catalog_builders/extract.
