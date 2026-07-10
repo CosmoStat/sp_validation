@@ -288,7 +288,7 @@ rule im_mbias:
         grids_base=GRIDS_BASE,
         num=NUM,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
-        shear_amplitude=IMSIM.get("shear_amplitude", 0.02),
+        shear_amplitude=IMSIM.get("shear_amplitude", 0.025),
         match_radius_deg=IMSIM.get("match_radius_deg", 0.0002),
         w_col=IMSIM.get("w_col", "w_des"),
         n_bootstrap=IMSIM.get("n_bootstrap", 500),

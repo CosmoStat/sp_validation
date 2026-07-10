@@ -46,7 +46,7 @@ image_sims:
   n_smp: -1
 
   # --- m-bias -----------------------------------------------------------
-  shear_amplitude: 0.02      # input |g| of the +/- shear grids
+  shear_amplitude: 0.025     # TRUE input |g| of FHP grid sims (basic_info; his estimator divides by 0.025 — shapepipe#796). 0.02 here produced the spurious m=+0.25.
   match_radius_deg: 0.0002
   w_col: w_des
   n_bootstrap: 500
