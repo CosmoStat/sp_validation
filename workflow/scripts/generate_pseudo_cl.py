@@ -4,12 +4,13 @@ Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
 object supplies the parameters and the native product is renamed to the tagged
 output filename the rule declares; as a standalone CLI (argparse) the same
 compute runs from explicit flags and the primitive's native
-``pseudo_cl_{ver}.fits`` is left in place under ``--out`` (no rename — each
+``pseudo_cl_{ver}.sacc`` is left in place under ``--out`` (no rename — each
 lc/ASTRA recipe gets its own output directory, so the untagged native name is
 unambiguous and the primitives' skip-if-exists never collides across nbins
-runs). The CLI form is what the lightcone/ASTRA recipe calls, so the
-measurement is driven directly (no nested Snakemake) with lc handling
-orchestration:
+runs). The C_ell data vector is born as SACC (EE/BB/EB with a shared bandpower
+window) — see ``sp_validation.cosmo_val.sacc_writers.pseudo_cl_to_sacc``. The
+CLI form is what the lightcone/ASTRA recipe calls, so the measurement is driven
+directly (no nested Snakemake) with lc handling orchestration:
 
     python generate_pseudo_cl.py \
         --ver SP_v1.4.6.3_leak_corr \
@@ -28,8 +29,7 @@ import argparse
 import json
 import os
 
-from astropy.io import fits
-
+from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
 
 
@@ -52,8 +52,8 @@ def generate_pseudo_cl(
     version : str
         Catalog version (e.g., "SP_v1.4.6_leak_corr")
     output_dir : str
-        Directory the pseudo-Cl FITS file is written into. The primitive writes
-        its native ``pseudo_cl_{version}.fits`` here; callers that need a tagged
+        Directory the pseudo-Cl SACC part is written into. The primitive writes
+        its native ``pseudo_cl_{version}.sacc`` here; callers that need a tagged
         filename rename it themselves (see ``_from_snakemake``).
     cat_config : str
         Path to catalog configuration YAML
@@ -76,7 +76,7 @@ def generate_pseudo_cl(
     Returns
     -------
     str
-        Path to the primitive's native ``pseudo_cl_{version}.fits`` product.
+        Path to the primitive's native ``pseudo_cl_{version}.sacc`` product.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -135,17 +135,17 @@ def generate_pseudo_cl(
 
     cv = CosmologyValidation(**cv_kwargs)
 
-    # Calculate pseudo-Cls only (no covariance)
+    # Calculate pseudo-Cls only (no covariance). The data vector is born as a
+    # SACC part: pseudo_cl_{version}.sacc under output_dir.
     cv.calculate_pseudo_cl()
 
-    # Report on the native product (renamed by the Snakemake caller, if any)
-    src_cl = os.path.join(output_dir, f"pseudo_cl_{version}.fits")
+    # Report on the native product (renamed by the Snakemake caller, if any).
+    src_cl = os.path.join(output_dir, f"pseudo_cl_{version}.sacc")
     if os.path.exists(src_cl):
-        with fits.open(src_cl) as hdul:
-            data = hdul["PSEUDO_CELL"].data
-            n_ell = len(data["ELL"])
-            print(f"Generated pseudo-Cl with {n_ell} ell bins")
-            print(f"ell range: [{data['ELL'].min():.1f}, {data['ELL'].max():.1f}]")
+        s = sacc_io.load(src_cl)
+        ell = sacc_io.get_pseudo_cl(s, (0, 0))[0]
+        print(f"Generated pseudo-Cl with {len(ell)} ell bins")
+        print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")
     return src_cl
 
 
