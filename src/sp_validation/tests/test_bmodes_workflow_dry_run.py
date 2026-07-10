@@ -1,7 +1,10 @@
-"""Back-pressure guard #2: the B-modes Snakemake workflow dry-runs.
+"""Back-pressure guard #2: the paper Snakemake workflows dry-run.
 
-The reorg is allowed to change the rule graph; this guard only asserts that
-Snakemake can still parse the workflow and construct a dry run.
+The reorg is allowed to change the rule graph; these guards only assert that
+Snakemake can still parse each composed workflow and construct a dry run. One
+guard covers papers/bmodes (config space, no cosmo_val block); a second covers
+papers/cosmo_val, whose config DOES carry a cosmo_val block — so it is the only
+one that includes cosmo_val.smk and hence the born-as-SACC + assemble rules.
 """
 
 import os
@@ -27,38 +30,69 @@ def _repo_root() -> Path:
     raise RuntimeError("could not locate repo root (no pyproject.toml above test)")
 
 
-@requires_candide_data
-def test_bmodes_workflow_dry_runs():
-    """The paper B-mode workflow must still parse and dry-run cleanly."""
-    workflow_dir = _repo_root() / "papers/bmodes"
-    # PYTHONUNBUFFERED satisfies the Snakefile's `envvars:` declaration without
-    # depending on the invoking shell's environment. A dry run resolves the DAG
-    # only — it never dispatches jobs — so drop any inherited SNAKEMAKE_PROFILE
-    # (e.g. the login shell's "slurm" profile), which would otherwise force an
-    # executor plugin the test environment need not have installed.
+def _dry_run(workflow_dir, targets, *extra_snakemake_args):
+    """Construct a dry run of the paper workflow at ``workflow_dir``.
+
+    Returns the CompletedProcess. PYTHONUNBUFFERED satisfies the Snakefile's
+    ``envvars:`` declaration without depending on the invoking shell. A dry run
+    resolves the DAG only — it never dispatches jobs — so drop any inherited
+    SNAKEMAKE_PROFILE (e.g. the login shell's "slurm" profile), which would
+    otherwise force an executor plugin the test environment need not have. And
+    invoke snakemake through sys.executable (the interpreter pytest, hence
+    snakemake, lives in) — a bare python3.12 resolves off PATH to e.g. an
+    intel-python without snakemake.
+    """
     env = os.environ | {"PYTHONNOUSERSITE": "1", "PYTHONUNBUFFERED": "1"}
     env.pop("SNAKEMAKE_PROFILE", None)
-    result = subprocess.run(
+    return subprocess.run(
         [
-            # Invoke snakemake through the interpreter running the test — a bare
-            # "python3.12" resolves off PATH (e.g. intel-python without snakemake);
-            # sys.executable is the environment that pytest, hence snakemake, lives in.
             sys.executable,
             "-m",
             "snakemake",
-            "all_tapestry",
+            *targets,
             "--dry-run",
             "--cores",
             "1",
             "--configfile",
             "config/config.yaml",
+            *extra_snakemake_args,
         ],
         cwd=workflow_dir,
         env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        timeout=60,
+        timeout=120,
         check=False,
     )
+
+
+@requires_candide_data
+def test_bmodes_workflow_dry_runs():
+    """The paper B-mode workflow must still parse and dry-run cleanly."""
+    result = _dry_run(_repo_root() / "papers/bmodes", ["all_tapestry"])
     assert result.returncode == 0, result.stdout
+
+
+@requires_candide_data
+def test_cosmo_val_workflow_assemble_dry_runs():
+    """The cosmo_val workflow (the only one including cosmo_val.smk) resolves the
+    born-as-SACC + assemble DAG, and assemble pulls the tagged pseudo-Cl + cov.
+
+    Targets the assemble_sacc_all rule so every version's assemble_sacc job
+    appears. The dry run resolves the DAG structure only — it never executes the
+    assemble script — so the placeholder-cov opt-in (cosmo_val.allow_placeholder_cov)
+    is irrelevant here; a real run would need it (or a wired --xi-cov) to proceed,
+    which is the fail-loud-by-default behaviour asserted in test_assemble_sacc."""
+    version = "SP_v1.4.6.3_leak_corr"
+    result = _dry_run(_repo_root() / "papers/cosmo_val", ["assemble_sacc_all"])
+    assert result.returncode == 0, result.stdout
+    # assemble_sacc must be in the DAG and pull the tagged, blinded pseudo-Cl
+    # part + its NaMaster covariance (not the untagged cv_pseudo_cl diagnostic),
+    # plus all five per-statistic parts.
+    out = result.stdout
+    assert "rule assemble_sacc:" in out, out
+    assert f"pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc" in out, out
+    assert f"pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits" in out, out
+    for part in ("_xi_coarse_", "_cosebis.sacc", "_pure_eb.sacc", "rho_tau_"):
+        assert part in out, f"missing {part} part in assemble DAG:\n{out}"
