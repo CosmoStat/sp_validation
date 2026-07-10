@@ -107,7 +107,7 @@ mmap_mode = None
 ## Output
 
 ### Output file format extension: '.fits' or '.hdf5'
-output_format = ".hdf5"
+output_format = ".fits"
 
 ### Additional output columns
 add_cols = [
