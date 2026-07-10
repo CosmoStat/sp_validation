@@ -489,3 +489,143 @@ def test_end_to_end_two_file_layout(tmp_path):
     assert np.array_equal(th_f, theta_f) and np.array_equal(p_f, np.arange(200) * 1e-5)
     assert type(f.covariance).__name__ == "DiagonalCovariance"
     assert np.array_equal(np.diag(f.covariance.dense), variances)
+
+
+# --------------------------------------------------------------------------- #
+# 9. Ascending-grid enforcement (writers reject out-of-order grids)
+# --------------------------------------------------------------------------- #
+def test_add_xi_rejects_non_ascending_theta():
+    s = _base_sacc()
+    theta = _theta()[::-1]  # descending
+    with pytest.raises(ValueError, match="theta must be strictly ascending"):
+        sio.add_xi(
+            s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        )
+
+
+def test_add_pseudo_cl_rejects_non_ascending_ell():
+    s = _base_sacc()
+    ell = np.array([210.0, 30.0, 120.0])  # not ascending
+    W = np.random.default_rng(0).uniform(size=(20, 3))
+    with pytest.raises(ValueError, match="ell_eff must be strictly ascending"):
+        sio.add_pseudo_cl(
+            s,
+            (0, 0),
+            ell,
+            np.arange(3) * 1e-9,
+            np.arange(3) * 2e-9,
+            np.arange(3) * 3e-9,
+            window_ells=np.arange(2, 22).astype(float),
+            window_weights=W,
+        )
+
+
+def test_add_pure_eb_rho_tau_reject_non_ascending_theta():
+    s = _base_sacc()
+    theta = _theta()[::-1]
+    pure = {key: np.arange(6) * 1e-6 for key in sio.PURE_KEYS}
+    with pytest.raises(ValueError, match="theta must be strictly ascending"):
+        sio.add_pure_eb(s, (0, 0), theta, **pure)
+    with pytest.raises(ValueError, match="theta must be strictly ascending"):
+        sio.add_rho(s, 0, theta, np.arange(6) * 1e-6, np.arange(6) * 2e-6)
+    with pytest.raises(ValueError, match="theta must be strictly ascending"):
+        sio.add_tau(s, (0, 0), 0, theta, np.arange(6) * 1e-6, np.arange(6) * 2e-6)
+
+
+# --------------------------------------------------------------------------- #
+# 10. Bin-pair normalisation: (1, 0) addresses the same points as (0, 1)
+# --------------------------------------------------------------------------- #
+def test_bin_pair_normalisation():
+    theta = _theta()
+    xip, xim = np.arange(6) * 1e-5, np.arange(6) * 2e-5
+    s = _base_sacc(nbins=2)
+    sio.add_xi(s, (0, 1), theta, xip, xim, grid="coarse")
+    th01, p01, m01 = sio.get_xi(s, (0, 1), grid="coarse")
+    th10, p10, m10 = sio.get_xi(s, (1, 0), grid="coarse")  # reversed order
+    assert np.array_equal(th01, th10)
+    assert np.array_equal(p01, p10) and np.array_equal(p10, xip)
+    assert np.array_equal(m01, m10) and np.array_equal(m10, xim)
+    # writing under (1, 0) lands in the same tracer pair, not a new one
+    s2 = _base_sacc(nbins=2)
+    sio.add_xi(s2, (1, 0), theta, xip, xim, grid="coarse")
+    assert len(s2.indices(sio.XI_PLUS, ("source_0", "source_1"))) == len(theta)
+
+
+# --------------------------------------------------------------------------- #
+# 11. Reader/covariance alignment holds for ANY insertion order (the core
+#     regression the review caught): a tomographic multi-pair ξ covariance
+#     assembled as ONE contiguous pair-major block, per-pair sub-blocks
+#     recovered via extract().
+# --------------------------------------------------------------------------- #
+def test_tomographic_xi_covariance_one_contiguous_block():
+    theta = _theta()
+    nth = len(theta)
+    pairs = [(0, 0), (0, 1), (1, 1)]
+    s = _base_sacc(nbins=2)
+    for k, (i, j) in enumerate(pairs):
+        sio.add_xi(
+            s,
+            (i, j),
+            theta,
+            np.arange(nth) * (k + 1) * 1e-5,
+            np.arange(nth) * (k + 1) * 2e-5,
+            grid="coarse",
+        )
+    # All ξ points as one contiguous block in insertion (pair-major) order.
+    xi_idx = np.arange(len(s.mean))
+    assert np.array_equal(xi_idx, np.arange(3 * 2 * nth))  # 3 pairs x [xip; xim]
+    cov = _spd(len(xi_idx), 11)  # dense, cross-pair correlations
+    sio.assemble_covariance(s, [(xi_idx, cov)])
+
+    # Per-pair xip sub-block: resolve indices, extract, compare to input.
+    for i, j in pairs:
+        idx_p = s.indices(
+            sio.XI_PLUS, ("source_" + str(min(i, j)), "source_" + str(max(i, j)))
+        )
+        sub = sio.extract(
+            s,
+            data_type=sio.XI_PLUS,
+            tracers=("source_" + str(min(i, j)), "source_" + str(max(i, j))),
+        )
+        assert np.array_equal(sub.covariance.dense, cov[np.ix_(idx_p, idx_p)])
+        # readers stay covariance-aligned: get_xi returns in the same order
+        th, xip, _ = sio.get_xi(s, (i, j), grid="coarse")
+        assert np.array_equal(th, theta)
+        assert np.array_equal(s.mean[idx_p], xip)
+
+
+# --------------------------------------------------------------------------- #
+# 12. get_pseudo_cl window/cl column correspondence: window column j maps to
+#     the returned ell_eff[j] (verified through window_ind tags).
+# --------------------------------------------------------------------------- #
+def test_pseudo_cl_window_column_correspondence(tmp_path):
+    ell_eff = np.array([30.0, 120.0, 210.0, 300.0])
+    nell, nbp = 40, len(ell_eff)
+    window_ells = np.arange(2, 2 + nell).astype(float)
+    # Distinct columns so a permutation would be detectable.
+    W = np.zeros((nell, nbp))
+    for b in range(nbp):
+        W[b * 5 : (b + 1) * 5, b] = 1.0
+    ee, bb, eb = np.arange(nbp) * 1e-9, np.arange(nbp) * 2e-9, np.arange(nbp) * 3e-9
+    s = _base_sacc()
+    sio.add_pseudo_cl(
+        s,
+        (0, 0),
+        ell_eff,
+        ee,
+        bb,
+        eb,
+        window_ells=window_ells,
+        window_weights=W,
+    )
+    s2 = _roundtrip(s, tmp_path, "clwin")
+    ell, cl_ee, _, _, window = sio.get_pseudo_cl(s2, (0, 0))
+    # returned ell array is in insertion order
+    assert np.array_equal(ell, ell_eff)
+    assert np.array_equal(cl_ee, ee)
+    # window_ind tag on each EE point indexes the matching window column
+    idx = s2.indices(sio.CL_EE, ("source_0", "source_0"))
+    for pos, i in enumerate(idx):
+        col = s2.data[i].tags["window_ind"]
+        assert col == pos  # insertion order preserved => column j <-> ell[j]
+        assert np.array_equal(window.weight[:, col], W[:, pos])
