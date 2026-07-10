@@ -7,6 +7,7 @@ Mixin providing COSEBIs calculation and plotting for the
 
 import numpy as np
 
+from .. import sacc_io
 from ..b_modes import (
     calculate_cosebis,
     find_conservative_scale_cut_key,
@@ -15,6 +16,7 @@ from ..b_modes import (
     plot_cosebis_scale_cut_heatmap,
     save_cosebis_results,
 )
+from .sacc_writers import cosebis_to_sacc
 
 
 class CosebisMixin:
@@ -139,6 +141,46 @@ class CosebisMixin:
             results = next(iter(results.values()))
 
         return results
+
+    @staticmethod
+    def _fiducial_cosebis_result(results, fiducial_scale_cut):
+        """Select the fiducial scale cut's result dict + its ``(min, max)`` cut.
+
+        ``calculate_cosebis`` returns either a single result dict (full range) or
+        a multi-cut mapping keyed by ``(theta_min, theta_max)`` tuples. Only the
+        fiducial cut is a SACC data product: pick it via
+        ``find_conservative_scale_cut_key`` when a fiducial cut is given, else the
+        widest cut — mirroring ``plot_cosebis``.
+        """
+        multi_cut = isinstance(results, dict) and all(
+            isinstance(k, tuple) for k in results
+        )
+        if not multi_cut:
+            return results, tuple(results["scale_cut"])
+        key = (
+            find_conservative_scale_cut_key(results, fiducial_scale_cut)
+            if fiducial_scale_cut is not None
+            else max(results, key=lambda x: x[1] - x[0])
+        )
+        return results[key], tuple(key)
+
+    def cosebis_to_sacc_part(self, version, out_path, results, fiducial_scale_cut=None):
+        """Write the COSEBIs SACC part at the fiducial scale cut.
+
+        ``results`` is the object ``calculate_cosebis`` returned (single dict or
+        multi-cut mapping). Only the fiducial cut's ``{En, Bn, cov}`` becomes the
+        part — a ``FullCovariance`` must cover every stored point and the cuts
+        overlap in mode space, so the non-fiducial cuts stay in the diagnostic
+        ``.npz`` sidecar. The nz/metadata are the version's.
+        """
+        result, scale_cut = self._fiducial_cosebis_result(results, fiducial_scale_cut)
+        s = cosebis_to_sacc(
+            self.sacc_nz(version),
+            self.sacc_metadata(version),
+            result,
+            scale_cut,
+        )
+        sacc_io.save(s, out_path)
 
     def plot_cosebis(
         self,
