@@ -26,6 +26,18 @@
               Tag filters are plain keyword arguments to ``indices`` /
               ``get_data_points`` / ``get_tag``; the ``tags={...}`` form
               silently selects nothing and must never be used.
+
+              Tomographic ξ ordering: each ``add_xi`` call inserts one tracer
+              pair as ``[xip; xim]``, so a multi-pair vector is *pair-major*
+              — ``[pair_0 xip; pair_0 xim; pair_1 xip; …]`` — not type-major
+              (``[all xip; all xim]``). A tomographic ξ covariance with
+              cross-pair correlations is therefore supplied to
+              ``assemble_covariance`` as ONE contiguous block spanning the
+              consecutive ``add_xi`` calls, ordered pair-by-pair to match
+              insertion. Writers must call ``add_xi`` in the same pair order
+              the covariance was built in. Converters that need a type-major
+              layout (e.g. the DES 2pt-FITS convention) permute explicitly via
+              ``s.indices`` rather than assuming global order.
 """
 
 import numpy as np
@@ -97,9 +109,30 @@ def new_sacc(nz, metadata=None):
 
 
 def _pair(bins):
-    """Resolve a ``(i, j)`` bin pair to the ``(source_i, source_j)`` names."""
-    i, j = bins
+    """Resolve a ``(i, j)`` bin pair to the ``(source_i, source_j)`` names.
+
+    The pair is normalised to ``i <= j``: shear-shear statistics are symmetric
+    in the tracer pair, and SACC stores each pair under one ordering, so
+    ``(1, 0)`` must address the same points as ``(0, 1)``.
+    """
+    i, j = sorted(bins)
     return (source_name(i), source_name(j))
+
+
+def _check_ascending(name, values):
+    """Require ``values`` to be strictly ascending; else raise ValueError.
+
+    Insertion order is the covariance (and bandpower-window) order, and readers
+    return points in insertion order, so an out-of-order grid would silently
+    desynchronise a data vector from its covariance. Enforce monotonicity at
+    write time instead.
+    """
+    values = np.asarray(values)
+    if not np.all(np.diff(values) > 0):
+        raise ValueError(
+            f"{name} must be strictly ascending (insertion order is the "
+            f"covariance order); got {values.tolist()}"
+        )
 
 
 def add_xi(
@@ -134,6 +167,7 @@ def add_xi(
     npairs, weight : array_like, optional
         TreeCorr pair counts and weights, stored per point.
     """
+    _check_ascending("theta", theta)
     tracers = _pair(bins)
     for dtype, xi in ((XI_PLUS, xip), (XI_MINUS, xim)):
         for n, th in enumerate(theta):
@@ -177,6 +211,7 @@ def add_pseudo_cl(
         bandpower — from NaMaster ``get_bandpower_windows``. One
         ``sacc.BandpowerWindow`` is built and shared across EE/BB/EB.
     """
+    _check_ascending("ell_eff", ell_eff)
     tracers = _pair(bins)
     window = sacc.BandpowerWindow(np.asarray(window_ells), np.asarray(window_weights))
     for dtype, cl in ((CL_EE, cl_ee), (CL_BB, cl_bb), (CL_EB, cl_eb)):
@@ -234,6 +269,7 @@ def add_pure_eb(s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb):
     xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb : array_like
         The six pure E/B / ambiguous mode arrays at ``theta``.
     """
+    _check_ascending("theta", theta)
     tracers = _pair(bins)
     values = {
         "xip_E": xip_E,
@@ -263,6 +299,7 @@ def add_rho(s, k, theta, rho_p, rho_m):
     rho_p, rho_m : array_like
         ρ_k+ and ρ_k− at ``theta``.
     """
+    _check_ascending("theta", theta)
     tracers = (PSF_TRACER, PSF_TRACER)
     for dtype, arr in ((RHO_PLUS.format(k=k), rho_p), (RHO_MINUS.format(k=k), rho_m)):
         for n, th in enumerate(theta):
@@ -286,6 +323,7 @@ def add_tau(s, bins, k, theta, tau_p, tau_m):
     tau_p, tau_m : array_like
         τ_k+ and τ_k− at ``theta``.
     """
+    _check_ascending("theta", theta)
     tracers = (source_name(bins[0]), PSF_TRACER)
     for dtype, arr in ((TAU_PLUS.format(k=k), tau_p), (TAU_MINUS.format(k=k), tau_m)):
         for n, th in enumerate(theta):
@@ -397,9 +435,9 @@ def get_xi(s, bins, *, grid):
     """Return ``(theta, xip, xim)`` for one tracer pair and grid."""
     tracers = _pair(bins)
     return (
-        _sorted_tag(s, XI_PLUS, tracers, "theta", grid=grid),
-        _sorted_mean(s, XI_PLUS, tracers, grid=grid),
-        _sorted_mean(s, XI_MINUS, tracers, grid=grid),
+        _tag(s, XI_PLUS, tracers, "theta", grid=grid),
+        _mean(s, XI_PLUS, tracers, grid=grid),
+        _mean(s, XI_MINUS, tracers, grid=grid),
     )
 
 
@@ -407,16 +445,17 @@ def get_pseudo_cl(s, bins):
     """Return ``(ell_eff, cl_ee, cl_bb, cl_eb, window)`` for one tracer pair.
 
     ``window`` is the shared ``sacc.BandpowerWindow`` recovered via
-    ``get_bandpower_windows``.
+    ``get_bandpower_windows``; its columns are in the same insertion order as
+    the returned ``ell_eff``/``cl`` arrays, so window column ``j`` corresponds
+    to ``ell_eff[j]``.
     """
     tracers = _pair(bins)
-    ell = _sorted_tag(s, CL_EE, tracers, "ell")
     window = s.get_bandpower_windows(s.indices(CL_EE, tracers))
     return (
-        ell,
-        _sorted_mean(s, CL_EE, tracers, _sort_tag="ell"),
-        _sorted_mean(s, CL_BB, tracers, _sort_tag="ell"),
-        _sorted_mean(s, CL_EB, tracers, _sort_tag="ell"),
+        _tag(s, CL_EE, tracers, "ell"),
+        _mean(s, CL_EE, tracers),
+        _mean(s, CL_BB, tracers),
+        _mean(s, CL_EB, tracers),
         window,
     )
 
@@ -435,11 +474,11 @@ def get_cosebis(s, bins, scale_cut=None):
         if scale_cut is not None
         else {}
     )
-    modes = _sorted_tag(s, COSEBI_EE, tracers, "n", **tags)
+    modes = _tag(s, COSEBI_EE, tracers, "n", **tags)
     return (
         modes.astype(int),
-        _sorted_mean(s, COSEBI_EE, tracers, **tags, _sort_tag="n"),
-        _sorted_mean(s, COSEBI_BB, tracers, **tags, _sort_tag="n"),
+        _mean(s, COSEBI_EE, tracers, **tags),
+        _mean(s, COSEBI_BB, tracers, **tags),
     )
 
 
@@ -449,8 +488,8 @@ def get_pure_eb(s, bins):
     The dict is keyed by ``PURE_KEYS`` (xip_E, xim_E, …).
     """
     tracers = _pair(bins)
-    theta = _sorted_tag(s, PURE_TYPES["xip_E"], tracers, "theta")
-    arrays = {key: _sorted_mean(s, PURE_TYPES[key], tracers) for key in PURE_KEYS}
+    theta = _tag(s, PURE_TYPES["xip_E"], tracers, "theta")
+    arrays = {key: _mean(s, PURE_TYPES[key], tracers) for key in PURE_KEYS}
     return theta, arrays
 
 
@@ -459,9 +498,9 @@ def get_rho(s, k):
     tracers = (PSF_TRACER, PSF_TRACER)
     dt_p, dt_m = RHO_PLUS.format(k=k), RHO_MINUS.format(k=k)
     return (
-        _sorted_tag(s, dt_p, tracers, "theta"),
-        _sorted_mean(s, dt_p, tracers),
-        _sorted_mean(s, dt_m, tracers),
+        _tag(s, dt_p, tracers, "theta"),
+        _mean(s, dt_p, tracers),
+        _mean(s, dt_m, tracers),
     )
 
 
@@ -470,28 +509,26 @@ def get_tau(s, bins, k):
     tracers = (source_name(bins[0]), PSF_TRACER)
     dt_p, dt_m = TAU_PLUS.format(k=k), TAU_MINUS.format(k=k)
     return (
-        _sorted_tag(s, dt_p, tracers, "theta"),
-        _sorted_mean(s, dt_p, tracers),
-        _sorted_mean(s, dt_m, tracers),
+        _tag(s, dt_p, tracers, "theta"),
+        _mean(s, dt_p, tracers),
+        _mean(s, dt_m, tracers),
     )
 
 
-def _order(s, data_type, tracers, sort_tag, **tag_filters):
-    """Indices for a selection, ordered by ascending ``sort_tag``."""
-    idx = np.asarray(s.indices(data_type, tracers, **tag_filters), dtype=int)
-    key = np.array([s.data[i].tags[sort_tag] for i in idx])
-    return idx[np.argsort(key)]
+def _mean(s, data_type, tracers, **tag_filters):
+    """Mean values for a selection, in ``s.indices`` (insertion) order.
+
+    Never re-sort: insertion order is the covariance and bandpower-window
+    order, so returning in ``s.indices`` order keeps every reader aligned with
+    the covariance for any file (and ascending for canonically-written files,
+    which the writers enforce).
+    """
+    return s.mean[s.indices(data_type, tracers, **tag_filters)]
 
 
-def _sorted_mean(s, data_type, tracers, _sort_tag="theta", **tag_filters):
-    """Mean values for a selection, ordered by ``_sort_tag`` ascending."""
-    idx = _order(s, data_type, tracers, _sort_tag, **tag_filters)
-    return s.mean[idx]
-
-
-def _sorted_tag(s, data_type, tracers, tag, **tag_filters):
-    """Values of ``tag`` for a selection, ordered by that tag ascending."""
-    idx = _order(s, data_type, tracers, tag, **tag_filters)
+def _tag(s, data_type, tracers, tag, **tag_filters):
+    """Values of ``tag`` for a selection, in insertion order."""
+    idx = s.indices(data_type, tracers, **tag_filters)
     return np.array([s.data[i].tags[tag] for i in idx])
 
 
@@ -509,7 +546,12 @@ def extract(s, data_type=None, tracers=None, **tag_filters):
     data_type : str, optional
         Data type to keep.
     tracers : tuple, optional
-        Tracer pair to keep.
+        Tracer pair to keep, as SACC tracer **names** (e.g.
+        ``("source_0", "source_0")`` or ``("source_0", "psf_stars")``) — *not*
+        integer bin indices. This differs deliberately from the ``add_*`` /
+        ``get_*`` interface, whose ``bins`` argument takes integer pairs:
+        ``extract`` is the generic selection escape hatch, mirroring
+        ``Sacc.keep_selection`` and addressing non-source tracers uniformly.
     **tag_filters
         Tag filters (plain kwargs, e.g. ``grid='fine'``).
 
