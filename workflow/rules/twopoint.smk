@@ -5,9 +5,11 @@ rule xi:
     input:
         catalog=get_shear_catalog,
     output:
-        str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # Raw TreeCorr .txt byproduct (read back by covariance + skip-if-exists)
+        # and the born-as-SACC coarse ξ± part (a .part — no covariance until the
+        # assemble_sacc rule injects the CosmoCov block).
+        txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
+        xi_coarse=str(COSMO_VAL / "{version}_xi_coarse.sacc"),
     threads: 24
     params:
         ver="{version}",
@@ -15,7 +17,6 @@ rule xi:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
-        fits=False,
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -25,12 +26,16 @@ rule xi:
 
 
 rule xi_highres:
-    """High-resolution xi for COSEBIS integration."""
+    """High-resolution xi for COSEBIS integration.
+
+    Terminal born-as-SACC product: {version}_xi_fine.sacc (a DiagonalCovariance
+    from TreeCorr varxip/varxim). COSEBIs and pure-E/B consume it. The raw .txt
+    dump is kept as a convergence byproduct.
+    """
     container: None
     output:
         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-        xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-        xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
+        xi_fine=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_fine.sacc"),
     resources:
         tasks=30,
         cpus_per_task=12,
@@ -92,9 +97,9 @@ wildcard_constraints:
 
 
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector with configurable binning."""
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
         blind="[ABC]",
     params:
@@ -146,7 +151,7 @@ rule pseudo_cl_all:
     """Generate pseudo-Cls for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -164,7 +169,7 @@ rule pseudo_cl_fine_all:
     """Generate fine pseudo-Cls for COSEBIS."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.sacc"),
             version=config["versions"],
             blind=BLINDS,
         ),

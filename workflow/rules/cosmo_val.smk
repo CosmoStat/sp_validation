@@ -104,8 +104,36 @@ def cv_cosebis_npz(version):
     )
 
 
-def cv_pseudo_cl_fits(version):
-    return str(COSMO_VAL / f"pseudo_cl_{version}.fits")
+def cv_pseudo_cl_sacc(version):
+    """Pseudo-Cl SACC part calculate_pseudo_cl writes (born as SACC)."""
+    return str(COSMO_VAL / f"pseudo_cl_{version}.sacc")
+
+
+def cv_cosebis_sacc(version):
+    """COSEBIs SACC part (fiducial scale cut) the cv_cosebis rule writes."""
+    return str(COSMO_VAL / f"{version}_cosebis.sacc")
+
+
+def cv_pure_eb_sacc(version):
+    """Pure-E/B SACC part the cv_pure_eb rule writes."""
+    return str(COSMO_VAL / f"{version}_pure_eb.sacc")
+
+
+def cv_rho_tau_sacc(version):
+    """ρ/τ SACC part calculate_rho_tau_stats writes (rho_tau_{base}.sacc)."""
+    return str(
+        COSMO_VAL / "rho_tau_stats" / f"rho_tau_{cv_basename(version, CV_FIDUCIAL)}.sacc"
+    )
+
+
+def cv_xi_coarse_sacc(version):
+    """Coarse ξ± SACC part the xi rule (run_2pcf.py) writes for a version."""
+    return str(COSMO_VAL / f"{version}_xi_coarse.sacc")
+
+
+def cv_analysis_sacc(version):
+    """Terminal assembled analysis file {version}.sacc."""
+    return str(COSMO_VAL / f"{version}.sacc")
 
 
 # Common params block shared by every cosmo_val rule: the cv constructor kwargs
@@ -275,9 +303,9 @@ rule cv_ratio_xi_sys_xi:
 # ---------------------------------------------------------------------------
 
 rule cv_pseudo_cl:
-    """Pseudo-Cl E/B spectra for all versions (NaMaster)."""
+    """Pseudo-Cl E/B spectra for all versions (NaMaster), born as SACC parts."""
     output:
-        pseudo_cl=[cv_pseudo_cl_fits(v) for v in CV_VERSIONS],
+        pseudo_cl=[cv_pseudo_cl_sacc(v) for v in CV_VERSIONS],
     params:
         **cv_params(),
     threads: 12
@@ -298,6 +326,7 @@ rule cv_pure_eb:
         xi=lambda w: cv_xi_txt(w.version),
     output:
         npz=cv_pure_eb_npz("{version}"),
+        sacc=cv_pure_eb_sacc("{version}"),
     params:
         version="{version}",
         min_sep_int=CV["pure_eb"]["min_sep_int"],
@@ -320,6 +349,7 @@ rule cv_cosebis:
         xi=lambda w: cv_xi_txt(w.version),
     output:
         npz=cv_cosebis_npz("{version}"),
+        sacc=cv_cosebis_sacc("{version}"),
     params:
         version="{version}",
         min_sep_int=CV["cosebis"]["min_sep_int"],
@@ -345,7 +375,7 @@ rule cv_summarize_bmodes:
         pure_eb=[cv_pure_eb_npz(v) for v in CV_VERSIONS],
         cosebis=[cv_cosebis_npz(v) for v in CV_VERSIONS],
         pseudo_cl=(
-            [cv_pseudo_cl_fits(v) for v in CV_VERSIONS]
+            [cv_pseudo_cl_sacc(v) for v in CV_VERSIONS]
             if CV.get("include_pseudo_cl", False) else []
         ),
     output:
