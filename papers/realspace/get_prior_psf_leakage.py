@@ -3,7 +3,6 @@
 # This notebook plots the combined covariance matrix, and samples and plots the 2D marginalised posteriors of the PSF leakage parameters $\alpha$ and $\beta$.
 
 
-
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -161,4 +160,4 @@ g.triangle_plot(
     legend_loc="upper right",
 )
 
-plt.savefig("./../../results/psf_leakage_params.png", bbox_inches='tight', dpi=300)
+plt.savefig("./../../results/psf_leakage_params.png", bbox_inches="tight", dpi=300)

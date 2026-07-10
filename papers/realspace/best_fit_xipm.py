@@ -356,7 +356,7 @@ ax2.yaxis.get_offset_text().set_fontsize(24)
 ax2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 ax2.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xim, fontsize=20)
 
-plt.savefig("./../../results/best_fit_xipm_SP_v1.4.6.3_B.pdf",bbox_inches="tight")
+plt.savefig("./../../results/best_fit_xipm_SP_v1.4.6.3_B.pdf", bbox_inches="tight")
 
 
 root_to_plot = [fiducial_root_xi_chains]
@@ -494,4 +494,4 @@ ax2.yaxis.get_offset_text().set_fontsize(24)
 ax2.ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
 ax2.legend(loc=loc_legend, bbox_to_anchor=bbox_to_anchor_xim, fontsize=20)
 
-plt.savefig("./../../results/best_fit_tau_02_SP_v1.4.6.3_B.pdf",bbox_inches="tight")
+plt.savefig("./../../results/best_fit_tau_02_SP_v1.4.6.3_B.pdf", bbox_inches="tight")

@@ -3,7 +3,6 @@
 # This notebook plots the 2D heatmap of ratio of scale contributions to the $\xi_\pm$ 2PCF given angular scale $\theta$ and wavenumber $k$.
 
 
-
 import matplotlib.pylab as plt
 import numpy as np
 import seaborn as sns
@@ -102,5 +101,4 @@ fig.tight_layout()
 cbar_ax = fig.add_axes([0.99, 0.15, 0.02, 0.7])
 cbar = fig.colorbar(pcm, cax=cbar_ax)
 
-fig.savefig("./../../results/theta_k_xip_xim_{ver}_{blind}.pdf", bbox_inches="tight"
-)
+fig.savefig("./../../results/theta_k_xip_xim_{ver}_{blind}.pdf", bbox_inches="tight")

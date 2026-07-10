@@ -14,6 +14,7 @@ from scipy.special import j0, jn
 
 ######################################################################################################
 
+
 def process_theta(theta, nz_file, output_root):
     """Compute shear correlation functions for a single angular scale.
 
@@ -56,7 +57,7 @@ def process_theta(theta, nz_file, output_root):
         float or ndarray
             Hubble parameter in km s^-1 Mpc^-1.
         """
-        return H0 * np.sqrt(Omega_m*(1+z)**3 + (1-Omega_m))
+        return H0 * np.sqrt(Omega_m * (1 + z) ** 3 + (1 - Omega_m))
 
     def rz_interp(want_z):
         """Create an interpolation between redshift and comoving distance.
@@ -78,15 +79,18 @@ def process_theta(theta, nz_file, output_root):
         """
 
         def hz_integrand(zz):
-            return c/Hz(zz)
+            return c / Hz(zz)
 
         rz_ref = np.array([integrate.quad(hz_integrand, 0, z)[0] for z in zs])
 
         if want_z == True:
-            return interpolate.interp1d(rz_ref, zs, bounds_error=False, fill_value="extrapolate")
+            return interpolate.interp1d(
+                rz_ref, zs, bounds_error=False, fill_value="extrapolate"
+            )
         else:
-            return interpolate.interp1d(zs, rz_ref, bounds_error=False, fill_value="extrapolate")
-
+            return interpolate.interp1d(
+                zs, rz_ref, bounds_error=False, fill_value="extrapolate"
+            )
 
     def W_gg(z, rz):
         """Compute the lensing efficiency kernel.
@@ -109,10 +113,9 @@ def process_theta(theta, nz_file, output_root):
         z_integrate = np.linspace(z, zmax, n)
         r_zmin = rz(z)
         nz_int = som_nz_interp(z_integrate) * (1 - r_zmin / rz(z_integrate))
-        prefactor = 3 * H0**2 * Omega_m * (1+z) * r_zmin / (2 * c**2)
+        prefactor = 3 * H0**2 * Omega_m * (1 + z) * r_zmin / (2 * c**2)
 
         return prefactor * integrate.simpson(nz_int, x=z_integrate)
-
 
     def C_ell(ell, kmax, want_IA):
         """Compute the angular power spectrum.
@@ -141,7 +144,7 @@ def process_theta(theta, nz_file, output_root):
             return 0.0
 
         rzs = rz_interp_noz(z_valid)
-        W_ggs =  W_gg_interp(z_valid)
+        W_ggs = W_gg_interp(z_valid)
         Pks = pkz_nl_interp((z_valid, (ell + 0.5) / rzs))
         Hzs = Hz(z_valid)
 
@@ -149,8 +152,9 @@ def process_theta(theta, nz_file, output_root):
         C_ell_gg = integrate.simpson(gg_integrand, x=z_valid)
 
         if want_IA == True:
-
-            Dzs = pkz_lin_interp((z_valid, (ell + 0.5) / rzs)) / pkz_lin_interp((0, (ell + 0.5) / rzs))
+            Dzs = pkz_lin_interp((z_valid, (ell + 0.5) / rzs)) / pkz_lin_interp(
+                (0, (ell + 0.5) / rzs)
+            )
             P_ia = -A_IA * c1 * Omega_m / Dzs
             W_ias = Hzs * som_nz_interp(z_valid) / c
 
@@ -189,12 +193,15 @@ def process_theta(theta, nz_file, output_root):
         xip_integrand = ells * C_ell_vals * j0(ells * theta_rad)
         xim_integrand = ells * C_ell_vals * jn(4, ells * theta_rad)
 
-        return integrate.simpson(xip_integrand, x=ells)/(2 * np.pi), integrate.simpson(xim_integrand, x=ells)/(2 * np.pi)
+        return integrate.simpson(xip_integrand, x=ells) / (
+            2 * np.pi
+        ), integrate.simpson(xim_integrand, x=ells) / (2 * np.pi)
+
     ###########################################################################################
 
-    c = const.c.to('km/s')
-    H0 = PLANCK18['h'] * 100
-    Omega_m =  PLANCK18['Omega_m']
+    c = const.c.to("km/s")
+    H0 = PLANCK18["h"] * 100
+    Omega_m = PLANCK18["Omega_m"]
 
     A_IA = 0.83
     c1 = 5e-14 * (u.Mpc**3.0) / u.solMass
@@ -202,57 +209,75 @@ def process_theta(theta, nz_file, output_root):
     zmin = 1e-5
     zmax = 4
     n = 500
-    zs = np.linspace(zmin,zmax,n)
-    ells = np.linspace(2,1e5,int(1e5-1))
+    zs = np.linspace(zmin, zmax, n)
+    ells = np.linspace(2, 1e5, int(1e5 - 1))
 
-    kmaxs = np.logspace(-4,2,200)
+    kmaxs = np.logspace(-4, 2, 200)
     theta_rad = theta * (np.pi / (180 * 60))
 
-    ombh2 = PLANCK18['Omega_b'] * PLANCK18['h']**2
-    omch2 = (PLANCK18['Omega_m'] - PLANCK18['Omega_b']) * PLANCK18['h']**2
+    ombh2 = PLANCK18["Omega_b"] * PLANCK18["h"] ** 2
+    omch2 = (PLANCK18["Omega_m"] - PLANCK18["Omega_b"]) * PLANCK18["h"] ** 2
     pars = camb.set_params(
-        H0=H0, ombh2=ombh2, omch2=omch2, mnu=PLANCK18['m_nu'], As=PLANCK18['As'], ns=PLANCK18['n_s'],
-        halofit_version='mead2020_feedback', lmax=3000, WantTransfer=True)
+        H0=H0,
+        ombh2=ombh2,
+        omch2=omch2,
+        mnu=PLANCK18["m_nu"],
+        As=PLANCK18["As"],
+        ns=PLANCK18["n_s"],
+        halofit_version="mead2020_feedback",
+        lmax=3000,
+        WantTransfer=True,
+    )
 
-    nz_z, som_nz = np.loadtxt(f'{nz_file}', unpack=True)
-    som_nz_interp = interpolate.interp1d(nz_z,som_nz, bounds_error=False, fill_value=None)
+    nz_z, som_nz = np.loadtxt(f"{nz_file}", unpack=True)
+    som_nz_interp = interpolate.interp1d(
+        nz_z, som_nz, bounds_error=False, fill_value=None
+    )
 
-    pars.set_matter_power(redshifts = np.linspace(zmin,zmax, 150), kmax=200)
+    pars.set_matter_power(redshifts=np.linspace(zmin, zmax, 150), kmax=200)
     results = camb.get_results(pars)
     results.calc_power_spectra(pars)
-    k_nonlin, z_nonlin, pk_nonlin = results.get_nonlinear_matter_power_spectrum(hubble_units=False,
-                                                                                k_hunit=False)
+    k_nonlin, z_nonlin, pk_nonlin = results.get_nonlinear_matter_power_spectrum(
+        hubble_units=False, k_hunit=False
+    )
 
-    pkz_nl_interp = interpolate.RegularGridInterpolator((z_nonlin, k_nonlin), pk_nonlin,
-                                    bounds_error=False, fill_value=None)
+    pkz_nl_interp = interpolate.RegularGridInterpolator(
+        (z_nonlin, k_nonlin), pk_nonlin, bounds_error=False, fill_value=None
+    )
 
-    k_lin, z_lin, pk_lin = results.get_linear_matter_power_spectrum(hubble_units=False, k_hunit=False)
+    k_lin, z_lin, pk_lin = results.get_linear_matter_power_spectrum(
+        hubble_units=False, k_hunit=False
+    )
 
-    pkz_lin_interp = interpolate.RegularGridInterpolator((z_lin, k_lin), pk_lin,
-                                    bounds_error=False, fill_value=None)
+    pkz_lin_interp = interpolate.RegularGridInterpolator(
+        (z_lin, k_lin), pk_lin, bounds_error=False, fill_value=None
+    )
 
     rz_interp_wantz = rz_interp(True)
     rz_interp_noz = rz_interp(False)
     W_gg_vals = np.array([W_gg(z, rz_interp_noz) for z in zs])
-    W_gg_interp = interpolate.interp1d(zs, W_gg_vals, bounds_error=False, fill_value="extrapolate")
+    W_gg_interp = interpolate.interp1d(
+        zs, W_gg_vals, bounds_error=False, fill_value="extrapolate"
+    )
 
     ###########################################################################################
     xis = np.array([xi(theta_rad, kmax, True) for kmax in kmaxs])
-    xip = xis[:,0]
-    xim = xis[:,1]
+    xip = xis[:, 0]
+    xim = xis[:, 1]
 
     # Write results immediately to avoid thread conflicts
-    with open(f'{output_root}_xip.txt', "a") as f:
+    with open(f"{output_root}_xip.txt", "a") as f:
         new_arr = np.concatenate(([theta], xip))
-        np.savetxt(f, new_arr, fmt='%.8e')
+        np.savetxt(f, new_arr, fmt="%.8e")
 
-    with open(f'{output_root}_xim.txt', "a") as f:
+    with open(f"{output_root}_xim.txt", "a") as f:
         new_arr = np.concatenate(([theta], xim))
-        np.savetxt(f, new_arr, fmt='%.8e')
+        np.savetxt(f, new_arr, fmt="%.8e")
 
     return theta
 
-   ###########################################################################################
+
+###########################################################################################
 
 if __name__ == "__main__":
     """Run the shear-correlation calculation in parallel.
@@ -273,9 +298,11 @@ if __name__ == "__main__":
     nz_file = sys.argv[2]
     output_root = sys.argv[3]
 
-    thetas = np.linspace(1,20,50)
-    theta_block = thetas[i*10:(i+1)*10]
+    thetas = np.linspace(1, 20, 50)
+    theta_block = thetas[i * 10 : (i + 1) * 10]
 
     # Run in parallel to speed up calculations for multiple angular scales
     with Pool(processes=10) as pool:
-        pool.starmap(process_theta, [(theta, nz_file, output_root) for theta in theta_block])
+        pool.starmap(
+            process_theta, [(theta, nz_file, output_root) for theta in theta_block]
+        )
