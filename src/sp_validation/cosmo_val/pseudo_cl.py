@@ -28,9 +28,7 @@ from ..pseudo_cl import (
 from ..rho_tau import get_params_rho_tau
 from ..statistics import chi2_and_pte, cov_from_one_covariance
 from .sacc_writers import BIN as SACC_BIN
-
-# NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).
-_NMT_EE, _NMT_EB, _NMT_BB = 0, 1, 3
+from .sacc_writers import pseudo_cl_to_sacc
 
 
 class PseudoClMixin:
@@ -670,26 +668,22 @@ class PseudoClMixin:
         """
         return apply_random_rotation(e1, e2, rng)
 
-    def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
-        """
-        Save pseudo-Cl's to a FITS file.
+    def pseudo_cl_to_sacc_part(self, version, out_path, ell_eff, cl_all, wsp):
+        """Write the pseudo-Cl SACC part (EE/BB/EB + shared bandpower window).
 
-        Parameters
-        ----------
-        pseudo_cl : np.array
-            Pseudo-Cl's to save.
-        out_path : str
-            Path to save the pseudo-Cl's to.
+        ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
+        the writer takes the shared bandpower window from ``wsp``. No covariance
+        is attached here — the analysis file's pseudo-Cl block is supplied at
+        assembly (``assemble_sacc``) from the NaMaster / OneCovariance product.
         """
-        # Create columns of the fits file
-        col1 = fits.Column(name="ELL", format="D", array=ell_eff)
-        col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
-        col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
-        col4 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
-        coldefs = fits.ColDefs([col1, col2, col3, col4])
-        cell_hdu = fits.BinTableHDU.from_columns(coldefs, name="PSEUDO_CELL")
-
-        cell_hdu.writeto(out_path, overwrite=True)
+        s = pseudo_cl_to_sacc(
+            self.sacc_nz(version),
+            self.sacc_metadata(version),
+            ell_eff,
+            cl_all,
+            wsp,
+        )
+        sacc_io.save(s, out_path)
 
     def plot_pseudo_cl(self):
         """
