@@ -57,7 +57,9 @@ import numpy.testing as npt
 import pytest
 import yaml
 
+from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.rho_tau import get_params_rho_tau
 
 # These tests need the full harmonic-space stack (pymaster/NaMaster + healpy),
@@ -509,24 +511,24 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
 # calculate_pseudo_cl_catalog -- deterministic end-to-end catalog path
 # ===========================================================================
 def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
-    """End-to-end catalog path: FITS round-trip of ell + EE/EB/BB.
+    """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
 
     The catalog method has no random noise debiasing, so it is reproducible to
-    the same ~2e-12 catalog-path float noise. save_pseudo_cl stores ELL/EE/EB/BB
-    (it drops the BE row); we pin the round-tripped table.
+    the same ~2e-12 catalog-path float noise. calculate_pseudo_cl_catalog is
+    born-as-SACC: it writes a pseudo-Cl part (EE/BB/EB + shared bandpower
+    window) via pseudo_cl_to_sacc_part; we pin the round-tripped spectra read
+    back through sacc_io.get_pseudo_cl.
     """
     ver = cv._test_version
     cv._pseudo_cls = {ver: {}}
-    out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
+    out_path = cv._output_path(f"pseudo_cl_{ver}.sacc")
     cv.calculate_pseudo_cl_catalog(ver, out_path)
 
     assert os.path.exists(out_path)
-    d = fits.getdata(out_path)
-    # FITS gives big-endian f8; normalize for value comparison.
-    ell = np.asarray(d["ELL"], dtype=np.float64)
-    ee = np.asarray(d["EE"], dtype=np.float64)
-    eb = np.asarray(d["EB"], dtype=np.float64)
-    bb = np.asarray(d["BB"], dtype=np.float64)
+    s = sacc_io.load(out_path)
+    ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    # A shared BandpowerWindow rides the part per the SACC layout contract.
+    assert window is not None
 
     npt.assert_allclose(
         ell,
