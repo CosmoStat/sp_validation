@@ -38,14 +38,18 @@ def run_2pcf(
     npatch,
     cat_config,
     output_dir,
+    sacc_out=None,
 ):
-    """Measure ξ±(θ) for ``ver`` and write its coarse SACC part under ``output_dir``.
+    """Measure ξ±(θ) for ``ver`` and write its coarse SACC part.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
-    ``cat_config['paths']['output']`` so products land where lc expects.
+    ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
+    expects. ``sacc_out`` is the exact destination for the coarse ξ± SACC part
+    (the Snakemake-declared output); it defaults to ``{ver}_xi_coarse.sacc``
+    under the resolved output directory for the CLI path.
 
     Returns
     -------
@@ -78,7 +82,7 @@ def run_2pcf(
         npairs=gg.npairs,
         weight=gg.weight,
     )
-    out_path = os.path.join(
+    out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"], f"{ver}_xi_coarse.sacc"
     )
     sacc_io.save(s, out_path)
@@ -100,6 +104,9 @@ def _from_snakemake(smk):
         # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
         cat_config=p.get("cat_config", "./cat_config.yaml"),
         output_dir=p.get("output_dir", None),
+        # Write the SACC part exactly where the rule declares it (the .txt
+        # byproduct still lands under the resolved output dir via _output_path).
+        sacc_out=smk.output["xi_coarse"],
     )
 
 

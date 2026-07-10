@@ -48,9 +48,11 @@ cv = CosmologyValidation(
 
 cv.calculate_rho_tau_stats()
 
-# Confirm CosmologyValidation produced the requested outputs
+# Confirm CosmologyValidation produced the requested outputs. calculate_rho_tau_stats
+# writes the rho/tau FITS *and* the born-as-SACC rho_tau part (via
+# rho_tau_to_sacc_part); the part feeds the assemble_sacc rule.
 outputs = snakemake.output  # type: ignore
-for label in ("rho_stats", "tau_stats"):
+for label in ("rho_stats", "tau_stats", "rho_tau"):
     target = Path(outputs[label])
     if not target.exists():
         raise FileNotFoundError(

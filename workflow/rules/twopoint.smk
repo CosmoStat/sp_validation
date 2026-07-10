@@ -6,10 +6,13 @@ rule xi:
         catalog=get_shear_catalog,
     output:
         # Raw TreeCorr .txt byproduct (read back by covariance + skip-if-exists)
-        # and the born-as-SACC coarse ξ± part (a .part — no covariance until the
-        # assemble_sacc rule injects the CosmoCov block).
+        # and the born-as-SACC coarse ξ± part (no covariance until the
+        # assemble_sacc rule injects the CosmoCov block). Both outputs carry the
+        # same reporting-binning wildcards — Snakemake requires every output of a
+        # rule to share one wildcard set, and it keeps the coarse .sacc name
+        # self-describing so requesting it binds the xi job unambiguously.
         txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        xi_coarse=str(COSMO_VAL / "{version}_xi_coarse.sacc"),
+        xi_coarse=str(COSMO_VAL / "{version}_xi_coarse_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
         ver="{version}",
@@ -75,6 +78,11 @@ rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # Born-as-SACC ρ/τ part (ρ_0…ρ_5 autos + τ_0/τ_2/τ_5 leakage, carrying
+        # its own covariance block) that the assemble_sacc rule consumes;
+        # calculate_rho_tau_stats writes it alongside the FITS via
+        # rho_tau_to_sacc_part.
+        rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
         ver="{version}",

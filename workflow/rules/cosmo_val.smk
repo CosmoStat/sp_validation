@@ -127,8 +127,18 @@ def cv_rho_tau_sacc(version):
 
 
 def cv_xi_coarse_sacc(version):
-    """Coarse ξ± SACC part the xi rule (run_2pcf.py) writes for a version."""
-    return str(COSMO_VAL / f"{version}_xi_coarse.sacc")
+    """Coarse ξ± SACC part the xi rule (run_2pcf.py) writes for a version.
+
+    Carries the reporting-binning suffix so requesting it binds the xi job's
+    wildcards (the rule's txt + coarse .sacc outputs share one wildcard set).
+    """
+    return str(
+        COSMO_VAL
+        / (
+            f"{version}_xi_coarse_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
+            f"_nbins={CV['nbins']}_npatch={CV['npatch']}.sacc"
+        )
+    )
 
 
 def cv_analysis_sacc(version):
@@ -402,6 +412,65 @@ rule cv_summarize_bmodes:
 
 
 # ---------------------------------------------------------------------------
+# Terminal analysis file: assemble the per-statistic SACC parts into {version}.sacc
+# ---------------------------------------------------------------------------
+# The five born-as-SACC parts (xi_coarse, pseudo_cl, cosebis, pure_eb, rho_tau)
+# are each written by their own rule carrying its own covariance block, except
+# ξ± coarse and pseudo-Cℓ which are born cov-less by design. assemble_sacc.py
+# loads the parts in canonical order and rebuilds one {version}.sacc with a
+# single FullCovariance (point-insertion order = block order). The cov-less
+# ξ/pseudo-Cℓ blocks are supplied here: the real CosmoCov / NaMaster covariances
+# plug in via --xi-cov / --pseudo-cl-cov when the analysis needs them (that
+# sourcing is the PR-3 converter's territory); until then a documented diagonal
+# placeholder keeps the FullCovariance structurally valid. The placeholder is a
+# flagged stand-in, never a science covariance.
+
+
+def cv_assemble_inputs(version):
+    """The per-statistic SACC parts assemble_sacc consumes for a version.
+
+    Each part's filename carries enough to bind its producing rule's wildcards
+    (the coarse ξ± part its reporting binning, the ρ/τ part likewise). pseudo_cl
+    is included only when the config toggles the harmonic-space BB into the
+    analysis.
+    """
+    parts = dict(
+        xi_coarse=cv_xi_coarse_sacc(version),
+        cosebis=cv_cosebis_sacc(version),
+        pure_eb=cv_pure_eb_sacc(version),
+        rho_tau=cv_rho_tau_sacc(version),
+    )
+    if CV.get("include_pseudo_cl", False):
+        parts["pseudo_cl"] = cv_pseudo_cl_sacc(version)
+    return parts
+
+
+rule assemble_sacc:
+    """Assemble the terminal {version}.sacc from the per-statistic SACC parts."""
+    input:
+        unpack(lambda w: cv_assemble_inputs(w.version)),
+    output:
+        sacc=cv_analysis_sacc("{version}"),
+    params:
+        version="{version}",
+        # Real ξ / pseudo-Cℓ covariance sourcing (CosmoCov / NaMaster) plugs in
+        # here later; for now a documented diagonal placeholder keeps the
+        # assembled FullCovariance structurally valid.
+        placeholder_var=1.0,
+    resources:
+        mem_mb=8000,
+        runtime=20,
+    script:
+        "../scripts/assemble_sacc.py"
+
+
+rule assemble_sacc_all:
+    """Assemble the analysis SACC file for every version."""
+    input:
+        [cv_analysis_sacc(v) for v in CV_VERSIONS],
+
+
+# ---------------------------------------------------------------------------
 # Aggregate target: the whole validation suite
 # ---------------------------------------------------------------------------
 
@@ -422,3 +491,5 @@ rule cosmo_val_all:
         str(COSMO_VAL / "ratio_xi_sys_xi.png"),
         # B-modes
         str(COSMO_VAL / "bmode_summary.json"),
+        # Terminal analysis file: the assembled {version}.sacc per version
+        [cv_analysis_sacc(v) for v in CV_VERSIONS],
