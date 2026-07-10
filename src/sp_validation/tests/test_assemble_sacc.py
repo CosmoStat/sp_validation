@@ -240,3 +240,30 @@ def test_assemble_sacc_respects_pseudo_cl_toggle(tmp_path):
     s2 = sio.load(str(out))
     assert type(s2.covariance).__name__ == "FullCovariance"
     assert s2.covariance.dense.shape == (len(s2.mean), len(s2.mean))
+
+
+def test_assemble_sacc_expected_part_missing_raises(tmp_path):
+    """A typo'd input keyword drops a part from part_paths; the expected list
+    catches it rather than silently omitting the statistic."""
+    paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
+    # Simulate a rule-input typo: cosebis wired under the wrong key.
+    paths["cosebi"] = paths.pop("cosebis")
+    out = tmp_path / "vSYNTH.sacc"
+    with pytest.raises(ValueError, match="expected parts \\['cosebis'\\] missing"):
+        asm.assemble_sacc(
+            "vSYNTH",
+            paths,
+            str(out),
+            expected=["xi_coarse", "pseudo_cl", "cosebis", "pure_eb", "rho_tau"],
+            placeholder_var=1.0,
+        )
+
+
+def test_assemble_sacc_expected_rejects_unknown_name(tmp_path):
+    """A typo in the expected list itself is rejected (not a valid statistic)."""
+    paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
+    out = tmp_path / "vSYNTH.sacc"
+    with pytest.raises(ValueError, match="not assemblable statistics"):
+        asm.assemble_sacc(
+            "vSYNTH", paths, str(out), expected=["cosebi"], placeholder_var=1.0
+        )

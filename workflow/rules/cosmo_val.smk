@@ -490,6 +490,12 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
+        # Statistics this rule wired (same toggles as cv_assemble_inputs). The
+        # script validates part_paths against this so a typo'd input keyword
+        # can't silently drop a statistic from the terminal file.
+        expected=lambda w: [
+            k for k in cv_assemble_inputs(w.version) if k != "pseudo_cl_cov"
+        ],
         # ξ± coarse has no real covariance wired yet (its CosmoCov theory block is
         # PR-3's converter territory, plugging in via --xi-cov). By DEFAULT this
         # is fatal: assemble_sacc.py raises rather than ship {version}.sacc — the

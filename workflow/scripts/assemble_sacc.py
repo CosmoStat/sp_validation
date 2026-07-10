@@ -107,6 +107,7 @@ def assemble_sacc(
     part_paths,
     out_path,
     *,
+    expected=None,
     xi_cov=None,
     pseudo_cl_cov=None,
     pseudo_cl_cov_hdu="COVAR_FULL",
@@ -123,9 +124,29 @@ def assemble_sacc(
         present statistics are assembled; order is forced to canonical.
     out_path : str
         Destination ``{version}.sacc``.
+    expected : sequence of str, optional
+        Statistics that MUST be present in ``part_paths`` (from the caller's
+        config toggles). Raises loudly if any is missing or has no path — so a
+        typo'd input keyword (``cosebi`` for ``cosebis``) can't silently drop a
+        statistic from the terminal file. Names not in :data:`CANONICAL` are
+        rejected too (catches a typo in the expected list itself).
     xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholder_var
         Covariance sourcing — see the module docstring.
     """
+    if expected is not None:
+        unknown = [name for name in expected if name not in CANONICAL]
+        if unknown:
+            raise ValueError(
+                f"expected parts {unknown} are not assemblable statistics; "
+                f"valid names are {CANONICAL}"
+            )
+        missing = [name for name in expected if not part_paths.get(name)]
+        if missing:
+            raise ValueError(
+                f"expected parts {missing} missing from part_paths for {version} "
+                f"(got {sorted(part_paths)}); a required statistic would be "
+                "silently dropped from the terminal analysis file"
+            )
     parts = []
     nz = metadata = None
     for name in CANONICAL:
@@ -167,10 +188,15 @@ def _from_snakemake(smk):
         for name in CANONICAL
         if hasattr(inp, name) and getattr(inp, name)
     }
+    # The rule declares which statistics it wired (from its config toggles); a
+    # typo in an input keyword drops the part from part_paths above, so validate
+    # against this expected list rather than trusting the hasattr filter.
+    expected = list(p["expected"])
     assemble_sacc(
         version=p["version"],
         part_paths=part_paths,
         out_path=str(smk.output[0]),
+        expected=expected,
         xi_cov=getattr(inp, "xi_cov", None),
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
         pseudo_cl_cov_hdu=p.get("pseudo_cl_cov_hdu", "COVAR_FULL"),
