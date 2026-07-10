@@ -2,30 +2,32 @@
 
 This rule set drives the image-simulation validation chain end to end and is
 the sp_validation-side half of the split described in
-``UNIONS-WL/MultiBand_ImSim#1``: ShapePipe (in *its* container) turns the
-simulated tiles into per-tile shape catalogues, then sp_validation (in *its*
-container) merges, extracts, calibrates and finally measures the
-multiplicative/additive shear bias.
+``UNIONS-WL/MultiBand_ImSim#1``: ShapePipe turns the simulated tiles into
+per-tile shape catalogues, then sp_validation merges, extracts, calibrates and
+finally measures the multiplicative/additive shear bias.
 
-Two containers are wired through one workflow.  Every rule sets
-``container: None`` and calls ``apptainer exec`` explicitly, because neither
-image is the workflow's top-level container and the two halves run in
-different images:
+One container runs every stage.  The sp_validation image is built ``FROM`` the
+ShapePipe image, so it carries the full ShapePipe stack (Source Extractor,
+PSFEx, the ``shapepipe_run`` console entry, ...) as well as sp_validation --
+which is why a single image can host both halves of the chain:
 
-* ShapePipe container  -> ``pipeline`` (raw images -> per-tile cats) and
-  ``merge`` (``create_final_cat`` -> ``final_cat_{sim}.hdf5``).
-* sp_validation container -> ``extract`` (-> comprehensive cat),
-  ``calibrate`` (-> cut cat) and ``m_bias`` (-> ``m_bias_results.yaml``).
+* ShapePipe stages -> ``pipeline`` (raw images -> per-tile cats) and ``merge``
+  (``create_final_cat`` -> ``final_cat_{sim}.hdf5``).
+* sp_validation stages -> ``extract`` (-> comprehensive cat), ``calibrate``
+  (-> cut cat) and ``m_bias`` (-> ``m_bias_results.yaml``).
 
-Everything is parameterised under ``config["image_sims"]`` -- container paths,
-repository roots, data roots, the PSF dictionary, the explicit ``tile_ids``
-list and the sim/calibration knobs -- so a fresh user drives it from config
-alone, with no hard-coded clone layout.  Configuration is fail-fast: a schema
-check at load rejects an unknown key (typo) and a missing science key (see
-``workflow/image_sims/config.yaml`` for the operational/science split).  The
-``PYTHONPATH`` override on the sp_validation exec makes the *branch* source
-(``image_sims.py``, ``catalog.match_catalogs_radec``) win over whatever is
-baked into the image.
+Every rule sets ``container: None`` and calls ``apptainer exec`` explicitly
+through one shared prefix (``EXEC``), because the image is not the workflow's
+top-level container.  Everything is parameterised under
+``config["image_sims"]`` -- the single ``sif``, repository roots, data roots,
+the PSF dictionary, the explicit ``tile_ids`` list and the sim/calibration
+knobs -- so a fresh user drives it from config alone, with no hard-coded clone
+layout.  Configuration is fail-fast: a schema check at load rejects an unknown
+key (typo) and a missing science key (see ``workflow/image_sims/config.yaml``
+for the operational/science split).  The ``PYTHONPATH`` override injects both
+repos' ``src`` so the *branch* source (ShapePipe's ``#766`` build;
+sp_validation's ``image_sims.py``, ``catalog.match_catalogs_radec``) wins over
+whatever is baked into the image.
 
 The five simulations per grid are the reference ``1z2z`` (no input shear) plus
 the ``+/-`` shear pairs ``1p2z``/``1m2z`` (g1) and ``1z2p``/``1z2m`` (g2); the
@@ -75,8 +77,7 @@ _OPERATIONAL_KEYS = {
 }
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
-    "shapepipe_sif",
-    "sp_validation_sif",
+    "sif",
     "shapepipe_repo",
     "sp_validation_repo",
     "grids_base",
@@ -108,12 +109,13 @@ if _missing_structural:
         f"{_missing_structural} -- set them in the run config"
     )
 
-# --- containers -----------------------------------------------------------
-SHAPEPIPE_SIF = IMSIM["shapepipe_sif"]
-SPV_SIF = IMSIM["sp_validation_sif"]
+# --- container ------------------------------------------------------------
+# One image for every stage: the sp_validation image is built FROM the
+# ShapePipe image, so it carries both stacks.  A single ``sif`` config key.
+SIF = IMSIM["sif"]
 BINDS = IMSIM["binds"]
 
-# --- repositories (bound into the images; branch code overrides) ----------
+# --- repositories (bound into the image; branch code overrides) -----------
 SHAPEPIPE_REPO = IMSIM["shapepipe_repo"]
 SPV_REPO = IMSIM["sp_validation_repo"]
 
@@ -158,16 +160,31 @@ CALIBRATE = IMSIM["calibrate_script"]
 # m-bias is *this branch's* extracted core, injected on PYTHONPATH.
 COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 
-# --- container exec prefixes ---------------------------------------------
-# ShapePipe stages. MPI/SLURM env vars are stripped so OpenMPI inside the
-# image does not try to attach to the host launcher (cf. apptainer_noslurm.sh).
-SP_EXEC = f"env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID apptainer exec --bind {BINDS} {SHAPEPIPE_SIF}"
-# sp_validation calibration stages: inject the branch source on PYTHONPATH so
-# the repo's sp_validation package (newer than the baked one) wins -- the
-# image-sims path depends on branch-only fixes to catalog_builders/extract.
-SPV_EXEC = f"apptainer exec --bind {BINDS} --env PYTHONPATH={SPV_REPO}/src {SPV_SIF}"
-# m-bias stage uses the same injected environment.
-SPV_EXEC_MBIAS = SPV_EXEC
+# --- container exec prefix ------------------------------------------------
+# One prefix for every stage.  Three env injections make the on-disk branch
+# code and the sim PSF win over the image's baked copies:
+#
+#   * PYTHONPATH prepends BOTH repos' ``src`` (ShapePipe first, then
+#     sp_validation), so Python resolves the worktree build before
+#     ``/app``/``/sp_validation`` -- the local-testing counterpart of the
+#     git-ref deps, letting the branch code run without an image rebuild.  This
+#     covers the Python *packages* only: the bash entry points (run_job) and
+#     the ShapePipe/sp_validation *scripts* are still invoked at the repo paths
+#     resolved from config (RUN_JOB, CREATE_FINAL_CAT, EXTRACT_INFO, ...), not
+#     shadowed by PYTHONPATH.
+#   * PSF_DICT points the fake_psf module (PSF_DICT_PATH = $PSF_DICT, expanded
+#     via getexpanded) at this run's PSF dictionary.
+#
+# The SLURM env vars are stripped (``env -u ...``) so that when the ShapePipe
+# pipeline stage's OpenMPI initialises inside the image it does not try to
+# attach to the host SLURM launcher (cf. apptainer_noslurm.sh).  The strip is
+# harmless for the pure-Python sp_validation stages, so one prefix serves all.
+EXEC = (
+    "env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID "
+    f"apptainer exec --bind {BINDS} "
+    f"--env PYTHONPATH={SHAPEPIPE_REPO}/src:{SPV_REPO}/src "
+    f"--env PSF_DICT={PSF_DICT} {SIF}"
+)
 
 JOB_MASK = sum([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
 
@@ -229,8 +246,8 @@ rule im_manifest:
     cross-checks each against its ``1{X}2{Y}`` name and the (0,0) reference,
     derives the single injected amplitude, and writes ``manifest.yaml`` into the
     run root.  This is the one home for the injected-shear facts; im_mbias reads
-    the amplitude and branch map from here, nowhere else.  Runs inside the
-    sp_validation container (stdlib parse of basic_info; PyYAML to write).
+    the amplitude and branch map from here, nowhere else.  Pure sp_validation
+    stage (stdlib parse of basic_info; PyYAML to write).
     """
     input:
         # basic_info.txt for each requested branch, so editing a sim's record
@@ -246,7 +263,7 @@ rule im_manifest:
         sims_type=SIMS_TYPE,
         num=NUM,
     shell:
-        "{SPV_EXEC} python {BUILD_MANIFEST} "
+        "{EXEC} python {BUILD_MANIFEST} "
         "--input-sims-base {params.input_sims_base} "
         "--sims-type {params.sims_type} --num {params.num} "
         "{params.branch_args} -o {output.manifest}"
@@ -294,7 +311,7 @@ rule im_init:
 
 
 rule im_pipeline:
-    """Run ShapePipe on one simulated tile (ShapePipe container).
+    """Run ShapePipe on one simulated tile (ShapePipe stage).
 
     Delegates the module DAG to ShapePipe's own job runner; the sentinel log
     marks tile completion for the merge step.  This is the compute-heavy,
@@ -314,7 +331,7 @@ rule im_pipeline:
         runtime=720,
     shell:
         "cd {params.run_dir} && "
-        "{SP_EXEC} bash {RUN_JOB} "
+        "{EXEC} bash {RUN_JOB} "
         "-e {wildcards.tile} -t image_sims -j {JOB_MASK} "
         "-p {params.psf} -N {params.n_smp}"
 
@@ -336,14 +353,14 @@ rule im_merge:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
     shell:
         "cd {params.run_dir} && "
-        "{SP_EXEC} python {CREATE_FINAL_CAT} "
+        "{EXEC} python {CREATE_FINAL_CAT} "
         "-I -m final_cat_{wildcards.sim}.hdf5 -i .. "
         "-p cfis/final_cat.param -P {wildcards.sim} "
         "-o n_tiles_final.txt -v"
 
 
 rule im_extract:
-    """Extract the comprehensive ngmix catalogue (sp_validation container).
+    """Extract the comprehensive ngmix catalogue (sp_validation stage).
 
     ``extract_info.py`` reads ``params.py`` from cwd and the merged catalogue,
     writing ``shape_catalog_comprehensive_{shape}``.
@@ -356,11 +373,11 @@ rule im_extract:
     params:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
     shell:
-        "cd {params.run_dir} && {SPV_EXEC} python {EXTRACT_INFO}"
+        "cd {params.run_dir} && {EXEC} python {EXTRACT_INFO}"
 
 
 rule im_calibrate:
-    """Calibrate and cut the comprehensive catalogue (sp_validation container).
+    """Calibrate and cut the comprehensive catalogue (sp_validation stage).
 
     ``calibrate_comprehensive_cat.py`` reads ``config_mask.yaml`` from cwd,
     applies the metacal calibration and selection, and writes
@@ -375,7 +392,7 @@ rule im_calibrate:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
     shell:
         "cd {params.run_dir} && "
-        "{SPV_EXEC} python {CALIBRATE} -s calibrate"
+        "{EXEC} python {CALIBRATE} -s calibrate"
 
 
 rule im_mbias:
@@ -436,5 +453,5 @@ rule im_mbias:
         with open(params.cfg, "w") as fh:
             yaml.safe_dump(mbias_cfg, fh)
         shell(
-            "{SPV_EXEC_MBIAS} python {COMPUTE_M_BIAS} -c {params.cfg} -v"
+            "{EXEC} python {COMPUTE_M_BIAS} -c {params.cfg} -v"
         )

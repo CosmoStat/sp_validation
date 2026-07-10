@@ -18,23 +18,24 @@
 #
 # A run config that omits a science key fails at DAG parse, naming the key; an
 # unknown key under `image_sims:` fails as a typo.  The structural keys below
-# (SIFs, repos, data roots, num, tile_ids) also have no default and must be set.
+# (sif, repos, data roots, num, tile_ids) also have no default and must be set.
 
 image_sims:
 
-  # --- containers -------------------------------------------------------
-  # ShapePipe image (pipeline + merge) and sp_validation image (extract,
-  # calibrate, m-bias).  Rebuild from the retargeted #766 / this branch when
-  # newer images are available.
-  shapepipe_sif: /n17data/mkilbing/shapepipe_im_sims.sif
-  sp_validation_sif: /n17data/mkilbing/sp_validation_im_sims.sif
+  # --- container --------------------------------------------------------
+  # One image runs every stage.  The sp_validation image is built FROM the
+  # ShapePipe image, so it carries both stacks (Source Extractor, PSFEx,
+  # shapepipe_run, ... plus sp_validation).  Rebuild from the retargeted #766 /
+  # this branch when a newer image is available.
+  sif: /n17data/cdaley/containers/sp_validation_im_sims.sif
   # Apptainer bind mounts.  /automnt is required when repos/data are
   # automounted (candide gotcha); harmless otherwise.  [operational]
   binds: /n17data,/n09data,/home,/automnt
 
   # --- repositories -----------------------------------------------------
-  # Bound into the images; the sp_validation src is put on PYTHONPATH so this
-  # branch's code (image_sims.py, catalog.match_catalogs_radec) is used.
+  # Bound into the image; both repos' src go on PYTHONPATH so this branch's
+  # code wins over the baked copies: ShapePipe's #766 build, and sp_validation's
+  # image_sims.py / catalog.match_catalogs_radec.
   shapepipe_repo: /n17data/cdaley/unions/code/shapepipe
   sp_validation_repo: /n17data/cdaley/unions/code/sp_validation
 
