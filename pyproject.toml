@@ -138,6 +138,15 @@ blinding = [
     # sp_validation fast suite.
     "numpy>=2.2,<2.5",
 ]
+# Native SACC inference likelihood (PR 7, sp_validation.sacc_like_unions). The
+# shim subclasses CosmoSIS's SaccClLikelihood; this pins the engine. Both engine
+# module files are pure-python (no CAMB / compiled CSL), so the equality tests
+# (tests/test_sacc_like.py) run with just this extra + a CosmoSIS Standard
+# Library checkout, located via the CSL_DIR env var:
+#   git clone --depth 1 https://github.com/joezuntz/cosmosis-standard-library CSL
+#   CSL_DIR=/path/to/CSL  pytest ... test_sacc_like.py
+# Inert in CI (its Dockerfile installs only [test,glass,blinding]).
+cosmosis = ["cosmosis>=3.25"]
 develop = ["sp_validation[test,docs]"]
 
 [tool.pytest.ini_options]
