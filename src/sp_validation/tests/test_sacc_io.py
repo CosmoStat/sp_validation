@@ -444,14 +444,14 @@ def test_readers_on_mixed_file(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# 8. End-to-end two-file layout for a synthetic catalogue version
+# 8. End-to-end one-file layout for a synthetic catalogue version
 # --------------------------------------------------------------------------- #
-def test_end_to_end_two_file_layout(tmp_path):
+def test_end_to_end_one_file_layout(tmp_path):
     version = "vSYNTH"
     theta_c = _theta(20)
     theta_f = np.geomspace(0.1, 250.0, 200)
 
-    # analysis file
+    # one file: analysis products first, fine-grid integration input last
     s = _base_sacc()
     sio.add_xi(
         s, (0, 0), theta_c, np.arange(20) * 1e-5, np.arange(20) * 2e-5, grid="coarse"
@@ -459,36 +459,78 @@ def test_end_to_end_two_file_layout(tmp_path):
     sio.add_cosebis(
         s, (0, 0), np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7, (1.0, 100.0)
     )
+    sio.add_xi(
+        s, (0, 0), theta_f, np.arange(200) * 1e-5, np.arange(200) * 2e-5, grid="fine"
+    )
     tr = ("source_0", "source_0")
-    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
+    xi_c = np.concatenate(
+        [
+            s.indices(sio.XI_PLUS, tr, grid="coarse"),
+            s.indices(sio.XI_MINUS, tr, grid="coarse"),
+        ]
+    )
     co = np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
-    sio.assemble_covariance(s, [(xi, _spd(len(xi), 1)), (co, _spd(len(co), 2))])
+    xi_f = np.concatenate(
+        [
+            s.indices(sio.XI_PLUS, tr, grid="fine"),
+            s.indices(sio.XI_MINUS, tr, grid="fine"),
+        ]
+    )
+    # dense fine block (CosmoCov integration covariance in production)
+    fine_block = _spd(len(xi_f), 3)
+    sio.assemble_covariance(
+        s,
+        [(xi_c, _spd(len(xi_c), 1)), (co, _spd(len(co), 2)), (xi_f, fine_block)],
+    )
     sio.save(s, str(tmp_path / f"{version}.sacc"))
 
-    # fine file
-    sf = _base_sacc()
-    sio.add_xi(
-        sf, (0, 0), theta_f, np.arange(200) * 1e-5, np.arange(200) * 2e-5, grid="fine"
-    )
-    variances = np.concatenate([np.arange(1, 201) * 1e-12, np.arange(1, 201) * 2e-12])
-    sio.add_diagonal_covariance(sf, variances)
-    sio.save(sf, str(tmp_path / f"{version}_xi_fine.sacc"))
-
-    # reload both, verify everything
     a = sio.load(str(tmp_path / f"{version}.sacc"))
-    f = sio.load(str(tmp_path / f"{version}_xi_fine.sacc"))
 
     th_c, p_c, _ = sio.get_xi(a, (0, 0), grid="coarse")
     assert np.array_equal(th_c, theta_c) and np.array_equal(p_c, np.arange(20) * 1e-5)
     n, E, B = sio.get_cosebis(a, (0, 0))
     assert np.array_equal(n, np.arange(1, 11))
-    assert type(a.covariance).__name__ == "FullCovariance"
     assert a.covariance.dense.shape == (len(a.mean), len(a.mean))
 
-    th_f, p_f, _ = sio.get_xi(f, (0, 0), grid="fine")
+    th_f, p_f, _ = sio.get_xi(a, (0, 0), grid="fine")
     assert np.array_equal(th_f, theta_f) and np.array_equal(p_f, np.arange(200) * 1e-5)
-    assert type(f.covariance).__name__ == "DiagonalCovariance"
-    assert np.array_equal(np.diag(f.covariance.dense), variances)
+
+    # extract() of the fine selection pulls the aligned dense sub-covariance
+    fine = sio.extract(a, sio.XI_PLUS, tr, grid="fine")
+    idx_p = a.indices(sio.XI_PLUS, tr, grid="fine")
+    assert np.allclose(fine.covariance.dense, a.covariance.dense[np.ix_(idx_p, idx_p)])
+    # zero cross-blocks between analysis and fine points
+    assert np.all(a.covariance.dense[np.ix_(xi_c, xi_f)] == 0)
+
+
+def test_one_file_layout_diagonal_fine_fallback(tmp_path):
+    """No CosmoCov covariance: the fine block is np.diag(varxip/varxim)."""
+    s = _base_sacc()
+    theta_f = np.geomspace(0.1, 250.0, 50)
+    sio.add_xi(
+        s, (0, 0), _theta(6), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+    )
+    sio.add_xi(
+        s, (0, 0), theta_f, np.arange(50) * 1e-5, np.arange(50) * 2e-5, grid="fine"
+    )
+    tr = ("source_0", "source_0")
+    xi_c = np.concatenate(
+        [
+            s.indices(sio.XI_PLUS, tr, grid="coarse"),
+            s.indices(sio.XI_MINUS, tr, grid="coarse"),
+        ]
+    )
+    xi_f = np.concatenate(
+        [
+            s.indices(sio.XI_PLUS, tr, grid="fine"),
+            s.indices(sio.XI_MINUS, tr, grid="fine"),
+        ]
+    )
+    variances = np.concatenate([np.arange(1, 51) * 1e-12, np.arange(1, 51) * 2e-12])
+    sio.assemble_covariance(s, [(xi_c, _spd(len(xi_c), 1)), (xi_f, np.diag(variances))])
+    sio.save(s, str(tmp_path / "vDIAG.sacc"))
+    a = sio.load(str(tmp_path / "vDIAG.sacc"))
+    assert np.array_equal(np.diag(a.covariance.dense[np.ix_(xi_f, xi_f)]), variances)
 
 
 # --------------------------------------------------------------------------- #

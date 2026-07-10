@@ -3,17 +3,23 @@
 :Name: sacc_io.py
 
 :Description: Read/write the standard SACC data-product layout for the
-              weak-lensing validation package. Two files describe each
+              weak-lensing validation package. One file describes each
               catalogue version:
 
-              - ``{version}.sacc`` — the analysis vector: NZ tracers, coarse
-                ξ±, pseudo-Cℓ (EE/BB/EB) with bandpower windows, COSEBIs,
-                pure E/B, and ρ/τ PSF diagnostics, all sharing a single
-                ``FullCovariance`` assembled block-diagonally from the
-                per-statistic covariances (zero cross-blocks).
-              - ``{version}_xi_fine.sacc`` — the COSEBIs / pure-EB integration
-                input: the same NZ tracers, a fine-grid ξ±, and a
-                ``DiagonalCovariance`` from TreeCorr ``varxip``/``varxim``.
+              - ``{version}.sacc`` — NZ tracers, coarse ξ±, pseudo-Cℓ
+                (EE/BB/EB) with bandpower windows, COSEBIs, pure E/B, ρ/τ PSF
+                diagnostics, and the fine-grid ξ± integration input for
+                COSEBIs / pure-EB (``grid='fine'`` tagged points). The
+                covariance is assembled block-diagonally from the
+                per-statistic covariances (zero cross-blocks): the analysis
+                blocks first, then a dense per-pair fine-ξ block (the
+                CosmoCov integration-binning covariance when it exists — it
+                feeds derived-statistic error propagation — or the TreeCorr
+                ``varxip``/``varxim`` diagonal as degraded fallback). At the
+                production fine binning (1000 θ bins) a dense fine block is
+                ~32 MB per pair; extreme convergence-check grids (10k bins)
+                degrade to the diagonal fallback rather than forking the
+                layout.
 
               The covariance order is the point-insertion order (SACC preserves
               it bitwise through FITS save/load). Writers below insert in the
