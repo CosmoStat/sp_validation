@@ -104,6 +104,7 @@ dependency-override file — firecrown is not pip-resolvable without it (see
 
 ```bash
 uv pip install --overrides uv-overrides.txt -e '.[test,blinding]'
+python scripts/patch_firecrown.py  # make pip-installed firecrown importable without NumCosmo
 ```
 
 

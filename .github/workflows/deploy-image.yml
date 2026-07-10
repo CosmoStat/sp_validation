@@ -44,6 +44,12 @@ jobs:
       - name: Import smoke test
         run: docker run --rm ${{ steps.meta.outputs.tags }} python -c "import sp_validation"
 
+      # The fast suite doesn't import the blinding stack, so a broken
+      # firecrown/smokescreen install would otherwise ship green. Prove the
+      # image can actually load it (sacc + patched firecrown + smokescreen).
+      - name: Blinding-stack import smoke test
+        run: docker run --rm ${{ steps.meta.outputs.tags }} python -c "import sacc; import firecrown.likelihood; import smokescreen"
+
       # Run the fast test suite against the freshly-built image *before*
       # pushing, so a failing suite blocks publication. The image carries the
       # full stack and the test files (COPY . + editable install), so this

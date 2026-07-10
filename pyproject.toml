@@ -124,10 +124,19 @@ glass = [
 # connectors as hard deps, so installing this extra requires the dependency
 # override file: `uv pip install --overrides uv-overrides.txt -e '.[blinding]'`
 # (see uv-overrides.txt; the Dockerfile does this for the container).
+# After installing this extra, run `python scripts/patch_firecrown.py` — it
+# makes pip-installed firecrown importable without NumCosmo (conda-forge-only);
+# see that script's docstring for the full story.
 blinding = [
     "firecrown @ git+https://github.com/LSSTDESC/firecrown.git@v1.15.1",
     "smokescreen==1.5.6",
     "pyccl==3.3.4",
+    # firecrown 1.15.1 subclasses npt.NDArray (DataVector); numpy 2.5 turned
+    # npt.NDArray into a non-subclassable typing alias, breaking firecrown at
+    # import. firecrown's own env caps numpy<2.4; 2.4.3 is verified against
+    # the full compiled stack (pyccl/camb/treecorr/healpy/pymaster) + the
+    # sp_validation fast suite.
+    "numpy>=2.2,<2.5",
 ]
 develop = ["sp_validation[test,docs]"]
 
