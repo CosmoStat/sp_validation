@@ -9,15 +9,19 @@ from pathlib import Path
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(
     os.environ.get(
-        "COSMO_VAL", "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/results/cosmo_val"
+        "COSMO_VAL",
+        "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/results/cosmo_val",
     )
 )
 COSMO_INFERENCE = Path(
     os.environ.get(
-        "COSMO_INFERENCE", "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_inference"
+        "COSMO_INFERENCE",
+        "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_inference",
     )
 )
-CAT_CONFIG = "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_val/cat_config.yaml"
+CAT_CONFIG = (
+    "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_val/cat_config.yaml"
+)
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -64,6 +68,7 @@ def configure(workflow_config):
     with open(COSMOLOGY_PARAMS) as f:
         PLANCK18 = json.load(f)
 
+
 def fiducial_binning_suffix(fiducial=None):
     """Return binning suffix for fiducial parameters."""
     fiducial = fiducial or FIDUCIAL
@@ -86,6 +91,7 @@ COV_BASE_TEMPLATE = (
     "_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_{probe}{mask_suffix}"
 )
 
+
 def cov_output(suffix):
     """Wildcard-bearing output path under the covariance tree.
 
@@ -94,8 +100,10 @@ def cov_output(suffix):
     with {version}, {blind}, ... left as Snakemake wildcards.
     """
     return str(
-        COSMO_INFERENCE / f"data/covariance/{COV_BASE_TEMPLATE}/{COV_BASE_TEMPLATE}{suffix}"
+        COSMO_INFERENCE
+        / f"data/covariance/{COV_BASE_TEMPLATE}/{COV_BASE_TEMPLATE}{suffix}"
     )
+
 
 def cov_output_dirfile(filename):
     """Wildcard-bearing path to a fixed-name file inside the covariance dir."""
@@ -199,9 +207,8 @@ def build_redshift_dir(version):
     if "v1.4.11" in base_version:
         base_version = "SP_v1.4.6"
     version_dir = base_version.replace("SP_", "")
-    return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/"
-    )
+    return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/"
+
 
 def build_redshift_path_lens(version, blind):
     """Construct n(z) filepath for given catalog version and blind."""
@@ -209,9 +216,8 @@ def build_redshift_path_lens(version, blind):
     base_version = re.sub(r"_ecut\d+", "", base_version)
     if "v1.4.11" in base_version:
         base_version = "SP_v1.4.6"
-    return (
-        f"nz_{base_version}_{blind}.txt"
-    )
+    return f"nz_{base_version}_{blind}.txt"
+
 
 def build_redshift_path_source(version, blind):
     """Construct n(z) filepath for given catalog version and blind."""
@@ -219,9 +225,8 @@ def build_redshift_path_source(version, blind):
     base_version = re.sub(r"_ecut\d+", "", base_version)
     if "v1.4.11" in base_version:
         base_version = "SP_v1.4.6"
-    return (
-        f"nz_{base_version}_{blind}_source.txt" #TO DO: check lens and source file format
-    )
+    return f"nz_{base_version}_{blind}_source.txt"  # TO DO: check lens and source file format
+
 
 def get_shear_catalog(wildcards):
     """Resolve shear catalog path from config for a given version."""
