@@ -593,3 +593,32 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     params = get_params_rho_tau(cv.cc[ver], survey=ver)
     _, cl_prim, _ = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
+
+
+def test_calculate_pseudo_cl_out_path_born_at_declared_name(cv):
+    """calculate_pseudo_cl(out_path=...) writes to the given path, not the
+    untagged native name — the anti-collision seam.
+
+    The tagged producer (rule pseudo_cl, blind=A) and the untagged diagnostic
+    (rule cv_pseudo_cl, blind=None) both call calculate_pseudo_cl; if the tagged
+    one wrote the native pseudo_cl_{ver}.sacc and renamed, its skip-if-exists
+    could silently adopt — and the rename delete — the diagnostic's differently-
+    blinded file. Born-at-declared-name makes the two paths provably disjoint.
+    """
+    ver = cv._test_version
+    cv._pseudo_cls = {}
+    tagged = cv._output_path(f"pseudo_cl_{ver}_blind=A_powspace_nbins=32.sacc")
+    native = cv._output_path(f"pseudo_cl_{ver}.sacc")
+
+    cv.calculate_pseudo_cl(out_path=tagged)
+
+    assert os.path.exists(tagged)
+    assert not os.path.exists(native)  # no undeclared native basename touched
+
+
+def test_calculate_pseudo_cl_out_path_rejects_multiversion(cv):
+    """out_path targets one part; a multi-version instance must fail loudly
+    rather than write every version to the same path."""
+    cv.versions = [cv._test_version, "SecondVersion"]
+    with pytest.raises(ValueError, match="one part to one path"):
+        cv.calculate_pseudo_cl(out_path=cv._output_path("pseudo_cl_x.sacc"))

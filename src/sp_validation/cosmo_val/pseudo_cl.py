@@ -454,19 +454,36 @@ class PseudoClMixin:
             f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
 
-    def calculate_pseudo_cl(self):
+    def calculate_pseudo_cl(self, out_path=None):
         """
         Compute the pseudo-Cl of given catalogs.
 
-        Each version's spectra are born as a SACC part (``pseudo_cl_{ver}.sacc``)
-        via :func:`sacc_writers.pseudo_cl_to_sacc` — EE/BB/EB carrying the shared
-        NaMaster bandpower window. The in-memory ``self._pseudo_cls[ver]``
-        ``"pseudo_cl"`` entry keeps the ``ELL``/``EE``/``EB``/``BB`` arrays the
-        plotting and B-mode-summary consumers read by column name.
+        Each version's spectra are born as a SACC part via
+        :func:`sacc_writers.pseudo_cl_to_sacc` — EE/BB/EB carrying the shared
+        NaMaster bandpower window, with this instance's (blinded) n(z) stamped
+        in. The in-memory ``self._pseudo_cls[ver]`` ``"pseudo_cl"`` entry keeps
+        the ``ELL``/``EE``/``EB``/``BB`` arrays the plotting and B-mode-summary
+        consumers read by column name.
+
+        ``out_path`` is the exact destination the part is *born at* — the
+        Snakemake-declared output. It must resolve per version; single-version
+        rules (the tagged blinded producer) pass their tagged output directly.
+        When ``None`` (multi-version diagnostic / the ``pseudo_cls`` property)
+        each part defaults to the untagged native ``pseudo_cl_{ver}.sacc``.
+        Skip-if-exists keys on this final path, so no two rules ever share an
+        undeclared native basename (a tagged product born at its native name and
+        then renamed would let one rule's skip-if-exists silently adopt — and
+        the rename delete — another rule's declared, differently-blinded file).
         """
         self.print_start("Computing pseudo-Cl's")
 
         nside = self.nside
+
+        if out_path is not None and len(self.versions) != 1:
+            raise ValueError(
+                "calculate_pseudo_cl(out_path=...) writes one part to one path, "
+                f"but {len(self.versions)} versions are configured; call per version"
+            )
 
         try:
             self._pseudo_cls
@@ -477,14 +494,18 @@ class PseudoClMixin:
 
             self._pseudo_cls[ver] = {}
 
-            out_path = self._output_path(f"pseudo_cl_{ver}.sacc")
-            if os.path.exists(out_path):
-                self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
-                self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
+            ver_out_path = out_path or self._output_path(f"pseudo_cl_{ver}.sacc")
+            if os.path.exists(ver_out_path):
+                self.print_done(
+                    f"Skipping Pseudo-Cl's calculation, {ver_out_path} exists"
+                )
+                self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(
+                    ver_out_path
+                )
             elif self.cell_method == "map":
-                self.calculate_pseudo_cl_map(ver, nside, out_path)
+                self.calculate_pseudo_cl_map(ver, nside, ver_out_path)
             elif self.cell_method == "catalog":
-                self.calculate_pseudo_cl_catalog(ver, out_path)
+                self.calculate_pseudo_cl_catalog(ver, ver_out_path)
             else:
                 raise ValueError(f"Unknown cell method: {self.cell_method}")
 
