@@ -19,7 +19,11 @@ _PAIRS = [
 
 
 def _load_cat(path, e_col, w_col):
-    """Load RA, Dec, ellipticity component and weight from a FITS catalogue."""
+    """Load RA, Dec, ellipticity component and weight from a FITS catalogue.
+
+    ``w_col=None`` gives every object unit weight — the no-weighting mode for
+    m-bias runs (#227: shape weights are excluded from sim calibration).
+    """
     with fits.open(path) as hdul:
         data = hdul[1].data
         return {
@@ -27,7 +31,7 @@ def _load_cat(path, e_col, w_col):
             "dec": data["Dec"].copy(),
             "e1": data["e1"].copy(),
             "e2": data["e2"].copy(),
-            "w": data[w_col].copy(),
+            "w": data[w_col].copy() if w_col else np.ones(len(data["RA"])),
         }
 
 
@@ -43,7 +47,8 @@ class ImageSimMBias:
         - catalog_name : str, filename of the cut catalogue
         - shear_amplitude : float, input shear |g| (e.g. 0.02)
         - match_radius_deg : float, matching radius in degrees
-        - w_col : str, weight column name (default 'w_des')
+        - w_col : str or None, weight column name (default 'w_des');
+          None → unit weights (no weighting, per the #227 verdict)
         - n_bootstrap : int, number of bootstrap resamples for errors
     """
 
