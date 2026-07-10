@@ -30,6 +30,19 @@ def parse_args():
     return p.parse_args()
 
 
+def to_python(obj):
+    """Recursively convert numpy scalars/arrays to plain Python types."""
+    if isinstance(obj, dict):
+        return {key: to_python(val) for key, val in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [to_python(val) for val in obj]
+    if isinstance(obj, np.ndarray):
+        return float(obj.item()) if obj.size == 1 else obj.tolist()
+    if isinstance(obj, (np.integer, np.floating)):
+        return float(obj)
+    return obj
+
+
 def get_n_tiles(grids_dir, num):
     """Detect number of tiles from final_cat HDF5 files."""
     try:
@@ -53,7 +66,13 @@ def update_cumulative_file(cumulative_path, n_tiles, results):
     """Update cumulative m/c bias tracking file."""
     if os.path.isfile(cumulative_path):
         with open(cumulative_path) as f:
-            cumulative = yaml.safe_load(f) or {}
+            try:
+                cumulative = yaml.safe_load(f) or {}
+            except yaml.YAMLError:
+                # Legacy file with numpy python-object tags; load
+                # unsafely and clean below on write
+                f.seek(0)
+                cumulative = yaml.unsafe_load(f) or {}
     else:
         cumulative = {}
 
@@ -61,19 +80,9 @@ def update_cumulative_file(cumulative_path, n_tiles, results):
     if str(n_tiles) in cumulative:
         return False
 
-    # Convert numpy types to Python floats for clean YAML
-    clean_results = {}
-    for key, val in results.items():
-        if isinstance(val, np.ndarray):
-            clean_results[key] = float(val.item()) if val.size == 1 else val.tolist()
-        elif isinstance(val, (np.integer, np.floating)):
-            clean_results[key] = float(val)
-        else:
-            clean_results[key] = val
-
-    cumulative[str(n_tiles)] = clean_results
+    cumulative[str(n_tiles)] = results
     with open(cumulative_path, 'w') as f:
-        yaml.dump(cumulative, f, default_flow_style=False)
+        yaml.dump(to_python(cumulative), f, default_flow_style=False)
     return True
 
 
@@ -200,16 +209,18 @@ def main():
     if args.verbose:
         mb.print_mean_ellipticities()
 
-    results = mb.run(verbose=True)
+    results = to_python(mb.run(verbose=True))
 
     print()
     print("=" * 40)
     print("  Results")
     print("=" * 40)
-    print(f"  m1 = {results['m1']:+.4f} +-{results['m1_err']:.4f}")
-    print(f"  c1 = {results['c1']:+.4f} +-{results['c1_err']:.4f}")
-    print(f"  m2 = {results['m2']:+.4f} +-{results['m2_err']:.4f}")
-    print(f"  c2 = {results['c2']:+.4f} +-{results['c2_err']:.4f}")
+    for w_col, res in results["weights"].items():
+        print(f"  weights: {w_col}")
+        print(f"    m1 = {res['m1']:+.4f} +-{res['m1_err']:.4f}")
+        print(f"    c1 = {res['c1']:+.4f} +-{res['c1_err']:.4f}")
+        print(f"    m2 = {res['m2']:+.4f} +-{res['m2_err']:.4f}")
+        print(f"    c2 = {res['c2']:+.4f} +-{res['c2_err']:.4f}")
     print("=" * 40)
 
     # Cumulative tracking
@@ -240,12 +251,18 @@ def main():
 
     with open(txt_path, "w") as f:
         f.write("Multiplicative and additive shear bias from image simulations\n")
-        f.write("=" * 60 + "\n\n")
-        f.write(f"m1 = {results['m1']:+.6f} ± {results['m1_err']:.6f}\n")
-        f.write(f"c1 = {results['c1']:+.6f} ± {results['c1_err']:.6f}\n\n")
-        f.write(f"m2 = {results['m2']:+.6f} ± {results['m2_err']:.6f}\n")
-        f.write(f"c2 = {results['c2']:+.6f} ± {results['c2_err']:.6f}\n\n")
-        f.write("Errors computed via bootstrap resampling (n=500 resamples)\n")
+        f.write("=" * 60 + "\n")
+        for w_col, res in results["weights"].items():
+            f.write(f"\nweights: {w_col}\n")
+            f.write(f"  m1 = {res['m1']:+.6f} ± {res['m1_err']:.6f}\n")
+            f.write(f"  c1 = {res['c1']:+.6f} ± {res['c1_err']:.6f}\n")
+            f.write(f"  m2 = {res['m2']:+.6f} ± {res['m2_err']:.6f}\n")
+            f.write(f"  c2 = {res['c2']:+.6f} ± {res['c2_err']:.6f}\n")
+        n_boot = config.get("n_bootstrap", 500)
+        f.write(
+            f"\nErrors computed via bootstrap resampling"
+            f" (n={n_boot} resamples)\n"
+        )
     print(f"Results written to {txt_path}")
 
     if args.cumulative:

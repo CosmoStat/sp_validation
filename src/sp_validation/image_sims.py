@@ -19,17 +19,26 @@ _PAIRS = [
 ]
 
 
-def _load_cat(path, e_col, w_col):
-    """Load RA, Dec, ellipticity component and weight from a FITS catalogue."""
+def _load_cat(path, w_cols):
+    """Load RA, Dec, ellipticities and weight columns from a FITS catalogue.
+
+    The weight scheme "none" gives uniform weights.
+    """
     with fits.open(path) as hdul:
         data = hdul[1].data
-        return {
+        cat = {
             "ra":  data["RA"].copy(),
             "dec": data["Dec"].copy(),
             "e1":  data["e1"].copy(),
             "e2":  data["e2"].copy(),
-            "w":   data[w_col].copy(),
+            "w":   {},
         }
+        for w_col in w_cols:
+            if w_col == "none":
+                cat["w"][w_col] = np.ones(len(cat["ra"]))
+            else:
+                cat["w"][w_col] = data[w_col].copy()
+        return cat
 
 
 class ImageSimMBias:
@@ -47,7 +56,11 @@ class ImageSimMBias:
         - match_radius_deg : float, matching radius in degrees
         - pair_match : bool, match objects between sheared catalogues
           (default True); if False, use all objects of each catalogue
-        - w_col : str, weight column name (default 'w_des')
+        - w_cols : list of str, weight schemes to compute; "none" means
+          uniform weights (default ["none", "w_iv"]); the first
+          entry is the primary result
+        - w_col : str, deprecated single weight column; used as
+          [w_col] if w_cols is not given
         - n_bootstrap : int, number of bootstrap resamples for errors
     """
 
@@ -56,7 +69,11 @@ class ImageSimMBias:
         self.g_in = config["shear_amplitude"]
         self.thresh = config.get("match_radius_deg", 0.0002)
         self.pair_match = config.get("pair_match", True)
-        self.w_col = config.get("w_col", "w_des")
+        w_cols = config.get("w_cols")
+        if not w_cols:
+            w_col = config.get("w_col")
+            w_cols = [w_col] if w_col else ["none", "w_iv"]
+        self.w_cols = [str(w) for w in w_cols]
         self.n_boot = config.get("n_bootstrap", 500)
         self.cats = {}
 
@@ -71,20 +88,25 @@ class ImageSimMBias:
             path = f"{grids_dir}/{name}_grid_{num}/{cat_name}"
             if verbose:
                 print(f"  Loading {path}")
-            self.cats[name] = _load_cat(path, "e1", self.w_col)
+            self.cats[name] = _load_cat(path, self.w_cols)
             if verbose:
                 print(f"    {len(self.cats[name]['ra'])} objects")
 
     def print_mean_ellipticities(self):
-        """Print weighted mean e1, e2 for each sheared catalogue, as check."""
-        print("\nMean weighted ellipticities (all objects):")
-        for name, cat in self.cats.items():
-            mean_e1 = np.average(cat["e1"], weights=cat["w"])
-            mean_e2 = np.average(cat["e2"], weights=cat["w"])
-            print(f"  {name}:  <e1> = {mean_e1:+.5f}   <e2> = {mean_e2:+.5f}")
+        """Print mean e1, e2 for each sheared catalogue and weight scheme."""
+        for w_col in self.w_cols:
+            print(f"\nMean ellipticities (all objects, weights: {w_col}):")
+            for name, cat in self.cats.items():
+                mean_e1 = np.average(cat["e1"], weights=cat["w"][w_col])
+                mean_e2 = np.average(cat["e2"], weights=cat["w"][w_col])
+                print(f"  {name}:  <e1> = {mean_e1:+.5f}   <e2> = {mean_e2:+.5f}")
 
     def _m_c_pair(self, name_p, name_m, comp, verbose=True):
-        """Compute m and c for one shear pair and component (0=g1, 1=g2)."""
+        """Compute m and c for one shear pair and component (0=g1, 1=g2).
+
+        Matches the pair once, then computes results for each weight
+        scheme. Returns a dict weight scheme -> (m, m_err, c, c_err).
+        """
         e_key = f"e{comp + 1}"
 
         if self.pair_match:
@@ -105,49 +127,61 @@ class ImageSimMBias:
                 )
 
         e_p = self.cats[name_p][e_key][idx_p]
-        w_p = self.cats[name_p]["w"][idx_p]
         e_m = self.cats[name_m][e_key][idx_m]
-        w_m = self.cats[name_m]["w"][idx_m]
-
-        mean_ep = np.average(e_p, weights=w_p)
-        mean_em = np.average(e_m, weights=w_m)
-
-        m = (mean_ep - mean_em) / (2 * self.g_in) - 1
-        c = (mean_ep + mean_em) / 2
-
-        # Bootstrap errors
-        rng = np.random.default_rng(seed=42)
-        m_boot = np.empty(self.n_boot)
-        c_boot = np.empty(self.n_boot)
         n_p, n_m = len(e_p), len(e_m)
-        for i in range(self.n_boot):
-            ib_p = rng.integers(0, n_p, n_p)
-            ib_m = rng.integers(0, n_m, n_m)
-            ep_b = np.average(e_p[ib_p], weights=w_p[ib_p])
-            em_b = np.average(e_m[ib_m], weights=w_m[ib_m])
-            m_boot[i] = (ep_b - em_b) / (2 * self.g_in) - 1
-            c_boot[i] = (ep_b + em_b) / 2
 
-        return m, np.std(m_boot), c, np.std(c_boot)
+        # Same bootstrap indices for all weight schemes
+        rng = np.random.default_rng(seed=42)
+        ib_p = rng.integers(0, n_p, (self.n_boot, n_p))
+        ib_m = rng.integers(0, n_m, (self.n_boot, n_m))
+
+        res = {}
+        for w_col in self.w_cols:
+            w_p = self.cats[name_p]["w"][w_col][idx_p]
+            w_m = self.cats[name_m]["w"][w_col][idx_m]
+
+            mean_ep = np.average(e_p, weights=w_p)
+            mean_em = np.average(e_m, weights=w_m)
+
+            m = (mean_ep - mean_em) / (2 * self.g_in) - 1
+            c = (mean_ep + mean_em) / 2
+
+            m_boot = np.empty(self.n_boot)
+            c_boot = np.empty(self.n_boot)
+            for i in range(self.n_boot):
+                ep_b = np.average(e_p[ib_p[i]], weights=w_p[ib_p[i]])
+                em_b = np.average(e_m[ib_m[i]], weights=w_m[ib_m[i]])
+                m_boot[i] = (ep_b - em_b) / (2 * self.g_in) - 1
+                c_boot[i] = (ep_b + em_b) / 2
+
+            res[w_col] = (m, np.std(m_boot), c, np.std(c_boot))
+
+        return res
 
     def run(self, verbose=True):
-        """Compute m and c for both shear components.
+        """Compute m and c for both shear components and all weight schemes.
 
         Returns
         -------
         dict with keys m1, m1_err, c1, c1_err, m2, m2_err, c2, c2_err
+        for the primary (first) weight scheme, plus "weights" holding
+        the same keys per weight scheme.
         """
-        results = {}
+        results = {"weights": {w: {} for w in self.w_cols}}
         for name_p, name_m, comp in _PAIRS:
             label = f"g{comp + 1}"
             if verbose:
                 print(f"\n--- {label}: {name_p} / {name_m} ---")
-            m, m_err, c, c_err = self._m_c_pair(name_p, name_m, comp, verbose=verbose)
-            results[f"m{comp + 1}"]     = m
-            results[f"m{comp + 1}_err"] = m_err
-            results[f"c{comp + 1}"]     = c
-            results[f"c{comp + 1}_err"] = c_err
-            if verbose:
-                print(f"  m{comp+1} = {m:.4f} ± {m_err:.4f}")
-                print(f"  c{comp+1} = {c:.4f} ± {c_err:.4f}")
+            res = self._m_c_pair(name_p, name_m, comp, verbose=verbose)
+            for w_col, (m, m_err, c, c_err) in res.items():
+                results["weights"][w_col][f"m{comp + 1}"]     = m
+                results["weights"][w_col][f"m{comp + 1}_err"] = m_err
+                results["weights"][w_col][f"c{comp + 1}"]     = c
+                results["weights"][w_col][f"c{comp + 1}_err"] = c_err
+                if verbose:
+                    print(f"  [{w_col}] m{comp+1} = {m:.4f} ± {m_err:.4f}"
+                          f"   c{comp+1} = {c:.4f} ± {c_err:.4f}")
+
+        # Primary scheme results at top level
+        results.update(results["weights"][self.w_cols[0]])
         return results
