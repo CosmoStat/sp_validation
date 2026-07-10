@@ -67,8 +67,10 @@ metacal:
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
 
-  # Weight for global response matrix, None for unweighted mean
-  global_R_weight: w
+  # Weight for global response matrix, None for unweighted mean.
+  # Unweighted for image sims: no weights anywhere in sim m-bias (#227),
+  # and the w_des-weighted R had N_eff ~ 20-100 objects.
+  global_R_weight: null
 
   # Subtract additive bias (mean shear)? Use False for constant-shear
   # image sims
