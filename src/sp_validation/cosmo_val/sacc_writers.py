@@ -1,0 +1,234 @@
+"""Born-as-SACC writers for the cosmo_val data products.
+
+A thin, pure layer between the ``cosmo_val`` mixins (which compute statistics as
+TreeCorr / NaMaster / b_modes arrays) and :mod:`sp_validation.sacc_io` (which
+knows the file layout). Each ``*_to_sacc`` function turns one already-computed
+statistic into a single-statistic SACC — a *part* — carrying that statistic's
+own covariance as its one covariance block. The Snakemake DAG writes one part
+per rule; :func:`assemble_analysis_sacc` then loads the parts and rebuilds the
+single ``{version}.sacc`` analysis file with a ``FullCovariance`` assembled
+block-diagonally in canonical order (per the SACC layout contract — *not*
+``sacc.concatenate_data_sets``, whose ``BlockDiagonalCovariance`` output the
+contract rules out).
+
+The fine-grid ``{version}_xi_fine.sacc`` is a terminal product in its own right
+(:func:`xi_to_sacc` with ``grid="fine"`` and a ``DiagonalCovariance`` from
+TreeCorr ``varxip``/``varxim``); COSEBIs and pure-E/B consume it.
+
+Everything here is single-bin today (``bins=(0, 0)``); the interface is
+tomography-native so a future round supplies real bin pairs unchanged.
+"""
+
+import numpy as np
+
+from .. import sacc_io as sio
+from ..pseudo_cl import bandpower_window_from_workspace
+
+# Statistics carried in the analysis file, and their custom-type k indices.
+RHO_K = range(6)  # ρ_0 … ρ_5
+TAU_K = (0, 2, 5)  # τ_0, τ_2, τ_5
+
+# NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).
+_NMT_EE, _NMT_EB, _NMT_BB = 0, 1, 3
+
+BIN = (0, 0)  # single-bin default until the round goes tomographic
+
+
+def xi_to_sacc(
+    nz,
+    metadata,
+    theta,
+    xip,
+    xim,
+    *,
+    grid,
+    theta_nom=None,
+    npairs=None,
+    weight=None,
+    variances=None,
+):
+    """One ξ± part (``bins=(0, 0)``) on the coarse or fine grid.
+
+    ``variances`` (the concatenated ``[varxip; varxim]``) attaches a
+    ``DiagonalCovariance`` — used for the terminal fine file, where npatch=1
+    leaves TreeCorr shot-noise variance as the only covariance estimate.
+    """
+    s = sio.new_sacc(nz, metadata)
+    sio.add_xi(
+        s,
+        BIN,
+        theta,
+        xip,
+        xim,
+        grid=grid,
+        theta_nom=theta_nom,
+        npairs=npairs,
+        weight=weight,
+    )
+    if variances is not None:
+        sio.add_diagonal_covariance(s, np.asarray(variances))
+    return s
+
+
+def pseudo_cl_to_sacc(nz, metadata, ell_eff, cl_all, wsp, covariance=None):
+    """One pseudo-Cℓ part: EE/BB/EB with the shared bandpower window.
+
+    ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB); the
+    window comes from :func:`bandpower_window_from_workspace`. ``covariance``,
+    when given, is the dense ``[EE; BB; EB]``-ordered block matching insertion.
+    """
+    window_ells, window_weights = bandpower_window_from_workspace(wsp)
+    s = sio.new_sacc(nz, metadata)
+    sio.add_pseudo_cl(
+        s,
+        BIN,
+        ell_eff,
+        cl_all[_NMT_EE],
+        cl_all[_NMT_BB],
+        cl_all[_NMT_EB],
+        window_ells=window_ells,
+        window_weights=window_weights,
+    )
+    if covariance is not None:
+        s.add_covariance(np.asarray(covariance))
+    return s
+
+
+def cosebis_to_sacc(nz, metadata, result, scale_cut):
+    """One COSEBIs part at the fiducial scale cut.
+
+    ``result`` is a single scale-cut result dict from
+    ``b_modes.calculate_cosebis`` — ``{"En", "Bn", "cov", ...}`` — where ``cov``
+    is the ``[En; Bn]``-ordered COSEBIs covariance. Non-fiducial scale cuts are
+    a diagnostic (the PTE scan) and stay in the sidecar ``.npz``; only the
+    fiducial cut is a data product, because a ``FullCovariance`` must cover
+    every stored point and the cuts overlap in mode space.
+    """
+    s = sio.new_sacc(nz, metadata)
+    sio.add_cosebis(s, BIN, result["En"], result["Bn"], scale_cut)
+    s.add_covariance(np.asarray(result["cov"]))
+    return s
+
+
+def pure_eb_to_sacc(nz, metadata, theta, eb, covariance=None):
+    """One pure-E/B part: the six ``sacc_io.PURE_KEYS`` blocks.
+
+    ``eb`` is a mapping with the six keys (``xip_E`` … ``xim_amb``); each array
+    is sampled at ``theta``. ``covariance``, when given, is the dense block in
+    ``PURE_KEYS`` order (matching ``b_modes._EB_KEYS`` and the insertion order).
+    """
+    s = sio.new_sacc(nz, metadata)
+    sio.add_pure_eb(s, BIN, theta, **{key: eb[key] for key in sio.PURE_KEYS})
+    if covariance is not None:
+        s.add_covariance(np.asarray(covariance))
+    return s
+
+
+def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov=None):
+    """One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.
+
+    ``rho_stats`` / ``tau_stats`` are the ``shear_psf_leakage`` handler tables
+    (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, ``rho_{k}_m``, … and
+    the τ analogue). ρ carries a diagonal (varxip/varxim) covariance — a
+    diagnostic placeholder, not used by inference — while τ carries ``tau_cov``,
+    the theoretical ``CovTauTh`` block the CosmoSIS τ-likelihood consumes. The
+    block order matches insertion: ρ (all +then−, per k) then τ.
+    """
+    s = sio.new_sacc(nz, metadata)
+    theta_rho = np.asarray(rho_stats["theta"])
+    for k in RHO_K:
+        sio.add_rho(
+            s,
+            k,
+            theta_rho,
+            np.asarray(rho_stats[f"rho_{k}_p"]),
+            np.asarray(rho_stats[f"rho_{k}_m"]),
+        )
+    theta_tau = np.asarray(tau_stats["theta"])
+    for k in TAU_K:
+        sio.add_tau(
+            s,
+            BIN,
+            k,
+            theta_tau,
+            np.asarray(tau_stats[f"tau_{k}_p"]),
+            np.asarray(tau_stats[f"tau_{k}_m"]),
+        )
+    rho_var = np.concatenate(
+        [
+            np.concatenate([rho_stats[f"varrho_{k}_p"], rho_stats[f"varrho_{k}_m"]])
+            for k in RHO_K
+        ]
+    )
+    tau_var = np.concatenate(
+        [
+            np.concatenate([tau_stats[f"vartau_{k}_p"], tau_stats[f"vartau_{k}_m"]])
+            for k in TAU_K
+        ]
+    )
+    if tau_cov is None:
+        # Pure diagnostic file: diagonal covariance across ρ and τ.
+        s.add_covariance(np.concatenate([rho_var, tau_var]))
+    else:
+        # ρ diagonal (diagnostic) + τ dense theoretical block (inference input).
+        n_rho, n_tau = len(rho_var), len(tau_var)
+        tau_cov = np.asarray(tau_cov)
+        if tau_cov.shape != (n_tau, n_tau):
+            raise ValueError(
+                f"tau_cov shape {tau_cov.shape} does not match the {n_tau} τ "
+                "data points"
+            )
+        full = np.zeros((n_rho + n_tau, n_rho + n_tau))
+        full[:n_rho, :n_rho] = np.diag(rho_var)
+        full[n_rho:, n_rho:] = tau_cov
+        s.add_covariance(full)
+    return s
+
+
+# --------------------------------------------------------------------------- #
+# Analysis-file assembly
+# --------------------------------------------------------------------------- #
+def _copy_data_points(dst, src):
+    """Append every data point of ``src`` into ``dst`` (tags preserved)."""
+    for dp in src.data:
+        dst.add_data_point(dp.data_type, dp.tracers, dp.value, **dp.tags)
+
+
+def assemble_analysis_sacc(nz, metadata, parts):
+    """Rebuild the single ``{version}.sacc`` analysis file from parts.
+
+    Each part is a single-statistic Sacc (from a ``*_to_sacc`` writer, loaded
+    from disk) carrying its own covariance = its block. This re-adds every
+    part's data points into one Sacc in the order the parts are given — which
+    must be the canonical order (ξ± coarse, pseudo-Cℓ, COSEBIs, pure-E/B, ρ, τ)
+    — and assembles a single ``FullCovariance`` from the per-part covariance
+    blocks. Point insertion order and block order therefore agree by
+    construction, which ``sacc_io.assemble_covariance`` validates (contiguous,
+    tiling, square) and raises on if they don't.
+
+    Parameters
+    ----------
+    nz, metadata : see :func:`sp_validation.sacc_io.new_sacc`.
+    parts : sequence of sacc.Sacc
+        Single-statistic parts, each with a covariance, in canonical order.
+
+    Returns
+    -------
+    sacc.Sacc
+        The analysis Sacc with a ``FullCovariance`` covering every point.
+    """
+    s = sio.new_sacc(nz, metadata)
+    blocks = []
+    cursor = 0
+    for part in parts:
+        if part.covariance is None:
+            raise ValueError(
+                "every analysis part must carry its own covariance block; "
+                f"a part with data types {sorted(set(dp.data_type for dp in part.data))} "
+                "has none"
+            )
+        n = len(part.mean)
+        _copy_data_points(s, part)
+        blocks.append((np.arange(cursor, cursor + n), part.covariance.dense))
+        cursor += n
+    return sio.assemble_covariance(s, blocks)
