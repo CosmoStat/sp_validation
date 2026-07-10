@@ -49,11 +49,17 @@ INPUT_SIMS_BASE = IMSIM["input_sims_base"]  # SKiLLS sim images
 PSF_DICT = IMSIM["psf_dict"]  # Herve's Full_psf_dict.pickle
 
 # --- simulation grid ------------------------------------------------------
+# SIM_BASES is the set of branches *this run requests* -- the reference plus the
+# four +/- sheared branches.  Their injected shear (amplitude, per-branch
+# (g1,g2), pairing) is NOT a literal here: it lives only in manifest.yaml, built
+# by im_manifest from each branch's basic_info.txt and read back by im_mbias.
 NUM = IMSIM["num"]
 SIMS_TYPE = IMSIM.get("sims_type", "grid")
 _SUFFIX = f"_{SIMS_TYPE}_{NUM}" if SIMS_TYPE == "grid" else f"_{NUM}"
-SIM_BASES = ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"]
+SIM_BASES = IMSIM.get("branches", ["1z2z", "1p2z", "1m2z", "1z2p", "1z2m"])
 SIMS = [f"{base}{_SUFFIX}" for base in SIM_BASES]
+MANIFEST = f"{GRIDS_BASE}/manifest.yaml"
+BUILD_MANIFEST = f"{SPV_REPO}/workflow/scripts/im_build_manifest.py"
 
 # --- tiles ----------------------------------------------------------------
 if IMSIM.get("tile_ids"):
@@ -109,6 +115,11 @@ wildcard_constraints:
 # ==========================================================================
 # Convenience targets (run in order)
 # ==========================================================================
+rule im_manifest_only:
+    input:
+        MANIFEST,
+
+
 rule im_init_all:
     input:
         expand(f"{GRIDS_BASE}/{{sim}}/params.py", sim=SIMS),
@@ -146,6 +157,36 @@ rule im_calibrate_all:
 # ==========================================================================
 # Rules
 # ==========================================================================
+rule im_manifest:
+    """Build the campaign manifest at the head of the DAG.
+
+    Parses ``g_cosmic`` from every requested branch's ``basic_info.txt``,
+    cross-checks each against its ``1{X}2{Y}`` name and the (0,0) reference,
+    derives the single injected amplitude, and writes ``manifest.yaml`` into the
+    run root.  This is the one home for the injected-shear facts; im_mbias reads
+    the amplitude and branch map from here, nowhere else.  Runs inside the
+    sp_validation container (stdlib parse of basic_info; PyYAML to write).
+    """
+    input:
+        # basic_info.txt for each requested branch, so editing a sim's record
+        # rebuilds the manifest (and re-validates) rather than reusing a stale one.
+        basic_info=expand(
+            f"{INPUT_SIMS_BASE}/{{sim}}/basic_info.txt", sim=SIMS
+        ),
+    output:
+        manifest=MANIFEST,
+    params:
+        branch_args=lambda wc: " ".join(f"--branch {b}" for b in SIM_BASES),
+        input_sims_base=INPUT_SIMS_BASE,
+        sims_type=SIMS_TYPE,
+        num=NUM,
+    shell:
+        "{SPV_EXEC} python {BUILD_MANIFEST} "
+        "--input-sims-base {params.input_sims_base} "
+        "--sims-type {params.sims_type} --num {params.num} "
+        "{params.branch_args} -o {output.manifest}"
+
+
 rule im_init:
     """Stage per-sim run directory: params.py, mask config, ShapePipe configs,
     and the raw SKiLLS image inputs.
@@ -273,11 +314,17 @@ rule im_calibrate:
 
 
 rule im_mbias:
-    """Multiplicative/additive shear bias from the five calibrated grids.
+    """Multiplicative/additive shear bias from the calibrated grids.
 
-    Produces the workflow's headline artifact, ``m_bias_results.yaml``.
+    Produces the workflow's headline artifact, ``m_bias_results.yaml``.  The
+    injected shear (``shear_amplitude`` and the branch map) comes from
+    ``manifest.yaml`` alone -- no literal amplitude here or in config.yaml.  The
+    generated ``m_bias_config.yaml`` carries the manifest's ``branches`` and
+    ``pairs``, so the estimator's sim list and pairing are the campaign's, not a
+    hard-coded default.
     """
     input:
+        manifest=MANIFEST,
         cats=expand(
             f"{GRIDS_BASE}/{{sim}}/shape_catalog_cut_{SHAPE}.fits", sim=SIMS
         ),
@@ -288,19 +335,24 @@ rule im_mbias:
         grids_base=GRIDS_BASE,
         num=NUM,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
-        shear_amplitude=IMSIM.get("shear_amplitude", 0.025),
         match_radius_deg=IMSIM.get("match_radius_deg", 0.0002),
         w_col=IMSIM.get("w_col", "w_des"),
         n_bootstrap=IMSIM.get("n_bootstrap", 500),
     run:
         import yaml
 
+        with open(input.manifest) as fh:
+            manifest = yaml.safe_load(fh)
+
         os.makedirs(os.path.dirname(output.results), exist_ok=True)
         mbias_cfg = {
             "grids_dir": params.grids_base,
             "num": params.num,
             "catalog_name": params.cat_name,
-            "shear_amplitude": params.shear_amplitude,
+            # Injected shear: from the manifest, the single source of truth.
+            "shear_amplitude": manifest["shear_amplitude"],
+            "branches": list(manifest["branches"]),
+            "pairs": manifest["pairs"],
             "match_radius_deg": params.match_radius_deg,
             "w_col": params.w_col,
             "n_bootstrap": params.n_bootstrap,

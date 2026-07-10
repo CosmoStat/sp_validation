@@ -46,7 +46,9 @@ image_sims:
   n_smp: -1
 
   # --- m-bias -----------------------------------------------------------
-  shear_amplitude: 0.025     # TRUE input |g| of FHP grid sims (basic_info; his estimator divides by 0.025 — shapepipe#796). 0.02 here produced the spurious m=+0.25.
+  # No shear_amplitude here: the injected |g| is parsed from each branch's
+  # basic_info.txt by im_manifest and read back from manifest.yaml by im_mbias.
+  # basic_info.txt is the single source of truth for the injected shear.
   match_radius_deg: 0.0002
   w_col: w_des
   n_bootstrap: 500
