@@ -429,18 +429,78 @@ def test_theta_conversion_scoped_to_real_types(tmp_path, m_shim):
         )
     )
 
-    xi_thetas = [
+    # The conversion lives on the radian copy (_sacc_data_rad); the original
+    # self.sacc_data stays arcmin (so save_theory writes arcmin tags — Finding 1).
+    rad_xi_thetas = [
+        p.tags["theta"]
+        for p in config._sacc_data_rad.data
+        if p.data_type == sacc_io.XI_PLUS
+    ]
+    rad_cosebi_ns = [
+        p.tags["n"]
+        for p in config._sacc_data_rad.data
+        if p.data_type == sacc_io.COSEBI_EE
+    ]
+    orig_xi_thetas = [
         p.tags["theta"] for p in config.sacc_data.data if p.data_type == sacc_io.XI_PLUS
     ]
-    cosebi_ns = [
-        p.tags["n"] for p in config.sacc_data.data if p.data_type == sacc_io.COSEBI_EE
-    ]
-    # ξ theta converted to radians (original arcmin × ARCMIN_TO_RAD).
+    # rad copy: ξ theta scaled to radians (original arcmin × ARCMIN_TO_RAD).
     np.testing.assert_allclose(
-        np.sort(xi_thetas), np.sort(theta * ARCMIN_TO_RAD), rtol=1e-12
+        np.sort(rad_xi_thetas), np.sort(theta * ARCMIN_TO_RAD), rtol=1e-12
     )
-    # cosebi n tags untouched (still the integer modes 1..n_modes).
-    np.testing.assert_array_equal(np.sort(cosebi_ns), np.arange(1, n_modes + 1))
+    # rad copy: cosebi n tags untouched (still integer modes 1..n_modes).
+    np.testing.assert_array_equal(np.sort(rad_cosebi_ns), np.arange(1, n_modes + 1))
+    # original sacc_data: ξ theta still in arcmin (unmutated).
+    np.testing.assert_allclose(np.sort(orig_xi_thetas), np.sort(theta), rtol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# 6b. save_theory writes arcmin tags, and re-execute is stable (Finding 1)
+# ---------------------------------------------------------------------------
+def test_save_theory_writes_arcmin_and_reexecute_stable(tmp_path, m_shim):
+    """save_theory must write a SACC whose θ tags are still arcmin, not radians.
+
+    Finding 1: because upstream save_theory copies self.sacc_data and overwrites
+    only point values, self.sacc_data must stay arcmin — otherwise the saved file
+    carries radian θ tags and any arcmin-assuming consumer (sacc_io.get_xi, or
+    re-ingesting it as a data_file, which would double-convert to ~8.5e-8) is
+    silently off by 3437×. Assert the saved θ tags match the input file's tags
+    exactly (arcmin) and that the saved values equal the theory vector. Also run
+    execute() twice and require identical χ² — a guard against any accidental
+    double-conversion creeping back in.
+    """
+    s, theta = _realistic_sacc(seed=5)
+    sacc_path = str(tmp_path / "in.sacc")
+    sacc_io.save(s, sacc_path)
+    input_theta = np.array(
+        [p.tags["theta"] for p in sacc_io.load(sacc_path).data if "theta" in p.tags]
+    )
+
+    save_path = str(tmp_path / "saved_theory.sacc")
+    opt = _as_option_block(_shim_opts(sacc_path, save_theory=save_path))
+    config = m_shim.setup(opt)
+
+    block1 = _theory_block()
+    m_shim.execute(block1, config)
+    chi2_1 = block1["data_vector", f"{LIKE_NAME}_CHI2"]
+    theory = np.asarray(block1["data_vector", f"{LIKE_NAME}_theory"])
+
+    saved = sacc_io.load(save_path)
+    saved_theta = np.array([p.tags["theta"] for p in saved.data if "theta" in p.tags])
+    saved_values = np.array(saved.mean)
+
+    # θ tags in the saved file are arcmin — identical to the input file's tags.
+    np.testing.assert_array_equal(saved_theta, input_theta)
+    # and are NOT the radian conversion (guards against the leak explicitly).
+    assert not np.allclose(saved_theta, input_theta * ARCMIN_TO_RAD)
+    # saved values are the theory vector (save_theory overwrites values in order).
+    np.testing.assert_allclose(saved_values, theory, rtol=1e-12)
+
+    # A second execute() yields the identical χ² — no cumulative mutation.
+    block2 = _theory_block()
+    m_shim.execute(block2, config)
+    chi2_2 = block2["data_vector", f"{LIKE_NAME}_CHI2"]
+    np.testing.assert_allclose(chi2_2, chi2_1, rtol=1e-12)
 
 
 # ---------------------------------------------------------------------------

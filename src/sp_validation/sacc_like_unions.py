@@ -23,7 +23,10 @@ single-bin analysis file), and both are fixed here by overriding ``build_data``:
    ``sacc_like`` never does, so the spline is evaluated ~3437× outside its grid,
    ``SpectrumInterp`` returns 0 there, and χ² silently collapses to dᵀC⁻¹d. The
    only prior use was the ℓ-space (unit-free) Cℓ path, which is why it was never
-   caught. We convert the ``theta`` tags to radians here, after scale cuts.
+   caught. We evaluate the theory against a radian-θ *copy* of the loaded SACC,
+   keeping ``self.sacc_data`` in arcmin so upstream's save_theory /
+   save_realization paths (which copy it and overwrite only values) never write
+   radian tags into a file downstream consumers read as arcmin.
 
 2. **Theory↔data ordering is assumed, never enforced.**
    The data vector is ``sacc.get_mean()`` (insertion order); the theory vector is
@@ -100,29 +103,56 @@ def _make_subclass(sacc_like):
             # (unit-independent) data vector we pass straight through.
             x, data_vector = super().build_data()
 
-            self._convert_real_theta_tags_to_radians()
+            # self.sacc_data STAYS in arcmin — save_theory / save_realization copy
+            # it and only overwrite point values, so its θ tags must remain the
+            # units the file was written in (any consumer, incl. re-ingesting the
+            # saved SACC as a data_file, assumes arcmin). The radian conversion the
+            # theory spline needs lives on a separate copy, swapped in only for the
+            # extraction (see extract_theory_points).
+            self._sacc_data_rad = self._radian_theta_copy(self.sacc_data)
             self._assert_theory_order_matches_data()
 
             return x, data_vector
 
-        def _convert_real_theta_tags_to_radians(self):
-            """Scale the ``theta`` tag arcmin→rad for every ``real``-category point.
+        def _radian_theta_copy(self, sacc_data):
+            """A copy of ``sacc_data`` with ``real``-category θ tags in radians.
 
             The theory spline is built on ``block[section, "theta"]`` in radians,
-            so the ``theta`` tag each point is evaluated at must be radians too.
-            Scoped to data types whose category (``sections_for_names[dt][0]``) is
-            ``real``: cosebis ``n`` tags and spectrum ``ell`` tags are unit-free
-            and must not be touched, and only the ``theta`` tag is converted
-            (``theta_nom`` etc. are metadata the likelihood never evaluates).
+            so the ``theta`` tag each point is evaluated against must be radians
+            too. Scoped to data types whose category
+            (``sections_for_names[dt][0]``) is ``real``: cosebis ``n`` tags and
+            spectrum ``ell`` tags are unit-free and left untouched, and only the
+            ``theta`` tag is scaled (``theta_nom`` etc. are metadata the likelihood
+            never evaluates). Operates on a ``.copy()`` so the original stays
+            arcmin for the save paths.
             """
             real_types = {
                 dt
                 for dt, (category, _section) in self.sections_for_names.items()
                 if category == "real"
             }
-            for point in self.sacc_data.data:
+            converted = sacc_data.copy()
+            for point in converted.data:
                 if point.data_type in real_types and "theta" in point.tags:
                     point.tags["theta"] = point.tags["theta"] * ARCMIN_TO_RAD
+            return converted
+
+        def extract_theory_points(self, block):
+            """Extract theory against the radian-θ copy, then restore the original.
+
+            Upstream ``extract_theory_points`` reads ``self.sacc_data`` (the θ tag
+            per point) to evaluate the theory spline; that read needs radians.
+            Swap in ``self._sacc_data_rad`` for the duration of the upstream call
+            and restore in ``finally`` so everything else — including the
+            save_theory / save_realization copies that run afterward in
+            ``do_likelihood`` — sees the untouched arcmin ``self.sacc_data``.
+            """
+            original = self.sacc_data
+            self.sacc_data = self._sacc_data_rad
+            try:
+                return super().extract_theory_points(block)
+            finally:
+                self.sacc_data = original
 
         def _assert_theory_order_matches_data(self):
             """Require the theory-loop order to equal the data-vector order.
