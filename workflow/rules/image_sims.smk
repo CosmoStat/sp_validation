@@ -179,11 +179,25 @@ COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 # pipeline stage's OpenMPI initialises inside the image it does not try to
 # attach to the host SLURM launcher (cf. apptainer_noslurm.sh).  The strip is
 # harmless for the pure-Python sp_validation stages, so one prefix serves all.
+#
+# ``OMP_NUM_THREADS=1`` is injected here, at the ``apptainer exec`` call, and
+# not left to the SLURM profile.  The chain is MPI-free: Snakemake fans out one
+# job per branch x tile and each job's parallelism is ShapePipe's own internal
+# multiprocessing (``-N n_smp``), so the OpenMP/BLAS thread pool inside the
+# container must be pinned to 1 to avoid oversubscription.  The SLURM profile
+# cannot pin it reliably: the slurm executor submits with ``--export=ALL``,
+# which propagates the *driver's* ambient environment -- but a Snakemake
+# profile only sets CLI flags, never the driver's own env, so an
+# ``OMP_NUM_THREADS`` there would depend on the operator having exported it by
+# hand (the implicit, uncommitted state the "one run command" is meant to
+# retire).  Injecting it on the ``apptainer exec`` line puts it where the
+# compute actually runs -- inside the container, independent of the driver's
+# env -- the same lever this prefix already uses for PYTHONPATH/PSF_DICT.
 EXEC = (
     "env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID "
     f"apptainer exec --bind {BINDS} "
     f"--env PYTHONPATH={SHAPEPIPE_REPO}/src:{SPV_REPO}/src "
-    f"--env PSF_DICT={PSF_DICT} {SIF}"
+    f"--env PSF_DICT={PSF_DICT} --env OMP_NUM_THREADS=1 {SIF}"
 )
 
 JOB_MASK = sum([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
