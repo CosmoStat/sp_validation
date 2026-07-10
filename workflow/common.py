@@ -202,7 +202,7 @@ def build_redshift_dir(version):
     return (
         f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/"
     )
-    
+
 def build_redshift_path_lens(version, blind):
     """Construct n(z) filepath for given catalog version and blind."""
     base_version = re.sub(r"_leak_corr$", "", version)
