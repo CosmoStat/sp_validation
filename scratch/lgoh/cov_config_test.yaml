@@ -1,0 +1,27 @@
+fiducial:
+  version: SP_v1.4.6
+  blind: A
+  min_sep: 1.0
+  max_sep: 100.0
+  nbins: 20
+  npatch: 30
+  mock_version: SP_v1.4.6
+  gaussian: g
+
+probe_3x2pt: wl
+glass_mocks:
+  version: "v0"
+  seed_range: [1, 350]
+  
+covariance:
+  default_masked: True
+
+tools:
+  python_executable: /n23data1/n06data/lgoh/scratch/my_env_new/bin/python
+  onecov_executable: /n23data1/n06data/lgoh/scratch/UNIONS/OneCovariance/covariance.py
+
+SP_v1.4.6:
+  cov_th:
+    sigma_e: 0.28, 0.28
+    n_e: 5.0, 5.0
+    A: 1000

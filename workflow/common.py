@@ -9,15 +9,15 @@ from pathlib import Path
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(
     os.environ.get(
-        "COSMO_VAL", "/n17data/cdaley/unions/code/sp_validation/cosmo_val/output"
+        "COSMO_VAL", "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/results/cosmo_val"
     )
 )
 COSMO_INFERENCE = Path(
     os.environ.get(
-        "COSMO_INFERENCE", "/n17data/cdaley/unions/code/sp_validation/cosmo_inference"
+        "COSMO_INFERENCE", "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_inference"
     )
 )
-CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
+CAT_CONFIG = "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_val/cat_config.yaml"
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -25,7 +25,7 @@ BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 # Source of truth: cs_util.cosmo.PLANCK18
 # Regenerate with: snakemake results/cosmology/planck18.json
 # Resolved relative to the run directory at configure() time.
-COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
+COSMOLOGY_PARAMS = "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/results/cosmology/planck18.json"
 
 # Wildcard constraints shared by every Snakefile that composes these rules.
 # Patterns must match all expected values; overly restrictive patterns cause
@@ -37,6 +37,7 @@ WILDCARD_CONSTRAINTS = {
     "min_sep": r"[0-9.]+",
     "max_sep": r"[0-9.]+",
     "gaussian": r"(g|ng)",
+    "probe": r"(wl|ggl|3x2pt)",
     "block_pm": r"(\+\+|--|\+-)",
     "block_i": r"[123]",
     "mask_suffix": r"(_masked)?",
@@ -46,21 +47,22 @@ WILDCARD_CONSTRAINTS = {
 
 FIDUCIAL = None
 DEFAULT_MASK_SUFFIX = ""
+DEFAULT_PROBE = None
 CATALOG_CONFIG = None
 PLANCK18 = None
 
 
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
-    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
+    global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, DEFAULT_PROBE, FIDUCIAL, PLANCK18
     CATALOG_CONFIG = workflow_config
     FIDUCIAL = workflow_config["fiducial"]
+    DEFAULT_PROBE = "wl"
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
     )
     with open(COSMOLOGY_PARAMS) as f:
         PLANCK18 = json.load(f)
-
 
 def fiducial_binning_suffix(fiducial=None):
     """Return binning suffix for fiducial parameters."""
@@ -76,44 +78,75 @@ def resolve_covariance_version(version):
     return version
 
 
+# Single source of truth for the covariance naming scheme. Rule outputs use
+# this with wildcards left in braces; covariance_base() fills concrete values.
+# Keep the two in sync by construction: covariance_base() formats this string.
+COV_BASE_TEMPLATE = (
+    "covariance_{version}_{blind}_{gaussian}"
+    "_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_{probe}{mask_suffix}"
+)
+
+def cov_output(suffix):
+    """Wildcard-bearing output path under the covariance tree.
+
+    E.g. cov_output(".ini") ->
+      <COSMO_INFERENCE>/data/covariance/<BASE>/<BASE>.ini
+    with {version}, {blind}, ... left as Snakemake wildcards.
+    """
+    return str(
+        COSMO_INFERENCE / f"data/covariance/{COV_BASE_TEMPLATE}/{COV_BASE_TEMPLATE}{suffix}"
+    )
+
+def cov_output_dirfile(filename):
+    """Wildcard-bearing path to a fixed-name file inside the covariance dir."""
+    return str(COSMO_INFERENCE / f"data/covariance/{COV_BASE_TEMPLATE}/{filename}")
+
+
 def covariance_base(
     version,
     blind,
-    gaussian="ng",
+    gaussian=None,
     min_sep=None,
     max_sep=None,
     nbins=None,
+    probe=None,
     mask_suffix=None,
     resolve_version=True,
     fiducial=None,
     default_mask_suffix=None,
 ):
-    """Construct covariance base name."""
+    """Construct covariance base name (concrete values, no wildcards)."""
     fiducial = fiducial or FIDUCIAL
+    gaussian = gaussian if gaussian is not None else fiducial["gaussian"]
     min_sep = min_sep if min_sep is not None else fiducial["min_sep"]
     max_sep = max_sep if max_sep is not None else fiducial["max_sep"]
     nbins = nbins if nbins is not None else fiducial["nbins"]
-    mask_suffix = (
-        mask_suffix
-        if mask_suffix is not None
-        else (
+    probe = probe if probe is not None else DEFAULT_PROBE
+    if mask_suffix is None:
+        mask_suffix = (
             DEFAULT_MASK_SUFFIX if default_mask_suffix is None else default_mask_suffix
         )
-    )
     cov_version = resolve_covariance_version(version) if resolve_version else version
-    return (
-        f"covariance_{cov_version}_{blind}_{gaussian}"
-        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}"
+    return COV_BASE_TEMPLATE.format(
+        version=cov_version,
+        blind=blind,
+        gaussian=gaussian,
+        min_sep=min_sep,
+        max_sep=max_sep,
+        nbins=nbins,
+        probe=probe,
+        mask_suffix=mask_suffix,
     )
 
 
 def covariance_dir(
     version,
     blind,
-    gaussian="ng",
+    gaussian=None,
     min_sep=None,
     max_sep=None,
     nbins=None,
+    probe=None,
     mask_suffix=None,
     resolve_version=True,
 ):
@@ -125,6 +158,7 @@ def covariance_dir(
         min_sep,
         max_sep,
         nbins,
+        probe,
         mask_suffix,
         resolve_version=resolve_version,
     )
@@ -134,12 +168,13 @@ def covariance_dir(
 def covariance_path(
     version,
     blind,
-    gaussian="ng",
+    gaussian=None,
     min_sep=None,
     max_sep=None,
     nbins=None,
+    probe=None,
     mask_suffix=None,
-    suffix="_processed.txt",
+    suffix=".dat",
     resolve_version=True,
 ):
     """Construct covariance file path."""
@@ -150,13 +185,14 @@ def covariance_path(
         min_sep,
         max_sep,
         nbins,
+        probe,
         mask_suffix,
         resolve_version=resolve_version,
     )
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
-def build_redshift_path(version, blind):
+def build_redshift_dir(version):
     """Construct n(z) filepath for given catalog version and blind."""
     base_version = re.sub(r"_leak_corr$", "", version)
     base_version = re.sub(r"_ecut\d+", "", base_version)
@@ -164,9 +200,28 @@ def build_redshift_path(version, blind):
         base_version = "SP_v1.4.6"
     version_dir = base_version.replace("SP_", "")
     return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
+        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/"
+    )
+    
+def build_redshift_path_lens(version, blind):
+    """Construct n(z) filepath for given catalog version and blind."""
+    base_version = re.sub(r"_leak_corr$", "", version)
+    base_version = re.sub(r"_ecut\d+", "", base_version)
+    if "v1.4.11" in base_version:
+        base_version = "SP_v1.4.6"
+    return (
+        f"nz_{base_version}_{blind}.txt"
     )
 
+def build_redshift_path_source(version, blind):
+    """Construct n(z) filepath for given catalog version and blind."""
+    base_version = re.sub(r"_leak_corr$", "", version)
+    base_version = re.sub(r"_ecut\d+", "", base_version)
+    if "v1.4.11" in base_version:
+        base_version = "SP_v1.4.6"
+    return (
+        f"nz_{base_version}_{blind}_source.txt" #TO DO: check lens and source file format
+    )
 
 def get_shear_catalog(wildcards):
     """Resolve shear catalog path from config for a given version."""
