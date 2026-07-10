@@ -54,7 +54,12 @@ import os
 import sys
 
 import numpy as np
-from cosmosis.datablock import SectionOptions, option_section
+
+# cosmosis is an OPTIONAL dependency: this module is a CosmoSIS module file, but
+# importing it must succeed without cosmosis installed (the CI image has the
+# science stack but no cosmosis, and test_imports.py bare-imports every module).
+# So every cosmosis touch is deferred into setup() — nothing at top level imports
+# it. numpy is fine at top level (always present).
 
 # arcmin → radian: the conversion 2pt_like applies to real-space data and that
 # sacc_like omits. Applied only to `theta` tags of `real`-category data types.
@@ -195,8 +200,12 @@ def setup(options):
     Mirrors ``GaussianLikelihood.build_module``'s setup: wrap the raw options in
     ``SectionOptions`` and instantiate the likelihood (whose ``__init__`` calls
     ``build_data``). The one addition is reading ``csl_dir`` from the module
-    options to locate and import the upstream class before subclassing it.
+    options to locate and import the upstream class before subclassing it. The
+    cosmosis import is deferred to here (call time) so importing this module never
+    requires cosmosis.
     """
+    from cosmosis.datablock import SectionOptions, option_section
+
     csl_dir = options.get_string(option_section, "csl_dir")
     sacc_like = _import_upstream_sacc_like(csl_dir)
     likelihood_class = _make_subclass(sacc_like)
