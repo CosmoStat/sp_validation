@@ -6,6 +6,7 @@ Snakemake can still parse the workflow and construct a dry run.
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -31,11 +32,18 @@ def test_bmodes_workflow_dry_runs():
     """The paper B-mode workflow must still parse and dry-run cleanly."""
     workflow_dir = _repo_root() / "papers/bmodes"
     # PYTHONUNBUFFERED satisfies the Snakefile's `envvars:` declaration without
-    # depending on the invoking shell's environment.
+    # depending on the invoking shell's environment. A dry run resolves the DAG
+    # only — it never dispatches jobs — so drop any inherited SNAKEMAKE_PROFILE
+    # (e.g. the login shell's "slurm" profile), which would otherwise force an
+    # executor plugin the test environment need not have installed.
     env = os.environ | {"PYTHONNOUSERSITE": "1", "PYTHONUNBUFFERED": "1"}
+    env.pop("SNAKEMAKE_PROFILE", None)
     result = subprocess.run(
         [
-            "python3.12",
+            # Invoke snakemake through the interpreter running the test — a bare
+            # "python3.12" resolves off PATH (e.g. intel-python without snakemake);
+            # sys.executable is the environment that pytest, hence snakemake, lives in.
+            sys.executable,
             "-m",
             "snakemake",
             "all_tapestry",
