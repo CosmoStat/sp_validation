@@ -59,16 +59,24 @@ def get_n_tiles(grids_dir, num):
 
 
 def update_cumulative_file(cumulative_path, n_tiles, results):
-    """Update cumulative m/c bias tracking file."""
+    """Update the cumulative m/c bias tracking file.
+
+    Writes ``results`` under the ``n_tiles`` key, *overwriting* an existing
+    entry for that count.  The earlier behaviour silently skipped when the key
+    was already present, which meant a re-run against fixed catalogues left the
+    old (possibly wrong) number in place -- a stale value masquerading as
+    current.  A fresh run is the authority for its tile count, so it overwrites.
+
+    Returns ``True`` when a new key was added, ``False`` when an existing entry
+    was overwritten (the file is written either way).
+    """
     if os.path.isfile(cumulative_path):
         with open(cumulative_path) as f:
             cumulative = yaml.safe_load(f) or {}
     else:
         cumulative = {}
 
-    # Check if this n_tiles already exists
-    if str(n_tiles) in cumulative:
-        return False
+    is_new = str(n_tiles) not in cumulative
 
     # Convert numpy types to Python floats for clean YAML
     clean_results = {}
@@ -83,7 +91,7 @@ def update_cumulative_file(cumulative_path, n_tiles, results):
     cumulative[str(n_tiles)] = clean_results
     with open(cumulative_path, "w") as f:
         yaml.dump(cumulative, f, default_flow_style=False)
-    return True
+    return is_new
 
 
 def plot_convergence(cumulative_path, diagnostics_dir):
@@ -280,8 +288,17 @@ def main():
     else:
         out_path = config.get("output_path", "m_bias_results.yaml")
 
+    # A result file describes itself: the provenance block the rule assembled
+    # (manifest hash, both repos' branch+commit, container sif + GHCR revision)
+    # rides verbatim from the config into the output yaml.  It is appended as a
+    # separate top-level key, so the numeric m/c fields serialise byte-for-byte
+    # as before -- the reproduction gate sees only the added `provenance:` block.
+    output = dict(results)
+    if "provenance" in config:
+        output["provenance"] = config["provenance"]
+
     with open(out_path, "w") as f:
-        yaml.dump(results, f, default_flow_style=False)
+        yaml.dump(output, f, default_flow_style=False)
     print(f"Results written to {out_path}")
 
     # Also write to text file for readability
@@ -299,25 +316,27 @@ def main():
         f.write(f"c1 = {results['c1']:+.6f} ± {results['c1_err']:.6f}\n\n")
         f.write(f"m2 = {results['m2']:+.6f} ± {results['m2_err']:.6f}\n")
         f.write(f"c2 = {results['c2']:+.6f} ± {results['c2_err']:.6f}\n\n")
-        f.write("Errors computed via bootstrap resampling (n=500 resamples)\n")
+        f.write(
+            "Errors computed via bootstrap resampling "
+            f"(n={config['n_bootstrap']} resamples)\n"
+        )
     print(f"Results written to {txt_path}")
 
     if args.cumulative:
         cumulative_path = os.path.join(results_dir, "mbias_cumulative.yaml")
         if args.n_tiles:
             added = update_cumulative_file(cumulative_path, args.n_tiles, results)
-            if added:
-                print(f"\nAdded n_tiles={args.n_tiles} to {cumulative_path}")
-                # Generate plots after update
-                try:
-                    plot_convergence(cumulative_path, results_dir)
-                except Exception as e:
-                    print(
-                        f"Warning: could not generate convergence plots: {e}",
-                        file=sys.stderr,
-                    )
-            else:
-                print(f"\nn_tiles={args.n_tiles} already in {cumulative_path}")
+            verb = "Added" if added else "Overwrote"
+            print(f"\n{verb} n_tiles={args.n_tiles} in {cumulative_path}")
+            # Regenerate plots after every update (an overwrite can shift the
+            # curve, so the plots must track it -- not just fresh additions).
+            try:
+                plot_convergence(cumulative_path, results_dir)
+            except Exception as e:
+                print(
+                    f"Warning: could not generate convergence plots: {e}",
+                    file=sys.stderr,
+                )
 
     return 0
 

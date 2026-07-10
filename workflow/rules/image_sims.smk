@@ -431,6 +431,9 @@ rule im_mbias:
         grids_base=GRIDS_BASE,
         num=NUM,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
+        sif=SIF,
+        shapepipe_repo=SHAPEPIPE_REPO,
+        sp_validation_repo=SPV_REPO,
         # Science knobs, read bare from the run config (no default here).
         match_radius_deg=IMSIM["match_radius_deg"],
         w_col=IMSIM["w_col"],
@@ -438,16 +441,74 @@ rule im_mbias:
         pair_match=IMSIM["pair_match"],
         bootstrap_seed=IMSIM["bootstrap_seed"],
     run:
+        import hashlib
+        import re
+        import subprocess
+
         import yaml
 
         with open(input.manifest) as fh:
             manifest = yaml.safe_load(fh)
 
+        def _git(repo, *args):
+            """Read a git fact from ``repo``; ``None`` if it is not a checkout."""
+            try:
+                return subprocess.run(
+                    ["git", "-C", repo, *args],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                ).stdout.strip()
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                return None
+
+        def _sif_revision(sif_path):
+            """GHCR revision baked into the SIF's OCI labels.
+
+            A plain-text scan of the image file (login-safe: no exec, no
+            container start), reading org.opencontainers.image.revision -- the
+            source commit GHCR built the image from.  ``None`` if absent.
+            """
+            try:
+                with open(sif_path, "rb") as fh:
+                    blob = fh.read()
+            except OSError:
+                return None
+            m = re.search(
+                rb'org\.opencontainers\.image\.revision"?[:=]"?([0-9a-f]{7,40})',
+                blob,
+            )
+            return m.group(1).decode() if m else None
+
+        # Manifest hash: sha256 of the exact bytes im_manifest wrote, so the
+        # result records which injected-shear facts it was computed against.
+        with open(input.manifest, "rb") as fh:
+            manifest_sha256 = hashlib.sha256(fh.read()).hexdigest()
+
+        provenance = {
+            "manifest_sha256": manifest_sha256,
+            "sp_validation": {
+                "branch": _git(params.sp_validation_repo, "rev-parse", "--abbrev-ref", "HEAD"),
+                "commit": _git(params.sp_validation_repo, "rev-parse", "HEAD"),
+            },
+            "shapepipe": {
+                "branch": _git(params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"),
+                "commit": _git(params.shapepipe_repo, "rev-parse", "HEAD"),
+            },
+            "container": {
+                "sif": params.sif,
+                "ghcr_revision": _sif_revision(params.sif),
+            },
+        }
+
         os.makedirs(os.path.dirname(output.results), exist_ok=True)
         # Emit *every* key the estimator requires -- pair_match and
         # bootstrap_seed included.  Requiring a key without emitting it would
         # be a KeyError at run time, so the generated config is the complete
-        # contract between rule and estimator.
+        # contract between rule and estimator.  ``provenance`` rides along as a
+        # top-level block: the compute script copies it verbatim into the output
+        # results yaml, so a result file is self-describing (which manifest,
+        # which repo commits, which container built the number).
         mbias_cfg = {
             "grids_dir": params.grids_base,
             "num": params.num,
@@ -463,6 +524,7 @@ rule im_mbias:
             "bootstrap_seed": params.bootstrap_seed,
             "results_dir": os.path.dirname(output.results),
             "output_path": output.results,
+            "provenance": provenance,
         }
         with open(params.cfg, "w") as fh:
             yaml.safe_dump(mbias_cfg, fh)

@@ -23,7 +23,14 @@ _DEFAULT_PAIRS = [
 
 
 def _load_cat(path, e_col, w_col):
-    """Load RA, Dec, ellipticity component and weight from a FITS catalogue.
+    """Load RA, Dec, ellipticity components and weight from a FITS catalogue.
+
+    Reads the ``e1``/``e2`` columns, which the calibration stage writes as the
+    *calibrated* shear estimate ``g = R^-1 g_uncal - c`` (metacal response and
+    additive-bias corrected) -- not the raw ``e1_uncal``/``e2_uncal`` columns
+    that sit alongside them in the same catalogue.  The bias this estimator
+    measures is therefore the *residual* m/c left after the chain's own metacal
+    calibration, not the raw pre-calibration bias.
 
     ``w_col=None`` gives every object unit weight — the no-weighting mode for
     m-bias runs (#227: shape weights are excluded from sim calibration).
@@ -41,6 +48,11 @@ def _load_cat(path, e_col, w_col):
 
 class ImageSimMBias:
     """Compute multiplicative and additive shear bias from image simulations.
+
+    The estimator consumes the *calibrated* ``e1``/``e2`` columns (the metacal
+    response- and additive-bias-corrected shear ``g = R^-1 g_uncal - c``), so
+    the headline m/c is the **residual** bias remaining after the chain's own
+    metacal calibration, not the raw pre-calibration bias.
 
     Parameters
     ----------
