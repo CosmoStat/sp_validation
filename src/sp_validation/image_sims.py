@@ -45,8 +45,12 @@ class ImageSimMBias:
         - grids_dir : str, path to the grids directory
         - num : int, run number (e.g. 2 for *_grid_2)
         - catalog_name : str, filename of the cut catalogue
+          (default 'shape_catalog_cut_ngmix.fits')
         - shear_amplitude : float, input shear |g| (e.g. 0.02)
         - match_radius_deg : float, matching radius in degrees
+        - pair_match : bool, match objects between the +g and -g sheared
+          catalogues (default True); if False, use all objects of each
+          catalogue (the paired per-object cancellation is then unavailable)
         - w_col : str or None, weight column name (default 'w_des');
           None → unit weights (no weighting, per the #227 verdict)
         - n_bootstrap : int, number of bootstrap resamples for errors
@@ -56,6 +60,7 @@ class ImageSimMBias:
         self.cfg = config
         self.g_in = config["shear_amplitude"]
         self.thresh = config.get("match_radius_deg", 0.0002)
+        self.pair_match = config.get("pair_match", True)
         self.w_col = config.get("w_col", "w_des")
         self.n_boot = config.get("n_bootstrap", 500)
         self.cats = {}
@@ -64,7 +69,7 @@ class ImageSimMBias:
         """Load the 5 sheared and reference catalogues."""
         grids_dir = self.cfg["grids_dir"]
         num = self.cfg["num"]
-        cat_name = self.cfg["catalog_name"]
+        cat_name = self.cfg.get("catalog_name", "shape_catalog_cut_ngmix.fits")
         # 1z2z is the unsheared reference. The +g/-g pool estimator does not use
         # it (it pairs the sheared sims directly); it is loaded for completeness
         # and for null-test diagnostics on the zero-shear catalogue.
@@ -77,6 +82,18 @@ class ImageSimMBias:
             self.cats[name] = _load_cat(path, "e1", self.w_col)
             if verbose:
                 print(f"    {len(self.cats[name]['ra'])} objects")
+
+    def print_mean_ellipticities(self):
+        """Print weighted mean e1, e2 for each catalogue, as a check.
+
+        Works with unit weights too (``w_col=None`` → w all ones), in which
+        case these are the plain unweighted means.
+        """
+        print("\nMean weighted ellipticities (all objects):")
+        for name, cat in self.cats.items():
+            mean_e1 = np.average(cat["e1"], weights=cat["w"])
+            mean_e2 = np.average(cat["e2"], weights=cat["w"])
+            print(f"  {name}:  <e1> = {mean_e1:+.5f}   <e2> = {mean_e2:+.5f}")
 
     def _m_c_pair(self, name_p, name_m, comp, verbose=True):
         """Compute m and c for one shear pair and component (0=g1, 1=g2).
@@ -93,51 +110,86 @@ class ImageSimMBias:
         shrinks by ~sigma_e/sigma_meas relative to differencing two
         independent means. (The additive term c is a *sum*, so intrinsic
         shape does not cancel there and its error stays shape-noise limited.)
+
+        With ``pair_match=False`` the +g and -g sims are *not* matched: every
+        object of each catalogue is used, so the per-object cancellation is
+        lost and m, c fall back to differencing/summing the two independent
+        weighted means. The paired bootstrap likewise cannot be applied (the
+        two arrays generally have different lengths), so each side is resampled
+        independently per replicate.
         """
         e_key = f"e{comp + 1}"
 
-        # Match the +g and -g sims to each other: same galaxies, opposite shear.
-        # This is a nearest-neighbour match within `thresh`, not a strict
-        # bijection -- on grid sims galaxies are well separated so pairs are
-        # effectively 1:1 (verified ~99% co-located to <0.05" on SKiLLS grid_1);
-        # on denser fields a small fraction could share a +g partner and dilute
-        # the cancellation.
-        idx_p, idx_m = match_catalogs_radec(
-            self.cats[name_p]["ra"],
-            self.cats[name_p]["dec"],
-            self.cats[name_m]["ra"],
-            self.cats[name_m]["dec"],
-            thresh_deg=self.thresh,
-        )
-
-        if verbose:
-            print(f"  {name_p} <-> {name_m}: {len(idx_p)} paired objects")
+        if self.pair_match:
+            # Match the +g and -g sims to each other: same galaxies, opposite
+            # shear. This is a nearest-neighbour match within `thresh`, not a
+            # strict bijection -- on grid sims galaxies are well separated so
+            # pairs are effectively 1:1 (verified ~99% co-located to <0.05" on
+            # SKiLLS grid_1); on denser fields a small fraction could share a
+            # +g partner and dilute the cancellation.
+            idx_p, idx_m = match_catalogs_radec(
+                self.cats[name_p]["ra"],
+                self.cats[name_p]["dec"],
+                self.cats[name_m]["ra"],
+                self.cats[name_m]["dec"],
+                thresh_deg=self.thresh,
+            )
+            if verbose:
+                print(f"  {name_p} <-> {name_m}: {len(idx_p)} paired objects")
+        else:
+            idx_p = slice(None)
+            idx_m = slice(None)
+            if verbose:
+                print(
+                    f"  no pair-matching: {name_p}: {len(self.cats[name_p][e_key])}"
+                    f"  |  {name_m}: {len(self.cats[name_m][e_key])} objects"
+                )
 
         e_p = self.cats[name_p][e_key][idx_p]
         w_p = self.cats[name_p]["w"][idx_p]
         e_m = self.cats[name_m][e_key][idx_m]
         w_m = self.cats[name_m]["w"][idx_m]
 
-        # Per-object shear-differenced (-> m) and summed (-> c) ellipticity,
-        # with a symmetric per-pair weight.
-        w = 0.5 * (w_p + w_m)
-        d = (e_p - e_m) / (2 * self.g_in) - 1
-        s = (e_p + e_m) / 2
-
-        m = np.average(d, weights=w)
-        c = np.average(s, weights=w)
-
-        # Paired bootstrap: resample objects once and apply the same draw to
-        # both sims, so the per-object cancellation in `d` is preserved in
-        # the error estimate.
         rng = np.random.default_rng(seed=42)
-        n = len(d)
         m_boot = np.empty(self.n_boot)
         c_boot = np.empty(self.n_boot)
-        for i in range(self.n_boot):
-            ib = rng.integers(0, n, n)
-            m_boot[i] = np.average(d[ib], weights=w[ib])
-            c_boot[i] = np.average(s[ib], weights=w[ib])
+
+        if self.pair_match:
+            # Per-object shear-differenced (-> m) and summed (-> c)
+            # ellipticity, with a symmetric per-pair weight.
+            w = 0.5 * (w_p + w_m)
+            d = (e_p - e_m) / (2 * self.g_in) - 1
+            s = (e_p + e_m) / 2
+
+            m = np.average(d, weights=w)
+            c = np.average(s, weights=w)
+
+            # Paired bootstrap: resample objects once and apply the same draw
+            # to both sims, so the per-object cancellation in `d` is preserved
+            # in the error estimate.
+            n = len(d)
+            for i in range(self.n_boot):
+                ib = rng.integers(0, n, n)
+                m_boot[i] = np.average(d[ib], weights=w[ib])
+                c_boot[i] = np.average(s[ib], weights=w[ib])
+        else:
+            # No matching: difference/sum the two independent weighted means.
+            mean_ep = np.average(e_p, weights=w_p)
+            mean_em = np.average(e_m, weights=w_m)
+
+            m = (mean_ep - mean_em) / (2 * self.g_in) - 1
+            c = (mean_ep + mean_em) / 2
+
+            # Unpaired bootstrap: the +g and -g arrays generally differ in
+            # length, so resample each side independently per replicate.
+            n_p, n_m = len(e_p), len(e_m)
+            for i in range(self.n_boot):
+                ib_p = rng.integers(0, n_p, n_p)
+                ib_m = rng.integers(0, n_m, n_m)
+                ep_b = np.average(e_p[ib_p], weights=w_p[ib_p])
+                em_b = np.average(e_m[ib_m], weights=w_m[ib_m])
+                m_boot[i] = (ep_b - em_b) / (2 * self.g_in) - 1
+                c_boot[i] = (ep_b + em_b) / 2
 
         return m, np.std(m_boot), c, np.std(c_boot)
 

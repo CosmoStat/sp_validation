@@ -32,6 +32,7 @@
 import os
 import sys
 
+import h5py
 import numpy as np
 from astropy.io import fits
 
@@ -51,8 +52,11 @@ from params import *
 
 # ### Create and open output files and directories
 
-make_out_dirs(output_dir, plot_dir, [], verbose=verbose)
-stats_file = open_stats_file(plot_dir, stats_file_name)
+os.makedirs(output_dir, exist_ok=True)
+stats_file = open_stats_file(output_dir, stats_file_name)
+
+output_shape_cat_stem = output_shape_cat_base
+output_ext = output_format
 
 # ## 2. Load data
 #
@@ -107,6 +111,8 @@ n_found, n_missing = missing_tiles(
     tile_IDs, path_tile_ID, path_found_ID, path_missing_ID, verbose=verbose
 )
 
+print_stats(f"Tiles in input catalogue: {n_found}", stats_file, verbose=verbose)
+
 # ### Load star catalogue
 
 if star_cat_path:
@@ -146,16 +152,12 @@ if star_cat_path:
         verbose=verbose,
     )
 
-# #### Refine: Match to valid, unflagged galaxy sample
+    # Flags to indicate valid star sample.
+    # Star matching, PSF-catalogue output and star metacalibration are all
+    # diagnostics that require an input star catalogue; the image-simulation
+    # pipeline has none (star_cat_path is None), so every star-dependent block
+    # below is guarded and simply skipped for the sims.
 
-# +
-# Flags to indicate valid star sample.
-# Star matching, PSF-catalogue output and star metacalibration are all
-# diagnostics that require an input star catalogue; the image-simulation
-# pipeline has none (star_cat_path is None), so every star-dependent block
-# below is guarded and simply skipped for the sims.
-
-if star_cat_path:
     m_star = (
         (dd["FLAGS"][ind_star] == 0)
         & (dd["IMAFLAGS_ISO"][ind_star] == 0)
@@ -174,9 +176,6 @@ if star_cat_path:
         stats_file,
         verbose=verbose,
     )
-    # -
-
-    # MKDEBUG: Moved from end of this script
 
     # ### Write PSF catalogue with multi-epoch shapes from shape measurement methods
 
@@ -258,8 +257,9 @@ g2_uncal = dd[f"{key_base}_G2_NOSHEAR"]
 if verbose:
     print("Writing comprehensive catalogue...")
 
+comprehensive_cat_path = f"{output_shape_cat_stem}_comprehensive_{shape}{output_ext}"
 spv_cat.write_shape_catalog(
-    f"{output_shape_cat_base}_comprehensive_{shape}.fits",
+    comprehensive_cat_path,
     ra_all,
     dec_all,
     iv_w,
@@ -270,6 +270,17 @@ spv_cat.write_shape_catalog(
     add_cols=ext_cols_pre_cal,
     add_cols_format=add_cols_pre_cal_format,
 )
+
+# Write tile count to HDF5 attributes
+if output_ext == ".hdf5":
+    try:
+        with h5py.File(comprehensive_cat_path, "a") as hf:
+            hf.attrs["n_tiles"] = n_found
+            if verbose:
+                print(f"  Added n_tiles={n_found} to HDF5 attributes")
+    except Exception as e:
+        if verbose:
+            print(f"  Warning: could not add n_tiles attribute: {e}")
 # -
 
 do_selection_calibration = False
@@ -280,6 +291,7 @@ if not do_selection_calibration:
 else:
     if verbose:
         print("Continuing with selection and calibration")
+    os.makedirs(os.path.join(output_dir, plot_dir), exist_ok=True)
 
 # ## 4. Select galaxies
 
@@ -953,7 +965,7 @@ R_shear_ind = gal_metacal.R_shear
 # ### Write basic shape catalogue
 
 spv_cat.write_shape_catalog(
-    f"{output_shape_cat_base}_{shape}.fits",
+    f"{output_shape_cat_stem}_{shape}{output_ext}",
     ra,
     dec,
     w,
@@ -992,7 +1004,7 @@ if mask_external_path:
 
 # Extended catalogue with SNR, individual R matrices, ext_cols
 spv_cat.write_shape_catalog(
-    f"{output_shape_cat_base}_extended_{shape}.fits",
+    f"{output_shape_cat_stem}_extended_{shape}{output_ext}",
     ra,
     dec,
     w,
@@ -1022,4 +1034,4 @@ if shape == "":
     ra = dd["RA"][cut_overlap]
     dec = dd["DEC"][cut_overlap]
     tile_id = dd["TILE_ID"][cut_overlap]
-    write_galaxy_cat(f"{output_shape_cat_base}.fits", ra, dec, tile_id)
+    write_galaxy_cat(f"{output_shape_cat_stem}{output_ext}", ra, dec, tile_id)
