@@ -1,13 +1,14 @@
 ---
 id: 01KTCHX03Y3PVZYS5QHFWZRF5N
 name: SP Validation Restructuring
-status: open
+status: closed
 tags:
     - constitution
     - sp-validation
     - reorg
     - shuttle
 created-at: 0001-01-01T00:00:00Z
+closed-at: 2026-07-10T22:04:28.430224171Z
 outcome: 'Phase 2 — the top-level moves — complete on cleanup/restructuring (PR #197), guard net green throughout (full suite 86 passed, 0 skipped; move-map guard active with 5 registered moves). The tree has the target shape: workflow/ + papers/{bmodes,catalog,harmonic} (bmodes split), cosmo_val/ promoted from notebooks/ with all tracked references swept and on-disk outputs moved along (candide-absolute paths through the pure_eb symlink stay live), tracked scratch/ with conventions README, one top-level results/ (contents gitignored), root output/ ignored, dead hand-listed notebook block dropped from .gitignore. CI hermeticity restored: the guard suite now passes inside the Docker image (no .git directory, no cluster mounts) — git-querying guards fall back to a tree walk of the image''s tracked-only content, and the workflow dry-run guard skips off-cluster like its data-bound siblings. Cleanup begun: defunct/ deleted; nbstripout + 2 MB large-file pre-commit hooks added (CONTRIBUTING documents activation). Remaining: fold glass_mock core into src/ (own pass), curate notebooks/ to official demos (reduction-notebook triage with Martin), branch/milestone tidy (#188/#189) with Cail.'
 horizon: now
 shuttle:
@@ -16,6 +17,7 @@ shuttle:
     host: candide
     project_dir: /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation
     agent: claude-opus
+tempered: true
 ---
 
 ## Driver session - interactive; first action: land Sacha's #192
