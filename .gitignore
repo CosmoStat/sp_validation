@@ -122,7 +122,7 @@ venv.bak/
 # and the lockfile has never been tracked. Ignore it rather than commit a
 # pinned-dep reproducibility promise the project hasn't made. Flip to tracked
 # if we decide to pin deps via uv.
-uv.lock
+# uv.lock is committed — it is the reproducible pin the container installs from.
 
 # Spyder project settings
 .spyderproject
