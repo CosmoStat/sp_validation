@@ -159,7 +159,14 @@ addopts = [
     "--cov=sp_validation",
     "--cov-report=term",
     "--cov-report=xml",
-    "--junitxml=pytest.xml"
+    "--junitxml=pytest.xml",
+    # The base ShapePipe image's test extra ships old pytest-pydocstyle /
+    # pytest-pycodestyle, whose pytest_collect_file hooks use the `path` arg the
+    # newer pytest our lock installs has removed — they crash collection.
+    # sp_validation lints with ruff, not these, so don't load them. Harmless if
+    # absent (`-p no:` just skips an unregistered plugin).
+    "-p", "no:pydocstyle",
+    "-p", "no:pycodestyle"
 ]
 markers = [
     "fast: marks tests as fast (deselect with '-m \"not fast\"')",
