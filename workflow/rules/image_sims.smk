@@ -6,20 +6,30 @@ the sp_validation-side half of the split described in
 per-tile shape catalogues, then sp_validation merges, extracts, calibrates and
 finally measures the multiplicative/additive shear bias.
 
-One container runs every stage.  The sp_validation image is built ``FROM`` the
-ShapePipe image, so it carries the full ShapePipe stack (Source Extractor,
-PSFEx, the ``shapepipe_run`` console entry, ...) as well as sp_validation --
-which is why a single image can host both halves of the chain:
+Two images, one prefix shape.  Architecturally one image could run every
+stage -- the sp_validation image is built ``FROM`` the ShapePipe image, so it
+carries both stacks -- but the *published* sp_validation image's environment
+is not yet trustworthy for the ShapePipe half: sp_validation has no lockfile
+and does not declare its numba-bearing dependency (``cosmo_numba``), so
+unpinned install layers can drift NumPy past numba's window (a 2026-07-11
+gate run hit exactly this: ``Numba needs NumPy 2.4 or less. Got NumPy 2.5``
+at the ngmix stage).  PYTHONPATH shadowing covers pure-Python *code*, never
+binary deps, so until sp_validation is uv-locked with its deps declared
+(spun off as its own task), each half runs in its own repo's image -- the
+same split the gate766 baseline ran:
 
 * ShapePipe stages -> ``pipeline`` (raw images -> per-tile cats) and ``merge``
-  (``create_final_cat`` -> ``final_cat_{sim}.hdf5``).
-* sp_validation stages -> ``extract`` (-> comprehensive cat), ``calibrate``
-  (-> cut cat) and ``m_bias`` (-> ``m_bias_results.yaml``).
+  (``create_final_cat`` -> ``final_cat_{sim}.hdf5``) run in ``sif_pipeline``
+  (the ShapePipe image).
+* sp_validation stages -> ``manifest``, ``extract`` (-> comprehensive cat),
+  ``calibrate`` (-> cut cat) and ``m_bias`` (-> ``m_bias_results.yaml``) run
+  in ``sif`` (the sp_validation image).
 
 Every rule sets ``container: None`` and calls ``apptainer exec`` explicitly
-through one shared prefix (``EXEC``), because the image is not the workflow's
+through a shared prefix template (``EXEC_PIPELINE`` / ``EXEC`` -- identical
+env injections, different image), because the images are not the workflow's
 top-level container.  Everything is parameterised under
-``config["image_sims"]`` -- the single ``sif``, repository roots, data roots,
+``config["image_sims"]`` -- the two ``sif`` keys, repository roots, data roots,
 the PSF dictionary, the explicit ``tile_ids`` list and the sim/calibration
 knobs -- so a fresh user drives it from config alone, with no hard-coded clone
 layout.  Configuration is fail-fast: a schema check at load rejects an unknown
@@ -78,6 +88,7 @@ _OPERATIONAL_KEYS = {
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
     "sif",
+    "sif_pipeline",
     "shapepipe_repo",
     "sp_validation_repo",
     "grids_base",
@@ -109,10 +120,12 @@ if _missing_structural:
         f"{_missing_structural} -- set them in the run config"
     )
 
-# --- container ------------------------------------------------------------
-# One image for every stage: the sp_validation image is built FROM the
-# ShapePipe image, so it carries both stacks.  A single ``sif`` config key.
-SIF = IMSIM["sif"]
+# --- containers -----------------------------------------------------------
+# Two images (see module docstring): the ShapePipe image for the pipeline and
+# merge stages, the sp_validation image for everything downstream.  Collapse
+# back to one image once sp_validation's env is lock-managed.
+SIF = IMSIM["sif"]  # sp_validation stages
+SIF_PIPELINE = IMSIM["sif_pipeline"]  # ShapePipe stages
 BINDS = IMSIM["binds"]
 
 # --- repositories (bound into the image; branch code overrides) -----------
@@ -160,8 +173,9 @@ CALIBRATE = IMSIM["calibrate_script"]
 # m-bias is *this branch's* extracted core, injected on PYTHONPATH.
 COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 
-# --- container exec prefix ------------------------------------------------
-# One prefix for every stage.  Three env injections make the on-disk branch
+# --- container exec prefixes ----------------------------------------------
+# One prefix *shape* for every stage -- two instances, one per image.  Three
+# env injections make the on-disk branch
 # code and the sim PSF win over the image's baked copies:
 #
 #   * PYTHONPATH prepends BOTH repos' ``src`` (ShapePipe first, then
@@ -193,12 +207,14 @@ COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 # retire).  Injecting it on the ``apptainer exec`` line puts it where the
 # compute actually runs -- inside the container, independent of the driver's
 # env -- the same lever this prefix already uses for PYTHONPATH/PSF_DICT.
-EXEC = (
+_EXEC_PREFIX = (
     "env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID "
     f"apptainer exec --bind {BINDS} "
     f"--env PYTHONPATH={SHAPEPIPE_REPO}/src:{SPV_REPO}/src "
-    f"--env PSF_DICT={PSF_DICT} --env OMP_NUM_THREADS=1 {SIF}"
+    f"--env PSF_DICT={PSF_DICT} --env OMP_NUM_THREADS=1 "
 )
+EXEC = _EXEC_PREFIX + SIF  # sp_validation stages
+EXEC_PIPELINE = _EXEC_PREFIX + SIF_PIPELINE  # ShapePipe stages
 
 JOB_MASK = sum([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
 
@@ -345,7 +361,7 @@ rule im_pipeline:
         runtime=720,
     shell:
         "cd {params.run_dir} && "
-        "{EXEC} bash {RUN_JOB} "
+        "{EXEC_PIPELINE} bash {RUN_JOB} "
         "-e {wildcards.tile} -t image_sims -j {JOB_MASK} "
         "-p {params.psf} -N {params.n_smp}"
 
@@ -367,7 +383,7 @@ rule im_merge:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
     shell:
         "cd {params.run_dir} && "
-        "{EXEC} python {CREATE_FINAL_CAT} "
+        "{EXEC_PIPELINE} python {CREATE_FINAL_CAT} "
         "-I -m final_cat_{wildcards.sim}.hdf5 -i .. "
         "-p cfis/final_cat.param -P {wildcards.sim} "
         "-o n_tiles_final.txt -v"
@@ -432,6 +448,7 @@ rule im_mbias:
         num=NUM,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
         sif=SIF,
+        sif_pipeline=SIF_PIPELINE,
         shapepipe_repo=SHAPEPIPE_REPO,
         sp_validation_repo=SPV_REPO,
         # Science knobs, read bare from the run config (no default here).
@@ -495,9 +512,11 @@ rule im_mbias:
                 "branch": _git(params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"),
                 "commit": _git(params.shapepipe_repo, "rev-parse", "HEAD"),
             },
-            "container": {
+            "containers": {
                 "sif": params.sif,
                 "ghcr_revision": _sif_revision(params.sif),
+                "sif_pipeline": params.sif_pipeline,
+                "ghcr_revision_pipeline": _sif_revision(params.sif_pipeline),
             },
         }
 
