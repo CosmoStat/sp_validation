@@ -13,7 +13,7 @@
                 covariance is assembled block-diagonally from the
                 per-statistic covariances (zero cross-blocks): the analysis
                 blocks first, then a dense per-pair fine-ξ block (the
-                CosmoCov integration-binning covariance when it exists — it
+                analytic integration-binning covariance when it exists — it
                 feeds derived-statistic error propagation — or the TreeCorr
                 ``varxip``/``varxim`` diagonal as degraded fallback). At the
                 production fine binning (1000 θ bins) a dense fine block is
