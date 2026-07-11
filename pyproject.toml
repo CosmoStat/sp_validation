@@ -9,7 +9,10 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+# 3.12 floor: cosmo-numba (a hard dependency below) requires >=3.12, and the
+# production container is Python 3.12 (shapepipe base image). Keeping the floor
+# in sync with the container is what makes `uv lock` resolvable.
+requires-python = ">=3.12"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -31,7 +34,27 @@ dependencies = [
     # get_theo_c_ell / get_theo_xi / PLANCK18 in cs_util.cosmo, which land via
     # CosmoStat/cs_util#76 — so this goes green once #76 merges into develop.
     "cs_util @ git+https://github.com/CosmoStat/cs_util.git@develop",
+    # Fast numba B-mode kernels (Schneider et al. 2022): the Schneider E/B split
+    # and COSEBIS live here, imported in b_modes.py. Tracks aguinot/cosmo-numba
+    # main (not published on PyPI). main carries the numpy-2 FFT fix via its
+    # rocket-fft dependency (which teaches numba's nopython mode to handle
+    # np.fft), and declares numba/numpy/rocket-fft from its requirements.txt so
+    # those constraints reach the resolver.
+    "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba.git@main",
     "emcee",
+    # numba is the load-bearing pin of this whole environment: its numpy ceiling
+    # (numba 0.66 -> numpy<2.5) is what keeps the resolver from drifting numpy
+    # forward and breaking numba/ngmix — the failure this lockfile exists to
+    # prevent. cosmo-numba above also carries this constraint, but we pin numba
+    # ourselves too: it makes the one critical constraint visible and resilient
+    # to cosmo-numba's dependency metadata (which has silently emptied out
+    # between refs before). We pin numba, never numpy directly.
+    "numba",
+    # Imported directly across src/ (calibration, plots) alongside seaborn —
+    # declared explicitly rather than leaned on as a seaborn transitive.
+    "matplotlib",
+    "pandas",
+    "pyyaml",
     # SHA-pinned snapshot of getdist branch `upper_triangle_whisker`.
     "getdist @ git+https://github.com/benabed/getdist.git@113cd22a9a0d013b6f72fe734be81f260f3d3be5",
     "h5py",
@@ -78,6 +101,13 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/CosmoStat/sp_validation"
 
+[tool.uv]
+# The reproducibility target is the Linux container; scope the lock to Linux
+# (mirrors shapepipe) so `uv lock` resolves the linux-centric stack (pymaster,
+# mpi4py) without hunting for macOS/Windows wheels. macOS dev installs still
+# work via `uv pip install -e .` (unlocked), just not `uv sync` from the lock.
+environments = ["sys_platform == 'linux'"]
+
 [project.optional-dependencies]
 test = [
     "pytest",
@@ -105,6 +135,20 @@ glass = [
     "glass==2025.1",
     "glass.ext.camb==2023.6",
     "cosmology==2022.10.9",
+    # fitsio: make_unions_glass_sim.py writes the mock catalogue as FITS.
+    "fitsio",
+]
+# Cosmo-inference workflow runners (workflow/scripts/*). Kept optional: the core
+# library resolves without them, but the container installs this extra so the
+# Snakemake workflow and cross-validation runners are available.
+workflow = [
+    "snakemake",
+    # run_2pcf_highres.py drives the MPI convergence run; the container ships
+    # OpenMPI (/opt/ompi) so mpi4py builds against it.
+    "mpi4py",
+    # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
+    # published or resolvable (no public repo found) — left undeclared pending
+    # its source. Same for `unions_wl` (scripts/check_footprint.py).
 ]
 develop = ["sp_validation[test,docs]"]
 
@@ -115,7 +159,14 @@ addopts = [
     "--cov=sp_validation",
     "--cov-report=term",
     "--cov-report=xml",
-    "--junitxml=pytest.xml"
+    "--junitxml=pytest.xml",
+    # The base ShapePipe image's test extra ships old pytest-pydocstyle /
+    # pytest-pycodestyle, whose pytest_collect_file hooks use the `path` arg the
+    # newer pytest our lock installs has removed — they crash collection.
+    # sp_validation lints with ruff, not these, so don't load them. Harmless if
+    # absent (`-p no:` just skips an unregistered plugin).
+    "-p", "no:pydocstyle",
+    "-p", "no:pycodestyle"
 ]
 markers = [
     "fast: marks tests as fast (deselect with '-m \"not fast\"')",
@@ -124,7 +175,7 @@ markers = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 
 # Snakemake injects a `snakemake` object into rule scripts at runtime, so ruff
 # can't see where it's defined. Declaring it a builtin silences the false
