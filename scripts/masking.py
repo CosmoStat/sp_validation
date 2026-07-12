@@ -1,5 +1,4 @@
 import argparse
-import os
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
@@ -231,18 +230,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--output-dir",
-        default=None,
-        help="Output directory (default: data/mask/ relative to script)",
+        required=True,
+        help="Output directory for mask map and Cls",
     )
     args = parser.parse_args()
 
     nside = args.nside
-    curr_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-
-    if args.output_dir:
-        out_dir = Path(args.output_dir)
-    else:
-        out_dir = curr_dir.parent / "data" / "mask"
+    out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     with open(args.config, "r") as f:
