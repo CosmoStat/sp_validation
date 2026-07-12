@@ -67,7 +67,6 @@ dependencies = [
     "jupytext>=1.15",
     "lenspack",
     "lmfit",
-    "numexpr",
     "numpy>=2.0",
     "opencv-python-headless",
     "pyccl",

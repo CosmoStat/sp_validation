@@ -1,5 +1,4 @@
 import argparse
-import os
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
@@ -7,6 +6,8 @@ import h5py
 import healpy as hp
 import numpy as np
 import yaml
+
+from sp_validation.masks import apply_condition
 
 # -------------------------
 # Spatially-structured cuts: these define the survey footprint.
@@ -28,29 +29,6 @@ SPATIAL_CUTS = {
 
 # -------------------------
 # Masking logic
-
-
-def apply_condition(array, kind, value):
-    """
-    Apply a logical condition to a NumPy array and return a boolean mask, based
-    on the "kind" key in the mask config YAML file.
-    """
-    if kind == "equal":
-        return array == value
-    elif kind == "not_equal":
-        return array != value
-    elif kind == "greater_equal":
-        return array >= value
-    elif kind == "greater":
-        return array > value
-    elif kind == "less_equal":
-        return array <= value
-    elif kind == "less":
-        return array < value
-    elif kind == "range":
-        return (array >= value[0]) & (array <= value[1])
-    else:
-        raise ValueError(f"Unknown kind: {kind}")
 
 
 def apply_masks(data, data_ext, mask_config, footprint_only=False):
@@ -252,18 +230,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--output-dir",
-        default=None,
-        help="Output directory (default: data/mask/ relative to script)",
+        required=True,
+        help="Output directory for mask map and Cls",
     )
     args = parser.parse_args()
 
     nside = args.nside
-    curr_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-
-    if args.output_dir:
-        out_dir = Path(args.output_dir)
-    else:
-        out_dir = curr_dir.parent / "data" / "mask"
+    out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     with open(args.config, "r") as f:
