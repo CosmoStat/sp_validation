@@ -155,6 +155,32 @@ correlation/confusion matrices) used when building catalogues.</p>
 </dd>
 </dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.masks.apply_condition">
+<span class="sig-name descname"><span class="pre">apply_condition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kind</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#apply_condition"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.apply_condition" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.apply_condition'">¶</a></dt>
+<dd><p>Apply Condition.</p>
+<p>Evaluate one mask condition (<code class="docutils literal notranslate"><span class="pre">kind</span></code>/<code class="docutils literal notranslate"><span class="pre">value</span></code>, as specified in mask
+config YAML files) against an array and return a boolean mask. Single
+shared grammar for the object-selection <code class="docutils literal notranslate"><span class="pre">Mask</span></code> class and the
+cosmo_inference footprint builder (see issue #181).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>array</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a>) – input data</p></li>
+<li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – operation type, one of “equal”, “not_equal”, “greater”,
+“greater_equal”, “less”, “less_equal” (alias “smaller_equal”),
+“range”</p></li>
+<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – value(s) to be used in mask operation; two-element list for “range”</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>boolean mask</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="sp_validation.masks.correlation_matrix">
 <span class="sig-name descname"><span class="pre">correlation_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">masks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.9</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/masks.html#correlation_matrix"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.masks.correlation_matrix" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.masks.correlation_matrix'">¶</a></dt>
 <dd></dd></dl>
@@ -173,8 +199,7 @@ correlation/confusion matrices) used when building catalogues.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>col_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – name of column to use for mask</p></li>
 <li><p><strong>label</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – mask label</p></li>
-<li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – operation type, allowed are “equal”, “not_equal, “”greater_equal”,
-“smaller_equal”, “range”</p></li>
+<li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – operation type; see <a class="reference internal" href="#sp_validation.masks.apply_condition" title="sp_validation.masks.apply_condition"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_condition()</span></code></a> for the allowed values</p></li>
 <li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a>) – value(s) to be used in mask operation</p></li>
 <li><p><strong>dat</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a><em>, </em><em>optional</em>) – input data, default is <cite>None</cite>; apply mask if given</p></li>
 <li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – verbose output if <code class="docutils literal notranslate"><span class="pre">True</span></code>; default is <code class="docutils literal notranslate"><span class="pre">False</span></code></p></li>
@@ -288,6 +313,7 @@ correlation/confusion matrices) used when building catalogues.</p>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
+<li><a :data-current="activeSection === '#sp_validation.masks.apply_condition'" class="reference internal" href="#sp_validation.masks.apply_condition"><code class="docutils literal notranslate"><span class="pre">apply_condition()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.correlation_matrix'" class="reference internal" href="#sp_validation.masks.correlation_matrix"><code class="docutils literal notranslate"><span class="pre">correlation_matrix()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.confusion_matrix'" class="reference internal" href="#sp_validation.masks.confusion_matrix"><code class="docutils literal notranslate"><span class="pre">confusion_matrix()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.masks.Mask'" class="reference internal" href="#sp_validation.masks.Mask"><code class="docutils literal notranslate"><span class="pre">Mask</span></code></a><ul>
@@ -313,7 +339,7 @@ correlation/confusion matrices) used when building catalogues.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 11 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 12 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
