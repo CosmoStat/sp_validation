@@ -36,11 +36,11 @@ wildcard_constraints:
     **WILDCARD_CONSTRAINTS
 
 # Compute rules (infrastructure — raw outputs, no evidence.json)
-include: "rules/twopoint.smk"
+# include: "rules/twopoint.smk"
 include: "rules/covariance.smk"
-include: "rules/inference.smk"
-include: "rules/masks.smk"
-include: "rules/glass_mock.smk"
+# include: "rules/inference.smk"
+# include: "rules/masks.smk"
+# include: "rules/glass_mock.smk"
 
 # CosmologyValidation diagnostic suite (cosmo_val.py), decomposed rule-by-rule.
 # Only active when the config carries a `cosmo_val` block (papers/cosmo_val);

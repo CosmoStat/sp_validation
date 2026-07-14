@@ -1,17 +1,17 @@
 # BLOCK_PAIRS, PLANCK18, COSMOLOGY_PARAMS defined in Snakefile
 import os
 
-def get_cat_params(version):
+def get_cat_params(w):
     """Extract covariance parameters (sigma_e, n_eff, area) from catalog config.
 
     Returns (sigma_e, (n_e_lens, n_e_clust), (A_lens, A_ggl, A_clust)).
     For probe == "wl" the clustering/ggl slots are empty strings.
     """
-    base_version = version.replace("_leak_corr", "")
+    base_version = w.version.replace("_leak_corr", "")
     if base_version not in config:
         raise KeyError(f"Catalog configuration not found for {base_version}")
     cov_th = config[base_version]["cov_th"]
-    if config["probe_3x2pt"] == "wl":
+    if w.probe == "wl":
         return cov_th["sigma_e"], (cov_th["n_e"], ""), (cov_th["A"], "", "")
     return (
         cov_th["sigma_e"],
@@ -34,6 +34,9 @@ MASK_CLS_FILES = {
 
 # v1.4.8 uses the star-halo footprint; all other versions use the standard footprint
 STARHALO_VERSIONS = {"v1.4.8"}
+
+# Number of cores to use to execute OneCovariance
+ONECOV_THREADS = 8
 
 def get_mask_cls_file(version, kind="lens"):
     """Return the mask Cl *filename* (OneCov wants dir and file separately)."""
@@ -117,33 +120,33 @@ rule covariance_ini_onecov:
         h=PLANCK18["h"],
         omega_b=PLANCK18["Omega_b"],
         hmcode_logT_AGN=7.75,
-        sigma_e_param=lambda w: get_cat_params(w.version)[0],
+        sigma_e_param=lambda w: get_cat_params(w)[0],
         n_e_lens_line=lambda w: (
-            f"n_eff_lensing = {get_cat_params(w.version)[1][0]}"),
+            f"n_eff_lensing = {get_cat_params(w)[1][0]}"),
         n_e_clust_line=lambda w: (""
         if w.probe == "wl"
-        else f"n_eff_clust = {get_cat_params(w.version)[1][1]}"),
+        else f"n_eff_clust = {get_cat_params(w)[1][1]}"),
         area_lens_line=lambda w: (
-            f"survey_area_lensing_in_deg2 = {get_cat_params(w.version)[2][0]}"),
+            f"survey_area_lensing_in_deg2 = {get_cat_params(w)[2][0]}"),
         area_ggl_line=lambda w: (
         ""
         if w.probe == "wl"
-        else f"survey_area_ggl_in_deg2 = {get_cat_params(w.version)[2][1]}"
+        else f"survey_area_ggl_in_deg2 = {get_cat_params(w)[2][1]}"
         ),
         area_clust_line=lambda w: (
         ""
         if w.probe == "wl"
-        else f"survey_area_clust_in_deg2 = {get_cat_params(w.version)[2][2]}"
+        else f"survey_area_clust_in_deg2 = {get_cat_params(w)[2][2]}"
         ),
         mask_dir=lambda w: _onecov_mask_params(w)["dir"],
         mask_lens=lambda w: _onecov_mask_params(w)["lens"],
         mask_ggl=lambda w: _onecov_mask_params(w)["ggl"],
         mask_clust=lambda w: _onecov_mask_params(w)["clust"],
-        nz_dir=lambda w: os.path.dirname(build_redshift_dir(w.version)),
-        nz_lens=lambda w: os.path.basename(build_redshift_path_lens(w.version, w.blind)),
+        nz_dir=lambda w: build_redshift_dir(w.version),
+        nz_lens=lambda w: build_redshift_path_lens(w.version, w.blind),
         nz_clust=lambda w: (
             "" if w.probe == "wl"
-            else os.path.basename(build_redshift_path_source(w.version, w.blind))
+            else build_redshift_path_source(w.version, w.blind)
         ),
     threads: 1
     shell:
@@ -196,8 +199,10 @@ ellipticity_dispersion = {params.sigma_e_param}
 {params.n_e_clust_line}
 
 [redshift]
-zlens_directory = {params.nz_dir}
-zlens_file = {params.nz_lens}
+zlens_directory = /n23data1/n06data/lgoh/scratch/UNIONS/OneCovariance/input/redshift_distribution/
+# {params.nz_dir}
+zlens_file = K1000_NS_V1.0.0A_ugriZYJHKs_photoz_SG_mask_LF_svn_309c_2Dbins_v2_goldclasses_THELI_INT_DIRcols_Fid_blindC_TOMO1_Nz.ascii,K1000_NS_V1.0.0A_ugriZYJHKs_photoz_SG_mask_LF_svn_309c_2Dbins_v2_goldclasses_THELI_INT_DIRcols_Fid_blindC_TOMO2_Nz.ascii
+# {params.nz_lens}
 zclust_file = {params.nz_clust}
 value_loc_in_lensbin = mid
 value_loc_in_clustbin = mid
@@ -256,7 +261,7 @@ transfer_model = CAMB
 small_k_damping_for1h = damped
 
 [misc]
-num_cores = 8
+num_cores = {ONECOV_THREADS}
 
 EOF
         """
@@ -265,7 +270,6 @@ rule covariance_onecov:
     input:
         rules.covariance_ini_onecov.output,
     output:
-        # Matches `[output settings] file = cov_tmp_onecov.dat` in the ini.
         cov_output(".dat")
     params:
         outdir=lambda w: covariance_dir(
@@ -280,7 +284,7 @@ rule covariance_onecov:
         python_executable=config["tools"]["python_executable"],
     container:
         None
-    threads: 8
+    threads: ONECOV_THREADS
     shell:
         """
         module unload gcc || true
@@ -300,7 +304,7 @@ GLASS_MOCK_RESULTS = config.get("glass_mocks", {}).get(
 )
 GLASS_MOCK_COV_DIR = config.get("glass_mocks", {}).get(
     "covariance_dir",
-    "/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6",
+    "/automnt/n17data/cdaley/unions/analyses/shear_2d/bmodes_2d/results/covariance/glass_mock_v1.4.6",
 )
 
 rule covariance_glass_mock:
@@ -364,8 +368,9 @@ rule generate_glass_mock_rhotau_samples:
         """
 
 
-def fiducial_covariance_outputs(mask_suffix="", probe=DEFAULT_PROBE):
+def fiducial_covariance_outputs(mask_suffix="", probe=None):
     """Return processed covariance files for fiducial version/blind."""
+    probe = probe or DEFAULT_PROBE
     path = covariance_path(
         FIDUCIAL["version"], FIDUCIAL["blind"], FIDUCIAL["gaussian"],
         FIDUCIAL["min_sep"], FIDUCIAL["max_sep"], FIDUCIAL["nbins"],
@@ -388,7 +393,7 @@ rule covariance_unmasked:
 rule covariance_3x2pt:
     input:
         fiducial_covariance_outputs(mask_suffix="", 
-                                    probe=config["probe_3x2pt"]),
+                                    probe="3x2pt"),
 
 # ruleorder: covariance_ini_onecov > covariance_onecov > covariance
 

@@ -7,21 +7,13 @@ from pathlib import Path
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
-COSMO_VAL = Path(
-    os.environ.get(
-        "COSMO_VAL",
-        "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/results/cosmo_val",
-    )
-)
+SP_VALIDATION = Path(__file__).resolve().parents[1]
+COSMO_VAL = Path(os.environ.get("COSMO_VAL", SP_VALIDATION / "results/cosmo_val"))
 COSMO_INFERENCE = Path(
-    os.environ.get(
-        "COSMO_INFERENCE",
-        "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_inference",
-    )
+    os.environ.get("COSMO_INFERENCE", SP_VALIDATION / "cosmo_inference")
 )
-CAT_CONFIG = (
-    "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/cosmo_val/cat_config.yaml"
-)
+CAT_CONFIG = SP_VALIDATION / "cosmo_val/cat_config.yaml"
+
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -51,7 +43,7 @@ WILDCARD_CONSTRAINTS = {
 
 FIDUCIAL = None
 DEFAULT_MASK_SUFFIX = ""
-DEFAULT_PROBE = None
+DEFAULT_PROBE = "wl"
 CATALOG_CONFIG = None
 PLANCK18 = None
 
@@ -61,7 +53,7 @@ def configure(workflow_config):
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, DEFAULT_PROBE, FIDUCIAL, PLANCK18
     CATALOG_CONFIG = workflow_config
     FIDUCIAL = workflow_config["fiducial"]
-    DEFAULT_PROBE = "wl"
+    DEFAULT_PROBE = workflow_config.get("probe") or "wl"
     DEFAULT_MASK_SUFFIX = (
         "_masked" if workflow_config["covariance"].get("default_masked", False) else ""
     )
@@ -216,7 +208,7 @@ def build_redshift_path_lens(version, blind):
     base_version = re.sub(r"_ecut\d+", "", base_version)
     if "v1.4.11" in base_version:
         base_version = "SP_v1.4.6"
-    return f"nz_{base_version}_{blind}.txt"
+    return f"nz_{base_version}_{blind}_lens.txt"
 
 
 def build_redshift_path_source(version, blind):
@@ -225,7 +217,7 @@ def build_redshift_path_source(version, blind):
     base_version = re.sub(r"_ecut\d+", "", base_version)
     if "v1.4.11" in base_version:
         base_version = "SP_v1.4.6"
-    return f"nz_{base_version}_{blind}_source.txt"  # TO DO: check lens and source file format
+    return f"nz_{base_version}_{blind}_clust.txt"  # TO DO: check lens and source file format
 
 
 def get_shear_catalog(wildcards):
