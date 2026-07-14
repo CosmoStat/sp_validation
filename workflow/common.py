@@ -21,7 +21,7 @@ BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 # Source of truth: cs_util.cosmo.PLANCK18
 # Regenerate with: snakemake results/cosmology/planck18.json
 # Resolved relative to the run directory at configure() time.
-COSMOLOGY_PARAMS = "/n23data1/n06data/lgoh/scratch/UNIONS/sp_validation/results/cosmology/planck18.json"
+COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 
 # Wildcard constraints shared by every Snakefile that composes these rules.
 # Patterns must match all expected values; overly restrictive patterns cause
