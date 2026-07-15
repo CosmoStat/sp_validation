@@ -28,6 +28,11 @@ dependencies = [
     "camb>=1.6",
     "clmm",
     "colorama",
+    # Blinding closure (core, no extra): cryptography + sacc here, plus the
+    # Smokescreen fork pin below; pyccl (the theory backend) is already core.
+    # cryptography and sacc are declared explicitly so the core runtime
+    # closure is self-documenting and independent of fork-metadata drift.
+    "cryptography",
     # Track cs_util's develop branch directly (git dependency) rather than a
     # PyPI pin: the two repos are iterating together heavily and cs_util
     # releases are infrequent. This PR's cosmology repoint needs get_cosmo /
@@ -74,6 +79,7 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
+    "sacc>=0.12",
     # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
     # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to
     # shape-(1,) `array([x])`. camb's BBN Y_He predictor (bbn.py) wraps the
@@ -91,6 +97,12 @@ dependencies = [
     # getdist feature-branch below, which is an external fork we pin for repro.)
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
+    # UNIONS-WL fork of DESC Smokescreen, pinned by SHA on the fork's
+    # packaging branch: it declares pyccl and imports its theory backends
+    # lazily, so the install closure is CCL-only. Provisional pin — swapped to the
+    # fork's release tag once the fork packaging PRs merge. Git pin only;
+    # nothing is published to PyPI.
+    "smokescreen @ git+https://github.com/UNIONS-WL/Smokescreen@588a6b9b26560bd5ba3dd5ba342f3c40152644f9",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",
