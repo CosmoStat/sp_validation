@@ -356,8 +356,16 @@ rule im_pipeline:
     MPI-bearing stage.
     """
     input:
+        # ``params.py`` is a *tracked* output of ``im_init``, so this one input
+        # supplies the im_init -> im_pipeline edge. The ``cfis`` symlink the
+        # shell reads (via {RUN_JOB}) is created by that same im_init shell block
+        # as an *untracked* side effect -- no rule declares it as an output
+        # (snakemake will not track a symlink/directory output). Declaring it an
+        # input here therefore asked the DAG for a file no rule produces: on a
+        # fresh grids_base it aborted the build with MissingInputException before
+        # any job ran. It is safe to drop -- cfis exists whenever params does,
+        # since im_init stages both together.
         params=f"{GRIDS_BASE}/{{sim}}/params.py",
-        cfis=f"{GRIDS_BASE}/{{sim}}/cfis",
     output:
         done=touch(f"{GRIDS_BASE}/{{sim}}/logs/pipeline_{{tile}}.done"),
     params:
