@@ -65,12 +65,18 @@ IMSIM = config["image_sims"]
 # a commented template line) and no default in code.  These fix the estimator's
 # scientific behaviour, so they must be stated per run, never inherited.
 _SCIENCE_KEYS = {
-    "w_col",
+    "w_cols",
     "pair_match",
     "match_radius_deg",
     "n_bootstrap",
     "bootstrap_seed",
     "mask_config",
+}
+# Deprecated science keys: accepted (so a pre-``w_cols`` run config still parses
+# and the estimator's back-compat path runs) but not *required* -- our configs
+# state ``w_cols``.  Listed here only to keep them out of the unknown-key error.
+_DEPRECATED_KEYS = {
+    "w_col",
 }
 # Operational keys: default (visibly) in the workflow config.yaml; the .smk
 # reads them bare, so config.yaml is their one home.
@@ -97,7 +103,9 @@ _STRUCTURAL_KEYS = {
     "num",
     "tile_ids",
 }
-_ALLOWED_KEYS = _SCIENCE_KEYS | _OPERATIONAL_KEYS | _STRUCTURAL_KEYS
+_ALLOWED_KEYS = (
+    _SCIENCE_KEYS | _DEPRECATED_KEYS | _OPERATIONAL_KEYS | _STRUCTURAL_KEYS
+)
 
 _unknown = set(IMSIM) - _ALLOWED_KEYS
 if _unknown:
@@ -453,7 +461,7 @@ rule im_mbias:
         sp_validation_repo=SPV_REPO,
         # Science knobs, read bare from the run config (no default here).
         match_radius_deg=IMSIM["match_radius_deg"],
-        w_col=IMSIM["w_col"],
+        w_cols=IMSIM["w_cols"],
         n_bootstrap=IMSIM["n_bootstrap"],
         pair_match=IMSIM["pair_match"],
         bootstrap_seed=IMSIM["bootstrap_seed"],
@@ -537,7 +545,7 @@ rule im_mbias:
             "branches": list(manifest["branches"]),
             "pairs": manifest["pairs"],
             "match_radius_deg": params.match_radius_deg,
-            "w_col": params.w_col,
+            "w_cols": list(params.w_cols),
             "pair_match": params.pair_match,
             "n_bootstrap": params.n_bootstrap,
             "bootstrap_seed": params.bootstrap_seed,

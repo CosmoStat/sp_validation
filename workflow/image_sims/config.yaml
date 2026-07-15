@@ -79,7 +79,11 @@ image_sims:
   #
   # mask_config: config/calibration/mask_v1.X.9_im_sim.yaml  # relative to sp_validation_repo
   # match_radius_deg: 0.0002   # RA/Dec pair-match radius, degrees
-  # w_col: null                # weight column; null -> unit weights (#227)
+  # w_cols: [none, w_iv]       # weight schemes to compute in one run; "none"
+  #                            # (or null) = unit weights (#227); first entry is
+  #                            # the primary/headline result -- lead with "none"
+  #                            # for the fiducial unweighted estimator.  The
+  #                            # deprecated scalar `w_col` is still accepted.
   # pair_match: true           # match +g/-g object-by-object (per-object cancellation)
   # n_bootstrap: 500           # bootstrap resamples for the errors
   # bootstrap_seed: 42         # seed for the bootstrap RNG (makes errors reproducible)

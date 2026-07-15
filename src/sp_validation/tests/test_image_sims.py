@@ -101,7 +101,7 @@ def test_mbias_recovers_injected_values(tmp_path):
         "catalog_name": "cat.fits",
         "shear_amplitude": A,
         "match_radius_deg": 0.0002,
-        "w_col": "w_des",
+        "w_cols": ["w_des"],
         "n_bootstrap": 50,
         "pair_match": True,
         "bootstrap_seed": 42,
@@ -117,6 +117,78 @@ def test_mbias_recovers_injected_values(tmp_path):
     # Bootstrap errors are non-negative and finite.
     for key in ("m1_err", "m2_err", "c1_err", "c2_err"):
         assert np.isfinite(res[key]) and res[key] >= 0
+    # Self-describing results: the primary scheme is mirrored at the top level
+    # *and* lives under ``weights[scheme]``, and the two agree exactly.
+    assert list(res["weights"]) == ["w_des"]
+    for key in ("m1", "m1_err", "c1", "c1_err", "m2", "m2_err", "c2", "c2_err"):
+        assert res[key] == res["weights"]["w_des"][key]
+
+
+def test_mbias_multiple_weight_schemes_share_draws(tmp_path):
+    """Multi-scheme runs key results per scheme; the primary mirrors the first.
+
+    ``none`` (unit weights) and a real weight column are computed in one run.
+    With uniform per-object weights in the synthetic grid the two schemes give
+    the *same* m/c (the weighting is a no-op), and the shared bootstrap indices
+    make even the errors identical -- the property that lets a scheme
+    comparison be a clean weighting comparison. The first entry (``none``) is
+    the primary result surfaced at the top level.
+    """
+    num = 8
+    _make_grid(tmp_path, num)
+    config = {
+        "grids_dir": str(tmp_path),
+        "num": num,
+        "catalog_name": "cat.fits",
+        "shear_amplitude": A,
+        "match_radius_deg": 0.0002,
+        "w_cols": ["none", "w_des"],
+        "n_bootstrap": 50,
+        "pair_match": True,
+        "bootstrap_seed": 42,
+    }
+    mb = ImageSimMBias(config)
+    mb.load_catalogs(verbose=False)
+    res = mb.run(verbose=False)
+
+    assert list(res["weights"]) == ["none", "w_des"]
+    # Primary (first) scheme mirrored at the top level.
+    for key in ("m1", "m1_err", "c1", "c1_err", "m2", "m2_err", "c2", "c2_err"):
+        assert res[key] == res["weights"]["none"][key]
+    # Uniform grid weights make the schemes agree bit-for-bit, errors included
+    # (shared bootstrap draws).
+    assert res["weights"]["none"] == res["weights"]["w_des"]
+
+
+def test_mbias_deprecated_w_col_still_runs(tmp_path):
+    """A pre-``w_cols`` config with the scalar ``w_col`` still runs.
+
+    The deprecated single-scheme key is honoured as ``[w_col]`` when ``w_cols``
+    is absent, so a legacy run config keeps working and produces the same
+    single-scheme result as the ``w_cols=[w_col]`` spelling.
+    """
+    num = 9
+    _make_grid(tmp_path, num)
+    base = {
+        "grids_dir": str(tmp_path),
+        "num": num,
+        "catalog_name": "cat.fits",
+        "shear_amplitude": A,
+        "match_radius_deg": 0.0002,
+        "n_bootstrap": 50,
+        "pair_match": True,
+        "bootstrap_seed": 42,
+    }
+    res_dep = ImageSimMBias({**base, "w_col": "w_des"})
+    res_dep.load_catalogs(verbose=False)
+    out_dep = res_dep.run(verbose=False)
+
+    res_new = ImageSimMBias({**base, "w_cols": ["w_des"]})
+    res_new.load_catalogs(verbose=False)
+    out_new = res_new.run(verbose=False)
+
+    assert list(out_dep["weights"]) == ["w_des"]
+    assert out_dep["weights"] == out_new["weights"]
 
 
 def test_mbias_pool_cancels_shape_noise(tmp_path):
@@ -164,7 +236,7 @@ def test_mbias_pool_cancels_shape_noise(tmp_path):
         "catalog_name": "cat.fits",
         "shear_amplitude": A,
         "match_radius_deg": 0.0002,
-        "w_col": "w_des",
+        "w_cols": ["w_des"],
         "n_bootstrap": 200,
         "pair_match": True,
         "bootstrap_seed": 42,
