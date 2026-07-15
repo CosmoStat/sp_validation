@@ -575,11 +575,152 @@ def extract(s, data_type=None, tracers=None, **tag_filters):
     return sub
 
 
-def save(s, path):
-    """Write ``s`` to ``path`` (FITS), overwriting any existing file."""
+def merge(saccs):
+    """Merge several per-statistic Sacc objects into one file's worth.
+
+    A thin wrapper around ``sacc.concatenate_data_sets``: data points
+    concatenate in input order, tracers shared by several inputs (the
+    ``source_i`` NZ tracers, ``psf_stars``) are stored once, and the
+    covariance combines block-diagonally in the same order — the library
+    requires either **all** inputs to carry a covariance or **none**, and
+    raises otherwise (cross-statistic covariance assembly beyond
+    block-diagonal is out of scope here; see ``assemble_covariance``).
+
+    Metadata must be consistent: keys present in several inputs must carry
+    equal values (a ``type: data`` file cannot merge with a ``type: mock``
+    file), and the union lands on the result. This deliberately replaces the
+    library's clash behaviour, which mangles clashing keys by appending
+    labels.
+
+    Parameters
+    ----------
+    saccs : sequence of sacc.Sacc
+        The per-statistic data sets, in the insertion order the merged file
+        should have. Inputs are left unmodified.
+
+    Returns
+    -------
+    sacc.Sacc
+        The merged data set.
+    """
+    saccs = list(saccs)
+    metadata = {}
+    for s in saccs:
+        for key, value in s.metadata.items():
+            if key in metadata and metadata[key] != value:
+                raise ValueError(
+                    f"conflicting metadata across merge inputs: {key!r} is "
+                    f"{metadata[key]!r} in one input and {value!r} in another"
+                )
+            metadata[key] = value
+    # Strip metadata before concatenating (the library "resolves" clashing
+    # keys by renaming them), then restore the validated union.
+    stripped = []
+    for s in saccs:
+        s = s.copy()
+        s.metadata.clear()
+        stripped.append(s)
+    seen, shared = set(), set()  # tracers appearing in more than one input
+    for s in saccs:
+        shared |= seen & set(s.tracers)
+        seen |= set(s.tracers)
+    same_tracers = sorted(shared)
+    merged = sacc.concatenate_data_sets(*stripped, same_tracers=same_tracers)
+    for key, value in metadata.items():
+        merged.metadata[key] = value
+    return merged
+
+
+def update_statistic(s, sub):
+    """Overwrite the values of ``s``'s points that match ``sub``'s, in place.
+
+    The merge-back half of the extract → conceal → merge blinding flow
+    (PRD #241 §4): each point of ``sub`` is matched to exactly one point of
+    ``s`` by ``(data_type, tracers, tags)``, and that point's *value* is
+    replaced. Nothing else changes — insertion order, tags, windows and the
+    covariance are untouched (blinding shifts the mean only), so ``sub``'s
+    own covariance (e.g. the sub-block ``extract`` attaches) is deliberately
+    not consulted. A ``sub`` point with no match, or with several, raises
+    ``ValueError``.
+
+    Parameters
+    ----------
+    s : sacc.Sacc
+        Target, mutated in place.
+    sub : sacc.Sacc
+        The replacement block, e.g. ``extract(s, ...)`` after concealment.
+    """
+    for point in sub.data:
+        idx = s.indices(point.data_type, point.tracers, **point.tags)
+        if len(idx) != 1:
+            raise ValueError(
+                f"update_statistic: {len(idx)} points in the target match "
+                f"({point.data_type}, {point.tracers}, {point.tags}) — need "
+                "exactly one"
+            )
+        s.data[idx[0]].value = point.value
+
+
+def save(s, path, *, type):
+    """Write ``s`` to ``path`` (FITS), overwriting any existing file.
+
+    Parameters
+    ----------
+    s : sacc.Sacc
+        Data set to write; its metadata is stamped in place.
+    type : {'data', 'mock'}
+        Provenance of the underlying catalogue, stored as the required
+        ``type`` metadata tag (PRD #241 §4, "Mocks vs data"). The caller —
+        the pipeline computing the data vector — knows whether its input
+        catalogue is a mock; there is deliberately no default. ``load``
+        refuses ``type='data'`` files that are not blinded.
+    """
+    if type not in ("data", "mock"):
+        raise ValueError(f"type must be 'data' or 'mock'; got {type!r}")
+    if s.metadata.get("type", type) != type:
+        raise ValueError(
+            f"Sacc metadata already carries type={s.metadata['type']!r}; "
+            f"refusing to re-stamp as {type!r}"
+        )
+    s.metadata["type"] = type
     s.save_fits(path, overwrite=True)
 
 
-def load(path):
-    """Load a Sacc from ``path`` (FITS)."""
-    return sacc.Sacc.load_fits(path)
+def load(path, *, allow_unblinded=False):
+    """Load a Sacc from ``path`` (FITS), failing closed on unblinded data.
+
+    Every sacc_io file carries a ``type: data|mock`` metadata tag (stamped by
+    ``save``); blinded files are additionally stamped ``concealed=True`` by
+    Smokescreen. A ``type='data'`` file without that stamp is real, unblinded
+    data, and loading it raises — skipping the blind can never silently
+    expose the measured vector (PRD #241 §4). Mocks load freely, blinded or
+    not.
+
+    Parameters
+    ----------
+    path : str
+        File to load.
+    allow_unblinded : bool, optional
+        Escape hatch for the two legitimate consumers of unblinded data:
+        the blinding step itself (which must read the true vector to conceal
+        it) and the unblinding/verification tooling. Nothing else — no
+        analysis, plotting or inference code — may pass ``True``.
+
+    Returns
+    -------
+    sacc.Sacc
+        The loaded data set.
+    """
+    s = sacc.Sacc.load_fits(path)
+    if (
+        s.metadata["type"] == "data"
+        and not s.metadata.get("concealed", False)
+        and not allow_unblinded
+    ):
+        raise ValueError(
+            f"{path} holds real data (type='data') without the "
+            "concealed=True blinding stamp — refusing to load an unblinded "
+            "data vector. Only the blinding/unblinding tooling may pass "
+            "allow_unblinded=True."
+        )
+    return s

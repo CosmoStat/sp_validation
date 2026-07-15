@@ -40,7 +40,7 @@ def _base_sacc(nbins=1):
 # --------------------------------------------------------------------------- #
 def _roundtrip(s, tmp_path, name="rt"):
     path = tmp_path / f"{name}.sacc"
-    sio.save(s, str(path))
+    sio.save(s, str(path), type="mock")
     return sio.load(str(path))
 
 
@@ -482,7 +482,7 @@ def test_end_to_end_one_file_layout(tmp_path):
         s,
         [(xi_c, _spd(len(xi_c), 1)), (co, _spd(len(co), 2)), (xi_f, fine_block)],
     )
-    sio.save(s, str(tmp_path / f"{version}.sacc"))
+    sio.save(s, str(tmp_path / f"{version}.sacc"), type="mock")
 
     a = sio.load(str(tmp_path / f"{version}.sacc"))
 
@@ -528,7 +528,7 @@ def test_one_file_layout_diagonal_fine_fallback(tmp_path):
     )
     variances = np.concatenate([np.arange(1, 51) * 1e-12, np.arange(1, 51) * 2e-12])
     sio.assemble_covariance(s, [(xi_c, _spd(len(xi_c), 1)), (xi_f, np.diag(variances))])
-    sio.save(s, str(tmp_path / "vDIAG.sacc"))
+    sio.save(s, str(tmp_path / "vDIAG.sacc"), type="mock")
     a = sio.load(str(tmp_path / "vDIAG.sacc"))
     assert np.array_equal(np.diag(a.covariance.dense[np.ix_(xi_f, xi_f)]), variances)
 
@@ -637,7 +637,183 @@ def test_tomographic_xi_covariance_one_contiguous_block():
 
 
 # --------------------------------------------------------------------------- #
-# 12. get_pseudo_cl window/cl column correspondence: window column j maps to
+# 12. type stamping + fail-closed load (data/mock x concealed/not; escape
+#     hatch for the blinding/unblinding tooling)
+# --------------------------------------------------------------------------- #
+def _saved(tmp_path, name, *, type, concealed=None):
+    s = _base_sacc()
+    sio.add_xi(
+        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+    )
+    if concealed is not None:
+        s.metadata["concealed"] = concealed
+    path = str(tmp_path / f"{name}.sacc")
+    sio.save(s, path, type=type)
+    return path
+
+
+def test_load_mock_unconcealed(tmp_path):
+    s = sio.load(_saved(tmp_path, "m0", type="mock"))
+    assert s.metadata["type"] == "mock"
+
+
+def test_load_mock_concealed(tmp_path):
+    s = sio.load(_saved(tmp_path, "m1", type="mock", concealed=True))
+    assert s.metadata["concealed"]
+
+
+def test_load_data_concealed(tmp_path):
+    s = sio.load(_saved(tmp_path, "d1", type="data", concealed=True))
+    assert s.metadata["type"] == "data"
+
+
+def test_load_data_unconcealed_fails_closed(tmp_path):
+    path = _saved(tmp_path, "d0", type="data")
+    with pytest.raises(ValueError, match="unblinded"):
+        sio.load(path)
+    # concealed=False is as unblinded as no stamp at all
+    path_f = _saved(tmp_path, "d0f", type="data", concealed=False)
+    with pytest.raises(ValueError, match="unblinded"):
+        sio.load(path_f)
+
+
+def test_load_data_unconcealed_escape_hatch(tmp_path):
+    s = sio.load(_saved(tmp_path, "d0h", type="data"), allow_unblinded=True)
+    assert s.metadata["type"] == "data"
+
+
+def test_save_requires_valid_type(tmp_path):
+    s = _base_sacc()
+    with pytest.raises(TypeError):
+        sio.save(s, str(tmp_path / "x.sacc"))  # type is required
+    with pytest.raises(ValueError, match="'data' or 'mock'"):
+        sio.save(s, str(tmp_path / "x.sacc"), type="simulation")
+
+
+def test_save_refuses_type_restamp(tmp_path):
+    s = _base_sacc()
+    sio.save(s, str(tmp_path / "x.sacc"), type="mock")
+    with pytest.raises(ValueError, match="re-stamp"):
+        sio.save(s, str(tmp_path / "x.sacc"), type="data")
+
+
+def test_load_requires_type_tag(tmp_path):
+    import sacc as sacc_lib
+
+    s = _base_sacc()  # never stamped
+    path = str(tmp_path / "untyped.sacc")
+    s.save_fits(path, overwrite=True)
+    with pytest.raises(KeyError):
+        sio.load(path)
+    assert sacc_lib.Sacc.load_fits(path) is not None  # raw loader still works
+
+
+# --------------------------------------------------------------------------- #
+# 13. merge(): per-statistic files combine into one; shared tracers stored
+#     once; covariance block-diagonal (all-or-none); metadata union with
+#     loud conflicts. update_statistic(): value-only merge-back.
+# --------------------------------------------------------------------------- #
+def _xi_sacc(metadata=None):
+    s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
+    sio.add_xi(
+        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+    )
+    return s
+
+
+def _cosebi_sacc(metadata=None):
+    s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
+    sio.add_cosebis(
+        s, (0, 0), np.arange(1, 6) * 1e-6, np.arange(1, 6) * 1e-7, (1.0, 100.0)
+    )
+    return s
+
+
+def test_merge_per_statistic_files(tmp_path):
+    meta = {"version": "vM", "type": "mock"}
+    s_xi, s_co = _xi_sacc(meta), _cosebi_sacc(meta)
+    merged = sio.merge([s_xi, s_co])
+    # shared tracers stored once; all points present, xi first
+    assert set(merged.tracers) == {"source_0", sio.PSF_TRACER}
+    assert len(merged.mean) == len(s_xi.mean) + len(s_co.mean)
+    assert np.array_equal(merged.mean, np.concatenate([s_xi.mean, s_co.mean]))
+    assert merged.metadata["version"] == "vM" and merged.metadata["type"] == "mock"
+    # inputs untouched
+    assert s_xi.metadata["version"] == "vM"
+    # readers work on the merged file after a round-trip
+    sio.save(merged, str(tmp_path / "vM.sacc"), type="mock")
+    merged_rt = sio.load(str(tmp_path / "vM.sacc"))
+    _, p, _ = sio.get_xi(merged_rt, (0, 0), grid="coarse")
+    assert np.array_equal(p, np.arange(6) * 1e-5)
+    _, E, _ = sio.get_cosebis(merged_rt, (0, 0))
+    assert np.array_equal(E, np.arange(1, 6) * 1e-6)
+
+
+def test_merge_covariance_block_diagonal():
+    s_xi, s_co = _xi_sacc(), _cosebi_sacc()
+    cov_xi, cov_co = _spd(len(s_xi.mean), 1), _spd(len(s_co.mean), 2)
+    s_xi.add_covariance(cov_xi)
+    s_co.add_covariance(cov_co)
+    merged = sio.merge([s_xi, s_co])
+    dense = merged.covariance.dense
+    n_xi = len(s_xi.mean)
+    assert np.array_equal(dense[:n_xi, :n_xi], cov_xi)
+    assert np.array_equal(dense[n_xi:, n_xi:], cov_co)
+    assert np.all(dense[:n_xi, n_xi:] == 0)
+
+
+def test_merge_mixed_covariance_fails():
+    s_xi, s_co = _xi_sacc(), _cosebi_sacc()
+    s_xi.add_covariance(_spd(len(s_xi.mean), 1))  # s_co has none
+    with pytest.raises(Exception):
+        sio.merge([s_xi, s_co])
+
+
+def test_merge_conflicting_metadata_fails():
+    s_xi = _xi_sacc({"type": "data"})
+    s_co = _cosebi_sacc({"type": "mock"})
+    with pytest.raises(ValueError, match="conflicting metadata"):
+        sio.merge([s_xi, s_co])
+
+
+def test_update_statistic_values_only():
+    s = _multi_statistic_sacc()
+    tr = ("source_0", "source_0")
+    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
+    cl = np.concatenate(
+        [s.indices(sio.CL_EE, tr), s.indices(sio.CL_BB, tr), s.indices(sio.CL_EB, tr)]
+    )
+    co = np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
+    cov = [(xi, _spd(len(xi), 1)), (cl, _spd(len(cl), 2)), (co, _spd(len(co), 3))]
+    sio.assemble_covariance(s, cov)
+    dense_before = s.covariance.dense.copy()
+    mean_before = s.mean.copy()
+
+    # extract -> shift (a stand-in for conceal) -> merge back
+    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=tr)
+    for point in sub.data:
+        point.value += 1e-4
+    sio.update_statistic(s, sub)
+
+    idx_p = s.indices(sio.XI_PLUS, tr)
+    assert np.allclose(s.mean[idx_p], mean_before[idx_p] + 1e-4)
+    untouched = np.setdiff1d(np.arange(len(s.mean)), idx_p)
+    assert np.array_equal(s.mean[untouched], mean_before[untouched])
+    # covariance and insertion order untouched
+    assert np.array_equal(s.covariance.dense, dense_before)
+
+
+def test_update_statistic_requires_unique_match():
+    s = _xi_sacc()
+    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"))
+    missing = sub.copy()
+    missing.data[0].tags["theta"] = 999.0  # matches nothing in s
+    with pytest.raises(ValueError, match="0 points"):
+        sio.update_statistic(s, missing)
+
+
+# --------------------------------------------------------------------------- #
+# 14. get_pseudo_cl window/cl column correspondence: window column j maps to
 #     the returned ell_eff[j] (verified through window_ind tags).
 # --------------------------------------------------------------------------- #
 def test_pseudo_cl_window_column_correspondence(tmp_path):
