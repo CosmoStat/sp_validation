@@ -39,10 +39,38 @@ executor: slurm
 # are the flaky/no-internet candide nodes (n17 mount issues, n09 no internet,
 # n36); ``slurm_extra`` is passed verbatim onto the sbatch line by the executor
 # plugin, so the quoting is what sbatch must see.
+#
+# Three candide-specific SLURM lessons are baked into the values below (learned
+# the hard way on the earlier hand-driven im-sims runs; see shapepipe's retired
+# image_sims_pipeline/Snakefile docstring):
+#
+#   * ``runtime`` MUST carry a unit (``60m``, ``6h``, ``2d``).  Snakemake's
+#     resource parser reads a *bare* number as SECONDS, so ``runtime: 60`` would
+#     silently give every job a 60-second wall clock and kill it on start.  The
+#     quoted-with-unit form here is deliberate; keep it that way, and prefer the
+#     same in any ``--default-resources`` passed on the command line.  (A bare
+#     integer in a *rule's* ``resources: runtime=720`` is fine -- snakemake
+#     reads rule-level numeric runtime as minutes -- the seconds trap is only
+#     the CLI/default-resources parser.)
+#
+#   * ``cpus_per_task`` is pinned to 12 to CAP JOBS PER NODE, not because a job
+#     needs 12 cores (the chain is MPI-free and pins ``OMP_NUM_THREADS=1`` at
+#     the container).  candide's per-user process limit is ``ulimit -u 1200``
+#     *per node*, and apptainer crashes ("can't start new thread") beyond ~4
+#     concurrent jobs on a 48-core node.  Requesting 12 CPUs/job holds SLURM to
+#     ~4 jobs per 48-core node, under the ceiling.  Dropping this to 1 would let
+#     SLURM pack ~48 jobs onto a node and crash the compute-heavy im_pipeline
+#     stage (which inherits this default -- it sets mem/runtime but not cpus).
+#
+#   * After launching a real fan-out, VERIFY the request actually landed:
+#     ``squeue -u $USER -o "%C %l"`` must show 12 (CPUs) and the wall clock you
+#     intended (e.g. 12:00:00 for im_pipeline).  A silently-misparsed runtime or
+#     cpus shows up here before it wastes a queue slot.
 default-resources:
   slurm_account: "cusers"
   slurm_partition: "comp,pscomp"
   runtime: "60m"
+  cpus_per_task: 12
   slurm_extra: "'--exclude=n17,n09,n36'"
 
 # Give an appearing output file a moment on candide's automounted filesystems
