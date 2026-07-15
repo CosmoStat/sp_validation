@@ -28,6 +28,7 @@ Submodules
    sp_validation.format
    sp_validation.galaxy
    sp_validation.glass_mock
+   sp_validation.image_sims
    sp_validation.io
    sp_validation.masks
    sp_validation.plot_style

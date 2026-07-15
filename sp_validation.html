@@ -104,6 +104,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -276,6 +277,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.check_matching"><code class="docutils literal notranslate"><span class="pre">check_matching()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.check_invalid"><code class="docutils literal notranslate"><span class="pre">check_invalid()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.match_subsample"><code class="docutils literal notranslate"><span class="pre">match_subsample()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.match_catalogs_radec"><code class="docutils literal notranslate"><span class="pre">match_catalogs_radec()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.match_stars2"><code class="docutils literal notranslate"><span class="pre">match_stars2()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.read_shape_catalog"><code class="docutils literal notranslate"><span class="pre">read_shape_catalog()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html#sp_validation.catalog.write_shape_catalog"><code class="docutils literal notranslate"><span class="pre">write_shape_catalog()</span></code></a></li>
@@ -360,6 +362,18 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_two_point_cl_map"><code class="docutils literal notranslate"><span class="pre">compute_two_point_cl_map()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.get_n_gal_map"><code class="docutils literal notranslate"><span class="pre">get_n_gal_map()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html#sp_validation.glass_mock.compute_leakage_harmony"><code class="docutils literal notranslate"><span class="pre">compute_leakage_harmony()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims._is_unweighted"><code class="docutils literal notranslate"><span class="pre">_is_unweighted()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims._load_cat"><code class="docutils literal notranslate"><span class="pre">_load_cat()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias"><code class="docutils literal notranslate"><span class="pre">ImageSimMBias</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias.load_catalogs"><code class="docutils literal notranslate"><span class="pre">ImageSimMBias.load_catalogs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias.print_mean_ellipticities"><code class="docutils literal notranslate"><span class="pre">ImageSimMBias.print_mean_ellipticities()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias._m_c_pair"><code class="docutils literal notranslate"><span class="pre">ImageSimMBias._m_c_pair()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias.run"><code class="docutils literal notranslate"><span class="pre">ImageSimMBias.run()</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a><ul>
@@ -504,7 +518,7 @@
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 14 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 15 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

@@ -136,6 +136,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
@@ -215,14 +216,20 @@
 </li>
       <li><a href="sp_validation.b_modes.html#sp_validation.b_modes._get_pte_from_scale_cut">_get_pte_from_scale_cut() (in module sp_validation.b_modes)</a>
 </li>
+      <li><a href="sp_validation.image_sims.html#sp_validation.image_sims._is_unweighted">_is_unweighted() (in module sp_validation.image_sims)</a>
+</li>
+      <li><a href="sp_validation.image_sims.html#sp_validation.image_sims._load_cat">_load_cat() (in module sp_validation.image_sims)</a>
+</li>
       <li><a href="sp_validation.cosmo_val.pseudo_cl.html#sp_validation.cosmo_val.pseudo_cl.PseudoClMixin._load_onecovariance_cov">_load_onecovariance_cov() (PseudoClMixin method)</a>
 </li>
+      <li><a href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias._m_c_pair">_m_c_pair() (ImageSimMBias method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._masking_gal">_masking_gal() (metacal method)</a>
 </li>
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._masking_gal_mom">_masking_gal_mom() (metacal method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.metacal._masking_star">_masking_star() (metacal method)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation._materialize_seed_path">_materialize_seed_path() (CosmologyValidation static method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation._materialize_seed_path">[1]</a>
@@ -604,6 +611,8 @@
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.ia_convergence">ia_convergence() (in module sp_validation.glass_mock)</a>
 </li>
+      <li><a href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias">ImageSimMBias (class in sp_validation.image_sims)</a>
+</li>
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.init_results">init_results() (CosmologyValidation method)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.init_results">[1]</a>
 </li>
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.InvertedSquareRootTransform.input_dims">input_dims (SquareRootScale.InvertedSquareRootTransform attribute)</a>
@@ -653,9 +662,11 @@
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.plots.html#sp_validation.plots.SquareRootScale.limit_range_for_scale">limit_range_for_scale() (SquareRootScale method)</a>
 </li>
+      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.lmax">lmax (GlassMockConfig property)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
-      <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.lmax">lmax (GlassMockConfig property)</a>
+      <li><a href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias.load_catalogs">load_catalogs() (ImageSimMBias method)</a>
 </li>
       <li><a href="sp_validation.glass_mock.html#sp_validation.glass_mock.GlassMockConfig.log_T_AGN">log_T_AGN (GlassMockConfig attribute)</a>
 </li>
@@ -683,6 +694,8 @@
       <li><a href="sp_validation.calibration.html#sp_validation.calibration.mask_gal_SNR">mask_gal_SNR() (in module sp_validation.calibration)</a>
 </li>
       <li><a href="sp_validation.galaxy.html#sp_validation.galaxy.mask_overlap">mask_overlap() (in module sp_validation.galaxy)</a>
+</li>
+      <li><a href="sp_validation.catalog.html#sp_validation.catalog.match_catalogs_radec">match_catalogs_radec() (in module sp_validation.catalog)</a>
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.match_stars2">match_stars2() (in module sp_validation.catalog)</a>
 </li>
@@ -733,6 +746,8 @@
         <li><a href="sp_validation.galaxy.html#module-sp_validation.galaxy">sp_validation.galaxy</a>
 </li>
         <li><a href="sp_validation.glass_mock.html#module-sp_validation.glass_mock">sp_validation.glass_mock</a>
+</li>
+        <li><a href="sp_validation.image_sims.html#module-sp_validation.image_sims">sp_validation.image_sims</a>
 </li>
         <li><a href="sp_validation.io.html#module-sp_validation.io">sp_validation.io</a>
 </li>
@@ -882,6 +897,8 @@
         <li><a href="sp_validation.masks.html#sp_validation.masks.print_mask_stats">(in module sp_validation.masks)</a>
 </li>
       </ul></li>
+      <li><a href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias.print_mean_ellipticities">print_mean_ellipticities() (ImageSimMBias method)</a>
+</li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.print_mean_ellipticity">print_mean_ellipticity() (in module sp_validation.catalog)</a>
 </li>
       <li><a href="sp_validation.format.html#sp_validation.format.print_millified">print_millified() (in module sp_validation.format)</a>
@@ -931,10 +948,10 @@
 </li>
       <li><a href="sp_validation.catalog.html#sp_validation.catalog.read_shape_catalog">read_shape_catalog() (in module sp_validation.catalog)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.real_space.html#sp_validation.cosmo_val.real_space.RealSpaceMixin">RealSpaceMixin (class in sp_validation.cosmo_val.real_space)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.results">results (CosmologyValidation property)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results">[1]</a>
 </li>
       <li><a href="sp_validation.cosmo_val.core.html#sp_validation.cosmo_val.core.CosmologyValidation.results_objectwise">results_objectwise (CosmologyValidation property)</a>, <a href="sp_validation.cosmo_val.html#sp_validation.cosmo_val.CosmologyValidation.results_objectwise">[1]</a>
@@ -942,6 +959,8 @@
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_stat_handler">rho_stat_handler (PSFSystematicsMixin property)</a>
 </li>
       <li><a href="sp_validation.cosmo_val.psf_systematics.html#sp_validation.cosmo_val.psf_systematics.PSFSystematicsMixin.rho_tau_fits">rho_tau_fits (PSFSystematicsMixin property)</a>
+</li>
+      <li><a href="sp_validation.image_sims.html#sp_validation.image_sims.ImageSimMBias.run">run() (ImageSimMBias method)</a>
 </li>
   </ul></td>
   </tr>
@@ -1086,6 +1105,13 @@
 
       <ul style="list-style-type:none">
         <li><a href="sp_validation.glass_mock.html#module-sp_validation.glass_mock">module</a>
+</li>
+      </ul></li>
+      <li>
+    sp_validation.image_sims
+
+      <ul style="list-style-type:none">
+        <li><a href="sp_validation.image_sims.html#module-sp_validation.image_sims">module</a>
 </li>
       </ul></li>
       <li>
@@ -1241,7 +1267,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 14 Jul, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 15 Jul, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
