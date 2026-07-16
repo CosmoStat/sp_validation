@@ -780,6 +780,64 @@ def test_update_statistic_requires_unique_match():
         sio.update_statistic(s, missing)
 
 
+def test_update_statistic_rejects_duplicate_sub_points():
+    s = _xi_sacc()
+    sub = sio.extract(s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"))
+    sub.data[1].tags = dict(sub.data[0].tags)  # two sub points -> one target
+    with pytest.raises(ValueError, match="same target"):
+        sio.update_statistic(s, sub)
+
+
+def test_merge_rejects_divergent_shared_tracer():
+    s_xi, s_co = _xi_sacc(), _cosebi_sacc()
+    s_co.tracers["source_0"].nz = s_co.tracers["source_0"].nz * 2.0
+    with pytest.raises(ValueError, match="source_0.*differs"):
+        sio.merge([s_xi, s_co])
+
+
+# --------------------------------------------------------------------------- #
+# 15. Unmatched selections fail loud — no silent-empty arrays anywhere.
+# --------------------------------------------------------------------------- #
+def test_readers_raise_on_unmatched_selection():
+    s = _base_sacc()
+    _add_xi(s, grid="reporting")
+    with pytest.raises(ValueError, match="matched no points"):
+        sio.get_xi(s, (0, 0), grid="integration")  # only 'reporting' exists
+    with pytest.raises(ValueError, match="matched no points"):
+        sio.get_xi(s, (0, 1), grid="reporting")  # no such pair
+
+
+def test_get_cosebis_raises_on_unmatched_scale_cut():
+    s = _cosebi_sacc()  # written with scale cut (1.0, 100.0)
+    with pytest.raises(ValueError, match="matched no points"):
+        sio.get_cosebis(s, (0, 0), scale_cut=(2.0, 50.0))
+
+
+def test_get_cosebis_rejects_ambiguous_multi_cut_file():
+    s = _cosebi_sacc()
+    sio.add_cosebis(
+        s, (0, 0), np.arange(1, 6) * 1e-6, np.arange(1, 6) * 1e-7, (2.0, 50.0)
+    )
+    with pytest.raises(ValueError, match="several COSEBIs scale cuts"):
+        sio.get_cosebis(s, (0, 0))
+    n, En, _ = sio.get_cosebis(s, (0, 0), scale_cut=(2.0, 50.0))
+    assert len(En) == 5  # explicit cut disambiguates
+
+
+def test_extract_raises_on_empty_selection():
+    s = _xi_sacc()
+    with pytest.raises(ValueError, match="no points"):
+        sio.extract(s, grid="integration")  # only 'reporting' exists
+
+
+def test_assemble_covariance_rejects_empty_selector():
+    s = _xi_sacc()
+    with pytest.raises(ValueError, match="matched no points"):
+        sio.assemble_covariance(
+            s, [((sio.XI_PLUS, ("source_9", "source_9")), np.eye(6))]
+        )
+
+
 # --------------------------------------------------------------------------- #
 # 14. get_pseudo_cl window/cl column correspondence: window column j maps to
 #     the returned ell_eff[j] (verified through window_ind tags).

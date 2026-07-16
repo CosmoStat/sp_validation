@@ -418,7 +418,7 @@ def _resolve_indices(s, selector):
         return np.asarray(selector, dtype=int)
     data_type, tracers = selector[0], selector[1]
     tags = selector[2] if len(selector) == 3 else {}
-    return np.asarray(s.indices(data_type, tuple(tracers), **tags), dtype=int)
+    return _indices(s, data_type, tuple(tracers), **tags)
 
 
 def add_diagonal_covariance(s, variances):
@@ -491,6 +491,16 @@ def get_cosebis(s, bins, scale_cut=None):
         ``(theta_min, theta_max)`` to select when several cuts share the file.
     """
     tracers = _pair(bins)
+    if scale_cut is None:
+        cuts = {
+            (s.data[i].tags["theta_min"], s.data[i].tags["theta_max"])
+            for i in _indices(s, COSEBI_EE, tracers)
+        }
+        if len(cuts) > 1:
+            raise ValueError(
+                f"several COSEBIs scale cuts share the file ({sorted(cuts)}) "
+                "— pass scale_cut=(theta_min, theta_max) to pick one"
+            )
     tags = dict(zip(("theta_min", "theta_max"), map(float, scale_cut or ())))
     modes = _tag(s, COSEBI_EE, tracers, "n", **tags)
     return (
@@ -523,6 +533,24 @@ def get_tau(s, bins, k):
     return _get_pm(s, TAU_PLUS.format(k=k), TAU_MINUS.format(k=k), tracers)
 
 
+def _indices(s, data_type, tracers, **tag_filters):
+    """``Sacc.indices`` that fails loud instead of selecting nothing.
+
+    ``Sacc.indices`` returns an *empty array* (warning only) when a selection
+    matches no point — e.g. a typo'd tag value, or a float tag filter that is
+    not bitwise-identical to the stored one. Every reader here funnels through
+    this guard so an unmatched selection raises instead of propagating empty
+    arrays downstream.
+    """
+    idx = np.asarray(s.indices(data_type, tracers, **tag_filters), dtype=int)
+    if len(idx) == 0:
+        raise ValueError(
+            f"selection matched no points: ({data_type}, {tracers}, "
+            f"{tag_filters}) — note float tags match by exact equality"
+        )
+    return idx
+
+
 def _mean(s, data_type, tracers, **tag_filters):
     """Mean values for a selection, in ``s.indices`` (insertion) order.
 
@@ -531,12 +559,12 @@ def _mean(s, data_type, tracers, **tag_filters):
     the covariance for any file (and ascending for canonically-written files,
     which the writers enforce).
     """
-    return s.mean[s.indices(data_type, tracers, **tag_filters)]
+    return s.mean[_indices(s, data_type, tracers, **tag_filters)]
 
 
 def _tag(s, data_type, tracers, tag, **tag_filters):
     """Values of ``tag`` for a selection, in insertion order."""
-    idx = s.indices(data_type, tracers, **tag_filters)
+    idx = _indices(s, data_type, tracers, **tag_filters)
     return np.array([s.data[i].tags[tag] for i in idx])
 
 
@@ -571,6 +599,10 @@ def extract(s, data_type=None, tracers=None, **tag_filters):
     sub = s.copy()
     tracer_filter = {"tracers": tuple(tracers)} if tracers is not None else {}
     sub.keep_selection(data_type, **tracer_filter, **tag_filters)
+    if len(sub.mean) == 0:
+        raise ValueError(
+            f"extract selected no points: ({data_type}, {tracers}, {tag_filters})"
+        )
     return sub
 
 
@@ -622,6 +654,19 @@ def merge(saccs):
         shared |= seen & set(s.tracers)
         seen |= set(s.tracers)
     same_tracers = sorted(shared)
+    # The library keeps the FIRST input's tracer on a name clash with no
+    # equality check — verify shared tracers really are the same object.
+    for name in same_tracers:
+        first, *rest = [s.tracers[name] for s in saccs if name in s.tracers]
+        for other in rest:
+            if type(other) is not type(first) or not all(
+                np.array_equal(getattr(first, a, None), getattr(other, a, None))
+                for a in ("z", "nz")
+            ):
+                raise ValueError(
+                    f"shared tracer {name!r} differs across merge inputs — "
+                    "the merged file would silently keep the first"
+                )
     merged = sacc.concatenate_data_sets(*stripped, same_tracers=same_tracers)
     for key, value in metadata.items():
         merged.metadata[key] = value
@@ -647,6 +692,7 @@ def update_statistic(s, sub):
     sub : sacc.Sacc
         The replacement block, e.g. ``extract(s, ...)`` after concealment.
     """
+    claimed = set()
     for point in sub.data:
         idx = s.indices(point.data_type, point.tracers, **point.tags)
         if len(idx) != 1:
@@ -655,6 +701,12 @@ def update_statistic(s, sub):
                 f"({point.data_type}, {point.tracers}, {point.tags}) — need "
                 "exactly one"
             )
+        if idx[0] in claimed:
+            raise ValueError(
+                f"update_statistic: two sub points match the same target "
+                f"point ({point.data_type}, {point.tracers}, {point.tags})"
+            )
+        claimed.add(idx[0])
         s.data[idx[0]].value = point.value
 
 
