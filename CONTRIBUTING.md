@@ -48,17 +48,60 @@ Tests live in `src/sp_validation/tests/`. The default options (configured in
 inside the freshly-built container image *before* publishing it, so a failing
 test blocks the image push.
 
-## Code style
+## Code style and the lint gate
 
-We use [`ruff`](https://docs.astral.sh/ruff/) for linting and import sorting,
-with a line length of 88:
+We use [`ruff`](https://docs.astral.sh/ruff/) for both formatting and linting
+(line length 88). The policy lives in `pyproject.toml` and is region-aware:
+`src/sp_validation/` is strict, while the analysis/workflow/script trees waive a
+few intentional patterns (`sys.path` edits before imports, star-imports).
 
 ```bash
-ruff check            # report issues
+ruff check            # report lint issues
 ruff check --fix      # auto-fix what it can
+ruff format           # format the tree
 ```
 
-Please run `ruff check` before opening a pull request.
+**Local hooks auto-fix the safe stuff, warn on the rest.** The
+[`pre-commit`](https://pre-commit.com/) hooks auto-apply everything ruff can fix
+safely — `ruff format` plus `ruff check --fix`'s safe fixes (import sorting,
+unused imports). When that rewrites a staged file the commit stops *once* so you
+`git add` the result and commit again. Anything ruff *won't* safely fix —
+undefined names, unused variables, other judgement calls — is printed as a
+**warning** and never blocks the commit. Judgement-call lint stays out of your
+way locally; the gate below is where it's enforced.
+
+**`develop` is the gate — and on a PR it fixes for you.** On every push to
+`develop` and every PR into it, CI runs the full ruff policy.
+
+- **On a PR from a branch in this repo** → the gate doesn't just report, it
+  **fixes**: it runs `ruff format` + `ruff check --fix` and **pushes the result
+  back to your branch as the `github-actions` bot**, then re-checks. If that
+  cleaned everything, the PR comment goes green (`🤖 autofix pushed …, ruff is
+  clean`) and there's nothing to do — just `git pull` to pick up the commit. If
+  anything ruff *won't* safely fix survives (undefined names, unused variables,
+  other judgement calls), the check stays **red** and the comment lists **only
+  the residual** — the mechanical stuff is already handled. So you rarely touch
+  ruff by hand; when you do, it's the real judgement calls.
+- **On a PR from a fork** (where CI can't push to your branch) → it posts (and
+  keeps updating) a **comment on the PR** with the full violation list. Push a
+  fix and the comment turns green.
+- **On a direct push to `develop`** (no PR) → it opens (or updates) a single
+  **lint-debt issue assigned to you**, which auto-closes when CI is green.
+
+So: warn while you work, and for same-repo PRs the gate mostly cleans up after
+you before it lands.
+
+## Commit hygiene (notebooks & large files)
+
+The repository's history is heavy from committed notebook outputs. Alongside the
+warn-only ruff hooks above, two **blocking** `pre-commit` hooks guard against
+more of it: `nbstripout` (strips notebook outputs on commit) and a large-file
+check (2 MB). These block because heavy content is expensive to undo once it is
+in history. Activate everything once per clone:
+
+```bash
+pre-commit install
+```
 
 ## Proposing changes
 

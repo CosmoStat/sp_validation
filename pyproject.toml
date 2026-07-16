@@ -9,7 +9,10 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
+# 3.12 floor: cosmo-numba (a hard dependency below) requires >=3.12, and the
+# production container is Python 3.12 (shapepipe base image). Keeping the floor
+# in sync with the container is what makes `uv lock` resolvable.
+requires-python = ">=3.12"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -19,12 +22,46 @@ classifiers = [
 dependencies = [
     "adjustText",
     "astropy>=5.0",
-    "camb",
+    # Floor at the current latest release; do not cap — we want the eventual
+    # scipy-1.18 fix release. Revisit the scipy cap below when camb ships
+    # > 1.6.6 with the scipy-1.18 / BBN fix.
+    "camb>=1.6",
     "clmm",
     "colorama",
-    "cs_util>=0.2.1",
+    # Blinding closure (core, no extra): cryptography + sacc here, plus the
+    # Smokescreen fork pin below; pyccl (the theory backend) is already core.
+    # cryptography and sacc are declared explicitly so the core runtime
+    # closure is self-documenting and independent of fork-metadata drift.
+    "cryptography",
+    # Track cs_util's develop branch directly (git dependency) rather than a
+    # PyPI pin: the two repos are iterating together heavily and cs_util
+    # releases are infrequent. This PR's cosmology repoint needs get_cosmo /
+    # get_theo_c_ell / get_theo_xi / PLANCK18 in cs_util.cosmo, which land via
+    # CosmoStat/cs_util#76 — so this goes green once #76 merges into develop.
+    "cs_util @ git+https://github.com/CosmoStat/cs_util.git@develop",
+    # Fast numba B-mode kernels (Schneider et al. 2022): the Schneider E/B split
+    # and COSEBIS live here, imported in b_modes.py. Tracks aguinot/cosmo-numba
+    # main (not published on PyPI). main carries the numpy-2 FFT fix via its
+    # rocket-fft dependency (which teaches numba's nopython mode to handle
+    # np.fft), and declares numba/numpy/rocket-fft from its requirements.txt so
+    # those constraints reach the resolver.
+    "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba.git@main",
     "emcee",
-    "getdist @ git+https://github.com/benabed/getdist.git@upper_triangle_whisker",
+    # numba is the load-bearing pin of this whole environment: its numpy ceiling
+    # (numba 0.66 -> numpy<2.5) is what keeps the resolver from drifting numpy
+    # forward and breaking numba/ngmix — the failure this lockfile exists to
+    # prevent. cosmo-numba above also carries this constraint, but we pin numba
+    # ourselves too: it makes the one critical constraint visible and resilient
+    # to cosmo-numba's dependency metadata (which has silently emptied out
+    # between refs before). We pin numba, never numpy directly.
+    "numba",
+    # Imported directly across src/ (calibration, plots) alongside seaborn —
+    # declared explicitly rather than leaned on as a seaborn transitive.
+    "matplotlib",
+    "pandas",
+    "pyyaml",
+    # SHA-pinned snapshot of getdist branch `upper_triangle_whisker`.
+    "getdist @ git+https://github.com/benabed/getdist.git@113cd22a9a0d013b6f72fe734be81f260f3d3be5",
     "h5py",
     "healpy",
     "healsparse",
@@ -32,10 +69,9 @@ dependencies = [
     "joblib>=0.13",
     "jupyter",
     "jupyterlab",
-    "jupytext==1.15.1",
+    "jupytext>=1.15",
     "lenspack",
     "lmfit",
-    "numexpr",
     "numpy>=2.0",
     "opencv-python-headless",
     "pyccl",
@@ -43,10 +79,30 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
-    "scipy",
+    "sacc>=0.12",
+    # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
+    # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to
+    # shape-(1,) `array([x])`. camb's BBN Y_He predictor (bbn.py) wraps the
+    # result in np.float64(), which collapses a 0-d array to a scalar but leaves
+    # a (1,) array as (1,); set_cosmology then fails at the ctypes float
+    # assignment `self.YHe = YHe` with `TypeError: only 0-dimensional arrays can
+    # be converted to Python scalars`, failing all get_cosmo-backed tests. camb
+    # 1.6.6 (latest on PyPI) and current master are both unfixed. Lift this cap
+    # when camb ships > 1.6.6 with the scipy-1.18 fix.
+    "scipy<1.18",
     "seaborn",
+    # Intentionally tracks the mutable `develop` branch (NOT SHA-pinned):
+    # shear_psf_leakage is actively co-developed CosmoStat code we want to stay
+    # current with, so freezing it would only create bump-churn. (Contrast the
+    # getdist feature-branch below, which is an external fork we pin for repro.)
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
+    # UNIONS-WL fork of DESC Smokescreen, pinned by SHA on the fork's
+    # packaging branch: it declares pyccl and imports its theory backends
+    # lazily, so the install closure is CCL-only. Provisional pin — swapped to the
+    # fork's release tag once the fork packaging PRs merge. Git pin only;
+    # nothing is published to PyPI.
+    "smokescreen @ git+https://github.com/UNIONS-WL/Smokescreen@588a6b9b26560bd5ba3dd5ba342f3c40152644f9",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",
@@ -55,6 +111,13 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/CosmoStat/sp_validation"
+
+[tool.uv]
+# The reproducibility target is the Linux container; scope the lock to Linux
+# (mirrors shapepipe) so `uv lock` resolves the linux-centric stack (pymaster,
+# mpi4py) without hunting for macOS/Windows wheels. macOS dev installs still
+# work via `uv pip install -e .` (unlocked), just not `uv sync` from the lock.
+environments = ["sys_platform == 'linux'"]
 
 [project.optional-dependencies]
 test = [
@@ -70,6 +133,34 @@ docs = [
     # 6.0.3 is a broken wheel on PyPI (dist-info only, no python module)
     "sphinxawesome-theme>=5.3,!=6.0.3"
 ]
+# GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
+# library and its import guard resolve without GLASS, and the production
+# container does not yet ship it. Pinned set (verified 2026-06-13, fiber
+# glass-cosmology-api-pin): glass 2025.1 is the unique version with the flat API
+# the map path uses AND the legacy ``cosmo.dc``/``xm``/``ef`` interface that
+# ``cosmology`` 2022.10.9 (its newest release) provides — newer glass calls
+# ``comoving_distance``, which no ``cosmology`` release exposes. ``matter_cls``
+# lives in the separate ``glass.ext.camb`` package (absent from glass core
+# >=2024.2), so it is pinned explicitly.
+glass = [
+    "glass==2025.1",
+    "glass.ext.camb==2023.6",
+    "cosmology==2022.10.9",
+    # fitsio: make_unions_glass_sim.py writes the mock catalogue as FITS.
+    "fitsio",
+]
+# Cosmo-inference workflow runners (workflow/scripts/*). Kept optional: the core
+# library resolves without them, but the container installs this extra so the
+# Snakemake workflow and cross-validation runners are available.
+workflow = [
+    "snakemake",
+    # run_2pcf_highres.py drives the MPI convergence run; the container ships
+    # OpenMPI (/opt/ompi) so mpi4py builds against it.
+    "mpi4py",
+    # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
+    # published or resolvable (no public repo found) — left undeclared pending
+    # its source. Same for `unions_wl` (scripts/check_footprint.py).
+]
 develop = ["sp_validation[test,docs]"]
 
 [tool.pytest.ini_options]
@@ -79,7 +170,14 @@ addopts = [
     "--cov=sp_validation",
     "--cov-report=term",
     "--cov-report=xml",
-    "--junitxml=pytest.xml"
+    "--junitxml=pytest.xml",
+    # The base ShapePipe image's test extra ships old pytest-pydocstyle /
+    # pytest-pycodestyle, whose pytest_collect_file hooks use the `path` arg the
+    # newer pytest our lock installs has removed — they crash collection.
+    # sp_validation lints with ruff, not these, so don't load them. Harmless if
+    # absent (`-p no:` just skips an unregistered plugin).
+    "-p", "no:pydocstyle",
+    "-p", "no:pycodestyle"
 ]
 markers = [
     "fast: marks tests as fast (deselect with '-m \"not fast\"')",
@@ -88,7 +186,13 @@ markers = [
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
+
+# Snakemake injects a `snakemake` object into rule scripts at runtime, so ruff
+# can't see where it's defined. Declaring it a builtin silences the false
+# `F821 undefined-name` it raises in `workflow/scripts/*` (~110 hits) while
+# still catching every other undefined name in those scripts.
+builtins = ["snakemake"]
 
 [tool.ruff.lint]
 select = [
@@ -99,5 +203,19 @@ select = [
 ]
 ignore = [
     "E712",  # comparison to True should be 'if cond is True:' or 'if cond:'
+    "E501",  # line-too-long: the formatter owns line width (ruff's own guidance)
 ]
+
+# Region-aware relaxations. src/ stays strict (no ignores). The peripheral
+# trees — workflow scripts, per-paper analysis scripts, top-level scripts, and
+# scratch — legitimately do sys.path manipulation before importing (E402) and
+# pull names in via `from x import *` (F403/F405); enforcing those there would
+# be noise, not signal.
+[tool.ruff.lint.per-file-ignores]
+"workflow/scripts/*" = ["E402"]
+"papers/*/scripts/*" = ["E402", "F403", "F405"]
+"papers/*/*.py" = ["E402", "F403", "F405"]  # per-paper analysis scripts live at this level too
+"scripts/*" = ["E402", "F403", "F405"]
+"scratch/*" = ["E402", "F403", "F405"]
+"cosmo_inference/**" = ["E402"]  # notebooks + scripts do sys.path + mpl-backend setup before imports (covers .ipynb cells, not just .py)
 

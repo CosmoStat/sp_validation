@@ -12,38 +12,36 @@
 #     name: python3
 # ---
 
-import os
-import sys
 import glob
-
 import itertools
-import numpy as np
+import os
+
 import matplotlib.pylab as plt
-
 from cs_util import args
-
 from shear_psf_leakage.rho_tau_stat import RhoStat
+
 
 # +
 # Set parameters from file or user input
 class dummy(object):
     def __init__(self):
-        
+
         self._params = {
             "in_dir_base": ".",
             "title": None,
         }
+
 
 obj = dummy()
 params_upd = args.read_param_script("params_rho.py", obj._params, verbose=True)
 for key in params_upd:
     obj._params[key] = params_upd[key]
 
-#patches = [f'P{x}' for x in np.arange(n_patch) + 1]
+# patches = [f'P{x}' for x in np.arange(n_patch) + 1]
 patches = glob.glob("P*")
 print(patches)
 
-default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+default_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 color_cycle = itertools.cycle(default_colors)
 col = {}
 for patch in patches:
@@ -55,22 +53,20 @@ theta_max = 250
 sep_units = "arcmin"
 nbins = 20
 
-# ## Set up                                                                     
-TreeCorrConfig = {                                                           
-    'ra_units': coord_units,                                                    
-    'dec_units': coord_units,                                                   
-    'min_sep': theta_min,                                                       
-    'max_sep': theta_max,                                                       
-    'sep_units': sep_units,                                                     
-    'nbins': nbins,                                                             
-    'var_method':'bootstrap',                                                   
+# ## Set up
+TreeCorrConfig = {
+    "ra_units": coord_units,
+    "dec_units": coord_units,
+    "min_sep": theta_min,
+    "max_sep": theta_max,
+    "sep_units": sep_units,
+    "nbins": nbins,
+    "var_method": "bootstrap",
 }
 # -
 
-rho_stat_handler = RhoStat(                                                     
-    output=obj._params["in_dir_base"],
-    treecorr_config=TreeCorrConfig,                                          
-    verbose=True
+rho_stat_handler = RhoStat(
+    output=obj._params["in_dir_base"], treecorr_config=TreeCorrConfig, verbose=True
 )
 
 # +
@@ -82,7 +78,7 @@ for patch in patches:
     if os.path.exists(f"{obj._params['in_dir_base']}/{path}"):
         print(f"Reading rho stats {obj._params['in_dir_base']}/{path}...")
         rho_stat_handler.load_rho_stats(path)
-        filenames.append(path) 
+        filenames.append(path)
         colors.append(col[patch])
     else:
         print(
@@ -90,15 +86,13 @@ for patch in patches:
         )
 # -
 
-# Create plot                                                                   
-rho_stat_handler.plot_rho_stats(                                                
-    filenames,                                                                  
-    colors,                                                                     
-    patches,                                                                   
-    abs=False,                                                                  
-    savefig='rho_stats.png',                                                    
+# Create plot
+rho_stat_handler.plot_rho_stats(
+    filenames,
+    colors,
+    patches,
+    abs=False,
+    savefig="rho_stats.png",
     legend="outside",
     title=obj._params["title"],
 )
-
-

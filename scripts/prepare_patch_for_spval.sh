@@ -22,10 +22,10 @@ ln -sf $HOME/psfex/star_cat/${patch}/output/run_sp_Ms/merge_starcat_runner/outpu
 ln -sf ~/shapepipe/auxdir/CFIS/tiles_202106/tiles_${patch}.txt
 
 # Parameter file
-#cp $spdir/notebooks/params.py .
+#cp $spdir/scripts/calibration/params.py .
 echo "Diff:"
-diff $spdir/notebooks/params.py params.py
+diff $spdir/scripts/calibration/params.py params.py
 echo "Run?"
-echo "cp $spdir/notebooks/params.py params.py"
+echo "cp $spdir/scripts/calibration/params.py params.py"
 echo "Run?"
-echo "ipython ~/sp_validation/notebooks/validation.py"
+echo "ipython $spdir/scripts/calibration/extract_info.py"

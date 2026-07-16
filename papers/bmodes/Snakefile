@@ -1,0 +1,52 @@
+# UNIONS B-modes paper — the epistemic layer, composed over the generic
+# compute workflow at ../../workflow/.
+
+configfile: "config/config.yaml"
+configfile: "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/cat_config.yaml"
+
+container: "/n17data/cdaley/containers/containers"
+
+envvars:
+    "PYTHONUNBUFFERED",
+
+import os
+import sys
+
+# The generic workflow, located relative to this file. realpath, because the
+# run directory reaches this Snakefile through a symlink and Snakemake
+# normalizes `..` lexically when resolving includes.
+WORKFLOW_DIR = os.path.normpath(
+    os.path.join(os.path.realpath(str(workflow.basedir)), "../../workflow")
+)
+
+# Shared helpers from the generic workflow. Snakemake's `module` imports
+# rules, not Python globals — helpers arrive by plain Python import.
+sys.path.insert(0, WORKFLOW_DIR)
+import common
+
+common.configure(config)
+from common import *
+
+# Wildcard constraints — centralized in common.py, not in individual rule files
+wildcard_constraints:
+    **WILDCARD_CONSTRAINTS
+
+# Paper directories
+CONFIG_DIR = "config"
+TAPESTRY_DIR = "results/tapestry"
+PAPER_FIGURES_DIR = "docs/unions_release/unions_bmodes/Figures"
+
+# Compute rules (infrastructure — raw outputs, no evidence.json),
+# imported as a module so future papers can compose the same workflow
+# with their own config / overrides.
+module analysis:
+    snakefile: os.path.join(WORKFLOW_DIR, "Snakefile")
+    config: config
+
+use rule * from analysis
+
+# Epistemic rules (evidence.json producers, order matters: claims → synthesis)
+include: "rules/claims.smk"
+include: "rules/ecut.smk"
+include: "rules/synthesis.smk"
+include: "rules/presentation.smk"
