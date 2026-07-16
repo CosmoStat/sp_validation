@@ -6,27 +6,32 @@
               weak-lensing validation package. One file describes each
               catalogue version:
 
-              - ``{version}.sacc`` — NZ tracers, coarse ξ±, pseudo-Cℓ
+              - ``{version}.sacc`` — NZ tracers, reporting-grid ξ±, pseudo-Cℓ
                 (EE/BB/EB) with bandpower windows, COSEBIs, pure E/B, ρ/τ PSF
-                diagnostics, and the fine-grid ξ± integration input for
-                COSEBIs / pure-EB (``grid='fine'`` tagged points). The
+                diagnostics, and the fine ξ± integration input for
+                COSEBIs / pure-EB (``grid='integration'`` tagged points). The
                 covariance is assembled block-diagonally from the
                 per-statistic covariances (zero cross-blocks): the analysis
-                blocks first, then a dense per-pair fine-ξ block (the
+                blocks first, then a dense per-pair integration-ξ block (the
                 analytic integration-binning covariance when it exists — it
                 feeds derived-statistic error propagation — or the TreeCorr
                 ``varxip``/``varxim`` diagonal as degraded fallback). At the
-                production fine binning (1000 θ bins) a dense fine block is
+                production integration binning (1000 θ bins) a dense block is
                 ~32 MB per pair; extreme convergence-check grids (10k bins)
                 degrade to the diagonal fallback rather than forking the
                 layout.
 
-              The covariance order is the point-insertion order (SACC preserves
-              it bitwise through FITS save/load). Writers below insert in the
-              canonical order — ξ+ then ξ−, Cℓ (ee, bb, eb), COSEBIs (all Eₙ
-              then all Bₙ), pure E/B (xip_E, xim_E, xip_B, xim_B, xip_amb,
-              xim_amb — matching ``b_modes._EB_KEYS``), ρ, then τ — but readers
-              never assume global order: they resolve indices through
+              Insertion order is load-bearing. A Sacc is a flat list of data
+              points in the order ``add_data_point`` was called, and row/column
+              ``i`` of the covariance refers to the ``i``-th inserted point —
+              there is no other linkage between a point and its covariance
+              entry. SACC preserves that order bitwise through FITS save/load,
+              so writers define the covariance layout by their insertion
+              sequence. Writers below insert in the canonical order — ξ+ then
+              ξ−, Cℓ (ee, bb, eb), COSEBIs (all Eₙ then all Bₙ), pure E/B
+              (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb — matching
+              ``b_modes._EB_KEYS``), ρ, then τ — but readers never assume
+              global order: they resolve indices through
               ``Sacc.indices(dtype, tracers, **tags)``.
 
               Tag filters are plain keyword arguments to ``indices`` /
@@ -81,7 +86,11 @@ TAU_MINUS = "galaxyPsf_tau{k}_xi_minus"
 
 
 def source_name(i):
-    """SACC tracer name for source redshift bin ``i`` (0-based)."""
+    """SACC tracer name for source redshift bin ``i`` (0-based).
+
+    Kept as the single definition of the ``source_{i}`` naming contract —
+    external consumers address tracers through it rather than the f-string.
+    """
     return f"source_{i}"
 
 
@@ -108,6 +117,10 @@ def new_sacc(nz, metadata=None):
     s = sacc.Sacc()
     for i, (z, nz_i) in items:
         s.add_tracer("NZ", source_name(i), np.asarray(z), np.asarray(nz_i))
+    # The PSF star sample sits alongside the source bins because a Sacc has a
+    # single tracer namespace — every data point references tracers from one
+    # flat list. This is bookkeeping, not physics: psf_stars is a Misc tracer
+    # (no n(z)) that exists only so ρ/τ points have something to reference.
     s.add_tracer("Misc", PSF_TRACER)
     for key, value in (metadata or {}).items():
         s.metadata[key] = value
@@ -119,7 +132,8 @@ def _pair(bins):
 
     The pair is normalised to ``i <= j``: shear-shear statistics are symmetric
     in the tracer pair, and SACC stores each pair under one ordering, so
-    ``(1, 0)`` must address the same points as ``(0, 1)``.
+    ``(1, 0)`` must address the same points as ``(0, 1)``. Kept as a helper:
+    every ``add_*``/``get_*`` function relies on this normalisation.
     """
     i, j = sorted(bins)
     return (source_name(i), source_name(j))
@@ -165,9 +179,11 @@ def add_xi(
         Angular separations (arcmin) — TreeCorr ``meanr``.
     xip, xim : array_like
         ξ+ and ξ− at ``theta``.
-    grid : {'coarse', 'fine'}
-        Distinguishes the analysis grid from the fine integration grid;
-        stored as the ``grid`` tag on every point.
+    grid : {'reporting', 'integration'}
+        Stored as the ``grid`` tag on every point. The reporting (analysis)
+        ξ± and the fine COSEBIs/pure-EB integration input share the same
+        data type and tracer pair, so this tag is the only thing that
+        disambiguates them in the file.
     theta_nom : array_like, optional
         Nominal bin centres — TreeCorr ``rnom`` — stored as ``theta_nom``.
     npairs, weight : array_like, optional
@@ -559,7 +575,7 @@ def extract(s, data_type=None, tracers=None, **tag_filters):
         ``extract`` is the generic selection escape hatch, mirroring
         ``Sacc.keep_selection`` and addressing non-source tracers uniformly.
     **tag_filters
-        Tag filters (plain kwargs, e.g. ``grid='fine'``).
+        Tag filters (plain kwargs, e.g. ``grid='integration'``).
 
     Returns
     -------

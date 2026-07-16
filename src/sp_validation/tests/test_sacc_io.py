@@ -66,20 +66,20 @@ def test_xi_roundtrip(tmp_path):
         theta,
         xip,
         xim,
-        grid="coarse",
+        grid="reporting",
         theta_nom=theta * 1.01,
         npairs=npairs,
         weight=weight,
     )
     s2 = _roundtrip(s, tmp_path, "xi")
-    th, p, m = sio.get_xi(s2, (0, 0), grid="coarse")
+    th, p, m = sio.get_xi(s2, (0, 0), grid="reporting")
     assert np.array_equal(th, theta)
     assert np.array_equal(p, xip)
     assert np.array_equal(m, xim)
     # extra tags survive
-    idx = s2.indices(sio.XI_PLUS, ("source_0", "source_0"), grid="coarse")
+    idx = s2.indices(sio.XI_PLUS, ("source_0", "source_0"), grid="reporting")
     tags = s2.data[idx[0]].tags
-    assert tags["grid"] == "coarse"
+    assert tags["grid"] == "reporting"
     assert set(tags) >= {"theta", "theta_nom", "npairs", "weight", "grid"}
 
 
@@ -183,7 +183,7 @@ def _multi_statistic_sacc():
     theta = _theta()
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     ell = np.array([30.0, 120.0, 210.0])
     W = np.random.default_rng(0).uniform(size=(20, 3))
@@ -254,7 +254,7 @@ def test_assemble_covariance_selector_tuples():
 def test_assemble_covariance_wrong_dimension():
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     idx = np.arange(len(s.mean))
     with pytest.raises(ValueError, match="span"):
@@ -264,7 +264,7 @@ def test_assemble_covariance_wrong_dimension():
 def test_assemble_covariance_non_contiguous():
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     idx = np.array([0, 2, 4, 6, 8, 10, 1, 3])  # not contiguous/ascending
     with pytest.raises(ValueError, match="non-contiguous"):
@@ -284,7 +284,7 @@ def test_assemble_covariance_missing_coverage():
 def test_assemble_covariance_non_square():
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     idx = np.arange(len(s.mean))
     with pytest.raises(ValueError, match="square"):
@@ -309,11 +309,11 @@ def test_diagonal_covariance_roundtrip(tmp_path):
     xip, xim = np.arange(n) * 1e-5, np.arange(n) * 2e-5
     varxip, varxim = np.arange(1, n + 1) * 1e-12, np.arange(1, n + 1) * 2e-12
     s = _base_sacc()
-    sio.add_xi(s, (0, 0), theta, xip, xim, grid="fine")
+    sio.add_xi(s, (0, 0), theta, xip, xim, grid="integration")
     variances = np.concatenate([varxip, varxim])  # [xip; xim] order
     sio.add_diagonal_covariance(s, variances)
     assert type(s.covariance).__name__ == "DiagonalCovariance"
-    s2 = _roundtrip(s, tmp_path, "fine")
+    s2 = _roundtrip(s, tmp_path, "integration")
     assert type(s2.covariance).__name__ == "DiagonalCovariance"
     assert np.array_equal(np.diag(s2.covariance.dense), variances)
 
@@ -346,14 +346,16 @@ def test_extract_tag_filter():
     theta = _theta()
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
-    sio.add_xi(s, (0, 0), theta, np.arange(6) * 3e-5, np.arange(6) * 4e-5, grid="fine")
+    sio.add_xi(
+        s, (0, 0), theta, np.arange(6) * 3e-5, np.arange(6) * 4e-5, grid="integration"
+    )
     sub = sio.extract(
-        s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"), grid="fine"
+        s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"), grid="integration"
     )
     assert len(sub.mean) == len(theta)
-    assert set(sub.get_tag("grid", sio.XI_PLUS)) == {"fine"}
+    assert set(sub.get_tag("grid", sio.XI_PLUS)) == {"integration"}
 
 
 # --------------------------------------------------------------------------- #
@@ -370,11 +372,11 @@ def test_tomographic_per_pair_selection(tmp_path):
             theta,
             np.arange(6) * (k + 1) * 1e-5,
             np.arange(6) * (k + 1) * 2e-5,
-            grid="coarse",
+            grid="reporting",
         )
     s2 = _roundtrip(s, tmp_path, "tomo")
     for k, (i, j) in enumerate(pairs):
-        th, p, m = sio.get_xi(s2, (i, j), grid="coarse")
+        th, p, m = sio.get_xi(s2, (i, j), grid="reporting")
         assert np.array_equal(th, theta)
         assert np.array_equal(p, np.arange(6) * (k + 1) * 1e-5)
         assert np.array_equal(m, np.arange(6) * (k + 1) * 2e-5)
@@ -390,7 +392,7 @@ def test_readers_on_mixed_file(tmp_path):
     theta = _theta()
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     ell = np.array([30.0, 120.0, 210.0])
     W = np.random.default_rng(0).uniform(size=(20, 3))
@@ -424,7 +426,7 @@ def test_readers_on_mixed_file(tmp_path):
         )
     s2 = _roundtrip(s, tmp_path, "mixed")
 
-    _, p, m = sio.get_xi(s2, (0, 0), grid="coarse")
+    _, p, m = sio.get_xi(s2, (0, 0), grid="reporting")
     assert np.array_equal(p, np.arange(6) * 1e-5) and np.array_equal(
         m, np.arange(6) * 2e-5
     )
@@ -454,26 +456,31 @@ def test_end_to_end_one_file_layout(tmp_path):
     # one file: analysis products first, fine-grid integration input last
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), theta_c, np.arange(20) * 1e-5, np.arange(20) * 2e-5, grid="coarse"
+        s, (0, 0), theta_c, np.arange(20) * 1e-5, np.arange(20) * 2e-5, grid="reporting"
     )
     sio.add_cosebis(
         s, (0, 0), np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7, (1.0, 100.0)
     )
     sio.add_xi(
-        s, (0, 0), theta_f, np.arange(200) * 1e-5, np.arange(200) * 2e-5, grid="fine"
+        s,
+        (0, 0),
+        theta_f,
+        np.arange(200) * 1e-5,
+        np.arange(200) * 2e-5,
+        grid="integration",
     )
     tr = ("source_0", "source_0")
     xi_c = np.concatenate(
         [
-            s.indices(sio.XI_PLUS, tr, grid="coarse"),
-            s.indices(sio.XI_MINUS, tr, grid="coarse"),
+            s.indices(sio.XI_PLUS, tr, grid="reporting"),
+            s.indices(sio.XI_MINUS, tr, grid="reporting"),
         ]
     )
     co = np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
     xi_f = np.concatenate(
         [
-            s.indices(sio.XI_PLUS, tr, grid="fine"),
-            s.indices(sio.XI_MINUS, tr, grid="fine"),
+            s.indices(sio.XI_PLUS, tr, grid="integration"),
+            s.indices(sio.XI_MINUS, tr, grid="integration"),
         ]
     )
     # dense fine block (CosmoCov integration covariance in production)
@@ -486,18 +493,18 @@ def test_end_to_end_one_file_layout(tmp_path):
 
     a = sio.load(str(tmp_path / f"{version}.sacc"))
 
-    th_c, p_c, _ = sio.get_xi(a, (0, 0), grid="coarse")
+    th_c, p_c, _ = sio.get_xi(a, (0, 0), grid="reporting")
     assert np.array_equal(th_c, theta_c) and np.array_equal(p_c, np.arange(20) * 1e-5)
     n, E, B = sio.get_cosebis(a, (0, 0))
     assert np.array_equal(n, np.arange(1, 11))
     assert a.covariance.dense.shape == (len(a.mean), len(a.mean))
 
-    th_f, p_f, _ = sio.get_xi(a, (0, 0), grid="fine")
+    th_f, p_f, _ = sio.get_xi(a, (0, 0), grid="integration")
     assert np.array_equal(th_f, theta_f) and np.array_equal(p_f, np.arange(200) * 1e-5)
 
     # extract() of the fine selection pulls the aligned dense sub-covariance
-    fine = sio.extract(a, sio.XI_PLUS, tr, grid="fine")
-    idx_p = a.indices(sio.XI_PLUS, tr, grid="fine")
+    fine = sio.extract(a, sio.XI_PLUS, tr, grid="integration")
+    idx_p = a.indices(sio.XI_PLUS, tr, grid="integration")
     assert np.allclose(fine.covariance.dense, a.covariance.dense[np.ix_(idx_p, idx_p)])
     # zero cross-blocks between analysis and fine points
     assert np.all(a.covariance.dense[np.ix_(xi_c, xi_f)] == 0)
@@ -508,22 +515,27 @@ def test_one_file_layout_diagonal_fine_fallback(tmp_path):
     s = _base_sacc()
     theta_f = np.geomspace(0.1, 250.0, 50)
     sio.add_xi(
-        s, (0, 0), _theta(6), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), _theta(6), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     sio.add_xi(
-        s, (0, 0), theta_f, np.arange(50) * 1e-5, np.arange(50) * 2e-5, grid="fine"
+        s,
+        (0, 0),
+        theta_f,
+        np.arange(50) * 1e-5,
+        np.arange(50) * 2e-5,
+        grid="integration",
     )
     tr = ("source_0", "source_0")
     xi_c = np.concatenate(
         [
-            s.indices(sio.XI_PLUS, tr, grid="coarse"),
-            s.indices(sio.XI_MINUS, tr, grid="coarse"),
+            s.indices(sio.XI_PLUS, tr, grid="reporting"),
+            s.indices(sio.XI_MINUS, tr, grid="reporting"),
         ]
     )
     xi_f = np.concatenate(
         [
-            s.indices(sio.XI_PLUS, tr, grid="fine"),
-            s.indices(sio.XI_MINUS, tr, grid="fine"),
+            s.indices(sio.XI_PLUS, tr, grid="integration"),
+            s.indices(sio.XI_MINUS, tr, grid="integration"),
         ]
     )
     variances = np.concatenate([np.arange(1, 51) * 1e-12, np.arange(1, 51) * 2e-12])
@@ -541,7 +553,7 @@ def test_add_xi_rejects_non_ascending_theta():
     theta = _theta()[::-1]  # descending
     with pytest.raises(ValueError, match="theta must be strictly ascending"):
         sio.add_xi(
-            s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+            s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
         )
 
 
@@ -581,15 +593,15 @@ def test_bin_pair_normalisation():
     theta = _theta()
     xip, xim = np.arange(6) * 1e-5, np.arange(6) * 2e-5
     s = _base_sacc(nbins=2)
-    sio.add_xi(s, (0, 1), theta, xip, xim, grid="coarse")
-    th01, p01, m01 = sio.get_xi(s, (0, 1), grid="coarse")
-    th10, p10, m10 = sio.get_xi(s, (1, 0), grid="coarse")  # reversed order
+    sio.add_xi(s, (0, 1), theta, xip, xim, grid="reporting")
+    th01, p01, m01 = sio.get_xi(s, (0, 1), grid="reporting")
+    th10, p10, m10 = sio.get_xi(s, (1, 0), grid="reporting")  # reversed order
     assert np.array_equal(th01, th10)
     assert np.array_equal(p01, p10) and np.array_equal(p10, xip)
     assert np.array_equal(m01, m10) and np.array_equal(m10, xim)
     # writing under (1, 0) lands in the same tracer pair, not a new one
     s2 = _base_sacc(nbins=2)
-    sio.add_xi(s2, (1, 0), theta, xip, xim, grid="coarse")
+    sio.add_xi(s2, (1, 0), theta, xip, xim, grid="reporting")
     assert len(s2.indices(sio.XI_PLUS, ("source_0", "source_1"))) == len(theta)
 
 
@@ -611,7 +623,7 @@ def test_tomographic_xi_covariance_one_contiguous_block():
             theta,
             np.arange(nth) * (k + 1) * 1e-5,
             np.arange(nth) * (k + 1) * 2e-5,
-            grid="coarse",
+            grid="reporting",
         )
     # All ξ points as one contiguous block in insertion (pair-major) order.
     xi_idx = np.arange(len(s.mean))
@@ -631,7 +643,7 @@ def test_tomographic_xi_covariance_one_contiguous_block():
         )
         assert np.array_equal(sub.covariance.dense, cov[np.ix_(idx_p, idx_p)])
         # readers stay covariance-aligned: get_xi returns in the same order
-        th, xip, _ = sio.get_xi(s, (i, j), grid="coarse")
+        th, xip, _ = sio.get_xi(s, (i, j), grid="reporting")
         assert np.array_equal(th, theta)
         assert np.array_equal(s.mean[idx_p], xip)
 
@@ -643,7 +655,7 @@ def test_tomographic_xi_covariance_one_contiguous_block():
 def _saved(tmp_path, name, *, type, concealed=None):
     s = _base_sacc()
     sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     if concealed is not None:
         s.metadata["concealed"] = concealed
@@ -716,7 +728,7 @@ def test_load_requires_type_tag(tmp_path):
 def _xi_sacc(metadata=None):
     s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
     sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     return s
 
@@ -743,7 +755,7 @@ def test_merge_per_statistic_files(tmp_path):
     # readers work on the merged file after a round-trip
     sio.save(merged, str(tmp_path / "vM.sacc"), type="mock")
     merged_rt = sio.load(str(tmp_path / "vM.sacc"))
-    _, p, _ = sio.get_xi(merged_rt, (0, 0), grid="coarse")
+    _, p, _ = sio.get_xi(merged_rt, (0, 0), grid="reporting")
     assert np.array_equal(p, np.arange(6) * 1e-5)
     _, E, _ = sio.get_cosebis(merged_rt, (0, 0))
     assert np.array_equal(E, np.arange(1, 6) * 1e-6)
