@@ -773,3 +773,50 @@ def load(path, *, allow_unblinded=False):
             "allow_unblinded=True."
         )
     return s
+
+
+# --------------------------------------------------------------------------- #
+# Terminal assembly — added on top of PR-2's canonical module (PR-6 blinding).
+# Everything above this banner is byte-identical to feat/sacc-2-sacc-io; only
+# gather() and its blind-custody call site live here.
+# --------------------------------------------------------------------------- #
+def gather(parts, metadata=None):
+    """Assemble standalone part SACCs into the one-file ``{version}.sacc``.
+
+    Each part is an intermediate product as it came off its producing rule
+    (reporting ξ±, integration ξ±, pseudo-Cℓ, ρ/τ, …). Assembly itself — the
+    first-wins tracer union, in-order point concatenation with all tags
+    (bandpower windows included), and the block-diagonal covariance — is
+    exactly :func:`merge`, so gather delegates to it and adds only the one
+    thing merge cannot know about: **blind custody.**
+
+    **Blind custody (the module's one blind-aware call site):**
+    :func:`sp_validation.blinding.assert_consistent_blind` runs before the
+    merge — it fails closed unless every blindable part carries the identical
+    ``blind_commitment``/``blind_config_digest`` (or, when nothing is blinded,
+    every blindable part is declared ``type='mock'``). Its returned shared
+    stamp is written onto the assembled file so the one-file product carries
+    the blind it was built from; the blinded parts already carry those keys,
+    so merge preserves them and this stamp is a consistent (idempotent)
+    re-affirmation.
+
+    Parameters
+    ----------
+    parts : sequence of sacc.Sacc
+        The part SACCs, in the assembly (covariance) order.
+    metadata : dict, optional
+        Extra key/value pairs to store on the assembled file's metadata.
+
+    Returns
+    -------
+    sacc.Sacc
+        The assembled file.
+    """
+    from . import blinding
+
+    parts = list(parts)
+    stamp = blinding.assert_consistent_blind(parts)
+    s = merge(parts)
+    for key, value in {**(metadata or {}), **(stamp or {})}.items():
+        s.metadata[key] = value
+    return s
