@@ -62,8 +62,8 @@ def pseudo_cl_assets(version):
 # The SACC migration (PR 4) removed the data products several of these inputs
 # name, so this rule's DAG no longer resolves and is NOT reachable from the
 # cosmo_val suite (cosmo_val_all never requests it). Stale inputs:
-#   - xi_plus / xi_minus FITS: the `xi` rule now emits the coarse ξ± SACC part
-#     ({version}_xi_coarse_...sacc), not per-sign FITS.
+#   - xi_plus / xi_minus FITS: the `xi` rule now emits the reporting ξ± SACC part
+#     ({version}_xi_reporting_...sacc), not per-sign FITS.
 #   - pseudo_cl / pseudo_cl_cov via pseudo_cl_assets(): the `pseudo_cl` rule now
 #     writes .sacc (pseudo_cl_assets still requests .fits).
 # PR 7 rewires this to consume the assembled {version}.sacc (built by

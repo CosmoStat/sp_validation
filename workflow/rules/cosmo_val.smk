@@ -154,16 +154,16 @@ def cv_rho_tau_sacc(version):
     )
 
 
-def cv_xi_coarse_sacc(version):
-    """Coarse ξ± SACC part the xi rule (run_2pcf.py) writes for a version.
+def cv_xi_reporting_sacc(version):
+    """Reporting ξ± SACC part the xi rule (run_2pcf.py) writes for a version.
 
     Carries the reporting-binning suffix so requesting it binds the xi job's
-    wildcards (the rule's txt + coarse .sacc outputs share one wildcard set).
+    wildcards (the rule's txt + reporting .sacc outputs share one wildcard set).
     """
     return str(
         COSMO_VAL
         / (
-            f"{version}_xi_coarse_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
+            f"{version}_xi_reporting_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
             f"_nbins={CV['nbins']}_npatch={CV['npatch']}.sacc"
         )
     )
@@ -442,9 +442,9 @@ rule cv_summarize_bmodes:
 # ---------------------------------------------------------------------------
 # Terminal analysis file: assemble the per-statistic SACC parts into {version}.sacc
 # ---------------------------------------------------------------------------
-# The five born-as-SACC parts (xi_coarse, pseudo_cl, cosebis, pure_eb, rho_tau)
+# The five born-as-SACC parts (xi_reporting, pseudo_cl, cosebis, pure_eb, rho_tau)
 # are each written by their own rule carrying its own covariance block, except
-# ξ± coarse and pseudo-Cℓ which are born cov-less by design. assemble_sacc.py
+# ξ± reporting and pseudo-Cℓ which are born cov-less by design. assemble_sacc.py
 # loads the parts in canonical order and rebuilds one {version}.sacc with a
 # single FullCovariance (point-insertion order = block order).
 #
@@ -453,7 +453,7 @@ rule cv_summarize_bmodes:
 # analysis file stays byte-comparable against it (PR-3's converter). Its real
 # NaMaster covariance is injected here from the matching pseudo_cl_cov FITS
 # (COVAR_EE_EE/BB_BB/EB_EB → block-diagonal, dropping cross-spectra, matching the
-# B-mode PTE's use of COVAR_BB_BB). The ξ± coarse block is the one piece not yet
+# B-mode PTE's use of COVAR_BB_BB). The ξ± reporting block is the one piece not yet
 # sourced from its real covariance: the CosmoCov theory .txt is blind/gaussian/
 # mask-keyed and lives deep in the inference tree, so wiring it couples cosmo_val
 # to the whole inference covariance DAG — that sourcing is PR-3's converter
@@ -466,12 +466,12 @@ def cv_assemble_inputs(version):
     """The per-statistic SACC parts + covariance inputs assemble_sacc consumes.
 
     Each part's filename carries enough to bind its producing rule's wildcards
-    (the coarse ξ± and ρ/τ parts their reporting binning; the pseudo-Cℓ part its
+    (the reporting ξ± and ρ/τ parts their reporting binning; the pseudo-Cℓ part its
     fiducial harmonic tag). pseudo_cl (+ its cov) is included only when the
     config toggles the harmonic-space BB into the analysis.
     """
     parts = dict(
-        xi_coarse=cv_xi_coarse_sacc(version),
+        xi_reporting=cv_xi_reporting_sacc(version),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
@@ -496,7 +496,7 @@ rule assemble_sacc:
         expected=lambda w: [
             k for k in cv_assemble_inputs(w.version) if k != "pseudo_cl_cov"
         ],
-        # ξ± coarse has no real covariance wired yet (its CosmoCov theory block is
+        # ξ± reporting has no real covariance wired yet (its CosmoCov theory block is
         # PR-3's converter territory, plugging in via --xi-cov). By DEFAULT this
         # is fatal: assemble_sacc.py raises rather than ship {version}.sacc — the
         # terminal science file — with a var=1.0 placeholder as its LEADING

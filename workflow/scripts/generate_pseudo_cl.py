@@ -144,7 +144,9 @@ def generate_pseudo_cl(
     cv.calculate_pseudo_cl(out_path=out_path)
 
     if os.path.exists(out_path):
-        s = sacc_io.load(out_path)
+        # Pipeline-internal readback of the unblinded data part just written
+        # (blinding is a downstream Smokescreen step).
+        s = sacc_io.load(out_path, allow_unblinded=True)
         ell = sacc_io.get_pseudo_cl(s, (0, 0))[0]
         print(f"Generated pseudo-Cl with {len(ell)} ell bins")
         print(f"ell range: [{ell.min():.1f}, {ell.max():.1f}]")

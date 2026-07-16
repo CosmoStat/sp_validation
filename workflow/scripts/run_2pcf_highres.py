@@ -2,7 +2,7 @@
 """
 High-resolution ξ± measurement for COSEBIS integration.
 
-Computes TreeCorr GGCorrelation with fine angular binning (10,000+ bins)
+Computes TreeCorr GGCorrelation with integration angular binning (10,000+ bins)
 required for accurate COSEBIS mode integration. Uses MPI for patch-pair
 distribution across nodes when available; falls back to multi-threaded
 single-process otherwise.
@@ -28,7 +28,7 @@ import treecorr
 from astropy.io import fits
 
 # sacc_io depends only on numpy + sacc (no healpy/cs_util), so the born-as-SACC
-# fine ξ± write works on the bare-host MPI path too, where the full cosmo_val
+# integration ξ± write works on the bare-host MPI path too, where the full cosmo_val
 # stack is unavailable.
 from sp_validation import sacc_io
 from sp_validation.cosmo_val.sacc_writers import xi_to_sacc
@@ -203,8 +203,8 @@ def compute_patch_centers(ra, dec):
     del cat_sub
 
 
-def write_xi_fine_sacc(gg):
-    """Write the terminal fine-grid ξ± SACC part (``{version}_xi_fine.sacc``).
+def write_xi_integration_sacc(gg):
+    """Write the terminal integration-grid ξ± SACC part (``{version}_xi_integration.sacc``).
 
     This is a terminal product in its own right — COSEBIs and pure-E/B consume
     it. It carries a ``DiagonalCovariance`` from TreeCorr ``varxip``/``varxim``
@@ -224,12 +224,12 @@ def write_xi_fine_sacc(gg):
         gg.meanr,
         gg.xip,
         gg.xim,
-        grid="fine",
+        grid="integration",
         theta_nom=gg.rnom,
         variances=np.concatenate([gg.varxip, gg.varxim]),
     )
-    out_path = os.path.join(OUTPUT_DIR, f"{VERSION}_xi_fine.sacc")
-    sacc_io.save(s, out_path)
+    out_path = os.path.join(OUTPUT_DIR, f"{VERSION}_xi_integration.sacc")
+    sacc_io.save(s, out_path, type="data")
     log(f"  Wrote {out_path}")
 
 
@@ -402,7 +402,7 @@ def main():
         gg.write(out_txt, write_patch_results=False, write_cov=False)
         log(f"  Wrote {out_txt}")
 
-        write_xi_fine_sacc(gg)
+        write_xi_integration_sacc(gg)
 
         elapsed = time.time() - t0
         log(f"Done! Total time: {elapsed / 3600:.1f}h ({elapsed:.0f}s)")

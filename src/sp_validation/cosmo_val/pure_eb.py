@@ -151,7 +151,7 @@ class PureEBMixin:
             eb,
             covariance=results["cov"],
         )
-        sacc_io.save(s, out_path)
+        sacc_io.save(s, out_path, type="data")
 
     def plot_pure_eb(
         self,

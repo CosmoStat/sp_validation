@@ -8,13 +8,13 @@ rule xi:
         catalog=get_shear_catalog,
     output:
         # Raw TreeCorr .txt byproduct (read back by covariance + skip-if-exists)
-        # and the born-as-SACC coarse ξ± part (no covariance until the
+        # and the born-as-SACC reporting ξ± part (no covariance until the
         # assemble_sacc rule injects the CosmoCov block). Both outputs carry the
         # same reporting-binning wildcards — Snakemake requires every output of a
-        # rule to share one wildcard set, and it keeps the coarse .sacc name
+        # rule to share one wildcard set, and it keeps the reporting .sacc name
         # self-describing so requesting it binds the xi job unambiguously.
         txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        xi_coarse=str(COSMO_VAL / "{version}_xi_coarse_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
+        xi_reporting=str(COSMO_VAL / "{version}_xi_reporting_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
         ver="{version}",
@@ -33,14 +33,14 @@ rule xi:
 rule xi_highres:
     """High-resolution xi for COSEBIS integration.
 
-    Terminal born-as-SACC product: {version}_xi_fine.sacc (a DiagonalCovariance
+    Terminal born-as-SACC product: {version}_xi_integration.sacc (a DiagonalCovariance
     from TreeCorr varxip/varxim). COSEBIs and pure-E/B consume it. The raw .txt
     dump is kept as a convergence byproduct.
     """
     container: None
     output:
         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-        xi_fine=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_fine.sacc"),
+        xi_integration=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_integration.sacc"),
     resources:
         tasks=30,
         cpus_per_task=12,

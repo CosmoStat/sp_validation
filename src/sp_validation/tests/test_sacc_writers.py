@@ -31,7 +31,7 @@ def _theta(n=6):
 
 def _roundtrip(s, tmp_path, name):
     p = tmp_path / f"{name}.sacc"
-    sio.save(s, str(p))
+    sio.save(s, str(p), type="mock")
     return sio.load(str(p))
 
 
@@ -41,20 +41,20 @@ META = {"catalogue_version": "vSYNTH", "npatch": 1}
 # --------------------------------------------------------------------------- #
 # Per-writer parts
 # --------------------------------------------------------------------------- #
-def test_xi_to_sacc_coarse(tmp_path):
+def test_xi_to_sacc_reporting(tmp_path):
     theta = _theta()
     xip, xim = np.arange(6) * 1e-5, np.arange(6) * 2e-5
     s = sw.xi_to_sacc(
-        {0: _nz()}, META, theta, xip, xim, grid="coarse", theta_nom=theta * 1.01
+        {0: _nz()}, META, theta, xip, xim, grid="reporting", theta_nom=theta * 1.01
     )
     s2 = _roundtrip(s, tmp_path, "xic")
-    th, p, m = sio.get_xi(s2, (0, 0), grid="coarse")
+    th, p, m = sio.get_xi(s2, (0, 0), grid="reporting")
     assert np.array_equal(th, theta)
     assert np.array_equal(p, xip) and np.array_equal(m, xim)
-    assert s2.covariance is None  # coarse part has no cov until assembly
+    assert s2.covariance is None  # reporting part has no cov until assembly
 
 
-def test_xi_to_sacc_fine_diagonal(tmp_path):
+def test_xi_to_sacc_integration_diagonal(tmp_path):
     theta = np.geomspace(0.5, 300.0, 30)
     xip, xim = np.arange(30) * 1e-5, np.arange(30) * 2e-5
     varxip, varxim = np.arange(1, 31) * 1e-12, np.arange(1, 31) * 2e-12
@@ -64,12 +64,12 @@ def test_xi_to_sacc_fine_diagonal(tmp_path):
         theta,
         xip,
         xim,
-        grid="fine",
+        grid="integration",
         variances=np.concatenate([varxip, varxim]),
     )
     assert type(s.covariance).__name__ == "DiagonalCovariance"
     s2 = _roundtrip(s, tmp_path, "xif")
-    th, p, _ = sio.get_xi(s2, (0, 0), grid="fine")
+    th, p, _ = sio.get_xi(s2, (0, 0), grid="integration")
     assert np.array_equal(th, theta) and np.array_equal(p, xip)
     assert np.array_equal(
         np.diag(s2.covariance.dense), np.concatenate([varxip, varxim])
@@ -239,7 +239,7 @@ def _make_parts(nz):
             return w
 
     xi = sw.xi_to_sacc(
-        nz, META, theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        nz, META, theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
     xi.add_covariance(_spd(len(xi.mean), 1))
     cl_all = np.vstack(
@@ -293,7 +293,12 @@ def test_assemble_analysis_sacc_requires_covariance():
     parts = _make_parts(nz)
     parts.append(
         sw.xi_to_sacc(
-            nz, META, _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+            nz,
+            META,
+            _theta(),
+            np.arange(6) * 1e-5,
+            np.arange(6) * 2e-5,
+            grid="reporting",
         )
     )  # no covariance
     with pytest.raises(ValueError, match="own covariance block"):
@@ -306,7 +311,7 @@ def test_assemble_from_reloaded_parts(tmp_path):
     parts = _make_parts(nz)
     reloaded = []
     for i, part in enumerate(parts):
-        sio.save(part, str(tmp_path / f"part{i}.sacc"))
+        sio.save(part, str(tmp_path / f"part{i}.sacc"), type="mock")
         reloaded.append(sio.load(str(tmp_path / f"part{i}.sacc")))
     s = sw.assemble_analysis_sacc(nz, META, reloaded)
     assert type(s.covariance).__name__ == "FullCovariance"

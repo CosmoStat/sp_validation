@@ -6,7 +6,7 @@ the same assembly runs from explicit flags (the lightcone/ASTRA path).
 
 Each per-statistic ``*.sacc`` *part* (written born-as-SACC by the mixins and the
 run_2pcf / generate_pseudo_cl scripts) holds one statistic. The assembler loads
-them in canonical order — ξ± coarse, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ — and
+them in canonical order — ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ — and
 calls :func:`sacc_writers.assemble_analysis_sacc`, which rebuilds one Sacc with a
 single block-diagonal ``FullCovariance`` (point-insertion order = block order,
 validated by ``sacc_io.assemble_covariance``).
@@ -15,10 +15,10 @@ Covariance sourcing (the part-by-part decision)
 -----------------------------------------------
 ``assemble_analysis_sacc`` REQUIRES every part to carry its own covariance block.
 The COSEBIs, pure-E/B and ρ/τ parts already do (their writers attach it). The
-ξ± coarse and pseudo-Cℓ parts are born cov-less by design; this script injects
+ξ± reporting and pseudo-Cℓ parts are born cov-less by design; this script injects
 their blocks before assembly:
 
-* **ξ± coarse** — the CosmoCov theory covariance ``.txt`` (``--xi-cov``). For the
+* **ξ± reporting** — the CosmoCov theory covariance ``.txt`` (``--xi-cov``). For the
   single-bin round it is already ``[ξ+; ξ−]``-ordered (CosmoCov / covdat_to_fits:
   ``STRT_0=0`` XI_PLUS, ``STRT_1=len/2`` XI_MINUS), which is exactly the SACC
   ξ insertion order, so ``np.loadtxt`` → ``add_covariance`` needs no permutation.
@@ -51,7 +51,7 @@ _CL_ORDER = ("EE", "BB", "EB")
 
 # Canonical part order — the order assemble_analysis_sacc inserts points in, which
 # must match the covariance block order. Missing parts are simply skipped.
-CANONICAL = ("xi_coarse", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
+CANONICAL = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
 
 
 def _pseudo_cl_cov_block(cov_fits, hdu):
@@ -84,7 +84,7 @@ def _attach_cov(part, name, xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholde
     """
     if part.covariance is not None:
         return part
-    if name == "xi_coarse":
+    if name == "xi_reporting":
         if xi_cov is not None:
             part.add_covariance(np.loadtxt(xi_cov))
             return part
@@ -153,7 +153,10 @@ def assemble_sacc(
         path = part_paths.get(name)
         if path is None:
             continue
-        part = sacc_io.load(path)
+        # Assembly runs pre-blind on unblinded real-data parts (Smokescreen
+        # conceals the assembled analysis file downstream), so the fail-closed
+        # load is told this is a legitimate pre-blind consumer.
+        part = sacc_io.load(path, allow_unblinded=True)
         if nz is None:
             # The nz tracers + metadata are identical across parts (same version);
             # take them from the first loaded part for the assembled file.
@@ -167,7 +170,10 @@ def assemble_sacc(
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
     s = assemble_analysis_sacc(nz, metadata, parts)
-    sacc_io.save(s, out_path)
+    # Assembly preserves its parts' provenance: every part was written by
+    # sacc_io.save and therefore carries the type=data|mock stamp in its
+    # metadata (copied into the assembled file above).
+    sacc_io.save(s, out_path, type=metadata["type"])
     print(f"Assembled {len(parts)} parts -> {out_path}")
     return s
 

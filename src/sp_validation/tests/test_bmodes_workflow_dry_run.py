@@ -94,5 +94,5 @@ def test_cosmo_val_workflow_assemble_dry_runs():
     assert "rule assemble_sacc:" in out, out
     assert f"pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc" in out, out
     assert f"pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits" in out, out
-    for part in ("_xi_coarse_", "_cosebis.sacc", "_pure_eb.sacc", "rho_tau_"):
+    for part in ("_xi_reporting_", "_cosebis.sacc", "_pure_eb.sacc", "rho_tau_"):
         assert part in out, f"missing {part} part in assemble DAG:\n{out}"

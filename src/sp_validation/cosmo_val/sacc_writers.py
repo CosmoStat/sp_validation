@@ -11,9 +11,10 @@ block-diagonally in canonical order (per the SACC layout contract — *not*
 ``sacc.concatenate_data_sets``, whose ``BlockDiagonalCovariance`` output the
 contract rules out).
 
-The fine-grid ``{version}_xi_fine.sacc`` is a terminal product in its own right
-(:func:`xi_to_sacc` with ``grid="fine"`` and a ``DiagonalCovariance`` from
-TreeCorr ``varxip``/``varxim``); COSEBIs and pure-E/B consume it.
+The integration-grid ``{version}_xi_integration.sacc`` is a terminal product in
+its own right (:func:`xi_to_sacc` with ``grid="integration"`` and a
+``DiagonalCovariance`` from TreeCorr ``varxip``/``varxim``); COSEBIs and pure-E/B
+consume it.
 
 Everything here is single-bin today (``bins=(0, 0)``); the interface is
 tomography-native so a future round supplies real bin pairs unchanged.
@@ -47,10 +48,10 @@ def xi_to_sacc(
     weight=None,
     variances=None,
 ):
-    """One ξ± part (``bins=(0, 0)``) on the coarse or fine grid.
+    """One ξ± part (``bins=(0, 0)``) on the reporting or integration grid.
 
     ``variances`` (the concatenated ``[varxip; varxim]``) attaches a
-    ``DiagonalCovariance`` — used for the terminal fine file, where npatch=1
+    ``DiagonalCovariance`` — used for the terminal integration file, where npatch=1
     leaves TreeCorr shot-noise variance as the only covariance estimate.
     """
     s = sio.new_sacc(nz, metadata)
@@ -220,7 +221,7 @@ def assemble_analysis_sacc(nz, metadata, parts):
     Each part is a single-statistic Sacc (from a ``*_to_sacc`` writer, loaded
     from disk) carrying its own covariance = its block. This re-adds every
     part's data points into one Sacc in the order the parts are given — which
-    must be the canonical order (ξ± coarse, pseudo-Cℓ, COSEBIs, pure-E/B, ρ, τ)
+    must be the canonical order (ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ, τ)
     — and assembles a single ``FullCovariance`` from the per-part covariance
     blocks. Point insertion order and block order therefore agree by
     construction, which ``sacc_io.assemble_covariance`` validates (contiguous,

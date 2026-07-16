@@ -53,11 +53,11 @@ def _theta(n=6):
 META = {"catalogue_version": "vSYNTH", "npatch": 1}
 
 
-def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_coarse",)):
+def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_reporting",)):
     """Write per-statistic parts to disk; return the ``{name: path}`` mapping.
 
     Parts named in ``cov_less`` are written without a covariance (mimicking the
-    born-cov-less ξ± coarse / pseudo-Cℓ parts); the rest carry their own block.
+    born-cov-less ξ± reporting / pseudo-Cℓ parts); the rest carry their own block.
     """
     nz = {0: _nz()}
     theta = _theta()
@@ -72,9 +72,9 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_coarse",)):
             return w
 
     xi = sw.xi_to_sacc(
-        nz, META, theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="coarse"
+        nz, META, theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
     )
-    if "xi_coarse" not in cov_less:
+    if "xi_reporting" not in cov_less:
         xi.add_covariance(_spd(len(xi.mean), 1))
 
     cl_all = np.vstack(
@@ -119,7 +119,7 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_coarse",)):
     rt = sw.rho_tau_to_sacc(nz, META, rho, tau)
 
     parts = {
-        "xi_coarse": xi,
+        "xi_reporting": xi,
         "pseudo_cl": cl,
         "cosebis": co,
         "pure_eb": eb,
@@ -131,7 +131,7 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_coarse",)):
     paths = {}
     for name, part in parts.items():
         p = tmp_path / f"{name}.sacc"
-        sio.save(part, str(p))
+        sio.save(part, str(p), type="mock")
         paths[name] = str(p)
     return paths
 
@@ -139,7 +139,7 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_coarse",)):
 def test_assemble_sacc_placeholder_canonical_order(tmp_path):
     """The cov-less ξ± part gets a placeholder; every point is covered and the
     blocks land in canonical order (ξ±, pseudo-Cℓ, COSEBIs, pure-E/B, ρ, τ)."""
-    paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
+    paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
     out = tmp_path / "vSYNTH.sacc"
     s = asm.assemble_sacc("vSYNTH", paths, str(out), placeholder_var=1.0)
     assert out.exists()
@@ -171,7 +171,7 @@ def test_assemble_sacc_placeholder_canonical_order(tmp_path):
 
 def test_assemble_sacc_injects_real_xi_covariance(tmp_path):
     """A CosmoCov ξ covariance .txt is loaded into the cov-less ξ± block."""
-    paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
+    paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
     # ξ± part has 12 points ([ξ+; ξ−] over 6 θ); supply a matching cov .txt.
     xi_cov = _spd(12, 21)
     cov_path = tmp_path / "xi_cov.txt"
@@ -189,7 +189,7 @@ def test_assemble_sacc_injects_pseudo_cl_covariance(tmp_path):
     block (the live default: ξ± placeholder + real pseudo-Cℓ cov)."""
     from astropy.io import fits
 
-    paths = _write_parts(tmp_path, cov_less=("xi_coarse", "pseudo_cl"))
+    paths = _write_parts(tmp_path, cov_less=("xi_reporting", "pseudo_cl"))
     # pseudo-Cℓ part is 3 ell × {EE, BB, EB} = 9 points; per-spectrum 3×3 blocks.
     ee, bb, eb = _spd(3, 31), _spd(3, 32), _spd(3, 33)
     cov_fits = tmp_path / "pseudo_cl_cov.fits"
@@ -222,7 +222,7 @@ def test_assemble_sacc_injects_pseudo_cl_covariance(tmp_path):
 
 def test_assemble_sacc_missing_cov_raises(tmp_path):
     """A cov-less part with no injected block and no placeholder fails loudly."""
-    paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
+    paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
     out = tmp_path / "vSYNTH.sacc"
     with pytest.raises(ValueError, match="carries no covariance"):
         asm.assemble_sacc("vSYNTH", paths, str(out))
@@ -230,7 +230,7 @@ def test_assemble_sacc_missing_cov_raises(tmp_path):
 
 def test_assemble_sacc_respects_pseudo_cl_toggle(tmp_path):
     """With pseudo_cl absent, assembly still succeeds and omits the Cℓ points."""
-    paths = _write_parts(tmp_path, with_pseudo_cl=False, cov_less=("xi_coarse",))
+    paths = _write_parts(tmp_path, with_pseudo_cl=False, cov_less=("xi_reporting",))
     assert "pseudo_cl" not in paths
     out = tmp_path / "vSYNTH.sacc"
     s = asm.assemble_sacc("vSYNTH", paths, str(out), placeholder_var=1.0)
@@ -245,7 +245,7 @@ def test_assemble_sacc_respects_pseudo_cl_toggle(tmp_path):
 def test_assemble_sacc_expected_part_missing_raises(tmp_path):
     """A typo'd input keyword drops a part from part_paths; the expected list
     catches it rather than silently omitting the statistic."""
-    paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
+    paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
     # Simulate a rule-input typo: cosebis wired under the wrong key.
     paths["cosebi"] = paths.pop("cosebis")
     out = tmp_path / "vSYNTH.sacc"
@@ -254,14 +254,14 @@ def test_assemble_sacc_expected_part_missing_raises(tmp_path):
             "vSYNTH",
             paths,
             str(out),
-            expected=["xi_coarse", "pseudo_cl", "cosebis", "pure_eb", "rho_tau"],
+            expected=["xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau"],
             placeholder_var=1.0,
         )
 
 
 def test_assemble_sacc_expected_rejects_unknown_name(tmp_path):
     """A typo in the expected list itself is rejected (not a valid statistic)."""
-    paths = _write_parts(tmp_path, cov_less=("xi_coarse",))
+    paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
     out = tmp_path / "vSYNTH.sacc"
     with pytest.raises(ValueError, match="not assemblable statistics"):
         asm.assemble_sacc(
