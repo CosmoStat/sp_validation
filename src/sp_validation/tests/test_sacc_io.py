@@ -35,6 +35,30 @@ def _base_sacc(nbins=1):
     return sio.new_sacc({i: _nz(i) for i in range(nbins)})
 
 
+def _add_xi(s, bins=(0, 0), scale=1.0, grid="reporting"):
+    """Write the default synthetic ξ± block; returns ``(xip, xim)``."""
+    xip, xim = np.arange(6) * scale * 1e-5, np.arange(6) * scale * 2e-5
+    sio.add_xi(s, bins, _theta(), xip, xim, grid=grid)
+    return xip, xim
+
+
+# Canonical per-statistic index blocks (concatenated in insertion order).
+def _xi_block(s, tr, **tags):
+    return np.concatenate(
+        [s.indices(sio.XI_PLUS, tr, **tags), s.indices(sio.XI_MINUS, tr, **tags)]
+    )
+
+
+def _cl_block(s, tr):
+    return np.concatenate(
+        [s.indices(sio.CL_EE, tr), s.indices(sio.CL_BB, tr), s.indices(sio.CL_EB, tr)]
+    )
+
+
+def _cosebi_block(s, tr):
+    return np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
+
+
 # --------------------------------------------------------------------------- #
 # 1. Per-writer round-trip (arrays / tags / windows / NZ bitwise)
 # --------------------------------------------------------------------------- #
@@ -180,11 +204,8 @@ def test_tau_roundtrip(tmp_path):
 # --------------------------------------------------------------------------- #
 def _multi_statistic_sacc():
     """Sacc with ξ+/ξ−, Cℓ (ee/bb/eb) and COSEBIs, ready for a covariance."""
-    theta = _theta()
     s = _base_sacc()
-    sio.add_xi(
-        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    _add_xi(s)
     ell = np.array([30.0, 120.0, 210.0])
     W = np.random.default_rng(0).uniform(size=(20, 3))
     sio.add_pseudo_cl(
@@ -207,11 +228,7 @@ def test_assemble_covariance_alignment(tmp_path):
     s = _multi_statistic_sacc()
     tr = ("source_0", "source_0")
     # Block selectors in canonical (insertion) order.
-    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
-    cl = np.concatenate(
-        [s.indices(sio.CL_EE, tr), s.indices(sio.CL_BB, tr), s.indices(sio.CL_EB, tr)]
-    )
-    co = np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
+    xi, cl, co = _xi_block(s, tr), _cl_block(s, tr), _cosebi_block(s, tr)
     cov_xi, cov_cl, cov_co = _spd(len(xi), 1), _spd(len(cl), 2), _spd(len(co), 3)
     sio.assemble_covariance(s, [(xi, cov_xi), (cl, cov_cl), (co, cov_co)])
     s2 = _roundtrip(s, tmp_path, "cov")
@@ -231,10 +248,7 @@ def test_assemble_covariance_selector_tuples():
     """Blocks addressed by (data_type, tracers) tuples, not raw indices."""
     s = _multi_statistic_sacc()
     tr = ("source_0", "source_0")
-    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
-    cl = np.concatenate(
-        [s.indices(sio.CL_EE, tr), s.indices(sio.CL_BB, tr), s.indices(sio.CL_EB, tr)]
-    )
+    xi, cl = _xi_block(s, tr), _cl_block(s, tr)
     sio.assemble_covariance(
         s,
         [
@@ -253,9 +267,7 @@ def test_assemble_covariance_selector_tuples():
 # --------------------------------------------------------------------------- #
 def test_assemble_covariance_wrong_dimension():
     s = _base_sacc()
-    sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    _add_xi(s)
     idx = np.arange(len(s.mean))
     with pytest.raises(ValueError, match="span"):
         sio.assemble_covariance(s, [(idx, _spd(len(idx) - 1, 1))])
@@ -263,9 +275,7 @@ def test_assemble_covariance_wrong_dimension():
 
 def test_assemble_covariance_non_contiguous():
     s = _base_sacc()
-    sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    _add_xi(s)
     idx = np.array([0, 2, 4, 6, 8, 10, 1, 3])  # not contiguous/ascending
     with pytest.raises(ValueError, match="non-contiguous"):
         sio.assemble_covariance(s, [(idx, _spd(len(idx), 1))])
@@ -274,7 +284,7 @@ def test_assemble_covariance_non_contiguous():
 def test_assemble_covariance_missing_coverage():
     s = _multi_statistic_sacc()
     tr = ("source_0", "source_0")
-    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
+    xi = _xi_block(s, tr)
     with pytest.raises(ValueError, match="tile"):
         sio.assemble_covariance(
             s, [(xi, _spd(len(xi), 1))]
@@ -283,9 +293,7 @@ def test_assemble_covariance_missing_coverage():
 
 def test_assemble_covariance_non_square():
     s = _base_sacc()
-    sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    _add_xi(s)
     idx = np.arange(len(s.mean))
     with pytest.raises(ValueError, match="square"):
         sio.assemble_covariance(s, [(idx, np.ones((len(idx), len(idx) - 1)))])
@@ -294,7 +302,7 @@ def test_assemble_covariance_non_square():
 def test_assemble_covariance_overlap():
     s = _multi_statistic_sacc()
     tr = ("source_0", "source_0")
-    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
+    xi = _xi_block(s, tr)
     # second block starts before the first ended -> gap/overlap error
     with pytest.raises(ValueError, match="tile|gap|overlap"):
         sio.assemble_covariance(s, [(xi, _spd(len(xi), 1)), (xi, _spd(len(xi), 2))])
@@ -324,11 +332,7 @@ def test_diagonal_covariance_roundtrip(tmp_path):
 def test_extract_subblock_and_original_untouched():
     s = _multi_statistic_sacc()
     tr = ("source_0", "source_0")
-    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
-    cl = np.concatenate(
-        [s.indices(sio.CL_EE, tr), s.indices(sio.CL_BB, tr), s.indices(sio.CL_EB, tr)]
-    )
-    co = np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
+    xi, cl, co = _xi_block(s, tr), _cl_block(s, tr), _cosebi_block(s, tr)
     cov_co = _spd(len(co), 3)
     sio.assemble_covariance(
         s, [(xi, _spd(len(xi), 1)), (cl, _spd(len(cl), 2)), (co, cov_co)]
@@ -345,12 +349,8 @@ def test_extract_subblock_and_original_untouched():
 def test_extract_tag_filter():
     theta = _theta()
     s = _base_sacc()
-    sio.add_xi(
-        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
-    sio.add_xi(
-        s, (0, 0), theta, np.arange(6) * 3e-5, np.arange(6) * 4e-5, grid="integration"
-    )
+    _add_xi(s)
+    _add_xi(s, scale=3.0, grid="integration")
     sub = sio.extract(
         s, data_type=sio.XI_PLUS, tracers=("source_0", "source_0"), grid="integration"
     )
@@ -390,25 +390,11 @@ def test_tomographic_per_pair_selection(tmp_path):
 # --------------------------------------------------------------------------- #
 def test_readers_on_mixed_file(tmp_path):
     theta = _theta()
-    s = _base_sacc()
-    sio.add_xi(
-        s, (0, 0), theta, np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    # ξ+Cℓ+COSEBIs from the shared builder; the assertions below restate its
+    # values (ell, W match _multi_statistic_sacc).
+    s = _multi_statistic_sacc()
     ell = np.array([30.0, 120.0, 210.0])
     W = np.random.default_rng(0).uniform(size=(20, 3))
-    sio.add_pseudo_cl(
-        s,
-        (0, 0),
-        ell,
-        np.arange(3) * 1e-9,
-        np.arange(3) * 2e-9,
-        np.arange(3) * 3e-9,
-        window_ells=np.arange(2, 22).astype(float),
-        window_weights=W,
-    )
-    sio.add_cosebis(
-        s, (0, 0), np.arange(1, 6) * 1e-6, np.arange(1, 6) * 1e-7, (1.0, 100.0)
-    )
     pure = {key: np.arange(6) * (i + 1) * 1e-6 for i, key in enumerate(sio.PURE_KEYS)}
     sio.add_pure_eb(s, (0, 0), theta, **pure)
     for k in range(6):
@@ -470,19 +456,9 @@ def test_end_to_end_one_file_layout(tmp_path):
         grid="integration",
     )
     tr = ("source_0", "source_0")
-    xi_c = np.concatenate(
-        [
-            s.indices(sio.XI_PLUS, tr, grid="reporting"),
-            s.indices(sio.XI_MINUS, tr, grid="reporting"),
-        ]
-    )
-    co = np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
-    xi_f = np.concatenate(
-        [
-            s.indices(sio.XI_PLUS, tr, grid="integration"),
-            s.indices(sio.XI_MINUS, tr, grid="integration"),
-        ]
-    )
+    xi_c = _xi_block(s, tr, grid="reporting")
+    co = _cosebi_block(s, tr)
+    xi_f = _xi_block(s, tr, grid="integration")
     # dense fine block (CosmoCov integration covariance in production)
     fine_block = _spd(len(xi_f), 3)
     sio.assemble_covariance(
@@ -514,9 +490,7 @@ def test_one_file_layout_diagonal_fine_fallback(tmp_path):
     """No CosmoCov covariance: the fine block is np.diag(varxip/varxim)."""
     s = _base_sacc()
     theta_f = np.geomspace(0.1, 250.0, 50)
-    sio.add_xi(
-        s, (0, 0), _theta(6), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    _add_xi(s)
     sio.add_xi(
         s,
         (0, 0),
@@ -526,18 +500,8 @@ def test_one_file_layout_diagonal_fine_fallback(tmp_path):
         grid="integration",
     )
     tr = ("source_0", "source_0")
-    xi_c = np.concatenate(
-        [
-            s.indices(sio.XI_PLUS, tr, grid="reporting"),
-            s.indices(sio.XI_MINUS, tr, grid="reporting"),
-        ]
-    )
-    xi_f = np.concatenate(
-        [
-            s.indices(sio.XI_PLUS, tr, grid="integration"),
-            s.indices(sio.XI_MINUS, tr, grid="integration"),
-        ]
-    )
+    xi_c = _xi_block(s, tr, grid="reporting")
+    xi_f = _xi_block(s, tr, grid="integration")
     variances = np.concatenate([np.arange(1, 51) * 1e-12, np.arange(1, 51) * 2e-12])
     sio.assemble_covariance(s, [(xi_c, _spd(len(xi_c), 1)), (xi_f, np.diag(variances))])
     sio.save(s, str(tmp_path / "vDIAG.sacc"), type="mock")
@@ -654,9 +618,7 @@ def test_tomographic_xi_covariance_one_contiguous_block():
 # --------------------------------------------------------------------------- #
 def _saved(tmp_path, name, *, type, concealed=None):
     s = _base_sacc()
-    sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    _add_xi(s)
     if concealed is not None:
         s.metadata["concealed"] = concealed
     path = str(tmp_path / f"{name}.sacc")
@@ -727,9 +689,7 @@ def test_load_requires_type_tag(tmp_path):
 # --------------------------------------------------------------------------- #
 def _xi_sacc(metadata=None):
     s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
-    sio.add_xi(
-        s, (0, 0), _theta(), np.arange(6) * 1e-5, np.arange(6) * 2e-5, grid="reporting"
-    )
+    _add_xi(s)
     return s
 
 
@@ -791,11 +751,7 @@ def test_merge_conflicting_metadata_fails():
 def test_update_statistic_values_only():
     s = _multi_statistic_sacc()
     tr = ("source_0", "source_0")
-    xi = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
-    cl = np.concatenate(
-        [s.indices(sio.CL_EE, tr), s.indices(sio.CL_BB, tr), s.indices(sio.CL_EB, tr)]
-    )
-    co = np.concatenate([s.indices(sio.COSEBI_EE, tr), s.indices(sio.COSEBI_BB, tr)])
+    xi, cl, co = _xi_block(s, tr), _cl_block(s, tr), _cosebi_block(s, tr)
     cov = [(xi, _spd(len(xi), 1)), (cl, _spd(len(cl), 2)), (co, _spd(len(co), 3))]
     sio.assemble_covariance(s, cov)
     dense_before = s.covariance.dense.copy()

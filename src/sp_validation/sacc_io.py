@@ -74,10 +74,11 @@ PURE_TYPES = {
     "xip_amb": "galaxy_shear_xiPureAmb_plus",
     "xim_amb": "galaxy_shear_xiPureAmb_minus",
 }
-# Insertion order of the six pure-EB blocks — matches b_modes._EB_KEYS, whose
-# order is the [xip_E; xim_E; xip_B; xim_B; xip_amb; xim_amb] layout of the
-# treecorr/MC pure-EB covariance (b_modes.calculate_eb_statistics, ~L392).
-PURE_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
+# PURE_TYPES key order is the insertion order of the six pure-EB blocks —
+# matches b_modes._EB_KEYS, whose order is the [xip_E; xim_E; xip_B; xim_B;
+# xip_amb; xim_amb] layout of the treecorr/MC pure-EB covariance
+# (b_modes.calculate_eb_statistics, ~L392).
+PURE_KEYS = tuple(PURE_TYPES)
 
 RHO_PLUS = "psf_rho{k}_xi_plus"
 RHO_MINUS = "psf_rho{k}_xi_minus"
@@ -155,6 +156,12 @@ def _check_ascending(name, values):
         )
 
 
+def _add_theta_series(s, dtype, tracers, theta, values):
+    """Insert one theta-tagged series, one point per (theta, value) pair."""
+    for th, value in zip(theta, values):
+        s.add_data_point(dtype, tracers, float(value), theta=float(th))
+
+
 def add_xi(
     s,
     bins,
@@ -191,15 +198,15 @@ def add_xi(
     """
     _check_ascending("theta", theta)
     tracers = _pair(bins)
+    optional = {"theta_nom": theta_nom, "npairs": npairs, "weight": weight}
+    extras = {key: arr for key, arr in optional.items() if arr is not None}
     for dtype, xi in ((XI_PLUS, xip), (XI_MINUS, xim)):
         for n, th in enumerate(theta):
-            tags = {"theta": float(th), "grid": grid}
-            if theta_nom is not None:
-                tags["theta_nom"] = float(theta_nom[n])
-            if npairs is not None:
-                tags["npairs"] = float(npairs[n])
-            if weight is not None:
-                tags["weight"] = float(weight[n])
+            tags = {
+                "theta": float(th),
+                "grid": grid,
+                **{key: float(arr[n]) for key, arr in extras.items()},
+            }
             s.add_data_point(dtype, tracers, float(xi[n]), **tags)
 
 
@@ -293,18 +300,9 @@ def add_pure_eb(s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb):
     """
     _check_ascending("theta", theta)
     tracers = _pair(bins)
-    values = {
-        "xip_E": xip_E,
-        "xim_E": xim_E,
-        "xip_B": xip_B,
-        "xim_B": xim_B,
-        "xip_amb": xip_amb,
-        "xim_amb": xim_amb,
-    }
-    for key in PURE_KEYS:
-        dtype, arr = PURE_TYPES[key], values[key]
-        for n, th in enumerate(theta):
-            s.add_data_point(dtype, tracers, float(arr[n]), theta=float(th))
+    arrays = (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb)
+    for dtype, arr in zip(PURE_TYPES.values(), arrays):
+        _add_theta_series(s, dtype, tracers, theta, arr)
 
 
 def add_rho(s, k, theta, rho_p, rho_m):
@@ -323,9 +321,8 @@ def add_rho(s, k, theta, rho_p, rho_m):
     """
     _check_ascending("theta", theta)
     tracers = (PSF_TRACER, PSF_TRACER)
-    for dtype, arr in ((RHO_PLUS.format(k=k), rho_p), (RHO_MINUS.format(k=k), rho_m)):
-        for n, th in enumerate(theta):
-            s.add_data_point(dtype, tracers, float(arr[n]), theta=float(th))
+    _add_theta_series(s, RHO_PLUS.format(k=k), tracers, theta, rho_p)
+    _add_theta_series(s, RHO_MINUS.format(k=k), tracers, theta, rho_m)
 
 
 def add_tau(s, bins, k, theta, tau_p, tau_m):
@@ -347,9 +344,8 @@ def add_tau(s, bins, k, theta, tau_p, tau_m):
     """
     _check_ascending("theta", theta)
     tracers = (source_name(bins[0]), PSF_TRACER)
-    for dtype, arr in ((TAU_PLUS.format(k=k), tau_p), (TAU_MINUS.format(k=k), tau_m)):
-        for n, th in enumerate(theta):
-            s.add_data_point(dtype, tracers, float(arr[n]), theta=float(th))
+    _add_theta_series(s, TAU_PLUS.format(k=k), tracers, theta, tau_p)
+    _add_theta_series(s, TAU_MINUS.format(k=k), tracers, theta, tau_m)
 
 
 def assemble_covariance(s, blocks):
@@ -453,14 +449,18 @@ def get_nz(s, i):
     return tracer.z, tracer.nz
 
 
+def _get_pm(s, dtype_p, dtype_m, tracers, **tags):
+    """Return ``(theta, plus, minus)`` for a +/− data-type pair."""
+    return (
+        _tag(s, dtype_p, tracers, "theta", **tags),
+        _mean(s, dtype_p, tracers, **tags),
+        _mean(s, dtype_m, tracers, **tags),
+    )
+
+
 def get_xi(s, bins, *, grid):
     """Return ``(theta, xip, xim)`` for one tracer pair and grid."""
-    tracers = _pair(bins)
-    return (
-        _tag(s, XI_PLUS, tracers, "theta", grid=grid),
-        _mean(s, XI_PLUS, tracers, grid=grid),
-        _mean(s, XI_MINUS, tracers, grid=grid),
-    )
+    return _get_pm(s, XI_PLUS, XI_MINUS, _pair(bins), grid=grid)
 
 
 def get_pseudo_cl(s, bins):
@@ -491,11 +491,7 @@ def get_cosebis(s, bins, scale_cut=None):
         ``(theta_min, theta_max)`` to select when several cuts share the file.
     """
     tracers = _pair(bins)
-    tags = (
-        {"theta_min": float(scale_cut[0]), "theta_max": float(scale_cut[1])}
-        if scale_cut is not None
-        else {}
-    )
+    tags = dict(zip(("theta_min", "theta_max"), map(float, scale_cut or ())))
     modes = _tag(s, COSEBI_EE, tracers, "n", **tags)
     return (
         modes.astype(int),
@@ -518,23 +514,13 @@ def get_pure_eb(s, bins):
 def get_rho(s, k):
     """Return ``(theta, rho_p, rho_m)`` for ρ index ``k``."""
     tracers = (PSF_TRACER, PSF_TRACER)
-    dt_p, dt_m = RHO_PLUS.format(k=k), RHO_MINUS.format(k=k)
-    return (
-        _tag(s, dt_p, tracers, "theta"),
-        _mean(s, dt_p, tracers),
-        _mean(s, dt_m, tracers),
-    )
+    return _get_pm(s, RHO_PLUS.format(k=k), RHO_MINUS.format(k=k), tracers)
 
 
 def get_tau(s, bins, k):
     """Return ``(theta, tau_p, tau_m)`` for τ index ``k`` and source bin."""
     tracers = (source_name(bins[0]), PSF_TRACER)
-    dt_p, dt_m = TAU_PLUS.format(k=k), TAU_MINUS.format(k=k)
-    return (
-        _tag(s, dt_p, tracers, "theta"),
-        _mean(s, dt_p, tracers),
-        _mean(s, dt_m, tracers),
-    )
+    return _get_pm(s, TAU_PLUS.format(k=k), TAU_MINUS.format(k=k), tracers)
 
 
 def _mean(s, data_type, tracers, **tag_filters):
@@ -583,11 +569,8 @@ def extract(s, data_type=None, tracers=None, **tag_filters):
         New Sacc holding only the selected points.
     """
     sub = s.copy()
-    selection = {}
-    if tracers is not None:
-        selection["tracers"] = tuple(tracers)
-    selection.update(tag_filters)
-    sub.keep_selection(data_type, **selection)
+    tracer_filter = {"tracers": tuple(tracers)} if tracers is not None else {}
+    sub.keep_selection(data_type, **tracer_filter, **tag_filters)
     return sub
 
 
@@ -631,11 +614,9 @@ def merge(saccs):
             metadata[key] = value
     # Strip metadata before concatenating (the library "resolves" clashing
     # keys by renaming them), then restore the validated union.
-    stripped = []
-    for s in saccs:
-        s = s.copy()
+    stripped = [s.copy() for s in saccs]
+    for s in stripped:
         s.metadata.clear()
-        stripped.append(s)
     seen, shared = set(), set()  # tracers appearing in more than one input
     for s in saccs:
         shared |= seen & set(s.tracers)
