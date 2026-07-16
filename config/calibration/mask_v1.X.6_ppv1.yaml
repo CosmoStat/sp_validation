@@ -57,7 +57,7 @@ dat:
     kind: not_equal
     value: -10
 
-  # photometry cuts cuts ugri  
+  # photometry cuts ugriz
   - col_name: Z_B
     label: z
     kind: range
@@ -81,6 +81,7 @@ dat:
   - col_name: MAG_GAAP_0p7_z
     label: zband
     kind: not_equal_2bands
+    col_name2: MAG_GAAP_0p7_z2
     value: -99
 
 ## Using columns in 'dat_ext' group (post-processing flags)
