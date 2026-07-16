@@ -139,6 +139,7 @@ def test_ac13_halofit_token_matches_inference_config():
         pathlib.Path(__file__).resolve().parents[3]
         / "cosmo_inference"
         / "cosmosis_config"
+        / "templates"
         / "cosmosis_pipeline_A_ia_cell.ini"
     )
     match = re.search(r"^halofit_version\s*=\s*(\S+)", ini.read_text(), re.MULTILINE)

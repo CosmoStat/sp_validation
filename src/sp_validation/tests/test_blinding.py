@@ -975,7 +975,7 @@ def test_ac6_ac8_end_to_end_init_parts_gather_unblind(tmp_path):
     part_files, out_paths = {}, {}
     for name in ("xi_reporting", "xi_integration", "cl"):
         path = tmp_path / f"{name}.fits"
-        sio.save(parts[name], str(path))
+        sio.save(parts[name], str(path), type="mock")
         out_paths[name] = bd.blind_part(str(path), str(blind_dir), log=_NOLOG)
         part_files[name] = path
 
@@ -1081,7 +1081,7 @@ def test_ac8_dotted_versioned_part_names_escrow_and_restore(tmp_path):
     out_paths, part_files = {}, {}
     for name in ("xi_reporting", "xi_integration"):
         path = tmp_path / f"{version}_{name}.fits"
-        sio.save(parts[name], str(path))
+        sio.save(parts[name], str(path), type="mock")
         out_paths[name] = bd.blind_part(str(path), str(blind_dir), log=_NOLOG)
         part_files[name] = path
 
