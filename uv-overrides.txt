@@ -1,0 +1,21 @@
+# uv dependency overrides — pass via `--overrides uv-overrides.txt` (or
+# UV_OVERRIDE=uv-overrides.txt) to every `uv pip install` against this project.
+#
+# Why this file exists: firecrown declares its sampler *connectors* as hard
+# dependencies, but we use firecrown only as the theory engine for Smokescreen
+# blinding (`compute_theory_vector`); sampling stays with CosmoSIS in
+# cosmo_inference. Of the three connector deps:
+#
+#   - numcosmo-py exists only on conda-forge, so pip/uv resolution of firecrown
+#     is *impossible* without an override;
+#   - cosmosis ships sdist-only (full Fortran/C build with gsl/cfitsio) — a
+#     heavy, fragile compile in every CI image build, for a connector we never
+#     import;
+#   - cobaya is wheel-clean but equally unused.
+#
+# Each line below replaces the package's requirement (wherever it appears in
+# the graph) with one gated on an always-false marker, dropping it from
+# resolution. firecrown's likelihood/CCL core imports none of them.
+numcosmo-py; python_version < "3"
+cosmosis; python_version < "3"
+cobaya; python_version < "3"

@@ -5,6 +5,16 @@ import os
 import re
 from pathlib import Path
 
+# Absolute path to the generic workflow's scripts, anchored on this module's own
+# location (common.py lives in workflow/, is `from common import *`'d into every
+# Snakefile, and so resolves to the generic workflow dir of the running checkout
+# regardless of which paper composes it — unlike workflow.basedir, which under
+# `module` composition reflects the composing paper). Rules that shell out to a
+# script directly (the MPI xi_highres run can't go through Snakemake's `script:`
+# directive) interpolate this instead of a hardcoded pure_eb/ compat-symlink
+# path. /automnt/n17data is the automount of the container-bound /n17data.
+WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
+
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(

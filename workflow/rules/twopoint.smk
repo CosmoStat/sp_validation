@@ -1,13 +1,20 @@
 # Two-point data-vector rules: xi, rho/tau, and pseudo-Cl products.
+# WORKFLOW_SCRIPTS (from common.py) is the generic workflow's scripts dir,
+# resolved from the running checkout — used by the raw-shell MPI xi_highres rule.
 
 
 rule xi:
     input:
         catalog=get_shear_catalog,
     output:
-        str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # Raw TreeCorr .txt byproduct (read back by covariance + skip-if-exists)
+        # and the born-as-SACC coarse ξ± part (no covariance until the
+        # assemble_sacc rule injects the CosmoCov block). Both outputs carry the
+        # same reporting-binning wildcards — Snakemake requires every output of a
+        # rule to share one wildcard set, and it keeps the coarse .sacc name
+        # self-describing so requesting it binds the xi job unambiguously.
+        txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
+        xi_coarse=str(COSMO_VAL / "{version}_xi_coarse_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 24
     params:
         ver="{version}",
@@ -15,7 +22,6 @@ rule xi:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
-        fits=False,
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -25,12 +31,16 @@ rule xi:
 
 
 rule xi_highres:
-    """High-resolution xi for COSEBIS integration."""
+    """High-resolution xi for COSEBIS integration.
+
+    Terminal born-as-SACC product: {version}_xi_fine.sacc (a DiagonalCovariance
+    from TreeCorr varxip/varxim). COSEBIs and pure-E/B consume it. The raw .txt
+    dump is kept as a convergence byproduct.
+    """
     container: None
     output:
         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-        xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-        xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
+        xi_fine=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_fine.sacc"),
     resources:
         tasks=30,
         cpus_per_task=12,
@@ -45,7 +55,7 @@ rule xi_highres:
         "--bind /home,/n09data,/n17data,/n23data1,/softs "
         "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
         "/n17data/cdaley/containers/containers "
-        "python /automnt/n17data/cdaley/unions/pure_eb/code/sp_validation/workflow/scripts/run_2pcf_highres.py"
+        f"python {WORKFLOW_SCRIPTS}/run_2pcf_highres.py"
 
 
 rule run_cosmo_val:
@@ -70,6 +80,11 @@ rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        # Born-as-SACC ρ/τ part (ρ_0…ρ_5 autos + τ_0/τ_2/τ_5 leakage, carrying
+        # its own covariance block) that the assemble_sacc rule consumes;
+        # calculate_rho_tau_stats writes it alongside the FITS via
+        # rho_tau_to_sacc_part.
+        rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
         ver="{version}",
@@ -92,9 +107,9 @@ wildcard_constraints:
 
 
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector with configurable binning."""
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
+        pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
         blind="[ABC]",
     params:
@@ -146,7 +161,7 @@ rule pseudo_cl_all:
     """Generate pseudo-Cls for all versions."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc"),
             version=PSEUDO_CL_VERSIONS,
         ),
 
@@ -164,7 +179,7 @@ rule pseudo_cl_fine_all:
     """Generate fine pseudo-Cls for COSEBIS."""
     input:
         expand(
-            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.fits"),
+            str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_linear_nbins=2040.sacc"),
             version=config["versions"],
             blind=BLINDS,
         ),

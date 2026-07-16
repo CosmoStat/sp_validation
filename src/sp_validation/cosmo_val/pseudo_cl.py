@@ -17,6 +17,7 @@ import pymaster as nmt
 from astropy.io import fits
 from cs_util.cosmo import get_theo_c_ell
 
+from .. import sacc_io
 from ..pseudo_cl import (
     apply_random_rotation,
     get_n_gal_map,
@@ -26,6 +27,8 @@ from ..pseudo_cl import (
 )
 from ..rho_tau import get_params_rho_tau
 from ..statistics import chi2_and_pte, cov_from_one_covariance
+from .sacc_writers import BIN as SACC_BIN
+from .sacc_writers import pseudo_cl_to_sacc
 
 
 class PseudoClMixin:
@@ -451,13 +454,36 @@ class PseudoClMixin:
             f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
 
-    def calculate_pseudo_cl(self):
+    def calculate_pseudo_cl(self, out_path=None):
         """
         Compute the pseudo-Cl of given catalogs.
+
+        Each version's spectra are born as a SACC part via
+        :func:`sacc_writers.pseudo_cl_to_sacc` — EE/BB/EB carrying the shared
+        NaMaster bandpower window, with this instance's (blinded) n(z) stamped
+        in. The in-memory ``self._pseudo_cls[ver]`` ``"pseudo_cl"`` entry keeps
+        the ``ELL``/``EE``/``EB``/``BB`` arrays the plotting and B-mode-summary
+        consumers read by column name.
+
+        ``out_path`` is the exact destination the part is *born at* — the
+        Snakemake-declared output. It must resolve per version; single-version
+        rules (the tagged blinded producer) pass their tagged output directly.
+        When ``None`` (multi-version diagnostic / the ``pseudo_cls`` property)
+        each part defaults to the untagged native ``pseudo_cl_{ver}.sacc``.
+        Skip-if-exists keys on this final path, so no two rules ever share an
+        undeclared native basename (a tagged product born at its native name and
+        then renamed would let one rule's skip-if-exists silently adopt — and
+        the rename delete — another rule's declared, differently-blinded file).
         """
         self.print_start("Computing pseudo-Cl's")
 
         nside = self.nside
+
+        if out_path is not None and len(self.versions) != 1:
+            raise ValueError(
+                "calculate_pseudo_cl(out_path=...) writes one part to one path, "
+                f"but {len(self.versions)} versions are configured; call per version"
+            )
 
         try:
             self._pseudo_cls
@@ -468,19 +494,29 @@ class PseudoClMixin:
 
             self._pseudo_cls[ver] = {}
 
-            out_path = self._output_path(f"pseudo_cl_{ver}.fits")
-            if os.path.exists(out_path):
-                self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
-                cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+            ver_out_path = out_path or self._output_path(f"pseudo_cl_{ver}.sacc")
+            if os.path.exists(ver_out_path):
+                self.print_done(
+                    f"Skipping Pseudo-Cl's calculation, {ver_out_path} exists"
+                )
+                self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(
+                    ver_out_path
+                )
             elif self.cell_method == "map":
-                self.calculate_pseudo_cl_map(ver, nside, out_path)
+                self.calculate_pseudo_cl_map(ver, nside, ver_out_path)
             elif self.cell_method == "catalog":
-                self.calculate_pseudo_cl_catalog(ver, out_path)
+                self.calculate_pseudo_cl_catalog(ver, ver_out_path)
             else:
                 raise ValueError(f"Unknown cell method: {self.cell_method}")
 
         self.print_done("Done pseudo-Cl's")
+
+    @staticmethod
+    def _load_pseudo_cl_sacc(out_path):
+        """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict consumers use."""
+        s = sacc_io.load(out_path)
+        ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+        return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
 
     def calculate_pseudo_cl_map(self, ver, nside, out_path):
         params = get_params_rho_tau(self.cc[ver], survey=ver)
@@ -547,10 +583,9 @@ class PseudoClMixin:
         cl_shear = cl_shear - cl_noise
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+        self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
 
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+        self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
 
     def calculate_pseudo_cl_catalog(self, ver, out_path):
         params = get_params_rho_tau(self.cc[ver], survey=ver)
@@ -563,10 +598,9 @@ class PseudoClMixin:
         )
 
         self.print_cyan("Saving pseudo-Cl's...")
-        self.save_pseudo_cl(ell_eff, cl_shear, out_path)
+        self.pseudo_cl_to_sacc_part(ver, out_path, ell_eff, cl_shear, wsp)
 
-        cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+        self._pseudo_cls[ver]["pseudo_cl"] = self._load_pseudo_cl_sacc(out_path)
 
     def get_n_gal_map(self, params, nside, cat_gal):
         """Weighted galaxy number-density map (thin wrapper -> primitive)."""
@@ -655,26 +689,22 @@ class PseudoClMixin:
         """
         return apply_random_rotation(e1, e2, rng)
 
-    def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
-        """
-        Save pseudo-Cl's to a FITS file.
+    def pseudo_cl_to_sacc_part(self, version, out_path, ell_eff, cl_all, wsp):
+        """Write the pseudo-Cl SACC part (EE/BB/EB + shared bandpower window).
 
-        Parameters
-        ----------
-        pseudo_cl : np.array
-            Pseudo-Cl's to save.
-        out_path : str
-            Path to save the pseudo-Cl's to.
+        ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
+        the writer takes the shared bandpower window from ``wsp``. No covariance
+        is attached here — the analysis file's pseudo-Cl block is supplied at
+        assembly (``assemble_sacc``) from the NaMaster / OneCovariance product.
         """
-        # Create columns of the fits file
-        col1 = fits.Column(name="ELL", format="D", array=ell_eff)
-        col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
-        col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
-        col4 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
-        coldefs = fits.ColDefs([col1, col2, col3, col4])
-        cell_hdu = fits.BinTableHDU.from_columns(coldefs, name="PSEUDO_CELL")
-
-        cell_hdu.writeto(out_path, overwrite=True)
+        s = pseudo_cl_to_sacc(
+            self.sacc_nz(version),
+            self.sacc_metadata(version),
+            ell_eff,
+            cl_all,
+            wsp,
+        )
+        sacc_io.save(s, out_path)
 
     def plot_pseudo_cl(self):
         """

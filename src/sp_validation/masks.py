@@ -8,52 +8,10 @@ correlation/confusion matrices) used when building catalogues.
 """
 
 import healsparse as hsp
+import numexpr as ne
 import numpy as np
 from astropy.io import fits
 from scipy import stats
-
-_KIND_ALIASES = {"smaller_equal": "less_equal"}
-
-_KIND_OPS = {
-    "equal": lambda a, v: a == v,
-    "not_equal": lambda a, v: a != v,
-    "greater": lambda a, v: a > v,
-    "greater_equal": lambda a, v: a >= v,
-    "less": lambda a, v: a < v,
-    "less_equal": lambda a, v: a <= v,
-    "range": lambda a, v: (a >= v[0]) & (a <= v[1]),
-}
-
-
-def apply_condition(array, kind, value):
-    """Apply Condition.
-
-    Evaluate one mask condition (``kind``/``value``, as specified in mask
-    config YAML files) against an array and return a boolean mask. Single
-    shared grammar for the object-selection ``Mask`` class and the
-    cosmo_inference footprint builder (see issue #181).
-
-    Parameters
-    ----------
-    array : numpy.ndarray
-        input data
-    kind : str
-        operation type, one of "equal", "not_equal", "greater",
-        "greater_equal", "less", "less_equal" (alias "smaller_equal"),
-        "range"
-    value : float or list
-        value(s) to be used in mask operation; two-element list for "range"
-
-    Returns
-    -------
-    numpy.ndarray
-        boolean mask
-
-    """
-    kind = _KIND_ALIASES.get(kind, kind)
-    if kind not in _KIND_OPS:
-        raise ValueError(f"Unknown mask condition kind: {kind!r}")
-    return _KIND_OPS[kind](array, value)
 
 
 def correlation_matrix(masks, confidence_level=0.9):
@@ -118,7 +76,8 @@ class Mask:
     label : str
         mask label
     kind : str
-        operation type; see :func:`apply_condition` for the allowed values
+        operation type, allowed are "equal", "not_equal, ""greater_equal",
+        "smaller_equal", "range"
     value : float or list
         value(s) to be used in mask operation
     dat : numpy.ndarray, optional
@@ -164,7 +123,40 @@ class Mask:
 
     def apply(self, dat):
 
-        self._mask = apply_condition(dat[self._col_name], self._kind, self._value)
+        # Get column
+        col_data = dat[self._col_name]
+
+        if self._kind == "equal":
+            self._mask = ne.evaluate(
+                "col_data == value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
+        elif self._kind == "not_equal":
+            self._mask = ne.evaluate(
+                "col_data != value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
+        elif self._kind == "greater_equal":
+            self._mask = ne.evaluate(
+                "col_data >= value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
+        elif self._kind == "smaller_equal":
+            self._mask = ne.evaluate(
+                "col_data <= value",
+                local_dict={"col_data": col_data, "value": self._value},
+            )
+        elif self._kind == "range":
+            self._mask = ne.evaluate(
+                "(col_data >= low) & (col_data <= high)",
+                local_dict={
+                    "col_data": col_data,
+                    "low": self._value[0],
+                    "high": self._value[1],
+                },
+            )
+        else:
+            raise ValueError(f"Invalid kind {self._kind}")
 
     def to_bool(self, hsp_mask):
 

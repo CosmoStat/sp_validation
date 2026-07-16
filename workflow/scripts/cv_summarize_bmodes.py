@@ -3,8 +3,8 @@
 The terminal diagnostic. summarize_bmodes reads the in-memory
 _pure_eb_results / _cosebis_results / _pseudo_cls dicts, which are populated by
 plot_pure_eb / plot_cosebis / plot_pseudo_cl. The per-version E/B and COSEBIs
-npz products and the pseudo-Cl FITS are declared as inputs (so the DAG forces
-those rules first), but the summary still needs the live result objects (it
+npz products and the pseudo-Cl SACC parts are declared as inputs (so the DAG
+forces those rules first), but the summary still needs the live result objects (it
 reads each version's TreeCorr `gg`, which the npz cannot hold). So this rule
 re-runs the three B-mode methods in-process: they reload the existing 2pcf /
 data-vector files via their skip-if-exists paths and recompute only the cheap

@@ -1,7 +1,6 @@
 plots/
 .ipynb_checkpoints/
 data/
-cosmosis_config/output/*
 *.png
 *.pdf
 *.sh

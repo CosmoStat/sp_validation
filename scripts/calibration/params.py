@@ -105,9 +105,6 @@ mmap_mode = None
 
 ## Output
 
-### Output file format extension: '.fits' or '.hdf5'
-output_format = ".hdf5"
-
 ### Additional output columns
 add_cols = [
     "FLUX_RADIUS",

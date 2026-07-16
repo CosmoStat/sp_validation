@@ -122,7 +122,7 @@ venv.bak/
 # and the lockfile has never been tracked. Ignore it rather than commit a
 # pinned-dep reproducibility promise the project hasn't made. Flip to tracked
 # if we decide to pin deps via uv.
-# uv.lock is committed — it is the reproducible pin the container installs from.
+uv.lock
 
 # Spyder project settings
 .spyderproject
@@ -177,10 +177,13 @@ cosmo_inference/cosmosis_config/glass_mocks_v*
 # repo, so these are script/notebook outputs, not LaTeX-tracked figures.
 papers/catalog/plots/*.pdf
 
-# felt fiber store: canonical copy lives in ~/loom (git-synced privately);
-# .felt here is a machine-local symlink into it. Never track it in this repo.
-/.felt/
-/.felt
+# felt — track the fiber records (engineering decisions & findings); skip only
+# the regenerable index and runtime locks.
+.felt/*.db
+.felt/*.db-shm
+.felt/*.db-wal
+.felt/*.lock
+.felt/index-sync.*
 
 # Claude Code agent worktrees — transient isolated checkouts for background
 # agents; never tracked.
