@@ -72,8 +72,12 @@ def test_not_equal_2bands_is_two_column_or():
     )
 
     my_mask = Mask(
-        "mag_z", "zband", kind="not_equal_2bands", value=-99,
-        col_name2="mag_z2", dat=dat,
+        "mag_z",
+        "zband",
+        kind="not_equal_2bands",
+        value=-99,
+        col_name2="mag_z2",
+        dat=dat,
     )
 
     npt.assert_array_equal(my_mask._mask, [False, True, True, True])
