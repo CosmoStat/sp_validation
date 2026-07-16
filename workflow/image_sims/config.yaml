@@ -63,6 +63,13 @@ image_sims:
   # ShapePipe cfis configs (final_cat.param etc.); default is
   # {shapepipe_repo}/example/cfis_image_sims once #766 lands.  [operational]
   config_dir: /n17data/cdaley/unions/scratch-wf/imsims-run/grids/_cfis_image_sims
+  # ShapePipe config tree the *pipeline* stage runs against (run_job's -c
+  # override), the one that owns the ngmix ini and hence METACAL_PSF.  Empty ->
+  # run_job self-computes {shapepipe_repo}/example/cfis_image_sims (the
+  # historical default, byte-exact).  Point it at a per-arm copy carrying a
+  # different ngmix ini to A/B the metacal PSF without editing the worktree.
+  # [operational]
+  pipeline_config_dir: ""
   psf_model: psfex       # [operational]
   n_smp: -1              # [operational]
   # Extract/calibrate scripts run from the sp_validation repo checkout (branch
