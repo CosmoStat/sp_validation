@@ -9,6 +9,7 @@ import colorama
 import numpy as np
 import yaml
 from astropy.io import fits
+from cs_util.cosmo import get_cosmo
 from shear_psf_leakage import run_object, run_scale
 
 from ..b_modes import (
