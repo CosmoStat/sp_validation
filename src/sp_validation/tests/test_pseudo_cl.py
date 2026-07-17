@@ -340,10 +340,36 @@ def _build_shear_map(cv, cat_gal, params):
     n_gal = cv.get_n_gal_map(
         params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
     )
+    w = cat_gal[params["w_col"]]
+    e1 = cat_gal[params["e1_col"]]
+    e2 = cat_gal[params["e2_col"]]
+    mask = n_gal != 0
+    m1 = np.zeros(n_gal.size)
+    m2 = np.zeros(n_gal.size)
+    m1[unique_pix] += np.bincount(idx_rep, weights=e1 * w)
+    m2[unique_pix] += np.bincount(idx_rep, weights=e2 * w)
+    m1[mask] /= n_gal[mask]
+    m2[mask] /= n_gal[mask]
+    return m1 + 1j * m2, n_gal
+
+
+def test_build_shear_map(cv, cat_and_params):
+    """Pin the weighted shear map construction from the synthetic catalog."""
+    cat_gal, params = cat_and_params
+    unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
+    n_gal = cv.get_n_gal_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
+    )
     m1, m2 = cv.get_shear_map(
         params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
     )
-    return m1 + 1j * m2, n_gal
+
+    m = m1 + 1j * m2
+
+    m_replicate, n_gal_replicate = _build_shear_map(cv, cat_gal, params)
+
+    npt.assert_allclose(m, m_replicate, rtol=RTOL_DET, atol=ATOL_DET)
+    npt.assert_allclose(n_gal, n_gal_replicate, rtol=RTOL_DET, atol=ATOL_DET)
 
 
 def test_get_pseudo_cls_map(cv, cat_and_params):
@@ -466,6 +492,23 @@ def test_get_pseudo_cls_map_with_tomo(cv, cat_and_params):
                 7.682614612656511e-08,
                 6.620365648170535e-07,
                 -3.164479179586416e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[2],  # BE
+        np.array(
+            [
+                -3.83934537153214e-06,
+                6.218772676611559e-06,
+                -5.542920986484232e-06,
+                8.810792449470091e-07,
+                -3.2973293732012423e-07,
+                -1.3155110757359602e-08,
+                -1.420039280183438e-07,
+                3.09464700816748e-07,
             ]
         ),
         rtol=RTOL_DET,
