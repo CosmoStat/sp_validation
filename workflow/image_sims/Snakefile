@@ -17,8 +17,10 @@ command on candide, with the committed SLURM profile owning all scheduling:
 defaults automatically, so only ``my_run.yaml`` (the science knobs, and any
 operational override that run wants) is passed on the command line; Snakemake
 deep-merges the two.  The profile supplies the executor, account, partition,
-node excludes and job floor -- no ``-j`` needed (the slurm executor sets the
-job cap).  Off-cluster, drop ``--profile`` and add ``-j N`` to run locally.
+node excludes, job cap and job floor -- no ``-j`` needed on the command line
+(snakemake >= 9 requires an explicit cap even with the slurm executor, so the
+profile carries ``jobs``).  Off-cluster, drop ``--profile`` and add ``-j N``
+to run locally.
 
 The target (``im_mbias``) is given *before* ``--configfile``: Snakemake's
 ``--configfile`` takes one-or-more paths, so a target placed after it is
