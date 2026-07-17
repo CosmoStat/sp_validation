@@ -40,6 +40,16 @@ def get_calibrated_quantities(gal_metacal):
         weights
     mask : array of bool
         mask to indicate valid objects in "no-shear" sample
+
+    Notes
+    -----
+    Calibration uses a single global response: ``gal_metacal.R`` is the
+    2x2 shear+selection response matrix averaged over the whole run, and
+    the same matrix is applied to every object. Per-object responses
+    (``R_g11`` ... ``R_g22``) are computed upstream but are only ever
+    consumed as catalogue-wide (or, in ``get_w_des`` /
+    ``get_quantities_binned``, per-bin) means -- no object is calibrated
+    with its own response.
     """
     # mask for 'no shear' images
     mask = gal_metacal.mask_dict["ns"]
