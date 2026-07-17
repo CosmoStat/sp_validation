@@ -1079,7 +1079,7 @@ class PseudoClMixin:
 
         else:
             block_path = self._output_path_iNKA_block_cov(
-                ver, tomo_bin_quad=(bin_key_a1, bin_key_a2, bin_key_b1, bin_key_b2)
+                ver, tomo_bin_quad=("all", "all", "all", "all")
             )
             covar = fits.open(block_path)
 
