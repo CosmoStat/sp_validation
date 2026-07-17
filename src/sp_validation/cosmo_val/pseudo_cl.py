@@ -223,7 +223,7 @@ class PseudoClMixin:
                 )
 
                 # Save in the dictionnaries
-                if not f"W{bin_key1}" not in n_gal_map_dict:
+                if f"W{bin_key1}" not in n_gal_map_dict:
                     n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
                 if f"W{bin_key2}" not in n_gal_map_dict:
                     n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
@@ -311,7 +311,7 @@ class PseudoClMixin:
                 )
                 input_cl_a1_b2 = (
                     fiducial_cl[f"W{bin_key_a1}xW{bin_key_b2}"]
-                    if bin_key_a1 <= bin_key_a2
+                    if bin_key_a1 <= bin_key_b2
                     else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a1}"]
                 )
                 input_cl_a2_b1 = (
@@ -1024,15 +1024,13 @@ class PseudoClMixin:
             ver, method="iNKA", tomography=tomography
         )
 
-        print(self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"])
-
         if tomography:
             # Merge the tomographic covariance matrices
             tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
             # Get the number of bins from the pseudo_cls attribute
             # The non-tomographic pseudo-cl are computed from the call
-            # to this attribute.
+            # to this attribute if not already computed.
             n_ell = self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"][
                 "ELL"
             ].shape[0]
