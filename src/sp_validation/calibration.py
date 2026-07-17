@@ -976,6 +976,14 @@ class metacal:
 
             self.mask_dict[name] = ind_masked
 
+        if len(self.mask_dict["ns"]) == 0:
+            raise ValueError(
+                "0 objects survive the metacal selection (no-shear sample"
+                " is empty: flag == 0 + SNR + size cuts left nothing) --"
+                " upstream shape measurement likely failed wholesale;"
+                " check the ngmix outputs before calibrating."
+            )
+
     def _masking_gal_mom(self):
         """Add docstring.
 
