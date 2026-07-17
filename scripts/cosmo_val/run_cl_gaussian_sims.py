@@ -1,3 +1,28 @@
+"""
+Executable script to run Gaussian simulations of shear maps and compute their power spectra using the NaMaster library.
+The execution is distributed across multiple MPI processes to speed up the computation.
+
+To run the script, use the following command:
+    mpirun -np <number_of_processes> python run_cl_gaussian_sims.py --config <path_to_config_file> --output <output_directory> --version <version_name> [options]
+
+Options:
+    -c, --config: Path to the configuration file to generate the simulation (required).
+    -o, --output: Output directory for the simulation results (required, ideally the same as cosmo_val).
+    -v, --version: Version name for the simulation (required).
+    -t, --tomo: Whether to run the simulation in tomographic mode (default: False).
+    -iw, --ignore-warnings: Ignore warnings during the simulation.
+    -n, --n_sims: Number of simulations to run (default: 100).
+    -ns, --nside: Nside for the HEALPix maps (default: 1024).
+    -b, --binning: Binning scheme for the power spectra (default: powspace).
+    -es, --ell_step: Step size for the linear binning (default: 10).
+    -eb, --ell_bins: Number of bins for the power spectra (default: 32).
+    -p, --power: Power for the powspace binning (default: 0.5).
+    -cc, --cosmo-config: Path to the cosmology configuration file (default: None, use Planck18 cosmology by default).
+    -f, --force: Force overwrite of existing output files (default: False).
+
+Author: Sacha Guerrini
+"""
+
 import argparse
 import itertools
 import os
@@ -97,7 +122,7 @@ def get_parser():
     parser.add_argument(
         "-cc",
         "--cosmo-config",
-        help="Path to the cosmology configuration file (default: None)",
+        help="Path to the cosmology configuration file (default: None, use Planck18 cosmology by default)",
         type=str,
         default=None,
     )
@@ -387,10 +412,10 @@ def run_one_simulation(sim_id, nside, version, tomography, out_dir, force_run):
         # Save the results
         np.savez(out_file, cl_decoupled=cl_final)
 
-        print(f"Rank {rank} finished {sim_id} for version {version}")
+        print(f"Rank {rank} finished simulation {sim_id} for version {version}")
 
     except Exception as e:
-        print(f"Rank {rank} failed {sim_id} with error {e}")
+        print(f"Rank {rank} failed simulation {sim_id} with error {e}")
 
 
 # --- Distribution of the MPI processes in a master-worker scheme ---
