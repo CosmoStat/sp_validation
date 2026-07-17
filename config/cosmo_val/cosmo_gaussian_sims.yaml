@@ -1,0 +1,14 @@
+# --- Cosmological parameters (CAMB) ---
+h: 0.6766
+Omega_m: 0.30966
+Omega_b: 0.04897
+ns: 0.9665
+sig8: 0.8102
+mnu: 0.06
+extra_params:
+  camb:
+    nonlinear: True
+    halofit_version: "mead2020_feedback"
+    HMCode_log_T_AGN: 7.8
+    kmax: 20.0
+    kmax_extrapolate: 500
