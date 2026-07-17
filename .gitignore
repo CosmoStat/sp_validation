@@ -198,3 +198,5 @@ papers/cosmo_val/logs/
 
 # Ignore scratch notebooks
 scratch/*/*.ipynb
+scratch/guerrini/work_notebooks
+scratch/guerrini/launch_scripts

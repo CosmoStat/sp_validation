@@ -7,33 +7,37 @@ pseudo-Cl estimation, random-rotation noise debiasing, and plotting. It depends
 on pymaster (NaMaster), healpy, and OneCovariance.
 """
 
+import colorsys
 import configparser
+import itertools
 import os
 
 import healpy as hp
 import matplotlib.pyplot as plt
 import numpy as np
-import pymaster as nmt
 from astropy.io import fits
-from cs_util.cosmo import get_theo_c_ell
+from matplotlib.colors import to_rgb
 
-from ..pseudo_cl import (
-    apply_random_rotation,
-    get_n_gal_map,
-    get_pseudo_cls_catalog,
-    get_pseudo_cls_map,
-    make_namaster_bin,
-)
+import sp_validation.pseudo_cl as spv_pseudo_cl
+
 from ..rho_tau import get_params_rho_tau
-from ..statistics import chi2_and_pte, cov_from_one_covariance
+from ..statistics import cov_from_one_covariance
 
 
 class PseudoClMixin:
+    # ---------------- Pseudo-Cl properties ---------------- #
     @property
     def pseudo_cls(self):
         if not hasattr(self, "_pseudo_cls"):
-            self.calculate_pseudo_cl()
-            self.calculate_pseudo_cl_eb_cov()
+            self.calculate_pseudo_cl(compute_tomography=False)
+            self.calculate_pseudo_cl_inka_cov(
+                compute_tomography=False, load_all_block=True
+            )
+            if self.compute_tomography:
+                self.calculate_pseudo_cl(compute_tomography=True)
+                self.calculate_pseudo_cl_inka_cov(
+                    compute_tomography=True, load_all_block=True
+                )
         return self._pseudo_cls
 
     @property
@@ -42,51 +46,11 @@ class PseudoClMixin:
             self.calculate_pseudo_cl_onecovariance()
         return self._pseudo_cls_onecov
 
-    def get_namaster_bin(self, lmin, lmax, b_lmax):
-        """Build NaMaster binning object (thin wrapper, state -> primitive)."""
-        return make_namaster_bin(
-            lmin,
-            lmax,
-            b_lmax,
-            self.binning,
-            ell_step=self.ell_step,
-            n_ell_bins=self.n_ell_bins,
-            power=self.power,
-        )
-
-    def get_variance_map(self, nside, e1, e2, w, unique_pix, idx_rep):
-        """
-        Create a variance map from the input catalog.
-        """
-
-        variance_map = np.zeros(hp.nside2npix(nside))
-
-        variance_map[unique_pix] = np.bincount(
-            idx_rep, weights=(e1**2 + e2**2) / 2 * w**2
-        )
-
-        return variance_map
-
-    def get_field_and_workspace_from_map(self, mask, lmax, b):
-        """
-        Create a NaMaster field and workspace from the input map.
-        """
-
-        nside = hp.npix2nside(len(mask))
-
-        # Create NaMaster field
-        f = nmt.NmtField(
-            mask=mask,
-            maps=[np.zeros(hp.nside2npix(nside)), np.zeros(hp.nside2npix(nside))],
-            lmax=lmax,
-        )
-
-        # Create NaMaster workspace
-        wsp = nmt.NmtWorkspace.from_fields(f, f, b)
-
-        return f, wsp
-
-    def calculate_pseudo_cl_eb_cov(self):
+    # ---------------- Pseudo-Cl calculation methods ---------------- #
+    # TODO: some cleaning to clearly separate DV, covariance, and utility functions.
+    def calculate_pseudo_cl_inka_cov(
+        self, compute_tomography=True, load_all_block=False
+    ):
         """
         Compute a theoretical Gaussian covariance of the Pseudo-Cl for EE, EB and BB.
         """
@@ -94,182 +58,305 @@ class PseudoClMixin:
 
         nside = self.nside
 
-        try:
-            self._pseudo_cls
-        except AttributeError:
-            self._pseudo_cls = {}
+        self._pseudo_cls = getattr(self, "_pseudo_cls", {})
         for ver in self.versions:
             self.print_magenta(ver)
+
+            out_dir_block = self._output_path(f"pseudo_cl/iNKA_block_{ver}/")
+            os.makedirs(out_dir_block, exist_ok=True)
 
             if ver not in self._pseudo_cls.keys():
                 self._pseudo_cls[ver] = {}
 
-            out_path = self._output_path(f"pseudo_cl_cov_{ver}.fits")
-            if os.path.exists(out_path):
-                self.print_done(
-                    f"Skipping Pseudo-Cl covariance calculation, {out_path} exists"
-                )
-                self._pseudo_cls[ver]["cov"] = fits.open(out_path)
-            else:
-                params = get_params_rho_tau(self.cc[ver], survey=ver)
+            out_path_merged = self._output_path_pseudo_cl_cov(
+                ver, "iNKA", tomography=compute_tomography
+            )
 
-                self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
+            if compute_tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
-                lmax = 2 * self.nside
-                ell = np.arange(1, lmax + 1)
-                pw = hp.pixwin(nside, lmax=lmax)
-                if pw.shape[0] != len(ell) + 1:
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
                     raise ValueError(
-                        "Unexpected pixwin length for lmax="
-                        f"{lmax}: got {pw.shape[0]}, expected {len(ell) + 1}"
+                        f"Version {ver} does not have tomography information."
                     )
-                pw = pw[1 : len(ell) + 1]
 
-                # Load redshift distribution and calculate theory C_ell
-                path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
-                z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
-                fiducial_cl = (
-                    get_theo_c_ell(
-                        ell=ell,
-                        z=z,
-                        nz=dndz,
-                        backend="ccl",
-                        cosmo=self.cosmo,
-                    )
-                    * pw**2
+            else:
+                tomo_bin_pairs = [("all", "all")]
+
+            if os.path.exists(out_path_merged) and not self.force_run:
+                self.print_done(
+                    f"Skipping Pseudo-Cl iNKA covariance calculation, {out_path_merged} exists"
                 )
+                self._pseudo_cls[ver]["cov_iNKA"] = fits.open(out_path_merged)
 
-                self.print_cyan("Getting a binning, n_gal_map, field and workspace.")
+                if load_all_block:
+                    self.print_done("Loading all the iNKA covariance blocks")
+                    n_spectra = len(tomo_bin_pairs)
 
-                lmin = 8
-                lmax = 2 * self.nside
-                b_lmax = lmax - 1
-
-                b = self.get_namaster_bin(lmin, lmax, b_lmax)
-
-                # Load data and create shear and noise maps
-                cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-
-                n_gal, unique_pix, _idx, idx_rep = self.get_n_gal_map(
-                    params, nside, cat_gal
-                )
-
-                f, wsp = self.get_field_and_workspace_from_map(n_gal, b_lmax, b)
-
-                if self.noise_bias_method == "randoms":
-                    self.print_cyan("Getting a sample of Cls with noise bias.")
-
-                    cl_noise, f, wsp = self.get_sample(
-                        params,
-                        self.nside,
-                        b_lmax,
-                        b,
-                        cat_gal,
-                        n_gal,
-                        n_gal,
-                        unique_pix,
-                        idx_rep,
-                        np.random.default_rng(self.cell_seed),
+                    # indices into tomo_bin_pairs for all unique covariance blocks
+                    block_indices = list(
+                        itertools.combinations_with_replacement(range(n_spectra), 2)
                     )
 
-                    noise_bias_cl = np.mean(cl_noise, axis=0)
+                    for index_a, index_b in block_indices:
+                        bin_key_a1, bin_key_a2 = tomo_bin_pairs[index_a]
+                        bin_key_b1, bin_key_b2 = tomo_bin_pairs[index_b]
 
-                elif self.noise_bias_method == "analytic":
-                    self.print_cyan("Getting analytic noise bias.")
+                        load_path = self._output_path_iNKA_block_cov(
+                            ver,
+                            tomo_bin_quad=(
+                                bin_key_a1,
+                                bin_key_a2,
+                                bin_key_b1,
+                                bin_key_b2,
+                            ),
+                        )
 
-                    e1, e2, w = (
-                        cat_gal[self.cc[ver]["shear"]["e1_col"]],
-                        cat_gal[self.cc[ver]["shear"]["e2_col"]],
-                        cat_gal[self.cc[ver]["shear"]["w_col"]],
-                    )
-                    variance_map = self.get_variance_map(
-                        self.nside, e1, e2, w, unique_pix, idx_rep
-                    )
+                        if os.path.exists(load_path):
+                            self._pseudo_cls[ver][
+                                f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
+                            ] = fits.open(load_path)
 
-                    noise_bias = hp.nside2pixarea(self.nside) * np.mean(variance_map)
+                            if bin_key_a1 == bin_key_b1 and bin_key_a2 == bin_key_b2:
+                                self._pseudo_cls[ver][
+                                    f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                                ]["cov"] = fits.open(load_path)
+                        else:
+                            raise FileNotFoundError(
+                                "The file does not exist, please run `cosmo_val` with `force_run` to True."
+                            )
 
-                    noise_bias_cl = np.zeros((4, lmax))
-                    noise_bias_cl[0, :] = noise_bias
-                    noise_bias_cl[3, :] = noise_bias
+                continue
 
-                    noise_bias_cl = wsp.decouple_cell(noise_bias_cl)  # Decouple
+            # Initialise dictionnary to store field and workspace
+            n_gal_map_dict = {}
+            field_dict = {}
+            wsp_dict = {}
+
+            self.print_cyan(f"Extracting the fiducial power spectrum for {ver}")
+
+            fiducial_cl = self.get_fiducial_cl(ver, compute_tomography)
+
+            self.print_cyan(
+                "Estimating and adding the noise bias to the fiducial power spectra"
+            )
+            self.print_cyan(f"Method used: {self.noise_bias_method}")
+
+            params = get_params_rho_tau(self.cc[ver])
+            cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+
+            for bin_key1, bin_key2 in tomo_bin_pairs:
+                if bin_key1 == bin_key2:
+                    cat_gal_ = self._get_tomographic_bin(params, cat_gal, bin_key1)
+
+                    noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
 
                 else:
-                    raise ValueError(
-                        f"Noise bias method {self.noise_bias_method} not recognized. It should be 'randoms' or 'analytic'."
-                    )
+                    noise_bias_cl = np.zeros((4, 2 * nside))
 
-                # Unbin, then fill the data vector below lmin with the lowest-ell value
-                noise_bias_cl = b.unbin_cell(noise_bias_cl)
-                lowest_ell = b.get_ell_list(0)[0]
-                noise_bias_cl[:, :lowest_ell] = noise_bias_cl[:, [lowest_ell]]
-
-                self.print_cyan("Adding noise bias to the fiducial Cls.")
-
-                fiducial_cl = (
+                # Update the fiducial_cl dictionnary
+                fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = (
                     np.array(
                         [
-                            fiducial_cl,
-                            0.0 * fiducial_cl,
-                            0.0 * fiducial_cl,
-                            0.0 * fiducial_cl,
+                            fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
+                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
+                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
+                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
                         ]
                     )
                     + noise_bias_cl
                 )
 
-                if self.fiducial_input_inka == "coupled":
-                    self.print_cyan("Coupling the fiducial Cls.")
+            # Compute the fields and workspaces
+            for bin_key1, bin_key2 in tomo_bin_pairs:
+                self.print_cyan(
+                    f"Computing fields and workspaces for {bin_key1}, {bin_key2}"
+                )
+                lmin, lmax, b_lmax = spv_pseudo_cl.pseudo_cl_geometry(self.nside)
+                b = self.get_namaster_bin(lmin, lmax, b_lmax)
+
+                # Get the tomographic bins
+                cat_gal_a = self._get_tomographic_bin(params, cat_gal, bin_key1)
+                cat_gal_b = self._get_tomographic_bin(params, cat_gal, bin_key2)
+
+                # Compute the n_gal_maps and the wsp object
+                unique_pix_a, idx_a, idx_rep_a = self.get_pixels(
+                    params, nside, cat_gal_a
+                )
+                unique_pix_b, idx_b, idx_rep_b = self.get_pixels(
+                    params, nside, cat_gal_b
+                )
+
+                # Compute the number density maps
+                n_gal_map_a = self.get_n_gal_map(params, nside, cat_gal_a)
+                n_gal_map_b = self.get_n_gal_map(params, nside, cat_gal_b)
+
+                # Get the shear maps
+                shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+                    params,
+                    self.nside,
+                    cat_gal_a,
+                    unique_pix=unique_pix_a,
+                    idx=idx_a,
+                    idx_rep=idx_rep_a,
+                )
+                shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+                    params,
+                    self.nside,
+                    cat_gal_b,
+                    unique_pix=unique_pix_b,
+                    idx=idx_b,
+                    idx_rep=idx_rep_b,
+                )
+
+                # Get the fields and workspaces
+                field_a, field_b, wsp = spv_pseudo_cl.get_field_and_workspace_from_map(
+                    b,
+                    mask_a=n_gal_map_a,
+                    e1_map_a=shear_map_a_e1,
+                    e2_map_a=shear_map_a_e2,
+                    mask_b=n_gal_map_b,
+                    e1_map_b=shear_map_b_e1,
+                    e2_map_b=shear_map_b_e2,
+                    pol_factor=self.pol_factor,
+                    return_wsp=True,
+                )
+
+                # Save in the dictionnaries
+                if f"W{bin_key1}" not in n_gal_map_dict:
+                    n_gal_map_dict[f"W{bin_key1}"] = n_gal_map_a
+                if f"W{bin_key2}" not in n_gal_map_dict:
+                    n_gal_map_dict[f"W{bin_key2}"] = n_gal_map_b
+                if f"W{bin_key1}" not in field_dict:
+                    field_dict[f"W{bin_key1}"] = field_a
+                if f"W{bin_key2}" not in field_dict:
+                    field_dict[f"W{bin_key2}"] = field_b
+                if bin_key1 <= bin_key2 and f"W{bin_key1}xW{bin_key2}" not in wsp_dict:
+                    wsp_dict[f"W{bin_key1}xW{bin_key2}"] = wsp
+
+            if self.fiducial_input_inka == "coupled":
+                # Couple the cell if required
+                self.print_cyan("Coupling the fiducial Cls.")
+                for bin_key1, bin_key2 in tomo_bin_pairs:
+                    # Get the wsp object
+                    n_gal_map_a = n_gal_map_dict[f"W{bin_key1}"]
+                    n_gal_map_b = n_gal_map_dict[f"W{bin_key2}"]
+                    wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
 
                     coupling_mat = wsp.get_coupling_matrix()
                     coupling_mat_re = np.reshape(
                         coupling_mat, (4, lmax, 4, lmax), order="F"
                     )
-                    fiducial_cl = np.tensordot(coupling_mat_re, fiducial_cl) / np.mean(
-                        n_gal**2
-                    )  # couple and divide by the mean of the mask squared
+                    fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = np.tensordot(
+                        coupling_mat_re, fiducial_cl[f"W{bin_key1}xW{bin_key2}"]
+                    ) / np.mean(
+                        n_gal_map_a * n_gal_map_b
+                    )  # couple and divide by the product of the mask
+
+            # To compute all the blocks in the covariance,
+            # we must compute all the (i, j, k, l) bin combinations
+            # Or equivalently, compute the covariance for all spectra pairs
+            n_spectra = len(tomo_bin_pairs)
+
+            # indices into tomo_bin_pairs for all unique covariance blocks
+            block_indices = list(
+                itertools.combinations_with_replacement(range(n_spectra), 2)
+            )
+            # Loop on the different tomographic bin pairs to compute the covariance
+            for index_a, index_b in block_indices:
+                bin_key_a1, bin_key_a2 = tomo_bin_pairs[index_a]
+                bin_key_b1, bin_key_b2 = tomo_bin_pairs[index_b]
+                self.print_cyan(
+                    f"Tomo Bin Quad: ({bin_key_a1}, {bin_key_a2}, {bin_key_b1}, {bin_key_b2})"
+                )
+
+                if (
+                    bin_key_a1 == bin_key_b1
+                    and bin_key_a2 == bin_key_b2
+                    and (
+                        f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                        not in self._pseudo_cls[ver].keys()
+                    )
+                ):
+                    self._pseudo_cls[ver][
+                        f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                    ] = {}
+
+                out_path = self._output_path_iNKA_block_cov(
+                    ver, tomo_bin_quad=(bin_key_a1, bin_key_a2, bin_key_b1, bin_key_b2)
+                )
+
+                if os.path.exists(out_path) and not self.force_run:
+                    self.print_done(
+                        f"Skipping Pseudo-Cl covariance block Cl ({bin_key_a1, bin_key_a2}), Cl ({bin_key_b1, bin_key_b2}) calculation, {out_path} exists"
+                    )
+
+                    self._pseudo_cls[ver][
+                        f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
+                    ] = fits.open(out_path)
+
+                    if bin_key_a1 == bin_key_b1 and bin_key_a2 == bin_key_b2:
+                        self._pseudo_cls[ver][
+                            f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                        ]["cov"] = fits.open(out_path)
+
+                    continue
 
                 self.print_cyan("Computing the Pseudo-Cl covariance")
 
-                cw = nmt.NmtCovarianceWorkspace.from_fields(f, f, f, f)
+                input_cl_a1_b1 = (
+                    fiducial_cl[f"W{bin_key_a1}xW{bin_key_b1}"]
+                    if bin_key_a1 <= bin_key_b1
+                    else fiducial_cl[f"W{bin_key_b1}xW{bin_key_a1}"]
+                )
+                input_cl_a1_b2 = (
+                    fiducial_cl[f"W{bin_key_a1}xW{bin_key_b2}"]
+                    if bin_key_a1 <= bin_key_b2
+                    else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a1}"]
+                )
+                input_cl_a2_b1 = (
+                    fiducial_cl[f"W{bin_key_a2}xW{bin_key_b1}"]
+                    if bin_key_a2 <= bin_key_b1
+                    else fiducial_cl[f"W{bin_key_b1}xW{bin_key_a2}"]
+                )
+                input_cl_a2_b2 = (
+                    fiducial_cl[f"W{bin_key_a2}xW{bin_key_b2}"]
+                    if bin_key_a2 <= bin_key_b2
+                    else fiducial_cl[f"W{bin_key_b2}xW{bin_key_a2}"]
+                )
 
-                # Get actual number of ell bins from binning scheme
-                n_ell_actual = b.get_n_bands()
-
-                covar_22_22 = nmt.gaussian_covariance(
-                    cw,
-                    2,
-                    2,
-                    2,
-                    2,
-                    fiducial_cl,
-                    fiducial_cl,
-                    fiducial_cl,
-                    fiducial_cl,
-                    wsp,
-                    wb=wsp,
-                ).reshape([n_ell_actual, 4, n_ell_actual, 4])
+                covar_22_22 = spv_pseudo_cl.get_pseudo_cl_iNKA_covariance(
+                    input_cl_a1_b1,
+                    input_cl_a1_b2,
+                    input_cl_a2_b1,
+                    input_cl_a2_b2,
+                    field_dict[f"W{bin_key_a1}"],
+                    field_dict[f"W{bin_key_a2}"],
+                    field_dict[f"W{bin_key_b1}"],
+                    field_dict[f"W{bin_key_b2}"],
+                    wsp_a=wsp_dict[f"W{bin_key_a1}xW{bin_key_a2}"],
+                    wsp_b=wsp_dict[f"W{bin_key_b1}xW{bin_key_b2}"],
+                    b=b,
+                )
 
                 self.print_cyan("Saving Pseudo-Cl covariance")
 
-                # covar_22_22 is indexed [ell, pol_a, ell, pol_b]; store each of the
-                # 16 EE/EB/BE/BB cross-blocks as a named HDU (row-major pol order).
-                # Append rather than construct from a list so astropy promotes the
-                # first HDU to a PrimaryHDU on write.
-                pols = ["EE", "EB", "BE", "BB"]
-                hdu = fits.HDUList()
-                for i, pa in enumerate(pols):
-                    for j, pb in enumerate(pols):
-                        hdu.append(
-                            fits.ImageHDU(
-                                covar_22_22[:, i, :, j], name=f"COVAR_{pa}_{pb}"
-                            )
-                        )
+                self._pseudo_cls[ver][
+                    f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
+                ] = self._save_iNKA_covariance(covar_22_22, out_path)
 
-                hdu.writeto(out_path, overwrite=True)
+                if bin_key_a1 == bin_key_b1 and bin_key_a2 == bin_key_b2:
+                    self._pseudo_cls[ver][
+                        f"tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}"
+                    ]["cov"] = self._pseudo_cls[ver][
+                        f"spectra_{bin_key_a1}{bin_key_a2}_spectra_{bin_key_b1}{bin_key_b2}"
+                    ]
 
-                self._pseudo_cls[ver]["cov"] = hdu
-
+            # Merge the covariance blocks
+            self._pseudo_cls[ver]["cov_iNKA"] = self._merge_iNKA_covariance(
+                ver, tomography=compute_tomography
+            )
+            self.print_done(f"Done Pseudo-Cl covariance calculation for {ver}")
         self.print_done("Done Pseudo-Cl covariance")
 
     def calculate_pseudo_cl_onecovariance(self):
@@ -299,8 +386,11 @@ class PseudoClMixin:
             out_dir = self._output_path(f"pseudo_cl_cov_onecov_{ver}/")
             os.makedirs(out_dir, exist_ok=True)
 
-            if os.path.exists(
-                os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")
+            if (
+                os.path.exists(
+                    os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")
+                )
+                and not self.force_run
             ):
                 self.print_done(f"Skipping OneCovariance calculation, {out_dir} exists")
                 self._load_onecovariance_cov(out_dir, ver)
@@ -417,7 +507,7 @@ class PseudoClMixin:
             out_file = self._output_path(
                 f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}.fits"
             )
-            if os.path.exists(out_file):
+            if os.path.exists(out_file) and not self.force_run:
                 self.print_done(
                     f"Skipping Gaussian and Non-Gaussian covariance calculation, {out_file} exists"
                 )
@@ -451,182 +541,356 @@ class PseudoClMixin:
             f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
 
-    def calculate_pseudo_cl(self):
+    def calculate_pseudo_cl(self, compute_tomography=True):
         """
-        Compute the pseudo-Cl of given catalogs.
+        Compute the pseudo-Cl of a `CosmologyValidation` inputs with tomography.
         """
-        self.print_start("Computing pseudo-Cl's")
+        out_dir = self._output_path("pseudo_cl")
+        os.makedirs(out_dir, exist_ok=True)
 
-        nside = self.nside
+        if compute_tomography:
+            self.print_start("Computing tomographic pseudo-Cl's")
+        else:
+            self.print_start("Computing non-tomographic pseudo-Cl's")
 
-        try:
-            self._pseudo_cls
-        except AttributeError:
-            self._pseudo_cls = {}
+        self._pseudo_cls = getattr(self, "_pseudo_cls", {})
+
         for ver in self.versions:
             self.print_magenta(ver)
 
-            self._pseudo_cls[ver] = {}
+            if ver not in self.pseudo_cls.keys():
+                self._pseudo_cls[ver] = {}
 
-            out_path = self._output_path(f"pseudo_cl_{ver}.fits")
-            if os.path.exists(out_path):
-                self.print_done(f"Skipping Pseudo-Cl's calculation, {out_path} exists")
-                cl_shear = fits.getdata(out_path)
-                self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
-            elif self.cell_method == "map":
-                self.calculate_pseudo_cl_map(ver, nside, out_path)
-            elif self.cell_method == "catalog":
-                self.calculate_pseudo_cl_catalog(ver, out_path)
+            if compute_tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+
             else:
-                raise ValueError(f"Unknown cell method: {self.cell_method}")
+                tomo_bin_pairs = [("all", "all")]
 
-        self.print_done("Done pseudo-Cl's")
+            # Loop on the different tomographic bin pairs
+            for bin_key1, bin_key2 in tomo_bin_pairs:
+                self.print_cyan(f"Tomo Bin Pair: ({bin_key1}, {bin_key2})")
 
-    def calculate_pseudo_cl_map(self, ver, nside, out_path):
-        params = get_params_rho_tau(self.cc[ver], survey=ver)
+                if (
+                    f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
+                    not in self._pseudo_cls[ver].keys()
+                ):
+                    self._pseudo_cls[ver][
+                        f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"
+                    ] = {}
+
+                out_path = self._output_path_pseudo_cl(
+                    ver, tomo_bin_pair=(bin_key1, bin_key2)
+                )
+                if os.path.exists(out_path) and not self.force_run:
+                    self.print_done(
+                        f"Skipping Pseudo-Cl's calculation, {out_path} exists"
+                    )
+                    cl_shear = fits.getdata(out_path)
+                    self._pseudo_cls[ver][f"tomo_bin_{bin_key1}_tomo_bin_{bin_key2}"][
+                        "pseudo_cl"
+                    ] = cl_shear
+                    continue
+
+                if self.cell_method == "map":
+                    self.calculate_pseudo_cl_map(
+                        ver, self.nside, out_path, bin_key1, bin_key2
+                    )
+                elif self.cell_method == "catalog":
+                    self.calculate_pseudo_cl_catalog(ver, out_path, bin_key1, bin_key2)
+                else:
+                    raise ValueError(f"Unknown cell method: {self.cell_method}")
+
+    def calculate_pseudo_cl_map(self, ver, nside, out_path, tomo_bin_a, tomo_bin_b):
+        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+            isinstance(tomo_bin_a, (int, np.integer))
+            and isinstance(tomo_bin_b, (int, np.integer))
+        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
+
+        params = get_params_rho_tau(self.cc[ver])
+
+        self.print_cyan(
+            f"Computing pseudo-Cl's for tomographic bins {tomo_bin_a} and {tomo_bin_b}..."
+        )
 
         # Load data and create shear and noise maps
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-        w = cat_gal[params["w_col"]]
-        self.print_cyan("Creating maps and computing Cl's...")
-        n_gal_map, unique_pix, _idx, idx_rep = self.get_n_gal_map(
-            params, nside, cat_gal
-        )
-        mask = n_gal_map != 0
-
-        shear_map_e1 = np.zeros(hp.nside2npix(nside))
-        shear_map_e2 = np.zeros(hp.nside2npix(nside))
-
-        e1 = cat_gal[params["e1_col"]]
-        e2 = cat_gal[params["e2_col"]]
+        # Get the tomographic bin
+        cat_gal_a = self._get_tomographic_bin(params, cat_gal, tomo_bin_a)
+        cat_gal_b = self._get_tomographic_bin(params, cat_gal, tomo_bin_b)
 
         del cat_gal
 
-        shear_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1 * w)
-        shear_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2 * w)
-        shear_map_e1[mask] /= n_gal_map[mask]
-        shear_map_e2[mask] /= n_gal_map[mask]
+        self.print_cyan("Creating maps and computing Cl's...")
+        # Get the pixels and indices for the catalogs
+        unique_pix_a, idx_a, idx_rep_a = self.get_pixels(params, nside, cat_gal_a)
+        unique_pix_b, idx_b, idx_rep_b = self.get_pixels(params, nside, cat_gal_b)
 
-        shear_map = shear_map_e1 + 1j * shear_map_e2
+        # Create number density maps for each tomographic bin
+        n_gal_map_a = self.get_n_gal_map(
+            params,
+            nside,
+            cat_gal_a,
+            unique_pix=unique_pix_a,
+            idx=idx_a,
+            idx_rep=idx_rep_a,
+        )
+        n_gal_map_b = self.get_n_gal_map(
+            params,
+            nside,
+            cat_gal_b,
+            unique_pix=unique_pix_b,
+            idx=idx_b,
+            idx_rep=idx_rep_b,
+        )
 
-        del shear_map_e1, shear_map_e2
+        # Create shear maps for each tomographic bin
+        shear_map_a_e1, shear_map_a_e2 = self.get_shear_map(
+            params,
+            nside,
+            cat_gal_a,
+            unique_pix=unique_pix_a,
+            idx=idx_a,
+            idx_rep=idx_rep_a,
+            n_gal_map=n_gal_map_a,
+        )
+        shear_map_a = shear_map_a_e1 + 1j * shear_map_a_e2
+        del shear_map_a_e1, shear_map_a_e2
 
-        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(shear_map, n_gal_map)
+        shear_map_b_e1, shear_map_b_e2 = self.get_shear_map(
+            params,
+            nside,
+            cat_gal_b,
+            unique_pix=unique_pix_b,
+            idx=idx_b,
+            idx_rep=idx_rep_b,
+            n_gal_map=n_gal_map_b,
+        )
+        shear_map_b = shear_map_b_e1 + 1j * shear_map_b_e2
+        del shear_map_b_e1, shear_map_b_e2
 
-        cl_noise = np.zeros_like(cl_shear)
-        rng = np.random.default_rng(self.cell_seed)
+        # Compute the pseudo-Cl's
+        ell_eff, cl_shear, wsp = self.get_pseudo_cls_map(
+            shear_map_a, n_gal_map_a, shear_map_b=shear_map_b, mask_b=n_gal_map_b
+        )
 
-        for i in range(self.nrandom_cell):
-            noise_map_e1 = np.zeros(hp.nside2npix(nside))
-            noise_map_e2 = np.zeros(hp.nside2npix(nside))
+        # Remove the noise bias for auto-correlations.
+        if tomo_bin_a == tomo_bin_b:
+            # Compute the noise bias using noise_bias_method
+            cl_noise = self.get_noise_bias_from_gaussian_real(
+                params,
+                nside,
+                cat_gal_a,
+                unique_pix=unique_pix_a,
+                idx=idx_a,
+                idx_rep=idx_rep_a,
+                n_gal_map=n_gal_map_a,
+                wsp=wsp,
+            )
 
-            e1_rot, e2_rot = self.apply_random_rotation(e1, e2, rng)
-
-            noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot * w)
-            noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot * w)
-
-            noise_map_e1[mask] /= n_gal_map[mask]
-            noise_map_e2[mask] /= n_gal_map[mask]
-
-            noise_map = noise_map_e1 + 1j * noise_map_e2
-            del noise_map_e1, noise_map_e2
-
-            _, cl_noise_, _ = self.get_pseudo_cls_map(noise_map, n_gal_map, wsp)
-            cl_noise += cl_noise_
-
-        cl_noise /= self.nrandom_cell
-        del e1, e2, w
-        try:
-            del e1_rot, e2_rot
-        except NameError:  # Continue if the random generation has been skipped.
-            pass
-        del n_gal_map
-
-        # Noise realizations are now reproducible (seeded rng from self.cell_seed).
-        cl_shear = cl_shear - cl_noise
+            # Subtract the noise bias from the pseudo-Cl's
+            cl_shear = cl_shear - cl_noise
 
         self.print_cyan("Saving pseudo-Cl's...")
         self.save_pseudo_cl(ell_eff, cl_shear, out_path)
 
         cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+            "pseudo_cl"
+        ] = cl_shear
 
-    def calculate_pseudo_cl_catalog(self, ver, out_path):
-        params = get_params_rho_tau(self.cc[ver], survey=ver)
+    def calculate_pseudo_cl_catalog(self, ver, out_path, tomo_bin_a, tomo_bin_b):
+        assert (tomo_bin_a == "all" and tomo_bin_b == "all") or (
+            isinstance(tomo_bin_a, (int, np.integer))
+            and isinstance(tomo_bin_b, (int, np.integer))
+        ), "tomo_bin_a and tomo_bin_b must be either both 'all' or both integers."
+
+        params = get_params_rho_tau(self.cc[ver])
 
         # Load data and create shear and noise maps
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
         ell_eff, cl_shear, wsp = self.get_pseudo_cls_catalog(
-            catalog=cat_gal, params=params
+            catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
         )
 
         self.print_cyan("Saving pseudo-Cl's...")
         self.save_pseudo_cl(ell_eff, cl_shear, out_path)
 
         cl_shear = fits.getdata(out_path)
-        self._pseudo_cls[ver]["pseudo_cl"] = cl_shear
+        self._pseudo_cls[ver][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+            "pseudo_cl"
+        ] = cl_shear
 
-    def get_n_gal_map(self, params, nside, cat_gal):
+    # ---------------- Utility functions for pseudo-Cl calculations ---------------- #
+    def get_namaster_bin(self, lmin, lmax, b_lmax):
+        """Build NaMaster binning object (thin wrapper, state -> primitive)."""
+        return spv_pseudo_cl.make_namaster_bin(
+            lmin,
+            lmax,
+            b_lmax,
+            self.binning,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
+        )
+
+    def get_pixels(self, params, nside, cat_gal):
+        """Get unique pixels and indices for a catalog (thin wrapper -> primitive)."""
+        return spv_pseudo_cl.get_pixels(
+            cat_gal[params["ra_col"]], cat_gal[params["dec_col"]], nside
+        )
+
+    def get_n_gal_map(
+        self, params, nside, cat_gal, unique_pix=None, idx=None, idx_rep=None
+    ):
         """Weighted galaxy number-density map (thin wrapper -> primitive)."""
-        return get_n_gal_map(
+        return spv_pseudo_cl.get_n_gal_map(
             nside,
             cat_gal[params["ra_col"]],
             cat_gal[params["dec_col"]],
             weights=cat_gal[params["w_col"]],
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
         )
 
-    def get_gaussian_real(
-        self, params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep, rng=None
-    ):
-        e1_rot, e2_rot = self.apply_random_rotation(
-            cat_gal[params["e1_col"]], cat_gal[params["e2_col"]], rng
-        )
-        noise_map_e1 = np.zeros(hp.nside2npix(nside))
-        noise_map_e2 = np.zeros(hp.nside2npix(nside))
-
-        w = cat_gal[params["w_col"]]
-        noise_map_e1[unique_pix] += np.bincount(idx_rep, weights=e1_rot * w)
-        noise_map_e2[unique_pix] += np.bincount(idx_rep, weights=e2_rot * w)
-        noise_map_e1[mask] /= n_gal[mask]
-        noise_map_e2[mask] /= n_gal[mask]
-
-        return noise_map_e1 + 1j * noise_map_e2
-
-    def get_sample(
+    def get_shear_map(
         self,
         params,
         nside,
-        lmax,
-        b,
         cat_gal,
-        n_gal,
-        mask,
-        unique_pix,
-        idx_rep,
-        rng=None,
+        unique_pix=None,
+        idx=None,
+        idx_rep=None,
+        n_gal_map=None,
     ):
-        noise_map = self.get_gaussian_real(
-            params, nside, lmax, cat_gal, n_gal, mask, unique_pix, idx_rep, rng
+        """Weighted shear map (thin wrapper -> primitive)."""
+        return spv_pseudo_cl.get_shear_map(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            nside,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            n_gal_map=n_gal_map,
         )
 
-        f = nmt.NmtField(mask=mask, maps=[noise_map.real, noise_map.imag], lmax=lmax)
+    def get_noise_realisation(
+        self,
+        params,
+        nside,
+        cat_gal,
+        n_gal=None,
+        unique_pix=None,
+        idx=None,
+        idx_rep=None,
+        rng=None,
+    ):
+        """
+        Get a single Gaussian noise realization (thin wrapper -> primitive).
+        """
+        return spv_pseudo_cl.get_noise_realisation(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            nside,
+            n_gal_map=n_gal,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            rng=rng,
+        )
 
-        wsp = nmt.NmtWorkspace.from_fields(f, f, b)
+    def get_noise_bias_from_gaussian_real(
+        self,
+        params,
+        nside,
+        cat_gal,
+        unique_pix=None,
+        idx=None,
+        idx_rep=None,
+        n_gal_map=None,
+        wsp=None,
+    ):
+        """Noise-bias from Gaussian realisations (thin wrapper, state -> primitive)"""
+        return spv_pseudo_cl.get_noise_bias_from_gaussian_real(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            nside,
+            nrandom_cell=self.nrandom_cell,
+            binning=self.binning,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+            n_gal_map=n_gal_map,
+            wsp=wsp,
+            seed=self.cell_seed,
+        )
 
-        cl_noise = nmt.compute_coupled_cell(f, f)
-        cl_noise = wsp.decouple_cell(cl_noise)
+    def get_noise_bias_analytical(
+        self, params, nside, cat_gal, unique_pix=None, idx=None, idx_rep=None
+    ):
+        """Noise-bias from analytical prescription (thin wrapper, state -> primitive)"""
+        return spv_pseudo_cl.get_noise_bias_analytical(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            lmax=2 * nside,
+            nside=nside,
+            unique_pix=unique_pix,
+            idx=idx,
+            idx_rep=idx_rep,
+        )
 
-        return cl_noise, f, wsp
+    def get_noise_bias(self, params, nside, cat_gal):
+        """Noise-bias estimation (thin wrapper, state -> primitive)"""
+        return spv_pseudo_cl.get_noise_bias(
+            cat_gal[params["ra_col"]],
+            cat_gal[params["dec_col"]],
+            cat_gal[params["e1_col"]],
+            cat_gal[params["e2_col"]],
+            cat_gal[params["w_col"]],
+            nside,
+            noise_bias_method=self.noise_bias_method,
+            binning=self.binning,
+            ell_step=self.ell_step,
+            n_ell_bins=self.n_ell_bins,
+            power=self.power,
+            nrandom_cell=self.nrandom_cell,
+            seed=self.cell_seed,
+        )
 
-    def get_pseudo_cls_map(self, map, mask, wsp=None):
+    def get_pseudo_cls_map(
+        self, map_a, mask_a, wsp=None, shear_map_b=None, mask_b=None
+    ):
         """Map-based pseudo-cl (thin wrapper, state -> primitive)."""
-        return get_pseudo_cls_map(
-            map,
-            mask,
+        return spv_pseudo_cl.get_pseudo_cls_map(
+            map_a,
+            mask_a,
             self.nside,
             self.binning,
+            shear_map_b=shear_map_b,
+            mask_b=mask_b,
             pol_factor=self.pol_factor,
             wsp=wsp,
             ell_step=self.ell_step,
@@ -634,13 +898,17 @@ class PseudoClMixin:
             power=self.power,
         )
 
-    def get_pseudo_cls_catalog(self, catalog, params, wsp=None):
+    def get_pseudo_cls_catalog(
+        self, catalog, params, wsp=None, tomo_bin_a=None, tomo_bin_b=None
+    ):
         """Catalog-based pseudo-cl (thin wrapper, state -> primitive)."""
-        return get_pseudo_cls_catalog(
+        return spv_pseudo_cl.get_pseudo_cls_catalog(
             catalog,
             params,
             self.nside,
             self.binning,
+            tomo_bin_a=tomo_bin_a,
+            tomo_bin_b=tomo_bin_b,
             pol_factor=self.pol_factor,
             wsp=wsp,
             ell_step=self.ell_step,
@@ -648,12 +916,68 @@ class PseudoClMixin:
             power=self.power,
         )
 
-    def apply_random_rotation(self, e1, e2, rng=None):
-        """Random ellipticity rotation (thin wrapper -> primitive).
+    def read_redshift_distribution(self, ver, is_tomography):
+        path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
+        redshift_distribution = np.loadtxt(path_redshift_distr)
+        z = redshift_distribution[:, 0]
+        dndz = redshift_distribution[:, 1:]
 
-        Pass a seeded ``rng`` for reproducible noise realizations.
-        """
-        return apply_random_rotation(e1, e2, rng)
+        # Here it is assumed that the tomographic redshift distribution sum to the non-tomographic one and that the latter is normalised
+        if not is_tomography:
+            dndz = np.sum(dndz, axis=1)
+
+        return z, dndz
+
+    def get_fiducial_cl(self, ver, is_tomography):
+        """Get a theory prediction for the angular power spectra (thin wrapper, state -> primitive)."""
+        lmax = 2 * self.nside
+
+        z, dndz = self.read_redshift_distribution(ver, is_tomography)
+
+        fiducial_cl = spv_pseudo_cl.get_fiducial_cl(z, dndz, lmax, self.cosmo)
+
+        # If non-tomographic, change the key to 'WallxWall'
+        if not is_tomography:
+            fiducial_cl = {"WallxWall": fiducial_cl["W1xW1"]}
+
+        return fiducial_cl
+
+    def _get_tomographic_bin(self, params, cat_gal, tomo_bin):
+        """Extract tomographic bin from a given catalogue"""
+        if tomo_bin == "all":
+            return cat_gal
+        else:
+            tomo_bin_id = cat_gal[params["tomo_bin_col"]]
+            mask = tomo_bin_id == tomo_bin
+            return cat_gal[mask]
+
+    def _output_path_pseudo_cl(self, ver, tomo_bin_pair=None):
+        if tomo_bin_pair is None:
+            return self._output_path(
+                "pseudo_cl",
+                f"pseudo_cl_from_{self.cell_method}_non_tomo_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+            )
+        else:
+            bin_key1, bin_key2 = tomo_bin_pair
+            return self._output_path(
+                "pseudo_cl",
+                f"pseudo_cl_from_{self.cell_method}_tomo_bin_{bin_key1}_tomo_bin_{bin_key2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+            )
+
+    def _output_path_pseudo_cl_cov(self, ver, method, tomography):
+        is_tomo = "tomo" if tomography else "non_tomo"
+        return self._output_path(
+            "pseudo_cl",
+            f"pseudo_cl_cov_{is_tomo}_{ver}_from_{method}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+        )
+
+    def _output_path_iNKA_block_cov(self, ver, tomo_bin_quad):
+        bin_key_a1, bin_key_a2, bin_key_b1, bin_key_b2 = tomo_bin_quad
+        return self._output_path(
+            "pseudo_cl",
+            f"iNKA_block_{ver}",
+            f"pseudo_cl_cov_from_iNKA_tomo_bin_{bin_key_a1}_tomo_bin_{bin_key_a2}_tomo_bin_{bin_key_b1}_tomo_bin_{bin_key_b2}_{ver}_binning_{self.binning}_nbins_{self.n_ell_bins}.fits",
+        )
 
     def save_pseudo_cl(self, ell_eff, pseudo_cl, out_path):
         """
@@ -670,208 +994,438 @@ class PseudoClMixin:
         col1 = fits.Column(name="ELL", format="D", array=ell_eff)
         col2 = fits.Column(name="EE", format="D", array=pseudo_cl[0])
         col3 = fits.Column(name="EB", format="D", array=pseudo_cl[1])
-        col4 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
-        coldefs = fits.ColDefs([col1, col2, col3, col4])
+        col4 = fits.Column(name="BE", format="D", array=pseudo_cl[2])
+        col5 = fits.Column(name="BB", format="D", array=pseudo_cl[3])
+        coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
         cell_hdu = fits.BinTableHDU.from_columns(coldefs, name="PSEUDO_CELL")
 
         cell_hdu.writeto(out_path, overwrite=True)
 
-    def plot_pseudo_cl(self):
+    def _save_iNKA_covariance(self, covar, out_path):
+        # covar_22_22 is indexed [ell, pol_a, ell, pol_b]; store each of the
+        # 16 EE/EB/BE/BB cross-blocks as a named HDU (row-major pol order).
+        # Append rather than construct from a list so astropy promotes the
+        # first HDU to a PrimaryHDU on write.
+        pols = ["EE", "EB", "BE", "BB"]
+        hdu = fits.HDUList()
+        for i, pa in enumerate(pols):
+            for j, pb in enumerate(pols):
+                hdu.append(fits.ImageHDU(covar[:, i, :, j], name=f"COVAR_{pa}_{pb}"))
+
+        hdu.writeto(out_path, overwrite=True)
+
+        return hdu
+
+    def _merge_iNKA_covariance(self, ver, tomography):
         """
-        Plot pseudo-Cl's for given catalogs.
+        Merge the iNKA covariance matrices for a given version to get the data vector covariance.
         """
-        self.print_cyan("Plotting pseudo-Cl's")
+        out_path = self._output_path_pseudo_cl_cov(
+            ver, method="iNKA", tomography=tomography
+        )
 
-        # Plotting EE
-        out_path = self._output_path("cell_ee.png")
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+        if tomography:
+            # Merge the tomographic covariance matrices
+            tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
-                capsize=2,
+            # Get the number of bins from the pseudo_cls attribute
+            # The non-tomographic pseudo-cl are computed from the call
+            # to this attribute if not already computed.
+            n_ell = self._pseudo_cls[ver]["tomo_bin_all_tomo_bin_all"]["pseudo_cl"][
+                "ELL"
+            ].shape[0]
+
+            if tomo_bin_ids is None or tomo_bin_pairs is None:
+                raise AssertionError(
+                    f"Tomographic bin IDs of version {ver} is not available."
+                )
+
+            n_spectra = len(tomo_bin_pairs)
+            block_indices = list(
+                itertools.combinations_with_replacement(range(n_spectra), 2)
             )
 
-        ax[0].set_ylabel(r"$\ell C_\ell$")
+            pols = ["EE", "EB", "BE", "BB"]
+            covar = fits.HDUList()
+            for pa in pols:
+                for pb in pols:
+                    full_cov = np.zeros((n_spectra * n_ell, n_spectra * n_ell))
+                    for index_a, index_b in block_indices:
+                        bin_key_a1, bin_key_a2 = tomo_bin_pairs[index_a]
+                        bin_key_b1, bin_key_b2 = tomo_bin_pairs[index_b]
 
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
+                        block_path = self._output_path_iNKA_block_cov(
+                            ver,
+                            tomo_bin_quad=(
+                                bin_key_a1,
+                                bin_key_a2,
+                                bin_key_b1,
+                                bin_key_b2,
+                            ),
+                        )
+                        block = fits.open(block_path)[f"COVAR_{pa}_{pb}"].data
 
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
+                        sl_a = slice(index_a * n_ell, (index_a + 1) * n_ell)
+                        sl_b = slice(index_b * n_ell, (index_b + 1) * n_ell)
+
+                        full_cov[sl_a, sl_b] = block
+
+                        if index_a != index_b:
+                            full_cov[sl_b, sl_a] = block.T
+
+                    covar.append(fits.ImageHDU(full_cov, name=f"COVAR_{pa}_{pb}"))
+
+        else:
+            block_path = self._output_path_iNKA_block_cov(
+                ver, tomo_bin_quad=("all", "all", "all", "all")
+            )
+            covar = fits.open(block_path)
+
+        covar.writeto(out_path, overwrite=True)
+
+        return covar
+
+    # ---------------- Plotting functions for pseudo-Cl's ---------------- #
+    def plot_pseudo_cl(
+        self,
+        pol_list,
+        versions=None,
+        ell_factor="ell",
+        cov_type="iNKA",
+        offset=0.15,
+        tomography=True,
+        savefig=None,
+        show=True,
+    ):
+        """
+        Plot the pseudo-Cl for EE power spectrum.
+
+        Parameters
+        ----------
+        pol_list : list
+            List of polarization types to plot (e.g., ["EE", "BB"]).
+        ell_factor : {"None", "ell", "ell(ell+1)"}
+            Factor to multiply the ell values by.
+        cov_type : {"iNKA"}
+            Type of covariance to use.
+        tomography : bool, optional
+            Whether to plot tomographic power spectra.
+        savefig : str, optional
+            Path to save the figure.
+        show : bool, optional
+            Whether to show the figure.
+
+        Returns
+        -------
+        fig, ax : matplotlib.figure.Figure, matplotlib.axes.Axes
+            Figure and axes objects for the plot.
+        """
+        if versions is None:
+            versions = self.versions
+        else:
+            for ver in versions:
+                if ver not in self.versions:
+                    raise ValueError(
+                        f"Version {ver} is not available. Available versions: {self.versions}"
+                    )
+        # Check that the method for the covariance is valid
+        if cov_type not in ["iNKA"]:
+            raise ValueError(
+                f"Invalid covariance type: {cov_type}. Valid options are: ['iNKA']"
             )
 
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl EE (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Plotting EB
-        out_path = self._output_path("cell_eb.png")
-
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
+        # Check that the ell_factor is valid
+        if ell_factor not in ["None", "ell", "ell(ell+1)"]:
+            raise ValueError(
+                f"Invalid ell_factor: {ell_factor}. Valid options are: ['None', 'ell', 'ell(ell+1)']"
             )
 
-        ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel(r"$\ell C_\ell$")
+        def get_ell_factor(ell):
+            """Given some ell, return the ell_factor for the plot."""
+            if ell_factor == "None":
+                return 1
+            elif ell_factor == "ell":
+                return ell
+            elif ell_factor == "ell(ell+1)":
+                return ell * (ell + 1)
 
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
+        # Check that all items in the list are valid polarisation
+        valid_pols = ["EE", "BB", "EB", "BE"]
+        for pol in pol_list:
+            if pol not in valid_pols:
+                raise ValueError(
+                    f"Invalid polarization type: {pol}. Valid options are: {valid_pols}"
+                )
 
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
+        fmt_dict = {"EE": "o", "BB": "s", "EB": "^", "BE": "v"}
+        # From all the versions, get the maximum number of tomo_bin_ids
+        tomo_bins = {}
+        for ver in versions:
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+            else:
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+
+            tomo_bins[ver] = {"ids": tomo_bin_ids, "pairs": tomo_bin_pairs}
+
+        n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
+
+        fig, axs = plt.subplots(
+            n_tomo_bins_plot,
+            n_tomo_bins_plot,
+            figsize=(12, 12),
+            sharex=True,
+            sharey=True,
+        )
+
+        for j, ver in enumerate(versions):
+            # Plot the pseudo-cl for each tomo bin of the considered version
+            for tomo_bin_a, tomo_bin_b in tomo_bins[ver]["pairs"]:
+                if tomography:
+                    ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
+                else:
+                    ax = axs
+                ver_tomo_info = self._pseudo_cls[ver][
+                    f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"
+                ]
+                ver_label = self.cc[ver]["label"] if "label" in self.cc[ver] else ver
+                ver_color = (
+                    self.cc[ver]["colour"] if "colour" in self.cc[ver] else "black"
+                )
+
+                pseudo_cls = ver_tomo_info["pseudo_cl"]
+                cov = ver_tomo_info["cov"]
+
+                ell = pseudo_cls["ell"]
+
+                ell_widths = np.diff(ell)
+                ell_widths = np.append(
+                    ell_widths, ell_widths[-1]
+                )  # Assume last bin width is same as second last
+
+                # Better jittering: symmetric around original ell values
+                jitter_fraction = (j - (len(versions) - 1) / 2) * offset
+                jittered_ell = ell + jitter_fraction * ell_widths
+                ell_factor_ = get_ell_factor(jittered_ell)
+
+                for pol in pol_list:
+                    pol_color = self.get_pol_color(ver_color, pol, pol_list)
+                    ax.errorbar(
+                        jittered_ell,
+                        ell_factor_ * pseudo_cls[pol],
+                        yerr=np.sqrt(np.diag(cov[f"COVAR_{pol}_{pol}"].data))
+                        * ell_factor_,
+                        fmt=fmt_dict[pol],
+                        label=ver_label + f" {pol}",
+                        color=pol_color,
+                        capsize=2,
+                    )
+
+        # Draw to extract the yaxis text offset
+        fig.canvas.draw()
+
+        if ell_factor == "None":
+            ell_label = r"$C_\ell$"
+        elif ell_factor == "ell":
+            ell_label = r"$\ell C_\ell$"
+        else:
+            ell_label = r"$\ell(\ell+1) C_\ell$"
+
+        for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
+            if tomography:
+                ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
+            else:
+                ax = axs
+            ax.text(
+                0.8,
+                0.95,
+                f"{tomo_bin_a}-{tomo_bin_b}",
+                transform=ax.transAxes,
+                verticalalignment="top",
+            )
+            ax.axhline(0, color="black", ls="--")
+            ax.set_xlim(ell.min(), ell.max())
+            ax.set_xscale("squareroot")
+            ax.set_xticks(np.array([100, 400, 900, 1600]))
+            ax.minorticks_on()
+            minor_ticks = [i * 10 for i in range(1, 10)] + [
+                i * 100 for i in range(1, 21)
+            ]
+            ax.xaxis.set_ticks(minor_ticks, minor=True)
+            ax.tick_params(axis="both", which="both", direction="in")
+            if tomo_bin_b == 6 or tomo_bin_b == "all":
+                ax.set_xlabel(r"$\ell$")
+            if tomo_bin_a == 1 or tomo_bin_a == "all":
+                text_offset = ax.yaxis.get_offset_text().get_text()
+                ax.yaxis.get_offset_text().set_visible(False)
+                ax.set_ylabel(f"{ell_label}{text_offset}")
+            else:
+                ax.yaxis.get_offset_text().set_visible(False)
+            if tomo_bin_a != tomo_bin_b:
+                ax = axs[tomo_bin_a - 1, tomo_bin_b - 1]
+                ax.set_visible(False)
+
+        # Setup the legend
+        plt.subplots_adjust(hspace=0.0, wspace=0.0)  # Remove space between subplots
+
+        legend_ax = self._add_grouped_legend(fig, versions, self.cc, pol_list, fmt_dict)
+
+        if savefig is not None:
+            plt.savefig(savefig, dpi=300, bbox_inches="tight")
+        if show:
+            plt.show()
+
+        return fig, axs, legend_ax
+
+    def _add_grouped_legend(
+        self,
+        fig,
+        versions,
+        cc,
+        pol_list,
+        fmt_dict,
+        row_height=0.35,
+        label_width=2,
+        col_width=0.9,
+        gap_below=0.10,
+        capsize=2,
+        fontsize=10,
+    ):
+        """
+        Add a custom legend below the figure with one row per version:
+            <version label>   <marker> <pol>   <marker> <pol>  ...
+
+        The box size (in inches) scales with the number of versions (rows)
+        and polarizations (columns), then gets converted to figure-fraction
+        coordinates so it works for any figsize.
+
+        Parameters
+        ----------
+        row_height : float
+            Height per row (per version), in inches.
+        label_width : float
+            Width reserved for the version label column, in inches.
+        col_width : float
+            Width per polarization column (marker + pol label), in inches.
+        gap_below : float
+            Vertical gap between the bottom of the subplot grid and the
+            top of the legend box, in inches.
+        """
+        n_rows = len(versions)
+        n_pol = len(pol_list)
+
+        # Desired box size in inches
+        box_width_in = label_width + n_pol * col_width
+        box_height_in = n_rows * row_height
+
+        fig_w_in, fig_h_in = fig.get_size_inches()
+
+        # Convert to figure-fraction
+        width_frac = box_width_in / fig_w_in
+        height_frac = box_height_in / fig_h_in
+        gap_frac = gap_below / fig_h_in
+
+        left = 0.5 - width_frac / 2  # centered horizontally
+        bottom = -gap_frac - height_frac  # just below the subplot grid (y=0)
+
+        legend_ax = fig.add_axes([left, bottom, width_frac, height_frac])
+        legend_ax.axis("off")
+        legend_ax.set_xlim(0, 1)
+        legend_ax.set_ylim(0, 1)
+
+        # Fractions *within* legend_ax's own 0-1 coordinate system, derived
+        # from the same inch-based proportions so columns stay consistent
+        label_frac = label_width / box_width_in
+        col_frac = col_width / box_width_in
+
+        dummy_yerr = 0.15 / n_rows
+
+        for i, ver in enumerate(versions):
+            y = 1.0 - (i + 0.5) / n_rows
+
+            ver_label = cc[ver]["label"] if "label" in cc[ver] else ver
+            ver_color = cc[ver]["colour"] if "colour" in cc[ver] else "black"
+
+            legend_ax.text(
+                0.02 * label_frac,
+                y,
+                ver_label,
+                ha="left",
+                va="center",
+                fontweight="bold",
+                fontsize=fontsize,
             )
 
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
+            for k, pol in enumerate(pol_list):
+                pol_color = self.get_pol_color(ver_color, pol, pol_list)
+                x_marker = label_frac + k * col_frac + 0.15 * col_frac
+                x_text = x_marker + 0.15 * col_frac
 
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
+                legend_ax.errorbar(
+                    [x_marker],
+                    [y],
+                    yerr=dummy_yerr,
+                    fmt=fmt_dict[pol],
+                    color=pol_color,
+                    markersize=6,
+                    capsize=capsize,
+                    clip_on=False,
+                )
+                legend_ax.text(
+                    x_text,
+                    y,
+                    pol,
+                    ha="left",
+                    va="center",
+                    fontsize=fontsize - 1,
+                )
 
-        plt.suptitle("Pseudo-Cl EB (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
+        return legend_ax
 
-        # Plotting BB
-        out_path = self._output_path("cell_bb.png")
+    def get_pol_color(self, base_color, pol, pol_list, lightness_range=(-0.25, 0.25)):
+        """
+        Given a base version color, return a shade variant for a given
+        polarization, by adjusting lightness in HLS space while keeping
+        hue and saturation fixed.
 
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+        Parameters
+        ----------
+        base_color : str or tuple
+            Any matplotlib-recognized color (hex, name, RGB tuple, etc.)
+        pol : str
+            The polarization this color is for (e.g. "EE").
+        pol_list : list
+            Full list of polarizations being plotted, used to compute
+            this pol's relative position in the lightness range.
+        lightness_range : tuple of float
+            (min_offset, max_offset) added to the base lightness, spread
+            evenly across pol_list. Negative = darker, positive = lighter.
+            Values are in HLS lightness units (0-1 scale), so keep these
+            modest (e.g. +/-0.25) to avoid washing out to white or black.
 
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
+        Returns
+        -------
+        tuple
+            RGB color tuple in [0, 1] range, usable directly in matplotlib.
+        """
+        r, g, b = to_rgb(base_color)
+        h, lightness, s = colorsys.rgb_to_hls(r, g, b)
+
+        n_pol = len(pol_list)
+        idx = pol_list.index(pol)
+
+        if n_pol == 1:
+            l_offset = 0.0
+        else:
+            # spread idx evenly across [lightness_range[0], lightness_range[1]]
+            frac = idx / (n_pol - 1)  # 0 to 1
+            l_offset = lightness_range[0] + frac * (
+                lightness_range[1] - lightness_range[0]
             )
 
-        ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel(r"$\ell C_\ell$")
+        lightness_new = min(
+            max(lightness + l_offset, 0.05), 0.95
+        )  # clamp to avoid pure black/white
 
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-            )
-
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl BB (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Print C_l^BB PTE for each version and save BB data
-        print("\nC_l^BB PTE summary:")
-        for ver in self.versions:
-            cl_bb = self.pseudo_cls[ver]["pseudo_cl"]["BB"]
-            cov_bb = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            chi2_bb, _, pte_bb = chi2_and_pte(cl_bb, cov_bb)
-            chi2_bb = float(chi2_bb)
-            print(
-                f"  {ver}: C_l^BB PTE = {pte_bb:.4f} "
-                f"(chi2/dof = {chi2_bb:.1f}/{len(cl_bb)})"
-            )
-
-            # Save BB data + covariance to .npz
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            bb_out = self._output_path(f"{ver}_cell_bb_data.npz")
-            np.savez(
-                bb_out,
-                ell=ell,
-                cl_bb=cl_bb,
-                cov_bb=cov_bb,
-                chi2_bb=np.array(chi2_bb),
-                pte_bb=np.array(pte_bb),
-            )
-            print(f"  Saved BB data to {bb_out}")
+        r_new, g_new, b_new = colorsys.hls_to_rgb(h, lightness_new, s)
+        return (r_new, g_new, b_new)

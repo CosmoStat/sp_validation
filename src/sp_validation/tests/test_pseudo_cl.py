@@ -51,6 +51,7 @@ REPRODUCIBILITY / TOLERANCE (measured over 3 independent container processes)
 """
 
 import os
+from pathlib import Path
 
 import numpy as np
 import numpy.testing as npt
@@ -58,6 +59,7 @@ import pytest
 import yaml
 
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.pseudo_cl import apply_random_rotation
 from sp_validation.rho_tau import get_params_rho_tau
 
 # These tests need the full harmonic-space stack (pymaster/NaMaster + healpy),
@@ -72,6 +74,8 @@ from astropy.io import fits  # noqa: E402  (after importorskip)
 NSIDE = 64
 SEED = 1234
 N_ELL_BINS = 8
+
+REFERENCE_TOMO = Path(__file__).parent / "data" / "test_cl_catalog.npz"
 
 
 # ---------------------------------------------------------------------------
@@ -101,9 +105,10 @@ def _write_synthetic_config(tmp_path):
     e1 = rng.normal(0, 0.25, n_gal)
     e2 = rng.normal(0, 0.25, n_gal)
     w = rng.uniform(0.5, 1.0, n_gal)
-    Table({"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w}).write(
-        cat_dir / "shear.fits", overwrite=True
-    )
+    tomo_bin_id = rng.integers(1, 3, n_gal)  # Create a two bin catalogue
+    Table(
+        {"RA": ra, "Dec": dec, "e1": e1, "e2": e2, "w": w, "tomo_bin_id": tomo_bin_id}
+    ).write(cat_dir / "shear.fits", overwrite=True)
 
     z_edges = np.linspace(0.05, 3.0, 31)
     dndz = np.exp(-(((z_edges - 0.7) / 0.3) ** 2))
@@ -120,6 +125,7 @@ def _write_synthetic_config(tmp_path):
         "e2_col_corrected": "e2",
         "ra_col": "RA",
         "dec_col": "Dec",
+        "tomo_bin_col": "tomo_bin_id",
     }
     # Minimal psf block so get_params_rho_tau() succeeds; the pseudo-Cl
     # primitives only read the shear-side keys, but the production call path
@@ -165,7 +171,7 @@ def cv(tmp_path):
         binning="powspace",
         power=0.5,
         n_ell_bins=N_ELL_BINS,
-        pol_factor=True,
+        pol_factor=-1,
     )
     cv._test_version = version
     return cv
@@ -178,6 +184,11 @@ def cat_and_params(cv):
     params = get_params_rho_tau(cv.cc[ver], survey=ver)
     cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
     return cat_gal, params
+
+
+def test_reference_exists():
+    """Guard the guard: a missing reference must fail loudly, not skip."""
+    assert REFERENCE_TOMO.exists(), f"committed reference missing: {REFERENCE_TOMO}"
 
 
 # Tolerances ----------------------------------------------------------------
@@ -265,18 +276,38 @@ class TestGetNamasterBin:
             cv.get_namaster_bin(LMIN, LMAX, B_LMAX)
 
 
+# ==========================================================================
+# get_pixels -- fetch the pixels from ra, dec, and nside (HEALPix)
+# ==========================================================================
+def test_get_pixels(cv, cat_and_params):
+    """Pin the HEALPix pixelization of the synthetic catalog."""
+    cat_gal, params = cat_and_params
+    unique_pix, idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
+
+    # Structural invariants of the HEALPix occupancy map.
+    assert unique_pix.size == 485
+    assert idx_rep.size == 5000  # one entry per galaxy
+
+    # Pinned scalar summaries: total weight is conserved (sum of weights),
+    # peak occupancy, and the pixel index bookkeeping.
+    npt.assert_array_equal(unique_pix[:5], [12167, 12168, 12169, 12170, 12171])
+    assert int(unique_pix.sum()) == 7849989
+
+
 # ===========================================================================
 # get_n_gal_map -- weighted galaxy number-density map
 # ===========================================================================
 def test_get_n_gal_map(cv, cat_and_params):
     cat_gal, params = cat_and_params
-    n_gal, unique_pix, idx, idx_rep = cv.get_n_gal_map(params, NSIDE, cat_gal)
+
+    unique_pix, idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
+    n_gal = cv.get_n_gal_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=None, idx_rep=idx_rep
+    )
 
     # Structural invariants of the HEALPix occupancy map.
     assert n_gal.shape == (healpy.nside2npix(NSIDE),)
     assert int(np.count_nonzero(n_gal)) == 485
-    assert unique_pix.size == 485
-    assert idx_rep.size == 5000  # one entry per galaxy
     # The map is supported exactly on the occupied pixels.
     npt.assert_array_equal(np.nonzero(n_gal)[0], np.sort(unique_pix))
 
@@ -284,8 +315,6 @@ def test_get_n_gal_map(cv, cat_and_params):
     # peak occupancy, and the pixel index bookkeeping.
     npt.assert_allclose(n_gal.sum(), 3760.657282591494, rtol=RTOL_DET)
     npt.assert_allclose(n_gal.max(), 16.063410433711447, rtol=RTOL_DET)
-    npt.assert_array_equal(unique_pix[:5], [12167, 12168, 12169, 12170, 12171])
-    assert int(unique_pix.sum()) == 7849989
     npt.assert_allclose(
         n_gal[unique_pix][:5],
         np.array(
@@ -307,7 +336,10 @@ def test_get_n_gal_map(cv, cat_and_params):
 # ===========================================================================
 def _build_shear_map(cv, cat_gal, params):
     """Replicate calculate_pseudo_cl_map's weighted shear-map construction."""
-    n_gal, unique_pix, _idx, idx_rep = cv.get_n_gal_map(params, NSIDE, cat_gal)
+    unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
+    n_gal = cv.get_n_gal_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
+    )
     w = cat_gal[params["w_col"]]
     e1 = cat_gal[params["e1_col"]]
     e2 = cat_gal[params["e2_col"]]
@@ -321,10 +353,32 @@ def _build_shear_map(cv, cat_gal, params):
     return m1 + 1j * m2, n_gal
 
 
+def test_build_shear_map(cv, cat_and_params):
+    """Pin the weighted shear map construction from the synthetic catalog."""
+    cat_gal, params = cat_and_params
+    unique_pix, _idx, idx_rep = cv.get_pixels(params, NSIDE, cat_gal)
+    n_gal = cv.get_n_gal_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
+    )
+    m1, m2 = cv.get_shear_map(
+        params, NSIDE, cat_gal, unique_pix=unique_pix, idx=_idx, idx_rep=idx_rep
+    )
+
+    m = m1 + 1j * m2
+
+    m_replicate, n_gal_replicate = _build_shear_map(cv, cat_gal, params)
+
+    npt.assert_allclose(m, m_replicate, rtol=RTOL_DET, atol=ATOL_DET)
+    npt.assert_allclose(n_gal, n_gal_replicate, rtol=RTOL_DET, atol=ATOL_DET)
+
+
 def test_get_pseudo_cls_map(cv, cat_and_params):
     cat_gal, params = cat_and_params
     shear_map, n_gal = _build_shear_map(cv, cat_gal, params)
     ell_eff, cl_all, wsp = cv.get_pseudo_cls_map(shear_map, n_gal)
+    ell_eff_2, cl_all_2, wsp_2 = cv.get_pseudo_cls_map(
+        shear_map, n_gal, shear_map_b=shear_map, mask_b=n_gal
+    )
 
     assert cl_all.shape == (4, N_ELL_BINS)
     npt.assert_allclose(
@@ -387,13 +441,106 @@ def test_get_pseudo_cls_map(cv, cat_and_params):
     # BE (index 2) is the transpose-symmetric partner of EB for an auto-spectrum.
     npt.assert_allclose(cl_all[2], cl_all[1], rtol=RTOL_DET, atol=1e-18)
 
+    # Assert that running the same map against itself and against itself as a second map gives the same result.
+    npt.assert_allclose(cl_all, cl_all_2, rtol=RTOL_DET, atol=ATOL_DET)
+    npt.assert_allclose(ell_eff, ell_eff_2, rtol=RTOL_DET, atol=ATOL_DET)
+
+
+def test_get_pseudo_cls_map_with_tomo(cv, cat_and_params):
+    cat_gal, params = cat_and_params
+    cat_gal_tomo1 = cat_gal[cat_gal[params["tomo_bin_col"]] == 1]
+    cat_gal_tomo2 = cat_gal[cat_gal[params["tomo_bin_col"]] == 2]
+    shear_map_1, n_gal_1 = _build_shear_map(cv, cat_gal_tomo1, params)
+    shear_map_2, n_gal_2 = _build_shear_map(cv, cat_gal_tomo2, params)
+    ell_eff, cl_all, wsp = cv.get_pseudo_cls_map(
+        shear_map_1, n_gal_1, shear_map_b=shear_map_2, mask_b=n_gal_2
+    )
+
+    assert cl_all.shape == (4, N_ELL_BINS)
+    npt.assert_allclose(
+        ell_eff,
+        np.array([11.5, 20.0, 30.5, 43.5, 58.5, 75.5, 95.0, 116.5]),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[0],  # EE
+        np.array(
+            [
+                -8.648947250571888e-06,
+                4.386882223005456e-06,
+                -2.3193526251107696e-06,
+                1.0651397314115168e-06,
+                -2.722591256637468e-07,
+                -3.862270431501105e-07,
+                -1.40420405782524e-06,
+                2.1531429566476774e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[1],  # EB
+        np.array(
+            [
+                -2.8032134416262087e-07,
+                -1.271298363785575e-06,
+                1.7112863041724342e-08,
+                -2.899403854283714e-07,
+                1.360217254538336e-06,
+                7.682614612656511e-08,
+                6.620365648170535e-07,
+                -3.164479179586416e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[2],  # BE
+        np.array(
+            [
+                -3.83934537153214e-06,
+                6.218772676611559e-06,
+                -5.542920986484232e-06,
+                8.810792449470091e-07,
+                -3.2973293732012423e-07,
+                -1.3155110757359602e-08,
+                -1.420039280183438e-07,
+                3.09464700816748e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+    npt.assert_allclose(
+        cl_all[3],  # BB
+        np.array(
+            [
+                9.387700364892905e-06,
+                -2.9045253374872504e-06,
+                -1.7006849005134948e-06,
+                -3.6869001010423035e-07,
+                4.4986878855942184e-07,
+                6.021221048891767e-07,
+                8.413198154662088e-08,
+                -5.782957119801217e-07,
+            ]
+        ),
+        rtol=RTOL_DET,
+        atol=ATOL_DET,
+    )
+
 
 # ===========================================================================
 # get_pseudo_cls_catalog -- NmtFieldCatalog path (drifts ~2e-12)
 # ===========================================================================
 def test_get_pseudo_cls_catalog(cv, cat_and_params):
     cat_gal, params = cat_and_params
-    ell_eff, cl_all, wsp = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
+    ell_eff, cl_all, wsp = cv.get_pseudo_cls_catalog(
+        catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
+    )
 
     assert cl_all.shape == (4, N_ELL_BINS)
     # Effective ells share the binning math with the map path: bitwise-stable.
@@ -471,7 +618,7 @@ def test_apply_random_rotation_preserves_magnitude(cv, cat_and_params):
     e1 = np.asarray(cat_gal[params["e1_col"]], dtype=np.float64)
     e2 = np.asarray(cat_gal[params["e2_col"]], dtype=np.float64)
 
-    e1_rot, e2_rot = cv.apply_random_rotation(e1, e2)
+    e1_rot, e2_rot = apply_random_rotation(e1, e2)
 
     assert e1_rot.shape == e1.shape
     assert e2_rot.shape == e2.shape
@@ -491,16 +638,16 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
     e1 = np.asarray(cat_gal[params["e1_col"]], dtype=np.float64)
     e2 = np.asarray(cat_gal[params["e2_col"]], dtype=np.float64)
 
-    a1, a2 = cv.apply_random_rotation(e1, e2, np.random.default_rng(42))
-    b1, b2 = cv.apply_random_rotation(e1, e2, np.random.default_rng(42))
+    a1, a2 = apply_random_rotation(e1, e2, np.random.default_rng(42))
+    b1, b2 = apply_random_rotation(e1, e2, np.random.default_rng(42))
     npt.assert_array_equal(a1, b1)
     npt.assert_array_equal(a2, b2)
 
-    c1, _ = cv.apply_random_rotation(e1, e2, np.random.default_rng(7))
+    c1, _ = apply_random_rotation(e1, e2, np.random.default_rng(7))
     assert not np.allclose(a1, c1)
 
-    d1, _ = cv.apply_random_rotation(e1, e2)
-    f1, _ = cv.apply_random_rotation(e1, e2)
+    d1, _ = apply_random_rotation(e1, e2)
+    f1, _ = apply_random_rotation(e1, e2)
     assert not np.allclose(d1, f1)
 
 
@@ -515,9 +662,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     (it drops the BE row); we pin the round-tripped table.
     """
     ver = cv._test_version
-    cv._pseudo_cls = {ver: {}}
+    cv._pseudo_cls = {ver: {"tomo_bin_all_tomo_bin_all": {}}}
     out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
-    cv.calculate_pseudo_cl_catalog(ver, out_path)
+    cv.calculate_pseudo_cl_catalog(ver, out_path, tomo_bin_a="all", tomo_bin_b="all")
 
     assert os.path.exists(out_path)
     d = fits.getdata(out_path)
@@ -588,5 +735,94 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     # (same computation, FITS round-trip) -- consistency, not an independent pin.
     cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
     params = get_params_rho_tau(cv.cc[ver], survey=ver)
-    _, cl_prim, _ = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
+    _, cl_prim, _ = cv.get_pseudo_cls_catalog(
+        catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
+    )
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
+
+
+def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
+    """End-to-end catalog path: FITS round-trip of ell + EE/EB/BB.
+
+    The catalog method has no random noise debiasing, so it is reproducible to
+    the same ~2e-12 catalog-path float noise. save_pseudo_cl stores ELL/EE/EB/BB
+    (it drops the BE row); we pin the round-tripped table.
+    """
+    ver = cv._test_version
+    cv._pseudo_cls = {
+        ver: {
+            "tomo_bin_1_tomo_bin_1": {},
+            "tomo_bin_1_tomo_bin_2": {},
+            "tomo_bin_2_tomo_bin_2": {},
+        }
+    }
+    out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
+    tomo_bin_ids, tomo_bin_pairs = cv._get_tomo_bins(ver)
+
+    result_to_compare = np.load(REFERENCE_TOMO, allow_pickle=True)["arr_0"].item()
+    for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
+        out_path = cv._output_path(
+            f"pseudo_cl_cat_{ver}_{tomo_bin_a}_{tomo_bin_b}.fits"
+        )
+        cv.calculate_pseudo_cl_catalog(
+            ver, out_path, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
+        )
+
+        assert os.path.exists(out_path)
+        d = fits.getdata(out_path)
+        # FITS gives big-endian f8; normalize for value comparison.
+        ell = np.asarray(d["ELL"], dtype=np.float64)
+        ee = np.asarray(d["EE"], dtype=np.float64)
+        eb = np.asarray(d["EB"], dtype=np.float64)
+        be = np.asarray(d["BE"], dtype=np.float64)
+        bb = np.asarray(d["BB"], dtype=np.float64)
+
+        npt.assert_allclose(
+            ell,
+            result_to_compare[f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+                "pseudo_cl"
+            ]["ELL"],
+            rtol=RTOL_DET,
+            atol=ATOL_DET,
+        )
+        npt.assert_allclose(
+            ee,
+            result_to_compare[f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+                "pseudo_cl"
+            ]["EE"],
+            rtol=RTOL_CAT,
+            atol=ATOL_CAT,
+        )
+        npt.assert_allclose(
+            eb,
+            result_to_compare[f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+                "pseudo_cl"
+            ]["EB"],
+            rtol=RTOL_CAT,
+            atol=ATOL_CAT,
+        )
+        npt.assert_allclose(
+            be,
+            result_to_compare[f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+                "pseudo_cl"
+            ]["BE"],
+            rtol=RTOL_CAT,
+            atol=ATOL_CAT,
+        )
+        npt.assert_allclose(
+            bb,
+            result_to_compare[f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"][
+                "pseudo_cl"
+            ]["BB"],
+            rtol=RTOL_CAT,
+            atol=ATOL_CAT,
+        )
+
+        # The end-to-end catalog EE matches the primitive get_pseudo_cls_catalog EE
+        # (same computation, FITS round-trip) -- consistency, not an independent pin.
+        cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
+        params = get_params_rho_tau(cv.cc[ver], survey=ver)
+        _, cl_prim, _ = cv.get_pseudo_cls_catalog(
+            catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
+        )
+        npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
