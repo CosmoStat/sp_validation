@@ -69,11 +69,23 @@ def _format_value(value, bold_threshold=None, italic_threshold=None) -> str:
         return str(value)
 
 
-def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version: str):
+def generate_macros(
+    claims_dir: Path,
+    output_paths: list[Path],
+    fiducial_version: str,
+    config_pte_path: Path = None,
+    harmonic_pte_path: Path = None,
+):
     """Generate LaTeX macros from evidence files.
 
     Macro names are kept simple. The spec (bmodes_paper.md)
     determines which values go into the paper. Fiducial version from config.
+
+    ``config_pte_path`` / ``harmonic_pte_path`` override the
+    ``claims_dir/<spec_id>/evidence.json`` location for the two PTE-matrix
+    evidence files (used by the CLI form, where each lc output lands at its own
+    absolute results path rather than under a shared tapestry tree). When
+    ``None`` the original ``claims_dir``-relative layout is used.
     """
     macros = []
     macros.append("% Auto-generated from claim evidence")
@@ -230,7 +242,8 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
             macros.append("")
 
     # Config-space PTE matrices - generate table
-    config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"
+    if config_pte_path is None:
+        config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"
     if config_pte_path.exists():
         with open(config_pte_path) as f:
             data = json.load(f)
@@ -302,7 +315,8 @@ def generate_macros(claims_dir: Path, output_paths: list[Path], fiducial_version
         macros.append("")
 
     # Harmonic-space PTE matrices - generate table
-    harmonic_pte_path = claims_dir / "harmonic_space_pte_matrices" / "evidence.json"
+    if harmonic_pte_path is None:
+        harmonic_pte_path = claims_dir / "harmonic_space_pte_matrices" / "evidence.json"
     if harmonic_pte_path.exists():
         with open(harmonic_pte_path) as f:
             data = json.load(f)
@@ -435,12 +449,18 @@ def generate_pte_tables(
     versions: list,
     version_labels: dict,
     config: dict,
+    config_pte_path: Path = None,
+    harmonic_pte_path: Path = None,
 ):
     """Generate LaTeX table files from PTE evidence.
 
     Creates:
     - pte_table_results.tex: Fiducial version PTE summary
     - pte_table_appendix.tex: All versions PTE comparison
+
+    ``config_pte_path`` / ``harmonic_pte_path`` override the
+    ``claims_dir``-relative evidence locations (CLI form); ``None`` keeps the
+    original tapestry layout.
     """
     bold = 0.05  # bold PTE values below this threshold
 
@@ -454,14 +474,16 @@ def generate_pte_tables(
     }
 
     # Load config-space PTE evidence
-    config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"
+    if config_pte_path is None:
+        config_pte_path = claims_dir / "config_space_pte_matrices" / "evidence.json"
     config_data = {}
     if config_pte_path.exists():
         with open(config_pte_path) as f:
             config_data = json.load(f).get("evidence", {}).get("versions", {})
 
     # Load harmonic-space PTE evidence
-    harmonic_pte_path = claims_dir / "harmonic_space_pte_matrices" / "evidence.json"
+    if harmonic_pte_path is None:
+        harmonic_pte_path = claims_dir / "harmonic_space_pte_matrices" / "evidence.json"
     harmonic_data = {}
     if harmonic_pte_path.exists():
         with open(harmonic_pte_path) as f:
@@ -610,20 +632,18 @@ def generate_evidence(
     print(f"  → {output_path}")
 
 
-if __name__ == "__main__":
+def _from_snakemake(smk):
     # When run via snakemake
-    tapestry_dir = Path(snakemake.params.tapestry_dir)  # noqa: F821
-    config = snakemake.config  # noqa: F821
+    tapestry_dir = Path(smk.params.tapestry_dir)
+    config = smk.config
     fiducial_version = config["fiducial"]["version"]
     versions = config["versions"]
     version_labels = config["plotting"]["version_labels"]
 
     # Separate macro file from PTE tables and evidence
     # Only claims_macros.tex gets macro content; PTE tables generated separately
-    macro_file = [Path(p) for p in snakemake.output if p.endswith("claims_macros.tex")]  # noqa: F821
-    evidence_outputs = [
-        Path(p) for p in snakemake.output if p.endswith("evidence.json")
-    ]  # noqa: F821
+    macro_file = [Path(p) for p in smk.output if p.endswith("claims_macros.tex")]
+    evidence_outputs = [Path(p) for p in smk.output if p.endswith("evidence.json")]
 
     print(f"Generating macros from {tapestry_dir}")
     generate_macros(tapestry_dir, macro_file, fiducial_version)
@@ -638,7 +658,7 @@ if __name__ == "__main__":
 
     # Generate evidence.json if requested
     # Dependencies derived from snakemake inputs (rules.X.output declarations)
-    rule_inputs = snakemake.input.keys()  # noqa: F821
+    rule_inputs = smk.input.keys()
     input_deps = [
         k for k in rule_inputs if k.endswith("_evidence") or k == "covariance_evidence"
     ]
@@ -653,3 +673,91 @@ if __name__ == "__main__":
             claims_dir=tapestry_dir,
             output_path=evidence_path,
         )
+
+
+def _from_cli(argv=None):
+    import argparse
+
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description=(
+            "Aggregate PTE-matrix evidence into the two paper PTE tables + LaTeX "
+            "macros. Terminal gather for the B-modes paper."
+        )
+    )
+    ap.add_argument("--config", required=True, help="Absolute path to config.yaml")
+    ap.add_argument(
+        "--config-space-evidence",
+        required=True,
+        help="Absolute path to config_space_pte_matrices evidence.json (lc output)",
+    )
+    ap.add_argument(
+        "--harmonic-space-evidence",
+        required=True,
+        help="Absolute path to harmonic_space_pte_matrices evidence.json (lc output)",
+    )
+    ap.add_argument(
+        "--claims-dir",
+        default=None,
+        help=(
+            "Optional tapestry-style dir holding <spec_id>/evidence.json for the "
+            "extra claims_macros.tex macros (cosebis/pure_eb/harmonic_config); "
+            "the two PTE tables need only the two --*-evidence paths above."
+        ),
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    fiducial_version = config["fiducial"]["version"]
+    versions = config["versions"]
+    version_labels = config["plotting"]["version_labels"]
+
+    out_dir = Path(a.out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # A sentinel keeps the claims_dir-relative `.exists()` guards falsy when no
+    # tapestry tree is supplied, so absent extra-macro sources are skipped.
+    claims_dir = Path(a.claims_dir) if a.claims_dir else Path("__no_claims_dir__")
+    config_pte = Path(a.config_space_evidence)
+    harmonic_pte = Path(a.harmonic_space_evidence)
+
+    macro_file = [out_dir / "claims_macros.tex"]
+    print(f"Generating macros (config_pte={config_pte}, harmonic_pte={harmonic_pte})")
+    generate_macros(
+        claims_dir,
+        macro_file,
+        fiducial_version,
+        config_pte_path=config_pte,
+        harmonic_pte_path=harmonic_pte,
+    )
+
+    print(f"Generating PTE tables to {out_dir}")
+    generate_pte_tables(
+        claims_dir,
+        out_dir,
+        fiducial_version,
+        versions,
+        version_labels,
+        config,
+        config_pte_path=config_pte,
+        harmonic_pte_path=harmonic_pte,
+    )
+
+    generate_evidence(
+        spec_id="pte_summary_evidence",
+        spec_path="analyses/null_tests/astra.yaml#pte_summary_evidence",
+        depends_on=["config_space_pte_matrices", "harmonic_space_pte_matrices"],
+        claims_dir=claims_dir,
+        output_path=out_dir / "evidence.json",
+    )
+
+
+if __name__ == "__main__":
+    try:
+        snakemake  # noqa: F821 — injected by Snakemake's script: directive
+    except NameError:
+        _from_cli()
+    else:
+        _from_snakemake(snakemake)  # noqa: F821

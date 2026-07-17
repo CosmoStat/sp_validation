@@ -1,34 +1,25 @@
-"""Calculate PTE matrices for Pure E/B mode scale cut robustness."""
+"""Calculate PTE matrices for pure E/B-mode scale-cut robustness.
 
+CLI refactor of the former Snakemake ``script:`` rule. Reads the gathered
+pure-E/B ``semianalytic.npz`` (data vectors + MC covariance), evaluates the
+ξ_+^B / ξ_-^B / joint ξ_tot^B χ² PTE matrices over the scale-cut grid via
+``sp_validation.b_modes.calculate_eb_statistics`` (Hartlap-corrected inverse
+MC covariance), and writes the PTE matrices to
+``{out}/{version}_{blind}_pure_eb_ptes.npz``.
+
+    python calculate_pure_eb_ptes.py \
+        --version SP_v1.4.6.3_leak_corr --blind A \
+        --pure-eb-data <..._pure_eb_semianalytic.npz> \
+        --cov-integration <cov ..._processed.txt> \
+        --npatch 1 --n-samples 2000 --out <output_dir>
+"""
+
+import argparse
 import os
-import sys
-from pathlib import Path
 
 import numpy as np
 
 from sp_validation.b_modes import calculate_eb_statistics
-
-# Unbuffered output for snakemake logging
-sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1)
-sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1)
-
-
-def _load_snakemake():
-    if hasattr(sys, "ps1"):
-        from snakemake_helpers import snakemake_interactive
-
-        return snakemake_interactive(
-            "results/paper_plots/intermediate/SP_v1.4.6_leak_corr_pure_eb_ptes.npz",
-            str(Path.cwd()),
-        )
-    from snakemake.script import snakemake
-
-    return snakemake
-
-
-snakemake = _load_snakemake()
-
-params = snakemake.params
 
 
 class FakeGG:
@@ -40,19 +31,22 @@ class FakeGG:
         self.npatch2 = npatch
 
 
-def main():
-    # Load precomputed Pure E/B data
-    dataset = np.load(snakemake.input["pure_eb_data"])
+def calculate_ptes(
+    version,
+    blind,
+    pure_eb_data,
+    cov_integration,
+    npatch,
+    n_samples,
+    output_dir,
+):
+    dataset = np.load(pure_eb_data)
 
     theta = dataset["theta"]
     nbins = len(theta)
 
-    # Get covariance path from input if semi-analytic was used
-    cov_path_int = snakemake.input.get("cov_integration")
-
-    # Reconstruct results dict for calculate_eb_statistics
     results = {
-        "gg": FakeGG(nbins, int(params["npatch"])),
+        "gg": FakeGG(nbins, int(npatch)),
         "xip_E": dataset["xip_E"],
         "xim_E": dataset["xim_E"],
         "xip_B": dataset["xip_B"],
@@ -62,17 +56,14 @@ def main():
         "cov": dataset["cov_pure_eb"],
     }
 
-    # Calculate PTE matrices
-    print(f"Calculating PTE matrices for {params['version']}...")
+    print(f"Calculating PTE matrices for {version}...")
     results = calculate_eb_statistics(
         results,
-        cov_path_int=cov_path_int,
-        n_samples=int(params["n_samples"]),
+        cov_path_int=cov_integration,
+        n_samples=int(n_samples),
     )
 
-    # Extract and save PTE matrices
     pte_matrices = results["pte_matrices"]
-
     output_data = {
         "theta": theta,
         "pte_xip_B": pte_matrices["xip_B"],
@@ -80,9 +71,37 @@ def main():
         "pte_combined": pte_matrices["combined"],
     }
 
-    np.savez(snakemake.output[0], **output_data)
-    print(f"Saved PTE matrices to {snakemake.output[0]}")
+    os.makedirs(output_dir, exist_ok=True)
+    out_path = os.path.join(output_dir, f"{version}_{blind}_pure_eb_ptes.npz")
+    np.savez(out_path, **output_data)
+    print(f"Saved PTE matrices to {out_path}")
+    return out_path
+
+
+def _from_cli(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--version", required=True)
+    ap.add_argument("--blind", default="A")
+    ap.add_argument("--pure-eb-data", required=True, help="Gathered semianalytic .npz")
+    ap.add_argument(
+        "--cov-integration",
+        default=None,
+        help="Integration-grid covariance _processed.txt (optional)",
+    )
+    ap.add_argument("--npatch", type=int, default=1)
+    ap.add_argument("--n-samples", type=int, default=2000)
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+    calculate_ptes(
+        version=a.version,
+        blind=a.blind,
+        pure_eb_data=a.pure_eb_data,
+        cov_integration=a.cov_integration,
+        npatch=a.npatch,
+        n_samples=a.n_samples,
+        output_dir=a.out,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    _from_cli()

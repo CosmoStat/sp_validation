@@ -25,7 +25,12 @@ dependencies = [
     "camb>=1.6",
     "clmm",
     "colorama",
-    "cs_util>=0.2.1",
+    # Track cs_util's develop branch directly (git dependency) rather than a
+    # PyPI pin: the two repos are iterating together heavily and cs_util
+    # releases are infrequent. This PR's cosmology repoint needs get_cosmo /
+    # get_theo_c_ell / get_theo_xi / PLANCK18 in cs_util.cosmo, which land via
+    # CosmoStat/cs_util#76 — so this goes green once #76 merges into develop.
+    "cs_util @ git+https://github.com/CosmoStat/cs_util.git@develop",
     "emcee",
     # SHA-pinned snapshot of getdist branch `upper_triangle_whisker`.
     "getdist @ git+https://github.com/benabed/getdist.git@113cd22a9a0d013b6f72fe734be81f260f3d3be5",

@@ -63,7 +63,7 @@ covariance:
   use_semianalytic: true
   # Number of Monte Carlo samples for covariance propagation (used by pure E/B mode analysis)
   n_samples: 2000
-  # Cosmology: imported from sp_validation.cosmology.PLANCK18 (astropy Planck18)
+  # Cosmology: imported from cs_util.cosmo.PLANCK18 (astropy Planck18)
   # Mask Cl paths: defined in covariance.smk (MASK_CLS_FILES)
 
 # Harmonic-space (C_l) analysis parameters

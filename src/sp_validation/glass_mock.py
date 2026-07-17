@@ -596,8 +596,8 @@ def compute_leakage_harmony(cat, cat_star, nside=1024, lmin=8, n_bins=32):
 
     e1 = cat["e1"]
     e2 = cat["e2"]
-    e1_psf = cat_star["E1_PSF_HSM"]
-    e2_psf = cat_star["E2_PSF_HSM"]
+    e1_psf = cat_star["HSM_G1_PSF"]
+    e2_psf = cat_star["HSM_G2_PSF"]
 
     ra = cat["ra"]
     dec = cat["dec"]

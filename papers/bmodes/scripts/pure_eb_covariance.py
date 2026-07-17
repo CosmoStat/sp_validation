@@ -9,6 +9,7 @@ Shows that E and B blocks are well-conditioned while ill-conditioning
 is localized to ambiguous modes (expected from finite angular range).
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -76,12 +77,11 @@ def _cov_to_corr(covariance):
     return correlation
 
 
-def main():
-    config = snakemake.config
+def main(config, pure_eb_path, out_dir, specs=()):
     version = config["fiducial"]["version"]
 
     # Load precomputed pure E/B data
-    dataset = np.load(snakemake.input["pure_eb_data"])
+    dataset = np.load(pure_eb_path)
 
     theta = dataset["theta"]
     nbins = len(theta)
@@ -160,27 +160,24 @@ def main():
     fig.tight_layout()
 
     # Save outputs
-    output_dir = Path(snakemake.output["evidence"]).parent
-    output_dir.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    fig_path = Path(snakemake.output["figure"])
+    fig_path = out_dir / "figure.png"
     fig.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
 
-    # Copy to paper figures directory
-    paper_fig_path = Path(snakemake.output["paper_figure"])
-    paper_fig_path.parent.mkdir(parents=True, exist_ok=True)
+    # Paper figure (config-space B-mode covariance correlation matrix)
+    paper_fig_path = out_dir / "eb_covariance.pdf"
     fig.savefig(paper_fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {paper_fig_path}")
 
     plt.close(fig)
 
     # Write evidence.json
-    spec_paths = snakemake.input["specs"]
-
     evidence_data = {
         "spec_id": "pure_eb_covariance",
-        "spec_path": spec_paths[0],
+        **({"spec_path": specs[0]} if specs else {}),
         "generated": datetime.now().isoformat(),
         "evidence": {
             "condition_number": condition_number,
@@ -201,7 +198,7 @@ def main():
         },
     }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = out_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
@@ -220,5 +217,33 @@ def main():
         print(f"    Max eigenvalue: {stats['max_eigenvalue']:.2e}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="Pure E/B 6-block covariance correlation-matrix paper figure (fiducial catalog)."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--pure-eb-data",
+        required=True,
+        help="Fiducial <version>_<blind>_pure_eb_semianalytic.npz "
+        "(provides the 6-block cov_pure_eb)",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--specs",
+        nargs="*",
+        default=[],
+        help="Optional spec markdown paths recorded in evidence.json for provenance",
+    )
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(config, a.pure_eb_data, a.out, specs=a.specs)
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()

@@ -1,5 +1,7 @@
 """Shared plotting utilities for claims scripts."""
 
+from pathlib import Path
+
 import matplotlib.scale as mscale
 import matplotlib.ticker as ticker
 import matplotlib.transforms as mtransforms
@@ -10,7 +12,12 @@ from matplotlib.patches import Rectangle
 from scipy import stats
 
 # Shared constants
-PAPER_MPLSTYLE = "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/notebooks/2D_cosmic_shear_paper_plots/config/paper.mplstyle"
+# Resolve the paper style relative to this module (.resolve() follows the
+# papers/bmodes/scripts symlink to the real workflow/scripts location, so both
+# import paths land on workflow/matplotlib_config/); survives project moves.
+PAPER_MPLSTYLE = str(
+    Path(__file__).resolve().parent.parent / "matplotlib_config" / "paper.mplstyle"
+)
 FIG_WIDTH_FULL = 7.24  # Two-column A&A format (textwidth)
 FIG_WIDTH_SINGLE = 3.54  # Single-column A&A format (columnwidth)
 MARKER_STYLES = ["o", "s", "D", "^"]

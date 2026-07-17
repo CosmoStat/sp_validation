@@ -5,6 +5,7 @@ Produces figures at fiducial scale cut and full range.
 Statistical evidence (PTEs) is in cosebis_pte_matrix.
 """
 
+import argparse
 import json
 from datetime import datetime
 from pathlib import Path
@@ -146,22 +147,52 @@ def _create_stacked_bmode_figure(
     return fig
 
 
-def main():
-    config = snakemake.config
-    # Version list: from params if provided (ecut comparison), else from config
-    versions = getattr(snakemake.params, "versions", None)
-    if versions is None:
-        versions = [v for v in config["versions"] if "_leak_corr" in v]
+def _xi_integration(results_dir, ver):
+    return f"{results_dir}/{ver}_xi_minsep=0.5_maxsep=300.0_nbins=1000_npatch=1.txt"
+
+
+def _cov_integration(cov_dir, ver, blind):
+    base = f"covariance_{ver}_{blind}_g_minsep=0.5_maxsep=300.0_nbins=1000_masked"
+    return f"{cov_dir}/{base}/{base}_processed.txt"
+
+
+def main(
+    config,
+    results_dir,
+    cov_dir,
+    out_dir,
+    fiducial_version=None,
+    fiducial_xi_path=None,
+    fiducial_cov_path=None,
+):
+    # Leak-corrected, non-ecut versions (matches VERSIONS_LEAK_CORR in claims.smk)
+    versions = [v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v]
     nmodes = config["fiducial"]["nmodes"]
     plotting_config = config["plotting"]
+    version_labels = plotting_config["version_labels"]
+    blind = config["fiducial"]["blind"]
 
-    version_labels = snakemake.params.version_labels
+    # Fiducial version whose inputs may be overridden with explicit lc paths
+    fiducial_version = fiducial_version or config["fiducial"]["version"]
+
+    # Per-version integration-grid xi and Gaussian covariance (canonical trees),
+    # with explicit-path overrides for the fiducial version when provided.
+    xi_paths_list = [
+        fiducial_xi_path
+        if v == fiducial_version and fiducial_xi_path
+        else _xi_integration(results_dir, v)
+        for v in versions
+    ]
+    cov_paths_list = [
+        fiducial_cov_path
+        if v == fiducial_version and fiducial_cov_path
+        else _cov_integration(cov_dir, v, blind)
+        for v in versions
+    ]
 
     # Which version gets the fiducial reference line in boxes
-    fiducial_for_comparison = getattr(
-        snakemake.params,
-        "fiducial_for_comparison",
-        plotting_config.get("fiducial_for_comparison", config["fiducial"]["version"]),
+    fiducial_for_comparison = plotting_config.get(
+        "fiducial_for_comparison", config["fiducial"]["version"]
     )
 
     # Plotting config
@@ -208,11 +239,7 @@ def main():
         datasets = []
 
         for i, (version, xi_path, cov_path) in enumerate(
-            zip(
-                versions,
-                snakemake.input["xi_integration"],
-                snakemake.input["cov_integration"],
-            )
+            zip(versions, xi_paths_list, cov_paths_list)
         ):
             if has_ecut:
                 parent = version.split("_ecut")[0].replace("_leak_corr", "")
@@ -283,7 +310,7 @@ def main():
     )
 
     # Create output
-    output_dir = Path(snakemake.output["evidence"]).parent
+    output_dir = Path(out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     fig = _create_stacked_bmode_figure(
@@ -302,18 +329,13 @@ def main():
     fig.savefig(fig_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_path}")
 
-    if "paper_stacked" in snakemake.output.keys():
-        paper_path = Path(snakemake.output["paper_stacked"])
-        paper_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(paper_path, bbox_inches="tight")
-        print(f"Saved {paper_path}")
+    paper_path = output_dir / "cosebis_bmode_stacked.pdf"
+    fig.savefig(paper_path, bbox_inches="tight")
+    print(f"Saved {paper_path}")
 
     plt.close(fig)
 
-    # Write evidence (visualization only, PTEs are in cosebis_pte_matrix)
-    spec_paths = snakemake.input["specs"]
-
-    # Build flat evidence dict
+    # Write evidence (visualization only, PTEs are in cosebis_pte_per_cut)
     evidence_versions = {}
     for version, ptes in all_ptes.items():
         for key, val in ptes.items():
@@ -321,7 +343,6 @@ def main():
 
     evidence_data = {
         "spec_id": "cosebis_version_comparison",
-        "spec_path": spec_paths[0],
         "generated": datetime.now().isoformat(),
         "evidence": {
             "scale_cuts": scale_cuts,
@@ -331,11 +352,63 @@ def main():
         "output": {"figure_stacked": fig_name},
     }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = output_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="COSEBI B-mode version-comparison figure (4 leak-corrected catalogs)."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--results-dir",
+        required=True,
+        help="COSMO_VAL output dir with per-version integration-grid xi_pm .txt dumps",
+    )
+    ap.add_argument(
+        "--cov-dir",
+        required=True,
+        help="COSMO_INFERENCE data/covariance dir with per-version 1000-bin Gaussian covariances",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help="Version whose xi/cov inputs may be overridden by --fiducial-xi-path "
+        "and --fiducial-cov-path (default: config['fiducial']['version'])",
+    )
+    ap.add_argument(
+        "--fiducial-xi-path",
+        default=None,
+        help="Explicit path to the fiducial version's 1000-bin integration-grid "
+        "xi (e.g. lc output), overriding the canonical-tree path pattern",
+    )
+    ap.add_argument(
+        "--fiducial-cov-path",
+        default=None,
+        help="Explicit path to the fiducial version's Gaussian integration "
+        "covariance (e.g. lc output), overriding the canonical-tree path pattern",
+    )
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(
+        config,
+        a.results_dir,
+        a.cov_dir,
+        a.out,
+        fiducial_version=a.fiducial_version,
+        fiducial_xi_path=a.fiducial_xi_path,
+        fiducial_cov_path=a.fiducial_cov_path,
+    )
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()

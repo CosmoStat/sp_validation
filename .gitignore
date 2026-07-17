@@ -198,6 +198,7 @@ papers/catalog/plots/*.pdf
 # SLURM run logs from cosmo_val validation runs
 papers/cosmo_val/logs/
 
-# Ignore scratch work notebooks
+# Ignore scratch notebooks
+scratch/*/*.ipynb
 scratch/guerrini/work_notebooks
 scratch/guerrini/launch_scripts
