@@ -1085,7 +1085,11 @@ class PseudoClMixin:
 
         return covar
 
+    # ---------------- Plotting functions for pseudo-Cl's ---------------- #
     def plot_pseudo_cl(
+        self,
+        pol_list,
+        versions=None,
         ell_factor="ell",
         cov_type="iNKA",
         offset=0.15,
