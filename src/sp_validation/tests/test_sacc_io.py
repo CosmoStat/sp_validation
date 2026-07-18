@@ -796,6 +796,86 @@ def test_merge_rejects_divergent_shared_tracer():
 
 
 # --------------------------------------------------------------------------- #
+# 13b. merge(): theta-consistency guard across groups.
+# --------------------------------------------------------------------------- #
+def _rho_sacc(k=0, theta=None, scale=1.0, metadata=None):
+    s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
+    theta = _theta() if theta is None else theta
+    sio.add_rho(
+        s,
+        k,
+        theta,
+        np.arange(len(theta)) * scale * 1e-6,
+        np.arange(len(theta)) * scale * 2e-6,
+    )
+    return s
+
+
+def test_merge_identical_theta_grids_passes():
+    # xi and rho both default to grid='reporting' and share the grid bitwise
+    s_xi, s_rho = _xi_sacc(), _rho_sacc(theta=_theta())
+    s_rho2 = _rho_sacc(k=1, theta=_theta())
+    merged = sio.merge([s_xi, s_rho, s_rho2])
+    assert len(merged.mean) == sum(len(s.mean) for s in (s_xi, s_rho, s_rho2))
+
+
+def test_merge_nearly_identical_theta_grids_raises():
+    theta = _theta()
+    s_rho = _rho_sacc(theta=theta)
+    # same 'reporting' grid group, same length, ~1e-9 relative perturbation
+    s_rho2 = _rho_sacc(k=1, theta=theta * (1 + 1e-9))
+    with pytest.raises(ValueError, match="theta grids under the same grid tag"):
+        sio.merge([s_rho, s_rho2])
+
+
+def test_merge_rho_off_xi_reporting_grid_raises():
+    s_xi = _xi_sacc()  # grid='reporting'
+    # rho defaults to 'reporting' too: a slightly-off grid must fail loud
+    s_rho = _rho_sacc(theta=_theta() * (1 + 1e-9))
+    with pytest.raises(ValueError, match="theta grids under the same grid tag"):
+        sio.merge([s_xi, s_rho])
+
+
+def test_merge_clearly_different_theta_grids_same_tag_raises():
+    s_rho = _rho_sacc(theta=_theta())  # theta in [1, 100]
+    # same 'reporting' group, same length, entirely different binning
+    s_rho2 = _rho_sacc(k=1, theta=np.geomspace(200.0, 400.0, 6))
+    with pytest.raises(ValueError, match="theta grids under the same grid tag"):
+        sio.merge([s_rho, s_rho2])
+
+
+def test_merge_different_length_theta_grids_passes():
+    s_rho = _rho_sacc(theta=_theta())  # 6-point theta
+    s_rho2 = _rho_sacc(k=1, theta=_theta(nbins=10))  # same group, subset OK
+    merged = sio.merge([s_rho, s_rho2])
+    assert len(merged.mean) == len(s_rho.mean) + len(s_rho2.mean)
+
+
+def test_merge_same_length_grids_under_different_tags_pass():
+    # reporting vs integration differ by design — no cross-tag constraint
+    s = sio.new_sacc({0: _nz(0)})
+    _add_xi(s, grid="reporting")  # theta in [1, 100], 6 points
+    sio.add_xi(
+        s,
+        (0, 0),
+        np.geomspace(200.0, 400.0, 6),  # same length, different values
+        np.arange(6) * 1e-5,
+        np.arange(6) * 2e-5,
+        grid="integration",
+    )
+    merged = sio.merge([s, _rho_sacc(theta=_theta())])
+    assert len(merged.mean) == len(s.mean) + 12
+
+
+def test_merge_same_tag_clearly_different_grids_raise():
+    # same (untagged) group, same length, values far apart -> still an error
+    s_rho = _rho_sacc(theta=_theta())  # theta in [1, 100]
+    s_rho2 = _rho_sacc(k=1, theta=np.geomspace(200.0, 400.0, 6))
+    with pytest.raises(ValueError, match="theta grids under the same grid tag"):
+        sio.merge([s_rho, s_rho2])
+
+
+# --------------------------------------------------------------------------- #
 # 15. Unmatched selections fail loud — no silent-empty arrays anywhere.
 # --------------------------------------------------------------------------- #
 def test_readers_raise_on_unmatched_selection():
