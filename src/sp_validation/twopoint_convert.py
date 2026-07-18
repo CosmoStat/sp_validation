@@ -288,7 +288,7 @@ def _build_cell(s, bins):
 
     ell, cl_ee, _cl_bb, _cl_eb, _window = sacc_io.get_pseudo_cl(s, bins)
     cell_hdu = _twopoint_hdu("CELL_EE", cl_ee, ell)
-    cell_idx = s.indices(sacc_io.CL_EE, sacc_io._pair(bins))
+    cell_idx = sacc_io._indices(s, sacc_io.CL_EE, sacc_io._pair(bins), grid="reporting")
     cov_cell = s.covariance.dense[np.ix_(cell_idx, cell_idx)]
     cov_cell_hdu = _cov_hdu(
         cov_cell, ["CELL_EE"], [0], extname="COVMAT_CELL", name_in_ctor=True
@@ -305,8 +305,8 @@ def _build_covmat(s, bins, *, use_rho_tau):
     with zero ξ↔τ cross-blocks, exactly as ``covdat_to_fits`` builds them.
     """
     pair = sacc_io._pair(bins)
-    idx_p = s.indices(sacc_io.XI_PLUS, pair)
-    idx_m = s.indices(sacc_io.XI_MINUS, pair)
+    idx_p = sacc_io._indices(s, sacc_io.XI_PLUS, pair, grid="reporting")
+    idx_m = sacc_io._indices(s, sacc_io.XI_MINUS, pair, grid="reporting")
     n_theta = len(idx_p)
     xi_idx = np.concatenate([idx_p, idx_m])  # type-major permutation
     xi_cov = s.covariance.dense[np.ix_(xi_idx, xi_idx)]
@@ -322,8 +322,12 @@ def _build_covmat(s, bins, *, use_rho_tau):
         # SACC those two selections are not adjacent (τ_0− sits between them), so
         # gather both index sets and extract the joint sub-block, ξ↔τ zero.
         tau_pair = (sacc_io.source_name(0), sacc_io.PSF_TRACER)
-        idx_tau0 = s.indices(sacc_io.TAU_PLUS.format(k=0), tau_pair)
-        idx_tau2 = s.indices(sacc_io.TAU_PLUS.format(k=2), tau_pair)
+        idx_tau0 = sacc_io._indices(
+            s, sacc_io.TAU_PLUS.format(k=0), tau_pair, grid="reporting"
+        )
+        idx_tau2 = sacc_io._indices(
+            s, sacc_io.TAU_PLUS.format(k=2), tau_pair, grid="reporting"
+        )
         tau_idx = np.concatenate([idx_tau0, idx_tau2])
         tau_cov = s.covariance.dense[np.ix_(tau_idx, tau_idx)]
         matrix = _block_diag(matrix, tau_cov)

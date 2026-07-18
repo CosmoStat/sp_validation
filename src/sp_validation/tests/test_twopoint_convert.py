@@ -367,6 +367,98 @@ def test_perturbed_xi_changes_output(tmp_path):
     assert np.array_equal(new_xip, inp2["xip"])
 
 
+def test_integration_grid_points_ignored(tmp_path):
+    """Extra xi/tau/Cl points tagged grid='integration' must not leak into the
+    converted output.
+
+    Bug report (HIGH): ``_build_covmat`` selected xi+/xi-/tau covariance
+    indices with raw ``s.indices(dtype, pair)`` -- no ``grid`` filter -- while
+    the corresponding data-vector HDUs are built via ``sacc_io.get_xi(...,
+    grid='reporting')``. A real SACC carrying both 'reporting' and
+    'integration' grid points under the same data type + tracer pair (e.g. the
+    fine COSEBIs/pure-EB integration input) would inflate/desync the
+    covariance relative to the data vector. Pin that the converted file is
+    byte-identical whether or not the integration-grid points are present.
+    """
+    inp = _inputs(seed=40)
+    s_plain = _sacc(inp, cl=True, rho_tau=True)
+    rho_hdu, tau_hdu = _sidecar_hdus(tmp_path, inp)
+    out_plain = tmp_path / "plain.fits"
+    twopoint_convert.sacc_to_twopoint_fits(
+        s_plain, str(out_plain), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
+    )
+
+    # Build an augmented SACC: same reporting-grid points, plus a full extra
+    # set of integration-grid xi/tau/Cl points on a distinct angular grid (so
+    # they cannot coincide with the reporting points), with the covariance
+    # sized to cover both blocks.
+    s_aug = sacc_io.new_sacc({0: (inp["z"], inp["nz"])})
+    sacc_io.add_xi(
+        s_aug, (0, 0), inp["theta"], inp["xip"], inp["xim"], grid="reporting"
+    )
+    sacc_io.add_pseudo_cl(
+        s_aug,
+        (0, 0),
+        inp["ell"],
+        inp["cl_ee"],
+        inp["cl_bb"],
+        inp["cl_eb"],
+        window_ells=np.arange(2, 102),
+        window_weights=np.random.default_rng(9).uniform(0, 1, (100, N_ELL)),
+        grid="reporting",
+    )
+    sacc_io.add_tau(s_aug, (0, 0), 0, inp["theta"], inp["tau0p"], inp["tau0m"])
+    sacc_io.add_tau(s_aug, (0, 0), 2, inp["theta"], inp["tau2p"], inp["tau2m"])
+
+    theta_int = inp["theta"] + 1000.0  # disjoint grid, never collides
+    xip_int = np.random.default_rng(41).uniform(1e-6, 1e-4, N_ANG)
+    xim_int = np.random.default_rng(42).uniform(1e-6, 1e-4, N_ANG)
+    sacc_io.add_xi(s_aug, (0, 0), theta_int, xip_int, xim_int, grid="integration")
+
+    n = len(s_aug.mean)
+    full = np.zeros((n, n))
+    ip = sacc_io._indices(s_aug, sacc_io.XI_PLUS, (SOURCE, SOURCE), grid="reporting")
+    im = sacc_io._indices(s_aug, sacc_io.XI_MINUS, (SOURCE, SOURCE), grid="reporting")
+    xi_all = np.concatenate([ip, im])
+    full[np.ix_(xi_all, xi_all)] = inp["xi_cov"]
+
+    iee = sacc_io._indices(s_aug, sacc_io.CL_EE, (SOURCE, SOURCE), grid="reporting")
+    full[np.ix_(iee, iee)] = inp["cl_cov"]
+    for dtype in (sacc_io.CL_BB, sacc_io.CL_EB):
+        idx = sacc_io._indices(s_aug, dtype, (SOURCE, SOURCE), grid="reporting")
+        full[np.ix_(idx, idx)] = np.eye(N_ELL)
+
+    t0p = sacc_io._indices(
+        s_aug, sacc_io.TAU_PLUS.format(k=0), (SOURCE, PSF), grid="reporting"
+    )
+    t2p = sacc_io._indices(
+        s_aug, sacc_io.TAU_PLUS.format(k=2), (SOURCE, PSF), grid="reporting"
+    )
+    tau_pp = np.concatenate([t0p, t2p])
+    full[np.ix_(tau_pp, tau_pp)] = inp["tau_cov_full"][: 2 * N_ANG, : 2 * N_ANG]
+    for dtype in (sacc_io.TAU_MINUS.format(k=0), sacc_io.TAU_MINUS.format(k=2)):
+        idx = sacc_io._indices(s_aug, dtype, (SOURCE, PSF), grid="reporting")
+        full[np.ix_(idx, idx)] = np.eye(N_ANG)
+
+    ip_int = sacc_io._indices(
+        s_aug, sacc_io.XI_PLUS, (SOURCE, SOURCE), grid="integration"
+    )
+    im_int = sacc_io._indices(
+        s_aug, sacc_io.XI_MINUS, (SOURCE, SOURCE), grid="integration"
+    )
+    xi_int_all = np.concatenate([ip_int, im_int])
+    full[np.ix_(xi_int_all, xi_int_all)] = _spd(2 * N_ANG, 43)
+
+    s_aug.add_covariance(full)
+
+    out_aug = tmp_path / "aug.fits"
+    twopoint_convert.sacc_to_twopoint_fits(
+        s_aug, str(out_aug), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
+    )
+
+    assert out_aug.read_bytes() == out_plain.read_bytes()
+
+
 def test_rho_tau_sidecars_required_together(tmp_path):
     """Supplying only one of the rho/tau sidecars is a loud error."""
     inp = _inputs(seed=20)
@@ -450,20 +542,35 @@ def test_covmat_blocks_exact_gather_encoded_cov(tmp_path):
         s, str(out), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
     )
 
+    # Expected indices are computed via a code path independent of the shared
+    # `sacc_io._indices` helper the converter uses: direct boolean filtering on
+    # each point's data_type/tracers/grid tag, so this test does not
+    # self-confirm against the converter's own selection logic.
+    def _mask_idx(dtype, tracers):
+        return np.array(
+            [
+                i
+                for i, p in enumerate(s.data)
+                if p.data_type == dtype
+                and p.tracers == tracers
+                and p.tags.get("grid") == "reporting"
+            ]
+        )
+
     pair = (SOURCE, SOURCE)
     xi_idx = np.concatenate(
-        [s.indices(sacc_io.XI_PLUS, pair), s.indices(sacc_io.XI_MINUS, pair)]
+        [_mask_idx(sacc_io.XI_PLUS, pair), _mask_idx(sacc_io.XI_MINUS, pair)]
     )
     tau_idx = np.concatenate(
         [
-            s.indices(sacc_io.TAU_PLUS.format(k=0), (SOURCE, PSF)),
-            s.indices(sacc_io.TAU_PLUS.format(k=2), (SOURCE, PSF)),
+            _mask_idx(sacc_io.TAU_PLUS.format(k=0), (SOURCE, PSF)),
+            _mask_idx(sacc_io.TAU_PLUS.format(k=2), (SOURCE, PSF)),
         ]
     )
     expected = twopoint_convert._block_diag(
         encoded[np.ix_(xi_idx, xi_idx)], encoded[np.ix_(tau_idx, tau_idx)]
     )
-    cell_idx = s.indices(sacc_io.CL_EE, pair)
+    cell_idx = _mask_idx(sacc_io.CL_EE, pair)
 
     with fits.open(out) as hdul:
         np.testing.assert_array_equal(hdul["COVMAT"].data, expected)
