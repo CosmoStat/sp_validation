@@ -156,10 +156,10 @@ def _check_ascending(name, values):
         )
 
 
-def _add_theta_series(s, dtype, tracers, theta, values):
+def _add_theta_series(s, dtype, tracers, theta, values, **tags):
     """Insert one theta-tagged series, one point per (theta, value) pair."""
     for th, value in zip(theta, values):
-        s.add_data_point(dtype, tracers, float(value), theta=float(th))
+        s.add_data_point(dtype, tracers, float(value), theta=float(th), **tags)
 
 
 def add_xi(
@@ -220,6 +220,7 @@ def add_pseudo_cl(
     *,
     window_ells,
     window_weights,
+    grid="reporting",
 ):
     """Add pseudo-Cℓ (EE, BB, EB) with a shared bandpower window.
 
@@ -239,14 +240,27 @@ def add_pseudo_cl(
         Window matrix ``W`` of shape ``(nell, nbp)`` — one column per
         bandpower — from NaMaster ``get_bandpower_windows``. One
         ``sacc.BandpowerWindow`` is built and shared across EE/BB/EB.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ``merge``'s ℓ-consistency group; variant ℓ binnings belong
+        under different tag values.
     """
     _check_ascending("ell_eff", ell_eff)
     tracers = _pair(bins)
     window = sacc.BandpowerWindow(np.asarray(window_ells), np.asarray(window_weights))
+    # add_ell_cl accepts no extra tags, so inline its per-point insertion
+    # (ell + shared window + window_ind column index) plus the grid tag.
     for dtype, cl in ((CL_EE, cl_ee), (CL_BB, cl_bb), (CL_EB, cl_eb)):
-        s.add_ell_cl(
-            dtype, *tracers, np.asarray(ell_eff), np.asarray(cl), window=window
-        )
+        for n, (ell, value) in enumerate(zip(ell_eff, cl)):
+            s.add_data_point(
+                dtype,
+                tracers,
+                float(value),
+                ell=float(ell),
+                window=window,
+                window_ind=n,
+                grid=grid,
+            )
 
 
 def add_cosebis(s, bins, En, Bn, scale_cut):
@@ -280,7 +294,9 @@ def add_cosebis(s, bins, En, Bn, scale_cut):
             )
 
 
-def add_pure_eb(s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb):
+def add_pure_eb(
+    s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb, *, grid="reporting"
+):
     """Add pure E/B-mode correlation functions for one tracer pair.
 
     Six blocks are inserted in ``PURE_KEYS`` order (xip_E, xim_E, xip_B,
@@ -297,15 +313,18 @@ def add_pure_eb(s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb):
         Angular separations (arcmin), shared by all six blocks.
     xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb : array_like
         The six pure E/B / ambiguous mode arrays at ``theta``.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ξ's theta-consistency group in ``merge``'s guard.
     """
     _check_ascending("theta", theta)
     tracers = _pair(bins)
     arrays = (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb)
     for dtype, arr in zip(PURE_TYPES.values(), arrays):
-        _add_theta_series(s, dtype, tracers, theta, arr)
+        _add_theta_series(s, dtype, tracers, theta, arr, grid=grid)
 
 
-def add_rho(s, k, theta, rho_p, rho_m):
+def add_rho(s, k, theta, rho_p, rho_m, *, grid="reporting"):
     """Add a ρ_k PSF statistic (ρ+ then ρ−) on the ``psf_stars`` tracer.
 
     Parameters
@@ -318,14 +337,17 @@ def add_rho(s, k, theta, rho_p, rho_m):
         Angular separations (arcmin).
     rho_p, rho_m : array_like
         ρ_k+ and ρ_k− at ``theta``.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ξ's theta-consistency group in ``merge``'s guard.
     """
     _check_ascending("theta", theta)
     tracers = (PSF_TRACER, PSF_TRACER)
-    _add_theta_series(s, RHO_PLUS.format(k=k), tracers, theta, rho_p)
-    _add_theta_series(s, RHO_MINUS.format(k=k), tracers, theta, rho_m)
+    _add_theta_series(s, RHO_PLUS.format(k=k), tracers, theta, rho_p, grid=grid)
+    _add_theta_series(s, RHO_MINUS.format(k=k), tracers, theta, rho_m, grid=grid)
 
 
-def add_tau(s, bins, k, theta, tau_p, tau_m):
+def add_tau(s, bins, k, theta, tau_p, tau_m, *, grid="reporting"):
     """Add a τ_k PSF-leakage statistic (τ+ then τ−).
 
     Parameters
@@ -341,11 +363,14 @@ def add_tau(s, bins, k, theta, tau_p, tau_m):
         Angular separations (arcmin).
     tau_p, tau_m : array_like
         τ_k+ and τ_k− at ``theta``.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ξ's theta-consistency group in ``merge``'s guard.
     """
     _check_ascending("theta", theta)
     tracers = (source_name(bins[0]), PSF_TRACER)
-    _add_theta_series(s, TAU_PLUS.format(k=k), tracers, theta, tau_p)
-    _add_theta_series(s, TAU_MINUS.format(k=k), tracers, theta, tau_m)
+    _add_theta_series(s, TAU_PLUS.format(k=k), tracers, theta, tau_p, grid=grid)
+    _add_theta_series(s, TAU_MINUS.format(k=k), tracers, theta, tau_m, grid=grid)
 
 
 def assemble_covariance(s, blocks):
@@ -623,6 +648,18 @@ def merge(saccs):
     library's clash behaviour, which mangles clashing keys by appending
     labels.
 
+    Grid consistency follows tagging semantics: the ``grid`` tag declares
+    which binning a set of points lives on, so all same-length theta (or
+    ell) arrays under one tag value must be bitwise identical — sacc itself
+    never validates angles across data types/tracers, and a grid that
+    differs only at floating-point level chokes CosmoSIS downstream instead
+    of failing loud here. Different lengths within a tag group pass
+    (scale-cut subsets are legitimate); grids under different tag values
+    are unconstrained (``reporting`` vs ``integration`` differ by design);
+    θ and ℓ are separate domains, each checked against itself only. ℓ
+    series sharing a bitwise-equal grid must also share the bandpower
+    window (series without windows skip that check).
+
     Parameters
     ----------
     saccs : sequence of sacc.Sacc
@@ -633,6 +670,14 @@ def merge(saccs):
     -------
     sacc.Sacc
         The merged data set.
+
+    Raises
+    ------
+    ValueError
+        If metadata conflicts, a shared tracer differs across inputs, two
+        same-length theta or ell arrays under the same ``grid`` tag value
+        are not bitwise identical, or two ℓ series sharing a grid carry
+        different bandpower windows.
     """
     saccs = list(saccs)
     metadata = {}
@@ -670,7 +715,76 @@ def merge(saccs):
     merged = sacc.concatenate_data_sets(*stripped, same_tracers=same_tracers)
     for key, value in metadata.items():
         merged.metadata[key] = value
+    _check_grid_consistency(merged, "theta")
+    _check_grid_consistency(merged, "ell")
     return merged
+
+
+def _grid_groups(s, angle):
+    """Nested map ``grid-tag-value -> (data_type, tracers) -> point indices``.
+
+    One entry per ``(data_type, tracers)`` series carrying an ``angle``
+    (``'theta'`` or ``'ell'``) tag, in each series' own insertion order
+    (never re-sorted), nested under the ``grid`` tag value it lives on
+    (``None`` for untagged series) — the shape ``merge``'s consistency
+    guard checks within each tag value. Indices (not angle values) are
+    kept so the ℓ check can also recover each series' bandpower window.
+    """
+    groups = {}
+    for i, point in enumerate(s.data):
+        if angle in point.tags:
+            groups.setdefault(point.tags.get("grid"), {}).setdefault(
+                (point.data_type, point.tracers), []
+            ).append(i)
+    return groups
+
+
+def _check_grid_consistency(s, angle):
+    """Raise unless same-length ``angle`` arrays under one ``grid`` tag match.
+
+    Consistency follows tagging semantics: the ``grid`` tag declares which
+    binning a series lives on, so all same-length theta (or ell) arrays
+    sharing a tag value must be bitwise identical — sacc never validates
+    angles across data types/tracers, and a grid diverging at
+    floating-point level chokes CosmoSIS downstream instead of failing
+    loud here. Different lengths within a tag value pass (scale-cut
+    subsets are legitimate); series under different tag values are
+    unconstrained (``reporting`` vs ``integration`` differ by design).
+    θ and ℓ are separate domains, each checked against itself only. For
+    ℓ, two series on a bitwise-equal grid must also share the bandpower
+    window (equal window ells and weight matrix); series without windows
+    (foreign files) skip the window check.
+    """
+    for tag, by_series in _grid_groups(s, angle).items():
+        series = [
+            (key, np.array([s.data[i].tags[angle] for i in idx]), idx)
+            for key, idx in by_series.items()
+        ]
+        for i, (key_a, arr_a, idx_a) in enumerate(series):
+            for key_b, arr_b, idx_b in series[i + 1 :]:
+                if len(arr_a) != len(arr_b):
+                    continue
+                if not np.array_equal(arr_a, arr_b):
+                    max_diff = np.max(np.abs(arr_a - arr_b))
+                    raise ValueError(
+                        f"{angle} grids under the same grid tag ({tag!r}) "
+                        f"differ; harmonize upstream — groups {key_a!r} and "
+                        f"{key_b!r} (max abs diff {max_diff:.3e})"
+                    )
+                if angle != "ell" or any(
+                    "window" not in s.data[idx[0]].tags for idx in (idx_a, idx_b)
+                ):
+                    continue
+                win_a, win_b = map(s.get_bandpower_windows, (idx_a, idx_b))
+                if not (
+                    np.array_equal(win_a.values, win_b.values)
+                    and np.array_equal(win_a.weight, win_b.weight)
+                ):
+                    raise ValueError(
+                        f"bandpower windows differ between series sharing an "
+                        f"ell grid under grid tag {tag!r}; harmonize upstream "
+                        f"— groups {key_a!r} and {key_b!r}"
+                    )
 
 
 def update_statistic(s, sub):
