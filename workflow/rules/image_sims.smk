@@ -25,10 +25,12 @@ same split the gate766 baseline ran:
   ``calibrate`` (-> cut cat) and ``m_bias`` (-> ``m_bias_results.yaml``) run
   in ``sif`` (the sp_validation image).
 
-Every rule sets ``container: None`` and calls ``apptainer exec`` explicitly
-through a shared prefix template (``EXEC_PIPELINE`` / ``EXEC`` -- identical
-env injections, different image), because the images are not the workflow's
-top-level container.  Everything is parameterised under
+Every rule declares its image with Snakemake's own ``container:`` directive
+(``sif_pipeline`` for the ShapePipe stages, ``sif`` for the sp_validation ones);
+``--software-deployment-method apptainer`` in the candide profile turns that
+into an ``apptainer exec`` around each job, with the bind mounts and env
+injections carried once on ``--apptainer-args`` (see the container block below
+and workflow/profiles/candide/config.yaml).  Everything is parameterised under
 ``config["image_sims"]`` -- the two ``sif`` keys, repository roots, data roots,
 the PSF dictionary, the explicit ``tile_ids`` list and the sim/calibration
 knobs -- so a fresh user drives it from config alone, with no hard-coded clone
@@ -189,10 +191,24 @@ CALIBRATE = IMSIM["calibrate_script"]
 # m-bias is *this branch's* extracted core, injected on PYTHONPATH.
 COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 
-# --- container exec prefixes ----------------------------------------------
-# One prefix *shape* for every stage -- two instances, one per image.  Three
-# env injections make the on-disk branch
-# code and the sim PSF win over the image's baked copies:
+# --- containers -----------------------------------------------------------
+# Each stage runs inside its repo's image via Snakemake's own ``container:``
+# directive (below on each rule): ``sif_pipeline`` (the ShapePipe image) for the
+# pipeline/merge stages, ``sif`` (the sp_validation image) for manifest/extract/
+# calibrate/m-bias.  With ``--software-deployment-method apptainer`` (set in the
+# candide profile) Snakemake wraps every job in ``apptainer exec <image>``; the
+# static bind mounts travel once on ``--apptainer-args`` in that profile.
+#
+# The three per-run env injections that used to be spelled on every hand-rolled
+# ``apptainer exec`` line are set here, in ``os.environ``, at workflow parse
+# time.  They then reach the container by the native path: the slurm executor
+# submits ``sbatch --export=ALL`` (the driver env rides to each job) and
+# apptainer inherits the host environment by default.  Because they are set in
+# committed workflow code -- not exported by hand in the launching shell -- this
+# keeps the "one run command, no implicit uncommitted state" property the
+# hand-rolled prefix was protecting, while letting Snakemake own the exec.
+# ``--apptainer-args`` cannot carry them: it is a single static profile string,
+# but these are per-run values derived from the run config's repo/PSF paths.
 #
 #   * PYTHONPATH prepends BOTH repos' ``src`` (ShapePipe first, then
 #     sp_validation), so Python resolves the worktree build before
@@ -204,33 +220,28 @@ COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 #     shadowed by PYTHONPATH.
 #   * PSF_DICT points the fake_psf module (PSF_DICT_PATH = $PSF_DICT, expanded
 #     via getexpanded) at this run's PSF dictionary.
+#   * OMP_NUM_THREADS=1 pins the OpenMP/BLAS pool: the chain is MPI-free (one
+#     SLURM job per branch x tile, parallelism is ShapePipe's own ``-N n_smp``),
+#     so the thread pool inside the container must be 1 to avoid oversubscription.
+os.environ["PYTHONPATH"] = f"{SHAPEPIPE_REPO}/src:{SPV_REPO}/src"
+os.environ["PSF_DICT"] = str(PSF_DICT)
+os.environ["OMP_NUM_THREADS"] = "1"
+
+# No SLURM-env scrubbing is needed.  The old prefix ran ``env -u SLURM_*`` to
+# keep the ShapePipe stage's OpenMPI from attaching to the host SLURM launcher,
+# but the pipeline image's OpenMPI is built ``--with-pmix=internal`` and carries
+# no SLURM RAS plugin (verified: ``ompi_info --param ras slurm`` reports the
+# framework absent), so it sees a singleton regardless of the host SLURM vars --
+# and ShapePipe drives its own multiprocessing, not MPI-across-tasks.  The strip
+# was defensive, not load-bearing, so it drops cleanly.
 #
-# The SLURM env vars are stripped (``env -u ...``) so that when the ShapePipe
-# pipeline stage's OpenMPI initialises inside the image it does not try to
-# attach to the host SLURM launcher (cf. apptainer_noslurm.sh).  The strip is
-# harmless for the pure-Python sp_validation stages, so one prefix serves all.
-#
-# ``OMP_NUM_THREADS=1`` is injected here, at the ``apptainer exec`` call, and
-# not left to the SLURM profile.  The chain is MPI-free: Snakemake fans out one
-# job per branch x tile and each job's parallelism is ShapePipe's own internal
-# multiprocessing (``-N n_smp``), so the OpenMP/BLAS thread pool inside the
-# container must be pinned to 1 to avoid oversubscription.  The SLURM profile
-# cannot pin it reliably: the slurm executor submits with ``--export=ALL``,
-# which propagates the *driver's* ambient environment -- but a Snakemake
-# profile only sets CLI flags, never the driver's own env, so an
-# ``OMP_NUM_THREADS`` there would depend on the operator having exported it by
-# hand (the implicit, uncommitted state the "one run command" is meant to
-# retire).  Injecting it on the ``apptainer exec`` line puts it where the
-# compute actually runs -- inside the container, independent of the driver's
-# env -- the same lever this prefix already uses for PYTHONPATH/PSF_DICT.
-_EXEC_PREFIX = (
-    "env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID "
-    f"apptainer exec --bind {BINDS} "
-    f"--env PYTHONPATH={SHAPEPIPE_REPO}/src:{SPV_REPO}/src "
-    f"--env PSF_DICT={PSF_DICT} --env OMP_NUM_THREADS=1 "
-)
-EXEC = _EXEC_PREFIX + SIF  # sp_validation stages
-EXEC_PIPELINE = _EXEC_PREFIX + SIF_PIPELINE  # ShapePipe stages
+# The m-bias rule is the one exception to the ``container:`` mechanism: it is a
+# ``run:`` block, which Snakemake executes in the driver process where the
+# ``container:`` directive does not reach.  Its single ``shell()`` call keeps an
+# explicit ``apptainer exec``, built from the same config (binds + image) so it
+# stays in lockstep with the rest; the env injections above serve it too (same
+# driver process).
+M_BIAS_EXEC = f"apptainer exec --bind {BINDS} {SIF}"
 
 JOB_MASK = sum([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
 
@@ -308,8 +319,10 @@ rule im_manifest:
         input_sims_base=INPUT_SIMS_BASE,
         sims_type=SIMS_TYPE,
         num=NUM,
+    container:
+        SIF
     shell:
-        "{EXEC} python {BUILD_MANIFEST} "
+        "python {BUILD_MANIFEST} "
         "--input-sims-base {params.input_sims_base} "
         "--sims-type {params.sims_type} --num {params.num} "
         "{params.branch_args} -o {output.manifest}"
@@ -387,9 +400,11 @@ rule im_pipeline:
     resources:
         mem_mb=16000,
         runtime=720,
+    container:
+        SIF_PIPELINE
     shell:
         "cd {params.run_dir} && "
-        "{EXEC_PIPELINE} bash {RUN_JOB} "
+        "bash {RUN_JOB} "
         "-e {wildcards.tile} -t image_sims -j {JOB_MASK} "
         "-p {params.psf} -N {params.n_smp} {params.config_flag}"
 
@@ -409,9 +424,11 @@ rule im_merge:
         cat=f"{GRIDS_BASE}/{{sim}}/final_cat_{{sim}}.hdf5",
     params:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
+    container:
+        SIF_PIPELINE
     shell:
         "cd {params.run_dir} && "
-        "{EXEC_PIPELINE} python {CREATE_FINAL_CAT} "
+        "python {CREATE_FINAL_CAT} "
         "-I -m final_cat_{wildcards.sim}.hdf5 -i .. "
         "-p cfis/final_cat.param -P {wildcards.sim} "
         "-o n_tiles_final.txt -v"
@@ -430,8 +447,10 @@ rule im_extract:
         cat=f"{GRIDS_BASE}/{{sim}}/shape_catalog_comprehensive_{SHAPE}.fits",
     params:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
+    container:
+        SIF
     shell:
-        "cd {params.run_dir} && {EXEC} python {EXTRACT_INFO}"
+        "cd {params.run_dir} && python {EXTRACT_INFO}"
 
 
 rule im_calibrate:
@@ -448,9 +467,11 @@ rule im_calibrate:
         cat=f"{GRIDS_BASE}/{{sim}}/shape_catalog_cut_{SHAPE}.fits",
     params:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
+    container:
+        SIF
     shell:
         "cd {params.run_dir} && "
-        "{EXEC} python {CALIBRATE} -s calibrate"
+        "python {CALIBRATE} -s calibrate"
 
 
 rule im_mbias:
@@ -576,5 +597,5 @@ rule im_mbias:
         with open(params.cfg, "w") as fh:
             yaml.safe_dump(mbias_cfg, fh)
         shell(
-            "{EXEC} python {COMPUTE_M_BIAS} -c {params.cfg} -v"
+            "{M_BIAS_EXEC} python {COMPUTE_M_BIAS} -c {params.cfg} -v"
         )

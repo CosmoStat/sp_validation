@@ -33,9 +33,10 @@ there under ``if "image_sims" in config``.
 configfile: "workflow/image_sims/config.yaml"
 
 
-# The image-sims rules own their container invocation explicitly, so no
-# top-level container is needed here.
-container: None
+# Each rule declares its own image via ``container:`` (the ShapePipe vs
+# sp_validation split); with ``--software-deployment-method apptainer`` in the
+# candide profile, Snakemake wraps every job in ``apptainer exec``.  No
+# top-level container here -- the per-rule directives own the choice.
 
 
 include: "../rules/image_sims.smk"
