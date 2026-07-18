@@ -11,29 +11,30 @@
 # cluster policy (executor, account, partition, node excludes, per-job
 # defaults); it carries no science and no workflow logic.
 #
+# Containers: the image-sims rules declare their image with Snakemake's own
+# per-rule ``container:`` directive (the ShapePipe vs sp_validation split), and
+# ``software-deployment-method: apptainer`` here turns that into an
+# ``apptainer exec <image>`` around every job.  ``apptainer-args`` carries the
+# static bind mounts -- the candide paths every job needs mounted.  The per-run
+# env injections (PYTHONPATH shadowing the branch build, PSF_DICT, OMP_NUM_THREADS
+# =1) are NOT here: they are per-run values derived from the run config's repo and
+# PSF paths, so they live in committed workflow code (``os.environ`` in
+# workflow/rules/image_sims.smk) and reach the container natively -- the slurm
+# executor submits ``sbatch --export=ALL`` and apptainer inherits the host env by
+# default.  Setting them in the .smk, not by hand in the launching shell, keeps
+# the "one run command, no implicit uncommitted state" property.
+#
 # What is deliberately NOT here:
-#
-#   * Container / apptainer settings.  The image-sims rules set
-#     ``container: None`` and own their ``apptainer exec`` call through the
-#     shared ``EXEC`` prefix (one image for every stage, with PYTHONPATH /
-#     PSF_DICT / OMP_NUM_THREADS injected there).  So no
-#     ``software-deployment-method: apptainer`` / ``apptainer-args`` -- those
-#     would wrap a *second*, redundant container around jobs that already run
-#     inside one.
-#
-#   * OMP_NUM_THREADS.  It is pinned to 1 on the ``apptainer exec`` line in
-#     workflow/rules/image_sims.smk, not here.  The slurm executor submits with
-#     ``--export=ALL``, which propagates the *driver's* ambient environment; a
-#     profile only sets CLI flags, never the driver's own env, so an
-#     ``OMP_NUM_THREADS`` set here would silently depend on the operator having
-#     exported it by hand.  Injecting it at the container boundary puts it where
-#     the compute runs, committed and independent of the launching shell.
 #
 #   * Per-rule resources (mem_mb, runtime).  Those live on each rule in the
 #     .smk; the ``default-resources`` below are only the floor for rules that
 #     set none.
 
 executor: slurm
+software-deployment-method: apptainer
+# Bind the candide filesystems every job's inputs/outputs/repos live on.
+# /automnt is required when repos or data resolve through the automounter.
+apptainer-args: "--bind /n17data,/n09data,/home,/automnt"
 
 # Cluster policy applied to every job unless a rule overrides it.  The excludes
 # are the flaky/no-internet candide nodes (n17 mount issues, n09 no internet,
