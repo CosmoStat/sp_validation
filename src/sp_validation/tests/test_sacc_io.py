@@ -867,12 +867,52 @@ def test_merge_same_length_grids_under_different_tags_pass():
     assert len(merged.mean) == len(s.mean) + 12
 
 
-def test_merge_same_tag_clearly_different_grids_raise():
-    # same (untagged) group, same length, values far apart -> still an error
-    s_rho = _rho_sacc(theta=_theta())  # theta in [1, 100]
-    s_rho2 = _rho_sacc(k=1, theta=np.geomspace(200.0, 400.0, 6))
-    with pytest.raises(ValueError, match="theta grids under the same grid tag"):
-        sio.merge([s_rho, s_rho2])
+def _cl_sacc(bin=0, ell=None, W=None, grid="reporting"):
+    ell = np.array([30.0, 120.0, 210.0, 300.0]) if ell is None else ell
+    nell, nbp = 50, len(ell)
+    W = np.random.default_rng(5).uniform(size=(nell, nbp)) if W is None else W
+    s = sio.new_sacc({bin: _nz(bin)})
+    sio.add_pseudo_cl(
+        s,
+        (bin, bin),
+        ell,
+        np.arange(nbp) * 1e-9,
+        np.arange(nbp) * 2e-9,
+        np.arange(nbp) * 3e-9,
+        window_ells=np.arange(2, 2 + nell).astype(float),
+        window_weights=W,
+        grid=grid,
+    )
+    return s
+
+
+def test_merge_identical_ell_grids_and_windows_pass():
+    s_a, s_b = _cl_sacc(bin=0), _cl_sacc(bin=1)  # same ell, same window
+    merged = sio.merge([s_a, s_b])
+    assert len(merged.mean) == len(s_a.mean) + len(s_b.mean)
+
+
+def test_merge_nearly_identical_ell_grids_raises():
+    ell = np.array([30.0, 120.0, 210.0, 300.0])
+    s_a = _cl_sacc(bin=0, ell=ell)
+    s_b = _cl_sacc(bin=1, ell=ell * (1 + 1e-9))  # same 'reporting' group
+    with pytest.raises(ValueError, match="ell grids under the same grid tag"):
+        sio.merge([s_a, s_b])
+
+
+def test_merge_shared_ell_grid_different_windows_raises():
+    W = np.random.default_rng(5).uniform(size=(50, 4))
+    s_a = _cl_sacc(bin=0, W=W)
+    s_b = _cl_sacc(bin=1, W=W * (1 + 1e-6))  # same ell, perturbed window
+    with pytest.raises(ValueError, match="bandpower windows differ"):
+        sio.merge([s_a, s_b])
+
+
+def test_merge_different_ell_grids_across_tags_pass():
+    s_a = _cl_sacc(bin=0)  # grid='reporting'
+    s_b = _cl_sacc(bin=1, ell=np.array([40.0, 130.0, 220.0, 310.0]), grid="finer")
+    merged = sio.merge([s_a, s_b])  # different tag values: unconstrained
+    assert len(merged.mean) == len(s_a.mean) + len(s_b.mean)
 
 
 # --------------------------------------------------------------------------- #
