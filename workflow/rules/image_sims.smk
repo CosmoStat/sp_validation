@@ -92,6 +92,10 @@ _OPERATIONAL_KEYS = {
     "extract_script",
     "calibrate_script",
 }
+# Optional keys: recognized but not required; defaults applied in code below.
+_OPTIONAL_KEYS = {
+    "exp_num",
+}
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
     "sif",
@@ -105,7 +109,11 @@ _STRUCTURAL_KEYS = {
     "tile_ids",
 }
 _ALLOWED_KEYS = (
-    _SCIENCE_KEYS | _DEPRECATED_KEYS | _OPERATIONAL_KEYS | _STRUCTURAL_KEYS
+    _SCIENCE_KEYS
+    | _DEPRECATED_KEYS
+    | _OPERATIONAL_KEYS
+    | _OPTIONAL_KEYS
+    | _STRUCTURAL_KEYS
 )
 
 _unknown = set(IMSIM) - _ALLOWED_KEYS
@@ -156,6 +164,15 @@ SIMS_TYPE = IMSIM["sims_type"]
 _SUFFIX = f"_{SIMS_TYPE}_{NUM}" if SIMS_TYPE == "grid" else f"_{NUM}"
 SIM_BASES = list(IMSIM["branches"])
 SIMS = [f"{base}{_SUFFIX}" for base in SIM_BASES]
+# Optional ``exp_num`` pulls exposures from a different realization than tiles:
+# tiles stay on ``{branch}_{num}``, exposures come from ``{branch}_{exp_num}``.
+# Non-grid sims only (grid names embed sims_type); see config.yaml for the
+# blended use case.
+EXP_NUM = IMSIM.get("exp_num", NUM)
+if SIMS_TYPE == "grid":
+    SIM_EXP_BASE = {sim: sim for sim in SIMS}
+else:
+    SIM_EXP_BASE = {f"{base}{_SUFFIX}": f"{base}_{EXP_NUM}" for base in SIM_BASES}
 MANIFEST = f"{GRIDS_BASE}/manifest.yaml"
 BUILD_MANIFEST = f"{SPV_REPO}/workflow/scripts/im_build_manifest.py"
 
@@ -340,7 +357,8 @@ rule im_init:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
         cfis=lambda wc: f"{GRIDS_BASE}/{wc.sim}/cfis",
         sim_tiles=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_tiles",
-        sim_exp=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_exp",
+        # SIM_EXP_BASE maps the tile sim to its exposure-source sim (see above).
+        sim_exp=lambda wc: f"{INPUT_SIMS_BASE}/{SIM_EXP_BASE[wc.sim]}/images/SP_exp",
     shell:
         # cfis / input_tiles / input_exp are stable read-only symlinks (used by
         # get_images, merge, extract); created here but not tracked as outputs,

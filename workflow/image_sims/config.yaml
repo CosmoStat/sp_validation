@@ -51,6 +51,12 @@ image_sims:
   # --- simulation grid --------------------------------------------------
   sims_type: grid        # 'grid' -> *_grid_{num}; anything else -> *_{num}  [operational]
   num: 1
+  # Optional: pull exposures from a different realization than tiles (tiles
+  # from `{branch}_{num}`, exposures from `{branch}_{exp_num}`; unset ->
+  # exposures follow `num`).  Non-grid sims only.  Fabian's blended production
+  # split: tiles from _1, exposures from _5 (the clean all-real exposure set;
+  # _1.._4 carry signal-free grid-sims SP_exp cross-links).
+  # exp_num: 5
   # Branches this run requests: the unsheared reference plus the four +/-
   # sheared branches.  Injected shear is NOT set here -- it is parsed from each
   # branch's basic_info.txt by im_manifest.  [operational]
