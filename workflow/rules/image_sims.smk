@@ -379,7 +379,9 @@ rule im_pipeline:
         n_smp=IMSIM["n_smp"],
         config_flag=f"-c {PIPELINE_CONFIG_DIR}" if PIPELINE_CONFIG_DIR else "",
     resources:
-        mem_mb=16000,
+        # measured: job uses ~1 core (eff 0.9); post-#843 MaxRSS ~72MB accounting / 2.3GB live-peak; 2cpu/4GB packs ~512 jobs on the usable partition
+        mem_mb=4000,
+        cpus_per_task=2,
         runtime=720,
     shell:
         "cd {params.run_dir} && "
@@ -464,10 +466,14 @@ rule im_mbias:
         ),
     output:
         results=f"{GRIDS_BASE}/results/m_bias_results.yaml",
+    resources:
+        # Blended catalogues are ~5x grid size; the snakemake 1000M default OOMs.
+        mem_mb=8000,
     params:
         cfg=f"{GRIDS_BASE}/results/m_bias_config.yaml",
         grids_base=GRIDS_BASE,
         num=NUM,
+        sims_type=SIMS_TYPE,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
         sif=SIF,
         sif_pipeline=SIF_PIPELINE,
@@ -553,6 +559,7 @@ rule im_mbias:
         mbias_cfg = {
             "grids_dir": params.grids_base,
             "num": params.num,
+            "sims_type": params.sims_type,
             "catalog_name": params.cat_name,
             # Injected shear: from the manifest, the single source of truth.
             "shear_amplitude": manifest["shear_amplitude"],
