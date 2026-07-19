@@ -1,6 +1,6 @@
 """Byte-compare tests for the SACC -> 2pt-FITS converter.
 
-The converter (:mod:`sp_validation.twopoint_convert`) must reproduce the CosmoSIS
+The converter (:mod:`sp_validation.sacc_interop`) must reproduce the CosmoSIS
 2pt-FITS that ``cosmo_inference/scripts/cosmosis_fitting.py`` assembles today,
 so the inference chain (``2pt_like`` and Sacha Guerrini's rho/tau
 ``2pt_like_xi_sys`` fork) runs untouched behind it. The strongest possible check
@@ -36,7 +36,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 
-from sp_validation import sacc_io, twopoint_convert
+from sp_validation import sacc_interop, sacc_io
 
 _SCRIPT = (
     Path(__file__).resolve().parents[3]
@@ -290,7 +290,7 @@ def test_plain_xi_byte_equal(tmp_path):
     reference = _reference_fits(tmp_path, inp)
     s = _sacc(inp)
     out = tmp_path / "converted.fits"
-    twopoint_convert.sacc_to_twopoint_fits(s, str(out), n_bins=1)
+    sacc_interop.sacc_to_twopoint_fits(s, str(out), n_bins=1)
     assert out.read_bytes() == reference.read_bytes()
 
 
@@ -300,7 +300,7 @@ def test_xi_cl_byte_equal(tmp_path):
     reference = _reference_fits(tmp_path, inp, cl=True)
     s = _sacc(inp, cl=True)
     out = tmp_path / "converted.fits"
-    twopoint_convert.sacc_to_twopoint_fits(s, str(out), n_bins=1)
+    sacc_interop.sacc_to_twopoint_fits(s, str(out), n_bins=1)
     assert out.read_bytes() == reference.read_bytes()
 
 
@@ -311,7 +311,7 @@ def test_xi_rho_tau_byte_equal(tmp_path):
     s = _sacc(inp, rho_tau=True)
     rho_hdu, tau_hdu = _sidecar_hdus(tmp_path, inp)
     out = tmp_path / "converted.fits"
-    twopoint_convert.sacc_to_twopoint_fits(
+    sacc_interop.sacc_to_twopoint_fits(
         s, str(out), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
     )
     assert out.read_bytes() == reference.read_bytes()
@@ -334,7 +334,7 @@ def test_tau_covariance_keeps_tau0_tau2_cross(tmp_path):
     s = _sacc(inp, rho_tau=True)
     rho_hdu, tau_hdu = _sidecar_hdus(tmp_path, inp)
     out = tmp_path / "converted.fits"
-    twopoint_convert.sacc_to_twopoint_fits(
+    sacc_interop.sacc_to_twopoint_fits(
         s, str(out), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
     )
     with fits.open(out) as hdul:
@@ -351,7 +351,7 @@ def test_perturbed_xi_changes_output(tmp_path):
     inp = _inputs(seed=0)
     s = _sacc(inp)
     out = tmp_path / "base.fits"
-    twopoint_convert.sacc_to_twopoint_fits(s, str(out), n_bins=1)
+    sacc_interop.sacc_to_twopoint_fits(s, str(out), n_bins=1)
     with fits.open(out) as hdul:
         base_xip = hdul["XI_PLUS"].data["VALUE"].copy()
 
@@ -359,7 +359,7 @@ def test_perturbed_xi_changes_output(tmp_path):
     inp2["xip"] = inp2["xip"] + 1.0
     s2 = _sacc(inp2)
     out2 = tmp_path / "perturbed.fits"
-    twopoint_convert.sacc_to_twopoint_fits(s2, str(out2), n_bins=1)
+    sacc_interop.sacc_to_twopoint_fits(s2, str(out2), n_bins=1)
     with fits.open(out2) as hdul:
         new_xip = hdul["XI_PLUS"].data["VALUE"]
 
@@ -384,7 +384,7 @@ def test_integration_grid_points_ignored(tmp_path):
     s_plain = _sacc(inp, cl=True, rho_tau=True)
     rho_hdu, tau_hdu = _sidecar_hdus(tmp_path, inp)
     out_plain = tmp_path / "plain.fits"
-    twopoint_convert.sacc_to_twopoint_fits(
+    sacc_interop.sacc_to_twopoint_fits(
         s_plain, str(out_plain), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
     )
 
@@ -452,7 +452,7 @@ def test_integration_grid_points_ignored(tmp_path):
     s_aug.add_covariance(full)
 
     out_aug = tmp_path / "aug.fits"
-    twopoint_convert.sacc_to_twopoint_fits(
+    sacc_interop.sacc_to_twopoint_fits(
         s_aug, str(out_aug), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
     )
 
@@ -465,7 +465,7 @@ def test_rho_tau_sidecars_required_together(tmp_path):
     s = _sacc(inp, rho_tau=True)
     rho_hdu, _tau_hdu = _sidecar_hdus(tmp_path, inp)
     with pytest.raises(ValueError, match="together"):
-        twopoint_convert.sacc_to_twopoint_fits(
+        sacc_interop.sacc_to_twopoint_fits(
             s, str(tmp_path / "x.fits"), rho_stats_hdu=rho_hdu, n_bins=1
         )
 
@@ -490,9 +490,9 @@ def test_tomographic_sacc_raises(tmp_path):
     s.add_covariance(np.eye(len(s.mean)))
 
     with pytest.raises(ValueError, match="single-bin only"):
-        twopoint_convert.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=2)
+        sacc_interop.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=2)
     with pytest.raises(ValueError, match="single-bin only"):
-        twopoint_convert.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=1)
+        sacc_interop.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"), n_bins=1)
     assert not (tmp_path / "x.fits").exists()
 
 
@@ -513,7 +513,7 @@ def test_sacc_without_xi_raises(tmp_path):
     s.add_covariance(np.eye(len(s.mean)))
 
     with pytest.raises(ValueError, match="nothing to convert"):
-        twopoint_convert.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"))
+        sacc_interop.sacc_to_twopoint_fits(s, str(tmp_path / "x.fits"))
     assert not (tmp_path / "x.fits").exists()
 
 
@@ -538,7 +538,7 @@ def test_covmat_blocks_exact_gather_encoded_cov(tmp_path):
     rho_hdu, tau_hdu = _sidecar_hdus(tmp_path, inp)
 
     out = tmp_path / "encoded.fits"
-    twopoint_convert.sacc_to_twopoint_fits(
+    sacc_interop.sacc_to_twopoint_fits(
         s, str(out), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
     )
 
@@ -567,7 +567,7 @@ def test_covmat_blocks_exact_gather_encoded_cov(tmp_path):
             _mask_idx(sacc_io.TAU_PLUS.format(k=2), (SOURCE, PSF)),
         ]
     )
-    expected = twopoint_convert._block_diag(
+    expected = sacc_interop._block_diag(
         encoded[np.ix_(xi_idx, xi_idx)], encoded[np.ix_(tau_idx, tau_idx)]
     )
     cell_idx = _mask_idx(sacc_io.CL_EE, pair)

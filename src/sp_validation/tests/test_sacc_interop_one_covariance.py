@@ -1,4 +1,4 @@
-"""Tests for :mod:`sp_validation.one_covariance_io`.
+"""Tests for :mod:`sp_validation.sacc_interop`.
 
 All synthetic, all fast: the OneCovariance fixtures are built in memory
 shaped exactly like its real file I/O — a flat ``covariance_list`` table with
@@ -22,7 +22,7 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from sp_validation import one_covariance_io as ocio
+from sp_validation import sacc_interop as ocio
 from sp_validation import sacc_io as sio
 
 
