@@ -224,7 +224,7 @@ class PseudoClMixin:
                     noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
 
                     # If using the analytical noise bias, we need to decouple it
-                    if self.noise_bias_method == "analytical":
+                    if self.noise_bias_method == "analytic":
                         wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
                         noise_bias_cl = wsp.decouple_cell(noise_bias_cl)
 
