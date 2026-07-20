@@ -28,7 +28,7 @@ import numpy as np
 import pytest
 from astropy.io import fits
 
-from sp_validation import sacc_interop, sacc_io
+from sp_validation import sacc_io
 
 _DATA = Path("/automnt/n17data/cdaley/unions/code/sp_validation/cosmo_inference/data")
 _REAL_FILES = {
@@ -221,7 +221,7 @@ def test_realdata_roundtrip_byte_equal(label, tmp_path):
         reference = _current_script_reference(cf, hdul, tmp_path)
 
     converted = tmp_path / "converted.fits"
-    sacc_interop.sacc_to_twopoint_fits(
+    sacc_io.sacc_to_twopoint_fits(
         s, str(converted), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
     )
 
@@ -250,7 +250,7 @@ def test_realdata_ondisk_drift_is_only_cell_bb(label, tmp_path):
         s, rho_hdu, tau_hdu = _sacc_from_2pt_fits(hdul)
         ondisk_names = [h.name for h in hdul]
         converted = tmp_path / "converted.fits"
-        sacc_interop.sacc_to_twopoint_fits(
+        sacc_io.sacc_to_twopoint_fits(
             s, str(converted), rho_stats_hdu=rho_hdu, tau_stats_hdu=tau_hdu, n_bins=1
         )
         with fits.open(converted) as conv:

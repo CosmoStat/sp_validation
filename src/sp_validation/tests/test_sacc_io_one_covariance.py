@@ -1,4 +1,4 @@
-"""Tests for :mod:`sp_validation.sacc_interop`.
+"""Tests for :mod:`sp_validation.sacc_io`.
 
 All synthetic, all fast: the OneCovariance fixtures are built in memory
 shaped exactly like its real file I/O — a flat ``covariance_list`` table with
@@ -22,7 +22,6 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from sp_validation import sacc_interop as ocio
 from sp_validation import sacc_io as sio
 
 
@@ -84,8 +83,8 @@ def test_covariance_blocks_reshapes_to_hand_built_matrix():
 
     selector = (sio.XI_PLUS, (sio.source_name(0), sio.source_name(0)))
 
-    [(sel_g, block_g)] = ocio.covariance_blocks(table, selector, gaussian=True)
-    [(sel_a, block_a)] = ocio.covariance_blocks(table, selector, gaussian=False)
+    [(sel_g, block_g)] = sio.covariance_blocks(table, selector, gaussian=True)
+    [(sel_a, block_a)] = sio.covariance_blocks(table, selector, gaussian=False)
 
     assert sel_g == selector and sel_a == selector
     npt.assert_allclose(block_g, cov_gauss, rtol=1e-12)
@@ -98,7 +97,7 @@ def test_covariance_blocks_reshapes_to_hand_built_matrix():
     # entry (row k = i·n + j, col 10 for gaussian).
     perturbed = table.copy()
     perturbed[2 * 4 + 1, 10] += 5.0  # element (i=2, j=1)
-    [(_, block_p)] = ocio.covariance_blocks(perturbed, selector, gaussian=True)
+    [(_, block_p)] = sio.covariance_blocks(perturbed, selector, gaussian=True)
     npt.assert_allclose(block_p[2, 1] - block_g[2, 1], 5.0, rtol=1e-12)
     block_p[2, 1] = block_g[2, 1]
     npt.assert_allclose(block_p, block_g, rtol=1e-12)  # nothing else moved
@@ -122,7 +121,7 @@ def test_covariance_blocks_multiblock_form():
     sel_a = (sio.XI_PLUS, (sio.source_name(0), sio.source_name(0)))
     sel_b = (sio.XI_MINUS, (sio.source_name(0), sio.source_name(0)))
 
-    blocks = ocio.covariance_blocks(
+    blocks = sio.covariance_blocks(
         [(sel_a, table_a), (sel_b, table_b)], None, gaussian=True
     )
 
@@ -162,7 +161,7 @@ def test_covariance_blocks_feed_assemble_covariance():
         [s.indices(sio.XI_PLUS, pair), s.indices(sio.XI_MINUS, pair)]
     )
 
-    blocks = ocio.covariance_blocks(table, selector, gaussian=True)
+    blocks = sio.covariance_blocks(table, selector, gaussian=True)
     sio.assemble_covariance(s, blocks)
 
     npt.assert_allclose(s.covariance.dense, cov_gauss, rtol=1e-12)
@@ -190,9 +189,9 @@ def test_write_nz_roundtrips_and_names_file(tmp_path):
     s = sio.new_sacc({0: (z, nz0), 1: (z, nz1)})
 
     path = tmp_path / "nz_onecov.txt"
-    stanza = ocio.write_nz(s, path, n_bins=2)
+    stanza = sio.write_nz(s, path, n_bins=2)
 
-    z_read, nz_read = ocio.read_nz(path)
+    z_read, nz_read = sio.read_nz(path)
     npt.assert_allclose(z_read, z, rtol=1e-12)
     assert nz_read.shape == (len(z), 2)
     npt.assert_allclose(nz_read[:, 0], nz0, rtol=1e-12)
@@ -213,7 +212,7 @@ def test_write_nz_unions_template_dir_key(tmp_path):
     """
     z, nz0 = _nz(12)
     s = sio.new_sacc({0: (z, nz0)})
-    stanza = ocio.write_nz(s, tmp_path / "nz.txt", n_bins=1, dir_key="z_directory")
+    stanza = sio.write_nz(s, tmp_path / "nz.txt", n_bins=1, dir_key="z_directory")
     assert "z_directory" in stanza and "zlens_directory" not in stanza
     assert stanza["z_directory"] == str(tmp_path)
     assert stanza["zlens_file"] == "nz.txt"
@@ -231,7 +230,7 @@ def test_write_nz_fails_on_mismatched_z_grids(tmp_path):
     z1_shifted = z1_shifted + 0.1  # different grid
     s = sio.new_sacc({0: (z0, nz0), 1: (z1_shifted, nz1)})
     with pytest.raises(ValueError, match="differs from source bin 0"):
-        ocio.write_nz(s, tmp_path / "bad.txt", n_bins=2)
+        sio.write_nz(s, tmp_path / "bad.txt", n_bins=2)
 
 
 def test_write_nz_no_header_roundtrips(tmp_path):
@@ -244,8 +243,8 @@ def test_write_nz_no_header_roundtrips(tmp_path):
     z, nz0 = _nz(40)
     s = sio.new_sacc({0: (z, nz0)})
     path = tmp_path / "bare.txt"
-    ocio.write_nz(s, path, n_bins=1, header=False)
-    z_read, nz_read = ocio.read_nz(path)
+    sio.write_nz(s, path, n_bins=1, header=False)
+    z_read, nz_read = sio.read_nz(path)
     npt.assert_allclose(z_read, z, rtol=1e-12)
     npt.assert_allclose(nz_read[:, 0], nz0, rtol=1e-12)
 
@@ -258,7 +257,7 @@ def test_nz_config_stanza_rejects_bad_value_loc():
     raise ``ValueError`` rather than write a stanza OneCovariance will reject.
     """
     with pytest.raises(ValueError, match="value_loc_in_lensbin"):
-        ocio.nz_config_stanza("/dir", "nz.txt", value_loc="center")
+        sio.nz_config_stanza("/dir", "nz.txt", value_loc="center")
 
 
 def test_write_nz_fails_on_missing_bin(tmp_path):
@@ -271,4 +270,4 @@ def test_write_nz_fails_on_missing_bin(tmp_path):
     z, nz0 = _nz(30)
     s = sio.new_sacc({0: (z, nz0)})
     with pytest.raises(ValueError, match="source_1"):
-        ocio.write_nz(s, tmp_path / "short.txt", n_bins=2)
+        sio.write_nz(s, tmp_path / "short.txt", n_bins=2)
