@@ -243,6 +243,14 @@ def build_fiducial_cl(cosmo_params, redshift_path, lmax, tomography, tomo_bin_id
 
     fiducial_cl = spv_pseudo_cl.get_fiducial_cl(z, dndz, lmax, cosmo)
 
+    # healpy.synalm expects spectra arrays with an explicit ell=0 slot.
+    # The theory helper returns ell=1..lmax, so prepend a zero monopole here
+    # to keep the Gaussian map synthesis numerically stable.
+    fiducial_cl = {
+        key: np.concatenate(([0.0], np.asarray(value, dtype=float)))
+        for key, value in fiducial_cl.items()
+    }
+
     return cosmo, fiducial_cl
 
 
@@ -357,6 +365,8 @@ def extract_spectra(noisy_gaussian_maps, n_gal, tomo_bin_ids, lmax, out_dir):
         wsp.read_from(wsp_file)
         cl_decoupled = wsp.decouple_cell(cl_coupled)
         cl_final[f"W{tomo_bin_a}xW{tomo_bin_b}"] = cl_decoupled
+
+    return cl_final
 
 
 # --- single unit of work distributed to the MPI processes ---
