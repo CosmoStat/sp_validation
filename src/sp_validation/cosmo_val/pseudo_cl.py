@@ -145,35 +145,14 @@ class PseudoClMixin:
             params = get_params_rho_tau(self.cc[ver])
             cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
-            for bin_key1, bin_key2 in tomo_bin_pairs:
-                if bin_key1 == bin_key2:
-                    cat_gal_ = self._get_tomographic_bin(params, cat_gal, bin_key1)
-
-                    noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
-
-                else:
-                    noise_bias_cl = np.zeros((4, 2 * nside))
-
-                # Update the fiducial_cl dictionnary
-                fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = (
-                    np.array(
-                        [
-                            fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
-                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
-                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
-                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
-                        ]
-                    )
-                    + noise_bias_cl
-                )
+            lmin, lmax, b_lmax = spv_pseudo_cl.pseudo_cl_geometry(self.nside)
+            b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
             # Compute the fields and workspaces
             for bin_key1, bin_key2 in tomo_bin_pairs:
                 self.print_cyan(
                     f"Computing fields and workspaces for {bin_key1}, {bin_key2}"
                 )
-                lmin, lmax, b_lmax = spv_pseudo_cl.pseudo_cl_geometry(self.nside)
-                b = self.get_namaster_bin(lmin, lmax, b_lmax)
 
                 # Get the tomographic bins
                 cat_gal_a = self._get_tomographic_bin(params, cat_gal, bin_key1)
@@ -233,6 +212,45 @@ class PseudoClMixin:
                     field_dict[f"W{bin_key2}"] = field_b
                 if bin_key1 <= bin_key2 and f"W{bin_key1}xW{bin_key2}" not in wsp_dict:
                     wsp_dict[f"W{bin_key1}xW{bin_key2}"] = wsp
+
+            for bin_key1, bin_key2 in tomo_bin_pairs:
+                if bin_key1 == bin_key2:
+                    self.print_cyan(
+                        f"Adding the noise bias for tomographic bins {bin_key1}, {bin_key2}"
+                    )
+
+                    cat_gal_ = self._get_tomographic_bin(params, cat_gal, bin_key1)
+
+                    noise_bias_cl = self.get_noise_bias(params, nside, cat_gal_)
+
+                    # If using the analytical noise bias, we need to decouple it
+                    if self.noise_bias_method == "analytical":
+                        wsp = wsp_dict[f"W{bin_key1}xW{bin_key2}"]
+                        noise_bias_cl = wsp.decouple_cell(noise_bias_cl)
+
+                        # And then unbin it
+                        noise_bias_cl = b.unbin_cell(noise_bias_cl)
+
+                        # Force the bins not part of the mask to be zero
+                        lowest_ell = b.get_ell_list(0)[0]
+                        for i in range(4):
+                            noise_bias_cl[i, :lowest_ell] = 0
+
+                else:
+                    noise_bias_cl = np.zeros((4, 2 * nside))
+
+                # Update the fiducial_cl dictionnary
+                fiducial_cl[f"W{bin_key1}xW{bin_key2}"] = (
+                    np.array(
+                        [
+                            fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
+                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
+                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
+                            0.0 * fiducial_cl[f"W{bin_key1}xW{bin_key2}"],
+                        ]
+                    )
+                    + noise_bias_cl
+                )
 
             if self.fiducial_input_inka == "coupled":
                 # Couple the cell if required
