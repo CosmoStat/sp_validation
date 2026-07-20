@@ -229,7 +229,8 @@ def write_xi_fine_sacc(gg):
         variances=np.concatenate([gg.varxip, gg.varxim]),
     )
     out_path = os.path.join(OUTPUT_DIR, f"{VERSION}_xi_fine.sacc")
-    sacc_io.save(s, out_path)
+    # Fine ξ± is computed from the real catalogue for the high-res covariance.
+    sacc_io.save(s, out_path, type="data")
     log(f"  Wrote {out_path}")
 
 

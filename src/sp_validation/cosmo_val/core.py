@@ -224,6 +224,7 @@ class CosmologyValidation(
         path_onecovariance=None,
         cosmo_params=None,
         blind=None,
+        sacc_type="data",
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -253,6 +254,10 @@ class CosmologyValidation(
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
         self.blind = blind
+        # SACC provenance stamped by every part-writer via sacc_io.save(type=…):
+        # 'data' for real catalogues (load-gated until blinded), 'mock' for
+        # simulations (freely inspectable). PRD #241 §4.
+        self.sacc_type = sacc_type
 
         assert self.cell_method in ["map", "catalog"], (
             "cell_method must be 'map' or 'catalog'"

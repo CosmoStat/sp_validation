@@ -31,7 +31,7 @@ def _theta(n=6):
 
 def _roundtrip(s, tmp_path, name):
     p = tmp_path / f"{name}.sacc"
-    sio.save(s, str(p))
+    sio.save(s, str(p), type="mock")
     return sio.load(str(p))
 
 
@@ -306,7 +306,7 @@ def test_assemble_from_reloaded_parts(tmp_path):
     parts = _make_parts(nz)
     reloaded = []
     for i, part in enumerate(parts):
-        sio.save(part, str(tmp_path / f"part{i}.sacc"))
+        sio.save(part, str(tmp_path / f"part{i}.sacc"), type="mock")
         reloaded.append(sio.load(str(tmp_path / f"part{i}.sacc")))
     s = sw.assemble_analysis_sacc(nz, META, reloaded)
     assert type(s.covariance).__name__ == "FullCovariance"

@@ -80,7 +80,7 @@ class PSFSystematicsMixin:
             tau_cov_th=tau_cov_th,
         )
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
-        sacc_io.save(s, out_path)
+        sacc_io.save(s, out_path, type=self.sacc_type)
 
     @property
     def rho_stat_handler(self):

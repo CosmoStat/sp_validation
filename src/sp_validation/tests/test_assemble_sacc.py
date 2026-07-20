@@ -131,7 +131,7 @@ def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_coarse",)):
     paths = {}
     for name, part in parts.items():
         p = tmp_path / f"{name}.sacc"
-        sio.save(part, str(p))
+        sio.save(part, str(p), type="mock")
         paths[name] = str(p)
     return paths
 

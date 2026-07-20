@@ -85,7 +85,7 @@ def run_2pcf(
     out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"], f"{ver}_xi_coarse.sacc"
     )
-    sacc_io.save(s, out_path)
+    sacc_io.save(s, out_path, type=cv.sacc_type)
     print(f"Wrote coarse ξ± SACC part: {out_path}")
     return gg
 

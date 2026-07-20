@@ -167,7 +167,8 @@ def assemble_sacc(
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
     s = assemble_analysis_sacc(nz, metadata, parts)
-    sacc_io.save(s, out_path)
+    # Provenance is inherited from the parts (all same version → same type).
+    sacc_io.save(s, out_path, type=metadata["type"])
     print(f"Assembled {len(parts)} parts -> {out_path}")
     return s
 

@@ -180,7 +180,7 @@ class CosebisMixin:
             result,
             scale_cut,
         )
-        sacc_io.save(s, out_path)
+        sacc_io.save(s, out_path, type=self.sacc_type)
 
     def plot_cosebis(
         self,
