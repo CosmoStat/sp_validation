@@ -33,7 +33,7 @@ GLASS_MOCK_FITS_PATTERN = str(
 )
 GLASS_MOCK_CONFIG_PATTERN = str(
     COSMO_INFERENCE_PROD
-    / f"cosmosis_config/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
+    / f"cosmosis_config/output/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
 # Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
@@ -128,7 +128,7 @@ rule inference_prep:
         import sys
 
         from sp_validation import sacc_io
-        from sp_validation.twopoint_convert import sacc_to_twopoint_fits
+        from sp_validation.sacc_io import sacc_to_twopoint_fits
 
         os.makedirs(os.path.dirname(output.fits_file), exist_ok=True)
 

@@ -47,12 +47,12 @@ if not _CSL_DIR or not Path(_CSL_DIR, "likelihood", "sacc").is_dir():
 
 from cosmosis.datablock import DataBlock, option_section  # noqa: E402
 
-from sp_validation import sacc_io, twopoint_convert  # noqa: E402
+from sp_validation import sacc_io  # noqa: E402
 
 # Reuse the angular-bin count from the converter tests so the two suites' single-
 # bin shapes stay in lockstep. (The χ²-dynamics builders here need a covariance
 # commensurate with the data, which the converter's byte-compare _sacc is not.)
-from sp_validation.tests.test_twopoint_convert import N_ANG  # noqa: E402
+from sp_validation.tests.test_sacc_io_twopoint import N_ANG  # noqa: E402
 
 CSL = Path(_CSL_DIR)
 ARCMIN_TO_RAD = np.pi / (180.0 * 60.0)
@@ -203,7 +203,7 @@ def _realistic_sacc(seed=0, *, xip=None):
         xip_vals = xip
 
     s = sacc_io.new_sacc({0: (z, nz)}, {"catalogue_version": "test"})
-    sacc_io.add_xi(s, (0, 0), theta, xip_vals, xim_vals, grid="coarse")
+    sacc_io.add_xi(s, (0, 0), theta, xip_vals, xim_vals, grid="reporting")
 
     sig = 0.1 * np.abs(np.concatenate([xip_vals, xim_vals]))
     a = rng.standard_normal((2 * n, 3 * n))
@@ -220,9 +220,9 @@ def _write_pair(tmp_path, seed=0, name="probe", *, xip=None):
     """
     s, _theta = _realistic_sacc(seed, xip=xip)
     sacc_path = str(tmp_path / f"{name}.sacc")
-    sacc_io.save(s, sacc_path)
+    sacc_io.save(s, sacc_path, type="mock")
     fits_path = str(tmp_path / f"{name}_2pt.fits")
-    twopoint_convert.sacc_to_twopoint_fits(sacc_io.load(sacc_path), fits_path, n_bins=1)
+    sacc_io.sacc_to_twopoint_fits(sacc_io.load(sacc_path), fits_path, n_bins=1)
     return sacc_path, fits_path
 
 
@@ -365,10 +365,10 @@ def test_ordering_guard_raises_pair_major_tomographic(tmp_path, m_shim):
     xim = np.ones(N_ANG) * 1e-4
     s = sacc_io.new_sacc({0: (z, nz), 1: (z, nz)})
     for pair in [(0, 0), (0, 1), (1, 1)]:
-        sacc_io.add_xi(s, pair, theta, xip, xim, grid="coarse")
+        sacc_io.add_xi(s, pair, theta, xip, xim, grid="reporting")
     s.add_covariance(np.eye(len(s.mean)))
     sacc_path = str(tmp_path / "pair_major.sacc")
-    sacc_io.save(s, sacc_path)
+    sacc_io.save(s, sacc_path, type="mock")
 
     with pytest.raises(ValueError, match="ordering"):
         m_shim.setup(_as_option_block(_shim_opts(sacc_path)))
@@ -405,13 +405,13 @@ def test_theta_conversion_scoped_to_real_types(tmp_path, m_shim):
 
     s = sacc_io.new_sacc({0: (z, nz)})
     sacc_io.add_xi(
-        s, (0, 0), theta, np.ones(N_ANG) * 1e-4, np.ones(N_ANG) * 1e-4, grid="coarse"
+        s, (0, 0), theta, np.ones(N_ANG) * 1e-4, np.ones(N_ANG) * 1e-4, grid="reporting"
     )
     sacc_io.add_cosebis(s, (0, 0), En, Bn, scale_cut=(1.0, 250.0))
     s.add_covariance(np.eye(len(s.mean)))
 
     sacc_path = str(tmp_path / "with_cosebis.sacc")
-    sacc_io.save(s, sacc_path)
+    sacc_io.save(s, sacc_path, type="mock")
 
     # data_sets keeps the cosebis in (so we can check its tags survive); cosebi's
     # section/category resolve from sacc_like's default_sections, so build_data
@@ -471,7 +471,7 @@ def test_save_theory_writes_arcmin_and_reexecute_stable(tmp_path, m_shim):
     """
     s, theta = _realistic_sacc(seed=5)
     sacc_path = str(tmp_path / "in.sacc")
-    sacc_io.save(s, sacc_path)
+    sacc_io.save(s, sacc_path, type="mock")
     input_theta = np.array(
         [p.tags["theta"] for p in sacc_io.load(sacc_path).data if "theta" in p.tags]
     )
@@ -530,7 +530,7 @@ def test_realdata_shim_equals_2pt_like(tmp_path, m_shim, m_2pt):
     """
     from astropy.io import fits
 
-    from sp_validation.tests.test_twopoint_convert_realdata import _sacc_from_2pt_fits
+    from sp_validation.tests.test_sacc_io_realdata import _sacc_from_2pt_fits
 
     with fits.open(_REALDATA) as hdul:
         full_s, _rho_hdu, _tau_hdu = _sacc_from_2pt_fits(hdul)
@@ -538,7 +538,7 @@ def test_realdata_shim_equals_2pt_like(tmp_path, m_shim, m_2pt):
     # Rebuild a ξ-only SACC: same n(z), ξ± values and ξ± covariance sub-block.
     source = sacc_io.source_name(0)
     z, nz = sacc_io.get_nz(full_s, 0)
-    theta, xip, xim = sacc_io.get_xi(full_s, (0, 0), grid="coarse")
+    theta, xip, xim = sacc_io.get_xi(full_s, (0, 0), grid="reporting")
     xi_idx = np.concatenate(
         [
             full_s.indices(sacc_io.XI_PLUS, (source, source)),
@@ -548,13 +548,13 @@ def test_realdata_shim_equals_2pt_like(tmp_path, m_shim, m_2pt):
     xi_cov = full_s.covariance.dense[np.ix_(xi_idx, xi_idx)]
 
     s = sacc_io.new_sacc({0: (z, nz)})
-    sacc_io.add_xi(s, (0, 0), theta, xip, xim, grid="coarse")
+    sacc_io.add_xi(s, (0, 0), theta, xip, xim, grid="reporting")
     s.add_covariance(xi_cov)
 
     sacc_path = str(tmp_path / "real_xi.sacc")
-    sacc_io.save(s, sacc_path)
+    sacc_io.save(s, sacc_path, type="mock")
     fits_path = str(tmp_path / "real_xi_2pt.fits")
-    twopoint_convert.sacc_to_twopoint_fits(sacc_io.load(sacc_path), fits_path, n_bins=1)
+    sacc_io.sacc_to_twopoint_fits(sacc_io.load(sacc_path), fits_path, n_bins=1)
 
     like_s, chi2_s, theory_s, n_s = _run(m_shim, _shim_opts(sacc_path))
     like_t, chi2_t, theory_t, n_t = _run(m_2pt, _twopt_opts(fits_path))
