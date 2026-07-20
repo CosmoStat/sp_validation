@@ -33,6 +33,11 @@ COPY pyproject.toml uv.lock /sp_validation/
 RUN uv sync --frozen --inexact --no-install-project \
     --extra test --extra glass --extra workflow
 
+# Full source in place before the blinding-extra install below: it is an
+# editable install of the project itself and needs uv-overrides.txt and
+# scripts/patch_firecrown.py from the tree.
+COPY . /sp_validation
+
 # The [blinding] extra (SACC/Smokescreen blinding stack: firecrown + smokescreen)
 # is not in uv.lock — firecrown is not on PyPI and declares conda-forge-only /
 # unused sampler connectors as hard deps, so it needs the override file (see
@@ -53,8 +58,3 @@ RUN uv pip install --no-cache-dir 'numpy>=2.2,<2.5'
 # This patches the installed tree (surgical, pinned-version-checked, loud on
 # mismatch) and verifies `import firecrown.likelihood; import smokescreen`.
 RUN python scripts/patch_firecrown.py
-
-# Install sp_validation itself (editable) into the same venv; deps are already
-# satisfied by the sync + blinding-extra install above.
-COPY . /sp_validation
-RUN uv pip install --no-deps -e .
