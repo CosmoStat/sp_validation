@@ -75,12 +75,18 @@ class GlassMockConfig:
     As_init: float = 2.1e-9  # seed As before sigma8 rescaling
     kmax: float = 20.0
     # --- galaxy population (downstream of map generation) ---
-    n_arcmin2: float = 6.0905
-    sigma_e: float = 0.2684
-    bias: float = 1.2  # constant linear galaxy bias b(z)
+    n_arcmin2: float | list = 6.0905
+    sigma_e: float | list = 0.2684
+    bias: float | list = 1.2  # constant linear galaxy bias b(z)
     phz_sigma_0: float = 0.03
     nbins: int = 1  # number of tomographic bins
     ia_bias: float | None = None
+    # --- Runtime options ---
+    limber: bool = False
+    mask_path: str | None = None
+    nz_path: str | None = None
+    output_path: str | None = None
+    output_prefix: str | None = None
 
     @classmethod
     def from_planck18(cls, **overrides) -> "GlassMockConfig":
@@ -100,6 +106,21 @@ class GlassMockConfig:
         base.update(overrides)
         return cls(**base)
 
+    @classmethod
+    def from_yaml(cls, yaml_config, seed=42) -> "GlassMockConfig":
+        """
+        Build a config for the GLASS mock generation from a YAML configuration file.
+
+        Reads the dataclass fields from the YAML file. If absent, the field is kept at its default value.
+        """
+        import yaml
+
+        with open(yaml_config, "r") as f:
+            data = yaml.safe_load(f)
+
+        overrides = {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
+        return cls(**{**overrides, "seed": seed})
+
     @property
     def lmax(self) -> int:
         """``lmax`` is tied to ``nside`` in the production mocks."""
@@ -109,6 +130,34 @@ class GlassMockConfig:
     def Oc(self) -> float:
         """Cold dark matter density (CDM = matter - baryons), pre-neutrino."""
         return self.Om - self.Ob
+
+    def check_consistency(self):
+        """Check that the configuration in terms of bins is internally consistent"""
+        redshift_distributions = np.loadtxt(self.nz_path)
+        if redshift_distributions.shape[1] - 1 != self.nbins:
+            raise ValueError(
+                f"The number of tomographic bins is inconsistent with the redshift distribution: {redshift_distributions.ndim - 1}."
+            )
+
+        if isinstance(self.n_arcmin2, list) and len(self.n_arcmin2) != self.nbins:
+            raise ValueError(
+                f"Number of elements in n_arcmin2 {len(self.n_arcmin2)} "
+                f"does not match number of bins {self.nbins}"
+            )
+
+        if isinstance(self.sigma_e, list) and len(self.sigma_e) != self.nbins:
+            raise ValueError(
+                f"Number of elements in sigma_e {len(self.sigma_e)} "
+                f"does not match number of bins {self.nbins}"
+            )
+
+        if isinstance(self.bias, list) and len(self.bias) != self.nbins:
+            raise ValueError(
+                f"Number of elements in bias {len(self.bias)} "
+                f"does not match number of bins {self.nbins}"
+            )
+
+        print("The number of tomographic bins is consistent across inputs...")
 
 
 def build_camb_params(config: GlassMockConfig):
@@ -177,19 +226,21 @@ def build_shells(config: GlassMockConfig, pars):
     Returns the GLASS shell list (``(z, w, zeff)`` windows). Lazily imports
     GLASS; only callable where GLASS is installed.
     """
+    import camb
     import glass
-    from cosmology import Cosmology
+    from cosmology.compat.camb import Cosmology
 
-    cosmo = Cosmology.from_camb(pars)
+    results = camb.get_background(pars)
+    cosmo = Cosmology(results)
     zb = glass.distance_grid(cosmo, 0.0, config.zmax, dx=config.dx)
     return glass.linear_windows(zb)
 
 
-def matter_shell_cls(config: GlassMockConfig, pars, shells):
+def matter_shell_cls(config: GlassMockConfig, pars, shells, limber=False):
     """Matter angular power spectra for the shells, from CAMB via GLASS."""
     import glass.ext.camb
 
-    return glass.ext.camb.matter_cls(pars, config.lmax, shells)
+    return glass.ext.camb.matter_cls(pars, config.lmax, shells, limber=limber)
 
 
 def generate_matter_maps(config: GlassMockConfig, pars, shells, cls):
@@ -221,9 +272,12 @@ def generate_matter_maps(config: GlassMockConfig, pars, shells, cls):
 
 def Cosmology_from_camb(pars):
     """Thin indirection so the convergence cosmology is built once, lazily."""
-    from cosmology import Cosmology
+    import camb
+    from cosmology.compat.camb import Cosmology
 
-    return Cosmology.from_camb(pars)
+    results = camb.get_background(pars)
+
+    return Cosmology(results)
 
 
 # --- mask / galaxy-sampling helpers (used by the generation runner) ---------
@@ -319,6 +373,55 @@ def create_mask_from_catalogue(nside, path, output, ra_col="RA", dec_col="DEC"):
     mask = n_gal != 0
 
     hp.write_map(output, mask, dtype=np.float32, overwrite=True)
+
+
+# --- shape noise and number density on mock catalogues ----------------------
+def shape_noise(e1, e2, w):
+    return np.sqrt(
+        0.5
+        * (np.sum(e1**2 * w**2) / np.sum(w**2) + np.sum(e2**2 * w**2) / np.sum(w**2))
+    )
+
+
+def number_density(w, area):
+    return np.sum(w) ** 2 / np.sum(w**2) / area
+
+
+def validate_shape_noise(cat, tomo=True, e1_col="e1", e2_col="e2", w_col="w"):
+    # First compute and print the non-tomographic shape noise
+    e1 = cat[e1_col]
+    e2 = cat[e2_col]
+    w = cat[w_col]
+    sigma_e = shape_noise(e1, e2, w)
+    print(f"Non-tomographic shape noise: {sigma_e}")
+
+    if tomo:
+        # Now compute and print the tomographic shape noise
+        for b in range(1, cat["TOM_BIN_ID"].max() + 1):
+            e1_bin = e1[cat["TOM_BIN_ID"] == b]
+            e2_bin = e2[cat["TOM_BIN_ID"] == b]
+            w_bin = w[cat["TOM_BIN_ID"] == b]
+            sigma_e_bin = shape_noise(e1_bin, e2_bin, w_bin)
+            print(f"Tomographic shape noise (bin {b}): {sigma_e_bin}")
+
+
+def validate_number_density(cat, mask, tomo=True, w_col="w"):
+    import healpy as hp
+
+    # First compute and print the non-tomographic shape noise
+    w = cat[w_col]
+    nside = hp.npix2nside(mask.shape[0])
+    area = (
+        np.sum(mask) * hp.nside2pixarea(nside, degrees=True) * 60 * 60
+    )  # area in arcmin^2
+    n_gal = number_density(w, area)
+    print(f"Non-tomographic number density: {n_gal}")
+
+    if tomo:
+        for b in range(1, cat["TOM_BIN_ID"].max() + 1):
+            w_bin = w[cat["TOM_BIN_ID"] == b]
+            n_gal_bin = number_density(w_bin, area)
+            print(f"Tomographic number density (bin {b}): {n_gal_bin}")
 
 
 # --- two-point statistics on mock catalogues --------------------------------

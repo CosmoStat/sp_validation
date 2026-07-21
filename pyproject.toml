@@ -101,10 +101,13 @@ docs = [
 # ``comoving_distance``, which no ``cosmology`` release exposes. ``matter_cls``
 # lives in the separate ``glass.ext.camb`` package (absent from glass core
 # >=2024.2), so it is pinned explicitly.
+#glass = [
+#    "glass==2025.1",
+#    "glass.ext.camb==2023.6",
+#    "cosmology==2022.10.9",
+#]
 glass = [
-    "glass==2025.1",
-    "glass.ext.camb==2023.6",
-    "cosmology==2022.10.9",
+    "glass[examples]==2026.2"
 ]
 develop = ["sp_validation[test,docs]"]
 
