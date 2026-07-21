@@ -12,11 +12,12 @@ contract, via the validated :func:`sp_validation.sacc_io.assemble_covariance` �
 *not* ``sacc.concatenate_data_sets``, whose unvalidated block-diagonal the
 contract rules out).
 
-The integration-grid ``{version}_xi_integration.sacc`` is one more part
-(:func:`xi_to_sacc` with ``grid="integration"`` and a ``DiagonalCovariance`` from
-TreeCorr ``varxip``/``varxim``); COSEBIs and pure-E/B consume it, and
-:func:`assemble_analysis_sacc` folds its integration-grid ξ± rows (tagged
-``grid="integration"``) into the single terminal ``{version}.sacc``.
+The integration-grid ``{version}_xi_integration.sacc`` is an intermediate
+per-part file (:func:`xi_to_sacc` with ``grid="integration"`` and a
+``DiagonalCovariance`` from TreeCorr ``varxip``/``varxim``); COSEBIs and pure-E/B
+consume it. It is blinded at birth on data runs (per PR #253) but does not join
+the terminal ``{version}.sacc`` — Snakemake provenance covers its traceability
+(see #247 ruling).
 
 Everything here is single-bin today (``bins=(0, 0)``); the interface is
 tomography-native so a future round supplies real bin pairs unchanged.
@@ -223,8 +224,7 @@ def assemble_analysis_sacc(nz, metadata, parts):
     Each part is a single-statistic Sacc (from a ``*_to_sacc`` writer, loaded
     from disk) carrying its own covariance = its block. This re-adds every
     part's data points into one Sacc in the order the parts are given — which
-    must be the canonical order (ξ± reporting, ξ± integration, pseudo-Cℓ,
-    COSEBIs, pure-E/B, ρ, τ)
+    must be the canonical order (ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ, τ)
     — and assembles a single ``BlockDiagonalCovariance`` from the per-part covariance
     blocks. Point insertion order and block order therefore agree by
     construction, which ``sacc_io.assemble_covariance`` validates (contiguous,
