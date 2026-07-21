@@ -251,6 +251,9 @@ def build_fiducial_cl(cosmo_params, redshift_path, lmax, tomography, tomo_bin_id
         for key, value in fiducial_cl.items()
     }
 
+    if not tomography:
+        fiducial_cl = {"WallxWall": fiducial_cl["W1xW1"]}
+
     return cosmo, fiducial_cl
 
 
@@ -332,7 +335,11 @@ def get_gaussian_simulation(
             )
         else:
             gauss_map = hp.alm2map(
-                [np.zeros_like(alm_shear), alm_shear, np.zeros_like(alm_shear)],
+                [
+                    np.zeros_like(alm_shear[0]),
+                    alm_shear[0],
+                    np.zeros_like(alm_shear[0]),
+                ],
                 nside=nside,
                 verbose=False,
             )
