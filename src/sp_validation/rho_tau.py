@@ -359,6 +359,8 @@ def get_jackknife_cov(
 
     tau_stat_handler.catalogs.set_params(params, outdir)
 
+    square_size = params["square_size"]
+
     for i in range(ncov):
         tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
         rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
