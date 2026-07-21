@@ -137,6 +137,13 @@ class PseudoClMixin:
 
             fiducial_cl = self.get_fiducial_cl(ver, compute_tomography)
 
+            # Add a zero multipole and drop the last value to align
+            # Namaster and fiducial binning
+            fiducial_cl = {
+                key: np.concatenate(([0.0], np.asarray(value[:-1], dtype=float)))
+                for key, value in fiducial_cl.items()
+            }
+
             self.print_cyan(
                 "Estimating and adding the noise bias to the fiducial power spectra"
             )
