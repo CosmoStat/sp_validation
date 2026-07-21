@@ -51,13 +51,13 @@
               layout (e.g. the DES 2pt-FITS convention) permute explicitly via
               ``s.indices`` rather than assuming global order.
 
-              **Optionality.** A file's contents are flexible about which
-              components of a statistic it actually has. ``add_pseudo_cl``
-              requires EE (the bandpower window's reference series) but BB and
-              EB are optional — an analysis that never computed EB simply omits
-              it. ``add_cosebis`` requires Eₙ but Bₙ is optional.
-              ``add_pure_eb`` requires xip_E/xim_E but the B and ambiguous-mode
-              blocks are each optional, independently (B and amb are unrelated
+Optionality: a file's contents are flexible about which components of
+              a statistic it actually has. ``add_pseudo_cl`` requires EE (the
+              bandpower window's reference series) but BB and EB are optional
+              — an analysis that never computed EB simply omits it.
+              ``add_cosebis`` requires Eₙ but Bₙ is optional. ``add_pure_eb``
+              requires xip_E/xim_E but the B and ambiguous-mode blocks are
+              each optional, independently (B and amb are unrelated
               computations). Everything else a writer takes — θ/ℓ grids,
               tracer/bin identifiers, the value array for a component you ARE
               adding — is structurally necessary and has no default;
