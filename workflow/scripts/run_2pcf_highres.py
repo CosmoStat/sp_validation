@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 """
-High-resolution ξ± measurement for COSEBIS integration.
+High-resolution ξ± measurement for COSEBIS/pure-EB integration.
 
-Computes TreeCorr GGCorrelation with integration angular binning (10,000+ bins)
-required for accurate COSEBIS mode integration. Uses MPI for patch-pair
-distribution across nodes when available; falls back to multi-threaded
-single-process otherwise.
+Computes TreeCorr GGCorrelation on the fine integration angular grid (default
+1000 log bins, config-driven) required for accurate COSEBIS/pure-EB mode
+integration. Uses MPI for patch-pair distribution across nodes when available;
+falls back to multi-threaded single-process otherwise (the default at 1000 bins).
 
-Reference: Asgari et al. 2017 — minimum 10,000 bins for E_7 at 0.5% accuracy.
+Reference: Asgari et al. 2017 motivates a fine integration grid; the B-modes
+paper found no substantial 1k-vs-10k difference, so the operational default is
+1000 bins (see config nbins_int).
 
 Usage:
     # MPI (via Slurm submission script):
@@ -39,7 +41,7 @@ try:
 
     _HAVE_COSMO_VAL = True
 except ImportError:
-    # Bare-host path (host OpenMPI + host python for the 10k-bin MPI run): the
+    # Bare-host path (host OpenMPI + host python for an optional MPI run): the
     # full sp_validation stack (cs_util.plots -> healpy/healsparse) is not
     # installed. This measurement only needs the shear catalog path + column
     # names, which are a pure cat_config.yaml lookup — resolve them standalone.
@@ -110,7 +112,7 @@ def parse_args(argv=None):
         default="SP_v1.4.6.3_leak_corr",
         help="Catalog version key in cat_config",
     )
-    ap.add_argument("--nbins", type=int, default=10000, help="Number of log bins")
+    ap.add_argument("--nbins", type=int, default=1000, help="Number of log bins")
     ap.add_argument("--npatch", type=int, default=50, help="TreeCorr patch count")
     ap.add_argument(
         "--min-sep", type=float, default=0.5, help="Min separation [arcmin]"
@@ -307,8 +309,8 @@ def main():
 
     # Resolve catalog path + ellipticity/weight columns from cat_config + version
     # exactly as run_2pcf.py does (applies the _leak_corr column swap and the
-    # subdir path resolution). In-container this uses CosmologyValidation; bare-
-    # host (10k-bin MPI run) it uses the standalone cat_config resolver, which is
+    # subdir path resolution). In-container this uses CosmologyValidation; on the
+    # bare-host MPI fallback it uses the standalone cat_config resolver, which is
     # byte-identical for the shear-config fields this measurement reads.
     if _HAVE_COSMO_VAL:
         cv = CosmologyValidation(
@@ -395,10 +397,10 @@ def main():
         )
         # Write only the main per-bin correlation. The convergence consumer
         # (cosebis_binning_comparison.py) reads just the per-bin columns
-        # (np.loadtxt max_rows=nbins) and the 1000-bin covariance — the 10k
-        # jackknife cov is used nowhere. write_patch_results/write_cov=True
-        # serialised a 20000x20000 cov + 180 patch blocks (~10 GB) that nothing
-        # reads and also cost the estimate_cov compute; drop both. The patches
+        # (np.loadtxt max_rows=nbins); the fine-grid jackknife cov is used
+        # nowhere. write_patch_results/write_cov=True serialised a full
+        # (2*nbins)^2 cov + patch blocks that nothing reads and also cost the
+        # estimate_cov compute; drop both. The patches
         # still parallelise gg.process; gg.xip/gg.xim (values, FITS) are
         # unaffected.
         gg.write(out_txt, write_patch_results=False, write_cov=False)
