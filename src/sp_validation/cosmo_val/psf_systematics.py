@@ -10,6 +10,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
+from astropy.io import fits
 from cs_util import plots as cs_plots
 from shear_psf_leakage import leakage
 from shear_psf_leakage import plots as psfleak_plots
@@ -22,30 +23,9 @@ from ..rho_tau import (
 )
 
 
+# TODO: Reorganise the order of functions so it is more readable
 class PSFSystematicsMixin:
-    def calculate_rho_tau_stats(self, tomography=True):
-        out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
-        if not os.path.exists(out_dir):
-            os.mkdir(out_dir)
-
-        self.print_start("Rho stats")
-        for ver in self.versions:
-            base = self.basename(ver)
-            rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
-                self.cc,
-                ver,
-                self.treecorr_config,
-                out_dir,
-                base,
-                method=self.cov_estimate_method,
-                cov_rho=self.compute_cov_rho,
-                npatch=self.npatch,
-            )
-        self.print_done("Rho stats finished")
-
-        self._rho_stat_handler = rho_stat_handler
-        self._tau_stat_handler = tau_stat_handler
-
+    # --- property definitions ---
     @property
     def rho_stat_handler(self):
         if not hasattr(self, "_rho_stat_handler"):
@@ -62,6 +42,152 @@ class PSFSystematicsMixin:
                 self.calculate_rho_tau_stats(tomography=True)
         return self._tau_stat_handler
 
+    @property
+    def psf_fitter(self):
+        if not hasattr(self, "_psf_fitter"):
+            self._psf_fitter = PSFErrorFit(
+                self.rho_stat_handler,
+                self.tau_stat_handler,
+                self.rho_stat_handler.catalogs._output,
+            )
+        return self._psf_fitter
+
+    @property
+    def rho_tau_fits(self):
+        if not hasattr(self, "_rho_tau_fits"):
+            self.calculate_rho_tau_fits()
+            if self.compute_tomography:
+                self.calculate_rho_tau_fits(tomography=True)
+        return self._rho_tau_fits
+
+    @property
+    def xi_psf_sys(self):
+        if not hasattr(self, "_xi_psf_sys"):
+            self.calculate_rho_tau_fits()
+        return self._xi_psf_sys
+
+    # --- calculate functions ---
+    def calculate_rho_tau_stats(self, tomography=True):
+        out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+
+        self.print_start("Rho stats")
+        for ver in self.versions:
+            # Get the tomographic bins
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+
+            else:
+                tomo_bin_ids, tomo_bin_pairs = "all", [("all", "all")]
+
+            for tomo_bin_id in tomo_bin_ids:
+                base_rho = self.basename(ver)
+                base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
+
+                # Get the selection for galaxies
+                mask_gal = self._get_galaxy_mask(ver, tomo_bin_id)
+
+                # Get the selection for stars
+                mask_star = self._get_star_mask(ver)
+
+                # Compute rho and tau statistics
+                rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(
+                    self.cc,
+                    ver,
+                    self.treecorr_config,
+                    out_dir,
+                    base_rho,
+                    base_tau,
+                    mask_star=mask_star,
+                    mask_gal=mask_gal,
+                    method=self.cov_estimate_method,
+                    cov_rho=self.compute_cov_rho,
+                    npatch=self.npatch,
+                )
+        self.print_done("Rho stats finished")
+
+        self._rho_stat_handler = rho_stat_handler
+        self._tau_stat_handler = tau_stat_handler
+
+    # --- utility functions ---
+    def _get_galaxy_mask(self, ver, tomo_bin_id):
+        cat_gal = fits.getdata(self.cc["shear"]["path"])
+        if tomo_bin_id != "all":
+            gal_mask = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == tomo_bin_id
+        else:
+            gal_mask = np.ones(len(cat_gal), dtype=bool)
+        return gal_mask
+
+    def _get_star_mask(self, ver):
+        cat_star = fits.getdata(
+            self.cc[ver]["psf"]["path"], hdu=self.cc[ver]["psf"]["hdu"]
+        )
+        PSF_flag = self.cc[ver]["psf"].get("PSF_flag")
+        star_flag = self.cc[ver]["psf"].get("star_flag")
+        if PSF_flag is not None:
+            if star_flag is not None:
+                star_mask = (cat_star[PSF_flag] == 0) & (cat_star[star_flag] == 0)
+            else:
+                star_mask = cat_star[PSF_flag] == 0
+        else:
+            star_mask = np.ones(len(cat_star), dtype=bool)
+        return star_mask
+
+    def set_params_rho_tau(self, ver, params, params_psf):
+        params = {**params}
+
+        params["ra_PSF_col"] = params_psf["ra_col"]
+        params["dec_PSF_col"] = params_psf["dec_col"]
+        params["e1_PSF_col"] = params_psf["e1_PSF_col"]
+        params["e2_PSF_col"] = params_psf["e2_PSF_col"]
+        params["e1_star_col"] = params_psf["e1_star_col"]
+        params["e2_star_col"] = params_psf["e2_star_col"]
+        params["PSF_size"] = params_psf["PSF_size"]
+        params["star_size"] = params_psf["star_size"]
+        params["PSF_flag"] = params_psf.get("PSF_flag")
+        params["star_flag"] = params_psf.get("star_flag")
+        params["ra_units"] = "deg"
+        params["dec_units"] = "deg"
+
+        params["w_col"] = self.cc[ver]["shear"]["w_col"]
+
+        return params
+
+    def get_samples(self, version, params, tomo_bin_id, track_result=False):
+        npatch = params["patch_number"] if self.cov_estimate_method == "jk" else None
+
+        base_rho = self.basename(version)
+        base_tau = self.basename(version, tomo_bin_a=tomo_bin_id)
+        flat_samples, result, q = get_samples(
+            self.psf_fitter,
+            version,
+            base_rho,
+            base_tau,
+            cov_type=self.cov_estimate_method,
+            apply_debias=npatch,
+            sampler=self.rho_tau_method,
+        )
+
+        if track_result:
+            self.rho_tau_fits["flat_sample_list"].append(flat_samples)
+            self.rho_tau_fits["result_list"].append(result)
+            self.rho_tau_fits["q_list"].append(q)
+
+        self.psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
+        nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
+        xi_psf_sys_samples = np.array(
+            [self.psf_fitter.compute_xi_psf_sys(sample) for sample in flat_samples]
+        ).reshape(-1, nbins)
+
+        return xi_psf_sys_samples
+
+    # --- plotting functions ---
     def plot_rho_stats(self, abs=False):
         filenames = [f"rho_stats_{self.basename(ver)}.fits" for ver in self.versions]
 
@@ -102,46 +228,7 @@ class PSFSystematicsMixin:
             + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
         )
 
-    def set_params_rho_tau(self, params, params_psf, survey="other"):
-        params = {**params}
-        if survey in ("DES", "SP_axel_v0.0", "SP_axel_v0.0_repr"):
-            params["patch_number"] = 120
-            print("DES, jackknife patch number = 120")
-        elif survey in ("SP_v1.4-P3", "SP_v1.4-P3_LFmask"):
-            params["patch_number"] = 120
-            print("SP_v1.4, jackknife patch number =120")
-        else:
-            params["patch_number"] = 150
-
-        params["ra_PSF_col"] = params_psf["ra_col"]
-        params["dec_PSF_col"] = params_psf["dec_col"]
-        params["e1_PSF_col"] = params_psf["e1_PSF_col"]
-        params["e2_PSF_col"] = params_psf["e2_PSF_col"]
-        params["e1_star_col"] = params_psf["e1_star_col"]
-        params["e2_star_col"] = params_psf["e2_star_col"]
-        params["PSF_size"] = params_psf["PSF_size"]
-        params["star_size"] = params_psf["star_size"]
-        if survey != "DES":
-            params["PSF_flag"] = params_psf["PSF_flag"]
-            params["star_flag"] = params_psf["star_flag"]
-        params["ra_units"] = "deg"
-        params["dec_units"] = "deg"
-
-        params["w_col"] = self.cc[survey]["shear"]["w_col"]
-
-        return params
-
-    @property
-    def psf_fitter(self):
-        if not hasattr(self, "_psf_fitter"):
-            self._psf_fitter = PSFErrorFit(
-                self.rho_stat_handler,
-                self.tau_stat_handler,
-                self.rho_stat_handler.catalogs._output,
-            )
-        return self._psf_fitter
-
-    def calculate_rho_tau_fits(self):
+    def calculate_rho_tau_fits(self, tomography=True):
         assert self.rho_tau_method != "none"
 
         # this initializes the rho_tau_fits attribute
@@ -151,47 +238,29 @@ class PSFSystematicsMixin:
         self._xi_psf_sys = {}
         for ver in self.versions:
             params = self.set_params_rho_tau(
-                self.results[ver]._params,
-                self.cc[ver]["psf"],
-                survey=ver,
+                ver, self.results[ver]._params, self.cc[ver]["psf"]
             )
 
-            npatch = {"sim": 300, "jk": params["patch_number"]}.get(
-                self.cov_estimate_method, None
-            )
+            # Get the tomographic bins
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
 
-            base = self.basename(ver)
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
 
-            flat_samples, result, q = get_samples(
-                self.psf_fitter,
-                ver,
-                base,
-                cov_type=self.cov_estimate_method,
-                apply_debias=npatch,
-                sampler=self.rho_tau_method,
-            )
+            else:
+                tomo_bin_ids, tomo_bin_pairs = "all", [("all", "all")]
 
-            self.rho_tau_fits["flat_sample_list"].append(flat_samples)
-            self.rho_tau_fits["result_list"].append(result)
-            self.rho_tau_fits["q_list"].append(q)
+            for tomo_bin_id in tomo_bin_ids:
+                xi_psf_sys_samples = self.get_samples(ver, params, tomo_bin_id)
 
-            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
-            nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
-            xi_psf_sys_samples = np.array(
-                [self.psf_fitter.compute_xi_psf_sys(sample) for sample in flat_samples]
-            ).reshape(-1, nbins)
-
-            self._xi_psf_sys[ver] = {
-                "mean": np.mean(xi_psf_sys_samples, axis=0),
-                "var": np.var(xi_psf_sys_samples, axis=0),
-                "quantiles": np.quantile(xi_psf_sys_samples, quantiles, axis=0),
-            }
-
-    @property
-    def rho_tau_fits(self):
-        if not hasattr(self, "_rho_tau_fits"):
-            self.calculate_rho_tau_fits()
-        return self._rho_tau_fits
+                self._xi_psf_sys[ver][f"tomo_bin_{tomo_bin_id}"] = {
+                    "mean": np.mean(xi_psf_sys_samples, axis=0),
+                    "var": np.var(xi_psf_sys_samples, axis=0),
+                    "quantiles": np.quantile(xi_psf_sys_samples, quantiles, axis=0),
+                }
 
     def plot_rho_tau_fits(self):
         out_dir = self.rho_stat_handler.catalogs._output
@@ -279,12 +348,6 @@ class PSFSystematicsMixin:
                 self.print_done(
                     f"{yscale}-scale xi_psf_sys terms plot saved to {out_path}"
                 )
-
-    @property
-    def xi_psf_sys(self):
-        if not hasattr(self, "_xi_psf_sys"):
-            self.calculate_rho_tau_fits()
-        return self._xi_psf_sys
 
     def set_params_leakage_scale(self, ver):
         params_in = {}
