@@ -9,6 +9,6 @@ extra_params:
   camb:
     nonlinear: True
     halofit_version: "mead2020_feedback"
-    HMCode_log_T_AGN: 7.8
+    HMCode_logT_AGN: 7.8
     kmax: 20.0
     kmax_extrapolate: 500

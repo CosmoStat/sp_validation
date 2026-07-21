@@ -437,7 +437,7 @@ def run_one_simulation(sim_id, nside, version, tomography, out_dir, force_run):
 
         # --- Compute the power spectra ---
         cl_final = extract_spectra(
-            noisy_gaussian_maps, n_gal, tomo_bin_ids, lmax, out_dir
+            noisy_gaussian_maps, n_gal, tomo_bin_ids, b_lmax, out_dir
         )
 
         # Save the results
