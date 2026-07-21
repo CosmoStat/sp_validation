@@ -25,7 +25,7 @@ from .sacc_writers import rho_tau_to_sacc
 
 
 class PSFSystematicsMixin:
-    def calculate_rho_tau_stats(self):
+    def calculate_rho_tau_stats(self, commitment_path=None):
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -44,7 +44,12 @@ class PSFSystematicsMixin:
                 npatch=self.npatch,
             )
             self.rho_tau_to_sacc_part(
-                ver, out_dir, base, rho_stat_handler, tau_stat_handler
+                ver,
+                out_dir,
+                base,
+                rho_stat_handler,
+                tau_stat_handler,
+                commitment_path=commitment_path,
             )
         self.print_done("Rho stats finished")
 
@@ -52,7 +57,13 @@ class PSFSystematicsMixin:
         self._tau_stat_handler = tau_stat_handler
 
     def rho_tau_to_sacc_part(
-        self, version, out_dir, base, rho_stat_handler, tau_stat_handler
+        self,
+        version,
+        out_dir,
+        base,
+        rho_stat_handler,
+        tau_stat_handler,
+        commitment_path=None,
     ):
         """Write the ρ/τ SACC part for one version.
 
@@ -63,6 +74,12 @@ class PSFSystematicsMixin:
         absence falls back to a diagonal placeholder for the whole part (loudly:
         the τ inference block is then only a variance diagonal, not the theory
         covariance). ρ always carries a diagnostic ``varrho`` diagonal.
+
+        ρ/τ carries no cosmological vector and is never blinded; on a data run
+        ``commitment_path`` stamps the part concealed pass-through (values
+        unchanged) so the fail-closed assembly load gate admits it under the
+        version's blind. ``None`` (mock runs) leaves it a plain ``type="data"``
+        part, byte-identical to before.
         """
         tau_cov_path = os.path.join(out_dir, f"cov_tau_{base}_th.npy")
         tau_cov_th = np.load(tau_cov_path) if os.path.exists(tau_cov_path) else None
@@ -79,6 +96,10 @@ class PSFSystematicsMixin:
             tau_stat_handler.tau_stats,
             tau_cov_th=tau_cov_th,
         )
+        if commitment_path is not None:
+            from ..blinding import stamp_concealed_passthrough
+
+            stamp_concealed_passthrough(s, commitment_path)
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
         sacc_io.save(s, out_path, type="data")
 

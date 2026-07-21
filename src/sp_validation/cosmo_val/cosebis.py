@@ -164,7 +164,15 @@ class CosebisMixin:
         )
         return results[key], tuple(key)
 
-    def cosebis_to_sacc_part(self, version, out_path, results, fiducial_scale_cut=None):
+    def cosebis_to_sacc_part(
+        self,
+        version,
+        out_path,
+        results,
+        fiducial_scale_cut=None,
+        en_override=None,
+        commitment_path=None,
+    ):
         """Write the COSEBIs SACC part at the fiducial scale cut.
 
         ``results`` is the object ``calculate_cosebis`` returned (single dict or
@@ -172,14 +180,28 @@ class CosebisMixin:
         part — a ``FullCovariance`` must cover every stored point and the cuts
         overlap in mode space, so the non-fiducial cuts stay in the diagnostic
         ``.npz`` sidecar. The nz/metadata are the version's.
+
+        ``en_override`` supplies the E-mode ``En`` written to the part in place of
+        ``result["En"]`` — the born-blinded path passes the ``En`` re-derived from
+        the blinded integration ξ± (Bn and the covariance are blind-invariant and
+        stay from ``result``). ``commitment_path`` stamps the part concealed under
+        that version's blind (via :func:`blinding.stamp_concealed_passthrough`)
+        before save, so a data run's part clears the fail-closed load gate. With
+        both ``None`` (mock runs) the behaviour is byte-identical to before.
         """
         result, scale_cut = self._fiducial_cosebis_result(results, fiducial_scale_cut)
+        if en_override is not None:
+            result = {**result, "En": np.asarray(en_override)}
         s = cosebis_to_sacc(
             self.sacc_nz(version),
             self.sacc_metadata(version),
             result,
             scale_cut,
         )
+        if commitment_path is not None:
+            from ..blinding import stamp_concealed_passthrough
+
+            stamp_concealed_passthrough(s, commitment_path)
         sacc_io.save(s, out_path, type="data")
 
     def plot_cosebis(

@@ -81,7 +81,19 @@ rule run_cosmo_val:
         """
 
 
+# On a data run bind this version's commitment.json so run_rho_tau can stamp the
+# ρ/τ part concealed pass-through (ρ/τ carries no cosmological vector, but the
+# fail-closed assembly load gate still requires the concealed stamp). A mock run
+# binds nothing and the part stays a plain type="data" product.
+def rho_tau_inputs(w):
+    if is_data_run():
+        return {"commitment": blind_state_paths(w.version)["commitment"]}
+    return {}
+
+
 rule rho_tau_stats:
+    input:
+        unpack(rho_tau_inputs),
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),

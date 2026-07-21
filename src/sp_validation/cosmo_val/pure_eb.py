@@ -134,16 +134,27 @@ class PureEBMixin:
 
         return results
 
-    def pure_eb_to_sacc_part(self, version, out_path, results):
+    def pure_eb_to_sacc_part(
+        self, version, out_path, results, eb_override=None, commitment_path=None
+    ):
         """Write the pure-E/B SACC part (six ``PURE_KEYS`` blocks + covariance).
 
         ``results`` is the dict ``calculate_pure_eb`` returned: the six pure-mode
         arrays under ``sacc_io.PURE_KEYS``, the ``"cov"`` block (in ``PURE_KEYS``
         order), and the reporting-grid TreeCorr object ``"gg"`` whose ``meanr``
         is the shared ``theta``.
+
+        ``eb_override`` supplies the six pure-mode arrays (a mapping keyed by
+        ``sacc_io.PURE_KEYS``) written in place of ``results``' — the born-blinded
+        path passes the modes re-derived from the blinded reporting + integration
+        ξ± (the covariance is blind-invariant and stays from ``results``).
+        ``commitment_path`` stamps the part concealed under that version's blind
+        (via :func:`blinding.stamp_concealed_passthrough`) before save. With both
+        ``None`` (mock runs) the behaviour is byte-identical to before.
         """
         theta = results["gg"].meanr
-        eb = {key: results[key] for key in sacc_io.PURE_KEYS}
+        source = eb_override if eb_override is not None else results
+        eb = {key: source[key] for key in sacc_io.PURE_KEYS}
         s = pure_eb_to_sacc(
             self.sacc_nz(version),
             self.sacc_metadata(version),
@@ -151,6 +162,10 @@ class PureEBMixin:
             eb,
             covariance=results["cov"],
         )
+        if commitment_path is not None:
+            from ..blinding import stamp_concealed_passthrough
+
+            stamp_concealed_passthrough(s, commitment_path)
         sacc_io.save(s, out_path, type="data")
 
     def plot_pure_eb(

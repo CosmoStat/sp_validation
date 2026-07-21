@@ -368,10 +368,39 @@ rule cv_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
+# On a data run the born-blinded COSEBIs / pure-E/B parts re-derive their E-mode
+# vector from the *blinded* integration ξ± (COSEBIs) or blinded reporting +
+# integration ξ± (pure-E/B), and stamp the part concealed from the version's
+# commitment.json. Those inputs bind only for the fiducial version — xi_highres
+# emits the integration ξ± for the fiducial version alone (see cv_assemble_inputs),
+# so a non-fiducial version has no blinded integration part to derive from. A
+# non-fiducial data run therefore still binds commitment.json (concealed
+# pass-through of the raw En/modes clears the load gate) but cannot born-blind —
+# a leak flagged for follow-up (per-version xi_highres, or dropping non-fiducial
+# derived stats from the data-run analysis). A mock run binds none of these.
+def cv_cosebis_inputs(w):
+    inputs = {"xi": cv_xi_txt(w.version)}
+    if is_data_run():
+        inputs["commitment"] = blind_state_paths(w.version)["commitment"]
+        if w.version == config["fiducial"]["version"]:
+            inputs["xi_integration"] = blindable_part(cv_xi_integration_sacc(w.version))
+    return inputs
+
+
+def cv_pure_eb_inputs(w):
+    inputs = {"xi": cv_xi_txt(w.version)}
+    if is_data_run():
+        inputs["commitment"] = blind_state_paths(w.version)["commitment"]
+        if w.version == config["fiducial"]["version"]:
+            inputs["xi_reporting"] = blindable_part(cv_xi_reporting_sacc(w.version))
+            inputs["xi_integration"] = blindable_part(cv_xi_integration_sacc(w.version))
+    return inputs
+
+
 rule cv_pure_eb:
     """Pure E/B-mode decomposition for one version (config-space)."""
     input:
-        xi=lambda w: cv_xi_txt(w.version),
+        unpack(cv_pure_eb_inputs),
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
@@ -394,7 +423,7 @@ rule cv_pure_eb:
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
     input:
-        xi=lambda w: cv_xi_txt(w.version),
+        unpack(cv_cosebis_inputs),
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),

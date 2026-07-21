@@ -481,6 +481,33 @@ def _stamp_provenance(s, commitment, label, config_digest):
     s.metadata["blind_config_digest"] = config_digest
 
 
+def stamp_concealed_passthrough(s, commitment_path):
+    """Stamp a part concealed under an existing blind, values untouched.
+
+    A born-blinded derived statistic (COSEBIs / pure-E/B) has its E-mode vector
+    re-derived from the *already-blinded* integration ξ± before this call, so its
+    values are blind by construction and only the provenance stamp is missing.
+    ρ/τ carries no cosmological vector at all — the stamp merely clears it for
+    assembly under the blind (values unchanged either way). Both cases need the
+    four custody keys the fail-closed load gate and :func:`assert_consistent_blind`
+    check: ``concealed``, ``blind`` (label), ``blind_commitment``
+    (= ``seed_sha256``), ``blind_config_digest``. This reads those from the
+    version's ``commitment.json`` (written by :func:`blind_init`) and stamps them
+    via :func:`_stamp_provenance`, so a pass-through part shares the exact same
+    ``(commitment, digest)`` custody state as the blinded ξ±/pseudo-Cℓ parts.
+
+    Unlike :func:`blind_sacc`, this shifts nothing and does not require a
+    blindable block — it is the seam for parts blinded (or made blind-irrelevant)
+    upstream of the SACC writer.
+    """
+    with open(commitment_path, encoding="utf-8") as f:
+        commitment = json.load(f)
+    _stamp_provenance(
+        s, commitment["seed_sha256"], commitment["label"], commitment["config_digest"]
+    )
+    return s
+
+
 # --------------------------------------------------------------------------- #
 # Assembly-time custody: one blind across all parts
 # --------------------------------------------------------------------------- #

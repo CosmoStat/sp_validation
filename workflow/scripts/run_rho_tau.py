@@ -46,7 +46,12 @@ cv = CosmologyValidation(
     npatch=int(params["npatch"]),
 )
 
-cv.calculate_rho_tau_stats()
+# On a data run the rho_tau_stats rule binds this version's commitment.json so
+# the ρ/τ part can be stamped concealed pass-through (ρ/τ carries no cosmological
+# vector; the stamp only clears it for the fail-closed assembly load gate). A
+# mock run binds no commitment, leaving the part a plain type="data" product.
+commitment_path = snakemake.input.get("commitment")  # type: ignore
+cv.calculate_rho_tau_stats(commitment_path=commitment_path)
 
 # Confirm CosmologyValidation produced the requested outputs. calculate_rho_tau_stats
 # writes the rho/tau FITS *and* the born-as-SACC rho_tau part (via
