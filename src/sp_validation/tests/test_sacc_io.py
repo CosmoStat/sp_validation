@@ -137,7 +137,7 @@ def test_pseudo_cl_roundtrip(tmp_path):
 def test_cosebis_roundtrip(tmp_path):
     En, Bn = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
     s = _base_sacc()
-    sio.add_cosebis(s, (0, 0), En, Bn, (1.0, 100.0))
+    sio.add_cosebis(s, (0, 0), En, (1.0, 100.0), Bn=Bn)
     s2 = _roundtrip(s, tmp_path, "cosebi")
     n, E, B = sio.get_cosebis(s2, (0, 0))
     assert np.array_equal(n, np.arange(1, 11))
@@ -219,7 +219,7 @@ def _multi_statistic_sacc():
         window_weights=W,
     )
     sio.add_cosebis(
-        s, (0, 0), np.arange(1, 6) * 1e-6, np.arange(1, 6) * 1e-7, (1.0, 100.0)
+        s, (0, 0), np.arange(1, 6) * 1e-6, (1.0, 100.0), Bn=np.arange(1, 6) * 1e-7
     )
     return s
 
@@ -232,7 +232,7 @@ def test_assemble_covariance_alignment(tmp_path):
     cov_xi, cov_cl, cov_co = _spd(len(xi), 1), _spd(len(cl), 2), _spd(len(co), 3)
     sio.assemble_covariance(s, [(xi, cov_xi), (cl, cov_cl), (co, cov_co)])
     s2 = _roundtrip(s, tmp_path, "cov")
-    assert type(s2.covariance).__name__ == "FullCovariance"
+    assert type(s2.covariance).__name__ == "BlockDiagonalCovariance"
     dense = s2.covariance.dense
     # each block's sub-covariance is exactly what went in
     assert np.array_equal(dense[np.ix_(xi, xi)], cov_xi)
@@ -258,7 +258,7 @@ def test_assemble_covariance_selector_tuples():
             ((sio.COSEBI_BB, tr), _spd(len(s.indices(sio.COSEBI_BB, tr)), 4)),
         ],
     )
-    assert type(s.covariance).__name__ == "FullCovariance"
+    assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
 
 
@@ -445,7 +445,7 @@ def test_end_to_end_one_file_layout(tmp_path):
         s, (0, 0), theta_c, np.arange(20) * 1e-5, np.arange(20) * 2e-5, grid="reporting"
     )
     sio.add_cosebis(
-        s, (0, 0), np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7, (1.0, 100.0)
+        s, (0, 0), np.arange(1, 11) * 1e-6, (1.0, 100.0), Bn=np.arange(1, 11) * 1e-7
     )
     sio.add_xi(
         s,
@@ -696,7 +696,7 @@ def _xi_sacc(metadata=None):
 def _cosebi_sacc(metadata=None):
     s = sio.new_sacc({0: _nz(0)}, metadata=metadata)
     sio.add_cosebis(
-        s, (0, 0), np.arange(1, 6) * 1e-6, np.arange(1, 6) * 1e-7, (1.0, 100.0)
+        s, (0, 0), np.arange(1, 6) * 1e-6, (1.0, 100.0), Bn=np.arange(1, 6) * 1e-7
     )
     return s
 
@@ -732,6 +732,32 @@ def test_merge_covariance_block_diagonal():
     assert np.array_equal(dense[:n_xi, :n_xi], cov_xi)
     assert np.array_equal(dense[n_xi:, n_xi:], cov_co)
     assert np.all(dense[:n_xi, n_xi:] == 0)
+
+
+def test_merge_block_diagonal_covariance_stays_block_diagonal(tmp_path):
+    """Merging two files that already carry a BlockDiagonalCovariance (e.g.
+    each assembled via ``assemble_covariance``) must not densify — the
+    result stays a ``BlockDiagonalCovariance``, on disk too."""
+    s_xi, s_co = _xi_sacc(), _cosebi_sacc()
+    sio.assemble_covariance(
+        s_xi, [(np.arange(len(s_xi.mean)), _spd(len(s_xi.mean), 1))]
+    )
+    sio.assemble_covariance(
+        s_co, [(np.arange(len(s_co.mean)), _spd(len(s_co.mean), 2))]
+    )
+    assert type(s_xi.covariance).__name__ == "BlockDiagonalCovariance"
+    merged = sio.merge([s_xi, s_co])
+    assert type(merged.covariance).__name__ == "BlockDiagonalCovariance"
+    sio.save(merged, str(tmp_path / "vBLK.sacc"), type="mock")
+    merged_rt = sio.load(str(tmp_path / "vBLK.sacc"))
+    assert type(merged_rt.covariance).__name__ == "BlockDiagonalCovariance"
+    n_xi = len(s_xi.mean)
+    assert np.array_equal(
+        merged_rt.covariance.dense[:n_xi, :n_xi], s_xi.covariance.dense
+    )
+    assert np.array_equal(
+        merged_rt.covariance.dense[n_xi:, n_xi:], s_co.covariance.dense
+    )
 
 
 def test_merge_mixed_covariance_fails():
@@ -936,7 +962,7 @@ def test_get_cosebis_raises_on_unmatched_scale_cut():
 def test_get_cosebis_rejects_ambiguous_multi_cut_file():
     s = _cosebi_sacc()
     sio.add_cosebis(
-        s, (0, 0), np.arange(1, 6) * 1e-6, np.arange(1, 6) * 1e-7, (2.0, 50.0)
+        s, (0, 0), np.arange(1, 6) * 1e-6, (2.0, 50.0), Bn=np.arange(1, 6) * 1e-7
     )
     with pytest.raises(ValueError, match="several COSEBIs scale cuts"):
         sio.get_cosebis(s, (0, 0))
@@ -993,3 +1019,166 @@ def test_pseudo_cl_window_column_correspondence(tmp_path):
         col = s2.data[i].tags["window_ind"]
         assert col == pos  # insertion order preserved => column j <-> ell[j]
         assert np.array_equal(window.weight[:, col], W[:, pos])
+
+
+# --------------------------------------------------------------------------- #
+# 16. Optionality: writers omit optional components; readers tolerate their
+#     absence in composite reads but still fail loud on an explicit selection
+#     naming a component that isn't there.
+# --------------------------------------------------------------------------- #
+def test_pseudo_cl_ee_bb_only_no_eb(tmp_path):
+    """EB is often not even computed — add_pseudo_cl must not require it."""
+    ell_eff = np.array([30.0, 120.0, 210.0])
+    nell, nbp = 20, len(ell_eff)
+    window_ells = np.arange(2, 2 + nell).astype(float)
+    W = np.random.default_rng(1).uniform(size=(nell, nbp))
+    ee, bb = np.arange(nbp) * 1e-9, np.arange(nbp) * 2e-9
+    s = _base_sacc()
+    sio.add_pseudo_cl(
+        s, (0, 0), ell_eff, ee, bb, window_ells=window_ells, window_weights=W
+    )
+    tr = ("source_0", "source_0")
+    assert len(s.indices(sio.CL_EB, tr)) == 0
+    s2 = _roundtrip(s, tmp_path, "cl_ee_bb")
+    ell, cl_ee, cl_bb, cl_eb, window = sio.get_pseudo_cl(s2, (0, 0))
+    assert np.array_equal(ell, ell_eff)
+    assert np.array_equal(cl_ee, ee)
+    assert np.array_equal(cl_bb, bb)
+    assert cl_eb is None
+
+
+def test_pseudo_cl_ee_only(tmp_path):
+    ell_eff = np.array([30.0, 120.0, 210.0])
+    nell, nbp = 20, len(ell_eff)
+    W = np.random.default_rng(2).uniform(size=(nell, nbp))
+    ee = np.arange(nbp) * 1e-9
+    s = _base_sacc()
+    sio.add_pseudo_cl(
+        s,
+        (0, 0),
+        ell_eff,
+        ee,
+        window_ells=np.arange(2, 2 + nell).astype(float),
+        window_weights=W,
+    )
+    s2 = _roundtrip(s, tmp_path, "cl_ee_only")
+    ell, cl_ee, cl_bb, cl_eb, window = sio.get_pseudo_cl(s2, (0, 0))
+    assert np.array_equal(cl_ee, ee)
+    assert cl_bb is None
+    assert cl_eb is None
+
+
+def test_cosebis_en_only_no_bn(tmp_path):
+    En = np.arange(1, 8) * 1e-6
+    s = _base_sacc()
+    sio.add_cosebis(s, (0, 0), En, (1.0, 100.0))
+    tr = ("source_0", "source_0")
+    assert len(s.indices(sio.COSEBI_BB, tr)) == 0
+    s2 = _roundtrip(s, tmp_path, "cosebi_e_only")
+    n, E, B = sio.get_cosebis(s2, (0, 0))
+    assert np.array_equal(E, En)
+    assert B is None
+
+
+def test_pure_eb_e_only_no_b_no_amb(tmp_path):
+    theta = _theta()
+    xip_E, xim_E = np.arange(6) * 1e-6, np.arange(6) * 2e-6
+    s = _base_sacc()
+    sio.add_pure_eb(s, (0, 0), theta, xip_E, xim_E)
+    s2 = _roundtrip(s, tmp_path, "pureeb_e_only")
+    th, back = sio.get_pure_eb(s2, (0, 0))
+    assert np.array_equal(th, theta)
+    assert set(back) == {"xip_E", "xim_E"}
+    assert np.array_equal(back["xip_E"], xip_E)
+    assert np.array_equal(back["xim_E"], xim_E)
+
+
+def test_pure_eb_e_and_b_no_amb(tmp_path):
+    theta = _theta()
+    arrays = {
+        key: np.arange(6) * (i + 1) * 1e-6
+        for i, key in enumerate(("xip_E", "xim_E", "xip_B", "xim_B"))
+    }
+    s = _base_sacc()
+    sio.add_pure_eb(s, (0, 0), theta, **arrays)
+    s2 = _roundtrip(s, tmp_path, "pureeb_e_b")
+    th, back = sio.get_pure_eb(s2, (0, 0))
+    assert set(back) == {"xip_E", "xim_E", "xip_B", "xim_B"}
+
+
+def test_pure_eb_rejects_half_a_pair():
+    theta = _theta()
+    xip_E, xim_E = np.arange(6) * 1e-6, np.arange(6) * 2e-6
+    s = _base_sacc()
+    with pytest.raises(ValueError, match="xip_B and xim_B"):
+        sio.add_pure_eb(s, (0, 0), theta, xip_E, xim_E, xip_B=np.arange(6) * 1e-6)
+    with pytest.raises(ValueError, match="xip_amb and xim_amb"):
+        sio.add_pure_eb(s, (0, 0), theta, xip_E, xim_E, xim_amb=np.arange(6) * 1e-6)
+
+
+def test_xi_only_plus_covariance_file(tmp_path):
+    """A file with only xi +/- and a covariance — no Cl/COSEBIs at all."""
+    theta = _theta()
+    s = _base_sacc()
+    xip, xim = _add_xi(s)
+    tr = ("source_0", "source_0")
+    xi_idx = _xi_block(s, tr)
+    sio.assemble_covariance(s, [(xi_idx, _spd(len(xi_idx), 7))])
+    s2 = _roundtrip(s, tmp_path, "xi_only")
+    th, p, m = sio.get_xi(s2, (0, 0), grid="reporting")
+    assert np.array_equal(th, theta)
+    assert np.array_equal(p, xip)
+    assert np.array_equal(m, xim)
+    assert s2.covariance is not None
+    with pytest.raises(ValueError, match="matched no points"):
+        sio._indices(s2, sio.CL_EE, tr)
+
+
+def test_reader_explicit_selection_fails_loud_on_missing_optional_component():
+    """Absence is silent for composite readers, but a targeted selection
+    naming a missing optional component (e.g. CL_EB) still fails loud."""
+    ell_eff = np.array([30.0, 120.0, 210.0])
+    nell, nbp = 20, len(ell_eff)
+    W = np.random.default_rng(3).uniform(size=(nell, nbp))
+    s = _base_sacc()
+    sio.add_pseudo_cl(
+        s,
+        (0, 0),
+        ell_eff,
+        np.arange(nbp) * 1e-9,
+        window_ells=np.arange(2, 2 + nell).astype(float),
+        window_weights=W,
+    )
+    tr = ("source_0", "source_0")
+    with pytest.raises(ValueError, match="matched no points"):
+        sio._mean(s, sio.CL_EB, tr)
+    with pytest.raises(ValueError, match="no points"):
+        sio.extract(s, data_type=sio.CL_EB, tracers=tr)
+
+
+def test_merge_partial_files():
+    """merge() combines a Cl file missing EB with a COSEBIs file missing Bn."""
+    s_cl = sio.new_sacc({0: _nz(0)})
+    ell_eff = np.array([30.0, 120.0, 210.0])
+    nell, nbp = 20, len(ell_eff)
+    W = np.random.default_rng(4).uniform(size=(nell, nbp))
+    sio.add_pseudo_cl(
+        s_cl,
+        (0, 0),
+        ell_eff,
+        np.arange(nbp) * 1e-9,
+        np.arange(nbp) * 2e-9,  # BB only, no EB
+        window_ells=np.arange(2, 2 + nell).astype(float),
+        window_weights=W,
+    )
+    s_co = sio.new_sacc({0: _nz(0)})
+    sio.add_cosebis(s_co, (0, 0), np.arange(1, 6) * 1e-6, (1.0, 100.0))  # En only
+
+    merged = sio.merge([s_cl, s_co])
+    tr = ("source_0", "source_0")
+    assert len(merged.indices(sio.CL_EB, tr)) == 0
+    assert len(merged.indices(sio.COSEBI_BB, tr)) == 0
+    ell, cl_ee, cl_bb, cl_eb, window = sio.get_pseudo_cl(merged, (0, 0))
+    assert cl_bb is not None and cl_eb is None
+    n, E, B = sio.get_cosebis(merged, (0, 0))
+    assert B is None
