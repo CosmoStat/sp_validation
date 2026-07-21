@@ -6,8 +6,7 @@ the same assembly runs from explicit flags (the lightcone/ASTRA path).
 
 Each per-statistic ``*.sacc`` *part* (written born-as-SACC by the mixins and the
 run_2pcf / generate_pseudo_cl scripts) holds one statistic. The assembler loads
-them in canonical order — ξ± reporting, ξ± integration, pseudo-Cℓ, COSEBIs,
-pure-E/B, ρ/τ — and
+them in canonical order — ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ — and
 calls :func:`sacc_writers.assemble_analysis_sacc`, which rebuilds one Sacc with a
 single ``BlockDiagonalCovariance`` (point-insertion order = block order,
 validated by ``sacc_io.assemble_covariance``).
@@ -15,10 +14,9 @@ validated by ``sacc_io.assemble_covariance``).
 Covariance sourcing (the part-by-part decision)
 -----------------------------------------------
 ``assemble_analysis_sacc`` REQUIRES every part to carry its own covariance block.
-The ξ± integration, COSEBIs, pure-E/B and ρ/τ parts already do (their writers
-attach it — ξ± integration a ``DiagonalCovariance`` from TreeCorr varxip/varxim).
-The ξ± reporting and pseudo-Cℓ parts are born cov-less by design; this script
-injects their blocks before assembly:
+The COSEBIs, pure-E/B and ρ/τ parts already do (their writers attach it). The
+ξ± reporting and pseudo-Cℓ parts are born cov-less by design; this script injects
+their blocks before assembly:
 
 * **ξ± reporting** — the CosmoCov theory covariance ``.txt`` (``--xi-cov``). For the
   single-bin round it is already ``[ξ+; ξ−]``-ordered (CosmoCov / covdat_to_fits:
@@ -52,17 +50,8 @@ _CL_HDU = {"EE": "COVAR_EE_EE", "BB": "COVAR_BB_BB", "EB": "COVAR_EB_EB"}
 _CL_ORDER = ("EE", "BB", "EB")
 
 # Canonical part order — the order assemble_analysis_sacc inserts points in, which
-# must match the covariance block order. Missing parts are simply skipped. The
-# integration-grid ξ± part (grid='integration', its own DiagonalCovariance) sits
-# next to the reporting ξ±: both are ξ± sections distinguished only by grid tag.
-CANONICAL = (
-    "xi_reporting",
-    "xi_integration",
-    "pseudo_cl",
-    "cosebis",
-    "pure_eb",
-    "rho_tau",
-)
+# must match the covariance block order. Missing parts are simply skipped.
+CANONICAL = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
 
 
 def _pseudo_cl_cov_block(cov_fits, hdu):
@@ -89,8 +78,8 @@ def _pseudo_cl_cov_block(cov_fits, hdu):
 def _attach_cov(part, name, xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholder_var):
     """Ensure ``part`` carries a covariance, injecting the xi/pseudo-Cℓ block.
 
-    ``part`` is mutated in place. xi_integration/cosebis/pure_eb/rho_tau parts
-    already carry their covariance and pass straight through. Raises loudly if a required xi /
+    ``part`` is mutated in place. cosebis/pure_eb/rho_tau parts already carry
+    their covariance and pass straight through. Raises loudly if a required xi /
     pseudo-Cℓ block is missing and no placeholder was requested.
     """
     if part.covariance is not None:

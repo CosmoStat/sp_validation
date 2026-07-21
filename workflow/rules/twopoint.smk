@@ -35,11 +35,11 @@ rule xi:
 rule xi_highres:
     """High-resolution xi for COSEBIS integration.
 
-    Born-as-SACC part: {version}_xi_integration.sacc (a DiagonalCovariance from
-    TreeCorr varxip/varxim). COSEBIs and pure-E/B consume it, and rule
-    assemble_sacc folds its integration-grid ξ± rows (grid='integration') into
-    the single terminal {version}.sacc. The raw .txt dump is kept as a
-    convergence byproduct.
+    Intermediate born-as-SACC part: {version}_xi_integration.sacc (a
+    DiagonalCovariance from TreeCorr varxip/varxim). COSEBIs and pure-E/B consume
+    it; it stays a standalone per-part file and does not join the terminal
+    {version}.sacc (see #247 ruling). The raw .txt dump is kept as a convergence
+    byproduct.
     """
     container: None
     output:

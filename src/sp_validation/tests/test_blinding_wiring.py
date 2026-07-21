@@ -255,9 +255,12 @@ def test_blinding_subgraph_in_cosmo_val_dry_run():
     out = result.stdout
     assert "rule blind_init:" in out, out
     assert "rule blind_part:" in out, out
-    # assemble consumes the blinded ξ± reporting + integration and pseudo-Cℓ.
+    # assemble consumes the blinded ξ± reporting and pseudo-Cℓ. The integration
+    # ξ± is deliberately NOT gathered into the terminal file (per the #247 ruling)
+    # — it persists as its own per-part intermediate — so its blinded variant is
+    # not pulled into the assemble subgraph.
     assert (
         "_xi_reporting_minsep=1.0_maxsep=250.0_nbins=20_npatch=100_blinded.sacc" in out
     )
-    assert "_xi_integration_blinded.sacc" in out
+    assert "_xi_integration_blinded.sacc" not in out
     assert "_blind=A_powspace_nbins=32_blinded.sacc" in out

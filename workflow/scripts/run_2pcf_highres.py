@@ -206,10 +206,10 @@ def compute_patch_centers(ra, dec):
 def write_xi_integration_sacc(gg):
     """Write the integration-grid ξ± SACC part (``{version}_xi_integration.sacc``).
 
-    This is a per-statistic part — COSEBIs and pure-E/B consume it, and
-    ``rule assemble_sacc`` folds its integration-grid ξ± rows into the single
-    terminal ``{version}.sacc``. It carries a ``DiagonalCovariance`` from TreeCorr
-    ``varxip``/``varxim``
+    This is an intermediate per-statistic part — COSEBIs and pure-E/B consume it.
+    It stays a standalone per-part file and does not join the terminal
+    ``{version}.sacc`` (see #247 ruling). It carries a ``DiagonalCovariance`` from
+    TreeCorr ``varxip``/``varxim``
     (npatch=1 leaves shot-noise variance as the only covariance estimate).
     Both run paths land here: in-container this uses the full SACC stack; on the
     bare-host MPI run only ``sacc_io`` + the n(z) file are needed (no healpy).
