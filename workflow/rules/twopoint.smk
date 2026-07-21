@@ -30,34 +30,63 @@ rule xi:
         "../scripts/run_2pcf.py"
 
 
+# Integration-grid ξ± measured by xi_highres. The cosmo_val paper owns a dedicated
+# cosmo_val.integration block ([0.08, 300] @ 1000 bins); other workflows sharing
+# this file (e.g. papers/bmodes, whose config carries no cosmo_val section) fall
+# back to their fiducial integration grid. Evaluated at parse time, so the lookup
+# must not assume the cosmo_val key exists.
+_INTEGRATION = config.get("cosmo_val", {}).get("integration") or {
+    "min_sep": FIDUCIAL["min_sep_int"],
+    "max_sep": FIDUCIAL["max_sep_int"],
+    "nbins": FIDUCIAL["nbins_int"],
+}
+
+
 rule xi_highres:
-    """High-resolution xi for COSEBIS integration.
+    """High-resolution integration-grid xi for COSEBIs + pure-E/B, per version.
 
     Intermediate born-as-SACC part: {version}_xi_integration.sacc (a
     DiagonalCovariance from TreeCorr varxip/varxim). COSEBIs and pure-E/B consume
     it; it stays a standalone per-part file and does not join the terminal
     {version}.sacc (see #247 ruling). The raw .txt dump is kept as a convergence
     byproduct.
+
+    In-container single-process TreeCorr: at the config-driven nbins_int=1000 grid
+    this is a normal single-node job (the global container: in the Snakefile makes
+    a plain shell: run in-container). run_2pcf_highres.py runs its single-process
+    path when not launched under mpiexec. The historical 10k-bin bare-host MPI path
+    is removed as unnecessary.
     """
-    container: None
+    input:
+        catalog=get_shear_catalog,
     output:
-        txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-        xi_integration=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_integration.sacc"),
+        # Only the uniquely-named SACC part is tracked. The raw TreeCorr .txt dump
+        # run_2pcf_highres.py writes ({version}_xi_minsep=..._nbins=..._npatch=1.txt)
+        # is left UNDECLARED: it is a convergence byproduct nothing in the DAG
+        # consumes (cv_xi_txt is the reporting grid), and declaring it would collide
+        # with rule xi's wildcard txt output (same filename pattern) — an
+        # AmbiguousRuleException. Shared integration grid (cosmo_val.integration:
+        # [0.08, 300] at 1000 bins) so the single part serves both consumers:
+        # pure-E/B needs it to strictly contain its reporting grid down to 0.08;
+        # COSEBIs scale-cuts on the same part. Decoupled from covariance.smk.
+        xi_integration=str(COSMO_VAL / "{version}_xi_integration.sacc"),
+    params:
+        version="{version}",
+        cat_config=CAT_CONFIG,
+        min_sep=_INTEGRATION["min_sep"],
+        max_sep=_INTEGRATION["max_sep"],
+        nbins=_INTEGRATION["nbins"],
+        out=str(COSMO_VAL),
+        scripts=WORKFLOW_SCRIPTS,
+    threads: 24
     resources:
-        tasks=30,
-        cpus_per_task=12,
-        nodes=6,
-        mem_mb_per_cpu=2000,
-        runtime=2880,
-        slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
-        mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
+        mem_mb=40000,
+        runtime=600,
     shell:
-        "{resources.mpi} -n {resources.tasks} "
-        "apptainer exec "
-        "--bind /home,/n09data,/n17data,/n23data1,/softs "
-        "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
-        "/n17data/cdaley/containers/containers "
-        f"python {WORKFLOW_SCRIPTS}/run_2pcf_highres.py"
+        "python {params.scripts}/run_2pcf_highres.py "
+        "--version {params.version} --cat-config {params.cat_config} "
+        "--min-sep {params.min_sep} --max-sep {params.max_sep} "
+        "--nbins {params.nbins} --npatch 1 --out {params.out}"
 
 
 rule run_cosmo_val:

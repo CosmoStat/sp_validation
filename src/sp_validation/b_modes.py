@@ -255,6 +255,79 @@ def calculate_pure_eb_correlation(
     return results
 
 
+def cosebis_from_xi(theta, xip, xim, nmodes, scale_cut=None):
+    """COSEBIs (Eₙ, Bₙ) from ξ± arrays through the pipeline kernel (values only).
+
+    The values-only seam of :func:`calculate_cosebis`, for callers holding
+    ξ± arrays rather than a TreeCorr ``GGCorrelation`` — e.g. deriving COSEBIs
+    from an integration-ξ± SACC part. Calls the same ``cosmo_numba`` kernel
+    (``COSEBIS.cosebis_from_xipm``) directly on the values; the covariance/χ²
+    machinery stays with :func:`calculate_cosebis`.
+
+    ``scale_cut`` follows the :func:`sacc_io.add_cosebis` writer contract:
+    ``(theta_min, theta_max)`` are min/max of the *retained* bin centres
+    after the pipeline's ``scale_cut_to_bins``. The cut is contiguous in an
+    ascending grid, so selecting ``theta_min ≤ θ ≤ theta_max`` inclusively
+    reproduces exactly the retained set, and the kernel is built on that
+    set's min/max support and fed only the retained ξ± — bit-matching
+    :func:`calculate_cosebis`'s ``theta_cut``/``xip_cut``/``xim_cut`` path.
+    Identical inputs ⇒ identical numbers.
+    """
+    from cosmo_numba.B_modes.cosebis import COSEBIS
+
+    theta, xip, xim = (np.asarray(a) for a in (theta, xip, xim))
+    tmin, tmax = scale_cut if scale_cut is not None else (theta.min(), theta.max())
+    cut = (theta >= tmin) & (theta <= tmax)
+    theta_cut, xip_cut, xim_cut = theta[cut], xip[cut], xim[cut]
+    cosebis = COSEBIS(
+        theta_min=np.min(theta_cut),
+        theta_max=np.max(theta_cut),
+        N_max=nmodes,
+        precision=120,
+    )
+    En, Bn = cosebis.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
+    return np.asarray(En), np.asarray(Bn)
+
+
+def pure_eb_from_xi(
+    theta_report, xip_report, xim_report, theta_int, xip_int, xim_int, tmin, tmax
+):
+    """Pure-E/B correlation functions from ξ± arrays through the pipeline kernel.
+
+    The values-only seam of :func:`calculate_pure_eb_correlation`, for
+    callers holding ξ± arrays rather than TreeCorr correlations — e.g.
+    deriving pure-E/B from SACC parts. Calls the same ``cosmo_numba`` kernel
+    (``get_pure_EB_modes``) directly on the values.
+    The reporting grid must be a strict sub-range of the integration grid;
+    ``tmin``/``tmax`` are the reporting correlation's TreeCorr *bin edges*
+    (``gg.left_edges[0]`` / ``gg.right_edges[-1]``) — the pipeline's
+    convention, carried on SACC files by ``sacc_io.add_pure_eb``. A
+    reporting point coinciding with the integration boundary is degenerate
+    (no interior support) and comes back NaN, exactly as
+    :func:`calculate_pure_eb_correlation` returns it — never a spurious
+    finite value.
+
+    Returns
+    -------
+    dict
+        Keyed by ``_EB_KEYS`` (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb).
+    """
+    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+
+    modes = get_pure_EB_modes(
+        theta=np.asarray(theta_report),
+        xip=np.asarray(xip_report),
+        xim=np.asarray(xim_report),
+        theta_int=np.asarray(theta_int),
+        xip_int=np.asarray(xip_int),
+        xim_int=np.asarray(xim_int),
+        tmin=tmin,
+        tmax=tmax,
+        parallel=True,
+    )
+    return dict(zip(_EB_KEYS, (np.asarray(m) for m in modes)))
+
+
 def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
     """
     Calculate COSEBIs modes from a correlation function for multiple scale cuts.
