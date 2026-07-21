@@ -9,9 +9,9 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-# 3.12 floor set by Smokescreen 1.5.6 (and firecrown v1.15); the container base
-# (shapepipe:develop) is already python:3.12-slim-bookworm, so this aligns
-# pyproject with the actual runtime.
+# 3.12 floor: cosmo-numba (a hard dependency below) requires >=3.12, and the
+# production container is Python 3.12 (shapepipe base image). Keeping the floor
+# in sync with the container is what makes `uv lock` resolvable.
 requires-python = ">=3.12"
 classifiers = [
     "License :: OSI Approved :: MIT License",
@@ -28,13 +28,38 @@ dependencies = [
     "camb>=1.6",
     "clmm",
     "colorama",
+    # Blinding closure (core, no extra): cryptography + sacc here, plus the
+    # Smokescreen fork pin below; pyccl (the theory backend) is already core.
+    # cryptography and sacc are declared explicitly so the core runtime
+    # closure is self-documenting and independent of fork-metadata drift.
+    "cryptography",
     # Track cs_util's develop branch directly (git dependency) rather than a
     # PyPI pin: the two repos are iterating together heavily and cs_util
     # releases are infrequent. This PR's cosmology repoint needs get_cosmo /
     # get_theo_c_ell / get_theo_xi / PLANCK18 in cs_util.cosmo, which land via
     # CosmoStat/cs_util#76 — so this goes green once #76 merges into develop.
     "cs_util @ git+https://github.com/CosmoStat/cs_util.git@develop",
+    # Fast numba B-mode kernels (Schneider et al. 2022): the Schneider E/B split
+    # and COSEBIS live here, imported in b_modes.py. Tracks aguinot/cosmo-numba
+    # main (not published on PyPI). main carries the numpy-2 FFT fix via its
+    # rocket-fft dependency (which teaches numba's nopython mode to handle
+    # np.fft), and declares numba/numpy/rocket-fft from its requirements.txt so
+    # those constraints reach the resolver.
+    "cosmo-numba @ git+https://github.com/aguinot/cosmo-numba.git@main",
     "emcee",
+    # numba is the load-bearing pin of this whole environment: its numpy ceiling
+    # (numba 0.66 -> numpy<2.5) is what keeps the resolver from drifting numpy
+    # forward and breaking numba/ngmix — the failure this lockfile exists to
+    # prevent. cosmo-numba above also carries this constraint, but we pin numba
+    # ourselves too: it makes the one critical constraint visible and resilient
+    # to cosmo-numba's dependency metadata (which has silently emptied out
+    # between refs before). We pin numba, never numpy directly.
+    "numba",
+    # Imported directly across src/ (calibration, plots) alongside seaborn —
+    # declared explicitly rather than leaned on as a seaborn transitive.
+    "matplotlib",
+    "pandas",
+    "pyyaml",
     # SHA-pinned snapshot of getdist branch `upper_triangle_whisker`.
     "getdist @ git+https://github.com/benabed/getdist.git@113cd22a9a0d013b6f72fe734be81f260f3d3be5",
     "h5py",
@@ -47,7 +72,6 @@ dependencies = [
     "jupytext>=1.15",
     "lenspack",
     "lmfit",
-    "numexpr",
     "numpy>=2.0",
     "opencv-python-headless",
     "pyccl",
@@ -55,9 +79,9 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
-    # SACC (LSST DESC's data-vector container) is the standard format for all
-    # data products from the tomographic round on (PRD #241); sp_validation.sacc_io
-    # is core library code, so sacc is a core dependency.
+    # sp_validation.sacc_io (assembled on this branch) uses concatenate_data_sets
+    # and BlockDiagonalCovariance, both from sacc's 2.x rewrite; the lock already
+    # resolves to 2.4, this just makes the floor honest.
     "sacc>=2.4,<3",
     # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
     # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to
@@ -76,6 +100,12 @@ dependencies = [
     # getdist feature-branch below, which is an external fork we pin for repro.)
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
+    # UNIONS-WL fork of DESC Smokescreen, pinned by SHA on the fork's
+    # packaging branch: it declares pyccl and imports its theory backends
+    # lazily, so the install closure is CCL-only. Provisional pin — swapped to the
+    # fork's release tag once the fork packaging PRs merge. Git pin only;
+    # nothing is published to PyPI.
+    "smokescreen @ git+https://github.com/UNIONS-WL/Smokescreen@588a6b9b26560bd5ba3dd5ba342f3c40152644f9",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",
@@ -84,6 +114,13 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/CosmoStat/sp_validation"
+
+[tool.uv]
+# The reproducibility target is the Linux container; scope the lock to Linux
+# (mirrors shapepipe) so `uv lock` resolves the linux-centric stack (pymaster,
+# mpi4py) without hunting for macOS/Windows wheels. macOS dev installs still
+# work via `uv pip install -e .` (unlocked), just not `uv sync` from the lock.
+environments = ["sys_platform == 'linux'"]
 
 [project.optional-dependencies]
 test = [
@@ -112,31 +149,20 @@ glass = [
     "glass==2025.1",
     "glass.ext.camb==2023.6",
     "cosmology==2022.10.9",
+    # fitsio: make_unions_glass_sim.py writes the mock catalogue as FITS.
+    "fitsio",
 ]
-# Data-vector blinding (PRD #241 §3-§5): Smokescreen applies the Muir et al.
-# shift d → d + t(hidden) − t(fid), with firecrown + CCL as the theory engine
-# (only compute_theory_vector is used; sampling stays with CosmoSIS). The blind
-# must be exactly recomputable from the seed at unblinding time, so the whole
-# theory stack is pinned exactly, as a set. Smokescreen 1.5.6 + firecrown v1.15
-# both set the python floor (>=3.12).
-#
-# firecrown is not on PyPI and declares conda-forge-only / unused sampler
-# connectors as hard deps, so installing this extra requires the dependency
-# override file: `uv pip install --overrides uv-overrides.txt -e '.[blinding]'`
-# (see uv-overrides.txt; the Dockerfile does this for the container).
-# After installing this extra, run `python scripts/patch_firecrown.py` — it
-# makes pip-installed firecrown importable without NumCosmo (conda-forge-only);
-# see that script's docstring for the full story.
-blinding = [
-    "firecrown @ git+https://github.com/LSSTDESC/firecrown.git@v1.15.1",
-    "smokescreen==1.5.6",
-    "pyccl==3.3.4",
-    # firecrown 1.15.1 subclasses npt.NDArray (DataVector); numpy 2.5 turned
-    # npt.NDArray into a non-subclassable typing alias, breaking firecrown at
-    # import. firecrown's own env caps numpy<2.4; 2.4.3 is verified against
-    # the full compiled stack (pyccl/camb/treecorr/healpy/pymaster) + the
-    # sp_validation fast suite.
-    "numpy>=2.2,<2.5",
+# Cosmo-inference workflow runners (workflow/scripts/*). Kept optional: the core
+# library resolves without them, but the container installs this extra so the
+# Snakemake workflow and cross-validation runners are available.
+workflow = [
+    "snakemake",
+    # run_2pcf_highres.py drives the MPI convergence run; the container ships
+    # OpenMPI (/opt/ompi) so mpi4py builds against it.
+    "mpi4py",
+    # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
+    # published or resolvable (no public repo found) — left undeclared pending
+    # its source. Same for `unions_wl` (scripts/check_footprint.py).
 ]
 develop = ["sp_validation[test,docs]"]
 
@@ -147,7 +173,14 @@ addopts = [
     "--cov=sp_validation",
     "--cov-report=term",
     "--cov-report=xml",
-    "--junitxml=pytest.xml"
+    "--junitxml=pytest.xml",
+    # The base ShapePipe image's test extra ships old pytest-pydocstyle /
+    # pytest-pycodestyle, whose pytest_collect_file hooks use the `path` arg the
+    # newer pytest our lock installs has removed — they crash collection.
+    # sp_validation lints with ruff, not these, so don't load them. Harmless if
+    # absent (`-p no:` just skips an unregistered plugin).
+    "-p", "no:pydocstyle",
+    "-p", "no:pycodestyle"
 ]
 markers = [
     "fast: marks tests as fast (deselect with '-m \"not fast\"')",
