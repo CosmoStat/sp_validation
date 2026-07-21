@@ -50,6 +50,26 @@
               the covariance was built in. Converters that need a type-major
               layout (e.g. the DES 2pt-FITS convention) permute explicitly via
               ``s.indices`` rather than assuming global order.
+
+Optionality: a file's contents are flexible about which components of
+              a statistic it actually has. ``add_pseudo_cl`` requires EE (the
+              bandpower window's reference series) but BB and EB are optional
+              — an analysis that never computed EB simply omits it.
+              ``add_cosebis`` requires Eₙ but Bₙ is optional. ``add_pure_eb``
+              requires xip_E/xim_E but the B and ambiguous-mode blocks are
+              each optional, independently (B and amb are unrelated
+              computations). Everything else a writer takes — θ/ℓ grids,
+              tracer/bin identifiers, the value array for a component you ARE
+              adding — is structurally necessary and has no default;
+              supplying it partially would desynchronise the covariance
+              layout, so it is refused rather than degraded. Readers mirror
+              this split: a composite reader (``get_pseudo_cl``,
+              ``get_cosebis``, ``get_pure_eb``) returns ``None`` (or omits the
+              key) for a component the file doesn't carry, but a selection
+              naming that component explicitly (``s.indices``, ``_mean``,
+              ``extract``) still fails loud on no match — silence is reserved
+              for "this file doesn't have that optional piece", never for
+              "you asked for something specific and it isn't there".
 """
 
 import numpy as np
@@ -216,14 +236,14 @@ def add_pseudo_cl(
     bins,
     ell_eff,
     cl_ee,
-    cl_bb,
-    cl_eb,
+    cl_bb=None,
+    cl_eb=None,
     *,
     window_ells,
     window_weights,
     grid="reporting",
 ):
-    """Add pseudo-Cℓ (EE, BB, EB) with a shared bandpower window.
+    """Add pseudo-Cℓ EE (required) plus whichever of BB/EB were computed.
 
     Parameters
     ----------
@@ -233,14 +253,19 @@ def add_pseudo_cl(
         Source bin pair ``(i, j)``.
     ell_eff : array_like
         Effective multipole of each bandpower.
-    cl_ee, cl_bb, cl_eb : array_like
-        EE, BB and EB bandpowers at ``ell_eff``.
+    cl_ee : array_like
+        EE bandpowers at ``ell_eff``.
+    cl_bb, cl_eb : array_like, optional
+        BB and/or EB bandpowers at ``ell_eff``. Each defaults to ``None`` and
+        is then simply not written — EB in particular is often not computed
+        at all.
     window_ells : array_like
         Multipoles spanned by the bandpower window matrix (shape ``(nell,)``).
     window_weights : array_like
         Window matrix ``W`` of shape ``(nell, nbp)`` — one column per
         bandpower — from NaMaster ``get_bandpower_windows``. One
-        ``sacc.BandpowerWindow`` is built and shared across EE/BB/EB.
+        ``sacc.BandpowerWindow`` is built and shared across every component
+        written.
     grid : str, optional
         Stored as the ``grid`` tag on every point (default ``'reporting'``),
         joining ``merge``'s ℓ-consistency group; variant ℓ binnings belong
@@ -251,7 +276,11 @@ def add_pseudo_cl(
     window = sacc.BandpowerWindow(np.asarray(window_ells), np.asarray(window_weights))
     # add_ell_cl accepts no extra tags, so inline its per-point insertion
     # (ell + shared window + window_ind column index) plus the grid tag.
-    for dtype, cl in ((CL_EE, cl_ee), (CL_BB, cl_bb), (CL_EB, cl_eb)):
+    components = [(CL_EE, cl_ee)]
+    components += [
+        (dtype, cl) for dtype, cl in ((CL_BB, cl_bb), (CL_EB, cl_eb)) if cl is not None
+    ]
+    for dtype, cl in components:
         for n, (ell, value) in enumerate(zip(ell_eff, cl)):
             s.add_data_point(
                 dtype,
@@ -264,8 +293,8 @@ def add_pseudo_cl(
             )
 
 
-def add_cosebis(s, bins, En, Bn, scale_cut):
-    """Add COSEBIs (all Eₙ then all Bₙ) for one scale cut.
+def add_cosebis(s, bins, En, scale_cut, Bn=None):
+    """Add COSEBIs Eₙ (required) and Bₙ (optional) for one scale cut.
 
     Parameters
     ----------
@@ -273,17 +302,23 @@ def add_cosebis(s, bins, En, Bn, scale_cut):
         Target, mutated in place.
     bins : tuple of int
         Source bin pair ``(i, j)``.
-    En, Bn : array_like
-        E- and B-mode COSEBI amplitudes, one per logarithmic mode ``n``
-        (1-based). The ``[En; Bn]`` layout matches the COSEBI covariance.
+    En : array_like
+        E-mode COSEBI amplitudes, one per logarithmic mode ``n`` (1-based).
     scale_cut : tuple of float
         ``(theta_min, theta_max)`` in arcmin, stored on every point as the
         ``theta_min``/``theta_max`` tags; multiple cuts coexist in one file,
         told apart by these tags.
+    Bn : array_like, optional
+        B-mode COSEBI amplitudes at the same ``n``. Defaults to ``None`` and
+        is then simply not written. The ``[En; Bn]`` layout, when both are
+        present, matches the COSEBI covariance.
     """
     tracers = _pair(bins)
     theta_min, theta_max = scale_cut
-    for dtype, modes in ((COSEBI_EE, En), (COSEBI_BB, Bn)):
+    components = [(COSEBI_EE, En)]
+    if Bn is not None:
+        components.append((COSEBI_BB, Bn))
+    for dtype, modes in components:
         for n, value in enumerate(modes, start=1):
             s.add_data_point(
                 dtype,
@@ -296,13 +331,23 @@ def add_cosebis(s, bins, En, Bn, scale_cut):
 
 
 def add_pure_eb(
-    s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb, *, grid="reporting"
+    s,
+    bins,
+    theta,
+    xip_E,
+    xim_E,
+    xip_B=None,
+    xim_B=None,
+    xip_amb=None,
+    xim_amb=None,
+    *,
+    grid="reporting",
 ):
-    """Add pure E/B-mode correlation functions for one tracer pair.
+    """Add pure E-mode (required) plus whichever of B/ambiguous were computed.
 
-    Six blocks are inserted in ``PURE_KEYS`` order (xip_E, xim_E, xip_B,
-    xim_B, xip_amb, xim_amb), matching ``b_modes._EB_KEYS`` and the pure-EB
-    covariance layout.
+    Blocks are inserted in ``PURE_KEYS`` order (xip_E, xim_E, xip_B, xim_B,
+    xip_amb, xim_amb), matching ``b_modes._EB_KEYS`` and the pure-EB
+    covariance layout — whichever subset is present.
 
     Parameters
     ----------
@@ -311,18 +356,43 @@ def add_pure_eb(
     bins : tuple of int
         Source bin pair ``(i, j)``.
     theta : array_like
-        Angular separations (arcmin), shared by all six blocks.
-    xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb : array_like
-        The six pure E/B / ambiguous mode arrays at ``theta``.
+        Angular separations (arcmin), shared by every block written.
+    xip_E, xim_E : array_like
+        The pure E-mode correlation functions at ``theta``.
+    xip_B, xim_B : array_like, optional
+        The pure B-mode correlation functions. Both default to ``None``; the
+        pair is written together or not at all — supply both or neither.
+    xip_amb, xim_amb : array_like, optional
+        The ambiguous-mode correlation functions. Both default to ``None``;
+        same both-or-neither rule as B.
     grid : str, optional
         Stored as the ``grid`` tag on every point (default ``'reporting'``),
         joining ξ's theta-consistency group in ``merge``'s guard.
     """
     _check_ascending("theta", theta)
     tracers = _pair(bins)
-    arrays = (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb)
-    for dtype, arr in zip(PURE_TYPES.values(), arrays):
-        _add_theta_series(s, dtype, tracers, theta, arr, grid=grid)
+    pairs = {
+        "B": (xip_B, xim_B),
+        "amb": (xip_amb, xim_amb),
+    }
+    for label, (p, m) in pairs.items():
+        if (p is None) != (m is None):
+            raise ValueError(
+                f"add_pure_eb: xip_{label} and xim_{label} must both be "
+                "given or both omitted"
+            )
+    values = {
+        "xip_E": xip_E,
+        "xim_E": xim_E,
+        "xip_B": xip_B,
+        "xim_B": xim_B,
+        "xip_amb": xip_amb,
+        "xim_amb": xim_amb,
+    }
+    for key in PURE_KEYS:
+        arr = values[key]
+        if arr is not None:
+            _add_theta_series(s, PURE_TYPES[key], tracers, theta, arr, grid=grid)
 
 
 def add_rho(s, k, theta, rho_p, rho_m, *, grid="reporting"):
@@ -495,24 +565,29 @@ def get_xi(s, bins, *, grid):
 def get_pseudo_cl(s, bins):
     """Return ``(ell_eff, cl_ee, cl_bb, cl_eb, window)`` for one tracer pair.
 
-    ``window`` is the shared ``sacc.BandpowerWindow`` recovered via
-    ``get_bandpower_windows``; its columns are in the same insertion order as
-    the returned ``ell_eff``/``cl`` arrays, so window column ``j`` corresponds
-    to ``ell_eff[j]``.
+    ``cl_bb``/``cl_eb`` come back ``None`` if the file doesn't carry that
+    component (``add_pseudo_cl`` makes both optional). ``window`` is the
+    shared ``sacc.BandpowerWindow`` recovered via ``get_bandpower_windows``;
+    its columns are in the same insertion order as the returned
+    ``ell_eff``/``cl`` arrays, so window column ``j`` corresponds to
+    ``ell_eff[j]``.
     """
     tracers = _pair(bins)
     window = s.get_bandpower_windows(s.indices(CL_EE, tracers))
     return (
         _tag(s, CL_EE, tracers, "ell"),
         _mean(s, CL_EE, tracers),
-        _mean(s, CL_BB, tracers),
-        _mean(s, CL_EB, tracers),
+        _mean_optional(s, CL_BB, tracers),
+        _mean_optional(s, CL_EB, tracers),
         window,
     )
 
 
 def get_cosebis(s, bins, scale_cut=None):
     """Return ``(n, En, Bn)`` for one tracer pair.
+
+    ``Bn`` comes back ``None`` if the file doesn't carry it (``add_cosebis``
+    makes it optional).
 
     Parameters
     ----------
@@ -535,18 +610,26 @@ def get_cosebis(s, bins, scale_cut=None):
     return (
         modes.astype(int),
         _mean(s, COSEBI_EE, tracers, **tags),
-        _mean(s, COSEBI_BB, tracers, **tags),
+        _mean_optional(s, COSEBI_BB, tracers, **tags),
     )
 
 
 def get_pure_eb(s, bins):
-    """Return ``(theta, {key: array})`` for the six pure-EB blocks.
+    """Return ``(theta, {key: array})`` for whichever pure-EB blocks exist.
 
-    The dict is keyed by ``PURE_KEYS`` (xip_E, xim_E, …).
+    xip_E/xim_E are always present (``add_pure_eb`` requires them); the dict
+    holds whichever of the B and ambiguous-mode keys (out of ``PURE_KEYS``:
+    xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb) the file actually carries —
+    a key absent from the file is simply absent from the dict, not mapped to
+    ``None``.
     """
     tracers = _pair(bins)
     theta = _tag(s, PURE_TYPES["xip_E"], tracers, "theta")
-    arrays = {key: _mean(s, PURE_TYPES[key], tracers) for key in PURE_KEYS}
+    arrays = {}
+    for key in PURE_KEYS:
+        values = _mean_optional(s, PURE_TYPES[key], tracers)
+        if values is not None:
+            arrays[key] = values
     return theta, arrays
 
 
@@ -595,6 +678,19 @@ def _tag(s, data_type, tracers, tag, **tag_filters):
     """Values of ``tag`` for a selection, in insertion order."""
     idx = _indices(s, data_type, tracers, **tag_filters)
     return np.array([s.data[i].tags[tag] for i in idx])
+
+
+def _mean_optional(s, data_type, tracers, **tag_filters):
+    """Mean values for a selection, or ``None`` if the file has none.
+
+    Used by composite readers (``get_pseudo_cl``, ``get_cosebis``,
+    ``get_pure_eb``) for the components a writer made optional (BB/EB,
+    COSEBI Bₙ, pure B/ambiguous): absence is a legitimate "this file doesn't
+    have that piece", not a typo to fail loud on — unlike ``_mean``/
+    ``_indices``, used for selections that name a component explicitly.
+    """
+    idx = np.asarray(s.indices(data_type, tracers, **tag_filters), dtype=int)
+    return s.mean[idx] if len(idx) else None
 
 
 def extract(s, data_type=None, tracers=None, **tag_filters):
