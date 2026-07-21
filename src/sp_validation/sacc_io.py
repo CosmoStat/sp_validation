@@ -11,15 +11,16 @@
                 diagnostics, and the fine ξ± integration input for
                 COSEBIs / pure-EB (``grid='integration'`` tagged points). The
                 covariance is assembled block-diagonally from the
-                per-statistic covariances (zero cross-blocks): the analysis
-                blocks first, then a dense per-pair integration-ξ block (the
-                analytic integration-binning covariance when it exists — it
-                feeds derived-statistic error propagation — or the TreeCorr
-                ``varxip``/``varxim`` diagonal as degraded fallback). At the
-                production integration binning (1000 θ bins) a dense block is
-                ~32 MB per pair; extreme convergence-check grids (10k bins)
-                degrade to the diagonal fallback rather than forking the
-                layout.
+                per-statistic covariances (zero cross-blocks, never
+                materialized): the analysis blocks first, then a dense
+                per-pair integration-ξ block (the analytic integration-binning
+                covariance when it exists — it feeds derived-statistic error
+                propagation — or the TreeCorr ``varxip``/``varxim`` diagonal as
+                degraded fallback). ``assemble_covariance`` hands sacc a list
+                of blocks, which stores a ``BlockDiagonalCovariance`` (one
+                FITS table per block, Σ block² on disk rather than a dense
+                N²) — cost scales with the integration grid's size, a
+                parameter set by the caller, not baked into the layout.
 
               Insertion order is load-bearing. A Sacc is a flat list of data
               points in the order ``add_data_point`` was called, and row/column
@@ -49,6 +50,26 @@
               the covariance was built in. Converters that need a type-major
               layout (e.g. the DES 2pt-FITS convention) permute explicitly via
               ``s.indices`` rather than assuming global order.
+
+Optionality: a file's contents are flexible about which components of
+              a statistic it actually has. ``add_pseudo_cl`` requires EE (the
+              bandpower window's reference series) but BB and EB are optional
+              — an analysis that never computed EB simply omits it.
+              ``add_cosebis`` requires Eₙ but Bₙ is optional. ``add_pure_eb``
+              requires xip_E/xim_E but the B and ambiguous-mode blocks are
+              each optional, independently (B and amb are unrelated
+              computations). Everything else a writer takes — θ/ℓ grids,
+              tracer/bin identifiers, the value array for a component you ARE
+              adding — is structurally necessary and has no default;
+              supplying it partially would desynchronise the covariance
+              layout, so it is refused rather than degraded. Readers mirror
+              this split: a composite reader (``get_pseudo_cl``,
+              ``get_cosebis``, ``get_pure_eb``) returns ``None`` (or omits the
+              key) for a component the file doesn't carry, but a selection
+              naming that component explicitly (``s.indices``, ``_mean``,
+              ``extract``) still fails loud on no match — silence is reserved
+              for "this file doesn't have that optional piece", never for
+              "you asked for something specific and it isn't there".
 """
 
 import numpy as np
@@ -156,10 +177,10 @@ def _check_ascending(name, values):
         )
 
 
-def _add_theta_series(s, dtype, tracers, theta, values):
+def _add_theta_series(s, dtype, tracers, theta, values, **tags):
     """Insert one theta-tagged series, one point per (theta, value) pair."""
     for th, value in zip(theta, values):
-        s.add_data_point(dtype, tracers, float(value), theta=float(th))
+        s.add_data_point(dtype, tracers, float(value), theta=float(th), **tags)
 
 
 def add_xi(
@@ -215,13 +236,14 @@ def add_pseudo_cl(
     bins,
     ell_eff,
     cl_ee,
-    cl_bb,
-    cl_eb,
+    cl_bb=None,
+    cl_eb=None,
     *,
     window_ells,
     window_weights,
+    grid="reporting",
 ):
-    """Add pseudo-Cℓ (EE, BB, EB) with a shared bandpower window.
+    """Add pseudo-Cℓ EE (required) plus whichever of BB/EB were computed.
 
     Parameters
     ----------
@@ -231,26 +253,48 @@ def add_pseudo_cl(
         Source bin pair ``(i, j)``.
     ell_eff : array_like
         Effective multipole of each bandpower.
-    cl_ee, cl_bb, cl_eb : array_like
-        EE, BB and EB bandpowers at ``ell_eff``.
+    cl_ee : array_like
+        EE bandpowers at ``ell_eff``.
+    cl_bb, cl_eb : array_like, optional
+        BB and/or EB bandpowers at ``ell_eff``. Each defaults to ``None`` and
+        is then simply not written — EB in particular is often not computed
+        at all.
     window_ells : array_like
         Multipoles spanned by the bandpower window matrix (shape ``(nell,)``).
     window_weights : array_like
         Window matrix ``W`` of shape ``(nell, nbp)`` — one column per
         bandpower — from NaMaster ``get_bandpower_windows``. One
-        ``sacc.BandpowerWindow`` is built and shared across EE/BB/EB.
+        ``sacc.BandpowerWindow`` is built and shared across every component
+        written.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ``merge``'s ℓ-consistency group; variant ℓ binnings belong
+        under different tag values.
     """
     _check_ascending("ell_eff", ell_eff)
     tracers = _pair(bins)
     window = sacc.BandpowerWindow(np.asarray(window_ells), np.asarray(window_weights))
-    for dtype, cl in ((CL_EE, cl_ee), (CL_BB, cl_bb), (CL_EB, cl_eb)):
-        s.add_ell_cl(
-            dtype, *tracers, np.asarray(ell_eff), np.asarray(cl), window=window
-        )
+    # add_ell_cl accepts no extra tags, so inline its per-point insertion
+    # (ell + shared window + window_ind column index) plus the grid tag.
+    components = [(CL_EE, cl_ee)]
+    components += [
+        (dtype, cl) for dtype, cl in ((CL_BB, cl_bb), (CL_EB, cl_eb)) if cl is not None
+    ]
+    for dtype, cl in components:
+        for n, (ell, value) in enumerate(zip(ell_eff, cl)):
+            s.add_data_point(
+                dtype,
+                tracers,
+                float(value),
+                ell=float(ell),
+                window=window,
+                window_ind=n,
+                grid=grid,
+            )
 
 
-def add_cosebis(s, bins, En, Bn, scale_cut):
-    """Add COSEBIs (all Eₙ then all Bₙ) for one scale cut.
+def add_cosebis(s, bins, En, scale_cut, Bn=None):
+    """Add COSEBIs Eₙ (required) and Bₙ (optional) for one scale cut.
 
     Parameters
     ----------
@@ -258,17 +302,23 @@ def add_cosebis(s, bins, En, Bn, scale_cut):
         Target, mutated in place.
     bins : tuple of int
         Source bin pair ``(i, j)``.
-    En, Bn : array_like
-        E- and B-mode COSEBI amplitudes, one per logarithmic mode ``n``
-        (1-based). The ``[En; Bn]`` layout matches the COSEBI covariance.
+    En : array_like
+        E-mode COSEBI amplitudes, one per logarithmic mode ``n`` (1-based).
     scale_cut : tuple of float
         ``(theta_min, theta_max)`` in arcmin, stored on every point as the
         ``theta_min``/``theta_max`` tags; multiple cuts coexist in one file,
         told apart by these tags.
+    Bn : array_like, optional
+        B-mode COSEBI amplitudes at the same ``n``. Defaults to ``None`` and
+        is then simply not written. The ``[En; Bn]`` layout, when both are
+        present, matches the COSEBI covariance.
     """
     tracers = _pair(bins)
     theta_min, theta_max = scale_cut
-    for dtype, modes in ((COSEBI_EE, En), (COSEBI_BB, Bn)):
+    components = [(COSEBI_EE, En)]
+    if Bn is not None:
+        components.append((COSEBI_BB, Bn))
+    for dtype, modes in components:
         for n, value in enumerate(modes, start=1):
             s.add_data_point(
                 dtype,
@@ -280,12 +330,24 @@ def add_cosebis(s, bins, En, Bn, scale_cut):
             )
 
 
-def add_pure_eb(s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb):
-    """Add pure E/B-mode correlation functions for one tracer pair.
+def add_pure_eb(
+    s,
+    bins,
+    theta,
+    xip_E,
+    xim_E,
+    xip_B=None,
+    xim_B=None,
+    xip_amb=None,
+    xim_amb=None,
+    *,
+    grid="reporting",
+):
+    """Add pure E-mode (required) plus whichever of B/ambiguous were computed.
 
-    Six blocks are inserted in ``PURE_KEYS`` order (xip_E, xim_E, xip_B,
-    xim_B, xip_amb, xim_amb), matching ``b_modes._EB_KEYS`` and the pure-EB
-    covariance layout.
+    Blocks are inserted in ``PURE_KEYS`` order (xip_E, xim_E, xip_B, xim_B,
+    xip_amb, xim_amb), matching ``b_modes._EB_KEYS`` and the pure-EB
+    covariance layout — whichever subset is present.
 
     Parameters
     ----------
@@ -294,18 +356,46 @@ def add_pure_eb(s, bins, theta, xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb):
     bins : tuple of int
         Source bin pair ``(i, j)``.
     theta : array_like
-        Angular separations (arcmin), shared by all six blocks.
-    xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb : array_like
-        The six pure E/B / ambiguous mode arrays at ``theta``.
+        Angular separations (arcmin), shared by every block written.
+    xip_E, xim_E : array_like
+        The pure E-mode correlation functions at ``theta``.
+    xip_B, xim_B : array_like, optional
+        The pure B-mode correlation functions. Both default to ``None``; the
+        pair is written together or not at all — supply both or neither.
+    xip_amb, xim_amb : array_like, optional
+        The ambiguous-mode correlation functions. Both default to ``None``;
+        same both-or-neither rule as B.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ξ's theta-consistency group in ``merge``'s guard.
     """
     _check_ascending("theta", theta)
     tracers = _pair(bins)
-    arrays = (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb)
-    for dtype, arr in zip(PURE_TYPES.values(), arrays):
-        _add_theta_series(s, dtype, tracers, theta, arr)
+    pairs = {
+        "B": (xip_B, xim_B),
+        "amb": (xip_amb, xim_amb),
+    }
+    for label, (p, m) in pairs.items():
+        if (p is None) != (m is None):
+            raise ValueError(
+                f"add_pure_eb: xip_{label} and xim_{label} must both be "
+                "given or both omitted"
+            )
+    values = {
+        "xip_E": xip_E,
+        "xim_E": xim_E,
+        "xip_B": xip_B,
+        "xim_B": xim_B,
+        "xip_amb": xip_amb,
+        "xim_amb": xim_amb,
+    }
+    for key in PURE_KEYS:
+        arr = values[key]
+        if arr is not None:
+            _add_theta_series(s, PURE_TYPES[key], tracers, theta, arr, grid=grid)
 
 
-def add_rho(s, k, theta, rho_p, rho_m):
+def add_rho(s, k, theta, rho_p, rho_m, *, grid="reporting"):
     """Add a ρ_k PSF statistic (ρ+ then ρ−) on the ``psf_stars`` tracer.
 
     Parameters
@@ -318,14 +408,17 @@ def add_rho(s, k, theta, rho_p, rho_m):
         Angular separations (arcmin).
     rho_p, rho_m : array_like
         ρ_k+ and ρ_k− at ``theta``.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ξ's theta-consistency group in ``merge``'s guard.
     """
     _check_ascending("theta", theta)
     tracers = (PSF_TRACER, PSF_TRACER)
-    _add_theta_series(s, RHO_PLUS.format(k=k), tracers, theta, rho_p)
-    _add_theta_series(s, RHO_MINUS.format(k=k), tracers, theta, rho_m)
+    _add_theta_series(s, RHO_PLUS.format(k=k), tracers, theta, rho_p, grid=grid)
+    _add_theta_series(s, RHO_MINUS.format(k=k), tracers, theta, rho_m, grid=grid)
 
 
-def add_tau(s, bins, k, theta, tau_p, tau_m):
+def add_tau(s, bins, k, theta, tau_p, tau_m, *, grid="reporting"):
     """Add a τ_k PSF-leakage statistic (τ+ then τ−).
 
     Parameters
@@ -341,21 +434,27 @@ def add_tau(s, bins, k, theta, tau_p, tau_m):
         Angular separations (arcmin).
     tau_p, tau_m : array_like
         τ_k+ and τ_k− at ``theta``.
+    grid : str, optional
+        Stored as the ``grid`` tag on every point (default ``'reporting'``),
+        joining ξ's theta-consistency group in ``merge``'s guard.
     """
     _check_ascending("theta", theta)
     tracers = (source_name(bins[0]), PSF_TRACER)
-    _add_theta_series(s, TAU_PLUS.format(k=k), tracers, theta, tau_p)
-    _add_theta_series(s, TAU_MINUS.format(k=k), tracers, theta, tau_m)
+    _add_theta_series(s, TAU_PLUS.format(k=k), tracers, theta, tau_p, grid=grid)
+    _add_theta_series(s, TAU_MINUS.format(k=k), tracers, theta, tau_m, grid=grid)
 
 
 def assemble_covariance(s, blocks):
-    """Assemble a block-diagonal ``FullCovariance`` from per-statistic blocks.
+    """Assemble a ``BlockDiagonalCovariance`` from per-statistic blocks.
 
     Each block is validated against the current insertion order: its indices
     must be contiguous and ascending, the blocks must tile ``0…len(s.mean)``
     exactly (no gap, no overlap), and each block must be square with a size
     matching its index span. Any violation raises ``ValueError`` naming the
-    mismatch. Cross-blocks are left zero.
+    mismatch. Cross-blocks are zero and implicit — never materialized —
+    because the blocks are passed to ``add_covariance`` as a list, which
+    ``sacc.BaseCovariance.make`` turns into a ``BlockDiagonalCovariance``
+    (one FITS table per block, Σ block² on disk rather than a dense N² file).
 
     Parameters
     ----------
@@ -370,11 +469,11 @@ def assemble_covariance(s, blocks):
     Returns
     -------
     sacc.Sacc
-        ``s``, with the assembled ``FullCovariance`` attached.
+        ``s``, with the assembled ``BlockDiagonalCovariance`` attached.
     """
     items = blocks.items() if isinstance(blocks, dict) else blocks
     ntot = len(s.mean)
-    full = np.zeros((ntot, ntot))
+    ordered_blocks = []
     cursor = 0
     for selector, cov in items:
         idx = _resolve_indices(s, selector)
@@ -399,14 +498,14 @@ def assemble_covariance(s, blocks):
                 f"covariance block {selector!r} has size {cov.shape[0]} but "
                 f"spans {len(idx)} data points"
             )
-        full[np.ix_(idx, idx)] = cov
+        ordered_blocks.append(cov)
         cursor = idx[-1] + 1
     if cursor != ntot:
         raise ValueError(
             f"covariance blocks cover {cursor} of {ntot} data points — the "
             "blocks must tile the whole data vector"
         )
-    s.add_covariance(full)
+    s.add_covariance(ordered_blocks)
     return s
 
 
@@ -466,24 +565,29 @@ def get_xi(s, bins, *, grid):
 def get_pseudo_cl(s, bins):
     """Return ``(ell_eff, cl_ee, cl_bb, cl_eb, window)`` for one tracer pair.
 
-    ``window`` is the shared ``sacc.BandpowerWindow`` recovered via
-    ``get_bandpower_windows``; its columns are in the same insertion order as
-    the returned ``ell_eff``/``cl`` arrays, so window column ``j`` corresponds
-    to ``ell_eff[j]``.
+    ``cl_bb``/``cl_eb`` come back ``None`` if the file doesn't carry that
+    component (``add_pseudo_cl`` makes both optional). ``window`` is the
+    shared ``sacc.BandpowerWindow`` recovered via ``get_bandpower_windows``;
+    its columns are in the same insertion order as the returned
+    ``ell_eff``/``cl`` arrays, so window column ``j`` corresponds to
+    ``ell_eff[j]``.
     """
     tracers = _pair(bins)
     window = s.get_bandpower_windows(s.indices(CL_EE, tracers))
     return (
         _tag(s, CL_EE, tracers, "ell"),
         _mean(s, CL_EE, tracers),
-        _mean(s, CL_BB, tracers),
-        _mean(s, CL_EB, tracers),
+        _mean_optional(s, CL_BB, tracers),
+        _mean_optional(s, CL_EB, tracers),
         window,
     )
 
 
 def get_cosebis(s, bins, scale_cut=None):
     """Return ``(n, En, Bn)`` for one tracer pair.
+
+    ``Bn`` comes back ``None`` if the file doesn't carry it (``add_cosebis``
+    makes it optional).
 
     Parameters
     ----------
@@ -506,18 +610,26 @@ def get_cosebis(s, bins, scale_cut=None):
     return (
         modes.astype(int),
         _mean(s, COSEBI_EE, tracers, **tags),
-        _mean(s, COSEBI_BB, tracers, **tags),
+        _mean_optional(s, COSEBI_BB, tracers, **tags),
     )
 
 
 def get_pure_eb(s, bins):
-    """Return ``(theta, {key: array})`` for the six pure-EB blocks.
+    """Return ``(theta, {key: array})`` for whichever pure-EB blocks exist.
 
-    The dict is keyed by ``PURE_KEYS`` (xip_E, xim_E, …).
+    xip_E/xim_E are always present (``add_pure_eb`` requires them); the dict
+    holds whichever of the B and ambiguous-mode keys (out of ``PURE_KEYS``:
+    xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb) the file actually carries —
+    a key absent from the file is simply absent from the dict, not mapped to
+    ``None``.
     """
     tracers = _pair(bins)
     theta = _tag(s, PURE_TYPES["xip_E"], tracers, "theta")
-    arrays = {key: _mean(s, PURE_TYPES[key], tracers) for key in PURE_KEYS}
+    arrays = {}
+    for key in PURE_KEYS:
+        values = _mean_optional(s, PURE_TYPES[key], tracers)
+        if values is not None:
+            arrays[key] = values
     return theta, arrays
 
 
@@ -566,6 +678,19 @@ def _tag(s, data_type, tracers, tag, **tag_filters):
     """Values of ``tag`` for a selection, in insertion order."""
     idx = _indices(s, data_type, tracers, **tag_filters)
     return np.array([s.data[i].tags[tag] for i in idx])
+
+
+def _mean_optional(s, data_type, tracers, **tag_filters):
+    """Mean values for a selection, or ``None`` if the file has none.
+
+    Used by composite readers (``get_pseudo_cl``, ``get_cosebis``,
+    ``get_pure_eb``) for the components a writer made optional (BB/EB,
+    COSEBI Bₙ, pure B/ambiguous): absence is a legitimate "this file doesn't
+    have that piece", not a typo to fail loud on — unlike ``_mean``/
+    ``_indices``, used for selections that name a component explicitly.
+    """
+    idx = np.asarray(s.indices(data_type, tracers, **tag_filters), dtype=int)
+    return s.mean[idx] if len(idx) else None
 
 
 def extract(s, data_type=None, tracers=None, **tag_filters):
@@ -623,6 +748,18 @@ def merge(saccs):
     library's clash behaviour, which mangles clashing keys by appending
     labels.
 
+    Grid consistency follows tagging semantics: the ``grid`` tag declares
+    which binning a set of points lives on, so all same-length theta (or
+    ell) arrays under one tag value must be bitwise identical — sacc itself
+    never validates angles across data types/tracers, and a grid that
+    differs only at floating-point level chokes CosmoSIS downstream instead
+    of failing loud here. Different lengths within a tag group pass
+    (scale-cut subsets are legitimate); grids under different tag values
+    are unconstrained (``reporting`` vs ``integration`` differ by design);
+    θ and ℓ are separate domains, each checked against itself only. ℓ
+    series sharing a bitwise-equal grid must also share the bandpower
+    window (series without windows skip that check).
+
     Parameters
     ----------
     saccs : sequence of sacc.Sacc
@@ -633,6 +770,14 @@ def merge(saccs):
     -------
     sacc.Sacc
         The merged data set.
+
+    Raises
+    ------
+    ValueError
+        If metadata conflicts, a shared tracer differs across inputs, two
+        same-length theta or ell arrays under the same ``grid`` tag value
+        are not bitwise identical, or two ℓ series sharing a grid carry
+        different bandpower windows.
     """
     saccs = list(saccs)
     metadata = {}
@@ -670,7 +815,76 @@ def merge(saccs):
     merged = sacc.concatenate_data_sets(*stripped, same_tracers=same_tracers)
     for key, value in metadata.items():
         merged.metadata[key] = value
+    _check_grid_consistency(merged, "theta")
+    _check_grid_consistency(merged, "ell")
     return merged
+
+
+def _grid_groups(s, angle):
+    """Nested map ``grid-tag-value -> (data_type, tracers) -> point indices``.
+
+    One entry per ``(data_type, tracers)`` series carrying an ``angle``
+    (``'theta'`` or ``'ell'``) tag, in each series' own insertion order
+    (never re-sorted), nested under the ``grid`` tag value it lives on
+    (``None`` for untagged series) — the shape ``merge``'s consistency
+    guard checks within each tag value. Indices (not angle values) are
+    kept so the ℓ check can also recover each series' bandpower window.
+    """
+    groups = {}
+    for i, point in enumerate(s.data):
+        if angle in point.tags:
+            groups.setdefault(point.tags.get("grid"), {}).setdefault(
+                (point.data_type, point.tracers), []
+            ).append(i)
+    return groups
+
+
+def _check_grid_consistency(s, angle):
+    """Raise unless same-length ``angle`` arrays under one ``grid`` tag match.
+
+    Consistency follows tagging semantics: the ``grid`` tag declares which
+    binning a series lives on, so all same-length theta (or ell) arrays
+    sharing a tag value must be bitwise identical — sacc never validates
+    angles across data types/tracers, and a grid diverging at
+    floating-point level chokes CosmoSIS downstream instead of failing
+    loud here. Different lengths within a tag value pass (scale-cut
+    subsets are legitimate); series under different tag values are
+    unconstrained (``reporting`` vs ``integration`` differ by design).
+    θ and ℓ are separate domains, each checked against itself only. For
+    ℓ, two series on a bitwise-equal grid must also share the bandpower
+    window (equal window ells and weight matrix); series without windows
+    (foreign files) skip the window check.
+    """
+    for tag, by_series in _grid_groups(s, angle).items():
+        series = [
+            (key, np.array([s.data[i].tags[angle] for i in idx]), idx)
+            for key, idx in by_series.items()
+        ]
+        for i, (key_a, arr_a, idx_a) in enumerate(series):
+            for key_b, arr_b, idx_b in series[i + 1 :]:
+                if len(arr_a) != len(arr_b):
+                    continue
+                if not np.array_equal(arr_a, arr_b):
+                    max_diff = np.max(np.abs(arr_a - arr_b))
+                    raise ValueError(
+                        f"{angle} grids under the same grid tag ({tag!r}) "
+                        f"differ; harmonize upstream — groups {key_a!r} and "
+                        f"{key_b!r} (max abs diff {max_diff:.3e})"
+                    )
+                if angle != "ell" or any(
+                    "window" not in s.data[idx[0]].tags for idx in (idx_a, idx_b)
+                ):
+                    continue
+                win_a, win_b = map(s.get_bandpower_windows, (idx_a, idx_b))
+                if not (
+                    np.array_equal(win_a.values, win_b.values)
+                    and np.array_equal(win_a.weight, win_b.weight)
+                ):
+                    raise ValueError(
+                        f"bandpower windows differ between series sharing an "
+                        f"ell grid under grid tag {tag!r}; harmonize upstream "
+                        f"— groups {key_a!r} and {key_b!r}"
+                    )
 
 
 def update_statistic(s, sub):
