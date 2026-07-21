@@ -169,6 +169,16 @@ def cv_xi_reporting_sacc(version):
     )
 
 
+def cv_xi_integration_sacc(version):
+    """Integration-grid ξ± SACC part the xi_highres rule (run_2pcf_highres.py) writes.
+
+    A per-statistic part (grid='integration', its own DiagonalCovariance from
+    TreeCorr varxip/varxim), not a terminal file: assemble_sacc folds its rows
+    into {version}.sacc. The name matches xi_highres's fiducial-keyed output.
+    """
+    return str(COSMO_VAL / f"{version}_xi_integration.sacc")
+
+
 def cv_analysis_sacc(version):
     """Terminal assembled analysis file {version}.sacc."""
     return str(COSMO_VAL / f"{version}.sacc")
@@ -442,9 +452,11 @@ rule cv_summarize_bmodes:
 # ---------------------------------------------------------------------------
 # Terminal analysis file: assemble the per-statistic SACC parts into {version}.sacc
 # ---------------------------------------------------------------------------
-# The five born-as-SACC parts (xi_reporting, pseudo_cl, cosebis, pure_eb, rho_tau)
-# are each written by their own rule carrying its own covariance block, except
-# ξ± reporting and pseudo-Cℓ which are born cov-less by design. assemble_sacc.py
+# The born-as-SACC parts (xi_reporting, xi_integration, pseudo_cl, cosebis,
+# pure_eb, rho_tau) are each written by their own rule carrying its own covariance
+# block, except ξ± reporting and pseudo-Cℓ which are born cov-less by design. The
+# integration-grid ξ± is fiducial-only, so it joins the fiducial version's file
+# alone (see cv_assemble_inputs). assemble_sacc.py
 # loads the parts in canonical order and rebuilds one {version}.sacc with a
 # single FullCovariance (point-insertion order = block order).
 #
@@ -476,6 +488,12 @@ def cv_assemble_inputs(version):
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
     )
+    # The integration-grid ξ± is a fiducial-only product (the 10k-bin MPI run in
+    # xi_highres emits only {fiducial}_xi_integration.sacc), so it folds into the
+    # fiducial version's terminal file alone; other versions' {version}.sacc omit
+    # the integration rows rather than trigger a job with no output to bind.
+    if version == config["fiducial"]["version"]:
+        parts["xi_integration"] = cv_xi_integration_sacc(version)
     if CV.get("include_pseudo_cl", False):
         parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
         parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
@@ -490,6 +508,11 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
+        # Run type (data|mock) gates unblinded loading in assemble_sacc.py: a
+        # 'data' run fails closed on unblinded parts, a 'mock' run loads freely.
+        # Production runs on real catalogues, so the default is 'data'. PR #253's
+        # blind-at-birth conceals each data part, letting the 'data' run assemble.
+        type=CV.get("type", "data"),
         # Statistics this rule wired (same toggles as cv_assemble_inputs). The
         # script validates part_paths against this so a typo'd input keyword
         # can't silently drop a statistic from the terminal file.

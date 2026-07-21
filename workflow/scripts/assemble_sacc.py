@@ -6,7 +6,8 @@ the same assembly runs from explicit flags (the lightcone/ASTRA path).
 
 Each per-statistic ``*.sacc`` *part* (written born-as-SACC by the mixins and the
 run_2pcf / generate_pseudo_cl scripts) holds one statistic. The assembler loads
-them in canonical order — ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ — and
+them in canonical order — ξ± reporting, ξ± integration, pseudo-Cℓ, COSEBIs,
+pure-E/B, ρ/τ — and
 calls :func:`sacc_writers.assemble_analysis_sacc`, which rebuilds one Sacc with a
 single block-diagonal ``FullCovariance`` (point-insertion order = block order,
 validated by ``sacc_io.assemble_covariance``).
@@ -14,9 +15,10 @@ validated by ``sacc_io.assemble_covariance``).
 Covariance sourcing (the part-by-part decision)
 -----------------------------------------------
 ``assemble_analysis_sacc`` REQUIRES every part to carry its own covariance block.
-The COSEBIs, pure-E/B and ρ/τ parts already do (their writers attach it). The
-ξ± reporting and pseudo-Cℓ parts are born cov-less by design; this script injects
-their blocks before assembly:
+The ξ± integration, COSEBIs, pure-E/B and ρ/τ parts already do (their writers
+attach it — ξ± integration a ``DiagonalCovariance`` from TreeCorr varxip/varxim).
+The ξ± reporting and pseudo-Cℓ parts are born cov-less by design; this script
+injects their blocks before assembly:
 
 * **ξ± reporting** — the CosmoCov theory covariance ``.txt`` (``--xi-cov``). For the
   single-bin round it is already ``[ξ+; ξ−]``-ordered (CosmoCov / covdat_to_fits:
@@ -50,8 +52,17 @@ _CL_HDU = {"EE": "COVAR_EE_EE", "BB": "COVAR_BB_BB", "EB": "COVAR_EB_EB"}
 _CL_ORDER = ("EE", "BB", "EB")
 
 # Canonical part order — the order assemble_analysis_sacc inserts points in, which
-# must match the covariance block order. Missing parts are simply skipped.
-CANONICAL = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
+# must match the covariance block order. Missing parts are simply skipped. The
+# integration-grid ξ± part (grid='integration', its own DiagonalCovariance) sits
+# next to the reporting ξ±: both are ξ± sections distinguished only by grid tag.
+CANONICAL = (
+    "xi_reporting",
+    "xi_integration",
+    "pseudo_cl",
+    "cosebis",
+    "pure_eb",
+    "rho_tau",
+)
 
 
 def _pseudo_cl_cov_block(cov_fits, hdu):
@@ -78,8 +89,8 @@ def _pseudo_cl_cov_block(cov_fits, hdu):
 def _attach_cov(part, name, xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholder_var):
     """Ensure ``part`` carries a covariance, injecting the xi/pseudo-Cℓ block.
 
-    ``part`` is mutated in place. cosebis/pure_eb/rho_tau parts already carry
-    their covariance and pass straight through. Raises loudly if a required xi /
+    ``part`` is mutated in place. xi_integration/cosebis/pure_eb/rho_tau parts
+    already carry their covariance and pass straight through. Raises loudly if a required xi /
     pseudo-Cℓ block is missing and no placeholder was requested.
     """
     if part.covariance is not None:
@@ -112,6 +123,7 @@ def assemble_sacc(
     pseudo_cl_cov=None,
     pseudo_cl_cov_hdu="COVAR_FULL",
     placeholder_var=None,
+    allow_unblinded=False,
 ):
     """Assemble ``{version}.sacc`` from the per-statistic ``part_paths`` mapping.
 
@@ -132,6 +144,10 @@ def assemble_sacc(
         rejected too (catches a typo in the expected list itself).
     xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholder_var
         Covariance sourcing — see the module docstring.
+    allow_unblinded : bool, optional
+        Passed to :func:`sacc_io.load` for every part. Default ``False`` fails
+        closed on unblinded real data; the caller sets it ``True`` only for mock
+        runs. See the load loop for the PR #253 blind-at-birth seam.
     """
     if expected is not None:
         unknown = [name for name in expected if name not in CANONICAL]
@@ -153,10 +169,12 @@ def assemble_sacc(
         path = part_paths.get(name)
         if path is None:
             continue
-        # Assembly runs pre-blind on unblinded real-data parts (Smokescreen
-        # conceals the assembled analysis file downstream), so the fail-closed
-        # load is told this is a legitimate pre-blind consumer.
-        part = sacc_io.load(path, allow_unblinded=True)
+        # Fail closed on real data by default: a data-type part loads only when
+        # it already carries the concealed=True blinding stamp. allow_unblinded
+        # is set True only for mock runs (see the caller). This is the seam for
+        # PR #253's blind-at-birth: once each part is concealed at write time, a
+        # data run assembles with allow_unblinded=False untouched.
+        part = sacc_io.load(path, allow_unblinded=allow_unblinded)
         if nz is None:
             # The nz tracers + metadata are identical across parts (same version);
             # take them from the first loaded part for the assembled file.
@@ -198,6 +216,9 @@ def _from_snakemake(smk):
     # typo in an input keyword drops the part from part_paths above, so validate
     # against this expected list rather than trusting the hasattr filter.
     expected = list(p["expected"])
+    # Fail closed on real data: only a mock run may read unblinded parts. The
+    # run type comes from config (default 'data' — the production catalogues).
+    run_type = p.get("type", "data")
     assemble_sacc(
         version=p["version"],
         part_paths=part_paths,
@@ -207,6 +228,7 @@ def _from_snakemake(smk):
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
         pseudo_cl_cov_hdu=p.get("pseudo_cl_cov_hdu", "COVAR_FULL"),
         placeholder_var=p.get("placeholder_var", None),
+        allow_unblinded=(run_type == "mock"),
     )
 
 
@@ -216,6 +238,13 @@ def _from_cli(argv=None):
     )
     ap.add_argument("--version", required=True, help="Catalogue version")
     ap.add_argument("--out", required=True, help="Output {version}.sacc path")
+    ap.add_argument(
+        "--type",
+        choices=("data", "mock"),
+        default="data",
+        help="Run type. 'mock' reads parts freely; 'data' fails closed on "
+        "unblinded parts (only concealed/blinded parts load).",
+    )
     for name in CANONICAL:
         ap.add_argument(
             f"--{name.replace('_', '-')}", default=None, help=f"{name} part"
@@ -248,6 +277,7 @@ def _from_cli(argv=None):
         pseudo_cl_cov=a.pseudo_cl_cov,
         pseudo_cl_cov_hdu=a.pseudo_cl_cov_hdu,
         placeholder_var=a.allow_placeholder,
+        allow_unblinded=(a.type == "mock"),
     )
 
 
