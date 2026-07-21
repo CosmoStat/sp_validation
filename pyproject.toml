@@ -80,9 +80,9 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
-    # SACC (LSST DESC's data-vector container) is the standard format for all
-    # data products from the tomographic round on (PRD #241); sp_validation.sacc_io
-    # is core library code, so sacc is a core dependency.
+    # sp_validation.sacc_io (assembled on this branch) uses concatenate_data_sets
+    # and BlockDiagonalCovariance, both from sacc's 2.x rewrite; the lock already
+    # resolves to 2.4, this just makes the floor honest.
     "sacc>=2.4,<3",
     # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
     # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to

@@ -15,8 +15,8 @@ orchestration:
 The measurement itself is unchanged — ``CosmologyValidation.calculate_2pcf``
 does the TreeCorr work and writes the ``.txt`` dump (a raw byproduct the
 covariance machinery reads back). The analysis ξ± data product is then born as
-SACC here: ``{ver}_xi_coarse.sacc``, a *part* on the coarse grid via
-``xi_to_sacc(grid="coarse", ...)`` carrying ``theta_nom``/``npairs``/``weight``
+SACC here: ``{ver}_xi_reporting.sacc``, a *part* on the reporting grid via
+``xi_to_sacc(grid="reporting", ...)`` carrying ``theta_nom``/``npairs``/``weight``
 tags but NO covariance (the ξ block is supplied at assembly from the CosmoCov
 theory covariance). ``output_dir`` is passed explicitly (rather than via the
 ``COSMO_VAL`` env hook) so lc can point each run at its own ``{output}`` tree.
@@ -40,15 +40,15 @@ def run_2pcf(
     output_dir,
     sacc_out=None,
 ):
-    """Measure ξ±(θ) for ``ver`` and write its coarse SACC part.
+    """Measure ξ±(θ) for ``ver`` and write its reporting SACC part.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
     ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
-    expects. ``sacc_out`` is the exact destination for the coarse ξ± SACC part
-    (the Snakemake-declared output); it defaults to ``{ver}_xi_coarse.sacc``
+    expects. ``sacc_out`` is the exact destination for the reporting ξ± SACC part
+    (the Snakemake-declared output); it defaults to ``{ver}_xi_reporting.sacc``
     under the resolved output directory for the CLI path.
 
     Returns
@@ -69,7 +69,7 @@ def run_2pcf(
         nbins=nbins,
     )
 
-    # Born-as-SACC coarse ξ± part: no covariance here (added at assembly from
+    # Born-as-SACC reporting ξ± part: no covariance here (added at assembly from
     # the CosmoCov theory covariance). theta = meanr; theta_nom = rnom.
     s = xi_to_sacc(
         cv.sacc_nz(ver),
@@ -77,16 +77,16 @@ def run_2pcf(
         gg.meanr,
         gg.xip,
         gg.xim,
-        grid="coarse",
+        grid="reporting",
         theta_nom=gg.rnom,
         npairs=gg.npairs,
         weight=gg.weight,
     )
     out_path = sacc_out or os.path.join(
-        output_dir or cv.cc["paths"]["output"], f"{ver}_xi_coarse.sacc"
+        output_dir or cv.cc["paths"]["output"], f"{ver}_xi_reporting.sacc"
     )
-    sacc_io.save(s, out_path, type=cv.sacc_type)
-    print(f"Wrote coarse ξ± SACC part: {out_path}")
+    sacc_io.save(s, out_path, type="data")
+    print(f"Wrote reporting ξ± SACC part: {out_path}")
     return gg
 
 
@@ -106,7 +106,7 @@ def _from_snakemake(smk):
         output_dir=p.get("output_dir", None),
         # Write the SACC part exactly where the rule declares it (the .txt
         # byproduct still lands under the resolved output dir via _output_path).
-        sacc_out=smk.output["xi_coarse"],
+        sacc_out=smk.output["xi_reporting"],
     )
 
 

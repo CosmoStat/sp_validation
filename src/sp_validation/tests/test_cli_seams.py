@@ -45,7 +45,7 @@ def test_run_xi_sweep_run_2pcf_call_binds():
         ver="V",
         cat_config="/cfg.yaml",
         output_dir="/out",
-        sacc_out="/out/V_xi_coarse_reporting.sacc",
+        sacc_out="/out/V_xi_reporting_reporting.sacc",
         min_sep=1.0,
         max_sep=250.0,
         nbins=20,

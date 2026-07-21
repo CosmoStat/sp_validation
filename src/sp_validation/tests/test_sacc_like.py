@@ -407,7 +407,7 @@ def test_theta_conversion_scoped_to_real_types(tmp_path, m_shim):
     sacc_io.add_xi(
         s, (0, 0), theta, np.ones(N_ANG) * 1e-4, np.ones(N_ANG) * 1e-4, grid="reporting"
     )
-    sacc_io.add_cosebis(s, (0, 0), En, Bn, scale_cut=(1.0, 250.0))
+    sacc_io.add_cosebis(s, (0, 0), En, (1.0, 250.0), Bn=Bn)
     s.add_covariance(np.eye(len(s.mean)))
 
     sacc_path = str(tmp_path / "with_cosebis.sacc")

@@ -118,9 +118,14 @@ class Mask:
     label : str
         mask label
     kind : str
-        operation type; see :func:`apply_condition` for the allowed values
+        operation type; see :func:`apply_condition` for the allowed values,
+        plus "not_equal_2bands", which keeps objects whose value differs
+        from ``value`` in ``col_name`` *or* ``col_name2`` (two-band OR)
     value : float or list
         value(s) to be used in mask operation
+    col_name2 : str, optional
+        name of second column; required for (and only used by) kind
+        "not_equal_2bands"
     dat : numpy.ndarray, optional
         input data, default is `None`; apply mask if given
     verbose : bool, optional
@@ -128,12 +133,24 @@ class Mask:
 
     """
 
-    def __init__(self, col_name, label, kind=None, value=0, dat=None, verbose=False):
+    def __init__(
+        self,
+        col_name,
+        label,
+        kind=None,
+        value=0,
+        col_name2=None,
+        dat=None,
+        verbose=False,
+    ):
 
         self._col_name = col_name
         self._label = label
         self._value = value
         self._kind = kind
+        if kind == "not_equal_2bands" and col_name2 is None:
+            raise ValueError("kind 'not_equal_2bands' requires col_name2")
+        self._col_name2 = col_name2
         self._num_ok = None
         self._verbose = verbose
 
@@ -164,7 +181,12 @@ class Mask:
 
     def apply(self, dat):
 
-        self._mask = apply_condition(dat[self._col_name], self._kind, self._value)
+        if self._kind == "not_equal_2bands":
+            self._mask = apply_condition(
+                dat[self._col_name], "not_equal", self._value
+            ) | apply_condition(dat[self._col_name2], "not_equal", self._value)
+        else:
+            self._mask = apply_condition(dat[self._col_name], self._kind, self._value)
 
     def to_bool(self, hsp_mask):
 
@@ -226,6 +248,12 @@ class Mask:
         if sign is not None:
             print(f"{name} {sign} {self._value}", file=f_out)
 
+        if self._kind == "not_equal_2bands":
+            print(
+                f"{name} != {self._value} or {self._col_name2} != {self._value}",
+                file=f_out,
+            )
+
         if self._kind == "range":
             print(f"{self._value[0]} {sign} {name} {sign} {self._value[1]}", file=f_out)
 
@@ -249,6 +277,8 @@ class Mask:
             descr = f"{sign}{self._value}"
         if self._kind == "range":
             descr = f"{self._value[0]}<={self._col_name}<={self._value[1]}"
+        if self._kind == "not_equal_2bands":
+            descr = f"!={self._value} in {self._col_name} or {self._col_name2}"
         self._descr = descr
 
         # Create description for FITS header

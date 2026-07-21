@@ -33,7 +33,7 @@ GLASS_MOCK_FITS_PATTERN = str(
 )
 GLASS_MOCK_CONFIG_PATTERN = str(
     COSMO_INFERENCE_PROD
-    / f"cosmosis_config/output/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
+    / f"cosmosis_config/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
 # Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps

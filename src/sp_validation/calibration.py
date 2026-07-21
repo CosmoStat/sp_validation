@@ -56,7 +56,7 @@ def get_calibrated_quantities(gal_metacal):
     return g_corr, g_uncorr, w, mask
 
 
-def get_calibrated_m_c(gal_metacal, additive_correction=True):
+def get_calibrated_m_c(gal_metacal):
     """Get Calibrated C.
 
     Return catalogue quantities for objects calibrated for multiplicative and
@@ -66,11 +66,6 @@ def get_calibrated_m_c(gal_metacal, additive_correction=True):
     ----------
     gal_metacal : dict
         galaxy metacalibration catalogue
-    additive_correction : bool, optional, default=True
-        if False, do not subtract the additive bias c from the shear
-        estimates; use for constant-shear image sims, where the mean
-        shear is the signal (see issue #226). c and c_err are still
-        computed and returned
 
     Returns
     -------
@@ -104,11 +99,10 @@ def get_calibrated_m_c(gal_metacal, additive_correction=True):
         c_err[comp] = np.std(g_uncorr[comp])
 
     # Shear estimate corrected for additive bias
-    g_corr_mc = np.copy(g_corr)
-    if additive_correction:
-        c_corr = np.linalg.inv(gal_metacal.R).dot(c)
-        for comp in (0, 1):
-            g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
+    g_corr_mc = np.zeros_like(g_corr)
+    c_corr = np.linalg.inv(gal_metacal.R).dot(c)
+    for comp in (0, 1):
+        g_corr_mc[comp] = g_corr[comp] - c_corr[comp]
 
     return g_corr_mc, g_uncorr, w, mask_metacal, c, c_err
 

@@ -74,13 +74,13 @@ def _from_cli(argv=None):
         for grid in a.grids:
             # The sweep consumes only the .txt dump (cosebis_version_comparison
             # reconstructs it by binning). run_2pcf is born-as-SACC, so give its
-            # coarse part a grid-qualified name — the default {ver}_xi_coarse.sacc
+            # reporting part a grid-qualified name — the default {ver}_xi_reporting.sacc
             # carries no binning, so the two grids per version would collide.
             run_2pcf(
                 ver=ver,
                 cat_config=a.cat_config,
                 output_dir=a.out,
-                sacc_out=os.path.join(a.out, f"{ver}_xi_coarse_{grid}.sacc"),
+                sacc_out=os.path.join(a.out, f"{ver}_xi_reporting_{grid}.sacc"),
                 **GRIDS[grid],
             )
 

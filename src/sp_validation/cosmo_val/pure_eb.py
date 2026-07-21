@@ -29,7 +29,7 @@ class PureEBMixin:
         nbins=None,
         min_sep_int=0.08,
         max_sep_int=300,
-        nbins_int=100,
+        nbins_int=1000,
         npatch=256,
         var_method="jackknife",
         cov_path_int=None,
@@ -59,7 +59,7 @@ class PureEBMixin:
         max_sep_int : float, optional
             Maximum separation for the integration binning. Defaults to 300.
         nbins_int : int, optional
-            Number of bins for the integration binning. Defaults to 100.
+            Number of bins for the integration binning. Defaults to 1000.
         npatch : int, optional
             Number of patches for the jackknife or bootstrap resampling. Defaults to
             the value in self.npatch if not provided.
@@ -134,16 +134,23 @@ class PureEBMixin:
 
         return results
 
-    def pure_eb_to_sacc_part(self, version, out_path, results):
+    def pure_eb_to_sacc_part(self, version, out_path, results, eb_override=None):
         """Write the pure-E/B SACC part (six ``PURE_KEYS`` blocks + covariance).
 
         ``results`` is the dict ``calculate_pure_eb`` returned: the six pure-mode
         arrays under ``sacc_io.PURE_KEYS``, the ``"cov"`` block (in ``PURE_KEYS``
         order), and the reporting-grid TreeCorr object ``"gg"`` whose ``meanr``
         is the shared ``theta``.
+
+        ``eb_override`` is the consume-the-part plumbing: the six pure-mode arrays
+        (a mapping keyed by ``sacc_io.PURE_KEYS``) written in place of ``results``'
+        — re-derived from the reporting + integration ξ± SACC parts (the covariance
+        stays blind-invariant from the raw estimator ``results``). With ``None`` the
+        behaviour is unchanged.
         """
         theta = results["gg"].meanr
-        eb = {key: results[key] for key in sacc_io.PURE_KEYS}
+        source = eb_override if eb_override is not None else results
+        eb = {key: source[key] for key in sacc_io.PURE_KEYS}
         s = pure_eb_to_sacc(
             self.sacc_nz(version),
             self.sacc_metadata(version),
@@ -151,7 +158,7 @@ class PureEBMixin:
             eb,
             covariance=results["cov"],
         )
-        sacc_io.save(s, out_path, type=self.sacc_type)
+        sacc_io.save(s, out_path, type="data")
 
     def plot_pure_eb(
         self,
@@ -164,7 +171,7 @@ class PureEBMixin:
         nbins=None,
         min_sep_int=0.08,
         max_sep_int=300,
-        nbins_int=100,
+        nbins_int=1000,
         npatch=None,
         var_method="jackknife",
         cov_path_int=None,
@@ -196,7 +203,7 @@ class PureEBMixin:
             Binning parameters for reporting scale. Uses treecorr_config if None.
         min_sep_int, max_sep_int, nbins_int : float, float, int
             Binning parameters for integration scale
-            (default: 0.08-300 arcmin, 100 bins)
+            (default: 0.08-300 arcmin, 1000 bins)
         npatch : int, optional
             Number of patches for jackknife covariance. Uses self.npatch if None.
         var_method : str

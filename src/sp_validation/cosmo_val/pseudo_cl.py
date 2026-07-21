@@ -514,7 +514,11 @@ class PseudoClMixin:
     @staticmethod
     def _load_pseudo_cl_sacc(out_path):
         """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict consumers use."""
-        s = sacc_io.load(out_path)
+        # Pipeline-internal readback of a part this producer just wrote: the
+        # born-as-SACC parts are unblinded real-data measurements (blinding is a
+        # downstream Smokescreen step), so the fail-closed load must be told this
+        # is a legitimate pre-blind consumer.
+        s = sacc_io.load(out_path, allow_unblinded=True)
         ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
         return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}
 
@@ -704,7 +708,7 @@ class PseudoClMixin:
             cl_all,
             wsp,
         )
-        sacc_io.save(s, out_path, type=self.sacc_type)
+        sacc_io.save(s, out_path, type="data")
 
     def plot_pseudo_cl(self):
         """

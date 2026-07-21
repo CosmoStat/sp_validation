@@ -526,7 +526,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     cv.calculate_pseudo_cl_catalog(ver, out_path)
 
     assert os.path.exists(out_path)
-    s = sacc_io.load(out_path)
+    # The born-as-SACC part is unblinded type='data'; reading it back for the
+    # round-trip assertion is a pre-blind consumer.
+    s = sacc_io.load(out_path, allow_unblinded=True)
     ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
     # A shared BandpowerWindow rides the part per the SACC layout contract.
     assert window is not None
