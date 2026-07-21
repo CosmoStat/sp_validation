@@ -11,6 +11,7 @@ Options:
     -v, --version: Version name for the simulation (required).
     -t, --tomo: Whether to run the simulation in tomographic mode (default: False).
     -iw, --ignore-warnings: Ignore warnings during the simulation.
+    -s, --seed: Random seed for the simulations (default: 42).
     -n, --n_sims: Number of simulations to run (default: 100).
     -ns, --nside: Nside for the HEALPix maps (default: 1024).
     -b, --binning: Binning scheme for the power spectra (default: powspace).
@@ -19,6 +20,8 @@ Options:
     -p, --power: Power for the powspace binning (default: 0.5).
     -cc, --cosmo-config: Path to the cosmology configuration file (default: None, use Planck18 cosmology by default).
     -f, --force: Force overwrite of existing output files (default: False).
+    -seb, --save-eb: Save the EB power spectrum (default: False).
+    -sbb, --save-bb: Save the BB power spectrum (default: False).
 
 Author: Sacha Guerrini
 """
@@ -78,6 +81,13 @@ def get_parser():
         "--ignore-warnings",
         help="Ignore warnings during the simulation",
         action="store_true",
+    )
+    parser.add_argument(
+        "-s",
+        "--seed",
+        help="Random seed for the simulations (default: 42)",
+        type=int,
+        default=42,
     )
     parser.add_argument(
         "-n",
@@ -294,6 +304,12 @@ def prepare_workspace(n_gal, tomo_bin_ids, nside, b, b_lmax, out_dir, force_run)
         wsp.write_to(wsp_file)
 
 
+def get_legacy_seed(base_seed, sim_id):
+    """Derive a well-mixed, reproducible legacy seed for a given simulation index."""
+    ss = np.random.SeedSequence(entropy=base_seed, spawn_key=(sim_id,))
+    return int(ss.generate_state(1, dtype=np.uint32)[0])
+
+
 # --- Function to generate Gaussian simulation, add noise and extract the spectra ---
 def get_gaussian_simulation(
     nside,
@@ -391,13 +407,16 @@ def extract_spectra(noisy_gaussian_maps, n_gal, tomo_bin_ids, lmax, out_dir):
 
 
 # --- single unit of work distributed to the MPI processes ---
-def run_one_simulation(sim_id, nside, version, tomography, out_dir, force_run):
+def run_one_simulation(sim_id, nside, version, tomography, out_dir, force_run, seed):
     """Worker executes this simulation and saves results"""
     try:
-        out_file = f"{out_dir}/cl_sample_{sim_id}_{version}_tomography_{tomography}.npz"
+        out_file = f"{out_dir}/cl_sample_{sim_id}_{version}_tomography_{tomography}_seed_{seed}.npz"
         if os.path.exists(out_file) and not force_run:
             print(f"Rank {rank} skipping {sim_id} (already exists)")
             return
+
+        legacy_seed = get_legacy_seed(seed, sim_id)
+        np.random.seed(legacy_seed)
 
         print(f"Rank {rank} starting {sim_id}")
         setup_file = os.path.join(
@@ -554,6 +573,7 @@ if __name__ == "__main__":
 
     save_eb = args.save_eb
     save_bb = args.save_bb
+    seed = args.seed
 
     if rank == 0:
         # Check that the config file exists (same than cosmo_val)
@@ -662,7 +682,7 @@ if __name__ == "__main__":
         comm,
         n_sims,
         run_one_simulation,
-        worker_args=(nside, version, tomography, out_dir, force_run),
+        worker_args=(nside, version, tomography, out_dir, force_run, seed),
     )
 
     comm.Barrier()
