@@ -35,6 +35,7 @@ Submodules
    sp_validation.plots
    sp_validation.pseudo_cl
    sp_validation.rho_tau
+   sp_validation.sacc_io
    sp_validation.statistics
    sp_validation.survey
    sp_validation.version

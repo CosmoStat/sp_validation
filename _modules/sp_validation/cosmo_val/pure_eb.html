@@ -143,6 +143,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.plots.html">sp_validation.plots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.sacc_io.html">sp_validation.sacc_io</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.statistics.html">sp_validation.statistics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.survey.html">sp_validation.survey</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../sp_validation.version.html">sp_validation.version</a></li>
@@ -228,7 +229,7 @@
 </span><span id="line-27">        <span class="n">nbins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-28">        <span class="n">min_sep_int</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span>
 </span><span id="line-29">        <span class="n">max_sep_int</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
-</span><span id="line-30">        <span class="n">nbins_int</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+</span><span id="line-30">        <span class="n">nbins_int</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
 </span><span id="line-31">        <span class="n">npatch</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
 </span><span id="line-32">        <span class="n">var_method</span><span class="o">=</span><span class="s2">&quot;jackknife&quot;</span><span class="p">,</span>
 </span><span id="line-33">        <span class="n">cov_path_int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -258,7 +259,7 @@
 </span><span id="line-57"><span class="sd">        max_sep_int : float, optional</span>
 </span><span id="line-58"><span class="sd">            Maximum separation for the integration binning. Defaults to 300.</span>
 </span><span id="line-59"><span class="sd">        nbins_int : int, optional</span>
-</span><span id="line-60"><span class="sd">            Number of bins for the integration binning. Defaults to 100.</span>
+</span><span id="line-60"><span class="sd">            Number of bins for the integration binning. Defaults to 1000.</span>
 </span><span id="line-61"><span class="sd">        npatch : int, optional</span>
 </span><span id="line-62"><span class="sd">            Number of patches for the jackknife or bootstrap resampling. Defaults to</span>
 </span><span id="line-63"><span class="sd">            the value in self.npatch if not provided.</span>
@@ -347,7 +348,7 @@
 </span><span id="line-143">        <span class="n">nbins</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-144">        <span class="n">min_sep_int</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span>
 </span><span id="line-145">        <span class="n">max_sep_int</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
-</span><span id="line-146">        <span class="n">nbins_int</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+</span><span id="line-146">        <span class="n">nbins_int</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
 </span><span id="line-147">        <span class="n">npatch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 </span><span id="line-148">        <span class="n">var_method</span><span class="o">=</span><span class="s2">&quot;jackknife&quot;</span><span class="p">,</span>
 </span><span id="line-149">        <span class="n">cov_path_int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -379,7 +380,7 @@
 </span><span id="line-175"><span class="sd">            Binning parameters for reporting scale. Uses treecorr_config if None.</span>
 </span><span id="line-176"><span class="sd">        min_sep_int, max_sep_int, nbins_int : float, float, int</span>
 </span><span id="line-177"><span class="sd">            Binning parameters for integration scale</span>
-</span><span id="line-178"><span class="sd">            (default: 0.08-300 arcmin, 100 bins)</span>
+</span><span id="line-178"><span class="sd">            (default: 0.08-300 arcmin, 1000 bins)</span>
 </span><span id="line-179"><span class="sd">        npatch : int, optional</span>
 </span><span id="line-180"><span class="sd">            Number of patches for jackknife covariance. Uses self.npatch if None.</span>
 </span><span id="line-181"><span class="sd">        var_method : str</span>
@@ -527,7 +528,7 @@
       </div><footer class="py-6 border-t border-border md:py-0">
     <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
       <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 20 Jul, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 21 Jul, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
     href="https://www.sphinx-doc.org"
     rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>

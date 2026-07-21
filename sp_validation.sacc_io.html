@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+
+<html :class="{ 'dark' : darkMode === true }" data-content_root="./" lang="en" x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}">
+<head>
+<script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>sp_validation.sacc_io | sp_validation v0.6.0</title>
+<meta content="sp_validation.sacc_io | sp_validation v0.6.0" property="og:title"/>
+<meta content="sp_validation.sacc_io | sp_validation v0.6.0" name="twitter:title"/>
+<link href="_static/pygments.css?v=b86133f3" rel="stylesheet" type="text/css"/>
+<link href="_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
+<link href="search.html" rel="search" title="Search"/>
+<link href="genindex.html" rel="index" title="Index"/>
+<link href="sp_validation.statistics.html" rel="next" title="sp_validation.statistics"/>
+<link href="sp_validation.rho_tau.html" rel="prev" title="sp_validation.rho_tau"/>
+</head>
+<body :class="{ 'overflow-hidden': showSidebar }" @scroll.window="showScrollTop = pageYOffset &gt; 100" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
+<div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+<div class="hidden mr-4 md:flex">
+<a class="flex items-center mr-6" href="index.html"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a></div><button @click="showSidebar = true" class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden" type="button">
+<svg aria-hidden="true" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z"></path>
+</svg>
+<span class="sr-only">Toggle navigation menu</span>
+</button>
+<div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+<div class="flex-1 w-full md:w-auto md:flex-none"><form @keydown.k.window.meta="$refs.search.focus()" action="search.html" class="relative flex items-center group" id="searchbox" method="get">
+<input aria-label="Search the docs" class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" id="search-input" name="q" placeholder="Search ..." type="search" x-ref="search"/>
+<kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+<span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+</div>
+<nav class="flex items-center gap-1">
+<button @click="darkMode = !darkMode" class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9" title="Toggle color scheme" type="button">
+<svg class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z"></path>
+</svg>
+<svg class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z"></path>
+</svg>
+</button>
+</nav>
+</div>
+</div>
+</header>
+<div class="flex-1"><div class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }" class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky" id="left-sidebar">
+<a class="justify-start text-sm md:!hidden bg-background" href="index.html"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+</a>
+<div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+<div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="repository_structure.html">Repository structure</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.html">sp_validation<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="sp_validation.cosmo_val.html">sp_validation.cosmo_val<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.image_sims.html">sp_validation.image_sims</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.masks.html">sp_validation.masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">sp_validation.sacc_io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.statistics.html">sp_validation.statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<button @click="showSidebar = false" class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100" type="button">
+<svg class="h-4 w-4" fill="currentColor" height="24" stroke="none" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z"></path>
+</svg>
+</button>
+</aside>
+<main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs" class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+<a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground" href="index.html">
+<span class="hidden md:inline">sp_validation v0.6.0</span>
+<svg aria-label="Home" class="md:hidden" fill="currentColor" height="18" stroke="none" viewbox="0 96 960 960" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
+</svg>
+</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="sp_validation.html">sp_validation</a>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.sacc_io</span>
+</nav>
+<div id="content" role="main">
+<section id="module-sp_validation.sacc_io">
+<span id="sp-validation-sacc-io"></span><h1>sp_validation.sacc_io<a class="headerlink" href="#module-sp_validation.sacc_io" title="Link to this heading">¶</a></h1>
+<p>SACC_IO.</p>
+<dl class="field-list">
+<dt class="field-odd">Name<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sacc_io.py</p>
+</dd>
+<dt class="field-even">Description<span class="colon">:</span></dt>
+<dd class="field-even"><p>Read/write the standard SACC data-product layout for the
+weak-lensing validation package. One file describes each
+catalogue version:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">{version}.sacc</span></code> — NZ tracers, reporting-grid ξ±, pseudo-Cℓ
+(EE/BB/EB) with bandpower windows, COSEBIs, pure E/B, ρ/τ PSF
+diagnostics, and the fine ξ± integration input for
+COSEBIs / pure-EB (<code class="docutils literal notranslate"><span class="pre">grid='integration'</span></code> tagged points). The
+covariance is assembled block-diagonally from the
+per-statistic covariances (zero cross-blocks, never
+materialized): the analysis blocks first, then a dense
+per-pair integration-ξ block (the analytic integration-binning
+covariance when it exists — it feeds derived-statistic error
+propagation — or the TreeCorr <code class="docutils literal notranslate"><span class="pre">varxip</span></code>/<code class="docutils literal notranslate"><span class="pre">varxim</span></code> diagonal as
+degraded fallback). <code class="docutils literal notranslate"><span class="pre">assemble_covariance</span></code> hands sacc a list
+of blocks, which stores a <code class="docutils literal notranslate"><span class="pre">BlockDiagonalCovariance</span></code> (one
+FITS table per block, Σ block² on disk rather than a dense
+N²) — cost scales with the integration grid’s size, a
+parameter set by the caller, not baked into the layout.</p></li>
+</ul>
+<p>Insertion order is load-bearing. A Sacc is a flat list of data
+points in the order <code class="docutils literal notranslate"><span class="pre">add_data_point</span></code> was called, and row/column
+<code class="docutils literal notranslate"><span class="pre">i</span></code> of the covariance refers to the <code class="docutils literal notranslate"><span class="pre">i</span></code>-th inserted point —
+there is no other linkage between a point and its covariance
+entry. SACC preserves that order bitwise through FITS save/load,
+so writers define the covariance layout by their insertion
+sequence. Writers below insert in the canonical order — ξ+ then
+ξ−, Cℓ (ee, bb, eb), COSEBIs (all Eₙ then all Bₙ), pure E/B
+(xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb — matching
+<code class="docutils literal notranslate"><span class="pre">b_modes._EB_KEYS</span></code>), ρ, then τ — but readers never assume
+global order: they resolve indices through
+<code class="docutils literal notranslate"><span class="pre">Sacc.indices(dtype,</span> <span class="pre">tracers,</span> <span class="pre">**tags)</span></code>.</p>
+<p>Tag filters are plain keyword arguments to <code class="docutils literal notranslate"><span class="pre">indices</span></code> /
+<code class="docutils literal notranslate"><span class="pre">get_data_points</span></code> / <code class="docutils literal notranslate"><span class="pre">get_tag</span></code>; the <code class="docutils literal notranslate"><span class="pre">tags={...}</span></code> form
+silently selects nothing and must never be used.</p>
+<p>Tomographic ξ ordering: each <code class="docutils literal notranslate"><span class="pre">add_xi</span></code> call inserts one tracer
+pair as <code class="docutils literal notranslate"><span class="pre">[xip;</span> <span class="pre">xim]</span></code>, so a multi-pair vector is <em>pair-major</em>
+— <code class="docutils literal notranslate"><span class="pre">[pair_0</span> <span class="pre">xip;</span> <span class="pre">pair_0</span> <span class="pre">xim;</span> <span class="pre">pair_1</span> <span class="pre">xip;</span> <span class="pre">…]</span></code> — not type-major
+(<code class="docutils literal notranslate"><span class="pre">[all</span> <span class="pre">xip;</span> <span class="pre">all</span> <span class="pre">xim]</span></code>). A tomographic ξ covariance with
+cross-pair correlations is therefore supplied to
+<code class="docutils literal notranslate"><span class="pre">assemble_covariance</span></code> as ONE contiguous block spanning the
+consecutive <code class="docutils literal notranslate"><span class="pre">add_xi</span></code> calls, ordered pair-by-pair to match
+insertion. Writers must call <code class="docutils literal notranslate"><span class="pre">add_xi</span></code> in the same pair order
+the covariance was built in. Converters that need a type-major
+layout (e.g. the DES 2pt-FITS convention) permute explicitly via
+<code class="docutils literal notranslate"><span class="pre">s.indices</span></code> rather than assuming global order.</p>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Optionality: a file’s contents are flexible about which components of</dt><dd><p>a statistic it actually has. <code class="docutils literal notranslate"><span class="pre">add_pseudo_cl</span></code> requires EE (the
+bandpower window’s reference series) but BB and EB are optional
+— an analysis that never computed EB simply omits it.
+<code class="docutils literal notranslate"><span class="pre">add_cosebis</span></code> requires Eₙ but Bₙ is optional. <code class="docutils literal notranslate"><span class="pre">add_pure_eb</span></code>
+requires xip_E/xim_E but the B and ambiguous-mode blocks are
+each optional, independently (B and amb are unrelated
+computations). Everything else a writer takes — θ/ℓ grids,
+tracer/bin identifiers, the value array for a component you ARE
+adding — is structurally necessary and has no default;
+supplying it partially would desynchronise the covariance
+layout, so it is refused rather than degraded. Readers mirror
+this split: a composite reader (<code class="docutils literal notranslate"><span class="pre">get_pseudo_cl</span></code>,
+<code class="docutils literal notranslate"><span class="pre">get_cosebis</span></code>, <code class="docutils literal notranslate"><span class="pre">get_pure_eb</span></code>) returns <code class="docutils literal notranslate"><span class="pre">None</span></code> (or omits the
+key) for a component the file doesn’t carry, but a selection
+naming that component explicitly (<code class="docutils literal notranslate"><span class="pre">s.indices</span></code>, <code class="docutils literal notranslate"><span class="pre">_mean</span></code>,
+<code class="docutils literal notranslate"><span class="pre">extract</span></code>) still fails loud on no match — silence is reserved
+for “this file doesn’t have that optional piece”, never for
+“you asked for something specific and it isn’t there”.</p>
+</dd>
+</dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.source_name">
+<span class="sig-name descname"><span class="pre">source_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#source_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.source_name" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.source_name'">¶</a></dt>
+<dd><p>SACC tracer name for source redshift bin <code class="docutils literal notranslate"><span class="pre">i</span></code> (0-based).</p>
+<p>Kept as the single definition of the <code class="docutils literal notranslate"><span class="pre">source_{i}</span></code> naming contract —
+external consumers address tracers through it rather than the f-string.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.new_sacc">
+<span class="sig-name descname"><span class="pre">new_sacc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#new_sacc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.new_sacc" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.new_sacc'">¶</a></dt>
+<dd><p>Create a Sacc with the survey’s NZ (and PSF) tracers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> or </em><em>sequence</em>) – Redshift distributions, one per source bin. Either a mapping
+<code class="docutils literal notranslate"><span class="pre">{i:</span> <span class="pre">(z,</span> <span class="pre">nz)}</span></code> keyed by 0-based bin index, or a sequence of
+<code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">nz)</span></code> array pairs (bin index = position). Tracers are named
+<code class="docutils literal notranslate"><span class="pre">source_{i}</span></code>.</p></li>
+<li><p><strong>metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Key/value pairs stored on <code class="docutils literal notranslate"><span class="pre">s.metadata</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sacc holding the <code class="docutils literal notranslate"><span class="pre">source_{i}</span></code> NZ tracers and the <code class="docutils literal notranslate"><span class="pre">psf_stars</span></code>
+Misc tracer (needed by ρ/τ diagnostics).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sacc.Sacc</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._pair">
+<span class="sig-name descname"><span class="pre">_pair</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_pair"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._pair" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._pair'">¶</a></dt>
+<dd><p>Resolve a <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code> bin pair to the <code class="docutils literal notranslate"><span class="pre">(source_i,</span> <span class="pre">source_j)</span></code> names.</p>
+<p>The pair is normalised to <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">&lt;=</span> <span class="pre">j</span></code>: shear-shear statistics are symmetric
+in the tracer pair, and SACC stores each pair under one ordering, so
+<code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">0)</span></code> must address the same points as <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">1)</span></code>. Kept as a helper:
+every <code class="docutils literal notranslate"><span class="pre">add_*</span></code>/<code class="docutils literal notranslate"><span class="pre">get_*</span></code> function relies on this normalisation.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._check_ascending">
+<span class="sig-name descname"><span class="pre">_check_ascending</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_check_ascending"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._check_ascending" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._check_ascending'">¶</a></dt>
+<dd><p>Require <code class="docutils literal notranslate"><span class="pre">values</span></code> to be strictly ascending; else raise ValueError.</p>
+<p>Insertion order is the covariance (and bandpower-window) order, and readers
+return points in insertion order, so an out-of-order grid would silently
+desynchronise a data vector from its covariance. Enforce monotonicity at
+write time instead.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._add_theta_series">
+<span class="sig-name descname"><span class="pre">_add_theta_series</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">tags</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_add_theta_series"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._add_theta_series" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._add_theta_series'">¶</a></dt>
+<dd><p>Insert one theta-tagged series, one point per (theta, value) pair.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.add_xi">
+<span class="sig-name descname"><span class="pre">add_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xim</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_nom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">npairs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#add_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.add_xi" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.add_xi'">¶</a></dt>
+<dd><p>Add a real-space shear 2PCF (ξ+ then ξ−) for one tracer pair.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin) — TreeCorr <code class="docutils literal notranslate"><span class="pre">meanr</span></code>.</p></li>
+<li><p><strong>xip</strong> (<em>array_like</em>) – ξ+ and ξ− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>xim</strong> (<em>array_like</em>) – ξ+ and ξ− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>grid</strong> (<em>{'reporting'</em><em>, </em><em>'integration'}</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point. The reporting (analysis)
+ξ± and the fine COSEBIs/pure-EB integration input share the same
+data type and tracer pair, so this tag is the only thing that
+disambiguates them in the file.</p></li>
+<li><p><strong>theta_nom</strong> (<em>array_like</em><em>, </em><em>optional</em>) – Nominal bin centres — TreeCorr <code class="docutils literal notranslate"><span class="pre">rnom</span></code> — stored as <code class="docutils literal notranslate"><span class="pre">theta_nom</span></code>.</p></li>
+<li><p><strong>npairs</strong> (<em>array_like</em><em>, </em><em>optional</em>) – TreeCorr pair counts and weights, stored per point.</p></li>
+<li><p><strong>weight</strong> (<em>array_like</em><em>, </em><em>optional</em>) – TreeCorr pair counts and weights, stored per point.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.add_pseudo_cl">
+<span class="sig-name descname"><span class="pre">add_pseudo_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ell_eff</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cl_ee</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cl_bb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cl_eb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_ells</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reporting'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#add_pseudo_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.add_pseudo_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.add_pseudo_cl'">¶</a></dt>
+<dd><p>Add pseudo-Cℓ EE (required) plus whichever of BB/EB were computed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>ell_eff</strong> (<em>array_like</em>) – Effective multipole of each bandpower.</p></li>
+<li><p><strong>cl_ee</strong> (<em>array_like</em>) – EE bandpowers at <code class="docutils literal notranslate"><span class="pre">ell_eff</span></code>.</p></li>
+<li><p><strong>cl_bb</strong> (<em>array_like</em><em>, </em><em>optional</em>) – BB and/or EB bandpowers at <code class="docutils literal notranslate"><span class="pre">ell_eff</span></code>. Each defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> and
+is then simply not written — EB in particular is often not computed
+at all.</p></li>
+<li><p><strong>cl_eb</strong> (<em>array_like</em><em>, </em><em>optional</em>) – BB and/or EB bandpowers at <code class="docutils literal notranslate"><span class="pre">ell_eff</span></code>. Each defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> and
+is then simply not written — EB in particular is often not computed
+at all.</p></li>
+<li><p><strong>window_ells</strong> (<em>array_like</em>) – Multipoles spanned by the bandpower window matrix (shape <code class="docutils literal notranslate"><span class="pre">(nell,)</span></code>).</p></li>
+<li><p><strong>window_weights</strong> (<em>array_like</em>) – Window matrix <code class="docutils literal notranslate"><span class="pre">W</span></code> of shape <code class="docutils literal notranslate"><span class="pre">(nell,</span> <span class="pre">nbp)</span></code> — one column per
+bandpower — from NaMaster <code class="docutils literal notranslate"><span class="pre">get_bandpower_windows</span></code>. One
+<code class="docutils literal notranslate"><span class="pre">sacc.BandpowerWindow</span></code> is built and shared across every component
+written.</p></li>
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+joining <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s ℓ-consistency group; variant ℓ binnings belong
+under different tag values.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.add_cosebis">
+<span class="sig-name descname"><span class="pre">add_cosebis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">En</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_cut</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Bn</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#add_cosebis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.add_cosebis" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.add_cosebis'">¶</a></dt>
+<dd><p>Add COSEBIs Eₙ (required) and Bₙ (optional) for one scale cut.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>En</strong> (<em>array_like</em>) – E-mode COSEBI amplitudes, one per logarithmic mode <code class="docutils literal notranslate"><span class="pre">n</span></code> (1-based).</p></li>
+<li><p><strong>scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – <code class="docutils literal notranslate"><span class="pre">(theta_min,</span> <span class="pre">theta_max)</span></code> in arcmin, stored on every point as the
+<code class="docutils literal notranslate"><span class="pre">theta_min</span></code>/<code class="docutils literal notranslate"><span class="pre">theta_max</span></code> tags; multiple cuts coexist in one file,
+told apart by these tags.</p></li>
+<li><p><strong>Bn</strong> (<em>array_like</em><em>, </em><em>optional</em>) – B-mode COSEBI amplitudes at the same <code class="docutils literal notranslate"><span class="pre">n</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">None</span></code> and
+is then simply not written. The <code class="docutils literal notranslate"><span class="pre">[En;</span> <span class="pre">Bn]</span></code> layout, when both are
+present, matches the COSEBI covariance.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.add_pure_eb">
+<span class="sig-name descname"><span class="pre">add_pure_eb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xip_E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xim_E</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xip_B</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xim_B</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xip_amb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xim_amb</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reporting'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#add_pure_eb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.add_pure_eb" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.add_pure_eb'">¶</a></dt>
+<dd><p>Add pure E-mode (required) plus whichever of B/ambiguous were computed.</p>
+<p>Blocks are inserted in <code class="docutils literal notranslate"><span class="pre">PURE_KEYS</span></code> order (xip_E, xim_E, xip_B, xim_B,
+xip_amb, xim_amb), matching <code class="docutils literal notranslate"><span class="pre">b_modes._EB_KEYS</span></code> and the pure-EB
+covariance layout — whichever subset is present.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin pair <code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>.</p></li>
+<li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin), shared by every block written.</p></li>
+<li><p><strong>xip_E</strong> (<em>array_like</em>) – The pure E-mode correlation functions at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>xim_E</strong> (<em>array_like</em>) – The pure E-mode correlation functions at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>xip_B</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The pure B-mode correlation functions. Both default to <code class="docutils literal notranslate"><span class="pre">None</span></code>; the
+pair is written together or not at all — supply both or neither.</p></li>
+<li><p><strong>xim_B</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The pure B-mode correlation functions. Both default to <code class="docutils literal notranslate"><span class="pre">None</span></code>; the
+pair is written together or not at all — supply both or neither.</p></li>
+<li><p><strong>xip_amb</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The ambiguous-mode correlation functions. Both default to <code class="docutils literal notranslate"><span class="pre">None</span></code>;
+same both-or-neither rule as B.</p></li>
+<li><p><strong>xim_amb</strong> (<em>array_like</em><em>, </em><em>optional</em>) – The ambiguous-mode correlation functions. Both default to <code class="docutils literal notranslate"><span class="pre">None</span></code>;
+same both-or-neither rule as B.</p></li>
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+joining ξ’s theta-consistency group in <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s guard.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.add_rho">
+<span class="sig-name descname"><span class="pre">add_rho</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_m</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reporting'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#add_rho"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.add_rho" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.add_rho'">¶</a></dt>
+<dd><p>Add a ρ_k PSF statistic (ρ+ then ρ−) on the <code class="docutils literal notranslate"><span class="pre">psf_stars</span></code> tracer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – ρ index (0…5).</p></li>
+<li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin).</p></li>
+<li><p><strong>rho_p</strong> (<em>array_like</em>) – ρ_k+ and ρ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>rho_m</strong> (<em>array_like</em>) – ρ_k+ and ρ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+joining ξ’s theta-consistency group in <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s guard.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.add_tau">
+<span class="sig-name descname"><span class="pre">add_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_m</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'reporting'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#add_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.add_tau" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.add_tau'">¶</a></dt>
+<dd><p>Add a τ_k PSF-leakage statistic (τ+ then τ−).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Source bin <code class="docutils literal notranslate"><span class="pre">i</span></code> and PSF; the τ tracers are <code class="docutils literal notranslate"><span class="pre">(source_i,</span> <span class="pre">psf_stars)</span></code>.
+Only <code class="docutils literal notranslate"><span class="pre">bins[0]</span></code> is used.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – τ index (0, 2 or 5).</p></li>
+<li><p><strong>theta</strong> (<em>array_like</em>) – Angular separations (arcmin).</p></li>
+<li><p><strong>tau_p</strong> (<em>array_like</em>) – τ_k+ and τ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>tau_m</strong> (<em>array_like</em>) – τ_k+ and τ_k− at <code class="docutils literal notranslate"><span class="pre">theta</span></code>.</p></li>
+<li><p><strong>grid</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Stored as the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag on every point (default <code class="docutils literal notranslate"><span class="pre">'reporting'</span></code>),
+joining ξ’s theta-consistency group in <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s guard.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.assemble_covariance">
+<span class="sig-name descname"><span class="pre">assemble_covariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blocks</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#assemble_covariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.assemble_covariance" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.assemble_covariance'">¶</a></dt>
+<dd><p>Assemble a <code class="docutils literal notranslate"><span class="pre">BlockDiagonalCovariance</span></code> from per-statistic blocks.</p>
+<p>Each block is validated against the current insertion order: its indices
+must be contiguous and ascending, the blocks must tile <code class="docutils literal notranslate"><span class="pre">0…len(s.mean)</span></code>
+exactly (no gap, no overlap), and each block must be square with a size
+matching its index span. Any violation raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> naming the
+mismatch. Cross-blocks are zero and implicit — never materialized —
+because the blocks are passed to <code class="docutils literal notranslate"><span class="pre">add_covariance</span></code> as a list, which
+<code class="docutils literal notranslate"><span class="pre">sacc.BaseCovariance.make</span></code> turns into a <code class="docutils literal notranslate"><span class="pre">BlockDiagonalCovariance</span></code>
+(one FITS table per block, Σ block² on disk rather than a dense N² file).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place via <code class="docutils literal notranslate"><span class="pre">add_covariance</span></code>.</p></li>
+<li><p><strong>blocks</strong> (<em>sequence</em>) – Ordered <code class="docutils literal notranslate"><span class="pre">(selector,</span> <span class="pre">cov)</span></code> pairs (or a mapping of the same). Each
+<code class="docutils literal notranslate"><span class="pre">selector</span></code> is either an index array, or a <code class="docutils literal notranslate"><span class="pre">(data_type,</span> <span class="pre">tracers)</span></code>
+/ <code class="docutils literal notranslate"><span class="pre">(data_type,</span> <span class="pre">tracers,</span> <span class="pre">tags)</span></code> tuple resolved through
+<code class="docutils literal notranslate"><span class="pre">s.indices</span></code>; <code class="docutils literal notranslate"><span class="pre">cov</span></code> is the block’s dense covariance.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">s</span></code>, with the assembled <code class="docutils literal notranslate"><span class="pre">BlockDiagonalCovariance</span></code> attached.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sacc.Sacc</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._resolve_indices">
+<span class="sig-name descname"><span class="pre">_resolve_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selector</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_resolve_indices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._resolve_indices" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._resolve_indices'">¶</a></dt>
+<dd><p>Resolve a covariance-block selector to a sorted index array.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.add_diagonal_covariance">
+<span class="sig-name descname"><span class="pre">add_diagonal_covariance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variances</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#add_diagonal_covariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.add_diagonal_covariance" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.add_diagonal_covariance'">¶</a></dt>
+<dd><p>Attach a <code class="docutils literal notranslate"><span class="pre">DiagonalCovariance</span></code> from a 1-D variance array.</p>
+<p>The 1-D array is passed straight to <code class="docutils literal notranslate"><span class="pre">add_covariance</span></code> (never
+<code class="docutils literal notranslate"><span class="pre">np.diag</span></code>), which is what makes SACC store a <code class="docutils literal notranslate"><span class="pre">DiagonalCovariance</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>variances</strong> (<em>array_like</em>) – Per-point variances, <code class="docutils literal notranslate"><span class="pre">len</span> <span class="pre">==</span> <span class="pre">len(s.mean)</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">s</span></code>, with the <code class="docutils literal notranslate"><span class="pre">DiagonalCovariance</span></code> attached.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sacc.Sacc</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.get_nz">
+<span class="sig-name descname"><span class="pre">get_nz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_nz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_nz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_nz'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">nz)</span></code> for source bin <code class="docutils literal notranslate"><span class="pre">i</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._get_pm">
+<span class="sig-name descname"><span class="pre">_get_pm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype_p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype_m</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">tags</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_get_pm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._get_pm" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._get_pm'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(theta,</span> <span class="pre">plus,</span> <span class="pre">minus)</span></code> for a +/− data-type pair.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.get_xi">
+<span class="sig-name descname"><span class="pre">get_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_xi" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_xi'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(theta,</span> <span class="pre">xip,</span> <span class="pre">xim)</span></code> for one tracer pair and grid.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.get_pseudo_cl">
+<span class="sig-name descname"><span class="pre">get_pseudo_cl</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_pseudo_cl"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_pseudo_cl" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_pseudo_cl'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(ell_eff,</span> <span class="pre">cl_ee,</span> <span class="pre">cl_bb,</span> <span class="pre">cl_eb,</span> <span class="pre">window)</span></code> for one tracer pair.</p>
+<p><code class="docutils literal notranslate"><span class="pre">cl_bb</span></code>/<code class="docutils literal notranslate"><span class="pre">cl_eb</span></code> come back <code class="docutils literal notranslate"><span class="pre">None</span></code> if the file doesn’t carry that
+component (<code class="docutils literal notranslate"><span class="pre">add_pseudo_cl</span></code> makes both optional). <code class="docutils literal notranslate"><span class="pre">window</span></code> is the
+shared <code class="docutils literal notranslate"><span class="pre">sacc.BandpowerWindow</span></code> recovered via <code class="docutils literal notranslate"><span class="pre">get_bandpower_windows</span></code>;
+its columns are in the same insertion order as the returned
+<code class="docutils literal notranslate"><span class="pre">ell_eff</span></code>/<code class="docutils literal notranslate"><span class="pre">cl</span></code> arrays, so window column <code class="docutils literal notranslate"><span class="pre">j</span></code> corresponds to
+<code class="docutils literal notranslate"><span class="pre">ell_eff[j]</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.get_cosebis">
+<span class="sig-name descname"><span class="pre">get_cosebis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale_cut</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_cosebis"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_cosebis" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_cosebis'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">En,</span> <span class="pre">Bn)</span></code> for one tracer pair.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Bn</span></code> comes back <code class="docutils literal notranslate"><span class="pre">None</span></code> if the file doesn’t carry it (<code class="docutils literal notranslate"><span class="pre">add_cosebis</span></code>
+makes it optional).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>scale_cut</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">(theta_min,</span> <span class="pre">theta_max)</span></code> to select when several cuts share the file.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.get_pure_eb">
+<span class="sig-name descname"><span class="pre">get_pure_eb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_pure_eb"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_pure_eb" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_pure_eb'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(theta,</span> <span class="pre">{key:</span> <span class="pre">array})</span></code> for whichever pure-EB blocks exist.</p>
+<p>xip_E/xim_E are always present (<code class="docutils literal notranslate"><span class="pre">add_pure_eb</span></code> requires them); the dict
+holds whichever of the B and ambiguous-mode keys (out of <code class="docutils literal notranslate"><span class="pre">PURE_KEYS</span></code>:
+xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb) the file actually carries —
+a key absent from the file is simply absent from the dict, not mapped to
+<code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.get_rho">
+<span class="sig-name descname"><span class="pre">get_rho</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_rho"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_rho" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_rho'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(theta,</span> <span class="pre">rho_p,</span> <span class="pre">rho_m)</span></code> for ρ index <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.get_tau">
+<span class="sig-name descname"><span class="pre">get_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#get_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.get_tau" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.get_tau'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(theta,</span> <span class="pre">tau_p,</span> <span class="pre">tau_m)</span></code> for τ index <code class="docutils literal notranslate"><span class="pre">k</span></code> and source bin.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._indices">
+<span class="sig-name descname"><span class="pre">_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">tag_filters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_indices"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._indices" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._indices'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">Sacc.indices</span></code> that fails loud instead of selecting nothing.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Sacc.indices</span></code> returns an <em>empty array</em> (warning only) when a selection
+matches no point — e.g. a typo’d tag value, or a float tag filter that is
+not bitwise-identical to the stored one. Every reader here funnels through
+this guard so an unmatched selection raises instead of propagating empty
+arrays downstream.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._mean">
+<span class="sig-name descname"><span class="pre">_mean</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">tag_filters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_mean"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._mean" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._mean'">¶</a></dt>
+<dd><p>Mean values for a selection, in <code class="docutils literal notranslate"><span class="pre">s.indices</span></code> (insertion) order.</p>
+<p>Never re-sort: insertion order is the covariance and bandpower-window
+order, so returning in <code class="docutils literal notranslate"><span class="pre">s.indices</span></code> order keeps every reader aligned with
+the covariance for any file (and ascending for canonically-written files,
+which the writers enforce).</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._tag">
+<span class="sig-name descname"><span class="pre">_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tag</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">tag_filters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_tag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._tag" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._tag'">¶</a></dt>
+<dd><p>Values of <code class="docutils literal notranslate"><span class="pre">tag</span></code> for a selection, in insertion order.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._mean_optional">
+<span class="sig-name descname"><span class="pre">_mean_optional</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">tag_filters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_mean_optional"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._mean_optional" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._mean_optional'">¶</a></dt>
+<dd><p>Mean values for a selection, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if the file has none.</p>
+<p>Used by composite readers (<code class="docutils literal notranslate"><span class="pre">get_pseudo_cl</span></code>, <code class="docutils literal notranslate"><span class="pre">get_cosebis</span></code>,
+<code class="docutils literal notranslate"><span class="pre">get_pure_eb</span></code>) for the components a writer made optional (BB/EB,
+COSEBI Bₙ, pure B/ambiguous): absence is a legitimate “this file doesn’t
+have that piece”, not a typo to fail loud on — unlike <code class="docutils literal notranslate"><span class="pre">_mean</span></code>/
+<code class="docutils literal notranslate"><span class="pre">_indices</span></code>, used for selections that name a component explicitly.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.extract">
+<span class="sig-name descname"><span class="pre">extract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tracers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">tag_filters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#extract"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.extract" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.extract'">¶</a></dt>
+<dd><p>Extract a sub-Sacc (points + aligned covariance sub-block).</p>
+<p>A copy is made and everything <em>not</em> matching the selection is removed, so
+the covariance sub-block comes out correctly aligned and the original is
+untouched.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Source, left unmodified.</p></li>
+<li><p><strong>data_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Data type to keep.</p></li>
+<li><p><strong>tracers</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>, </em><em>optional</em>) – Tracer pair to keep, as SACC tracer <strong>names</strong> (e.g.
+<code class="docutils literal notranslate"><span class="pre">("source_0",</span> <span class="pre">"source_0")</span></code> or <code class="docutils literal notranslate"><span class="pre">("source_0",</span> <span class="pre">"psf_stars")</span></code>) — <em>not</em>
+integer bin indices. This differs deliberately from the <code class="docutils literal notranslate"><span class="pre">add_*</span></code> /
+<code class="docutils literal notranslate"><span class="pre">get_*</span></code> interface, whose <code class="docutils literal notranslate"><span class="pre">bins</span></code> argument takes integer pairs:
+<code class="docutils literal notranslate"><span class="pre">extract</span></code> is the generic selection escape hatch, mirroring
+<code class="docutils literal notranslate"><span class="pre">Sacc.keep_selection</span></code> and addressing non-source tracers uniformly.</p></li>
+<li><p><strong>**tag_filters</strong> – Tag filters (plain kwargs, e.g. <code class="docutils literal notranslate"><span class="pre">grid='integration'</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New Sacc holding only the selected points.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sacc.Sacc</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.merge">
+<span class="sig-name descname"><span class="pre">merge</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">saccs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#merge"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.merge" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.merge'">¶</a></dt>
+<dd><p>Merge several per-statistic Sacc objects into one file’s worth.</p>
+<p>A thin wrapper around <code class="docutils literal notranslate"><span class="pre">sacc.concatenate_data_sets</span></code>: data points
+concatenate in input order, tracers shared by several inputs (the
+<code class="docutils literal notranslate"><span class="pre">source_i</span></code> NZ tracers, <code class="docutils literal notranslate"><span class="pre">psf_stars</span></code>) are stored once, and the
+covariance combines block-diagonally in the same order — the library
+requires either <strong>all</strong> inputs to carry a covariance or <strong>none</strong>, and
+raises otherwise (cross-statistic covariance assembly beyond
+block-diagonal is out of scope here; see <code class="docutils literal notranslate"><span class="pre">assemble_covariance</span></code>).</p>
+<p>Metadata must be consistent: keys present in several inputs must carry
+equal values (a <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">data</span></code> file cannot merge with a <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">mock</span></code>
+file), and the union lands on the result. This deliberately replaces the
+library’s clash behaviour, which mangles clashing keys by appending
+labels.</p>
+<p>Grid consistency follows tagging semantics: the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag declares
+which binning a set of points lives on, so all same-length theta (or
+ell) arrays under one tag value must be bitwise identical — sacc itself
+never validates angles across data types/tracers, and a grid that
+differs only at floating-point level chokes CosmoSIS downstream instead
+of failing loud here. Different lengths within a tag group pass
+(scale-cut subsets are legitimate); grids under different tag values
+are unconstrained (<code class="docutils literal notranslate"><span class="pre">reporting</span></code> vs <code class="docutils literal notranslate"><span class="pre">integration</span></code> differ by design);
+θ and ℓ are separate domains, each checked against itself only. ℓ
+series sharing a bitwise-equal grid must also share the bandpower
+window (series without windows skip that check).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>saccs</strong> (<em>sequence</em><em> of </em><em>sacc.Sacc</em>) – The per-statistic data sets, in the insertion order the merged file
+should have. Inputs are left unmodified.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The merged data set.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sacc.Sacc</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If metadata conflicts, a shared tracer differs across inputs, two
+same-length theta or ell arrays under the same <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag value
+are not bitwise identical, or two ℓ series sharing a grid carry
+different bandpower windows.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._grid_groups">
+<span class="sig-name descname"><span class="pre">_grid_groups</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_grid_groups"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._grid_groups" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._grid_groups'">¶</a></dt>
+<dd><p>Nested map <code class="docutils literal notranslate"><span class="pre">grid-tag-value</span> <span class="pre">-&gt;</span> <span class="pre">(data_type,</span> <span class="pre">tracers)</span> <span class="pre">-&gt;</span> <span class="pre">point</span> <span class="pre">indices</span></code>.</p>
+<p>One entry per <code class="docutils literal notranslate"><span class="pre">(data_type,</span> <span class="pre">tracers)</span></code> series carrying an <code class="docutils literal notranslate"><span class="pre">angle</span></code>
+(<code class="docutils literal notranslate"><span class="pre">'theta'</span></code> or <code class="docutils literal notranslate"><span class="pre">'ell'</span></code>) tag, in each series’ own insertion order
+(never re-sorted), nested under the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag value it lives on
+(<code class="docutils literal notranslate"><span class="pre">None</span></code> for untagged series) — the shape <code class="docutils literal notranslate"><span class="pre">merge</span></code>’s consistency
+guard checks within each tag value. Indices (not angle values) are
+kept so the ℓ check can also recover each series’ bandpower window.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._check_grid_consistency">
+<span class="sig-name descname"><span class="pre">_check_grid_consistency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angle</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_check_grid_consistency"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._check_grid_consistency" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._check_grid_consistency'">¶</a></dt>
+<dd><p>Raise unless same-length <code class="docutils literal notranslate"><span class="pre">angle</span></code> arrays under one <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag match.</p>
+<p>Consistency follows tagging semantics: the <code class="docutils literal notranslate"><span class="pre">grid</span></code> tag declares which
+binning a series lives on, so all same-length theta (or ell) arrays
+sharing a tag value must be bitwise identical — sacc never validates
+angles across data types/tracers, and a grid diverging at
+floating-point level chokes CosmoSIS downstream instead of failing
+loud here. Different lengths within a tag value pass (scale-cut
+subsets are legitimate); series under different tag values are
+unconstrained (<code class="docutils literal notranslate"><span class="pre">reporting</span></code> vs <code class="docutils literal notranslate"><span class="pre">integration</span></code> differ by design).
+θ and ℓ are separate domains, each checked against itself only. For
+ℓ, two series on a bitwise-equal grid must also share the bandpower
+window (equal window ells and weight matrix); series without windows
+(foreign files) skip the window check.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.update_statistic">
+<span class="sig-name descname"><span class="pre">update_statistic</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#update_statistic"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.update_statistic" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.update_statistic'">¶</a></dt>
+<dd><p>Overwrite the values of <code class="docutils literal notranslate"><span class="pre">s</span></code>’s points that match <code class="docutils literal notranslate"><span class="pre">sub</span></code>’s, in place.</p>
+<p>The merge-back half of the extract → conceal → merge blinding flow
+(PRD #241 §4): each point of <code class="docutils literal notranslate"><span class="pre">sub</span></code> is matched to exactly one point of
+<code class="docutils literal notranslate"><span class="pre">s</span></code> by <code class="docutils literal notranslate"><span class="pre">(data_type,</span> <span class="pre">tracers,</span> <span class="pre">tags)</span></code>, and that point’s <em>value</em> is
+replaced. Nothing else changes — insertion order, tags, windows and the
+covariance are untouched (blinding shifts the mean only), so <code class="docutils literal notranslate"><span class="pre">sub</span></code>’s
+own covariance (e.g. the sub-block <code class="docutils literal notranslate"><span class="pre">extract</span></code> attaches) is deliberately
+not consulted. A <code class="docutils literal notranslate"><span class="pre">sub</span></code> point with no match, or with several, raises
+<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Target, mutated in place.</p></li>
+<li><p><strong>sub</strong> (<em>sacc.Sacc</em>) – The replacement block, e.g. <code class="docutils literal notranslate"><span class="pre">extract(s,</span> <span class="pre">...)</span></code> after concealment.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.save" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.save'">¶</a></dt>
+<dd><p>Write <code class="docutils literal notranslate"><span class="pre">s</span></code> to <code class="docutils literal notranslate"><span class="pre">path</span></code> (FITS), overwriting any existing file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Data set to write; its metadata is stamped in place.</p></li>
+<li><p><strong>type</strong> (<em>{'data'</em><em>, </em><em>'mock'}</em>) – Provenance of the underlying catalogue, stored as the required
+<code class="docutils literal notranslate"><span class="pre">type</span></code> metadata tag (PRD #241 §4, “Mocks vs data”). The caller —
+the pipeline computing the data vector — knows whether its input
+catalogue is a mock; there is deliberately no default. <code class="docutils literal notranslate"><span class="pre">load</span></code>
+refuses <code class="docutils literal notranslate"><span class="pre">type='data'</span></code> files that are not blinded.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">allow_unblinded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.load" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.load'">¶</a></dt>
+<dd><p>Load a Sacc from <code class="docutils literal notranslate"><span class="pre">path</span></code> (FITS), failing closed on unblinded data.</p>
+<p>Every sacc_io file carries a <code class="docutils literal notranslate"><span class="pre">type:</span> <span class="pre">data|mock</span></code> metadata tag (stamped by
+<code class="docutils literal notranslate"><span class="pre">save</span></code>); blinded files are additionally stamped <code class="docutils literal notranslate"><span class="pre">concealed=True</span></code> by
+Smokescreen. A <code class="docutils literal notranslate"><span class="pre">type='data'</span></code> file without that stamp is real, unblinded
+data, and loading it raises — skipping the blind can never silently
+expose the measured vector (PRD #241 §4). Mocks load freely, blinded or
+not.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – File to load.</p></li>
+<li><p><strong>allow_unblinded</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Escape hatch for the two legitimate consumers of unblinded data:
+the blinding step itself (which must read the true vector to conceal
+it) and the unblinding/verification tooling. Nothing else — no
+analysis, plotting or inference code — may pass <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The loaded data set.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>sacc.Sacc</p>
+</dd>
+</dl>
+</dd></dl>
+</section>
+</div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+<div class="mr-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.rho_tau.html">
+<svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+        sp_validation.rho_tau
+      </a>
+</div>
+<div class="ml-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="sp_validation.statistics.html">
+        sp_validation.statistics
+        <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="9 18 15 12 9 6"></polyline>
+</svg>
+</a>
+</div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.source_name'" class="reference internal" href="#sp_validation.sacc_io.source_name"><code class="docutils literal notranslate"><span class="pre">source_name()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.new_sacc'" class="reference internal" href="#sp_validation.sacc_io.new_sacc"><code class="docutils literal notranslate"><span class="pre">new_sacc()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._pair'" class="reference internal" href="#sp_validation.sacc_io._pair"><code class="docutils literal notranslate"><span class="pre">_pair()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._check_ascending'" class="reference internal" href="#sp_validation.sacc_io._check_ascending"><code class="docutils literal notranslate"><span class="pre">_check_ascending()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._add_theta_series'" class="reference internal" href="#sp_validation.sacc_io._add_theta_series"><code class="docutils literal notranslate"><span class="pre">_add_theta_series()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.add_xi'" class="reference internal" href="#sp_validation.sacc_io.add_xi"><code class="docutils literal notranslate"><span class="pre">add_xi()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.add_pseudo_cl'" class="reference internal" href="#sp_validation.sacc_io.add_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">add_pseudo_cl()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.add_cosebis'" class="reference internal" href="#sp_validation.sacc_io.add_cosebis"><code class="docutils literal notranslate"><span class="pre">add_cosebis()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.add_pure_eb'" class="reference internal" href="#sp_validation.sacc_io.add_pure_eb"><code class="docutils literal notranslate"><span class="pre">add_pure_eb()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.add_rho'" class="reference internal" href="#sp_validation.sacc_io.add_rho"><code class="docutils literal notranslate"><span class="pre">add_rho()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.add_tau'" class="reference internal" href="#sp_validation.sacc_io.add_tau"><code class="docutils literal notranslate"><span class="pre">add_tau()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.assemble_covariance'" class="reference internal" href="#sp_validation.sacc_io.assemble_covariance"><code class="docutils literal notranslate"><span class="pre">assemble_covariance()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._resolve_indices'" class="reference internal" href="#sp_validation.sacc_io._resolve_indices"><code class="docutils literal notranslate"><span class="pre">_resolve_indices()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.add_diagonal_covariance'" class="reference internal" href="#sp_validation.sacc_io.add_diagonal_covariance"><code class="docutils literal notranslate"><span class="pre">add_diagonal_covariance()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_nz'" class="reference internal" href="#sp_validation.sacc_io.get_nz"><code class="docutils literal notranslate"><span class="pre">get_nz()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._get_pm'" class="reference internal" href="#sp_validation.sacc_io._get_pm"><code class="docutils literal notranslate"><span class="pre">_get_pm()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_xi'" class="reference internal" href="#sp_validation.sacc_io.get_xi"><code class="docutils literal notranslate"><span class="pre">get_xi()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_pseudo_cl'" class="reference internal" href="#sp_validation.sacc_io.get_pseudo_cl"><code class="docutils literal notranslate"><span class="pre">get_pseudo_cl()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_cosebis'" class="reference internal" href="#sp_validation.sacc_io.get_cosebis"><code class="docutils literal notranslate"><span class="pre">get_cosebis()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_pure_eb'" class="reference internal" href="#sp_validation.sacc_io.get_pure_eb"><code class="docutils literal notranslate"><span class="pre">get_pure_eb()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_rho'" class="reference internal" href="#sp_validation.sacc_io.get_rho"><code class="docutils literal notranslate"><span class="pre">get_rho()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.get_tau'" class="reference internal" href="#sp_validation.sacc_io.get_tau"><code class="docutils literal notranslate"><span class="pre">get_tau()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._indices'" class="reference internal" href="#sp_validation.sacc_io._indices"><code class="docutils literal notranslate"><span class="pre">_indices()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._mean'" class="reference internal" href="#sp_validation.sacc_io._mean"><code class="docutils literal notranslate"><span class="pre">_mean()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._tag'" class="reference internal" href="#sp_validation.sacc_io._tag"><code class="docutils literal notranslate"><span class="pre">_tag()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._mean_optional'" class="reference internal" href="#sp_validation.sacc_io._mean_optional"><code class="docutils literal notranslate"><span class="pre">_mean_optional()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.extract'" class="reference internal" href="#sp_validation.sacc_io.extract"><code class="docutils literal notranslate"><span class="pre">extract()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.merge'" class="reference internal" href="#sp_validation.sacc_io.merge"><code class="docutils literal notranslate"><span class="pre">merge()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._grid_groups'" class="reference internal" href="#sp_validation.sacc_io._grid_groups"><code class="docutils literal notranslate"><span class="pre">_grid_groups()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._check_grid_consistency'" class="reference internal" href="#sp_validation.sacc_io._check_grid_consistency"><code class="docutils literal notranslate"><span class="pre">_check_grid_consistency()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.update_statistic'" class="reference internal" href="#sp_validation.sacc_io.update_statistic"><code class="docutils literal notranslate"><span class="pre">update_statistic()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.save'" class="reference internal" href="#sp_validation.sacc_io.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.load'" class="reference internal" href="#sp_validation.sacc_io.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+</ul>
+</div>
+</aside>
+</main>
+</div>
+</div><footer class="py-6 border-t border-border md:py-0">
+<div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+<div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 21 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+</div>
+</div>
+</footer>
+</div><button :class="{'opacity-0 invisible' : !showScrollTop}" @click="window.scrollTo({top: 0, behavior: 'smooth'})" class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950" id="scrolltop" x-cloak="">
+<svg aria-hidden="true" class="inline fill-current mb-[2px]" height="14" viewbox="0 96 960 960" width="14" xmlns="http://www.w3.org/2000/svg">
+<path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z"></path>
+</svg>
+  Back to top
+</button>
+<script src="_static/documentation_options.js?v=5929fcd5"></script>
+<script src="_static/doctools.js?v=fd6eb6e6"></script>
+<script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+<script defer="defer" src="_static/theme.js?v=5db23cf8"></script>
+</body>
+</html>

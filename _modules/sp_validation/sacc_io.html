@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en" data-content_root="../../"
+  x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}"
+  :class="{ 'dark' : darkMode === true }">
+
+<head>
+  <script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#030711" />
+  
+  <title>sp_validation.sacc_io | sp_validation v0.6.0</title>
+  <meta property="og:title" content="sp_validation.sacc_io | sp_validation v0.6.0" />
+  <meta name="twitter:title" content="sp_validation.sacc_io | sp_validation v0.6.0" />
+  <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+  <link rel="stylesheet" type="text/css" href="../../_static/theme.css?v=d6d7c91b" />
+  <link rel="search" title="Search" href="../../search.html" />
+  <link rel="index" title="Index" href="../../genindex.html" />
+</head>
+
+<body x-data="{ showSidebar: false, showScrollTop: false }"
+  class="min-h-screen font-sans antialiased bg-background text-foreground" :class="{ 'overflow-hidden': showSidebar }"@scroll.window="showScrollTop = pageYOffset > 100">
+  <div x-cloak x-show="showSidebar"
+    class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden"
+    @click.self="showSidebar = false"></div><div id="page" class="relative flex flex-col min-h-screen"><a href="#content"
+      class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+    <div class="hidden mr-4 md:flex">
+      <a href="../../index.html" class="flex items-center mr-6"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+      </a></div><button
+      class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden"
+      type="button" @click="showSidebar = true">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" aria-hidden="true"
+        fill="currentColor">
+        <path
+          d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z" />
+      </svg>
+      <span class="sr-only">Toggle navigation menu</span>
+    </button>
+    <div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+      <div class="flex-1 w-full md:w-auto md:flex-none"><form id="searchbox"
+      action="../../search.html"
+      method="get"
+      class="relative flex items-center group"
+      @keydown.k.window.meta="$refs.search.focus()">
+  <input x-ref="search"
+          name="q"
+          id="search-input"
+          type="search"
+          aria-label="Search the docs"
+          placeholder="Search ..."
+          class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" />
+  <kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+    <span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+      </div>
+      <nav class="flex items-center gap-1">
+        <button @click="darkMode = !darkMode"
+          class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9"
+          type="button"
+          title="Toggle color scheme">
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0">
+            <path
+              d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z" />
+          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 96 960 960" fill="currentColor"
+            class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100">
+            <path
+              d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z" />
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </div>
+</header>
+
+    <div class="flex-1"><div
+        class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside id="left-sidebar"
+  class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky"
+  :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }">
+
+    <a href="../../index.html" class="justify-start text-sm md:!hidden bg-background"><span class="font-bold text-clip whitespace-nowrap">sp_validation v0.6.0</span>
+    </a>
+
+    <div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+      <div class="overflow-y-auto h-full w-full relative pr-6"><nav class="table w-full min-w-full my-6 lg:my-8">
+  <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../repository_structure.html">Repository structure</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../using_the_catalogues.html">Using the weak-lensing catalogues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../run_validation.html">Running shear validation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../post_processing.html">Post-processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Leakage_object_Tutorial.html">Leakage_object Tutorial</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../sp_validation.html">sp_validation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.cosmo_val.html">sp_validation.cosmo_val</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.catalog_characterization.html">sp_validation.cosmo_val.catalog_characterization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.core.html">sp_validation.cosmo_val.core</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.cosebis.html">sp_validation.cosmo_val.cosebis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pseudo_cl.html">sp_validation.cosmo_val.pseudo_cl</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.psf_systematics.html">sp_validation.cosmo_val.psf_systematics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.pure_eb.html">sp_validation.cosmo_val.pure_eb</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../sp_validation.cosmo_val.real_space.html">sp_validation.cosmo_val.real_space</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.b_modes.html">sp_validation.b_modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.calibration.html">sp_validation.calibration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.catalog.html">sp_validation.catalog</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.format.html">sp_validation.format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.galaxy.html">sp_validation.galaxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.image_sims.html">sp_validation.image_sims</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.io.html">sp_validation.io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.masks.html">sp_validation.masks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plot_style.html">sp_validation.plot_style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.plots.html">sp_validation.plots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.pseudo_cl.html">sp_validation.pseudo_cl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.rho_tau.html">sp_validation.rho_tau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.sacc_io.html">sp_validation.sacc_io</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.statistics.html">sp_validation.statistics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.survey.html">sp_validation.survey</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../sp_validation.version.html">sp_validation.version</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../z_ref.html">References</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guidelines</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../contributing.html">Contributing</a></li>
+</ul>
+
+</nav>
+      </div>
+    </div>
+    <button type="button" @click="showSidebar = false"
+      class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100">
+      <svg xmlns="http://www.w3.org/2000/svg" height="24" width="24" viewBox="0 96 960 960" fill="currentColor"
+        stroke="none" class="h-4 w-4">
+        <path
+          d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z" />
+      </svg>
+    </button>
+  </aside>
+          <main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs"
+     class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+  <a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground"
+     href="../../index.html">
+    <span class="hidden md:inline">sp_validation v0.6.0</span>
+    <svg xmlns="http://www.w3.org/2000/svg"
+         height="18"
+         width="18"
+         viewBox="0 96 960 960"
+         aria-label="Home"
+         fill="currentColor"
+         stroke="none"
+         class="md:hidden">
+      <path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z" />
+    </svg>
+  </a>
+  
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap"
+       href="../index.html">Module code</a>
+    
+<div class="mr-1">/</div><span aria-current="page"
+        class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">sp_validation.sacc_io</span>
+</nav>
+
+    <div id="content" role="main">
+      <h1>Source code for sp_validation.sacc_io</h1><div class="highlight"><pre>
+<span></span><code><span id="line-1"><span class="sd">&quot;&quot;&quot;SACC_IO.</span>
+</span><span id="line-2">
+</span><span id="line-3"><span class="sd">:Name: sacc_io.py</span>
+</span><span id="line-4">
+</span><span id="line-5"><span class="sd">:Description: Read/write the standard SACC data-product layout for the</span>
+</span><span id="line-6"><span class="sd">              weak-lensing validation package. One file describes each</span>
+</span><span id="line-7"><span class="sd">              catalogue version:</span>
+</span><span id="line-8">
+</span><span id="line-9"><span class="sd">              - ``{version}.sacc`` — NZ tracers, reporting-grid ξ±, pseudo-Cℓ</span>
+</span><span id="line-10"><span class="sd">                (EE/BB/EB) with bandpower windows, COSEBIs, pure E/B, ρ/τ PSF</span>
+</span><span id="line-11"><span class="sd">                diagnostics, and the fine ξ± integration input for</span>
+</span><span id="line-12"><span class="sd">                COSEBIs / pure-EB (``grid=&#39;integration&#39;`` tagged points). The</span>
+</span><span id="line-13"><span class="sd">                covariance is assembled block-diagonally from the</span>
+</span><span id="line-14"><span class="sd">                per-statistic covariances (zero cross-blocks, never</span>
+</span><span id="line-15"><span class="sd">                materialized): the analysis blocks first, then a dense</span>
+</span><span id="line-16"><span class="sd">                per-pair integration-ξ block (the analytic integration-binning</span>
+</span><span id="line-17"><span class="sd">                covariance when it exists — it feeds derived-statistic error</span>
+</span><span id="line-18"><span class="sd">                propagation — or the TreeCorr ``varxip``/``varxim`` diagonal as</span>
+</span><span id="line-19"><span class="sd">                degraded fallback). ``assemble_covariance`` hands sacc a list</span>
+</span><span id="line-20"><span class="sd">                of blocks, which stores a ``BlockDiagonalCovariance`` (one</span>
+</span><span id="line-21"><span class="sd">                FITS table per block, Σ block² on disk rather than a dense</span>
+</span><span id="line-22"><span class="sd">                N²) — cost scales with the integration grid&#39;s size, a</span>
+</span><span id="line-23"><span class="sd">                parameter set by the caller, not baked into the layout.</span>
+</span><span id="line-24">
+</span><span id="line-25"><span class="sd">              Insertion order is load-bearing. A Sacc is a flat list of data</span>
+</span><span id="line-26"><span class="sd">              points in the order ``add_data_point`` was called, and row/column</span>
+</span><span id="line-27"><span class="sd">              ``i`` of the covariance refers to the ``i``-th inserted point —</span>
+</span><span id="line-28"><span class="sd">              there is no other linkage between a point and its covariance</span>
+</span><span id="line-29"><span class="sd">              entry. SACC preserves that order bitwise through FITS save/load,</span>
+</span><span id="line-30"><span class="sd">              so writers define the covariance layout by their insertion</span>
+</span><span id="line-31"><span class="sd">              sequence. Writers below insert in the canonical order — ξ+ then</span>
+</span><span id="line-32"><span class="sd">              ξ−, Cℓ (ee, bb, eb), COSEBIs (all Eₙ then all Bₙ), pure E/B</span>
+</span><span id="line-33"><span class="sd">              (xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb — matching</span>
+</span><span id="line-34"><span class="sd">              ``b_modes._EB_KEYS``), ρ, then τ — but readers never assume</span>
+</span><span id="line-35"><span class="sd">              global order: they resolve indices through</span>
+</span><span id="line-36"><span class="sd">              ``Sacc.indices(dtype, tracers, **tags)``.</span>
+</span><span id="line-37">
+</span><span id="line-38"><span class="sd">              Tag filters are plain keyword arguments to ``indices`` /</span>
+</span><span id="line-39"><span class="sd">              ``get_data_points`` / ``get_tag``; the ``tags={...}`` form</span>
+</span><span id="line-40"><span class="sd">              silently selects nothing and must never be used.</span>
+</span><span id="line-41">
+</span><span id="line-42"><span class="sd">              Tomographic ξ ordering: each ``add_xi`` call inserts one tracer</span>
+</span><span id="line-43"><span class="sd">              pair as ``[xip; xim]``, so a multi-pair vector is *pair-major*</span>
+</span><span id="line-44"><span class="sd">              — ``[pair_0 xip; pair_0 xim; pair_1 xip; …]`` — not type-major</span>
+</span><span id="line-45"><span class="sd">              (``[all xip; all xim]``). A tomographic ξ covariance with</span>
+</span><span id="line-46"><span class="sd">              cross-pair correlations is therefore supplied to</span>
+</span><span id="line-47"><span class="sd">              ``assemble_covariance`` as ONE contiguous block spanning the</span>
+</span><span id="line-48"><span class="sd">              consecutive ``add_xi`` calls, ordered pair-by-pair to match</span>
+</span><span id="line-49"><span class="sd">              insertion. Writers must call ``add_xi`` in the same pair order</span>
+</span><span id="line-50"><span class="sd">              the covariance was built in. Converters that need a type-major</span>
+</span><span id="line-51"><span class="sd">              layout (e.g. the DES 2pt-FITS convention) permute explicitly via</span>
+</span><span id="line-52"><span class="sd">              ``s.indices`` rather than assuming global order.</span>
+</span><span id="line-53">
+</span><span id="line-54"><span class="sd">Optionality: a file&#39;s contents are flexible about which components of</span>
+</span><span id="line-55"><span class="sd">              a statistic it actually has. ``add_pseudo_cl`` requires EE (the</span>
+</span><span id="line-56"><span class="sd">              bandpower window&#39;s reference series) but BB and EB are optional</span>
+</span><span id="line-57"><span class="sd">              — an analysis that never computed EB simply omits it.</span>
+</span><span id="line-58"><span class="sd">              ``add_cosebis`` requires Eₙ but Bₙ is optional. ``add_pure_eb``</span>
+</span><span id="line-59"><span class="sd">              requires xip_E/xim_E but the B and ambiguous-mode blocks are</span>
+</span><span id="line-60"><span class="sd">              each optional, independently (B and amb are unrelated</span>
+</span><span id="line-61"><span class="sd">              computations). Everything else a writer takes — θ/ℓ grids,</span>
+</span><span id="line-62"><span class="sd">              tracer/bin identifiers, the value array for a component you ARE</span>
+</span><span id="line-63"><span class="sd">              adding — is structurally necessary and has no default;</span>
+</span><span id="line-64"><span class="sd">              supplying it partially would desynchronise the covariance</span>
+</span><span id="line-65"><span class="sd">              layout, so it is refused rather than degraded. Readers mirror</span>
+</span><span id="line-66"><span class="sd">              this split: a composite reader (``get_pseudo_cl``,</span>
+</span><span id="line-67"><span class="sd">              ``get_cosebis``, ``get_pure_eb``) returns ``None`` (or omits the</span>
+</span><span id="line-68"><span class="sd">              key) for a component the file doesn&#39;t carry, but a selection</span>
+</span><span id="line-69"><span class="sd">              naming that component explicitly (``s.indices``, ``_mean``,</span>
+</span><span id="line-70"><span class="sd">              ``extract``) still fails loud on no match — silence is reserved</span>
+</span><span id="line-71"><span class="sd">              for &quot;this file doesn&#39;t have that optional piece&quot;, never for</span>
+</span><span id="line-72"><span class="sd">              &quot;you asked for something specific and it isn&#39;t there&quot;.</span>
+</span><span id="line-73"><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="line-74">
+</span><span id="line-75"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-76"><span class="kn">import</span><span class="w"> </span><span class="nn">sacc</span>
+</span><span id="line-77">
+</span><span id="line-78"><span class="n">PSF_TRACER</span> <span class="o">=</span> <span class="s2">&quot;psf_stars&quot;</span>
+</span><span id="line-79">
+</span><span id="line-80"><span class="c1"># Standard SACC data-type strings.</span>
+</span><span id="line-81"><span class="n">XI_PLUS</span> <span class="o">=</span> <span class="s2">&quot;galaxy_shear_xi_plus&quot;</span>
+</span><span id="line-82"><span class="n">XI_MINUS</span> <span class="o">=</span> <span class="s2">&quot;galaxy_shear_xi_minus&quot;</span>
+</span><span id="line-83"><span class="n">CL_EE</span> <span class="o">=</span> <span class="s2">&quot;galaxy_shear_cl_ee&quot;</span>
+</span><span id="line-84"><span class="n">CL_BB</span> <span class="o">=</span> <span class="s2">&quot;galaxy_shear_cl_bb&quot;</span>
+</span><span id="line-85"><span class="n">CL_EB</span> <span class="o">=</span> <span class="s2">&quot;galaxy_shear_cl_eb&quot;</span>
+</span><span id="line-86"><span class="n">COSEBI_EE</span> <span class="o">=</span> <span class="s2">&quot;galaxy_shear_cosebi_ee&quot;</span>
+</span><span id="line-87"><span class="n">COSEBI_BB</span> <span class="o">=</span> <span class="s2">&quot;galaxy_shear_cosebi_bb&quot;</span>
+</span><span id="line-88">
+</span><span id="line-89"><span class="c1"># Custom data-type strings (all parse under sacc.parse_data_type_name).</span>
+</span><span id="line-90"><span class="n">PURE_TYPES</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-91">    <span class="s2">&quot;xip_E&quot;</span><span class="p">:</span> <span class="s2">&quot;galaxy_shear_xiPureE_plus&quot;</span><span class="p">,</span>
+</span><span id="line-92">    <span class="s2">&quot;xim_E&quot;</span><span class="p">:</span> <span class="s2">&quot;galaxy_shear_xiPureE_minus&quot;</span><span class="p">,</span>
+</span><span id="line-93">    <span class="s2">&quot;xip_B&quot;</span><span class="p">:</span> <span class="s2">&quot;galaxy_shear_xiPureB_plus&quot;</span><span class="p">,</span>
+</span><span id="line-94">    <span class="s2">&quot;xim_B&quot;</span><span class="p">:</span> <span class="s2">&quot;galaxy_shear_xiPureB_minus&quot;</span><span class="p">,</span>
+</span><span id="line-95">    <span class="s2">&quot;xip_amb&quot;</span><span class="p">:</span> <span class="s2">&quot;galaxy_shear_xiPureAmb_plus&quot;</span><span class="p">,</span>
+</span><span id="line-96">    <span class="s2">&quot;xim_amb&quot;</span><span class="p">:</span> <span class="s2">&quot;galaxy_shear_xiPureAmb_minus&quot;</span><span class="p">,</span>
+</span><span id="line-97"><span class="p">}</span>
+</span><span id="line-98"><span class="c1"># PURE_TYPES key order is the insertion order of the six pure-EB blocks —</span>
+</span><span id="line-99"><span class="c1"># matches b_modes._EB_KEYS, whose order is the [xip_E; xim_E; xip_B; xim_B;</span>
+</span><span id="line-100"><span class="c1"># xip_amb; xim_amb] layout of the treecorr/MC pure-EB covariance</span>
+</span><span id="line-101"><span class="c1"># (b_modes.calculate_eb_statistics, ~L392).</span>
+</span><span id="line-102"><span class="n">PURE_KEYS</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">PURE_TYPES</span><span class="p">)</span>
+</span><span id="line-103">
+</span><span id="line-104"><span class="n">RHO_PLUS</span> <span class="o">=</span> <span class="s2">&quot;psf_rho</span><span class="si">{k}</span><span class="s2">_xi_plus&quot;</span>
+</span><span id="line-105"><span class="n">RHO_MINUS</span> <span class="o">=</span> <span class="s2">&quot;psf_rho</span><span class="si">{k}</span><span class="s2">_xi_minus&quot;</span>
+</span><span id="line-106"><span class="n">TAU_PLUS</span> <span class="o">=</span> <span class="s2">&quot;galaxyPsf_tau</span><span class="si">{k}</span><span class="s2">_xi_plus&quot;</span>
+</span><span id="line-107"><span class="n">TAU_MINUS</span> <span class="o">=</span> <span class="s2">&quot;galaxyPsf_tau</span><span class="si">{k}</span><span class="s2">_xi_minus&quot;</span>
+</span><span id="line-108">
+</span><span id="line-109">
+<div class="viewcode-block" id="source_name">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.source_name">[docs]</a>
+</span><span id="line-110"><span class="k">def</span><span class="w"> </span><span class="nf">source_name</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+</span><span id="line-111"><span class="w">    </span><span class="sd">&quot;&quot;&quot;SACC tracer name for source redshift bin ``i`` (0-based).</span>
+</span><span id="line-112">
+</span><span id="line-113"><span class="sd">    Kept as the single definition of the ``source_{i}`` naming contract —</span>
+</span><span id="line-114"><span class="sd">    external consumers address tracers through it rather than the f-string.</span>
+</span><span id="line-115"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-116">    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;source_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span></div>
+
+</span><span id="line-117">
+</span><span id="line-118">
+<div class="viewcode-block" id="new_sacc">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.new_sacc">[docs]</a>
+</span><span id="line-119"><span class="k">def</span><span class="w"> </span><span class="nf">new_sacc</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-120"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a Sacc with the survey&#39;s NZ (and PSF) tracers.</span>
+</span><span id="line-121">
+</span><span id="line-122"><span class="sd">    Parameters</span>
+</span><span id="line-123"><span class="sd">    ----------</span>
+</span><span id="line-124"><span class="sd">    nz : dict or sequence</span>
+</span><span id="line-125"><span class="sd">        Redshift distributions, one per source bin. Either a mapping</span>
+</span><span id="line-126"><span class="sd">        ``{i: (z, nz)}`` keyed by 0-based bin index, or a sequence of</span>
+</span><span id="line-127"><span class="sd">        ``(z, nz)`` array pairs (bin index = position). Tracers are named</span>
+</span><span id="line-128"><span class="sd">        ``source_{i}``.</span>
+</span><span id="line-129"><span class="sd">    metadata : dict, optional</span>
+</span><span id="line-130"><span class="sd">        Key/value pairs stored on ``s.metadata``.</span>
+</span><span id="line-131">
+</span><span id="line-132"><span class="sd">    Returns</span>
+</span><span id="line-133"><span class="sd">    -------</span>
+</span><span id="line-134"><span class="sd">    sacc.Sacc</span>
+</span><span id="line-135"><span class="sd">        Sacc holding the ``source_{i}`` NZ tracers and the ``psf_stars``</span>
+</span><span id="line-136"><span class="sd">        Misc tracer (needed by ρ/τ diagnostics).</span>
+</span><span id="line-137"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-138">    <span class="n">items</span> <span class="o">=</span> <span class="n">nz</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">nz</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">nz</span><span class="p">)</span>
+</span><span id="line-139">    <span class="n">s</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="p">()</span>
+</span><span id="line-140">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">nz_i</span><span class="p">)</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+</span><span id="line-141">        <span class="n">s</span><span class="o">.</span><span class="n">add_tracer</span><span class="p">(</span><span class="s2">&quot;NZ&quot;</span><span class="p">,</span> <span class="n">source_name</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">z</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">nz_i</span><span class="p">))</span>
+</span><span id="line-142">    <span class="c1"># The PSF star sample sits alongside the source bins because a Sacc has a</span>
+</span><span id="line-143">    <span class="c1"># single tracer namespace — every data point references tracers from one</span>
+</span><span id="line-144">    <span class="c1"># flat list. This is bookkeeping, not physics: psf_stars is a Misc tracer</span>
+</span><span id="line-145">    <span class="c1"># (no n(z)) that exists only so ρ/τ points have something to reference.</span>
+</span><span id="line-146">    <span class="n">s</span><span class="o">.</span><span class="n">add_tracer</span><span class="p">(</span><span class="s2">&quot;Misc&quot;</span><span class="p">,</span> <span class="n">PSF_TRACER</span><span class="p">)</span>
+</span><span id="line-147">    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-148">        <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</span><span id="line-149">    <span class="k">return</span> <span class="n">s</span></div>
+
+</span><span id="line-150">
+</span><span id="line-151">
+<div class="viewcode-block" id="_pair">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._pair">[docs]</a>
+</span><span id="line-152"><span class="k">def</span><span class="w"> </span><span class="nf">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">):</span>
+</span><span id="line-153"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a ``(i, j)`` bin pair to the ``(source_i, source_j)`` names.</span>
+</span><span id="line-154">
+</span><span id="line-155"><span class="sd">    The pair is normalised to ``i &lt;= j``: shear-shear statistics are symmetric</span>
+</span><span id="line-156"><span class="sd">    in the tracer pair, and SACC stores each pair under one ordering, so</span>
+</span><span id="line-157"><span class="sd">    ``(1, 0)`` must address the same points as ``(0, 1)``. Kept as a helper:</span>
+</span><span id="line-158"><span class="sd">    every ``add_*``/``get_*`` function relies on this normalisation.</span>
+</span><span id="line-159"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-160">    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-161">    <span class="k">return</span> <span class="p">(</span><span class="n">source_name</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">source_name</span><span class="p">(</span><span class="n">j</span><span class="p">))</span></div>
+
+</span><span id="line-162">
+</span><span id="line-163">
+<div class="viewcode-block" id="_check_ascending">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._check_ascending">[docs]</a>
+</span><span id="line-164"><span class="k">def</span><span class="w"> </span><span class="nf">_check_ascending</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+</span><span id="line-165"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Require ``values`` to be strictly ascending; else raise ValueError.</span>
+</span><span id="line-166">
+</span><span id="line-167"><span class="sd">    Insertion order is the covariance (and bandpower-window) order, and readers</span>
+</span><span id="line-168"><span class="sd">    return points in insertion order, so an out-of-order grid would silently</span>
+</span><span id="line-169"><span class="sd">    desynchronise a data vector from its covariance. Enforce monotonicity at</span>
+</span><span id="line-170"><span class="sd">    write time instead.</span>
+</span><span id="line-171"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-172">    <span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+</span><span id="line-173">    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">):</span>
+</span><span id="line-174">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-175">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2"> must be strictly ascending (insertion order is the &quot;</span>
+</span><span id="line-176">            <span class="sa">f</span><span class="s2">&quot;covariance order); got </span><span class="si">{</span><span class="n">values</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-177">        <span class="p">)</span></div>
+
+</span><span id="line-178">
+</span><span id="line-179">
+<div class="viewcode-block" id="_add_theta_series">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._add_theta_series">[docs]</a>
+</span><span id="line-180"><span class="k">def</span><span class="w"> </span><span class="nf">_add_theta_series</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">):</span>
+</span><span id="line-181"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Insert one theta-tagged series, one point per (theta, value) pair.&quot;&quot;&quot;</span>
+</span><span id="line-182">    <span class="k">for</span> <span class="n">th</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">theta</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+</span><span id="line-183">        <span class="n">s</span><span class="o">.</span><span class="n">add_data_point</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">),</span> <span class="n">theta</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">th</span><span class="p">),</span> <span class="o">**</span><span class="n">tags</span><span class="p">)</span></div>
+
+</span><span id="line-184">
+</span><span id="line-185">
+<div class="viewcode-block" id="add_xi">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.add_xi">[docs]</a>
+</span><span id="line-186"><span class="k">def</span><span class="w"> </span><span class="nf">add_xi</span><span class="p">(</span>
+</span><span id="line-187">    <span class="n">s</span><span class="p">,</span>
+</span><span id="line-188">    <span class="n">bins</span><span class="p">,</span>
+</span><span id="line-189">    <span class="n">theta</span><span class="p">,</span>
+</span><span id="line-190">    <span class="n">xip</span><span class="p">,</span>
+</span><span id="line-191">    <span class="n">xim</span><span class="p">,</span>
+</span><span id="line-192">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-193">    <span class="n">grid</span><span class="p">,</span>
+</span><span id="line-194">    <span class="n">theta_nom</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-195">    <span class="n">npairs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-196">    <span class="n">weight</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-197"><span class="p">):</span>
+</span><span id="line-198"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a real-space shear 2PCF (ξ+ then ξ−) for one tracer pair.</span>
+</span><span id="line-199">
+</span><span id="line-200"><span class="sd">    Parameters</span>
+</span><span id="line-201"><span class="sd">    ----------</span>
+</span><span id="line-202"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-203"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-204"><span class="sd">    bins : tuple of int</span>
+</span><span id="line-205"><span class="sd">        Source bin pair ``(i, j)``.</span>
+</span><span id="line-206"><span class="sd">    theta : array_like</span>
+</span><span id="line-207"><span class="sd">        Angular separations (arcmin) — TreeCorr ``meanr``.</span>
+</span><span id="line-208"><span class="sd">    xip, xim : array_like</span>
+</span><span id="line-209"><span class="sd">        ξ+ and ξ− at ``theta``.</span>
+</span><span id="line-210"><span class="sd">    grid : {&#39;reporting&#39;, &#39;integration&#39;}</span>
+</span><span id="line-211"><span class="sd">        Stored as the ``grid`` tag on every point. The reporting (analysis)</span>
+</span><span id="line-212"><span class="sd">        ξ± and the fine COSEBIs/pure-EB integration input share the same</span>
+</span><span id="line-213"><span class="sd">        data type and tracer pair, so this tag is the only thing that</span>
+</span><span id="line-214"><span class="sd">        disambiguates them in the file.</span>
+</span><span id="line-215"><span class="sd">    theta_nom : array_like, optional</span>
+</span><span id="line-216"><span class="sd">        Nominal bin centres — TreeCorr ``rnom`` — stored as ``theta_nom``.</span>
+</span><span id="line-217"><span class="sd">    npairs, weight : array_like, optional</span>
+</span><span id="line-218"><span class="sd">        TreeCorr pair counts and weights, stored per point.</span>
+</span><span id="line-219"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-220">    <span class="n">_check_ascending</span><span class="p">(</span><span class="s2">&quot;theta&quot;</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+</span><span id="line-221">    <span class="n">tracers</span> <span class="o">=</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-222">    <span class="n">optional</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;theta_nom&quot;</span><span class="p">:</span> <span class="n">theta_nom</span><span class="p">,</span> <span class="s2">&quot;npairs&quot;</span><span class="p">:</span> <span class="n">npairs</span><span class="p">,</span> <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="n">weight</span><span class="p">}</span>
+</span><span id="line-223">    <span class="n">extras</span> <span class="o">=</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">arr</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">optional</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">arr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">}</span>
+</span><span id="line-224">    <span class="k">for</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">xi</span> <span class="ow">in</span> <span class="p">((</span><span class="n">XI_PLUS</span><span class="p">,</span> <span class="n">xip</span><span class="p">),</span> <span class="p">(</span><span class="n">XI_MINUS</span><span class="p">,</span> <span class="n">xim</span><span class="p">)):</span>
+</span><span id="line-225">        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">th</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">theta</span><span class="p">):</span>
+</span><span id="line-226">            <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-227">                <span class="s2">&quot;theta&quot;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">th</span><span class="p">),</span>
+</span><span id="line-228">                <span class="s2">&quot;grid&quot;</span><span class="p">:</span> <span class="n">grid</span><span class="p">,</span>
+</span><span id="line-229">                <span class="o">**</span><span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">arr</span><span class="p">[</span><span class="n">n</span><span class="p">])</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">arr</span> <span class="ow">in</span> <span class="n">extras</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
+</span><span id="line-230">            <span class="p">}</span>
+</span><span id="line-231">            <span class="n">s</span><span class="o">.</span><span class="n">add_data_point</span><span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">xi</span><span class="p">[</span><span class="n">n</span><span class="p">]),</span> <span class="o">**</span><span class="n">tags</span><span class="p">)</span></div>
+
+</span><span id="line-232">
+</span><span id="line-233">
+<div class="viewcode-block" id="add_pseudo_cl">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.add_pseudo_cl">[docs]</a>
+</span><span id="line-234"><span class="k">def</span><span class="w"> </span><span class="nf">add_pseudo_cl</span><span class="p">(</span>
+</span><span id="line-235">    <span class="n">s</span><span class="p">,</span>
+</span><span id="line-236">    <span class="n">bins</span><span class="p">,</span>
+</span><span id="line-237">    <span class="n">ell_eff</span><span class="p">,</span>
+</span><span id="line-238">    <span class="n">cl_ee</span><span class="p">,</span>
+</span><span id="line-239">    <span class="n">cl_bb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-240">    <span class="n">cl_eb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-241">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-242">    <span class="n">window_ells</span><span class="p">,</span>
+</span><span id="line-243">    <span class="n">window_weights</span><span class="p">,</span>
+</span><span id="line-244">    <span class="n">grid</span><span class="o">=</span><span class="s2">&quot;reporting&quot;</span><span class="p">,</span>
+</span><span id="line-245"><span class="p">):</span>
+</span><span id="line-246"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add pseudo-Cℓ EE (required) plus whichever of BB/EB were computed.</span>
+</span><span id="line-247">
+</span><span id="line-248"><span class="sd">    Parameters</span>
+</span><span id="line-249"><span class="sd">    ----------</span>
+</span><span id="line-250"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-251"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-252"><span class="sd">    bins : tuple of int</span>
+</span><span id="line-253"><span class="sd">        Source bin pair ``(i, j)``.</span>
+</span><span id="line-254"><span class="sd">    ell_eff : array_like</span>
+</span><span id="line-255"><span class="sd">        Effective multipole of each bandpower.</span>
+</span><span id="line-256"><span class="sd">    cl_ee : array_like</span>
+</span><span id="line-257"><span class="sd">        EE bandpowers at ``ell_eff``.</span>
+</span><span id="line-258"><span class="sd">    cl_bb, cl_eb : array_like, optional</span>
+</span><span id="line-259"><span class="sd">        BB and/or EB bandpowers at ``ell_eff``. Each defaults to ``None`` and</span>
+</span><span id="line-260"><span class="sd">        is then simply not written — EB in particular is often not computed</span>
+</span><span id="line-261"><span class="sd">        at all.</span>
+</span><span id="line-262"><span class="sd">    window_ells : array_like</span>
+</span><span id="line-263"><span class="sd">        Multipoles spanned by the bandpower window matrix (shape ``(nell,)``).</span>
+</span><span id="line-264"><span class="sd">    window_weights : array_like</span>
+</span><span id="line-265"><span class="sd">        Window matrix ``W`` of shape ``(nell, nbp)`` — one column per</span>
+</span><span id="line-266"><span class="sd">        bandpower — from NaMaster ``get_bandpower_windows``. One</span>
+</span><span id="line-267"><span class="sd">        ``sacc.BandpowerWindow`` is built and shared across every component</span>
+</span><span id="line-268"><span class="sd">        written.</span>
+</span><span id="line-269"><span class="sd">    grid : str, optional</span>
+</span><span id="line-270"><span class="sd">        Stored as the ``grid`` tag on every point (default ``&#39;reporting&#39;``),</span>
+</span><span id="line-271"><span class="sd">        joining ``merge``&#39;s ℓ-consistency group; variant ℓ binnings belong</span>
+</span><span id="line-272"><span class="sd">        under different tag values.</span>
+</span><span id="line-273"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-274">    <span class="n">_check_ascending</span><span class="p">(</span><span class="s2">&quot;ell_eff&quot;</span><span class="p">,</span> <span class="n">ell_eff</span><span class="p">)</span>
+</span><span id="line-275">    <span class="n">tracers</span> <span class="o">=</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-276">    <span class="n">window</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">BandpowerWindow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">window_ells</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">window_weights</span><span class="p">))</span>
+</span><span id="line-277">    <span class="c1"># add_ell_cl accepts no extra tags, so inline its per-point insertion</span>
+</span><span id="line-278">    <span class="c1"># (ell + shared window + window_ind column index) plus the grid tag.</span>
+</span><span id="line-279">    <span class="n">components</span> <span class="o">=</span> <span class="p">[(</span><span class="n">CL_EE</span><span class="p">,</span> <span class="n">cl_ee</span><span class="p">)]</span>
+</span><span id="line-280">    <span class="n">components</span> <span class="o">+=</span> <span class="p">[</span>
+</span><span id="line-281">        <span class="p">(</span><span class="n">dtype</span><span class="p">,</span> <span class="n">cl</span><span class="p">)</span> <span class="k">for</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">cl</span> <span class="ow">in</span> <span class="p">((</span><span class="n">CL_BB</span><span class="p">,</span> <span class="n">cl_bb</span><span class="p">),</span> <span class="p">(</span><span class="n">CL_EB</span><span class="p">,</span> <span class="n">cl_eb</span><span class="p">))</span> <span class="k">if</span> <span class="n">cl</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-282">    <span class="p">]</span>
+</span><span id="line-283">    <span class="k">for</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">cl</span> <span class="ow">in</span> <span class="n">components</span><span class="p">:</span>
+</span><span id="line-284">        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">ell</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">ell_eff</span><span class="p">,</span> <span class="n">cl</span><span class="p">)):</span>
+</span><span id="line-285">            <span class="n">s</span><span class="o">.</span><span class="n">add_data_point</span><span class="p">(</span>
+</span><span id="line-286">                <span class="n">dtype</span><span class="p">,</span>
+</span><span id="line-287">                <span class="n">tracers</span><span class="p">,</span>
+</span><span id="line-288">                <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+</span><span id="line-289">                <span class="n">ell</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">ell</span><span class="p">),</span>
+</span><span id="line-290">                <span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span>
+</span><span id="line-291">                <span class="n">window_ind</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+</span><span id="line-292">                <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span>
+</span><span id="line-293">            <span class="p">)</span></div>
+
+</span><span id="line-294">
+</span><span id="line-295">
+<div class="viewcode-block" id="add_cosebis">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.add_cosebis">[docs]</a>
+</span><span id="line-296"><span class="k">def</span><span class="w"> </span><span class="nf">add_cosebis</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">En</span><span class="p">,</span> <span class="n">scale_cut</span><span class="p">,</span> <span class="n">Bn</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-297"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add COSEBIs Eₙ (required) and Bₙ (optional) for one scale cut.</span>
+</span><span id="line-298">
+</span><span id="line-299"><span class="sd">    Parameters</span>
+</span><span id="line-300"><span class="sd">    ----------</span>
+</span><span id="line-301"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-302"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-303"><span class="sd">    bins : tuple of int</span>
+</span><span id="line-304"><span class="sd">        Source bin pair ``(i, j)``.</span>
+</span><span id="line-305"><span class="sd">    En : array_like</span>
+</span><span id="line-306"><span class="sd">        E-mode COSEBI amplitudes, one per logarithmic mode ``n`` (1-based).</span>
+</span><span id="line-307"><span class="sd">    scale_cut : tuple of float</span>
+</span><span id="line-308"><span class="sd">        ``(theta_min, theta_max)`` in arcmin, stored on every point as the</span>
+</span><span id="line-309"><span class="sd">        ``theta_min``/``theta_max`` tags; multiple cuts coexist in one file,</span>
+</span><span id="line-310"><span class="sd">        told apart by these tags.</span>
+</span><span id="line-311"><span class="sd">    Bn : array_like, optional</span>
+</span><span id="line-312"><span class="sd">        B-mode COSEBI amplitudes at the same ``n``. Defaults to ``None`` and</span>
+</span><span id="line-313"><span class="sd">        is then simply not written. The ``[En; Bn]`` layout, when both are</span>
+</span><span id="line-314"><span class="sd">        present, matches the COSEBI covariance.</span>
+</span><span id="line-315"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-316">    <span class="n">tracers</span> <span class="o">=</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-317">    <span class="n">theta_min</span><span class="p">,</span> <span class="n">theta_max</span> <span class="o">=</span> <span class="n">scale_cut</span>
+</span><span id="line-318">    <span class="n">components</span> <span class="o">=</span> <span class="p">[(</span><span class="n">COSEBI_EE</span><span class="p">,</span> <span class="n">En</span><span class="p">)]</span>
+</span><span id="line-319">    <span class="k">if</span> <span class="n">Bn</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-320">        <span class="n">components</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">COSEBI_BB</span><span class="p">,</span> <span class="n">Bn</span><span class="p">))</span>
+</span><span id="line-321">    <span class="k">for</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">modes</span> <span class="ow">in</span> <span class="n">components</span><span class="p">:</span>
+</span><span id="line-322">        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">modes</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+</span><span id="line-323">            <span class="n">s</span><span class="o">.</span><span class="n">add_data_point</span><span class="p">(</span>
+</span><span id="line-324">                <span class="n">dtype</span><span class="p">,</span>
+</span><span id="line-325">                <span class="n">tracers</span><span class="p">,</span>
+</span><span id="line-326">                <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">),</span>
+</span><span id="line-327">                <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+</span><span id="line-328">                <span class="n">theta_min</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">theta_min</span><span class="p">),</span>
+</span><span id="line-329">                <span class="n">theta_max</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">theta_max</span><span class="p">),</span>
+</span><span id="line-330">            <span class="p">)</span></div>
+
+</span><span id="line-331">
+</span><span id="line-332">
+<div class="viewcode-block" id="add_pure_eb">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.add_pure_eb">[docs]</a>
+</span><span id="line-333"><span class="k">def</span><span class="w"> </span><span class="nf">add_pure_eb</span><span class="p">(</span>
+</span><span id="line-334">    <span class="n">s</span><span class="p">,</span>
+</span><span id="line-335">    <span class="n">bins</span><span class="p">,</span>
+</span><span id="line-336">    <span class="n">theta</span><span class="p">,</span>
+</span><span id="line-337">    <span class="n">xip_E</span><span class="p">,</span>
+</span><span id="line-338">    <span class="n">xim_E</span><span class="p">,</span>
+</span><span id="line-339">    <span class="n">xip_B</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-340">    <span class="n">xim_B</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-341">    <span class="n">xip_amb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-342">    <span class="n">xim_amb</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-343">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-344">    <span class="n">grid</span><span class="o">=</span><span class="s2">&quot;reporting&quot;</span><span class="p">,</span>
+</span><span id="line-345"><span class="p">):</span>
+</span><span id="line-346"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add pure E-mode (required) plus whichever of B/ambiguous were computed.</span>
+</span><span id="line-347">
+</span><span id="line-348"><span class="sd">    Blocks are inserted in ``PURE_KEYS`` order (xip_E, xim_E, xip_B, xim_B,</span>
+</span><span id="line-349"><span class="sd">    xip_amb, xim_amb), matching ``b_modes._EB_KEYS`` and the pure-EB</span>
+</span><span id="line-350"><span class="sd">    covariance layout — whichever subset is present.</span>
+</span><span id="line-351">
+</span><span id="line-352"><span class="sd">    Parameters</span>
+</span><span id="line-353"><span class="sd">    ----------</span>
+</span><span id="line-354"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-355"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-356"><span class="sd">    bins : tuple of int</span>
+</span><span id="line-357"><span class="sd">        Source bin pair ``(i, j)``.</span>
+</span><span id="line-358"><span class="sd">    theta : array_like</span>
+</span><span id="line-359"><span class="sd">        Angular separations (arcmin), shared by every block written.</span>
+</span><span id="line-360"><span class="sd">    xip_E, xim_E : array_like</span>
+</span><span id="line-361"><span class="sd">        The pure E-mode correlation functions at ``theta``.</span>
+</span><span id="line-362"><span class="sd">    xip_B, xim_B : array_like, optional</span>
+</span><span id="line-363"><span class="sd">        The pure B-mode correlation functions. Both default to ``None``; the</span>
+</span><span id="line-364"><span class="sd">        pair is written together or not at all — supply both or neither.</span>
+</span><span id="line-365"><span class="sd">    xip_amb, xim_amb : array_like, optional</span>
+</span><span id="line-366"><span class="sd">        The ambiguous-mode correlation functions. Both default to ``None``;</span>
+</span><span id="line-367"><span class="sd">        same both-or-neither rule as B.</span>
+</span><span id="line-368"><span class="sd">    grid : str, optional</span>
+</span><span id="line-369"><span class="sd">        Stored as the ``grid`` tag on every point (default ``&#39;reporting&#39;``),</span>
+</span><span id="line-370"><span class="sd">        joining ξ&#39;s theta-consistency group in ``merge``&#39;s guard.</span>
+</span><span id="line-371"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-372">    <span class="n">_check_ascending</span><span class="p">(</span><span class="s2">&quot;theta&quot;</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+</span><span id="line-373">    <span class="n">tracers</span> <span class="o">=</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-374">    <span class="n">pairs</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-375">        <span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">xip_B</span><span class="p">,</span> <span class="n">xim_B</span><span class="p">),</span>
+</span><span id="line-376">        <span class="s2">&quot;amb&quot;</span><span class="p">:</span> <span class="p">(</span><span class="n">xip_amb</span><span class="p">,</span> <span class="n">xim_amb</span><span class="p">),</span>
+</span><span id="line-377">    <span class="p">}</span>
+</span><span id="line-378">    <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="n">m</span><span class="p">)</span> <span class="ow">in</span> <span class="n">pairs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-379">        <span class="k">if</span> <span class="p">(</span><span class="n">p</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">m</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="line-380">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-381">                <span class="sa">f</span><span class="s2">&quot;add_pure_eb: xip_</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> and xim_</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2"> must both be &quot;</span>
+</span><span id="line-382">                <span class="s2">&quot;given or both omitted&quot;</span>
+</span><span id="line-383">            <span class="p">)</span>
+</span><span id="line-384">    <span class="n">values</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-385">        <span class="s2">&quot;xip_E&quot;</span><span class="p">:</span> <span class="n">xip_E</span><span class="p">,</span>
+</span><span id="line-386">        <span class="s2">&quot;xim_E&quot;</span><span class="p">:</span> <span class="n">xim_E</span><span class="p">,</span>
+</span><span id="line-387">        <span class="s2">&quot;xip_B&quot;</span><span class="p">:</span> <span class="n">xip_B</span><span class="p">,</span>
+</span><span id="line-388">        <span class="s2">&quot;xim_B&quot;</span><span class="p">:</span> <span class="n">xim_B</span><span class="p">,</span>
+</span><span id="line-389">        <span class="s2">&quot;xip_amb&quot;</span><span class="p">:</span> <span class="n">xip_amb</span><span class="p">,</span>
+</span><span id="line-390">        <span class="s2">&quot;xim_amb&quot;</span><span class="p">:</span> <span class="n">xim_amb</span><span class="p">,</span>
+</span><span id="line-391">    <span class="p">}</span>
+</span><span id="line-392">    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">PURE_KEYS</span><span class="p">:</span>
+</span><span id="line-393">        <span class="n">arr</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+</span><span id="line-394">        <span class="k">if</span> <span class="n">arr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-395">            <span class="n">_add_theta_series</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">PURE_TYPES</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">arr</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span></div>
+
+</span><span id="line-396">
+</span><span id="line-397">
+<div class="viewcode-block" id="add_rho">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.add_rho">[docs]</a>
+</span><span id="line-398"><span class="k">def</span><span class="w"> </span><span class="nf">add_rho</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">rho_p</span><span class="p">,</span> <span class="n">rho_m</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="s2">&quot;reporting&quot;</span><span class="p">):</span>
+</span><span id="line-399"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a ρ_k PSF statistic (ρ+ then ρ−) on the ``psf_stars`` tracer.</span>
+</span><span id="line-400">
+</span><span id="line-401"><span class="sd">    Parameters</span>
+</span><span id="line-402"><span class="sd">    ----------</span>
+</span><span id="line-403"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-404"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-405"><span class="sd">    k : int</span>
+</span><span id="line-406"><span class="sd">        ρ index (0…5).</span>
+</span><span id="line-407"><span class="sd">    theta : array_like</span>
+</span><span id="line-408"><span class="sd">        Angular separations (arcmin).</span>
+</span><span id="line-409"><span class="sd">    rho_p, rho_m : array_like</span>
+</span><span id="line-410"><span class="sd">        ρ_k+ and ρ_k− at ``theta``.</span>
+</span><span id="line-411"><span class="sd">    grid : str, optional</span>
+</span><span id="line-412"><span class="sd">        Stored as the ``grid`` tag on every point (default ``&#39;reporting&#39;``),</span>
+</span><span id="line-413"><span class="sd">        joining ξ&#39;s theta-consistency group in ``merge``&#39;s guard.</span>
+</span><span id="line-414"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-415">    <span class="n">_check_ascending</span><span class="p">(</span><span class="s2">&quot;theta&quot;</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+</span><span id="line-416">    <span class="n">tracers</span> <span class="o">=</span> <span class="p">(</span><span class="n">PSF_TRACER</span><span class="p">,</span> <span class="n">PSF_TRACER</span><span class="p">)</span>
+</span><span id="line-417">    <span class="n">_add_theta_series</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">RHO_PLUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">rho_p</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span>
+</span><span id="line-418">    <span class="n">_add_theta_series</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">RHO_MINUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">rho_m</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span></div>
+
+</span><span id="line-419">
+</span><span id="line-420">
+<div class="viewcode-block" id="add_tau">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.add_tau">[docs]</a>
+</span><span id="line-421"><span class="k">def</span><span class="w"> </span><span class="nf">add_tau</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">tau_p</span><span class="p">,</span> <span class="n">tau_m</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="s2">&quot;reporting&quot;</span><span class="p">):</span>
+</span><span id="line-422"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Add a τ_k PSF-leakage statistic (τ+ then τ−).</span>
+</span><span id="line-423">
+</span><span id="line-424"><span class="sd">    Parameters</span>
+</span><span id="line-425"><span class="sd">    ----------</span>
+</span><span id="line-426"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-427"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-428"><span class="sd">    bins : tuple of int</span>
+</span><span id="line-429"><span class="sd">        Source bin ``i`` and PSF; the τ tracers are ``(source_i, psf_stars)``.</span>
+</span><span id="line-430"><span class="sd">        Only ``bins[0]`` is used.</span>
+</span><span id="line-431"><span class="sd">    k : int</span>
+</span><span id="line-432"><span class="sd">        τ index (0, 2 or 5).</span>
+</span><span id="line-433"><span class="sd">    theta : array_like</span>
+</span><span id="line-434"><span class="sd">        Angular separations (arcmin).</span>
+</span><span id="line-435"><span class="sd">    tau_p, tau_m : array_like</span>
+</span><span id="line-436"><span class="sd">        τ_k+ and τ_k− at ``theta``.</span>
+</span><span id="line-437"><span class="sd">    grid : str, optional</span>
+</span><span id="line-438"><span class="sd">        Stored as the ``grid`` tag on every point (default ``&#39;reporting&#39;``),</span>
+</span><span id="line-439"><span class="sd">        joining ξ&#39;s theta-consistency group in ``merge``&#39;s guard.</span>
+</span><span id="line-440"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-441">    <span class="n">_check_ascending</span><span class="p">(</span><span class="s2">&quot;theta&quot;</span><span class="p">,</span> <span class="n">theta</span><span class="p">)</span>
+</span><span id="line-442">    <span class="n">tracers</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_name</span><span class="p">(</span><span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">PSF_TRACER</span><span class="p">)</span>
+</span><span id="line-443">    <span class="n">_add_theta_series</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">TAU_PLUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">tau_p</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span>
+</span><span id="line-444">    <span class="n">_add_theta_series</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">TAU_MINUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">tau_m</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span></div>
+
+</span><span id="line-445">
+</span><span id="line-446">
+<div class="viewcode-block" id="assemble_covariance">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.assemble_covariance">[docs]</a>
+</span><span id="line-447"><span class="k">def</span><span class="w"> </span><span class="nf">assemble_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">blocks</span><span class="p">):</span>
+</span><span id="line-448"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Assemble a ``BlockDiagonalCovariance`` from per-statistic blocks.</span>
+</span><span id="line-449">
+</span><span id="line-450"><span class="sd">    Each block is validated against the current insertion order: its indices</span>
+</span><span id="line-451"><span class="sd">    must be contiguous and ascending, the blocks must tile ``0…len(s.mean)``</span>
+</span><span id="line-452"><span class="sd">    exactly (no gap, no overlap), and each block must be square with a size</span>
+</span><span id="line-453"><span class="sd">    matching its index span. Any violation raises ``ValueError`` naming the</span>
+</span><span id="line-454"><span class="sd">    mismatch. Cross-blocks are zero and implicit — never materialized —</span>
+</span><span id="line-455"><span class="sd">    because the blocks are passed to ``add_covariance`` as a list, which</span>
+</span><span id="line-456"><span class="sd">    ``sacc.BaseCovariance.make`` turns into a ``BlockDiagonalCovariance``</span>
+</span><span id="line-457"><span class="sd">    (one FITS table per block, Σ block² on disk rather than a dense N² file).</span>
+</span><span id="line-458">
+</span><span id="line-459"><span class="sd">    Parameters</span>
+</span><span id="line-460"><span class="sd">    ----------</span>
+</span><span id="line-461"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-462"><span class="sd">        Target, mutated in place via ``add_covariance``.</span>
+</span><span id="line-463"><span class="sd">    blocks : sequence</span>
+</span><span id="line-464"><span class="sd">        Ordered ``(selector, cov)`` pairs (or a mapping of the same). Each</span>
+</span><span id="line-465"><span class="sd">        ``selector`` is either an index array, or a ``(data_type, tracers)``</span>
+</span><span id="line-466"><span class="sd">        / ``(data_type, tracers, tags)`` tuple resolved through</span>
+</span><span id="line-467"><span class="sd">        ``s.indices``; ``cov`` is the block&#39;s dense covariance.</span>
+</span><span id="line-468">
+</span><span id="line-469"><span class="sd">    Returns</span>
+</span><span id="line-470"><span class="sd">    -------</span>
+</span><span id="line-471"><span class="sd">    sacc.Sacc</span>
+</span><span id="line-472"><span class="sd">        ``s``, with the assembled ``BlockDiagonalCovariance`` attached.</span>
+</span><span id="line-473"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-474">    <span class="n">items</span> <span class="o">=</span> <span class="n">blocks</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">blocks</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">blocks</span>
+</span><span id="line-475">    <span class="n">ntot</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span>
+</span><span id="line-476">    <span class="n">ordered_blocks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-477">    <span class="n">cursor</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-478">    <span class="k">for</span> <span class="n">selector</span><span class="p">,</span> <span class="n">cov</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+</span><span id="line-479">        <span class="n">idx</span> <span class="o">=</span> <span class="n">_resolve_indices</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">selector</span><span class="p">)</span>
+</span><span id="line-480">        <span class="n">cov</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+</span><span id="line-481">        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">))):</span>
+</span><span id="line-482">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-483">                <span class="sa">f</span><span class="s2">&quot;covariance block </span><span class="si">{</span><span class="n">selector</span><span class="si">!r}</span><span class="s2"> resolves to non-contiguous &quot;</span>
+</span><span id="line-484">                <span class="sa">f</span><span class="s2">&quot;or non-ascending indices </span><span class="si">{</span><span class="n">idx</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-485">            <span class="p">)</span>
+</span><span id="line-486">        <span class="k">if</span> <span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">cursor</span><span class="p">:</span>
+</span><span id="line-487">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-488">                <span class="sa">f</span><span class="s2">&quot;covariance block </span><span class="si">{</span><span class="n">selector</span><span class="si">!r}</span><span class="s2"> starts at index </span><span class="si">{</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> but &quot;</span>
+</span><span id="line-489">                <span class="sa">f</span><span class="s2">&quot;the previous blocks cover through </span><span class="si">{</span><span class="n">cursor</span><span class="si">}</span><span class="s2"> — blocks must tile &quot;</span>
+</span><span id="line-490">                <span class="s2">&quot;the data vector with no gap or overlap&quot;</span>
+</span><span id="line-491">            <span class="p">)</span>
+</span><span id="line-492">        <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+</span><span id="line-493">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-494">                <span class="sa">f</span><span class="s2">&quot;covariance block </span><span class="si">{</span><span class="n">selector</span><span class="si">!r}</span><span class="s2"> must be square; got shape </span><span class="si">{</span><span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+</span><span id="line-495">            <span class="p">)</span>
+</span><span id="line-496">        <span class="k">if</span> <span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">):</span>
+</span><span id="line-497">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-498">                <span class="sa">f</span><span class="s2">&quot;covariance block </span><span class="si">{</span><span class="n">selector</span><span class="si">!r}</span><span class="s2"> has size </span><span class="si">{</span><span class="n">cov</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> but &quot;</span>
+</span><span id="line-499">                <span class="sa">f</span><span class="s2">&quot;spans </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span><span class="si">}</span><span class="s2"> data points&quot;</span>
+</span><span id="line-500">            <span class="p">)</span>
+</span><span id="line-501">        <span class="n">ordered_blocks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span>
+</span><span id="line-502">        <span class="n">cursor</span> <span class="o">=</span> <span class="n">idx</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
+</span><span id="line-503">    <span class="k">if</span> <span class="n">cursor</span> <span class="o">!=</span> <span class="n">ntot</span><span class="p">:</span>
+</span><span id="line-504">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-505">            <span class="sa">f</span><span class="s2">&quot;covariance blocks cover </span><span class="si">{</span><span class="n">cursor</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">ntot</span><span class="si">}</span><span class="s2"> data points — the &quot;</span>
+</span><span id="line-506">            <span class="s2">&quot;blocks must tile the whole data vector&quot;</span>
+</span><span id="line-507">        <span class="p">)</span>
+</span><span id="line-508">    <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">ordered_blocks</span><span class="p">)</span>
+</span><span id="line-509">    <span class="k">return</span> <span class="n">s</span></div>
+
+</span><span id="line-510">
+</span><span id="line-511">
+<div class="viewcode-block" id="_resolve_indices">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._resolve_indices">[docs]</a>
+</span><span id="line-512"><span class="k">def</span><span class="w"> </span><span class="nf">_resolve_indices</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">selector</span><span class="p">):</span>
+</span><span id="line-513"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a covariance-block selector to a sorted index array.&quot;&quot;&quot;</span>
+</span><span id="line-514">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">range</span><span class="p">))</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span>
+</span><span id="line-515">        <span class="nb">len</span><span class="p">(</span><span class="n">selector</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">selector</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">)</span>
+</span><span id="line-516">    <span class="p">):</span>
+</span><span id="line-517">        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">selector</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="line-518">    <span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span> <span class="o">=</span> <span class="n">selector</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">selector</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+</span><span id="line-519">    <span class="n">tags</span> <span class="o">=</span> <span class="n">selector</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">selector</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="line-520">    <span class="k">return</span> <span class="n">_indices</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tracers</span><span class="p">),</span> <span class="o">**</span><span class="n">tags</span><span class="p">)</span></div>
+
+</span><span id="line-521">
+</span><span id="line-522">
+<div class="viewcode-block" id="add_diagonal_covariance">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.add_diagonal_covariance">[docs]</a>
+</span><span id="line-523"><span class="k">def</span><span class="w"> </span><span class="nf">add_diagonal_covariance</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">variances</span><span class="p">):</span>
+</span><span id="line-524"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Attach a ``DiagonalCovariance`` from a 1-D variance array.</span>
+</span><span id="line-525">
+</span><span id="line-526"><span class="sd">    The 1-D array is passed straight to ``add_covariance`` (never</span>
+</span><span id="line-527"><span class="sd">    ``np.diag``), which is what makes SACC store a ``DiagonalCovariance``.</span>
+</span><span id="line-528">
+</span><span id="line-529"><span class="sd">    Parameters</span>
+</span><span id="line-530"><span class="sd">    ----------</span>
+</span><span id="line-531"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-532"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-533"><span class="sd">    variances : array_like</span>
+</span><span id="line-534"><span class="sd">        Per-point variances, ``len == len(s.mean)``.</span>
+</span><span id="line-535">
+</span><span id="line-536"><span class="sd">    Returns</span>
+</span><span id="line-537"><span class="sd">    -------</span>
+</span><span id="line-538"><span class="sd">    sacc.Sacc</span>
+</span><span id="line-539"><span class="sd">        ``s``, with the ``DiagonalCovariance`` attached.</span>
+</span><span id="line-540"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-541">    <span class="n">s</span><span class="o">.</span><span class="n">add_covariance</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">variances</span><span class="p">))</span>
+</span><span id="line-542">    <span class="k">return</span> <span class="n">s</span></div>
+
+</span><span id="line-543">
+</span><span id="line-544">
+<div class="viewcode-block" id="get_nz">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.get_nz">[docs]</a>
+</span><span id="line-545"><span class="k">def</span><span class="w"> </span><span class="nf">get_nz</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+</span><span id="line-546"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(z, nz)`` for source bin ``i``.&quot;&quot;&quot;</span>
+</span><span id="line-547">    <span class="n">tracer</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="p">[</span><span class="n">source_name</span><span class="p">(</span><span class="n">i</span><span class="p">)]</span>
+</span><span id="line-548">    <span class="k">return</span> <span class="n">tracer</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">tracer</span><span class="o">.</span><span class="n">nz</span></div>
+
+</span><span id="line-549">
+</span><span id="line-550">
+<div class="viewcode-block" id="_get_pm">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._get_pm">[docs]</a>
+</span><span id="line-551"><span class="k">def</span><span class="w"> </span><span class="nf">_get_pm</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype_p</span><span class="p">,</span> <span class="n">dtype_m</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">):</span>
+</span><span id="line-552"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(theta, plus, minus)`` for a +/− data-type pair.&quot;&quot;&quot;</span>
+</span><span id="line-553">    <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-554">        <span class="n">_tag</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype_p</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="s2">&quot;theta&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">),</span>
+</span><span id="line-555">        <span class="n">_mean</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype_p</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">),</span>
+</span><span id="line-556">        <span class="n">_mean</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">dtype_m</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">),</span>
+</span><span id="line-557">    <span class="p">)</span></div>
+
+</span><span id="line-558">
+</span><span id="line-559">
+<div class="viewcode-block" id="get_xi">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.get_xi">[docs]</a>
+</span><span id="line-560"><span class="k">def</span><span class="w"> </span><span class="nf">get_xi</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">grid</span><span class="p">):</span>
+</span><span id="line-561"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(theta, xip, xim)`` for one tracer pair and grid.&quot;&quot;&quot;</span>
+</span><span id="line-562">    <span class="k">return</span> <span class="n">_get_pm</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">XI_PLUS</span><span class="p">,</span> <span class="n">XI_MINUS</span><span class="p">,</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">),</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span></div>
+
+</span><span id="line-563">
+</span><span id="line-564">
+<div class="viewcode-block" id="get_pseudo_cl">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.get_pseudo_cl">[docs]</a>
+</span><span id="line-565"><span class="k">def</span><span class="w"> </span><span class="nf">get_pseudo_cl</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">):</span>
+</span><span id="line-566"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(ell_eff, cl_ee, cl_bb, cl_eb, window)`` for one tracer pair.</span>
+</span><span id="line-567">
+</span><span id="line-568"><span class="sd">    ``cl_bb``/``cl_eb`` come back ``None`` if the file doesn&#39;t carry that</span>
+</span><span id="line-569"><span class="sd">    component (``add_pseudo_cl`` makes both optional). ``window`` is the</span>
+</span><span id="line-570"><span class="sd">    shared ``sacc.BandpowerWindow`` recovered via ``get_bandpower_windows``;</span>
+</span><span id="line-571"><span class="sd">    its columns are in the same insertion order as the returned</span>
+</span><span id="line-572"><span class="sd">    ``ell_eff``/``cl`` arrays, so window column ``j`` corresponds to</span>
+</span><span id="line-573"><span class="sd">    ``ell_eff[j]``.</span>
+</span><span id="line-574"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-575">    <span class="n">tracers</span> <span class="o">=</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-576">    <span class="n">window</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">CL_EE</span><span class="p">,</span> <span class="n">tracers</span><span class="p">))</span>
+</span><span id="line-577">    <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-578">        <span class="n">_tag</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">CL_EE</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="s2">&quot;ell&quot;</span><span class="p">),</span>
+</span><span id="line-579">        <span class="n">_mean</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">CL_EE</span><span class="p">,</span> <span class="n">tracers</span><span class="p">),</span>
+</span><span id="line-580">        <span class="n">_mean_optional</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">CL_BB</span><span class="p">,</span> <span class="n">tracers</span><span class="p">),</span>
+</span><span id="line-581">        <span class="n">_mean_optional</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">CL_EB</span><span class="p">,</span> <span class="n">tracers</span><span class="p">),</span>
+</span><span id="line-582">        <span class="n">window</span><span class="p">,</span>
+</span><span id="line-583">    <span class="p">)</span></div>
+
+</span><span id="line-584">
+</span><span id="line-585">
+<div class="viewcode-block" id="get_cosebis">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.get_cosebis">[docs]</a>
+</span><span id="line-586"><span class="k">def</span><span class="w"> </span><span class="nf">get_cosebis</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">scale_cut</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="line-587"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(n, En, Bn)`` for one tracer pair.</span>
+</span><span id="line-588">
+</span><span id="line-589"><span class="sd">    ``Bn`` comes back ``None`` if the file doesn&#39;t carry it (``add_cosebis``</span>
+</span><span id="line-590"><span class="sd">    makes it optional).</span>
+</span><span id="line-591">
+</span><span id="line-592"><span class="sd">    Parameters</span>
+</span><span id="line-593"><span class="sd">    ----------</span>
+</span><span id="line-594"><span class="sd">    scale_cut : tuple of float, optional</span>
+</span><span id="line-595"><span class="sd">        ``(theta_min, theta_max)`` to select when several cuts share the file.</span>
+</span><span id="line-596"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-597">    <span class="n">tracers</span> <span class="o">=</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-598">    <span class="k">if</span> <span class="n">scale_cut</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-599">        <span class="n">cuts</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-600">            <span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">&quot;theta_min&quot;</span><span class="p">],</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">&quot;theta_max&quot;</span><span class="p">])</span>
+</span><span id="line-601">            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">_indices</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">COSEBI_EE</span><span class="p">,</span> <span class="n">tracers</span><span class="p">)</span>
+</span><span id="line-602">        <span class="p">}</span>
+</span><span id="line-603">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cuts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-604">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-605">                <span class="sa">f</span><span class="s2">&quot;several COSEBIs scale cuts share the file (</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">cuts</span><span class="p">)</span><span class="si">}</span><span class="s2">) &quot;</span>
+</span><span id="line-606">                <span class="s2">&quot;— pass scale_cut=(theta_min, theta_max) to pick one&quot;</span>
+</span><span id="line-607">            <span class="p">)</span>
+</span><span id="line-608">    <span class="n">tags</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">((</span><span class="s2">&quot;theta_min&quot;</span><span class="p">,</span> <span class="s2">&quot;theta_max&quot;</span><span class="p">),</span> <span class="nb">map</span><span class="p">(</span><span class="nb">float</span><span class="p">,</span> <span class="n">scale_cut</span> <span class="ow">or</span> <span class="p">())))</span>
+</span><span id="line-609">    <span class="n">modes</span> <span class="o">=</span> <span class="n">_tag</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">COSEBI_EE</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">)</span>
+</span><span id="line-610">    <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-611">        <span class="n">modes</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">),</span>
+</span><span id="line-612">        <span class="n">_mean</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">COSEBI_EE</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">),</span>
+</span><span id="line-613">        <span class="n">_mean_optional</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">COSEBI_BB</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tags</span><span class="p">),</span>
+</span><span id="line-614">    <span class="p">)</span></div>
+
+</span><span id="line-615">
+</span><span id="line-616">
+<div class="viewcode-block" id="get_pure_eb">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.get_pure_eb">[docs]</a>
+</span><span id="line-617"><span class="k">def</span><span class="w"> </span><span class="nf">get_pure_eb</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">):</span>
+</span><span id="line-618"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(theta, {key: array})`` for whichever pure-EB blocks exist.</span>
+</span><span id="line-619">
+</span><span id="line-620"><span class="sd">    xip_E/xim_E are always present (``add_pure_eb`` requires them); the dict</span>
+</span><span id="line-621"><span class="sd">    holds whichever of the B and ambiguous-mode keys (out of ``PURE_KEYS``:</span>
+</span><span id="line-622"><span class="sd">    xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb) the file actually carries —</span>
+</span><span id="line-623"><span class="sd">    a key absent from the file is simply absent from the dict, not mapped to</span>
+</span><span id="line-624"><span class="sd">    ``None``.</span>
+</span><span id="line-625"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-626">    <span class="n">tracers</span> <span class="o">=</span> <span class="n">_pair</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span>
+</span><span id="line-627">    <span class="n">theta</span> <span class="o">=</span> <span class="n">_tag</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">PURE_TYPES</span><span class="p">[</span><span class="s2">&quot;xip_E&quot;</span><span class="p">],</span> <span class="n">tracers</span><span class="p">,</span> <span class="s2">&quot;theta&quot;</span><span class="p">)</span>
+</span><span id="line-628">    <span class="n">arrays</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-629">    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">PURE_KEYS</span><span class="p">:</span>
+</span><span id="line-630">        <span class="n">values</span> <span class="o">=</span> <span class="n">_mean_optional</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">PURE_TYPES</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">tracers</span><span class="p">)</span>
+</span><span id="line-631">        <span class="k">if</span> <span class="n">values</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-632">            <span class="n">arrays</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span>
+</span><span id="line-633">    <span class="k">return</span> <span class="n">theta</span><span class="p">,</span> <span class="n">arrays</span></div>
+
+</span><span id="line-634">
+</span><span id="line-635">
+<div class="viewcode-block" id="get_rho">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.get_rho">[docs]</a>
+</span><span id="line-636"><span class="k">def</span><span class="w"> </span><span class="nf">get_rho</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+</span><span id="line-637"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(theta, rho_p, rho_m)`` for ρ index ``k``.&quot;&quot;&quot;</span>
+</span><span id="line-638">    <span class="n">tracers</span> <span class="o">=</span> <span class="p">(</span><span class="n">PSF_TRACER</span><span class="p">,</span> <span class="n">PSF_TRACER</span><span class="p">)</span>
+</span><span id="line-639">    <span class="k">return</span> <span class="n">_get_pm</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">RHO_PLUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">RHO_MINUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">tracers</span><span class="p">)</span></div>
+
+</span><span id="line-640">
+</span><span id="line-641">
+<div class="viewcode-block" id="get_tau">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.get_tau">[docs]</a>
+</span><span id="line-642"><span class="k">def</span><span class="w"> </span><span class="nf">get_tau</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">bins</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+</span><span id="line-643"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ``(theta, tau_p, tau_m)`` for τ index ``k`` and source bin.&quot;&quot;&quot;</span>
+</span><span id="line-644">    <span class="n">tracers</span> <span class="o">=</span> <span class="p">(</span><span class="n">source_name</span><span class="p">(</span><span class="n">bins</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">PSF_TRACER</span><span class="p">)</span>
+</span><span id="line-645">    <span class="k">return</span> <span class="n">_get_pm</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">TAU_PLUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">TAU_MINUS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">),</span> <span class="n">tracers</span><span class="p">)</span></div>
+
+</span><span id="line-646">
+</span><span id="line-647">
+<div class="viewcode-block" id="_indices">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._indices">[docs]</a>
+</span><span id="line-648"><span class="k">def</span><span class="w"> </span><span class="nf">_indices</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">):</span>
+</span><span id="line-649"><span class="w">    </span><span class="sd">&quot;&quot;&quot;``Sacc.indices`` that fails loud instead of selecting nothing.</span>
+</span><span id="line-650">
+</span><span id="line-651"><span class="sd">    ``Sacc.indices`` returns an *empty array* (warning only) when a selection</span>
+</span><span id="line-652"><span class="sd">    matches no point — e.g. a typo&#39;d tag value, or a float tag filter that is</span>
+</span><span id="line-653"><span class="sd">    not bitwise-identical to the stored one. Every reader here funnels through</span>
+</span><span id="line-654"><span class="sd">    this guard so an unmatched selection raises instead of propagating empty</span>
+</span><span id="line-655"><span class="sd">    arrays downstream.</span>
+</span><span id="line-656"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-657">    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="line-658">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-659">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-660">            <span class="sa">f</span><span class="s2">&quot;selection matched no points: (</span><span class="si">{</span><span class="n">data_type</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">tracers</span><span class="si">}</span><span class="s2">, &quot;</span>
+</span><span id="line-661">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">tag_filters</span><span class="si">}</span><span class="s2">) — note float tags match by exact equality&quot;</span>
+</span><span id="line-662">        <span class="p">)</span>
+</span><span id="line-663">    <span class="k">return</span> <span class="n">idx</span></div>
+
+</span><span id="line-664">
+</span><span id="line-665">
+<div class="viewcode-block" id="_mean">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._mean">[docs]</a>
+</span><span id="line-666"><span class="k">def</span><span class="w"> </span><span class="nf">_mean</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">):</span>
+</span><span id="line-667"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Mean values for a selection, in ``s.indices`` (insertion) order.</span>
+</span><span id="line-668">
+</span><span id="line-669"><span class="sd">    Never re-sort: insertion order is the covariance and bandpower-window</span>
+</span><span id="line-670"><span class="sd">    order, so returning in ``s.indices`` order keeps every reader aligned with</span>
+</span><span id="line-671"><span class="sd">    the covariance for any file (and ascending for canonically-written files,</span>
+</span><span id="line-672"><span class="sd">    which the writers enforce).</span>
+</span><span id="line-673"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-674">    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">[</span><span class="n">_indices</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">)]</span></div>
+
+</span><span id="line-675">
+</span><span id="line-676">
+<div class="viewcode-block" id="_tag">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._tag">[docs]</a>
+</span><span id="line-677"><span class="k">def</span><span class="w"> </span><span class="nf">_tag</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">):</span>
+</span><span id="line-678"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Values of ``tag`` for a selection, in insertion order.&quot;&quot;&quot;</span>
+</span><span id="line-679">    <span class="n">idx</span> <span class="o">=</span> <span class="n">_indices</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">)</span>
+</span><span id="line-680">    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idx</span><span class="p">])</span></div>
+
+</span><span id="line-681">
+</span><span id="line-682">
+<div class="viewcode-block" id="_mean_optional">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._mean_optional">[docs]</a>
+</span><span id="line-683"><span class="k">def</span><span class="w"> </span><span class="nf">_mean_optional</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">):</span>
+</span><span id="line-684"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Mean values for a selection, or ``None`` if the file has none.</span>
+</span><span id="line-685">
+</span><span id="line-686"><span class="sd">    Used by composite readers (``get_pseudo_cl``, ``get_cosebis``,</span>
+</span><span id="line-687"><span class="sd">    ``get_pure_eb``) for the components a writer made optional (BB/EB,</span>
+</span><span id="line-688"><span class="sd">    COSEBI Bₙ, pure B/ambiguous): absence is a legitimate &quot;this file doesn&#39;t</span>
+</span><span id="line-689"><span class="sd">    have that piece&quot;, not a typo to fail loud on — unlike ``_mean``/</span>
+</span><span id="line-690"><span class="sd">    ``_indices``, used for selections that name a component explicitly.</span>
+</span><span id="line-691"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-692">    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">data_type</span><span class="p">,</span> <span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="line-693">    <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">mean</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+</span><span id="line-694">
+</span><span id="line-695">
+<div class="viewcode-block" id="extract">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.extract">[docs]</a>
+</span><span id="line-696"><span class="k">def</span><span class="w"> </span><span class="nf">extract</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">data_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tracers</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">):</span>
+</span><span id="line-697"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract a sub-Sacc (points + aligned covariance sub-block).</span>
+</span><span id="line-698">
+</span><span id="line-699"><span class="sd">    A copy is made and everything *not* matching the selection is removed, so</span>
+</span><span id="line-700"><span class="sd">    the covariance sub-block comes out correctly aligned and the original is</span>
+</span><span id="line-701"><span class="sd">    untouched.</span>
+</span><span id="line-702">
+</span><span id="line-703"><span class="sd">    Parameters</span>
+</span><span id="line-704"><span class="sd">    ----------</span>
+</span><span id="line-705"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-706"><span class="sd">        Source, left unmodified.</span>
+</span><span id="line-707"><span class="sd">    data_type : str, optional</span>
+</span><span id="line-708"><span class="sd">        Data type to keep.</span>
+</span><span id="line-709"><span class="sd">    tracers : tuple, optional</span>
+</span><span id="line-710"><span class="sd">        Tracer pair to keep, as SACC tracer **names** (e.g.</span>
+</span><span id="line-711"><span class="sd">        ``(&quot;source_0&quot;, &quot;source_0&quot;)`` or ``(&quot;source_0&quot;, &quot;psf_stars&quot;)``) — *not*</span>
+</span><span id="line-712"><span class="sd">        integer bin indices. This differs deliberately from the ``add_*`` /</span>
+</span><span id="line-713"><span class="sd">        ``get_*`` interface, whose ``bins`` argument takes integer pairs:</span>
+</span><span id="line-714"><span class="sd">        ``extract`` is the generic selection escape hatch, mirroring</span>
+</span><span id="line-715"><span class="sd">        ``Sacc.keep_selection`` and addressing non-source tracers uniformly.</span>
+</span><span id="line-716"><span class="sd">    **tag_filters</span>
+</span><span id="line-717"><span class="sd">        Tag filters (plain kwargs, e.g. ``grid=&#39;integration&#39;``).</span>
+</span><span id="line-718">
+</span><span id="line-719"><span class="sd">    Returns</span>
+</span><span id="line-720"><span class="sd">    -------</span>
+</span><span id="line-721"><span class="sd">    sacc.Sacc</span>
+</span><span id="line-722"><span class="sd">        New Sacc holding only the selected points.</span>
+</span><span id="line-723"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-724">    <span class="n">sub</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="line-725">    <span class="n">tracer_filter</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;tracers&quot;</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">tracers</span><span class="p">)}</span> <span class="k">if</span> <span class="n">tracers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+</span><span id="line-726">    <span class="n">sub</span><span class="o">.</span><span class="n">keep_selection</span><span class="p">(</span><span class="n">data_type</span><span class="p">,</span> <span class="o">**</span><span class="n">tracer_filter</span><span class="p">,</span> <span class="o">**</span><span class="n">tag_filters</span><span class="p">)</span>
+</span><span id="line-727">    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sub</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-728">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-729">            <span class="sa">f</span><span class="s2">&quot;extract selected no points: (</span><span class="si">{</span><span class="n">data_type</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">tracers</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">tag_filters</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="line-730">        <span class="p">)</span>
+</span><span id="line-731">    <span class="k">return</span> <span class="n">sub</span></div>
+
+</span><span id="line-732">
+</span><span id="line-733">
+<div class="viewcode-block" id="merge">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.merge">[docs]</a>
+</span><span id="line-734"><span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="n">saccs</span><span class="p">):</span>
+</span><span id="line-735"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Merge several per-statistic Sacc objects into one file&#39;s worth.</span>
+</span><span id="line-736">
+</span><span id="line-737"><span class="sd">    A thin wrapper around ``sacc.concatenate_data_sets``: data points</span>
+</span><span id="line-738"><span class="sd">    concatenate in input order, tracers shared by several inputs (the</span>
+</span><span id="line-739"><span class="sd">    ``source_i`` NZ tracers, ``psf_stars``) are stored once, and the</span>
+</span><span id="line-740"><span class="sd">    covariance combines block-diagonally in the same order — the library</span>
+</span><span id="line-741"><span class="sd">    requires either **all** inputs to carry a covariance or **none**, and</span>
+</span><span id="line-742"><span class="sd">    raises otherwise (cross-statistic covariance assembly beyond</span>
+</span><span id="line-743"><span class="sd">    block-diagonal is out of scope here; see ``assemble_covariance``).</span>
+</span><span id="line-744">
+</span><span id="line-745"><span class="sd">    Metadata must be consistent: keys present in several inputs must carry</span>
+</span><span id="line-746"><span class="sd">    equal values (a ``type: data`` file cannot merge with a ``type: mock``</span>
+</span><span id="line-747"><span class="sd">    file), and the union lands on the result. This deliberately replaces the</span>
+</span><span id="line-748"><span class="sd">    library&#39;s clash behaviour, which mangles clashing keys by appending</span>
+</span><span id="line-749"><span class="sd">    labels.</span>
+</span><span id="line-750">
+</span><span id="line-751"><span class="sd">    Grid consistency follows tagging semantics: the ``grid`` tag declares</span>
+</span><span id="line-752"><span class="sd">    which binning a set of points lives on, so all same-length theta (or</span>
+</span><span id="line-753"><span class="sd">    ell) arrays under one tag value must be bitwise identical — sacc itself</span>
+</span><span id="line-754"><span class="sd">    never validates angles across data types/tracers, and a grid that</span>
+</span><span id="line-755"><span class="sd">    differs only at floating-point level chokes CosmoSIS downstream instead</span>
+</span><span id="line-756"><span class="sd">    of failing loud here. Different lengths within a tag group pass</span>
+</span><span id="line-757"><span class="sd">    (scale-cut subsets are legitimate); grids under different tag values</span>
+</span><span id="line-758"><span class="sd">    are unconstrained (``reporting`` vs ``integration`` differ by design);</span>
+</span><span id="line-759"><span class="sd">    θ and ℓ are separate domains, each checked against itself only. ℓ</span>
+</span><span id="line-760"><span class="sd">    series sharing a bitwise-equal grid must also share the bandpower</span>
+</span><span id="line-761"><span class="sd">    window (series without windows skip that check).</span>
+</span><span id="line-762">
+</span><span id="line-763"><span class="sd">    Parameters</span>
+</span><span id="line-764"><span class="sd">    ----------</span>
+</span><span id="line-765"><span class="sd">    saccs : sequence of sacc.Sacc</span>
+</span><span id="line-766"><span class="sd">        The per-statistic data sets, in the insertion order the merged file</span>
+</span><span id="line-767"><span class="sd">        should have. Inputs are left unmodified.</span>
+</span><span id="line-768">
+</span><span id="line-769"><span class="sd">    Returns</span>
+</span><span id="line-770"><span class="sd">    -------</span>
+</span><span id="line-771"><span class="sd">    sacc.Sacc</span>
+</span><span id="line-772"><span class="sd">        The merged data set.</span>
+</span><span id="line-773">
+</span><span id="line-774"><span class="sd">    Raises</span>
+</span><span id="line-775"><span class="sd">    ------</span>
+</span><span id="line-776"><span class="sd">    ValueError</span>
+</span><span id="line-777"><span class="sd">        If metadata conflicts, a shared tracer differs across inputs, two</span>
+</span><span id="line-778"><span class="sd">        same-length theta or ell arrays under the same ``grid`` tag value</span>
+</span><span id="line-779"><span class="sd">        are not bitwise identical, or two ℓ series sharing a grid carry</span>
+</span><span id="line-780"><span class="sd">        different bandpower windows.</span>
+</span><span id="line-781"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-782">    <span class="n">saccs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">saccs</span><span class="p">)</span>
+</span><span id="line-783">    <span class="n">metadata</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-784">    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">saccs</span><span class="p">:</span>
+</span><span id="line-785">        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-786">            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">metadata</span> <span class="ow">and</span> <span class="n">metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">!=</span> <span class="n">value</span><span class="p">:</span>
+</span><span id="line-787">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-788">                    <span class="sa">f</span><span class="s2">&quot;conflicting metadata across merge inputs: </span><span class="si">{</span><span class="n">key</span><span class="si">!r}</span><span class="s2"> is &quot;</span>
+</span><span id="line-789">                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="si">!r}</span><span class="s2"> in one input and </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2"> in another&quot;</span>
+</span><span id="line-790">                <span class="p">)</span>
+</span><span id="line-791">            <span class="n">metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</span><span id="line-792">    <span class="c1"># Strip metadata before concatenating (the library &quot;resolves&quot; clashing</span>
+</span><span id="line-793">    <span class="c1"># keys by renaming them), then restore the validated union.</span>
+</span><span id="line-794">    <span class="n">stripped</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">saccs</span><span class="p">]</span>
+</span><span id="line-795">    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stripped</span><span class="p">:</span>
+</span><span id="line-796">        <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="line-797">    <span class="n">seen</span><span class="p">,</span> <span class="n">shared</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(),</span> <span class="nb">set</span><span class="p">()</span>  <span class="c1"># tracers appearing in more than one input</span>
+</span><span id="line-798">    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">saccs</span><span class="p">:</span>
+</span><span id="line-799">        <span class="n">shared</span> <span class="o">|=</span> <span class="n">seen</span> <span class="o">&amp;</span> <span class="nb">set</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
+</span><span id="line-800">        <span class="n">seen</span> <span class="o">|=</span> <span class="nb">set</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="p">)</span>
+</span><span id="line-801">    <span class="n">same_tracers</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">shared</span><span class="p">)</span>
+</span><span id="line-802">    <span class="c1"># The library keeps the FIRST input&#39;s tracer on a name clash with no</span>
+</span><span id="line-803">    <span class="c1"># equality check — verify shared tracers really are the same object.</span>
+</span><span id="line-804">    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">same_tracers</span><span class="p">:</span>
+</span><span id="line-805">        <span class="n">first</span><span class="p">,</span> <span class="o">*</span><span class="n">rest</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">saccs</span> <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">tracers</span><span class="p">]</span>
+</span><span id="line-806">        <span class="k">for</span> <span class="n">other</span> <span class="ow">in</span> <span class="n">rest</span><span class="p">:</span>
+</span><span id="line-807">            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">type</span><span class="p">(</span><span class="n">first</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span>
+</span><span id="line-808">                <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">first</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+</span><span id="line-809">                <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;z&quot;</span><span class="p">,</span> <span class="s2">&quot;nz&quot;</span><span class="p">)</span>
+</span><span id="line-810">            <span class="p">):</span>
+</span><span id="line-811">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-812">                    <span class="sa">f</span><span class="s2">&quot;shared tracer </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> differs across merge inputs — &quot;</span>
+</span><span id="line-813">                    <span class="s2">&quot;the merged file would silently keep the first&quot;</span>
+</span><span id="line-814">                <span class="p">)</span>
+</span><span id="line-815">    <span class="n">merged</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">concatenate_data_sets</span><span class="p">(</span><span class="o">*</span><span class="n">stripped</span><span class="p">,</span> <span class="n">same_tracers</span><span class="o">=</span><span class="n">same_tracers</span><span class="p">)</span>
+</span><span id="line-816">    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">metadata</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-817">        <span class="n">merged</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+</span><span id="line-818">    <span class="n">_check_grid_consistency</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="s2">&quot;theta&quot;</span><span class="p">)</span>
+</span><span id="line-819">    <span class="n">_check_grid_consistency</span><span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="s2">&quot;ell&quot;</span><span class="p">)</span>
+</span><span id="line-820">    <span class="k">return</span> <span class="n">merged</span></div>
+
+</span><span id="line-821">
+</span><span id="line-822">
+<div class="viewcode-block" id="_grid_groups">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._grid_groups">[docs]</a>
+</span><span id="line-823"><span class="k">def</span><span class="w"> </span><span class="nf">_grid_groups</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+</span><span id="line-824"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Nested map ``grid-tag-value -&gt; (data_type, tracers) -&gt; point indices``.</span>
+</span><span id="line-825">
+</span><span id="line-826"><span class="sd">    One entry per ``(data_type, tracers)`` series carrying an ``angle``</span>
+</span><span id="line-827"><span class="sd">    (``&#39;theta&#39;`` or ``&#39;ell&#39;``) tag, in each series&#39; own insertion order</span>
+</span><span id="line-828"><span class="sd">    (never re-sorted), nested under the ``grid`` tag value it lives on</span>
+</span><span id="line-829"><span class="sd">    (``None`` for untagged series) — the shape ``merge``&#39;s consistency</span>
+</span><span id="line-830"><span class="sd">    guard checks within each tag value. Indices (not angle values) are</span>
+</span><span id="line-831"><span class="sd">    kept so the ℓ check can also recover each series&#39; bandpower window.</span>
+</span><span id="line-832"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-833">    <span class="n">groups</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-834">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">):</span>
+</span><span id="line-835">        <span class="k">if</span> <span class="n">angle</span> <span class="ow">in</span> <span class="n">point</span><span class="o">.</span><span class="n">tags</span><span class="p">:</span>
+</span><span id="line-836">            <span class="n">groups</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;grid&quot;</span><span class="p">),</span> <span class="p">{})</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+</span><span id="line-837">                <span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">tracers</span><span class="p">),</span> <span class="p">[]</span>
+</span><span id="line-838">            <span class="p">)</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+</span><span id="line-839">    <span class="k">return</span> <span class="n">groups</span></div>
+
+</span><span id="line-840">
+</span><span id="line-841">
+<div class="viewcode-block" id="_check_grid_consistency">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io._check_grid_consistency">[docs]</a>
+</span><span id="line-842"><span class="k">def</span><span class="w"> </span><span class="nf">_check_grid_consistency</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">angle</span><span class="p">):</span>
+</span><span id="line-843"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Raise unless same-length ``angle`` arrays under one ``grid`` tag match.</span>
+</span><span id="line-844">
+</span><span id="line-845"><span class="sd">    Consistency follows tagging semantics: the ``grid`` tag declares which</span>
+</span><span id="line-846"><span class="sd">    binning a series lives on, so all same-length theta (or ell) arrays</span>
+</span><span id="line-847"><span class="sd">    sharing a tag value must be bitwise identical — sacc never validates</span>
+</span><span id="line-848"><span class="sd">    angles across data types/tracers, and a grid diverging at</span>
+</span><span id="line-849"><span class="sd">    floating-point level chokes CosmoSIS downstream instead of failing</span>
+</span><span id="line-850"><span class="sd">    loud here. Different lengths within a tag value pass (scale-cut</span>
+</span><span id="line-851"><span class="sd">    subsets are legitimate); series under different tag values are</span>
+</span><span id="line-852"><span class="sd">    unconstrained (``reporting`` vs ``integration`` differ by design).</span>
+</span><span id="line-853"><span class="sd">    θ and ℓ are separate domains, each checked against itself only. For</span>
+</span><span id="line-854"><span class="sd">    ℓ, two series on a bitwise-equal grid must also share the bandpower</span>
+</span><span id="line-855"><span class="sd">    window (equal window ells and weight matrix); series without windows</span>
+</span><span id="line-856"><span class="sd">    (foreign files) skip the window check.</span>
+</span><span id="line-857"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-858">    <span class="k">for</span> <span class="n">tag</span><span class="p">,</span> <span class="n">by_series</span> <span class="ow">in</span> <span class="n">_grid_groups</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">angle</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-859">        <span class="n">series</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-860">            <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="n">angle</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">idx</span><span class="p">]),</span> <span class="n">idx</span><span class="p">)</span>
+</span><span id="line-861">            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">by_series</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-862">        <span class="p">]</span>
+</span><span id="line-863">        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">key_a</span><span class="p">,</span> <span class="n">arr_a</span><span class="p">,</span> <span class="n">idx_a</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">series</span><span class="p">):</span>
+</span><span id="line-864">            <span class="k">for</span> <span class="n">key_b</span><span class="p">,</span> <span class="n">arr_b</span><span class="p">,</span> <span class="n">idx_b</span> <span class="ow">in</span> <span class="n">series</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]:</span>
+</span><span id="line-865">                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr_a</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">arr_b</span><span class="p">):</span>
+</span><span id="line-866">                    <span class="k">continue</span>
+</span><span id="line-867">                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">arr_a</span><span class="p">,</span> <span class="n">arr_b</span><span class="p">):</span>
+</span><span id="line-868">                    <span class="n">max_diff</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">arr_a</span> <span class="o">-</span> <span class="n">arr_b</span><span class="p">))</span>
+</span><span id="line-869">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-870">                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">angle</span><span class="si">}</span><span class="s2"> grids under the same grid tag (</span><span class="si">{</span><span class="n">tag</span><span class="si">!r}</span><span class="s2">) &quot;</span>
+</span><span id="line-871">                        <span class="sa">f</span><span class="s2">&quot;differ; harmonize upstream — groups </span><span class="si">{</span><span class="n">key_a</span><span class="si">!r}</span><span class="s2"> and &quot;</span>
+</span><span id="line-872">                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">key_b</span><span class="si">!r}</span><span class="s2"> (max abs diff </span><span class="si">{</span><span class="n">max_diff</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="line-873">                    <span class="p">)</span>
+</span><span id="line-874">                <span class="k">if</span> <span class="n">angle</span> <span class="o">!=</span> <span class="s2">&quot;ell&quot;</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+</span><span id="line-875">                    <span class="s2">&quot;window&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">tags</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="p">(</span><span class="n">idx_a</span><span class="p">,</span> <span class="n">idx_b</span><span class="p">)</span>
+</span><span id="line-876">                <span class="p">):</span>
+</span><span id="line-877">                    <span class="k">continue</span>
+</span><span id="line-878">                <span class="n">win_a</span><span class="p">,</span> <span class="n">win_b</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">get_bandpower_windows</span><span class="p">,</span> <span class="p">(</span><span class="n">idx_a</span><span class="p">,</span> <span class="n">idx_b</span><span class="p">))</span>
+</span><span id="line-879">                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span>
+</span><span id="line-880">                    <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">win_a</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">win_b</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+</span><span id="line-881">                    <span class="ow">and</span> <span class="n">np</span><span class="o">.</span><span class="n">array_equal</span><span class="p">(</span><span class="n">win_a</span><span class="o">.</span><span class="n">weight</span><span class="p">,</span> <span class="n">win_b</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span>
+</span><span id="line-882">                <span class="p">):</span>
+</span><span id="line-883">                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-884">                        <span class="sa">f</span><span class="s2">&quot;bandpower windows differ between series sharing an &quot;</span>
+</span><span id="line-885">                        <span class="sa">f</span><span class="s2">&quot;ell grid under grid tag </span><span class="si">{</span><span class="n">tag</span><span class="si">!r}</span><span class="s2">; harmonize upstream &quot;</span>
+</span><span id="line-886">                        <span class="sa">f</span><span class="s2">&quot;— groups </span><span class="si">{</span><span class="n">key_a</span><span class="si">!r}</span><span class="s2"> and </span><span class="si">{</span><span class="n">key_b</span><span class="si">!r}</span><span class="s2">&quot;</span>
+</span><span id="line-887">                    <span class="p">)</span></div>
+
+</span><span id="line-888">
+</span><span id="line-889">
+<div class="viewcode-block" id="update_statistic">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.update_statistic">[docs]</a>
+</span><span id="line-890"><span class="k">def</span><span class="w"> </span><span class="nf">update_statistic</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">sub</span><span class="p">):</span>
+</span><span id="line-891"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Overwrite the values of ``s``&#39;s points that match ``sub``&#39;s, in place.</span>
+</span><span id="line-892">
+</span><span id="line-893"><span class="sd">    The merge-back half of the extract → conceal → merge blinding flow</span>
+</span><span id="line-894"><span class="sd">    (PRD #241 §4): each point of ``sub`` is matched to exactly one point of</span>
+</span><span id="line-895"><span class="sd">    ``s`` by ``(data_type, tracers, tags)``, and that point&#39;s *value* is</span>
+</span><span id="line-896"><span class="sd">    replaced. Nothing else changes — insertion order, tags, windows and the</span>
+</span><span id="line-897"><span class="sd">    covariance are untouched (blinding shifts the mean only), so ``sub``&#39;s</span>
+</span><span id="line-898"><span class="sd">    own covariance (e.g. the sub-block ``extract`` attaches) is deliberately</span>
+</span><span id="line-899"><span class="sd">    not consulted. A ``sub`` point with no match, or with several, raises</span>
+</span><span id="line-900"><span class="sd">    ``ValueError``.</span>
+</span><span id="line-901">
+</span><span id="line-902"><span class="sd">    Parameters</span>
+</span><span id="line-903"><span class="sd">    ----------</span>
+</span><span id="line-904"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-905"><span class="sd">        Target, mutated in place.</span>
+</span><span id="line-906"><span class="sd">    sub : sacc.Sacc</span>
+</span><span id="line-907"><span class="sd">        The replacement block, e.g. ``extract(s, ...)`` after concealment.</span>
+</span><span id="line-908"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-909">    <span class="n">claimed</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-910">    <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">sub</span><span class="o">.</span><span class="n">data</span><span class="p">:</span>
+</span><span id="line-911">        <span class="n">idx</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">indices</span><span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">data_type</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">tracers</span><span class="p">,</span> <span class="o">**</span><span class="n">point</span><span class="o">.</span><span class="n">tags</span><span class="p">)</span>
+</span><span id="line-912">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-913">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-914">                <span class="sa">f</span><span class="s2">&quot;update_statistic: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span><span class="si">}</span><span class="s2"> points in the target match &quot;</span>
+</span><span id="line-915">                <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">point</span><span class="o">.</span><span class="n">data_type</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">point</span><span class="o">.</span><span class="n">tracers</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">point</span><span class="o">.</span><span class="n">tags</span><span class="si">}</span><span class="s2">) — need &quot;</span>
+</span><span id="line-916">                <span class="s2">&quot;exactly one&quot;</span>
+</span><span id="line-917">            <span class="p">)</span>
+</span><span id="line-918">        <span class="k">if</span> <span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="n">claimed</span><span class="p">:</span>
+</span><span id="line-919">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-920">                <span class="sa">f</span><span class="s2">&quot;update_statistic: two sub points match the same target &quot;</span>
+</span><span id="line-921">                <span class="sa">f</span><span class="s2">&quot;point (</span><span class="si">{</span><span class="n">point</span><span class="o">.</span><span class="n">data_type</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">point</span><span class="o">.</span><span class="n">tracers</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">point</span><span class="o">.</span><span class="n">tags</span><span class="si">}</span><span class="s2">)&quot;</span>
+</span><span id="line-922">            <span class="p">)</span>
+</span><span id="line-923">        <span class="n">claimed</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="line-924">        <span class="n">s</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">point</span><span class="o">.</span><span class="n">value</span></div>
+
+</span><span id="line-925">
+</span><span id="line-926">
+<div class="viewcode-block" id="save">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.save">[docs]</a>
+</span><span id="line-927"><span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="nb">type</span><span class="p">):</span>
+</span><span id="line-928"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Write ``s`` to ``path`` (FITS), overwriting any existing file.</span>
+</span><span id="line-929">
+</span><span id="line-930"><span class="sd">    Parameters</span>
+</span><span id="line-931"><span class="sd">    ----------</span>
+</span><span id="line-932"><span class="sd">    s : sacc.Sacc</span>
+</span><span id="line-933"><span class="sd">        Data set to write; its metadata is stamped in place.</span>
+</span><span id="line-934"><span class="sd">    type : {&#39;data&#39;, &#39;mock&#39;}</span>
+</span><span id="line-935"><span class="sd">        Provenance of the underlying catalogue, stored as the required</span>
+</span><span id="line-936"><span class="sd">        ``type`` metadata tag (PRD #241 §4, &quot;Mocks vs data&quot;). The caller —</span>
+</span><span id="line-937"><span class="sd">        the pipeline computing the data vector — knows whether its input</span>
+</span><span id="line-938"><span class="sd">        catalogue is a mock; there is deliberately no default. ``load``</span>
+</span><span id="line-939"><span class="sd">        refuses ``type=&#39;data&#39;`` files that are not blinded.</span>
+</span><span id="line-940"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-941">    <span class="k">if</span> <span class="nb">type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;mock&quot;</span><span class="p">):</span>
+</span><span id="line-942">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;type must be &#39;data&#39; or &#39;mock&#39;; got </span><span class="si">{</span><span class="nb">type</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+</span><span id="line-943">    <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">type</span><span class="p">:</span>
+</span><span id="line-944">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-945">            <span class="sa">f</span><span class="s2">&quot;Sacc metadata already carries type=</span><span class="si">{</span><span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;type&#39;</span><span class="p">]</span><span class="si">!r}</span><span class="s2">; &quot;</span>
+</span><span id="line-946">            <span class="sa">f</span><span class="s2">&quot;refusing to re-stamp as </span><span class="si">{</span><span class="nb">type</span><span class="si">!r}</span><span class="s2">&quot;</span>
+</span><span id="line-947">        <span class="p">)</span>
+</span><span id="line-948">    <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">type</span>
+</span><span id="line-949">    <span class="n">s</span><span class="o">.</span><span class="n">save_fits</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+</span><span id="line-950">
+</span><span id="line-951">
+<div class="viewcode-block" id="load">
+<a class="viewcode-back" href="../../sp_validation.sacc_io.html#sp_validation.sacc_io.load">[docs]</a>
+</span><span id="line-952"><span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">allow_unblinded</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+</span><span id="line-953"><span class="w">    </span><span class="sd">&quot;&quot;&quot;Load a Sacc from ``path`` (FITS), failing closed on unblinded data.</span>
+</span><span id="line-954">
+</span><span id="line-955"><span class="sd">    Every sacc_io file carries a ``type: data|mock`` metadata tag (stamped by</span>
+</span><span id="line-956"><span class="sd">    ``save``); blinded files are additionally stamped ``concealed=True`` by</span>
+</span><span id="line-957"><span class="sd">    Smokescreen. A ``type=&#39;data&#39;`` file without that stamp is real, unblinded</span>
+</span><span id="line-958"><span class="sd">    data, and loading it raises — skipping the blind can never silently</span>
+</span><span id="line-959"><span class="sd">    expose the measured vector (PRD #241 §4). Mocks load freely, blinded or</span>
+</span><span id="line-960"><span class="sd">    not.</span>
+</span><span id="line-961">
+</span><span id="line-962"><span class="sd">    Parameters</span>
+</span><span id="line-963"><span class="sd">    ----------</span>
+</span><span id="line-964"><span class="sd">    path : str</span>
+</span><span id="line-965"><span class="sd">        File to load.</span>
+</span><span id="line-966"><span class="sd">    allow_unblinded : bool, optional</span>
+</span><span id="line-967"><span class="sd">        Escape hatch for the two legitimate consumers of unblinded data:</span>
+</span><span id="line-968"><span class="sd">        the blinding step itself (which must read the true vector to conceal</span>
+</span><span id="line-969"><span class="sd">        it) and the unblinding/verification tooling. Nothing else — no</span>
+</span><span id="line-970"><span class="sd">        analysis, plotting or inference code — may pass ``True``.</span>
+</span><span id="line-971">
+</span><span id="line-972"><span class="sd">    Returns</span>
+</span><span id="line-973"><span class="sd">    -------</span>
+</span><span id="line-974"><span class="sd">    sacc.Sacc</span>
+</span><span id="line-975"><span class="sd">        The loaded data set.</span>
+</span><span id="line-976"><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="line-977">    <span class="n">s</span> <span class="o">=</span> <span class="n">sacc</span><span class="o">.</span><span class="n">Sacc</span><span class="o">.</span><span class="n">load_fits</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-978">    <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-979">        <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;data&quot;</span>
+</span><span id="line-980">        <span class="ow">and</span> <span class="ow">not</span> <span class="n">s</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;concealed&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+</span><span id="line-981">        <span class="ow">and</span> <span class="ow">not</span> <span class="n">allow_unblinded</span>
+</span><span id="line-982">    <span class="p">):</span>
+</span><span id="line-983">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-984">            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> holds real data (type=&#39;data&#39;) without the &quot;</span>
+</span><span id="line-985">            <span class="s2">&quot;concealed=True blinding stamp — refusing to load an unblinded &quot;</span>
+</span><span id="line-986">            <span class="s2">&quot;data vector. Only the blinding/unblinding tooling may pass &quot;</span>
+</span><span id="line-987">            <span class="s2">&quot;allow_unblinded=True.&quot;</span>
+</span><span id="line-988">        <span class="p">)</span>
+</span><span id="line-989">    <span class="k">return</span> <span class="n">s</span></div>
+
+</span></code></pre></div>
+    </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+</div></div>
+          </main>
+        </div>
+      </div><footer class="py-6 border-t border-border md:py-0">
+    <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+      <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+        <p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini&nbsp;Last updated: 21 Jul, 2026.&nbsp;Built with <a class="font-medium underline underline-offset-4"
+    href="https://www.sphinx-doc.org"
+    rel="noreferrer">Sphinx 9.1.0</a></p>
+</div>
+</div>
+</footer>
+    </div><button id="scrolltop"
+        x-cloak
+        @click="window.scrollTo({top: 0, behavior: 'smooth'})"
+        class="fixed bottom-8 right-8 p-2 z-10 rounded-sm bg-gray-700 text-xs text-white transition-all duration-1000 hover:bg-gray-950 focus:bg-gray-950"
+        :class="{'opacity-0 invisible' : !showScrollTop}"
+>
+  <svg xmlns="http://www.w3.org/2000/svg"
+       height="14"
+       viewBox="0 96 960 960"
+       width="14"
+       class="inline fill-current mb-[2px]"
+       aria-hidden="true">
+    <path d="M450 896V370L202 618l-42-42 320-320 320 320-42 42-248-248v526h-60Z" />
+  </svg>
+  Back to top
+</button>
+    
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script defer="defer" src="../../_static/theme.js?v=5db23cf8"></script>
+    
+</body>
+
+</html>
