@@ -11,15 +11,16 @@
                 diagnostics, and the fine ξ± integration input for
                 COSEBIs / pure-EB (``grid='integration'`` tagged points). The
                 covariance is assembled block-diagonally from the
-                per-statistic covariances (zero cross-blocks): the analysis
-                blocks first, then a dense per-pair integration-ξ block (the
-                analytic integration-binning covariance when it exists — it
-                feeds derived-statistic error propagation — or the TreeCorr
-                ``varxip``/``varxim`` diagonal as degraded fallback). At the
-                production integration binning (1000 θ bins) a dense block is
-                ~32 MB per pair; extreme convergence-check grids (10k bins)
-                degrade to the diagonal fallback rather than forking the
-                layout.
+                per-statistic covariances (zero cross-blocks, never
+                materialized): the analysis blocks first, then a dense
+                per-pair integration-ξ block (the analytic integration-binning
+                covariance when it exists — it feeds derived-statistic error
+                propagation — or the TreeCorr ``varxip``/``varxim`` diagonal as
+                degraded fallback). ``assemble_covariance`` hands sacc a list
+                of blocks, which stores a ``BlockDiagonalCovariance`` (one
+                FITS table per block, Σ block² on disk rather than a dense
+                N²) — cost scales with the integration grid's size, a
+                parameter set by the caller, not baked into the layout.
 
               Insertion order is load-bearing. A Sacc is a flat list of data
               points in the order ``add_data_point`` was called, and row/column
@@ -374,13 +375,16 @@ def add_tau(s, bins, k, theta, tau_p, tau_m, *, grid="reporting"):
 
 
 def assemble_covariance(s, blocks):
-    """Assemble a block-diagonal ``FullCovariance`` from per-statistic blocks.
+    """Assemble a ``BlockDiagonalCovariance`` from per-statistic blocks.
 
     Each block is validated against the current insertion order: its indices
     must be contiguous and ascending, the blocks must tile ``0…len(s.mean)``
     exactly (no gap, no overlap), and each block must be square with a size
     matching its index span. Any violation raises ``ValueError`` naming the
-    mismatch. Cross-blocks are left zero.
+    mismatch. Cross-blocks are zero and implicit — never materialized —
+    because the blocks are passed to ``add_covariance`` as a list, which
+    ``sacc.BaseCovariance.make`` turns into a ``BlockDiagonalCovariance``
+    (one FITS table per block, Σ block² on disk rather than a dense N² file).
 
     Parameters
     ----------
@@ -395,11 +399,11 @@ def assemble_covariance(s, blocks):
     Returns
     -------
     sacc.Sacc
-        ``s``, with the assembled ``FullCovariance`` attached.
+        ``s``, with the assembled ``BlockDiagonalCovariance`` attached.
     """
     items = blocks.items() if isinstance(blocks, dict) else blocks
     ntot = len(s.mean)
-    full = np.zeros((ntot, ntot))
+    ordered_blocks = []
     cursor = 0
     for selector, cov in items:
         idx = _resolve_indices(s, selector)
@@ -424,14 +428,14 @@ def assemble_covariance(s, blocks):
                 f"covariance block {selector!r} has size {cov.shape[0]} but "
                 f"spans {len(idx)} data points"
             )
-        full[np.ix_(idx, idx)] = cov
+        ordered_blocks.append(cov)
         cursor = idx[-1] + 1
     if cursor != ntot:
         raise ValueError(
             f"covariance blocks cover {cursor} of {ntot} data points — the "
             "blocks must tile the whole data vector"
         )
-    s.add_covariance(full)
+    s.add_covariance(ordered_blocks)
     return s
 
 

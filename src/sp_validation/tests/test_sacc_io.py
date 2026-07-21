@@ -232,7 +232,7 @@ def test_assemble_covariance_alignment(tmp_path):
     cov_xi, cov_cl, cov_co = _spd(len(xi), 1), _spd(len(cl), 2), _spd(len(co), 3)
     sio.assemble_covariance(s, [(xi, cov_xi), (cl, cov_cl), (co, cov_co)])
     s2 = _roundtrip(s, tmp_path, "cov")
-    assert type(s2.covariance).__name__ == "FullCovariance"
+    assert type(s2.covariance).__name__ == "BlockDiagonalCovariance"
     dense = s2.covariance.dense
     # each block's sub-covariance is exactly what went in
     assert np.array_equal(dense[np.ix_(xi, xi)], cov_xi)
@@ -258,7 +258,7 @@ def test_assemble_covariance_selector_tuples():
             ((sio.COSEBI_BB, tr), _spd(len(s.indices(sio.COSEBI_BB, tr)), 4)),
         ],
     )
-    assert type(s.covariance).__name__ == "FullCovariance"
+    assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
 
 
@@ -732,6 +732,32 @@ def test_merge_covariance_block_diagonal():
     assert np.array_equal(dense[:n_xi, :n_xi], cov_xi)
     assert np.array_equal(dense[n_xi:, n_xi:], cov_co)
     assert np.all(dense[:n_xi, n_xi:] == 0)
+
+
+def test_merge_block_diagonal_covariance_stays_block_diagonal(tmp_path):
+    """Merging two files that already carry a BlockDiagonalCovariance (e.g.
+    each assembled via ``assemble_covariance``) must not densify — the
+    result stays a ``BlockDiagonalCovariance``, on disk too."""
+    s_xi, s_co = _xi_sacc(), _cosebi_sacc()
+    sio.assemble_covariance(
+        s_xi, [(np.arange(len(s_xi.mean)), _spd(len(s_xi.mean), 1))]
+    )
+    sio.assemble_covariance(
+        s_co, [(np.arange(len(s_co.mean)), _spd(len(s_co.mean), 2))]
+    )
+    assert type(s_xi.covariance).__name__ == "BlockDiagonalCovariance"
+    merged = sio.merge([s_xi, s_co])
+    assert type(merged.covariance).__name__ == "BlockDiagonalCovariance"
+    sio.save(merged, str(tmp_path / "vBLK.sacc"), type="mock")
+    merged_rt = sio.load(str(tmp_path / "vBLK.sacc"))
+    assert type(merged_rt.covariance).__name__ == "BlockDiagonalCovariance"
+    n_xi = len(s_xi.mean)
+    assert np.array_equal(
+        merged_rt.covariance.dense[:n_xi, :n_xi], s_xi.covariance.dense
+    )
+    assert np.array_equal(
+        merged_rt.covariance.dense[n_xi:, n_xi:], s_co.covariance.dense
+    )
 
 
 def test_merge_mixed_covariance_fails():
