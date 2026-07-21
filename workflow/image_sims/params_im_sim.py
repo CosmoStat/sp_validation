@@ -12,6 +12,8 @@
 
 """
 
+import os
+
 import numpy as np
 
 # Control
@@ -25,15 +27,18 @@ np.set_printoptions(precision=3, formatter={"float": "{: .3g}".format})
 
 # Survey parameters
 
-## Field or patch name. Put None if n/a
-name = "P7"
+## Field or patch name -- derived from the run directory, which is named
+## after the simulation (e.g. '1z2z_grid_1'), so one shared params file
+## serves every sim.
+name = os.path.basename(os.getcwd())
 print("Field name = {}".format(name))
 
 ## Area of a tile in deg^2
 area_tile = 0.25
 
-## Shape measurement method (only 'ngmix' is supported):
-##  'ngmix': multi-epoch model fitting
+## Shape measurement method, implemented is
+##  'ngix': multi-epoch model fitting
+##  'galsim': stacked-image moments (experimental)
 shape = "ngmix"
 
 # Paths
@@ -54,7 +59,7 @@ print(f"Galaxy catalogue = {galaxy_cat_path}")
 param_list_path = f"{data_dir}/cfis/final_cat.param"
 
 ### Star and PSF catalog name; optional, set to `None` if not required
-star_cat_path = f"{data_dir}/full_starcat-0000000.fits"
+star_cat_path = None
 
 # HDU number of star and PSF catalogue
 hdu_star_cat = 1
@@ -65,16 +70,12 @@ mask_external_path = None
 ## Output paths
 
 ### Output base directory
-output_dir = f"{data_dir}/sp_output"
+output_dir = f"{data_dir}"
 
-### Galaxy shape catalogue base name.
-### Will be appended by
-### - '_{sh}.fits' for the basic catalogue
-### - 'extended_{sh}.fits' for the extended catalogue
+### Galaxy shape catalogue base name
 output_shape_cat_base = f"{output_dir}/shape_catalog"
 
 ### PSF output catalogue base name.
-### Will be appended by '_{sh}.fits'
 output_PSF_cat_base = f"{output_dir}/psf_catalog"
 
 ### File for found tile IDs
@@ -102,6 +103,9 @@ mmap_mode = None
 
 ## Output
 
+### Output file format extension: '.fits' or '.hdf5'
+output_format = ".fits"
+
 ### Additional output columns
 add_cols = [
     "FLUX_RADIUS",
@@ -118,11 +122,16 @@ add_cols = [
     "NGMIX_T_PSF_RECONV_NOSHEAR",
 ]
 
-## Pre-calibration catalogue, including masked objects and mask flags
+## Pre-calibration catalogue, including masked objects and mask flags.
+## ShapePipe-v2 (post-#761) ngmix grammar: ellipticity in named scalar
+## components NGMIX_G{1,2}_*, PSF size split into NGMIX_T_PSF_ORIG/RECONV.
+## IMAFLAGS_ISO (present in the data-path params) is omitted: the simulation
+## pipeline runs no imaging-flag masking stage, so the column does not exist.
+## NGMIX_MCAL_TYPES_FAIL is kept -- it is the metacal moments-failure flag the
+## calibration mask cuts on, identically to the data path.
 add_cols_pre_cal = [
     "TILE_ID",
     "NUMBER",
-    "IMAFLAGS_ISO",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -138,7 +147,6 @@ add_cols_pre_cal = [
 add_cols_pre_cal_format = {}
 for key in (
     "NUMBER",
-    "IMAFLAGS_ISO",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -182,6 +190,9 @@ do_selection_calibration = False
 ## Magnitude limits
 gal_mag_bright = 15
 gal_mag_faint = 30
+
+### Spread-model
+do_spread_model = False
 
 ### SExtractor flags to keep in addition to FLAGS=0
 ### (bit-coded; list of powers of 2);
