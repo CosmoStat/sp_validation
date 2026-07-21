@@ -599,9 +599,9 @@ plot_healpix_map(
 # %%
 # Maps of star/PSF information
 ra_star, dec_star = cat_star["RA"], cat_star["DEC"]
-e1_star, e2_star = cat_star["E1_STAR_HSM"], cat_star["E2_STAR_HSM"]
-e1_psf, e2_psf = cat_star["E1_PSF_HSM"], cat_star["E2_PSF_HSM"]
-t_star, t_psf = cat_star["SIGMA_STAR_HSM"] ** 2, cat_star["SIGMA_PSF_HSM"] ** 2
+e1_star, e2_star = cat_star["HSM_G1_STAR"], cat_star["HSM_G2_STAR"]
+e1_psf, e2_psf = cat_star["HSM_G1_PSF"], cat_star["HSM_G2_PSF"]
+t_star, t_psf = cat_star["HSM_T_STAR"], cat_star["HSM_T_PSF"]
 weights_star = np.ones_like(ra_star)
 
 # %%

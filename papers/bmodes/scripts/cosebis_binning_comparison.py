@@ -8,6 +8,7 @@ integration error may contaminate the anomalous PTE.
 Reference: Asgari et al. 2017 — ≥10,000 bins for E_7 at 0.5% accuracy.
 """
 
+import argparse
 import json
 import types
 from datetime import datetime
@@ -80,8 +81,7 @@ def _compute_Bn_only(gg, nmodes, scale_cut):
     return En, Bn
 
 
-def main():
-    config = snakemake.config
+def main(config, xi_1k_path, xi_10k_path, cov_1k_path, out_dir):
     nmodes = config["fiducial"]["nmodes"]
 
     # Scale cuts
@@ -103,10 +103,10 @@ def main():
 
     # Load both ξ± grids
     print("Loading 1,000-bin ξ±...")
-    gg_1k = _load_gg(snakemake.input.xi_1k, min_sep_int, max_sep_int, nbins_1k)
+    gg_1k = _load_gg(xi_1k_path, min_sep_int, max_sep_int, nbins_1k)
     print("Loading 10,000-bin ξ±...")
     gg_10k = _load_gg(
-        snakemake.input.xi_10k, min_sep_int, max_sep_int, nbins_10k, columns_only=True
+        xi_10k_path, min_sep_int, max_sep_int, nbins_10k, columns_only=True
     )
 
     # Compute COSEBIS from 1,000-bin ξ± (with covariance for PTE baseline)
@@ -115,7 +115,7 @@ def main():
         gg_1k,
         nmodes=nmodes,
         scale_cuts=list(scale_cuts.values()),
-        cov_path=snakemake.input.cov_1k,
+        cov_path=cov_1k_path,
     )
 
     # Compute COSEBIS from 10,000-bin ξ± (B_n only — no matching covariance)
@@ -127,7 +127,7 @@ def main():
         print(f"  {scale_key} {scale_cut}: done")
 
     # Compare and compute PTEs using 1k covariance for both
-    output_dir = Path(snakemake.output.evidence).parent
+    output_dir = Path(out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     evidence = {}
@@ -264,9 +264,9 @@ def main():
         "id": "cosebis_binning_comparison",
         "generated": datetime.now().isoformat(),
         "input": {
-            "xi_1k": str(snakemake.input.xi_1k),
-            "xi_10k": str(snakemake.input.xi_10k),
-            "cov_1k": str(snakemake.input.cov_1k),
+            "xi_1k": str(xi_1k_path),
+            "xi_10k": str(xi_10k_path),
+            "cov_1k": str(cov_1k_path),
         },
         "output": {"figure": "figure.png"},
         "params": {
@@ -279,11 +279,42 @@ def main():
         "evidence": evidence,
     }
 
-    evidence_path = Path(snakemake.output.evidence)
+    evidence_path = output_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence_data, f, indent=2)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _from_cli(argv=None):
+    import yaml
+
+    ap = argparse.ArgumentParser(
+        description="COSEBI angular-binning convergence (1,000 vs 10,000-bin xi_pm) figure."
+    )
+    ap.add_argument(
+        "--config", required=True, help="Absolute path to bmodes config.yaml"
+    )
+    ap.add_argument(
+        "--xi-1k",
+        required=True,
+        help="Fiducial 1000-bin integration-grid TreeCorr xi_pm .txt",
+    )
+    ap.add_argument(
+        "--xi-10k",
+        required=True,
+        help="Fiducial 10000-bin integration-grid TreeCorr xi_pm .txt",
+    )
+    ap.add_argument(
+        "--cov-1k",
+        required=True,
+        help="Fiducial 1000-bin Gaussian covariance (processed .txt) used for both grids",
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    a = ap.parse_args(argv)
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+    main(config, a.xi_1k, a.xi_10k, a.cov_1k, a.out)
+
+
 if __name__ == "__main__":
-    main()
+    _from_cli()

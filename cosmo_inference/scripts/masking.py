@@ -118,9 +118,9 @@ def apply_masks(data, data_ext, mask_config, footprint_only=False):
     if not footprint_only:
         rel_size = np.divide(
             data["NGMIX_T_NOSHEAR"],
-            data["NGMIX_Tpsf_NOSHEAR"],
+            data["NGMIX_T_PSF_RECONV_NOSHEAR"],
             out=np.zeros_like(data["NGMIX_T_NOSHEAR"]),
-            where=(data["NGMIX_Tpsf_NOSHEAR"] > 0),
+            where=(data["NGMIX_T_PSF_RECONV_NOSHEAR"] > 0),
         )
 
         rel_min = mask_config["metacal"]["gal_rel_size_min"]

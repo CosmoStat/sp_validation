@@ -6,7 +6,6 @@ __all__ = [
     "calibration",
     "catalog",
     "catalog_builders",
-    "cosmology",
     "format",
     "galaxy",
     "glass_mock",

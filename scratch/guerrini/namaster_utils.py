@@ -23,10 +23,10 @@ import numpy as np
 import pymaster as nmt
 import seaborn as sns
 from astropy.io import fits
+from cs_util.cosmo import get_cosmo, get_theo_c_ell
 from matplotlib import scale as mscale
 from tqdm import tqdm
 
-from sp_validation.cosmology import get_cosmo, get_theo_c_ell
 from sp_validation.rho_tau import SquareRootScale
 
 mscale.register_scale(SquareRootScale)

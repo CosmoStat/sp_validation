@@ -350,8 +350,6 @@ def get_jackknife_cov(
 
     rho_stat_handler.catalogs.set_params(params, outdir)
 
-    square_size = params["square_size"]
-
     tau_stat_handler = TauStat(
         catalogs=rho_stat_handler.catalogs,
         output=outdir,

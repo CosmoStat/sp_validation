@@ -11,7 +11,9 @@ Angular range parameterized via snakemake.params.scale_cut (full or fiducial).
 Modes > reliable_mode_max shown with gray band.
 """
 
+import argparse
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import treecorr
+import yaml
 from astropy.io import fits
 from cosmo_numba.B_modes.cosebis import COSEBIS
 from plotting_utils import (
@@ -507,13 +510,19 @@ def _make_version_comparison_figure(
     return fig
 
 
-def main():
-    config = snakemake.config
+def main(config, inputs, scale_cut, output_dir, paper_figure_name=None, spec_path=None):
+    """Harmonic-vs-config COSEBI cross-check for one angular range.
+
+    ``inputs`` is a dict mirroring ``snakemake.input``: per-version keys
+    ``pseudo_cl_{ver}`` / ``pseudo_cl_cov_{ver}`` / ``xi_{ver}`` / ``cov_{ver}``
+    (all absolute paths) plus ``specs``. All artifacts land under ``output_dir``;
+    ``paper_figure_name`` (when set) is the combined 2×2 paper PDF filename.
+    """
     nmodes = int(config["fiducial"]["nmodes"])
     version_labels_map = config["plotting"].get("version_labels", {})
 
     fiducial_version = config["fiducial"]["version"]
-    scale_cut = tuple(snakemake.params.scale_cut)
+    scale_cut = tuple(scale_cut)
 
     cosebis_nbins = int(config["cl"].get("cosebis_nbins", 32))
     reliable_mode_max = _RELIABLE_MODE_MAX_BY_NBINS.get(
@@ -524,19 +533,19 @@ def main():
 
     versions_leak_corr = [v for v in config["versions"] if "_leak_corr" in v]
 
-    # Build input path lookups from snakemake inputs
+    # Build input path lookups from the inputs dict
     pseudo_cl_paths = {
         k: v
-        for k, v in snakemake.input.items()
+        for k, v in inputs.items()
         if k.startswith("pseudo_cl_") and not k.startswith("pseudo_cl_cov_")
     }
     pseudo_cov_paths = {
-        k: v for k, v in snakemake.input.items() if k.startswith("pseudo_cl_cov_")
+        k: v for k, v in inputs.items() if k.startswith("pseudo_cl_cov_")
     }
-    xi_paths = {k: v for k, v in snakemake.input.items() if k.startswith("xi_")}
-    cov_paths = {k: v for k, v in snakemake.input.items() if k.startswith("cov_")}
+    xi_paths = {k: v for k, v in inputs.items() if k.startswith("xi_")}
+    cov_paths = {k: v for k, v in inputs.items() if k.startswith("cov_")}
 
-    output_dir = Path(snakemake.output["evidence"]).parent
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Track generated artifacts
@@ -606,7 +615,7 @@ def main():
         output[fig_spec["filename"].replace(".png", "")] = fig_spec["filename"]
 
         # For the paper figure, produce a combined 2x2 (both scale cuts)
-        if fig_spec["is_paper_figure"] and "paper_figure" in snakemake.output.keys():
+        if fig_spec["is_paper_figure"] and paper_figure_name:
             # Compute the other scale cut for the combined figure
             scale_cut_full = (
                 float(config["cosebis"]["theta_min"]),
@@ -673,11 +682,46 @@ def main():
                 title=fig_spec["title"] if fig_spec["title"] else None,
                 reliable_mode_max=reliable_mode_max,
             )
-            paper_path = Path(snakemake.output["paper_figure"])
+            paper_path = output_dir / paper_figure_name
             paper_path.parent.mkdir(parents=True, exist_ok=True)
             fig_combined.savefig(paper_path, bbox_inches="tight")
             print(f"  Saved combined paper figure {paper_path}")
             plt.close(fig_combined)
+
+            # cosebis_harmonic_modes data artifact (ASTRA cosebis.cosebis_harmonic_modes):
+            # persist the fiducial-version harmonic + config-space COSEBI vectors and
+            # covariances at both scale cuts. Arrays are already computed above — this
+            # is purely additive (no change to the figure compute).
+            if scale_cut == scale_cut_full:
+                cov_h_full, cov_h_fid = cov_h, cov_h_other
+            else:
+                cov_h_fid, cov_h_full = cov_h, cov_h_other
+            np.savez(
+                output_dir / f"cosebis_harmonic_modes_{ver}.npz",
+                nmodes=nmodes,
+                version=ver,
+                cosebis_nbins=cosebis_nbins,
+                reliable_mode_max=reliable_mode_max,
+                full_scale_cut=np.array(scale_cut_full),
+                fiducial_scale_cut=np.array(scale_cut_fid),
+                full_harm_En=harm_full["En"],
+                full_harm_Bn=harm_full["Bn"],
+                full_harm_cov=cov_h_full,
+                full_harm_sigma_E=harm_full["sigma_E"],
+                full_harm_sigma_B=harm_full["sigma_B"],
+                fiducial_harm_En=harm_fid["En"],
+                fiducial_harm_Bn=harm_fid["Bn"],
+                fiducial_harm_cov=cov_h_fid,
+                fiducial_harm_sigma_E=harm_fid["sigma_E"],
+                fiducial_harm_sigma_B=harm_fid["sigma_B"],
+                full_config_En=cfg_full[0],
+                full_config_Bn=cfg_full[1],
+                full_config_cov=cfg_full[2],
+                fiducial_config_En=cfg_fid[0],
+                fiducial_config_Bn=cfg_fid[1],
+                fiducial_config_cov=cfg_fid[2],
+            )
+            print(f"  Saved cosebis_harmonic_modes NPZ for {ver}")
 
         # Compute B-mode PTEs for leak-corrected versions
         if fig_spec["leak_corrected"] and ver not in harmonic_ptes:
@@ -713,7 +757,7 @@ def main():
         version_labels_map,
         reliable_mode_max=reliable_mode_max,
     )
-    fig_vc_path = Path(snakemake.output["figure_versions"])
+    fig_vc_path = output_dir / "figure_versions.png"
     fig_vc.savefig(fig_vc_path, dpi=300, bbox_inches="tight")
     print(f"Saved {fig_vc_path}")
     plt.close(fig_vc)
@@ -722,7 +766,8 @@ def main():
     # --- Evidence ---
     evidence = {
         "spec_id": "harmonic_config_cosebis_comparison",
-        "spec_path": snakemake.input["specs"][0],
+        "spec_path": spec_path
+        or "papers/bmodes/config/harmonic_config_cosebis_comparison.md",
         "generated": datetime.now().isoformat(),
         "evidence": {
             "nmodes": nmodes,
@@ -746,11 +791,193 @@ def main():
         "output": output,
     }
 
-    evidence_path = Path(snakemake.output["evidence"])
+    evidence_path = output_dir / "evidence.json"
     with open(evidence_path, "w") as f:
         json.dump(evidence, f, indent=2, default=str)
     print(f"Saved evidence to {evidence_path}")
 
 
+def _versions_all_for_plots(config):
+    """Reproduce VERSIONS_ALL_FOR_PLOTS: leak-corrected (non-ecut) versions plus
+    their uncorrected counterparts."""
+    leak_corr = [
+        v for v in config["versions"] if "_leak_corr" in v and "_ecut" not in v
+    ]
+    uncorrected = [v.replace("_leak_corr", "") for v in leak_corr]
+    return leak_corr + uncorrected
+
+
+def _cov_integration_path(cov_dir, version, blind, min_sep, max_sep, nbins):
+    """Reproduce common.covariance_path for the Gaussian integration-grid,
+    masked covariance (suffix _processed.txt)."""
+    base = (
+        f"covariance_{version}_{blind}_g"
+        f"_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_masked"
+    )
+    return os.path.join(cov_dir, base, f"{base}_processed.txt")
+
+
+def _angular_ranges(config):
+    """Reproduce claims.smk _COSEBIS_ANGULAR_RANGES."""
+    return {
+        "full": (
+            float(config["cosebis"]["theta_min"]),
+            float(config["cosebis"]["theta_max"]),
+        ),
+        "fiducial": (250.0 ** (9 / 20), 250.0 ** (16 / 20)),
+    }
+
+
+def _from_snakemake(smk):
+    main(
+        config=smk.config,
+        inputs=dict(smk.input.items()),
+        scale_cut=tuple(smk.params.scale_cut),
+        output_dir=Path(smk.output["evidence"]).parent,
+        paper_figure_name=(
+            Path(smk.output["paper_figure"]).name
+            if "paper_figure" in smk.output.keys()
+            else None
+        ),
+        spec_path=smk.input["specs"][0],
+    )
+
+
+def _from_cli(argv=None):
+    ap = argparse.ArgumentParser(
+        description="Harmonic vs config-space COSEBI cross-check (paper Figure 8)."
+    )
+    ap.add_argument("--config", required=True, help="Absolute path to config.yaml")
+    ap.add_argument(
+        "--angular-range",
+        choices=["full", "fiducial"],
+        default="fiducial",
+        help="Scale-cut regime for the per-version B-mode PTEs / primary panel",
+    )
+    ap.add_argument(
+        "--cosmo-val-dir",
+        required=True,
+        help="COSMO_VAL output dir (pseudo_cl / pseudo_cl_cov FITS + xi_integration txt)",
+    )
+    ap.add_argument(
+        "--covariance-dir",
+        required=True,
+        help="COSMO_INFERENCE data/covariance dir (Gaussian integration covariances)",
+    )
+    ap.add_argument(
+        "--blind", default="A", help="Blind for pseudo-Cl / covariance (paper: A)"
+    )
+    ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--fiducial-version",
+        default=None,
+        help=(
+            "Fiducial catalog version (paper: SP_v1.4.6.3_leak_corr). When set "
+            "together with one of --fiducial-*-path below, this version's inputs "
+            "are read from the given lc-reproduced path instead of the "
+            "--cosmo-val-dir / --covariance-dir pattern lookup. Every other "
+            "version is unaffected."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-pseudo-cl-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial 96-bin pseudo-Cl FITS reproduced by lc "
+            "(from lc's cl_bandpowers_fine; e.g. pseudo_cl_SP_v1.4.6.3_leak_corr.fits), "
+            "overriding the --cosmo-val-dir pattern lookup for --fiducial-version."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-xi-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial 1000-bin integration xi_pm text file "
+            "reproduced by lc (e.g. SP_v1.4.6.3_leak_corr_xi_minsep=0.5_maxsep=300.0_"
+            "nbins=1000_npatch=1.txt), overriding the --cosmo-val-dir pattern lookup "
+            "for --fiducial-version."
+        ),
+    )
+    ap.add_argument(
+        "--fiducial-cov-path",
+        default=None,
+        help=(
+            "Explicit path to the fiducial Gaussian integration covariance "
+            "reproduced by lc (covariance_processed.txt), overriding the "
+            "--covariance-dir pattern lookup for --fiducial-version. NOTE: there is "
+            "no equivalent override for the 96-bin pseudo-Cl covariance — lc did "
+            "not reproduce it (only a 32-bin cl_cov_reporting exists) — so that "
+            "input always reads from the old tree, even for the fiducial version."
+        ),
+    )
+    a = ap.parse_args(argv)
+
+    with open(a.config) as f:
+        config = yaml.safe_load(f)
+
+    fid = config["fiducial"]
+    cosebis_nbins = int(config["cl"].get("cosebis_nbins", 96))
+    min_sep_int, max_sep_int, nbins_int = (
+        fid["min_sep_int"],
+        fid["max_sep_int"],
+        fid["nbins_int"],
+    )
+    npatch = fid["npatch"]
+
+    versions = _versions_all_for_plots(config)
+    inputs = {"specs": ["papers/bmodes/config/harmonic_config_cosebis_comparison.md"]}
+    for ver in versions:
+        is_fiducial = ver == a.fiducial_version
+
+        inputs[f"pseudo_cl_{ver}"] = (
+            a.fiducial_pseudo_cl_path
+            if is_fiducial and a.fiducial_pseudo_cl_path
+            else os.path.join(
+                a.cosmo_val_dir,
+                f"pseudo_cl_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+            )
+        )
+        # 96-bin pseudo-Cl covariance is intentionally NOT lc-repointed: lc did not
+        # reproduce a 96-bin pseudo-Cl covariance (only 32-bin cl_cov_reporting
+        # exists), so this always reads from the old tree, even for the fiducial
+        # version.
+        inputs[f"pseudo_cl_cov_{ver}"] = os.path.join(
+            a.cosmo_val_dir,
+            f"pseudo_cl_cov_{ver}_blind={a.blind}_powspace_nbins={cosebis_nbins}.fits",
+        )
+        inputs[f"xi_{ver}"] = (
+            a.fiducial_xi_path
+            if is_fiducial and a.fiducial_xi_path
+            else os.path.join(
+                a.cosmo_val_dir,
+                f"{ver}_xi_minsep={min_sep_int}_maxsep={max_sep_int}"
+                f"_nbins={nbins_int}_npatch={npatch}.txt",
+            )
+        )
+        inputs[f"cov_{ver}"] = (
+            a.fiducial_cov_path
+            if is_fiducial and a.fiducial_cov_path
+            else _cov_integration_path(
+                a.covariance_dir, ver, a.blind, min_sep_int, max_sep_int, nbins_int
+            )
+        )
+
+    scale_cut = _angular_ranges(config)[a.angular_range]
+
+    main(
+        config=config,
+        inputs=inputs,
+        scale_cut=scale_cut,
+        output_dir=a.out,
+        paper_figure_name=f"harmonic_config_cosebis_{a.angular_range}.pdf",
+        spec_path=inputs["specs"][0],
+    )
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        snakemake  # noqa: F821 — injected by Snakemake's script: directive
+    except NameError:
+        _from_cli()
+    else:
+        _from_snakemake(snakemake)  # noqa: F821
