@@ -6,9 +6,10 @@ knows the file layout). Each ``*_to_sacc`` function turns one already-computed
 statistic into a single-statistic SACC — a *part* — carrying that statistic's
 own covariance as its one covariance block. The Snakemake DAG writes one part
 per rule; :func:`assemble_analysis_sacc` then loads the parts and rebuilds the
-single ``{version}.sacc`` analysis file with a ``FullCovariance`` assembled
-block-diagonally in canonical order (per the SACC layout contract — *not*
-``sacc.concatenate_data_sets``, whose ``BlockDiagonalCovariance`` output the
+single ``{version}.sacc`` analysis file with a ``BlockDiagonalCovariance``
+assembled from the per-part blocks in canonical order (per the SACC layout
+contract, via the validated :func:`sp_validation.sacc_io.assemble_covariance` —
+*not* ``sacc.concatenate_data_sets``, whose unvalidated block-diagonal the
 contract rules out).
 
 The integration-grid ``{version}_xi_integration.sacc`` is one more part
@@ -103,11 +104,11 @@ def cosebis_to_sacc(nz, metadata, result, scale_cut):
     ``b_modes.calculate_cosebis`` — ``{"En", "Bn", "cov", ...}`` — where ``cov``
     is the ``[En; Bn]``-ordered COSEBIs covariance. Non-fiducial scale cuts are
     a diagnostic (the PTE scan) and stay in the sidecar ``.npz``; only the
-    fiducial cut is a data product, because a ``FullCovariance`` must cover
+    fiducial cut is a data product, because the analysis covariance must cover
     every stored point and the cuts overlap in mode space.
     """
     s = sio.new_sacc(nz, metadata)
-    sio.add_cosebis(s, BIN, result["En"], result["Bn"], scale_cut)
+    sio.add_cosebis(s, BIN, result["En"], scale_cut, Bn=result["Bn"])
     s.add_covariance(np.asarray(result["cov"]))
     return s
 
@@ -224,7 +225,7 @@ def assemble_analysis_sacc(nz, metadata, parts):
     part's data points into one Sacc in the order the parts are given — which
     must be the canonical order (ξ± reporting, ξ± integration, pseudo-Cℓ,
     COSEBIs, pure-E/B, ρ, τ)
-    — and assembles a single ``FullCovariance`` from the per-part covariance
+    — and assembles a single ``BlockDiagonalCovariance`` from the per-part covariance
     blocks. Point insertion order and block order therefore agree by
     construction, which ``sacc_io.assemble_covariance`` validates (contiguous,
     tiling, square) and raises on if they don't.
@@ -238,7 +239,7 @@ def assemble_analysis_sacc(nz, metadata, parts):
     Returns
     -------
     sacc.Sacc
-        The analysis Sacc with a ``FullCovariance`` covering every point.
+        The analysis Sacc with a ``BlockDiagonalCovariance`` covering every point.
     """
     s = sio.new_sacc(nz, metadata)
     blocks = []

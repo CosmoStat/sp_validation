@@ -9,7 +9,7 @@ run_2pcf / generate_pseudo_cl scripts) holds one statistic. The assembler loads
 them in canonical order — ξ± reporting, ξ± integration, pseudo-Cℓ, COSEBIs,
 pure-E/B, ρ/τ — and
 calls :func:`sacc_writers.assemble_analysis_sacc`, which rebuilds one Sacc with a
-single block-diagonal ``FullCovariance`` (point-insertion order = block order,
+single ``BlockDiagonalCovariance`` (point-insertion order = block order,
 validated by ``sacc_io.assemble_covariance``).
 
 Covariance sourcing (the part-by-part decision)
@@ -35,7 +35,7 @@ injects their blocks before assembly:
 When a cov input is absent the assembly cannot proceed on a real product; pass
 ``--allow-placeholder`` to attach a documented diagonal placeholder
 (``placeholder_var`` on every point of the cov-less parts) so the DAG dry-run and
-the fast test can still produce a structurally-valid ``FullCovariance``. The
+the fast test can still produce a structurally-valid ``BlockDiagonalCovariance``. The
 placeholder is a flagged stand-in, never a science covariance.
 """
 

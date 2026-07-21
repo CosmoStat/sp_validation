@@ -143,7 +143,7 @@ def test_assemble_sacc_placeholder_canonical_order(tmp_path):
     out = tmp_path / "vSYNTH.sacc"
     s = asm.assemble_sacc("vSYNTH", paths, str(out), placeholder_var=1.0)
     assert out.exists()
-    assert type(s.covariance).__name__ == "FullCovariance"
+    assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
 
     # Canonical insertion order: the first data types are ξ+ then ξ−.
@@ -236,9 +236,9 @@ def test_assemble_sacc_respects_pseudo_cl_toggle(tmp_path):
     s = asm.assemble_sacc("vSYNTH", paths, str(out), placeholder_var=1.0)
     tr = ("source_0", "source_0")
     assert len(s.indices(sio.CL_EE, tr)) == 0
-    # Round-trips as a valid FullCovariance over the remaining points.
+    # Round-trips as a valid BlockDiagonalCovariance over the remaining points.
     s2 = sio.load(str(out))
-    assert type(s2.covariance).__name__ == "FullCovariance"
+    assert type(s2.covariance).__name__ == "BlockDiagonalCovariance"
     assert s2.covariance.dense.shape == (len(s2.mean), len(s2.mean))
 
 

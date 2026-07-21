@@ -458,7 +458,7 @@ rule cv_summarize_bmodes:
 # integration-grid ξ± is fiducial-only, so it joins the fiducial version's file
 # alone (see cv_assemble_inputs). assemble_sacc.py
 # loads the parts in canonical order and rebuilds one {version}.sacc with a
-# single FullCovariance (point-insertion order = block order).
+# single BlockDiagonalCovariance (point-insertion order = block order).
 #
 # The pseudo-Cℓ part is the TAGGED, blinded inference product (blind=A, powspace,
 # nbins=32) — the same pseudo-Cℓ today's cosmosis_fitting.py consumes — so the
@@ -470,7 +470,7 @@ rule cv_summarize_bmodes:
 # mask-keyed and lives deep in the inference tree, so wiring it couples cosmo_val
 # to the whole inference covariance DAG — that sourcing is PR-3's converter
 # territory. Until then a documented diagonal placeholder keeps the ξ block (and
-# so the FullCovariance) structurally valid; it is a flagged stand-in, never a
+# so the BlockDiagonalCovariance) structurally valid; it is a flagged stand-in, never a
 # science covariance, and plugs out via --xi-cov the moment PR 3 lands.
 
 

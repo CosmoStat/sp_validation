@@ -3,7 +3,7 @@
 Synthetic and fast: each ``*_to_sacc`` writer is exercised with in-memory
 arrays, round-tripped through ``tmp_path``, and checked against the SACC layout
 contract (data types, tags, ordering, covariance alignment). The analysis-file
-assembler is verified to produce a single ``FullCovariance`` covering every
+assembler is verified to produce a single ``BlockDiagonalCovariance`` covering every
 point with each per-statistic block correctly placed. One real small-nside
 NaMaster round-trip proves the pseudo-Cℓ window survives the writer path.
 """
@@ -259,11 +259,11 @@ def _make_parts(nz):
     return [xi, cl, co]
 
 
-def test_assemble_analysis_sacc_full_covariance(tmp_path):
+def test_assemble_analysis_sacc_block_diagonal_covariance(tmp_path):
     nz = {0: _nz()}
     parts = _make_parts(nz)
     s = sw.assemble_analysis_sacc(nz, META, parts)
-    assert type(s.covariance).__name__ == "FullCovariance"
+    assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
     # every point covered; blocks placed and cross-blocks zero
     tr = ("source_0", "source_0")
@@ -284,7 +284,7 @@ def test_assemble_analysis_sacc_full_covariance(tmp_path):
     )
     # round-trips
     s2 = _roundtrip(s, tmp_path, "analysis")
-    assert type(s2.covariance).__name__ == "FullCovariance"
+    assert type(s2.covariance).__name__ == "BlockDiagonalCovariance"
     assert np.allclose(s2.covariance.dense, s.covariance.dense)
 
 
@@ -314,5 +314,5 @@ def test_assemble_from_reloaded_parts(tmp_path):
         sio.save(part, str(tmp_path / f"part{i}.sacc"), type="mock")
         reloaded.append(sio.load(str(tmp_path / f"part{i}.sacc")))
     s = sw.assemble_analysis_sacc(nz, META, reloaded)
-    assert type(s.covariance).__name__ == "FullCovariance"
+    assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
