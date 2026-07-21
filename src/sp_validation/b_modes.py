@@ -259,10 +259,10 @@ def cosebis_from_xi(theta, xip, xim, nmodes, scale_cut=None):
     """COSEBIs (Eₙ, Bₙ) from ξ± arrays through the pipeline kernel (values only).
 
     The values-only seam of :func:`calculate_cosebis`, for callers holding
-    ξ± arrays rather than a TreeCorr ``GGCorrelation`` — e.g. deriving
-    born-blinded COSEBIs from a blinded integration-ξ± SACC part. Calls the same
-    ``cosmo_numba`` kernel (``COSEBIS.cosebis_from_xipm``) directly on the
-    values; the covariance/χ² machinery stays with :func:`calculate_cosebis`.
+    ξ± arrays rather than a TreeCorr ``GGCorrelation`` — e.g. deriving COSEBIs
+    from an integration-ξ± SACC part. Calls the same ``cosmo_numba`` kernel
+    (``COSEBIS.cosebis_from_xipm``) directly on the values; the covariance/χ²
+    machinery stays with :func:`calculate_cosebis`.
 
     ``scale_cut`` follows the :func:`sacc_io.add_cosebis` writer contract:
     ``(theta_min, theta_max)`` are min/max of the *retained* bin centres
@@ -296,8 +296,8 @@ def pure_eb_from_xi(
 
     The values-only seam of :func:`calculate_pure_eb_correlation`, for
     callers holding ξ± arrays rather than TreeCorr correlations — e.g.
-    deriving born-blinded pure-E/B from blinded SACC parts. Calls the same
-    ``cosmo_numba`` kernel (``get_pure_EB_modes``) directly on the values.
+    deriving pure-E/B from SACC parts. Calls the same ``cosmo_numba`` kernel
+    (``get_pure_EB_modes``) directly on the values.
     The reporting grid must be a strict sub-range of the integration grid;
     ``tmin``/``tmax`` are the reporting correlation's TreeCorr *bin edges*
     (``gg.left_edges[0]`` / ``gg.right_edges[-1]``) — the pipeline's

@@ -74,13 +74,13 @@ def cv_tau_stats(version):
 
 
 def cv_pure_eb_npz(version):
-    eb = CV["pure_eb"]
+    eb = CV["integration"]
     return str(
         COSMO_VAL
         / (
             f"{version}_eb_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_minsepint={eb['min_sep_int']}"
-            f"_maxsepint={eb['max_sep_int']}_nbinsint={eb['nbins_int']}"
+            f"_nbins={CV['nbins']}_minsepint={eb['min_sep']}"
+            f"_maxsepint={eb['max_sep']}_nbinsint={eb['nbins']}"
             f"_npatch={CV['npatch']}_varmethod=jackknife_data.npz"
         )
     )
@@ -167,6 +167,16 @@ def cv_xi_reporting_sacc(version):
             f"_nbins={CV['nbins']}_npatch={CV['npatch']}.sacc"
         )
     )
+
+
+def cv_xi_integration_sacc(version):
+    """Integration-grid ξ± SACC part the xi_highres rule writes, per version.
+
+    Intermediate per-statistic part (grid='integration', its own DiagonalCovariance
+    from TreeCorr varxip/varxim). NOT folded into the terminal {version}.sacc (see
+    #247 ruling) — COSEBIs and pure-E/B consume it directly.
+    """
+    return str(COSMO_VAL / f"{version}_xi_integration.sacc")
 
 
 def cv_analysis_sacc(version):
@@ -358,18 +368,45 @@ rule cv_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
+# On a data run the COSEBIs / pure-E/B parts re-derive their E-mode vector from
+# the *blinded* integration ξ± (COSEBIs) or blinded reporting + integration ξ±
+# (pure-E/B), and stamp the derived part concealed from the version's
+# commitment.json. blindable_part returns the plaintext part on a mock run and
+# the blinded part on a data run, so the ξ± inputs bind unconditionally for every
+# version; only the commitment is gated on is_data_run().
+def cv_cosebis_inputs(w):
+    inputs = {
+        "xi": cv_xi_txt(w.version),
+        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+    }
+    if is_data_run():
+        inputs["commitment"] = blind_state_paths(w.version)["commitment"]
+    return inputs
+
+
+def cv_pure_eb_inputs(w):
+    inputs = {
+        "xi": cv_xi_txt(w.version),
+        "xi_reporting": blindable_part(cv_xi_reporting_sacc(w.version)),
+        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+    }
+    if is_data_run():
+        inputs["commitment"] = blind_state_paths(w.version)["commitment"]
+    return inputs
+
+
 rule cv_pure_eb:
     """Pure E/B-mode decomposition for one version (config-space)."""
     input:
-        xi=lambda w: cv_xi_txt(w.version),
+        unpack(cv_pure_eb_inputs),
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
     params:
         version="{version}",
-        min_sep_int=CV["pure_eb"]["min_sep_int"],
-        max_sep_int=CV["pure_eb"]["max_sep_int"],
-        nbins_int=CV["pure_eb"]["nbins_int"],
+        min_sep_int=CV["integration"]["min_sep"],
+        max_sep_int=CV["integration"]["max_sep"],
+        nbins_int=CV["integration"]["nbins"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
         cv_init=lambda w: cv_init_params(config, version_list=[w.version]),
         rundir=CV_RUNDIR,
@@ -384,7 +421,7 @@ rule cv_pure_eb:
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
     input:
-        xi=lambda w: cv_xi_txt(w.version),
+        unpack(cv_cosebis_inputs),
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
@@ -420,9 +457,9 @@ rule cv_summarize_bmodes:
         summary_json=str(COSMO_VAL / "bmode_summary.json"),
     params:
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        pure_eb_min_sep_int=CV["pure_eb"]["min_sep_int"],
-        pure_eb_max_sep_int=CV["pure_eb"]["max_sep_int"],
-        pure_eb_nbins_int=CV["pure_eb"]["nbins_int"],
+        pure_eb_min_sep_int=CV["integration"]["min_sep"],
+        pure_eb_max_sep_int=CV["integration"]["max_sep"],
+        pure_eb_nbins_int=CV["integration"]["nbins"],
         cosebis_min_sep_int=CV["cosebis"]["min_sep_int"],
         cosebis_max_sep_int=CV["cosebis"]["max_sep_int"],
         cosebis_nbins_int=CV["cosebis"]["nbins_int"],

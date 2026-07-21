@@ -58,11 +58,15 @@ cosmo_val:
         kmax: 20
         kmax_extrapolate: 500
 
-  # Pure E/B-mode decomposition (config space)
-  pure_eb:
-    min_sep_int: 0.08
-    max_sep_int: 300
-    nbins_int: 1000
+  # Integration-grid ξ± (the shared fine grid measured once per version by rule
+  # xi_highres as {version}_xi_integration.sacc). Both estimators consume this one
+  # part: pure-E/B uses the full range (it must strictly contain the reporting
+  # grid [1, 250]); COSEBIs scale-cuts it up to 0.9. Owned here, not inside either
+  # consumer's block. Decoupled from covariance.smk's own FIDUCIAL grid.
+  integration:
+    min_sep: 0.08
+    max_sep: 300
+    nbins: 1000
 
   # COSEBIs decomposition (config space, fine integration binning)
   cosebis:

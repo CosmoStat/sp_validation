@@ -10,6 +10,7 @@ assemble_sacc rule consumes — the multi-cut .npz sidecar stays the diagnostic
 PTE scan.
 """
 
+import numpy as np
 from cv_runner import _unbuffer_streams, make_cv, verify_outputs
 from snakemake.script import snakemake
 
@@ -17,6 +18,7 @@ _unbuffer_streams()
 cv = make_cv(snakemake)
 p = snakemake.params
 version = p["version"]
+fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
 cv.plot_cosebis(
     version=version,
     min_sep_int=p["min_sep_int"],
@@ -25,14 +27,43 @@ cv.plot_cosebis(
     npatch=p["npatch"],
     nmodes=p["nmodes"],
     scale_cuts=[tuple(sc) for sc in p["scale_cuts"]],
-    fiducial_scale_cut=tuple(p["fiducial_scale_cut"]),
+    fiducial_scale_cut=fiducial_scale_cut,
 )
+
+# Consume the integration-grid ξ± SACC part: re-derive the fiducial-cut E-mode En
+# from it through the same cosmo_numba kernel plot_cosebis' raw path uses
+# (b_modes.cosebis_from_xi). Bn and the covariance stay blind-invariant from the
+# raw plot_cosebis result. Version-agnostic — every version binds the part.
+from sp_validation import sacc_io
+from sp_validation.b_modes import cosebis_from_xi
+
+integ = sacc_io.load(snakemake.input["xi_integration"])
+theta, xip, xim = sacc_io.get_xi(integ, (0, 0), grid="integration")
+en_part, _ = cosebis_from_xi(theta, xip, xim, p["nmodes"], scale_cut=fiducial_scale_cut)
+
+# On a data run the integration ξ± part is blinded (blindable_part), so the
+# derived En is blinded too; commitment.json (bound only on a data run) stamps
+# the emitted COSEBIs part concealed. A mock run binds no commitment and the
+# part stays plaintext/unconcealed.
+commitment_path = snakemake.input.get("commitment")
+
 # Born-as-SACC COSEBIs part at the fiducial scale cut (plot_cosebis stored the
-# multi-cut results on the instance).
+# multi-cut results on the instance); En comes from the consumed part.
 cv.cosebis_to_sacc_part(
     version,
     snakemake.output["sacc"],
     cv._cosebis_results[version],
-    fiducial_scale_cut=tuple(p["fiducial_scale_cut"]),
+    fiducial_scale_cut=fiducial_scale_cut,
+    en_override=en_part,
+    commitment_path=commitment_path,
 )
+
+# Overwrite the raw fiducial-cut En plot_cosebis wrote into the diagnostic npz with
+# the part-derived En (identical to the SACC part's). Bn / cov / PTE fields are
+# untouched, so the B-mode summary reader is unaffected.
+npz_path = snakemake.output["npz"]
+data = dict(np.load(npz_path, allow_pickle=True))
+data["En"] = np.asarray(en_part)
+np.savez(npz_path, **data)
+
 verify_outputs(snakemake)
