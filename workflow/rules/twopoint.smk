@@ -109,11 +109,16 @@ wildcard_constraints:
 
 
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning.
+
+    NB: the ``blind`` wildcard is the glass-mock A/B/C variant (three mock
+    catalogues), NOT Smokescreen blinding — see common.py BLINDS. The Smokescreen
+    concealed=True stamp is a separate axis on the SACC file.
+    """
     output:
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
-        blind="[ABC]",
+        blind="[ABC]",  # glass-mock variant, not Smokescreen blinding
     params:
         version="{version}",
         blind="{blind}",
@@ -133,11 +138,15 @@ rule pseudo_cl:
 
 
 rule pseudo_cl_cov:
-    """Generate pseudo-Cl covariance with configurable binning."""
+    """Generate pseudo-Cl covariance with configurable binning.
+
+    NB: ``blind`` is the glass-mock A/B/C variant, not Smokescreen blinding
+    (see common.py BLINDS).
+    """
     output:
         pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
     wildcard_constraints:
-        blind="[ABC]",
+        blind="[ABC]",  # glass-mock variant, not Smokescreen blinding
     params:
         version="{version}",
         blind="{blind}",
