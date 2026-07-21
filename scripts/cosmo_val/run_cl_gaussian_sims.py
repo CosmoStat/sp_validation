@@ -40,6 +40,8 @@ from tqdm import tqdm
 
 import sp_validation.pseudo_cl as spv_pseudo_cl
 
+pol_to_pol_index_dict = {"EE": 0, "EB": 1, "BE": 2, "BB": 3}
+
 
 def get_parser():
     """Create the argument parser."""
@@ -130,6 +132,18 @@ def get_parser():
         "-f",
         "--force",
         help="Force overwrite of existing output files (default: False)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-seb",
+        "--save-eb",
+        help="Save the EB covariance matrix (default: False)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "-sbb",
+        "--save-bb",
+        help="Save the BB covariance matrix (default: False)",
         action="store_true",
     )
     return parser
@@ -478,27 +492,28 @@ def distribute_work(comm, n_sims, worker_fn, worker_args=()):
 
 
 # --- Final function to read the computed spectra and extract a covariance matrix ---
-def concatenate_spectra(cl_sample, tomo_bin_ids):
+def concatenate_spectra(cl_sample, tomo_bin_ids, pol_index):
     """Concatenate the spectra from different tomographic bins into a single array."""
     concatenated_cl = []
     tomo_bin_pairs = itertools.combinations_with_replacement(tomo_bin_ids, 2)
     for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
-        concatenated_cl.append(cl_sample[f"W{tomo_bin_a}xW{tomo_bin_b}"][0])
+        concatenated_cl.append(cl_sample[f"W{tomo_bin_a}xW{tomo_bin_b}"][pol_index])
     return np.concatenate(concatenated_cl)
 
 
 def get_covariance_from_simulated_spectra(
-    n_sims, version, tomography, tomo_bin_ids, out_dir
+    n_sims, version, tomography, tomo_bin_ids, pol, out_dir
 ):
     """Compute the covariance of the EE signal from the simulated spectra."""
     cl_samples = []
+    pol_index = pol_to_pol_index_dict[pol]
     for sim_id in range(n_sims):
         out_file = f"{out_dir}/cl_sample_{sim_id}_{version}_tomography_{tomography}.npz"
         if not os.path.exists(out_file):
             raise FileNotFoundError(f"Simulation output file {out_file} not found.")
         data = np.load(out_file, allow_pickle=True)
         cl_samples.append(
-            concatenate_spectra(data["cl_decoupled"].item(), tomo_bin_ids)
+            concatenate_spectra(data["cl_decoupled"].item(), tomo_bin_ids, pol_index)
         )
 
     cl_samples = np.array(cl_samples)
@@ -536,6 +551,9 @@ if __name__ == "__main__":
     power = args.power
 
     force_run = args.force
+
+    save_eb = args.save_eb
+    save_bb = args.save_bb
 
     if rank == 0:
         # Check that the config file exists (same than cosmo_val)
@@ -651,14 +669,40 @@ if __name__ == "__main__":
     if rank == 0:
         print("All simulations completed ✅")
 
-        print(f"Merging into a covariance matrix for version {version}...")
+        print(f"Merging into a EE covariance matrix for version {version}...")
         outpath_cov = os.path.join(
-            out_dir, f"covariance_matrix_{version}_tomography_{tomography}.npy"
+            out_dir, f"covariance_matrix_EE_{version}_tomography_{tomography}.npy"
         )
 
         covariance_matrix = get_covariance_from_simulated_spectra(
-            n_sims, version, tomography, tomo_bin_ids, out_dir
+            n_sims, version, tomography, tomo_bin_ids, "EE", out_dir
         )
 
         np.save(outpath_cov, covariance_matrix)
-        print(f"Covariance matrix saved to {outpath_cov}")
+        print(f"EE covariance matrix saved to {outpath_cov}")
+
+        if save_eb:
+            print(f"Merging into a EB covariance matrix for version {version}...")
+            outpath_cov = os.path.join(
+                out_dir, f"covariance_matrix_EB_{version}_tomography_{tomography}.npy"
+            )
+
+            covariance_matrix = get_covariance_from_simulated_spectra(
+                n_sims, version, tomography, tomo_bin_ids, "EB", out_dir
+            )
+
+            np.save(outpath_cov, covariance_matrix)
+            print(f"EB covariance matrix saved to {outpath_cov}")
+
+        if save_bb:
+            print(f"Merging into a BB covariance matrix for version {version}...")
+            outpath_cov = os.path.join(
+                out_dir, f"covariance_matrix_BB_{version}_tomography_{tomography}.npy"
+            )
+
+            covariance_matrix = get_covariance_from_simulated_spectra(
+                n_sims, version, tomography, tomo_bin_ids, "BB", out_dir
+            )
+
+            np.save(outpath_cov, covariance_matrix)
+            print(f"BB covariance matrix saved to {outpath_cov}")
