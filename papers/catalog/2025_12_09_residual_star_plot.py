@@ -33,10 +33,10 @@ T_star = cat_star["HSM_T_STAR"]
 e1_psf = cat_star["HSM_G1_PSF"]
 e2_psf = cat_star["HSM_G2_PSF"]
 T_psf = cat_star["HSM_T_PSF"]
-M_4_1_star = cat_star["M_4_STAR_1"]
-M_4_2_star = cat_star["M_4_STAR_2"]
-M_4_1_psf = cat_star["M_4_PSF_1"]
-M_4_2_psf = cat_star["M_4_PSF_2"]
+M_4_1_star = cat_star["HSM_M4_1_STAR"]
+M_4_2_star = cat_star["HSM_M4_2_STAR"]
+M_4_1_psf = cat_star["HSM_M4_1_PSF"]
+M_4_2_psf = cat_star["HSM_M4_2_PSF"]
 
 # %%
 histtype = "step"
