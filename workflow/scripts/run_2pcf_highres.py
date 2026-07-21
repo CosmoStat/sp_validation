@@ -2,7 +2,7 @@
 """
 High-resolution ξ± measurement for COSEBIS integration.
 
-Computes TreeCorr GGCorrelation with fine angular binning (10,000+ bins)
+Computes TreeCorr GGCorrelation with integration angular binning (10,000+ bins)
 required for accurate COSEBIS mode integration. Uses MPI for patch-pair
 distribution across nodes when available; falls back to multi-threaded
 single-process otherwise.
@@ -26,6 +26,12 @@ import time
 import numpy as np
 import treecorr
 from astropy.io import fits
+
+# sacc_io depends only on numpy + sacc (no healpy/cs_util), so the born-as-SACC
+# integration ξ± write works on the bare-host MPI path too, where the full cosmo_val
+# stack is unavailable.
+from sp_validation import sacc_io
+from sp_validation.cosmo_val.sacc_writers import xi_to_sacc
 
 try:
     # In-container path: full sp_validation stack available.
@@ -76,6 +82,7 @@ VERSION = None
 E1_COL = None
 E2_COL = None
 W_COL = None
+REDSHIFT_PATH = None  # n(z) file for the SACC tracer
 TMIN = None  # arcmin
 TMAX = None  # arcmin
 NBINS = None
@@ -196,33 +203,46 @@ def compute_patch_centers(ra, dec):
     del cat_sub
 
 
-def write_xi_fits(gg, prefix, xi_data):
-    """Write ξ+ or ξ- to FITS matching CosmologyValidation format."""
-    out_path = os.path.join(
-        OUTPUT_DIR,
-        f"{prefix}_{VERSION}_minsep={TMIN}_maxsep={TMAX}_nbins={NBINS}_npatch=1.fits",
+def write_xi_integration_sacc(gg):
+    """Write the integration-grid ξ± SACC part (``{version}_xi_integration.sacc``).
+
+    This is a per-statistic part — COSEBIs and pure-E/B consume it, and
+    ``rule assemble_sacc`` folds its integration-grid ξ± rows into the single
+    terminal ``{version}.sacc``. It carries a ``DiagonalCovariance`` from TreeCorr
+    ``varxip``/``varxim``
+    (npatch=1 leaves shot-noise variance as the only covariance estimate).
+    Both run paths land here: in-container this uses the full SACC stack; on the
+    bare-host MPI run only ``sacc_io`` + the n(z) file are needed (no healpy).
+    """
+    z, nz = np.loadtxt(REDSHIFT_PATH, unpack=True)
+    metadata = {
+        "catalogue_version": VERSION,
+        "sp_validation_version": _sp_validation_version(),
+        "npatch": 1,
+    }
+    s = xi_to_sacc(
+        {0: (z, nz)},
+        metadata,
+        gg.meanr,
+        gg.xip,
+        gg.xim,
+        grid="integration",
+        theta_nom=gg.rnom,
+        variances=np.concatenate([gg.varxip, gg.varxim]),
     )
-    n = len(xi_data)
-    cols = [
-        fits.Column(name="BIN1", format="K", array=np.ones(n, dtype=int)),
-        fits.Column(name="BIN2", format="K", array=np.ones(n, dtype=int)),
-        fits.Column(name="ANGBIN", format="K", array=np.arange(1, n + 1)),
-        fits.Column(name="VALUE", format="D", array=xi_data),
-        fits.Column(name="ANG", format="D", unit="arcmin", array=gg.meanr),
-    ]
-    ext_name = "XI_PLUS" if "plus" in prefix else "XI_MINUS"
-    hdu = fits.BinTableHDU.from_columns(cols, name=ext_name)
-    for key, val in {
-        "2PTDATA": "T",
-        "QUANT1": "G+R",
-        "QUANT2": "G+R",
-        "KERNEL_1": "NZ_SOURCE",
-        "KERNEL_2": "NZ_SOURCE",
-        "WINDOWS": "SAMPLE",
-    }.items():
-        hdu.header[key] = val
-    hdu.writeto(out_path, overwrite=True)
+    out_path = os.path.join(OUTPUT_DIR, f"{VERSION}_xi_integration.sacc")
+    sacc_io.save(s, out_path, type="data")
     log(f"  Wrote {out_path}")
+
+
+def _sp_validation_version():
+    """Best-effort package version for the SACC metadata (empty if unavailable)."""
+    try:
+        from sp_validation import __version__
+
+        return __version__
+    except Exception:
+        return ""
 
 
 def resolve_shear_config(cat_config_path, version):
@@ -274,7 +294,7 @@ def resolve_shear_config(cat_config_path, version):
 
 
 def main():
-    global CAT_PATH, VERSION, E1_COL, E2_COL, W_COL
+    global CAT_PATH, VERSION, E1_COL, E2_COL, W_COL, REDSHIFT_PATH
     global TMIN, TMAX, NBINS, NPATCH, OUTPUT_DIR, PATCH_FILE
 
     args = parse_args()
@@ -301,6 +321,7 @@ def main():
     E1_COL = shear_cfg["e1_col"]
     E2_COL = shear_cfg["e2_col"]
     W_COL = shear_cfg["w_col"]
+    REDSHIFT_PATH = shear_cfg["redshift_path"]
 
     PATCH_FILE = os.path.join(
         OUTPUT_DIR,
@@ -383,8 +404,7 @@ def main():
         gg.write(out_txt, write_patch_results=False, write_cov=False)
         log(f"  Wrote {out_txt}")
 
-        write_xi_fits(gg, "xi_plus", gg.xip)
-        write_xi_fits(gg, "xi_minus", gg.xim)
+        write_xi_integration_sacc(gg)
 
         elapsed = time.time() - t0
         log(f"Done! Total time: {elapsed / 3600:.1f}h ({elapsed:.0f}s)")

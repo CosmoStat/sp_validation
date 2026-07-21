@@ -15,6 +15,7 @@ from ..b_modes import (
     find_conservative_scale_cut_key,
 )
 from ..statistics import chi2_and_pte
+from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
 from .pseudo_cl import PseudoClMixin
@@ -379,6 +380,23 @@ class CosmologyValidation(
         ``/`` separators.
         """
         return os.path.abspath(os.path.join(self.cc["paths"]["output"], *parts))
+
+    def sacc_nz(self, version):
+        """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
+
+        The tomography-native writer interface (``sacc_writers``) takes an nz
+        dict keyed by 0-based source bin; the round is single-bin, so the whole
+        survey n(z) is bin 0. ``get_redshift`` returns ``(z, nz)``.
+        """
+        return {0: tuple(self.get_redshift(version))}
+
+    def sacc_metadata(self, version):
+        """Provenance metadata stored on every SACC part for ``version``."""
+        return {
+            "catalogue_version": version,
+            "sp_validation_version": __version__,
+            "npatch": self.npatch,
+        }
 
     def get_redshift(self, version):
         """Load redshift distribution for a catalog version.

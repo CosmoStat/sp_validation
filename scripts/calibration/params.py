@@ -32,9 +32,6 @@ print("Field name = {}".format(name))
 ## Area of a tile in deg^2
 area_tile = 0.25
 
-## Pixel size in arcsec
-pixel_size = 0.187
-
 ## Shape measurement method (only 'ngmix' is supported):
 ##  'ngmix': multi-epoch model fitting
 shape = "ngmix"
@@ -104,9 +101,6 @@ col_name_dec = "YWIN_WORLD"
 mmap_mode = None
 
 ## Output
-
-### Output file format extension: '.fits' or '.hdf5'
-output_format = ".hdf5"
 
 ### Additional output columns
 add_cols = [

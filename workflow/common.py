@@ -5,6 +5,16 @@ import os
 import re
 from pathlib import Path
 
+# Absolute path to the generic workflow's scripts, anchored on this module's own
+# location (common.py lives in workflow/, is `from common import *`'d into every
+# Snakefile, and so resolves to the generic workflow dir of the running checkout
+# regardless of which paper composes it — unlike workflow.basedir, which under
+# `module` composition reflects the composing paper). Rules that shell out to a
+# script directly (the MPI xi_highres run can't go through Snakemake's `script:`
+# directive) interpolate this instead of a hardcoded pure_eb/ compat-symlink
+# path. /automnt/n17data is the automount of the container-bound /n17data.
+WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
+
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(
@@ -18,6 +28,12 @@ COSMO_INFERENCE = Path(
     )
 )
 CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
+# NB: "blind" here is the glass-mock multi-catalogue A/B/C variant convention
+# (three mock realisations), NOT Smokescreen blinding. The name predates the
+# blind-at-birth work and is kept because it is baked into on-disk filenames we
+# do not own (e.g. sguerrini's nz_{version}_{A|B|C}.txt) and into the covariance
+# / inference path builders below. Smokescreen concealment is a separate axis
+# (the concealed=True SACC stamp), tracked by issues #241/#247.
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -32,6 +48,7 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
+    # glass-mock A/B/C variant, not Smokescreen blinding — see BLINDS above.
     "blind": r"[ABC]",
     "nbins": r"\d+",
     "min_sep": r"[0-9.]+",

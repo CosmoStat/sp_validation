@@ -29,7 +29,7 @@ GLASS_MOCK_FITS_PATTERN = str(
 )
 GLASS_MOCK_CONFIG_PATTERN = str(
     COSMO_INFERENCE_PROD
-    / f"cosmosis_config/output/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
+    / f"cosmosis_config/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
 # Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
@@ -55,11 +55,26 @@ def pseudo_cl_assets(version):
     cov_path = PSEUDO_CL_DIR / f"pseudo_cl_cov_{version}_{PSEUDO_CL_TAG}.fits"
     return str(cl_path), str(cov_path)
 
+# ---------------------------------------------------------------------------
+# DORMANT — pre-SACC cosmosis assembly. Migration to native SACC deferred to
+# PR 7 (native-SACC inference consumption); do NOT deep-migrate here.
+#
+# The SACC migration (PR 4) removed the data products several of these inputs
+# name, so this rule's DAG no longer resolves and is NOT reachable from the
+# cosmo_val suite (cosmo_val_all never requests it). Stale inputs:
+#   - xi_plus / xi_minus FITS: the `xi` rule now emits the reporting ξ± SACC part
+#     ({version}_xi_reporting_...sacc), not per-sign FITS.
+#   - pseudo_cl / pseudo_cl_cov via pseudo_cl_assets(): the `pseudo_cl` rule now
+#     writes .sacc (pseudo_cl_assets still requests .fits).
+# PR 7 rewires this to consume the assembled {version}.sacc (built by
+# cosmo_val.smk's assemble_sacc rule) directly, retiring cosmosis_fitting.py's
+# per-product FITS assembly. Until then the inference target is knowingly red.
+# ---------------------------------------------------------------------------
 rule inference_prep:
     input:
         # Processed covariance matrix - use centralized covariance_path()
         cov_matrix=lambda w: covariance_path(w.version, w.blind, min_sep=w.min_sep, max_sep=w.max_sep, nbins=w.nbins),
-        # Xi FITS files
+        # Xi FITS files — PRE-SACC (no longer produced; see dormant note above)
         xi_plus=str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         xi_minus=str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         # n(z) file (using new location with base version mapping)
@@ -69,6 +84,7 @@ rule inference_prep:
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         # tau covariance (tracked as dependency)
         tau_cov=str(COSMO_VAL / "rho_tau_stats/cov_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}_th.npy"),
+        # pseudo_cl / pseudo_cl_cov — PRE-SACC (.fits path; producer now writes .sacc)
         pseudo_cl=lambda w: pseudo_cl_assets(w.version)[0],
         pseudo_cl_cov=lambda w: pseudo_cl_assets(w.version)[1],
     output:
@@ -78,7 +94,7 @@ rule inference_prep:
         ),
         config_file=str(
             COSMO_INFERENCE_PROD
-            / "cosmosis_config/output/cosmosis_pipeline_{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.ini"
+            / "cosmosis_config/cosmosis_pipeline_{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.ini"
         )
     params:
         cosmosis_root="{version}_{blind}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}",

@@ -36,9 +36,6 @@ print("Field name = {}".format(name))
 ## Area of a tile in deg^2
 area_tile = 0.25
 
-## Pixel size in arcsec
-pixel_size = 0.187
-
 ## Shape measurement method, implemented is
 ##  'ngix': multi-epoch model fitting
 ##  'galsim': stacked-image moments (experimental)

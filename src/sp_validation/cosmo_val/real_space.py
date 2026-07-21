@@ -12,12 +12,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import treecorr
-from astropy.io import fits
 from cs_util import plots as cs_plots
 
 
 class RealSpaceMixin:
-    def calculate_2pcf(self, ver, npatch=None, save_fits=False, **treecorr_config):
+    def calculate_2pcf(self, ver, npatch=None, **treecorr_config):
         """
         Calculate the two-point correlation function (2PCF) ξ± for a given catalog
         version with TreeCorr.
@@ -34,9 +33,6 @@ class RealSpaceMixin:
             npatch (int, optional): The number of patches to use for the calculation.
             Defaults to the instance's `npatch` attribute.
 
-            save_fits (bool, optional): Whether to save the ξ± results to FITS files.
-            Defaults to False.
-
             **treecorr_config: Additional TreeCorr configuration parameters that will
             override the instance's default `treecorr_config`. For example, `min_sep=1`.
 
@@ -49,8 +45,11 @@ class RealSpaceMixin:
               calculation is skipped, and the results are loaded from the file.
             - If a patch file for the given configuration does not exist, it is
               created during the process.
-            - FITS files for ξ+ and ξ− are saved with additional metadata in their
-              headers if `save_fits` is True.
+            - The ``.txt`` TreeCorr dump is the only raw byproduct written here
+              (read back by the covariance machinery and the skip-if-exists). The
+              analysis ξ± data product is born as SACC in the Snakemake scripts
+              (``run_2pcf.py`` coarse / ``run_2pcf_highres.py`` fine), which call
+              ``xi_to_sacc``; there is no DES-style ξ FITS writer anymore.
         """
 
         self.print_magenta(f"Computing {ver} ξ±")
@@ -100,74 +99,6 @@ class RealSpaceMixin:
             # Process the catalog & write the correlation functions
             gg.process(cat_gal)
             gg.write(out_fname, write_patch_results=True, write_cov=True)
-
-        # Save xi_p and xi_m results to fits file
-        # (moved outside so it runs even if txt exists)
-        if save_fits:
-            lst = np.arange(1, treecorr_config["nbins"] + 1)
-
-            col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
-            col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
-            col3 = fits.Column(name="ANGBIN", format="K", array=lst)
-            col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
-            col5 = fits.Column(name="ANG", format="D", unit="arcmin", array=gg.meanr)
-            coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-            xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
-
-            col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
-            coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-            ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
-
-            # append xi_plus header info
-            xiplus_dict = {
-                "2PTDATA": "T",
-                "QUANT1": "G+R",
-                "QUANT2": "G+R",
-                "KERNEL_1": "NZ_SOURCE",
-                "KERNEL_2": "NZ_SOURCE",
-                "WINDOWS": "SAMPLE",
-            }
-            for key in xiplus_dict:
-                xiplus_hdu.header[key] = xiplus_dict[key]
-
-                col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
-                col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
-                col3 = fits.Column(name="ANGBIN", format="K", array=lst)
-                col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
-                col5 = fits.Column(name="ANG", format="D", unit="arcmin", array=gg.rnom)
-                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-                xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
-
-                col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
-                coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-                ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
-
-                # append xi_plus header info
-                xiplus_dict = {
-                    "2PTDATA": "T",
-                    "QUANT1": "G+R",
-                    "QUANT2": "G+R",
-                    "KERNEL_1": "NZ_SOURCE",
-                    "KERNEL_2": "NZ_SOURCE",
-                    "WINDOWS": "SAMPLE",
-                }
-                for key in xiplus_dict:
-                    xiplus_hdu.header[key] = xiplus_dict[key]
-            # Use same naming format as txt output
-            fits_base = out_fname.replace(".txt", "").replace("_xi_", "_")
-            xiplus_hdu.writeto(
-                f"{fits_base.replace(ver, f'xi_plus_{ver}')}.fits",
-                overwrite=True,
-            )
-
-            # append xi_minus header info
-            ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
-            for key in ximinus_dict:
-                ximinus_hdu.header[key] = ximinus_dict[key]
-            ximinus_hdu.writeto(
-                f"{fits_base.replace(ver, f'xi_minus_{ver}')}.fits",
-                overwrite=True,
-            )
 
         # Add correlation object to class
         if not hasattr(self, "cat_ggs"):
