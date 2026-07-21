@@ -187,7 +187,20 @@ def assemble_sacc(
         )
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
+    # Assembly-time custody assertion (#252): every blindable part (ξ± / pseudo-Cℓ
+    # EE) must share one blind commitment + config digest, or assembly fails
+    # closed — mixed blinded/plaintext parts and divergent-seed parts both raise.
+    # ρ/τ and covariance-only parts are exempt. Returns the shared blind stamp to
+    # carry onto the assembled file (or None for a fully-mock plaintext assembly).
+    from sp_validation import blinding
+
+    shared = blinding.assert_consistent_blind(parts)
     s = assemble_analysis_sacc(nz, metadata, parts)
+    if shared is not None:
+        # Stamp the assembled file with the shared blind so it, too, reads as
+        # concealed (its parts already carried the stamp into `metadata` above;
+        # this makes the custody state explicit and authoritative on the union).
+        s.metadata.update(shared)
     # Assembly preserves its parts' provenance: every part was written by
     # sacc_io.save and therefore carries the type=data|mock stamp in its
     # metadata (copied into the assembled file above).

@@ -482,8 +482,15 @@ def cv_assemble_inputs(version):
     fiducial harmonic tag). pseudo_cl (+ its cov) is included only when the
     config toggles the harmonic-space BB into the analysis.
     """
+    # blindable_part binds the raw-signal parts (reporting/integration ξ±,
+    # analysis pseudo-Cℓ) to their blinded siblings on a data run and to the
+    # plaintext on a mock run. COSEBIs and pure-E/B are born blinded (their
+    # writers derive them from the blinded integration ξ± and stamp
+    # concealed=True), so they bind by their own name in both cases; ρ/τ is a
+    # diagnostic carrying no cosmological vector but is stamped concealed
+    # pass-through so the fail-closed load gate admits it on a data run.
     parts = dict(
-        xi_reporting=cv_xi_reporting_sacc(version),
+        xi_reporting=blindable_part(cv_xi_reporting_sacc(version)),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
@@ -493,9 +500,9 @@ def cv_assemble_inputs(version):
     # fiducial version's terminal file alone; other versions' {version}.sacc omit
     # the integration rows rather than trigger a job with no output to bind.
     if version == config["fiducial"]["version"]:
-        parts["xi_integration"] = cv_xi_integration_sacc(version)
+        parts["xi_integration"] = blindable_part(cv_xi_integration_sacc(version))
     if CV.get("include_pseudo_cl", False):
-        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
+        parts["pseudo_cl"] = blindable_part(cv_pseudo_cl_analysis_sacc(version))
         parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
     return parts
 

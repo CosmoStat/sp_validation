@@ -14,7 +14,9 @@ rule xi:
         # rule to share one wildcard set, and it keeps the reporting .sacc name
         # self-describing so requesting it binds the xi job unambiguously.
         txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        xi_reporting=str(COSMO_VAL / "{version}_xi_reporting_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
+        # Blindable part: temp() on a data run so only its blinded sibling
+        # persists (blind_part escrows the true vector first). See common.maybe_temp.
+        xi_reporting=maybe_temp(str(COSMO_VAL / "{version}_xi_reporting_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc")),
     threads: 24
     params:
         ver="{version}",
@@ -42,7 +44,8 @@ rule xi_highres:
     container: None
     output:
         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-        xi_integration=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_integration.sacc"),
+        # Blindable part: temp() on a data run (see rule xi / common.maybe_temp).
+        xi_integration=maybe_temp(str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_integration.sacc")),
     resources:
         tasks=30,
         cpus_per_task=12,
@@ -116,6 +119,13 @@ rule pseudo_cl:
     concealed=True stamp is a separate axis on the SACC file.
     """
     output:
+        # This generic rule produces every pseudo-Cℓ variant — the analysis part
+        # (blind=A, powspace, nbins=32) folded into {version}.sacc, plus the fine
+        # (COSEBIS) and glass-mock variants. Only the analysis part is a terminal
+        # blindable, and a data run blinds it via a requested _blinded sibling
+        # (blind_part reads this plaintext); the fine/mock variants are B-mode /
+        # validation intermediates left untouched here. The output is therefore
+        # not temp()'d — see the PR note on residual unblinded pseudo-Cℓ.
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
         blind="[ABC]",  # glass-mock variant, not Smokescreen blinding
