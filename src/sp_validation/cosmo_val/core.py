@@ -465,11 +465,20 @@ class CosmologyValidation(
             self._results_objectwise = self.init_results(objectwise=True)
         return self._results_objectwise
 
-    def basename(self, version, treecorr_config=None, npatch=None):
+    def basename(
+        self,
+        version,
+        tomo_bin_a="all",
+        tomo_bin_b=None,
+        treecorr_config=None,
+        npatch=None,
+    ):
         cfg = treecorr_config or self.treecorr_config
         patches = npatch or self.npatch
+        tomo_bin_a_str = f"tomo_bin_{tomo_bin_a}"
+        tomo_bin_b_str = f"_tomo_bin_{tomo_bin_b}" if tomo_bin_b is not None else ""
         return (
-            f"{version}_minsep={cfg['min_sep']}"
+            f"{version}_{tomo_bin_a_str}{tomo_bin_b_str}_minsep={cfg['min_sep']}"
             f"_maxsep={cfg['max_sep']}"
             f"_nbins={cfg['nbins']}"
             f"_npatch={patches}"

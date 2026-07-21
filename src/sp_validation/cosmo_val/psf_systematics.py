@@ -23,7 +23,7 @@ from ..rho_tau import (
 
 
 class PSFSystematicsMixin:
-    def calculate_rho_tau_stats(self):
+    def calculate_rho_tau_stats(self, tomography=True):
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -50,12 +50,16 @@ class PSFSystematicsMixin:
     def rho_stat_handler(self):
         if not hasattr(self, "_rho_stat_handler"):
             self.calculate_rho_tau_stats()
+            if self.compute_tomography:
+                self.calculate_rho_tau_stats(tomography=True)
         return self._rho_stat_handler
 
     @property
     def tau_stat_handler(self):
         if not hasattr(self, "_tau_stat_handler"):
             self.calculate_rho_tau_stats()
+            if self.compute_tomography:
+                self.calculate_rho_tau_stats(tomography=True)
         return self._tau_stat_handler
 
     def plot_rho_stats(self, abs=False):
