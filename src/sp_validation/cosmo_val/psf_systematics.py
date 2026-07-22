@@ -6,8 +6,10 @@ object-wise) for catalogue validation.
 """
 
 import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import treecorr
 from astropy.io import fits
@@ -84,9 +86,10 @@ class PSFSystematicsMixin:
                     )
 
             else:
-                tomo_bin_ids, tomo_bin_pairs = "all", [("all", "all")]
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
             for tomo_bin_id in tomo_bin_ids:
+                self.print_cyan(f"Computing for the tomographic bin: {tomo_bin_id}")
                 base_rho = self.basename(ver)
                 base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
 
@@ -117,7 +120,7 @@ class PSFSystematicsMixin:
 
     # --- utility functions ---
     def _get_galaxy_mask(self, ver, tomo_bin_id):
-        cat_gal = fits.getdata(self.cc["shear"]["path"])
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
         if tomo_bin_id != "all":
             gal_mask = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == tomo_bin_id
         else:
@@ -159,19 +162,40 @@ class PSFSystematicsMixin:
 
         return params
 
+    def set_psf_parameter_sampling_method(self, rho_tau_method):
+        if rho_tau_method not in ["emcee", "lsq"]:
+            raise ValueError("Invalid PSF parameter sampling method.")
+        self.rho_tau_method = rho_tau_method
+
+    def set_psf_parameter_nsamples(self, nsamples):
+        self.psf_error_nsamples = nsamples
+
+    def set_psf_parameter_nwalkers(self, nwalkers):
+        self.psf_error_nwalkers = nwalkers
+
     def get_samples(self, version, params, tomo_bin_id, track_result=False):
         npatch = params["patch_number"] if self.cov_estimate_method == "jk" else None
 
         base_rho = self.basename(version)
         base_tau = self.basename(version, tomo_bin_a=tomo_bin_id)
+
+        # Set the number of samples and walkers and fallback to defaults if not attributed.
+        n_samples = (
+            self.psf_error_nsamples if hasattr(self, "psf_error_nsamples") else 10_000
+        )
+        n_walkers = (
+            self.psf_error_nwalkers if hasattr(self, "psf_error_nwalkers") else 124
+        )
+
         flat_samples, result, q = get_samples(
             self.psf_fitter,
-            version,
             base_rho,
             base_tau,
             cov_type=self.cov_estimate_method,
             apply_debias=npatch,
             sampler=self.rho_tau_method,
+            nsamples=n_samples,
+            nwalkers=n_walkers,
         )
 
         if track_result:
@@ -188,45 +212,279 @@ class PSFSystematicsMixin:
         return xi_psf_sys_samples
 
     # --- plotting functions ---
-    def plot_rho_stats(self, abs=False):
-        filenames = [f"rho_stats_{self.basename(ver)}.fits" for ver in self.versions]
+    def plot_rho_stats(
+        self,
+        versions=None,
+        colors=None,
+        abs=False,
+        offset=0,
+        savefig=None,
+        show=True,
+        close=True,
+    ):
+        """
+        Plot the Rho statistics.
 
-        savefig = "rho_stats.png"
+        Parameters
+        ----------
+        versions : list, optional
+            List of versions to plot. If None, all versions are plotted.
+        abs : bool, optional
+            If True, plot the absolute values of the Rho statistics.
+        offset : float, optional
+            Offset to apply to the versions for better visualisation.
+        savefig : str, optional
+            If provided, save the figure to this file.
+        show : bool, optional
+            If True, show the figure.
+        close : bool, optional
+            If True, close the figure after saving or showing.
+        """
+        if versions is None:
+            versions = self.versions
+
+        filenames = [f"rho_stats_{self.basename(ver)}.fits" for ver in versions]
+
+        if colors is None:
+            colors = [self.cc[ver]["colour"] for ver in versions]
+
+        if len(colors) != len(versions):
+            raise ValueError("Colors and versions must have the same length.")
+
         self.rho_stat_handler.plot_rho_stats(
             filenames,
-            self.colors,
-            self.versions,
+            colors,
+            versions,
+            offset=offset,
             savefig=savefig,
             legend="outside",
             abs=abs,
-            show=True,
-            close=True,
+            show=show,
+            close=close,
         )
 
-        self.print_done(
-            "Rho stats plot saved to "
-            + f"{os.path.abspath(self.rho_stat_handler.catalogs._output)}/{savefig}",
-        )
+        if savefig is not None:
+            self.print_done(
+                "Rho stats plot saved to "
+                + f"{os.path.abspath(self.rho_stat_handler.catalogs._output)}/{savefig}",
+            )
 
-    def plot_tau_stats(self, plot_tau_m=False):
-        filenames = [f"tau_stats_{self.basename(ver)}.fits" for ver in self.versions]
+    def plot_tau_stats(
+        self,
+        tomography=False,
+        cov_type=None,
+        versions=None,
+        colors=None,
+        offset=0,
+        savefig=None,
+        show=True,
+        close=True,
+        plot_tau_m=False,
+        plot_theta_times_tau=False,
+        fmt="",
+        capsize=2,
+    ):
+        if versions is None:
+            versions = self.versions
 
-        savefig = "tau_stats.png"
-        self.tau_stat_handler.plot_tau_stats(
-            filenames,
-            self.colors,
-            self.versions,
-            savefig=savefig,
-            legend="outside",
-            plot_tau_m=plot_tau_m,
-            show=True,
-            close=True,
-        )
+        if colors is None:
+            colors = [self.cc[ver]["colour"] for ver in versions]
 
-        self.print_done(
-            "Tau stats plot saved to "
-            + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
-        )
+        if len(colors) != len(versions):
+            raise ValueError("Colors and versions must have the same length.")
+
+        if cov_type is None:
+            self.print_cyan("Using the error bars from the tau-statistics files")
+        else:
+            self.print_cyan(
+                f"Using the error bars from the covariance files of type: {cov_type}"
+            )
+
+        out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
+
+        if tomography:
+            # Write the whole script for the tomography. It does not exist in shear_psf_leakage
+            e_obs = r"e^\mathrm{obs}"
+            e_psf = r"e^\mathrm{PSF}"
+            delta_e_psf = r"\delta e^\mathrm{PSF}"
+            delta_T_psf = r"\delta T^\mathrm{PSF}"
+
+            factor_theta_label = r"\theta" if plot_theta_times_tau else r""
+
+            titles = [
+                rf"$\tau_0 = \langle {e_obs} {e_psf} \rangle$",
+                rf"${factor_theta_label} \tau_2 = {factor_theta_label} \langle {e_obs} {delta_e_psf} \rangle$",
+                rf"${factor_theta_label} \tau_5 = {factor_theta_label} \langle {e_obs} {delta_T_psf} \rangle$",
+            ]
+
+            dict_index_tau = {
+                0: "0",
+                1: "2",
+                2: "5",
+            }
+
+            # From all the versions, get the maximum number of tomo_bin_ids
+            tomo_bins = {}
+            for ver in versions:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+
+                tomo_bins[ver] = {"ids": tomo_bin_ids, "pairs": tomo_bin_pairs}
+
+            n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
+
+            n_rows = n_tomo_bins_plot * (1 + plot_tau_m)
+
+            fig = plt.figure(figsize=(20 * (1 + plot_tau_m), 10 * (1 + plot_tau_m)))
+            gs = fig.add_gridspec(n_rows, 3, wspace=0.1, hspace=0)
+            all_axs = gs.subplots(sharex="col")
+
+            for k in range(n_rows):
+                axs = all_axs[k]
+
+                tomo_bin_id = k // 2 + 1 if plot_tau_m else k + 1
+                is_m_component = k % 2 if plot_tau_m else 0
+
+                for file_idx, (ver, color) in enumerate(zip(versions, colors)):
+                    # Check if the tomo bin is valid for this version
+                    if tomo_bin_id not in tomo_bins[ver]["ids"]:
+                        continue
+
+                    # Load the tau-stats in the tau_stat_handler for easier read
+                    base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
+
+                    self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau}.fits")
+
+                    if cov_type is not None:
+                        cov_tau_path = (
+                            Path(out_dir) / f"cov_tau_{base_tau}_{cov_type}.npy"
+                        )
+                        cov_tau = np.load(cov_tau_path)
+
+                    # Plot the different tau-stats per row
+                    for i in range(3):
+                        p_or_m = "m" if is_m_component else "p"
+                        p_or_m_label = "-" if is_m_component else "+"
+
+                        # Get the jittered angular scale for the x-axis
+                        theta = self.tau_stat_handler.tau_stats["theta"]
+                        num_theta_bins = theta.shape[0]
+
+                        theta_widths = np.diff(theta)
+                        theta_widths = np.append(theta_widths, theta_widths[-1])
+
+                        jitter_fraction = (file_idx - (len(versions) - 1) / 2) * offset
+                        jittered_theta = theta + jitter_fraction * theta_widths
+
+                        factor_theta = (
+                            np.ones_like(jittered_theta)
+                            if (i == 0) or not plot_theta_times_tau
+                            else theta
+                        )
+
+                        y_plot = (
+                            self.tau_stat_handler.tau_stats[
+                                f"tau_{dict_index_tau[i]}_{p_or_m}"
+                            ]
+                            * factor_theta
+                        )
+
+                        if cov_type is None or p_or_m == "m":
+                            cov_diag = self.tau_stat_handler.tau_stats[
+                                "vartau_" + dict_index_tau[i] + "_" + p_or_m
+                            ]
+                        else:
+                            cov_diag = np.diag(
+                                cov_tau[
+                                    i * num_theta_bins : (i + 1) * num_theta_bins,
+                                    i * num_theta_bins : (i + 1) * num_theta_bins,
+                                ]
+                            )
+
+                        yerr_plot = np.sqrt(cov_diag) * factor_theta
+
+                        ver_label = (
+                            self.cc[ver]["label"] if "label" in self.cc[ver] else ver
+                        )
+                        axs[i].errorbar(
+                            jittered_theta,
+                            y_plot,
+                            yerr=yerr_plot,
+                            fmt=fmt,
+                            label=ver_label,
+                            capsize=capsize,
+                            color=color,
+                        )
+
+                # Set the style of the plot
+                for i in range(3):
+                    axs[i].set_xscale("log")
+                    axs[i].set_xlim(theta.min() * 0.9, theta.max() * 1.1)
+                    if i == 0:
+                        axs[i].set_ylabel(f"Bin {tomo_bin_id}\n `{p_or_m_label}' comp.")
+                    if k == n_rows - 1:
+                        axs[i].set_xlabel(r"$\theta$ [arcmin]")
+                    if k == 0:
+                        axs[i].set_title(titles[i])
+
+                    # --- Force scientific notation and scaling ---
+                    axs[i].ticklabel_format(axis="y", style="sci", scilimits=(0, 0))
+                    axs[i].yaxis.offsetText.set_visible(True)
+
+                    # --- Make it look clean ---
+                    axs[i].yaxis.set_major_locator(
+                        mticker.MaxNLocator(nbins=5)
+                    )  # Fewer, rounded ticks
+                    # axs[i].yaxis.get_offset_text().set_fontsize(10)        # Smaller ×10⁻⁴ label
+                    axs[i].yaxis.get_offset_text().set_position(
+                        (0, 1.02)
+                    )  # Move scale factor slightly above axis
+                    axs[i].yaxis.get_offset_text().set_ha("left")
+
+                if k == n_rows - 1:
+                    axs[1].legend(
+                        loc="upper center",
+                        bbox_to_anchor=(0.5, -0.5),  # (x, y) relative to the axes
+                        ncol=3,  # number of columns
+                        frameon=False,
+                    )
+
+            plt.tight_layout()
+
+            if savefig is not None:
+                plt.savefig(savefig, dpi=300, bbox_inches="tight")
+
+            if show:
+                plt.show()
+
+            if close:
+                plt.close()
+
+        else:
+            filenames = [f"tau_stats_{self.basename(ver)}.fits" for ver in versions]
+            cov_paths = [
+                f"cov_tau_{self.basename(ver)}_{cov_type}.npy" for ver in versions
+            ]
+            self.tau_stat_handler.plot_tau_stats(
+                filenames,
+                colors,
+                versions,
+                cov_paths=cov_paths,
+                offset=offset,
+                savefig=savefig,
+                legend="outside",
+                plot_tau_m=plot_tau_m,
+                plot_theta_times_tau=plot_theta_times_tau,
+                show=show,
+                close=close,
+                fmt=fmt,
+                capsize=capsize,
+            )
+
+        if savefig is not None:
+            self.print_done(
+                "Tau stats plot saved to "
+                + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
+            )
 
     def calculate_rho_tau_fits(self, tomography=True):
         assert self.rho_tau_method != "none"
@@ -251,10 +509,16 @@ class PSFSystematicsMixin:
                     )
 
             else:
-                tomo_bin_ids, tomo_bin_pairs = "all", [("all", "all")]
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
             for tomo_bin_id in tomo_bin_ids:
+                self.print_cyan(
+                    f"Sample PSF error parameters for tomographic bin {tomo_bin_id}"
+                )
                 xi_psf_sys_samples = self.get_samples(ver, params, tomo_bin_id)
+
+                if ver not in self._xi_psf_sys.keys():
+                    self._xi_psf_sys[ver] = {}
 
                 self._xi_psf_sys[ver][f"tomo_bin_{tomo_bin_id}"] = {
                     "mean": np.mean(xi_psf_sys_samples, axis=0),

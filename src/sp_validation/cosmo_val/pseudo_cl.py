@@ -1206,7 +1206,7 @@ class PseudoClMixin:
                 # Better jittering: symmetric around original ell values
                 jitter_fraction = (j - (len(versions) - 1) / 2) * offset
                 jittered_ell = ell + jitter_fraction * ell_widths
-                ell_factor_ = get_ell_factor(jittered_ell)
+                ell_factor_ = get_ell_factor(ell)
 
                 for pol in pol_list:
                     pol_color = self.get_pol_color(ver_color, pol, pol_list)

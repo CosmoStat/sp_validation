@@ -29,7 +29,6 @@ def get_params_rho_tau(cat):
     params["e2_star_col"] = cat["psf"]["e2_star_col"]
     params["PSF_size"] = cat["psf"]["PSF_size"]
     params["star_size"] = cat["psf"]["star_size"]
-    params["square_size"] = cat["psf"].get("square_size", False)
     params["PSF_flag"] = cat["psf"].get("PSF_flag")
     params["star_flag"] = cat["psf"].get("star_flag")
     params["ra_units"] = "deg"
@@ -178,12 +177,9 @@ def get_rho_tau(
     if need_compute:
         rho_stat_handler.catalogs.set_params(params, outdir)
 
-        square_size = params["square_size"]
-
         rho_stat_handler.build_cat_to_compute_rho(
             config[version]["psf"]["path"],
             catalog_id=catalog_id,
-            square_size=square_size,
             mask=mask_star,
             hdu=(
                 config[version]["psf"]["hdu"]
@@ -219,15 +215,12 @@ def get_rho_tau(
     else:
         tau_stat_handler.catalogs.set_params(params, outdir)
 
-        square_size = params["square_size"]
-
         # Build the different catalogs if necessary
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
             tau_stat_handler.build_cat_to_compute_tau(
                 config[version]["psf"]["path"],
                 cat_type="psf",
                 catalog_id=version,
-                square_size=square_size,
                 mask=mask_star,
                 hdu=(
                     config[version]["psf"]["hdu"]
@@ -241,7 +234,6 @@ def get_rho_tau(
             config[version]["shear"]["path"],
             cat_type="gal",
             catalog_id=version,
-            square_size=square_size,
             mask=mask_gal,
         )
 
@@ -370,8 +362,6 @@ def get_jackknife_cov(
 
     tau_stat_handler.catalogs.set_params(params, outdir)
 
-    square_size = params["square_size"]
-
     for i in range(ncov):
         tau_chunk = outdir + f"/cov_tau_{base_tau}{i}.npy"
         rho_chunk = outdir + f"/cov_rho_{base_rho}{i}.npy"
@@ -383,7 +373,6 @@ def get_jackknife_cov(
                 rho_stat_handler.build_cat_to_compute_rho(
                     config[version]["psf"]["path"],
                     catalog_id=version + str(i),
-                    square_size=square_size,
                     mask=mask_star,
                     hdu=config[version]["psf"]["hdu"],
                 )
@@ -397,7 +386,6 @@ def get_jackknife_cov(
                     config[version]["shear"]["path"],
                     cat_type="gal",
                     catalog_id=version + str(i),
-                    square_size=square_size,
                     mask=mask_gal,
                 )
 
@@ -471,12 +459,13 @@ def get_jackknife_cov(
 
 def get_samples(
     psf_fitter,
-    version,
     base_rho,
     base_tau,
     cov_type="jk",
     apply_debias=None,
     sampler="emcee",
+    nsamples=10000,
+    nwalkers=124,
 ):
     """Return (alpha, beta, eta) samples using ``emcee`` or least squares.
 
@@ -484,8 +473,6 @@ def get_samples(
     ----------
     psf_fitter : PSFFitter
         PSF fitter instance that provides ``load_*`` helpers.
-    version : str
-        Catalog identifier whose rho/tau statistics are sampled.
     base_rho : str
         Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for rho-stat filenames.
     base_tau : str
@@ -497,24 +484,29 @@ def get_samples(
     sampler : str, optional
         ``'emcee'`` for MCMC sampling, ``'lsq'`` for least squares
         (default ``'emcee'``).
+    nsamples : int, optional
+        Number of samples to draw (default ``10000``).
+    nwalkers : int, optional
+        Number of walkers for the MCMC run (default ``124``).
     """
     if sampler == "emcee":
         return get_samples_emcee(
             psf_fitter,
-            version,
             base_rho,
             base_tau,
             cov_type=cov_type,
             apply_debias=apply_debias,
+            nsamples=nsamples,
+            nwalkers=nwalkers,
         )
     elif sampler == "lsq":
         return get_samples_lsq(
             psf_fitter,
-            version,
             base_rho,
             base_tau,
             cov_type=cov_type,
             apply_debias=apply_debias,
+            nsamples=nsamples,
         )
     else:
         raise ValueError("Sampler must be either 'emcee' or 'lsq'.")
@@ -522,7 +514,6 @@ def get_samples(
 
 def get_samples_emcee(
     psf_fitter,
-    version,
     base_rho,
     base_tau,
     nwalkers=124,
@@ -536,8 +527,6 @@ def get_samples_emcee(
     ----------
     psf_fitter : PSFFitter
         PSF fitter instance managing rho/tau statistics and covariances.
-    version : str
-        Catalog identifier whose rho/tau statistics are sampled.
     base_rho : str
         Precomputed basename for locating rho statistics/covariance files.
     base_tau : str
@@ -556,11 +545,12 @@ def get_samples_emcee(
     psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
-    sample_file_path = psf_fitter.get_sample_file_path(base_tau)
+    base_sample = f"{base_tau}_sampler_emcee_cov_tau_type_{cov_type}"
+    sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
-        flat_samples = psf_fitter.load_samples(base_tau)
-        mcmc_result, q = psf_fitter.get_mcmc_from_samples(base_tau)
+        flat_samples = psf_fitter.load_samples(base_sample)
+        mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
     # Or run MCMC
     else:
@@ -576,7 +566,7 @@ def get_samples_emcee(
             apply_debias=debias_npatch is not None,
             savefig="mcmc_samples_" + base_tau + ".png",
         )
-        psf_fitter.save_samples(flat_samples, base_tau)
+        psf_fitter.save_samples(flat_samples, base_sample)
     return flat_samples, mcmc_result, q
 
 
@@ -584,6 +574,7 @@ def get_samples_lsq(
     psf_fitter,
     base_rho,
     base_tau,
+    nsamples=10000,
     apply_debias=None,
     cov_type="jk",
 ):
@@ -606,11 +597,12 @@ def get_samples_lsq(
     psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
     psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
+    base_sample = f"{base_tau}_sampler_lsq_cov_tau_type_{cov_type}"
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
-    sample_file_path = psf_fitter.get_sample_path(base_tau)
+    sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
-        flat_samples = psf_fitter.load_samples(base_tau)
+        flat_samples = psf_fitter.load_samples(base_sample)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
     # Or run MCMC
@@ -622,7 +614,9 @@ def get_samples_lsq(
         psf_fitter.load_covariance(rho_covariance, cov_type="rho")
         debias_npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.get_least_squares_params_samples(
-            npatch=debias_npatch, apply_debias=(debias_npatch is not None)
+            npatch=debias_npatch,
+            apply_debias=(debias_npatch is not None),
+            n_samples=nsamples,
         )
-        psf_fitter.save_samples(flat_samples, base_tau)
+        psf_fitter.save_samples(flat_samples, base_sample)
     return flat_samples, mcmc_result, q
