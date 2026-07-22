@@ -31,7 +31,7 @@ class PSFSystematicsMixin:
     @property
     def rho_stat_handler(self):
         if not hasattr(self, "_rho_stat_handler"):
-            self.calculate_rho_tau_stats()
+            self.calculate_rho_tau_stats(tomography=False)
             if self.compute_tomography:
                 self.calculate_rho_tau_stats(tomography=True)
         return self._rho_stat_handler
@@ -39,7 +39,7 @@ class PSFSystematicsMixin:
     @property
     def tau_stat_handler(self):
         if not hasattr(self, "_tau_stat_handler"):
-            self.calculate_rho_tau_stats()
+            self.calculate_rho_tau_stats(tomography=False)
             if self.compute_tomography:
                 self.calculate_rho_tau_stats(tomography=True)
         return self._tau_stat_handler
@@ -88,6 +88,9 @@ class PSFSystematicsMixin:
             else:
                 tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
+            # Get the selection for stars
+            mask_star = self._get_star_mask(ver)
+
             for tomo_bin_id in tomo_bin_ids:
                 self.print_cyan(f"Computing for the tomographic bin: {tomo_bin_id}")
                 base_rho = self.basename(ver)
@@ -95,9 +98,6 @@ class PSFSystematicsMixin:
 
                 # Get the selection for galaxies
                 mask_gal = self._get_galaxy_mask(ver, tomo_bin_id)
-
-                # Get the selection for stars
-                mask_star = self._get_star_mask(ver)
 
                 # Compute rho and tau statistics
                 rho_stat_handler, tau_stat_handler = get_rho_tau_w_cov(

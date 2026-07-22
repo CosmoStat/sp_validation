@@ -91,8 +91,18 @@ def get_rho_tau_w_cov(
         )
         return rho_stat_handler, tau_stat_handler
     elif method == "jk":
+        npatch = kwargs.get("npatch", 100)
         return get_jackknife_cov(
-            config, version, treecorr_config, outdir, base_rho, base_tau
+            config,
+            version,
+            treecorr_config,
+            outdir,
+            base_rho,
+            base_tau,
+            npatch=npatch,
+            ncov=ncov,
+            mask_star=mask_star,
+            mask_gal=mask_gal,
         )
     elif method == "sim":
         tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_th.npy"
@@ -144,8 +154,10 @@ def get_rho_tau(
         TreeCorr configuration (must include 'min_sep', 'max_sep', and 'nbins').
     outdir : str
         Output directory.
-    base : str
-        Base name for output files.
+    base_rho : str
+        Base name for the rho output files.
+    base_tau : str
+        Base name for the tau output files.
     mask_star : array-like, optional
         Boolean mask for stars. If None, no masking is applied.
     mask_gal : array-like, optional
