@@ -118,11 +118,12 @@ class PSFSystematicsMixin:
         self._rho_stat_handler = rho_stat_handler
         self._tau_stat_handler = tau_stat_handler
 
-    def calculate_rho_tau_fits(self, tomography=True):
+    def calculate_rho_tau_fits(self, tomography=True, track_result=True):
         assert self.rho_tau_method != "none"
 
         # this initializes the rho_tau_fits attribute
-        self._rho_tau_fits = {"flat_sample_list": [], "result_list": [], "q_list": []}
+        self._rho_tau_fits = {}
+        version_init_dict = {"flat_sample_list": {}, "result_list": {}, "q_list": {}}
         quantiles = [1 - self.quantile, self.quantile]
 
         self._xi_psf_sys = {}
@@ -143,22 +144,41 @@ class PSFSystematicsMixin:
             else:
                 tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
 
+            # Get the samples for each tomographic bin
             for tomo_bin_id in tomo_bin_ids:
                 self.print_cyan(
                     f"Sample PSF error parameters for tomographic bin {tomo_bin_id}"
                 )
-                xi_psf_sys_samples = self.get_samples(ver, params, tomo_bin_id)
+                _ = self.get_samples(
+                    ver, params, tomo_bin_id, track_result=track_result
+                )
+
+            # Get the xi_psf_sys for each tomographic bin pairs
+            for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
+                xi_psf_sys_samples_plus, xi_psf_sys_samples_minus = (
+                    self.get_xi_psf_sys_samples(ver, params, tomo_bin_a, tomo_bin_b)
+                )
 
                 if ver not in self._xi_psf_sys.keys():
                     self._xi_psf_sys[ver] = {}
 
-                self._xi_psf_sys[ver][f"tomo_bin_{tomo_bin_id}"] = {
-                    "mean": np.mean(xi_psf_sys_samples, axis=0),
-                    "var": np.var(xi_psf_sys_samples, axis=0),
-                    "quantiles": np.quantile(xi_psf_sys_samples, quantiles, axis=0),
+                self._xi_psf_sys[ver][
+                    f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"
+                ] = {
+                    "mean_plus": np.mean(xi_psf_sys_samples_plus, axis=0),
+                    "var_plus": np.var(xi_psf_sys_samples_plus, axis=0),
+                    "quantiles_plus": np.quantile(
+                        xi_psf_sys_samples_plus, quantiles, axis=0
+                    ),
+                    "mean_minus": np.mean(xi_psf_sys_samples_minus, axis=0),
+                    "var_minus": np.var(xi_psf_sys_samples_minus, axis=0),
+                    "quantiles_minus": np.quantile(
+                        xi_psf_sys_samples_minus, quantiles, axis=0
+                    ),
                 }
 
     def calculate_scale_dependent_leakage(self):
+        # TODO: Upgrade for tomography
         self.print_start("Calculating scale-dependent leakage:")
         for ver in self.versions:
             self.print_magenta(ver)
@@ -189,6 +209,7 @@ class PSFSystematicsMixin:
         self.print_done("Finished scale-dependent leakage calculation.")
 
     def calculate_objectwise_leakage(self):
+        # TODO: Upgrade for tomography
         if not hasattr(self.results[self.versions[0]], "alpha_leak_mean"):
             self.calculate_scale_dependent_leakage()
 
@@ -391,17 +412,45 @@ class PSFSystematicsMixin:
         )
 
         if track_result:
-            self.rho_tau_fits["flat_sample_list"].append(flat_samples)
-            self.rho_tau_fits["result_list"].append(result)
-            self.rho_tau_fits["q_list"].append(q)
+            if not hasattr(self.rho_tau_fits, version):
+                self.rho_tau_fits[version] = {
+                    "flat_sample_list": {},
+                    "result_list": {},
+                    "q_list": {},
+                }
+            self.rho_tau_fits[ver]["flat_sample_list"][f"tomo_bin_{tomo_bin_id}"] = (
+                flat_samples
+            )
+            self.rho_tau_fits[ver]["result_list"][f"tomo_bin_{tomo_bin_id}"] = result
+            self.rho_tau_fits[ver]["q_list"][f"tomo_bin_{tomo_bin_id}"] = q
 
+        return flat_samples
+
+    def get_xi_psf_sys_samples(self, ver, params, tomo_bin_a, tomo_bin_b):
+        base_rho = self.basename(ver)
         self.psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
         nbins = self.psf_fitter.rho_stat_handler._treecorr_config["nbins"]
-        xi_psf_sys_samples = np.array(
-            [self.psf_fitter.compute_xi_psf_sys(sample) for sample in flat_samples]
+
+        # Get the samples for the given tomographic bins
+        flat_samples_a = self.get_samples(ver, params, tomo_bin_a, track_result=False)
+        flat_samples_b = self.get_samples(ver, params, tomo_bin_b, track_result=False)
+
+        # TODO: update the function compute_xi_psf_sys to handle two tomographic bins. For now, we will just use the samples from the first tomographic bin.
+        xi_psf_sys_samples_plus = np.array(
+            [
+                self.psf_fitter.compute_xi_psf_sys(sample_a, sample_b, p_or_m="p")
+                for (sample_a, sample_b) in zip(flat_samples_a, flat_samples_b)
+            ]
         ).reshape(-1, nbins)
 
-        return xi_psf_sys_samples
+        xi_psf_sys_samples_minus = np.array(
+            [
+                self.psf_fitter.compute_xi_psf_sys(sample_a, sample_b, p_or_m="m")
+                for (sample_a, sample_b) in zip(flat_samples_a, flat_samples_b)
+            ]
+        ).reshape(-1, nbins)
+
+        return xi_psf_sys_samples_plus, xi_psf_sys_samples_minus
 
     # --- plotting functions ---
     def plot_rho_stats(
