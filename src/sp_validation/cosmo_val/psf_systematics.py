@@ -123,7 +123,6 @@ class PSFSystematicsMixin:
 
         # this initializes the rho_tau_fits attribute
         self._rho_tau_fits = {}
-        version_init_dict = {"flat_sample_list": {}, "result_list": {}, "q_list": {}}
         quantiles = [1 - self.quantile, self.quantile]
 
         self._xi_psf_sys = {}
@@ -418,11 +417,13 @@ class PSFSystematicsMixin:
                     "result_list": {},
                     "q_list": {},
                 }
-            self.rho_tau_fits[ver]["flat_sample_list"][f"tomo_bin_{tomo_bin_id}"] = (
-                flat_samples
+            self.rho_tau_fits[version]["flat_sample_list"][
+                f"tomo_bin_{tomo_bin_id}"
+            ] = flat_samples
+            self.rho_tau_fits[version]["result_list"][f"tomo_bin_{tomo_bin_id}"] = (
+                result
             )
-            self.rho_tau_fits[ver]["result_list"][f"tomo_bin_{tomo_bin_id}"] = result
-            self.rho_tau_fits[ver]["q_list"][f"tomo_bin_{tomo_bin_id}"] = q
+            self.rho_tau_fits[version]["q_list"][f"tomo_bin_{tomo_bin_id}"] = q
 
         return flat_samples
 
