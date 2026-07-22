@@ -20,6 +20,8 @@ def params_default():
 
     params = {
         "input_path": "shape_catalog_ngmix.fits",
+        "tomo_bin1": None,
+        "tomo_bin2": None,
         "key_ra": "RA",
         "key_dec": "DEC",
         "key_e1": "e1",
@@ -30,20 +32,27 @@ def params_default():
         "theta_max": 200,
         "n_theta": 20,
         "output_path": "./xip_xim.txt",
+        "key_tomo_bin_col": "tomo_bin_id",
     }
 
     short_options = {
         "input_path": "-i",
         "output_path": "-o",
+        "tomo_bin1": "-b1",
+        "tomo_bin2": "-b2",
     }
 
     types = {
         "sign_e1": "int",
         "sign_e2": "int",
+        "tomo_bin1": "int",
+        "tomo_bin2": "int",
     }
 
     help_strings = {
         "input_path": "shear catalogue input path, default={}",
+        "tomo_bin1": "First tomographic bin, default={} (non-tomographic)",
+        "tomo_bin2": "Second tomographic bin, default={} (non-tomographic)",
         "key_ra": "column name for right ascension, default={}",
         "key_dec": "column name for declination, default={}",
         "key_e1": "column name for ellipticity component 1, default={}",
@@ -54,6 +63,7 @@ def params_default():
         "theta_max": "maximum angular scale [arcmin], default={}",
         "n_theta": "number of angular scales, default={}",
         "output_path": "output path, default={}",
+        "key_tomo_bin_col": "column name for tomography bin, default={}",
     }
 
     return params, short_options, types, help_strings
@@ -132,18 +142,56 @@ def main(argv=None):
             "Signs for ellipticity components ="
             + f" ({params['sign_e1']:+d}, {params['sign_e2']:+d})"
         )
-    g1 = data[params["key_e1"]] * params["sign_e1"]
-    g2 = data[params["key_e2"]] * params["sign_e2"]
-    cat = treecorr.Catalog(
-        ra=data[params["key_ra"]],
-        dec=data[params["key_dec"]],
-        g1=g1,
-        g2=g2,
-        w=data["w"],
-        ra_units=coord_units,
-        dec_units=coord_units,
+    tomographic = (
+        params["tomo_bin1"] is not None and params["tomo_bin2"] is not None
     )
-
+    cat2 = None
+    if tomographic:
+        if params["verbose"]:
+            print(
+                f"Calculating 2PCF for tomographic bins {params['tomo_bin1']} and {params['tomo_bin2']}"
+            )
+        tomo_bin1_idx = data[params["key_tomo_bin_col"]] == params["tomo_bin1"]
+        tomo_bin2_idx = data[params["key_tomo_bin_col"]] == params["tomo_bin2"]
+        
+        g1 = data[params["key_e1"]] * params["sign_e1"]
+        g2 = data[params["key_e2"]] * params["sign_e2"]
+        
+        cat1 = treecorr.Catalog(
+            ra=data[params["key_ra"]][tomo_bin1_idx],
+            dec=data[params["key_dec"]][tomo_bin1_idx],
+            g1=g1[tomo_bin1_idx],
+            g2=g2[tomo_bin1_idx],
+            w=data["w"][tomo_bin1_idx],
+            ra_units=coord_units,
+            dec_units=coord_units,
+        )
+        if params["tomo_bin1"] != params["tomo_bin2"]:
+            cat2 = treecorr.Catalog(
+                ra=data[params["key_ra"]][tomo_bin2_idx],
+                dec=data[params["key_dec"]][tomo_bin2_idx],
+                g1=g1[tomo_bin2_idx],
+                g2=g2[tomo_bin2_idx],
+                w=data["w"][tomo_bin2_idx],
+                ra_units=coord_units,
+                dec_units=coord_units,
+            )
+    else:
+        if params["verbose"]:
+            print(
+                f"Calculating non-tomographic 2PCF"
+            )
+        g1 = data[params["key_e1"]] * params["sign_e1"]
+        g2 = data[params["key_e2"]] * params["sign_e2"]
+        cat1 = treecorr.Catalog(
+            ra=data[params["key_ra"]],
+            dec=data[params["key_dec"]],
+            g1=g1,
+            g2=g2,
+            w=data["w"],
+            ra_units=coord_units,
+            dec_units=coord_units,
+        )
     # Set treecorr config info for correlation
     sep_units = "arcmin"
     TreeCorrConfig = {
@@ -159,7 +207,7 @@ def main(argv=None):
     # Compute correlation
     if params["verbose"]:
         print("Correlating...")
-    gg.process(cat, cat)
+    gg.process(cat1, cat2=cat2)
 
     # Write to file
     if params["verbose"]:
