@@ -181,7 +181,7 @@ def cv(tmp_path):
 def cat_and_params(cv):
     """(catalog ndarray, params dict) for the synthetic version."""
     ver = cv._test_version
-    params = get_params_rho_tau(cv.cc[ver], survey=ver)
+    params = get_params_rho_tau(cv.cc[ver])
     cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
     return cat_gal, params
 
@@ -734,7 +734,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     # The end-to-end catalog EE matches the primitive get_pseudo_cls_catalog EE
     # (same computation, FITS round-trip) -- consistency, not an independent pin.
     cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
-    params = get_params_rho_tau(cv.cc[ver], survey=ver)
+    params = get_params_rho_tau(cv.cc[ver])
     _, cl_prim, _ = cv.get_pseudo_cls_catalog(
         catalog=cat_gal, params=params, tomo_bin_a="all", tomo_bin_b="all"
     )
@@ -821,7 +821,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end_tomo(cv, tmp_path):
         # The end-to-end catalog EE matches the primitive get_pseudo_cls_catalog EE
         # (same computation, FITS round-trip) -- consistency, not an independent pin.
         cat_gal = fits.getdata(cv.cc[ver]["shear"]["path"])
-        params = get_params_rho_tau(cv.cc[ver], survey=ver)
+        params = get_params_rho_tau(cv.cc[ver])
         _, cl_prim, _ = cv.get_pseudo_cls_catalog(
             catalog=cat_gal, params=params, tomo_bin_a=tomo_bin_a, tomo_bin_b=tomo_bin_b
         )
