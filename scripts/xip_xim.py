@@ -142,9 +142,7 @@ def main(argv=None):
             "Signs for ellipticity components ="
             + f" ({params['sign_e1']:+d}, {params['sign_e2']:+d})"
         )
-    tomographic = (
-        params["tomo_bin1"] is not None and params["tomo_bin2"] is not None
-    )
+    tomographic = params["tomo_bin1"] is not None and params["tomo_bin2"] is not None
     cat2 = None
     if tomographic:
         if params["verbose"]:
@@ -153,10 +151,10 @@ def main(argv=None):
             )
         tomo_bin1_idx = data[params["key_tomo_bin_col"]] == params["tomo_bin1"]
         tomo_bin2_idx = data[params["key_tomo_bin_col"]] == params["tomo_bin2"]
-        
+
         g1 = data[params["key_e1"]] * params["sign_e1"]
         g2 = data[params["key_e2"]] * params["sign_e2"]
-        
+
         cat1 = treecorr.Catalog(
             ra=data[params["key_ra"]][tomo_bin1_idx],
             dec=data[params["key_dec"]][tomo_bin1_idx],
@@ -178,9 +176,7 @@ def main(argv=None):
             )
     else:
         if params["verbose"]:
-            print(
-                f"Calculating non-tomographic 2PCF"
-            )
+            print("Calculating non-tomographic 2PCF")
         g1 = data[params["key_e1"]] * params["sign_e1"]
         g2 = data[params["key_e2"]] * params["sign_e2"]
         cat1 = treecorr.Catalog(

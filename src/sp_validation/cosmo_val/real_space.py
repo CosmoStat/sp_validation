@@ -12,17 +12,19 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import treecorr
-from astropy.io import fits
 from cs_util import plots as cs_plots
 
 
 class RealSpaceMixin:
-    def calculate_2pcf(self, ver, 
-                       npatch=None,
-                       tomo_bin1 = None,
-                       tomo_bin2 = None,
-                    #    save_fits=False, 
-                       **treecorr_config):
+    def calculate_2pcf(
+        self,
+        ver,
+        npatch=None,
+        tomo_bin1=None,
+        tomo_bin2=None,
+        #    save_fits=False,
+        **treecorr_config,
+    ):
         """
         Calculate the two-point correlation function (2PCF) ξ± for a given catalog
         version with TreeCorr.
@@ -38,10 +40,10 @@ class RealSpaceMixin:
 
             npatch (int, optional): The number of patches to use for the calculation.
             Defaults to the instance's `npatch` attribute.
-            
+
             tomo_bin1 (int, optional): The first tomographic bin to use for the calculation.
             If None, the calculation is non-tomographic. Defaults to None.
-            
+
             tomo_bin2 (int, optional): The second tomographic bin to use for the calculation.
             If None, the calculation is non-tomographic. Defaults to None.
 
@@ -63,7 +65,7 @@ class RealSpaceMixin:
             - FITS files for ξ+ and ξ− are saved with additional metadata in their
               headers if `save_fits` is True.
         """
-        
+
         npatch = npatch or self.npatch
         treecorr_config = {
             **self._binning(**treecorr_config),
@@ -71,13 +73,13 @@ class RealSpaceMixin:
         }
         pol_factor = self.pol_factor
         gg = treecorr.GGCorrelation(treecorr_config)
-        
+
         if tomo_bin1 is None and tomo_bin2 is None:
             self.print_magenta(f"Computing non-tomographic ξ± for {ver}.")
             # LG TO-DO: Change to sacc_io method
             out_fname = self._output_path(
-            f"{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
-        )
+                f"{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
+            )
             if os.path.exists(out_fname):
                 self.print_done(f"Skipping 2PCF calculation, {out_fname} exists.")
                 gg.read(out_fname)
@@ -88,7 +90,7 @@ class RealSpaceMixin:
                     g1, g2 = self._calibrated_g(ver)
                     w = self._read_shear_cols(ver, "w_col")
 
-                    #LG: need tomographic patch file?
+                    # LG: need tomographic patch file?
                     patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
 
                     cat_gal = treecorr.Catalog(
@@ -100,7 +102,9 @@ class RealSpaceMixin:
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
-                        patch_centers=patch_file if os.path.exists(patch_file) else None,
+                        patch_centers=patch_file
+                        if os.path.exists(patch_file)
+                        else None,
                     )
 
                     # If no patch file exists, save the current patches
@@ -112,7 +116,9 @@ class RealSpaceMixin:
                 # LG TO-DO: No longer writing out text file, change to sacc_io method
                 # gg.write(out_fname, write_patch_results=True, write_cov=True)
         else:
-            self.print_magenta(f"Computing tomographic ξ± for {ver}, bin {tomo_bin1} and {tomo_bin2}.")
+            self.print_magenta(
+                f"Computing tomographic ξ± for {ver}, bin {tomo_bin1} and {tomo_bin2}."
+            )
 
             # LG TO-DO: Change to sacc_io method
             out_fname = self._output_path(
@@ -122,15 +128,19 @@ class RealSpaceMixin:
             if os.path.exists(out_fname):
                 self.print_done(f"Skipping 2PCF calculation, {out_fname} exists.")
                 gg.read(out_fname)
-                    
+
             else:
                 with self.results[ver].temporarily_read_data():
-                    tomo_bin_idx_bin1 = self.results[ver].dat_shear["tom_bin_id"] == tomo_bin1
+                    tomo_bin_idx_bin1 = (
+                        self.results[ver].dat_shear["tom_bin_id"] == tomo_bin1
+                    )
                     g1, g2 = self._calibrated_g(ver)
                     w = self._read_shear_cols(ver, "w_col")
-                    
-                    #LG: need tomographic patch file?
-                    patch_file_bin1 = self._output_path(f"{ver}_patches_npatch={npatch}_bin={tomo_bin1}.dat")
+
+                    # LG: need tomographic patch file?
+                    patch_file_bin1 = self._output_path(
+                        f"{ver}_patches_npatch={npatch}_bin={tomo_bin1}.dat"
+                    )
 
                     cat_gal_bin1 = treecorr.Catalog(
                         ra=self.results[ver].dat_shear["RA"][tomo_bin_idx_bin1],
@@ -141,22 +151,28 @@ class RealSpaceMixin:
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
-                        patch_centers=patch_file_bin1 if os.path.exists(patch_file_bin1) else None,
+                        patch_centers=patch_file_bin1
+                        if os.path.exists(patch_file_bin1)
+                        else None,
                     )
-                    
+
                     if tomo_bin1 == tomo_bin2:
                         gg.process(cat_gal_bin1)
                         # LG TO-DO: No longer writing out text file, change to sacc_io method
                         # gg.write(out_fname, write_patch_results=True, write_cov=True)
-                        
+
                         if not os.path.exists(patch_file_bin1):
                             cat_gal_bin1.write_patch_centers(patch_file_bin1)
 
                     else:
-                        tomo_bin_idx_bin2 = self.results[ver].dat_shear["tom_bin_id"] == tomo_bin2
-                        
-                        #LG: need tomographic patch file?
-                        patch_file_bin2 = self._output_path(f"{ver}_patches_npatch={npatch}_bin={tomo_bin2}.dat")
+                        tomo_bin_idx_bin2 = (
+                            self.results[ver].dat_shear["tom_bin_id"] == tomo_bin2
+                        )
+
+                        # LG: need tomographic patch file?
+                        patch_file_bin2 = self._output_path(
+                            f"{ver}_patches_npatch={npatch}_bin={tomo_bin2}.dat"
+                        )
 
                         cat_gal_bin2 = treecorr.Catalog(
                             ra=self.results[ver].dat_shear["RA"][tomo_bin_idx_bin2],
@@ -167,19 +183,23 @@ class RealSpaceMixin:
                             ra_units=self.treecorr_config["ra_units"],
                             dec_units=self.treecorr_config["dec_units"],
                             npatch=npatch,
-                            patch_centers=patch_file_bin2 if os.path.exists(patch_file_bin2) else None,
+                            patch_centers=patch_file_bin2
+                            if os.path.exists(patch_file_bin2)
+                            else None,
                         )
-                        
+
                         gg.process(cat_gal_bin1, cat2=cat_gal_bin2)
                         # LG TO-DO: No longer writing out text file, change to sacc_io method
                         # gg.write(out_fname, write_patch_results=True, write_cov=True)
 
-                        if not os.path.exists(patch_file_bin1) or not os.path.exists(patch_file_bin2):
+                        if not os.path.exists(patch_file_bin1) or not os.path.exists(
+                            patch_file_bin2
+                        ):
                             cat_gal_bin1.write_patch_centers(patch_file_bin1)
                             cat_gal_bin2.write_patch_centers(patch_file_bin2)
-            
+
         # LG: FITS writeout function deprecated, now writing to SACC format
-        
+
         # Save xi_p and xi_m results to fits file
         # (moved outside so it runs even if txt exists)
         # if save_fits:
@@ -474,8 +494,14 @@ class RealSpaceMixin:
         print(f"Ratio of xi_psf_sys to xi plot saved to {out_path}")
 
     def calculate_aperture_mass_dispersion(
-        self, theta_min=0.3, theta_max=200, nbins=500, nbins_map=15, npatch=25,
-        tomo_bin1=None, tomo_bin2=None
+        self,
+        theta_min=0.3,
+        theta_max=200,
+        nbins=500,
+        nbins_map=15,
+        npatch=25,
+        tomo_bin1=None,
+        tomo_bin2=None,
     ):
         self.print_start("Computing aperture-mass dispersion")
 
@@ -493,7 +519,9 @@ class RealSpaceMixin:
             self._map2.setdefault(ver, {})
 
             if tomo_bin1 is None and tomo_bin2 is None:
-                self.print_magenta("Computing non-tomographic aperture-mass dispersion.")
+                self.print_magenta(
+                    "Computing non-tomographic aperture-mass dispersion."
+                )
                 # LG TO-DO: Change to sacc_io method
                 out_fname = self._output_path(f"xi_for_map2_{ver}.txt")
                 if os.path.exists(out_fname):
@@ -578,10 +606,14 @@ class RealSpaceMixin:
                             )
                             cat_gal_bin2 = treecorr.Catalog(
                                 ra=self.results[ver].dat_shear["RA"][tomo_bin_idx_bin2],
-                                dec=self.results[ver].dat_shear["Dec"][tomo_bin_idx_bin2],
+                                dec=self.results[ver].dat_shear["Dec"][
+                                    tomo_bin_idx_bin2
+                                ],
                                 g1=g1[tomo_bin_idx_bin2],
                                 g2=pol_factor * g2[tomo_bin_idx_bin2],
-                                w=self._read_shear_cols(ver, "w_col")[tomo_bin_idx_bin2],
+                                w=self._read_shear_cols(ver, "w_col")[
+                                    tomo_bin_idx_bin2
+                                ],
                                 ra_units=self.treecorr_config["ra_units"],
                                 dec_units=self.treecorr_config["dec_units"],
                                 npatch=npatch,
