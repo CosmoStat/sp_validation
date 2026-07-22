@@ -118,6 +118,139 @@ class PSFSystematicsMixin:
         self._rho_stat_handler = rho_stat_handler
         self._tau_stat_handler = tau_stat_handler
 
+    def calculate_rho_tau_fits(self, tomography=True):
+        assert self.rho_tau_method != "none"
+
+        # this initializes the rho_tau_fits attribute
+        self._rho_tau_fits = {"flat_sample_list": [], "result_list": [], "q_list": []}
+        quantiles = [1 - self.quantile, self.quantile]
+
+        self._xi_psf_sys = {}
+        for ver in self.versions:
+            params = self.set_params_rho_tau(
+                ver, self.results[ver]._params, self.cc[ver]["psf"]
+            )
+
+            # Get the tomographic bins
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+
+            else:
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+
+            for tomo_bin_id in tomo_bin_ids:
+                self.print_cyan(
+                    f"Sample PSF error parameters for tomographic bin {tomo_bin_id}"
+                )
+                xi_psf_sys_samples = self.get_samples(ver, params, tomo_bin_id)
+
+                if ver not in self._xi_psf_sys.keys():
+                    self._xi_psf_sys[ver] = {}
+
+                self._xi_psf_sys[ver][f"tomo_bin_{tomo_bin_id}"] = {
+                    "mean": np.mean(xi_psf_sys_samples, axis=0),
+                    "var": np.var(xi_psf_sys_samples, axis=0),
+                    "quantiles": np.quantile(xi_psf_sys_samples, quantiles, axis=0),
+                }
+
+    def calculate_scale_dependent_leakage(self):
+        self.print_start("Calculating scale-dependent leakage:")
+        for ver in self.versions:
+            self.print_magenta(ver)
+            results = self.results[ver]
+
+            output_base_path = self._output_path(f"leakage_{ver}/xi_for_leak_scale")
+            output_path_ab = f"{output_base_path}_a_b.txt"
+            output_path_aa = f"{output_base_path}_a_a.txt"
+            with self.results[ver].temporarily_read_data():
+                if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
+                    self.print_green(
+                        f"Skipping computation, reading {output_path_ab} and "
+                        f"{output_path_aa} instead"
+                    )
+
+                    results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
+                    results.r_corr_gp.read(output_path_ab)
+
+                    results.r_corr_pp = treecorr.GGCorrelation(self.treecorr_config)
+                    results.r_corr_pp.read(output_path_aa)
+
+                else:
+                    results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
+
+                results.do_alpha(fast=True)
+                results.do_xi_sys()
+
+        self.print_done("Finished scale-dependent leakage calculation.")
+
+    def calculate_objectwise_leakage(self):
+        if not hasattr(self.results[self.versions[0]], "alpha_leak_mean"):
+            self.calculate_scale_dependent_leakage()
+
+        self.print_start("Object-wise leakage:")
+        mix = True
+        order = "lin"
+        for ver in self.versions:
+            self.print_magenta(ver)
+
+            results_obj = self.results_objectwise[ver]
+            results_obj.check_params()
+            results_obj.update_params()
+            results_obj.prepare_output()
+
+            # Skip read_data() and copy catalogue from scale leakage instance instead
+            # results_obj._dat = self.results[ver].dat_shear
+
+            out_base = results_obj.get_out_base(mix, order)
+            out_path = f"{out_base}.pkl"
+            if os.path.exists(out_path):
+                self.print_green(
+                    f"Skipping object-wise leakage, file {out_path} exists"
+                )
+                results_obj.par_best_fit = leakage.read_from_file(out_path)
+            else:
+                self.print_cyan("Computing object-wise leakage regression")
+
+            # Run
+            with results_obj.temporarily_read_data():
+                try:
+                    results_obj.PSF_leakage()
+                except KeyError as e:
+                    print(f"{e}\nExpected key is missing from catalog.")
+                    # remove the results object for this version
+                    self.results_objectwise.pop(ver)
+
+        # Gather coefficients
+        leakage_coeff = {}
+        for ver in self.results_objectwise:
+            results = self.results[ver]
+            par_best_fit = self.results_objectwise[ver].par_best_fit
+
+            # Object-wise leakage
+            a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
+            a22 = ufloat(par_best_fit["a22"].value, par_best_fit["a22"].stderr)
+            leakage_coeff[ver] = {
+                "a11": a11,
+                "a22": a22,
+                "aii_mean": 0.5 * (a11 + a22),
+                # Scale-dependent leakage: mean
+                "alpha_mean": ufloat(results.alpha_leak_mean, results.alpha_leak_std),
+                # Scale-dependent leakage: value at smallest scale
+                "alpha_1": ufloat(results.alpha_leak[0], results.sig_alpha_leak[0]),
+                # Scale-dependent leakage: value extrapolated to 0 using affine model
+                "alpha_0": ufloat(
+                    results.alpha_affine_best_fit["c"].value,
+                    results.alpha_affine_best_fit["c"].stderr,
+                ),
+            }
+
+        self.leakage_coeff = leakage_coeff
+
     # --- utility functions ---
     def _get_galaxy_mask(self, ver, tomo_bin_id):
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
@@ -161,6 +294,65 @@ class PSFSystematicsMixin:
         params["w_col"] = self.cc[ver]["shear"]["w_col"]
 
         return params
+
+    def set_params_leakage_scale(self, ver):
+        params_in = {}
+
+        # Set parameters
+        params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
+        params_in["input_path_PSF"] = self.cc[ver]["star"]["path"]
+        params_in["dndz_path"] = (
+            f"{self.cc['nz']['dndz']['path']}_{self.cc[ver]['pipeline']}_{self.cc['nz']['dndz']['blind']}.txt"
+        )
+        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
+
+        # Note: for SP these are calibrated shear estimates
+        params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
+        params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
+        params_in["R11"] = None if ver != "DES" else self.cc[ver]["shear"]["R11"]
+        params_in["R22"] = None if ver != "DES" else self.cc[ver]["shear"]["R22"]
+
+        params_in["ra_star_col"] = self.cc[ver]["star"]["ra_col"]
+        params_in["dec_star_col"] = self.cc[ver]["star"]["dec_col"]
+        params_in["e1_PSF_star_col"] = self.cc[ver]["star"]["e1_col"]
+        params_in["e2_PSF_star_col"] = self.cc[ver]["star"]["e2_col"]
+
+        params_in["theta_min_amin"] = self.theta_min
+        params_in["theta_max_amin"] = self.theta_max
+        params_in["n_theta"] = self.nbins
+
+        params_in["verbose"] = False
+
+        return params_in
+
+    def set_params_leakage_object(self, ver):
+        params_in = {}
+
+        # Set parameters
+        params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
+        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
+
+        # Note: for SP these are calibrated shear estimates
+        params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
+        params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
+        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
+
+        if (
+            "e1_PSF_col" in self.cc[ver]["shear"]
+            and "e2_PSF_col" in self.cc[ver]["shear"]
+        ):
+            params_in["e1_PSF_col"] = self.cc[ver]["shear"]["e1_PSF_col"]
+            params_in["e2_PSF_col"] = self.cc[ver]["shear"]["e2_PSF_col"]
+        else:
+            raise KeyError(
+                "Keys 'e1_PSF_col' and 'e2_PSF_col' not found in"
+                + f" shear yaml entry for version {ver}"
+            )
+
+        params_in["verbose"] = False
+
+        return params_in
 
     def set_psf_parameter_sampling_method(self, rho_tau_method):
         if rho_tau_method not in ["emcee", "lsq"]:
@@ -486,46 +678,6 @@ class PSFSystematicsMixin:
                 + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
             )
 
-    def calculate_rho_tau_fits(self, tomography=True):
-        assert self.rho_tau_method != "none"
-
-        # this initializes the rho_tau_fits attribute
-        self._rho_tau_fits = {"flat_sample_list": [], "result_list": [], "q_list": []}
-        quantiles = [1 - self.quantile, self.quantile]
-
-        self._xi_psf_sys = {}
-        for ver in self.versions:
-            params = self.set_params_rho_tau(
-                ver, self.results[ver]._params, self.cc[ver]["psf"]
-            )
-
-            # Get the tomographic bins
-            if tomography:
-                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
-
-                if tomo_bin_ids is None or tomo_bin_pairs is None:
-                    raise ValueError(
-                        f"Version {ver} does not have tomography information."
-                    )
-
-            else:
-                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
-
-            for tomo_bin_id in tomo_bin_ids:
-                self.print_cyan(
-                    f"Sample PSF error parameters for tomographic bin {tomo_bin_id}"
-                )
-                xi_psf_sys_samples = self.get_samples(ver, params, tomo_bin_id)
-
-                if ver not in self._xi_psf_sys.keys():
-                    self._xi_psf_sys[ver] = {}
-
-                self._xi_psf_sys[ver][f"tomo_bin_{tomo_bin_id}"] = {
-                    "mean": np.mean(xi_psf_sys_samples, axis=0),
-                    "var": np.var(xi_psf_sys_samples, axis=0),
-                    "quantiles": np.quantile(xi_psf_sys_samples, quantiles, axis=0),
-                }
-
     def plot_rho_tau_fits(self):
         out_dir = self.rho_stat_handler.catalogs._output
 
@@ -612,95 +764,6 @@ class PSFSystematicsMixin:
                 self.print_done(
                     f"{yscale}-scale xi_psf_sys terms plot saved to {out_path}"
                 )
-
-    def set_params_leakage_scale(self, ver):
-        params_in = {}
-
-        # Set parameters
-        params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
-        params_in["input_path_PSF"] = self.cc[ver]["star"]["path"]
-        params_in["dndz_path"] = (
-            f"{self.cc['nz']['dndz']['path']}_{self.cc[ver]['pipeline']}_{self.cc['nz']['dndz']['blind']}.txt"
-        )
-        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
-
-        # Note: for SP these are calibrated shear estimates
-        params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
-        params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
-        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
-        params_in["R11"] = None if ver != "DES" else self.cc[ver]["shear"]["R11"]
-        params_in["R22"] = None if ver != "DES" else self.cc[ver]["shear"]["R22"]
-
-        params_in["ra_star_col"] = self.cc[ver]["star"]["ra_col"]
-        params_in["dec_star_col"] = self.cc[ver]["star"]["dec_col"]
-        params_in["e1_PSF_star_col"] = self.cc[ver]["star"]["e1_col"]
-        params_in["e2_PSF_star_col"] = self.cc[ver]["star"]["e2_col"]
-
-        params_in["theta_min_amin"] = self.theta_min
-        params_in["theta_max_amin"] = self.theta_max
-        params_in["n_theta"] = self.nbins
-
-        params_in["verbose"] = False
-
-        return params_in
-
-    def set_params_leakage_object(self, ver):
-        params_in = {}
-
-        # Set parameters
-        params_in["input_path_shear"] = self.cc[ver]["shear"]["path"]
-        params_in["output_dir"] = f"{self.cc['paths']['output']}/leakage_{ver}"
-
-        # Note: for SP these are calibrated shear estimates
-        params_in["e1_col"] = self.cc[ver]["shear"]["e1_col"]
-        params_in["e2_col"] = self.cc[ver]["shear"]["e2_col"]
-        params_in["w_col"] = self.cc[ver]["shear"]["w_col"]
-
-        if (
-            "e1_PSF_col" in self.cc[ver]["shear"]
-            and "e2_PSF_col" in self.cc[ver]["shear"]
-        ):
-            params_in["e1_PSF_col"] = self.cc[ver]["shear"]["e1_PSF_col"]
-            params_in["e2_PSF_col"] = self.cc[ver]["shear"]["e2_PSF_col"]
-        else:
-            raise KeyError(
-                "Keys 'e1_PSF_col' and 'e2_PSF_col' not found in"
-                + f" shear yaml entry for version {ver}"
-            )
-
-        params_in["verbose"] = False
-
-        return params_in
-
-    def calculate_scale_dependent_leakage(self):
-        self.print_start("Calculating scale-dependent leakage:")
-        for ver in self.versions:
-            self.print_magenta(ver)
-            results = self.results[ver]
-
-            output_base_path = self._output_path(f"leakage_{ver}/xi_for_leak_scale")
-            output_path_ab = f"{output_base_path}_a_b.txt"
-            output_path_aa = f"{output_base_path}_a_a.txt"
-            with self.results[ver].temporarily_read_data():
-                if os.path.exists(output_path_ab) and os.path.exists(output_path_aa):
-                    self.print_green(
-                        f"Skipping computation, reading {output_path_ab} and "
-                        f"{output_path_aa} instead"
-                    )
-
-                    results.r_corr_gp = treecorr.GGCorrelation(self.treecorr_config)
-                    results.r_corr_gp.read(output_path_ab)
-
-                    results.r_corr_pp = treecorr.GGCorrelation(self.treecorr_config)
-                    results.r_corr_pp.read(output_path_aa)
-
-                else:
-                    results.compute_corr_gp_pp_alpha(output_base_path=output_base_path)
-
-                results.do_alpha(fast=True)
-                results.do_xi_sys()
-
-        self.print_done("Finished scale-dependent leakage calculation.")
 
     def plot_scale_dependent_leakage(self):
         if not hasattr(self.results[self.versions[0]], "r_corr_gp"):
@@ -846,69 +909,6 @@ class PSFSystematicsMixin:
             cs_plots.savefig(out_path, close_fig=False)
             cs_plots.show()
             self.print_done(f"xi_sys_minus plot saved to {out_path}")
-
-    def calculate_objectwise_leakage(self):
-        if not hasattr(self.results[self.versions[0]], "alpha_leak_mean"):
-            self.calculate_scale_dependent_leakage()
-
-        self.print_start("Object-wise leakage:")
-        mix = True
-        order = "lin"
-        for ver in self.versions:
-            self.print_magenta(ver)
-
-            results_obj = self.results_objectwise[ver]
-            results_obj.check_params()
-            results_obj.update_params()
-            results_obj.prepare_output()
-
-            # Skip read_data() and copy catalogue from scale leakage instance instead
-            # results_obj._dat = self.results[ver].dat_shear
-
-            out_base = results_obj.get_out_base(mix, order)
-            out_path = f"{out_base}.pkl"
-            if os.path.exists(out_path):
-                self.print_green(
-                    f"Skipping object-wise leakage, file {out_path} exists"
-                )
-                results_obj.par_best_fit = leakage.read_from_file(out_path)
-            else:
-                self.print_cyan("Computing object-wise leakage regression")
-
-            # Run
-            with results_obj.temporarily_read_data():
-                try:
-                    results_obj.PSF_leakage()
-                except KeyError as e:
-                    print(f"{e}\nExpected key is missing from catalog.")
-                    # remove the results object for this version
-                    self.results_objectwise.pop(ver)
-
-        # Gather coefficients
-        leakage_coeff = {}
-        for ver in self.results_objectwise:
-            results = self.results[ver]
-            par_best_fit = self.results_objectwise[ver].par_best_fit
-
-            # Object-wise leakage
-            a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
-            a22 = ufloat(par_best_fit["a22"].value, par_best_fit["a22"].stderr)
-            leakage_coeff[ver] = {
-                "a11": a11,
-                "a22": a22,
-                "aii_mean": 0.5 * (a11 + a22),
-                # Scale-dependent leakage: mean
-                "alpha_mean": ufloat(results.alpha_leak_mean, results.alpha_leak_std),
-                # Scale-dependent leakage: value at smallest scale
-                "alpha_1": ufloat(results.alpha_leak[0], results.sig_alpha_leak[0]),
-                # Scale-dependent leakage: value extrapolated to 0 using affine model
-                "alpha_0": ufloat(
-                    results.alpha_affine_best_fit["c"].value,
-                    results.alpha_affine_best_fit["c"].stderr,
-                ),
-            }
-
-        self.leakage_coeff = leakage_coeff
 
     def plot_objectwise_leakage(self):
         if not hasattr(self, "leakage_coeff"):
