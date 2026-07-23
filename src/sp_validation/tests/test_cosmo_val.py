@@ -512,13 +512,14 @@ class TestCosmologyValidation:
             **params,
         )
 
-        gg = cv.calculate_2pcf(version)
+        ggs = cv.calculate_2pcf(version)
 
         # treecorr GGCorrelation with xi+/- on the configured angular grid
-        assert gg.xip.shape == (nbins,)
-        assert gg.xim.shape == (nbins,)
-        assert np.all(np.isfinite(gg.xip))
-        assert np.all(np.isfinite(gg.xim))
+        # LG:Hardcoded to be non-tomographic for now
+        assert ggs["tomo_bin_all_tomo_bin_all"].xip.shape == (nbins,)
+        assert ggs["tomo_bin_all_tomo_bin_all"].xim.shape == (nbins,)
+        assert np.all(np.isfinite(ggs["tomo_bin_all_tomo_bin_all"].xip))
+        assert np.all(np.isfinite(ggs["tomo_bin_all_tomo_bin_all"].xim))
         # The additive-bias subtraction in the pipeline must have run.
         assert version in cv.c1 and version in cv.c2
 

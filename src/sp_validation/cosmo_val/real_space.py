@@ -20,8 +20,7 @@ class RealSpaceMixin:
         self,
         ver,
         npatch=None,
-        tomo_bin1=None,
-        tomo_bin2=None,
+        compute_tomography=False,
         #    save_fits=False,
         **treecorr_config,
     ):
@@ -41,11 +40,8 @@ class RealSpaceMixin:
             npatch (int, optional): The number of patches to use for the calculation.
             Defaults to the instance's `npatch` attribute.
 
-            tomo_bin1 (int, optional): The first tomographic bin to use for the calculation.
-            If None, the calculation is non-tomographic. Defaults to None.
-
-            tomo_bin2 (int, optional): The second tomographic bin to use for the calculation.
-            If None, the calculation is non-tomographic. Defaults to None.
+            compute_tomography (bool, optional): Whether to compute tomographic correlations.
+            Defaults to False.
 
             save_fits (bool, optional): Whether to save the ξ± results to FITS files.
             Defaults to False.
@@ -71,34 +67,57 @@ class RealSpaceMixin:
             **self._binning(**treecorr_config),
             "var_method": "jackknife" if int(npatch) > 1 else "shot",
         }
-        pol_factor = self.pol_factor
-        gg = treecorr.GGCorrelation(treecorr_config)
 
-        if tomo_bin1 is None and tomo_bin2 is None:
-            self.print_magenta(f"Computing non-tomographic ξ± for {ver}.")
-            # LG TO-DO: Change to sacc_io method
-            out_fname = self._output_path(
-                f"{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
+        if compute_tomography:
+            tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+            self.print_magenta(
+                f"Computing tomographic ξ± for {ver} with {len(tomo_bin_pairs)} bins."
             )
-            if os.path.exists(out_fname):
-                self.print_done(f"Skipping 2PCF calculation, {out_fname} exists.")
-                gg.read(out_fname)
 
-            else:
+            if tomo_bin_ids is None or tomo_bin_pairs is None:
+                raise ValueError(f"Version {ver} does not have tomography information.")
+        else:
+            self.print_magenta(f"Computing non-tomographic ξ± for {ver}.")
+            tomo_bin_pairs = [("all", "all")]
+
+        ggs = {f"tomo_bin_{b1}_tomo_bin_{b2}": None for b1, b2 in tomo_bin_pairs}
+
+        # LG TO-DO: Change to sacc_io method
+        out_fname = self._output_path(
+            f"{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
+        )
+        if os.path.exists(out_fname):
+            self.print_done(f"Skipping 2PCF calculation, {out_fname} exists.")
+            for bin1, bin2 in tomo_bin_pairs:
+                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = treecorr.GGCorrelation(
+                    treecorr_config
+                )
+                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"].read(out_fname)
+
+        else:
+            patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
+
+            for bin1, bin2 in tomo_bin_pairs:
+                gg = treecorr.GGCorrelation(treecorr_config)
+
                 # Load data and create a catalog
                 with self.results[ver].temporarily_read_data():
+                    if bin1 == "all" and bin2 == "all":
+                        mask_bin1 = np.ones(
+                            len(self.results[ver].dat_shear), dtype=bool
+                        )
+                    else:
+                        mask_bin1 = self.results[ver].dat_shear["tom_bin_id"] == bin1
+
                     g1, g2 = self._calibrated_g(ver)
                     w = self._read_shear_cols(ver, "w_col")
 
-                    # LG: need tomographic patch file?
-                    patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
-
-                    cat_gal = treecorr.Catalog(
-                        ra=self.results[ver].dat_shear["RA"],
-                        dec=self.results[ver].dat_shear["Dec"],
-                        g1=g1,
-                        g2=pol_factor * g2,
-                        w=w,
+                    cat_gal1 = treecorr.Catalog(
+                        ra=self.results[ver].dat_shear["RA"][mask_bin1],
+                        dec=self.results[ver].dat_shear["Dec"][mask_bin1],
+                        g1=g1[mask_bin1],
+                        g2=g2[mask_bin1],
+                        w=w[mask_bin1],
                         ra_units=self.treecorr_config["ra_units"],
                         dec_units=self.treecorr_config["dec_units"],
                         npatch=npatch,
@@ -106,97 +125,33 @@ class RealSpaceMixin:
                         if os.path.exists(patch_file)
                         else None,
                     )
+                    cat_gal2 = None
 
-                    # If no patch file exists, save the current patches
-                    if not os.path.exists(patch_file):
-                        cat_gal.write_patch_centers(patch_file)
-
-                # Process the catalog & write the correlation functions
-                gg.process(cat_gal)
-                # LG TO-DO: No longer writing out text file, change to sacc_io method
-                # gg.write(out_fname, write_patch_results=True, write_cov=True)
-        else:
-            self.print_magenta(
-                f"Computing tomographic ξ± for {ver}, bin {tomo_bin1} and {tomo_bin2}."
-            )
-
-            # LG TO-DO: Change to sacc_io method
-            out_fname = self._output_path(
-                f"{ver}_xi_tomo_bins={tomo_bin1}_{tomo_bin2}_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
-            )
-
-            if os.path.exists(out_fname):
-                self.print_done(f"Skipping 2PCF calculation, {out_fname} exists.")
-                gg.read(out_fname)
-
-            else:
-                with self.results[ver].temporarily_read_data():
-                    tomo_bin_idx_bin1 = (
-                        self.results[ver].dat_shear["tom_bin_id"] == tomo_bin1
-                    )
-                    g1, g2 = self._calibrated_g(ver)
-                    w = self._read_shear_cols(ver, "w_col")
-
-                    # LG: need tomographic patch file?
-                    patch_file_bin1 = self._output_path(
-                        f"{ver}_patches_npatch={npatch}_bin={tomo_bin1}.dat"
-                    )
-
-                    cat_gal_bin1 = treecorr.Catalog(
-                        ra=self.results[ver].dat_shear["RA"][tomo_bin_idx_bin1],
-                        dec=self.results[ver].dat_shear["Dec"][tomo_bin_idx_bin1],
-                        g1=g1[tomo_bin_idx_bin1],
-                        g2=pol_factor * g2[tomo_bin_idx_bin1],
-                        w=w[tomo_bin_idx_bin1],
-                        ra_units=self.treecorr_config["ra_units"],
-                        dec_units=self.treecorr_config["dec_units"],
-                        npatch=npatch,
-                        patch_centers=patch_file_bin1
-                        if os.path.exists(patch_file_bin1)
-                        else None,
-                    )
-
-                    if tomo_bin1 == tomo_bin2:
-                        gg.process(cat_gal_bin1)
-                        # LG TO-DO: No longer writing out text file, change to sacc_io method
-                        # gg.write(out_fname, write_patch_results=True, write_cov=True)
-
-                        if not os.path.exists(patch_file_bin1):
-                            cat_gal_bin1.write_patch_centers(patch_file_bin1)
-
-                    else:
-                        tomo_bin_idx_bin2 = (
-                            self.results[ver].dat_shear["tom_bin_id"] == tomo_bin2
-                        )
-
-                        # LG: need tomographic patch file?
-                        patch_file_bin2 = self._output_path(
-                            f"{ver}_patches_npatch={npatch}_bin={tomo_bin2}.dat"
-                        )
-
-                        cat_gal_bin2 = treecorr.Catalog(
-                            ra=self.results[ver].dat_shear["RA"][tomo_bin_idx_bin2],
-                            dec=self.results[ver].dat_shear["Dec"][tomo_bin_idx_bin2],
-                            g1=g1[tomo_bin_idx_bin2],
-                            g2=pol_factor * g2[tomo_bin_idx_bin2],
-                            w=w[tomo_bin_idx_bin2],
+                    if bin1 != bin2:
+                        mask_bin2 = self.results[ver].dat_shear["tom_bin_id"] == bin2
+                        cat_gal2 = treecorr.Catalog(
+                            ra=self.results[ver].dat_shear["RA"][mask_bin2],
+                            dec=self.results[ver].dat_shear["Dec"][mask_bin2],
+                            g1=g1[mask_bin2],
+                            g2=g2[mask_bin2],
+                            w=w[mask_bin2],
                             ra_units=self.treecorr_config["ra_units"],
                             dec_units=self.treecorr_config["dec_units"],
                             npatch=npatch,
-                            patch_centers=patch_file_bin2
-                            if os.path.exists(patch_file_bin2)
+                            patch_centers=patch_file
+                            if os.path.exists(patch_file)
                             else None,
                         )
 
-                        gg.process(cat_gal_bin1, cat2=cat_gal_bin2)
-                        # LG TO-DO: No longer writing out text file, change to sacc_io method
-                        # gg.write(out_fname, write_patch_results=True, write_cov=True)
+                    # If no patch file exists, save the current patches
+                    if not os.path.exists(patch_file):
+                        cat_gal1.write_patch_centers(patch_file)
 
-                        if not os.path.exists(patch_file_bin1) or not os.path.exists(
-                            patch_file_bin2
-                        ):
-                            cat_gal_bin1.write_patch_centers(patch_file_bin1)
-                            cat_gal_bin2.write_patch_centers(patch_file_bin2)
+                # Process the catalog & write the correlation functions
+                gg.process(cat_gal1, cat2=cat_gal2)
+                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
+                # LG TO-DO: No longer writing out text file, change to sacc_io method
+                # gg.write(out_fname, write_patch_results=True, write_cov=True)
 
         # LG: FITS writeout function deprecated, now writing to SACC format
 
@@ -271,11 +226,11 @@ class RealSpaceMixin:
         # Add correlation object to class
         if not hasattr(self, "cat_ggs"):
             self.cat_ggs = {}
-        self.cat_ggs[ver] = gg
+        self.cat_ggs[ver] = ggs
 
-        self.print_done(f"Done 2PCF for bins {tomo_bin1} and {tomo_bin2} for {ver}.")
+        self.print_done(f"Done 2PCF for {ver}.")
 
-        return gg
+        return ggs
 
     def plot_2pcf(self):
         # Plot of n_pairs
@@ -284,8 +239,8 @@ class RealSpaceMixin:
             # FORCE non-tomography for now
             self.calculate_2pcf(ver)
             plt.plot(
-                self.cat_ggs[ver].meanr,
-                self.cat_ggs[ver].npairs,
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].npairs,
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -302,9 +257,10 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
-                self.cat_ggs[ver].xip,
-                yerr=np.sqrt(self.cat_ggs[ver].varxip),
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
+                * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip,
+                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip),
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -325,9 +281,10 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
-                self.cat_ggs[ver].xim,
-                yerr=np.sqrt(self.cat_ggs[ver].varxim),
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
+                * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xim,
+                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxim),
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -348,9 +305,11 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr,
-                self.cat_ggs[ver].xip * self.cat_ggs[ver].meanr,
-                yerr=np.sqrt(self.cat_ggs[ver].varxip) * self.cat_ggs[ver].meanr,
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip
+                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
+                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip)
+                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -370,9 +329,12 @@ class RealSpaceMixin:
         plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
         for idx, ver in enumerate(self.versions):
             plt.errorbar(
-                self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                self.cat_ggs[ver].xim * self.cat_ggs[ver].meanr,
-                yerr=np.sqrt(self.cat_ggs[ver].varxim) * self.cat_ggs[ver].meanr,
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
+                * cs_plots.dx(idx, len(ver)),
+                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xim
+                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
+                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxim)
+                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
                 label=ver,
                 ls=self.cc[ver]["ls"],
                 color=self.cc[ver]["colour"],
@@ -394,15 +356,17 @@ class RealSpaceMixin:
             for idx, ver in enumerate(self.versions):
                 plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
                 plt.errorbar(
-                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                    self.cat_ggs[ver].xip,
-                    yerr=np.sqrt(self.cat_ggs[ver].varxim),
+                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
+                    * cs_plots.dx(idx, len(ver)),
+                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip,
+                    yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip),
                     label=r"$\xi_+$",
                     ls="solid",
                     color="green",
                 )
                 plt.errorbar(
-                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
+                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
+                    * cs_plots.dx(idx, len(ver)),
                     self.xi_psf_sys[ver]["mean"],
                     yerr=np.sqrt(self.xi_psf_sys[ver]["var"]),
                     label=r"$\xi^{\rm psf}_{+, {\rm sys}}$",
@@ -410,16 +374,18 @@ class RealSpaceMixin:
                     color="red",
                 )
                 plt.errorbar(
-                    self.cat_ggs[ver].meanr * cs_plots.dx(idx, len(ver)),
-                    self.cat_ggs[ver].xip + self.xi_psf_sys[ver]["mean"],
+                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
+                    * cs_plots.dx(idx, len(ver)),
+                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip
+                    + self.xi_psf_sys[ver]["mean"],
                     yerr=np.sqrt(
-                        self.cat_ggs[ver].varxip + self.xi_psf_sys[ver]["var"]
+                        self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip
+                        + self.xi_psf_sys[ver]["var"]
                     ),
                     label=r"$\xi_+ + \xi^{\rm psf}_{+, {\rm sys}}$",
                     ls="dashdot",
                     color="magenta",
                 )
-
                 plt.xscale("log")
                 plt.yscale("log")
                 plt.legend()
@@ -440,7 +406,7 @@ class RealSpaceMixin:
         for idx, ver in enumerate(self.versions):
             self.calculate_2pcf(ver)
             xi_psf_sys = self.xi_psf_sys[ver]
-            gg = self.cat_ggs[ver]
+            gg = self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"]
 
             ratio = xi_psf_sys["mean"] / gg.xip
             ratio_err = np.sqrt(
@@ -500,152 +466,100 @@ class RealSpaceMixin:
         nbins=500,
         nbins_map=15,
         npatch=25,
-        tomo_bin1=None,
-        tomo_bin2=None,
+        compute_tomography=False,
     ):
-        self.print_start("Computing aperture-mass dispersion")
 
         self._map2 = {}
         theta_map = np.geomspace(theta_min * 5, theta_max / 2, nbins_map)
         self._map2["theta_map"] = theta_map
 
         treecorr_config = self._binning(theta_min, theta_max, nbins)
-        pol_factor = self.pol_factor
 
         for ver in self.versions:
-            self.print_magenta(ver)
+            if compute_tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+                self.print_magenta(
+                    f"Computing MAP for {ver} with {len(tomo_bin_pairs)} bins."
+                )
 
-            gg = treecorr.GGCorrelation(treecorr_config)
+                if tomo_bin_ids is None or tomo_bin_pairs is None:
+                    raise ValueError(
+                        f"Version {ver} does not have tomography information."
+                    )
+            else:
+                self.print_magenta(f"Computing non-tomographic MAP for {ver}.")
+
+                tomo_bin_pairs = [("all", "all")]
+
             self._map2.setdefault(ver, {})
 
-            if tomo_bin1 is None and tomo_bin2 is None:
-                self.print_magenta(
-                    "Computing non-tomographic aperture-mass dispersion."
-                )
-                # LG TO-DO: Change to sacc_io method
-                out_fname = self._output_path(f"xi_for_map2_{ver}.txt")
-                if os.path.exists(out_fname):
-                    self.print_green(f"Skipping xi for Map2, {out_fname} exists")
-                    gg.read(out_fname)
-                else:
-                    with self.results[ver].temporarily_read_data():
-                        g1, g2 = self._calibrated_g(ver)
-                        cat_gal = treecorr.Catalog(
-                            ra=self.results[ver].dat_shear["RA"],
-                            dec=self.results[ver].dat_shear["Dec"],
-                            g1=g1,
-                            g2=pol_factor * g2,
-                            w=self._read_shear_cols(ver, "w_col"),
-                            ra_units=self.treecorr_config["ra_units"],
-                            dec_units=self.treecorr_config["dec_units"],
-                            npatch=npatch,
-                        )
-
-                        gg.process(cat_gal)
-                        # gg.write(out_fname)
-                        del cat_gal
-                        del g1
-                        del g2
-
-                mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
-                    R=theta_map,
-                    m2_uform="Schneider",
-                )
-                out_fname_map2 = self._output_path(f"map2_{ver}.txt")
-                if os.path.exists(out_fname_map2):
-                    self.print_green(f"Skipping Map2, {out_fname_map2} exists")
-                else:
-                    print(f"Writing Map2 to output file {out_fname_map2} ")
-                    gg.writeMapSq(out_fname_map2, R=theta_map, m2_uform="Schneider")
-                self._map2[ver]["1_1"] = {
-                    "mapsq": mapsq,
-                    "mapsq_im": mapsq_im,
-                    "mxsq": mxsq,
-                    "mxsq_im": mxsq_im,
-                    "varmapsq": varmapsq,
-                }
+            # LG TO-DO: Change to sacc_io method
+            out_fname = self._output_path(f"xi_for_map2_{ver}.txt")
+            if os.path.exists(out_fname):
+                self.print_green(f"Skipping xi for Map2, {out_fname} exists")
+                for bin1, bin2 in tomo_bin_pairs:
+                    self._map2[ver][f"tomo_bin_{bin1}_{bin2}"] = treecorr.GGCorrelation(
+                        treecorr_config
+                    )
+                    self._map2[ver][f"tomo_bin_{bin1}_{bin2}"].read(out_fname)
 
             else:
-                self.print_magenta(
-                    f"Computing tomographic aperture-mass dispersion for bins {tomo_bin1} and {tomo_bin2}."
-                )
-                # LG TO-DO: Change to sacc_io method
-                out_fname = self._output_path(
-                    f"xi_for_map2_{ver}_tomo_bins={tomo_bin1}_{tomo_bin2}.txt"
-                )
-                if os.path.exists(out_fname):
-                    self.print_green(f"Skipping xi for Map2, {out_fname} exists")
-                    gg.read(out_fname)
-                else:
+                for bin1, bin2 in tomo_bin_pairs:
+                    gg = treecorr.GGCorrelation(treecorr_config)
+
+                    # Load data and create a catalog
                     with self.results[ver].temporarily_read_data():
-                        tomo_bin_idx_bin1 = (
-                            self.results[ver].dat_shear["tom_bin_id"] == tomo_bin1
-                        )
+                        if bin1 == "all" and bin2 == "all":
+                            mask_bin1 = np.ones(
+                                len(self.results[ver].dat_shear), dtype=bool
+                            )
+                        else:
+                            mask_bin1 = (
+                                self.results[ver].dat_shear["tom_bin_id"] == bin1
+                            )
+
                         g1, g2 = self._calibrated_g(ver)
-                        cat_gal_bin1 = treecorr.Catalog(
-                            ra=self.results[ver].dat_shear["RA"][tomo_bin_idx_bin1],
-                            dec=self.results[ver].dat_shear["Dec"][tomo_bin_idx_bin1],
-                            g1=g1[tomo_bin_idx_bin1],
-                            g2=pol_factor * g2[tomo_bin_idx_bin1],
-                            w=self._read_shear_cols(ver, "w_col")[tomo_bin_idx_bin1],
+                        w = self._read_shear_cols(ver, "w_col")
+
+                        cat_gal1 = treecorr.Catalog(
+                            ra=self.results[ver].dat_shear["RA"][mask_bin1],
+                            dec=self.results[ver].dat_shear["Dec"][mask_bin1],
+                            g1=g1[mask_bin1],
+                            g2=g2[mask_bin1],
+                            w=w[mask_bin1],
                             ra_units=self.treecorr_config["ra_units"],
                             dec_units=self.treecorr_config["dec_units"],
                             npatch=npatch,
                         )
+                        cat_gal2 = None
 
-                        if tomo_bin1 == tomo_bin2:
-                            gg.process(cat_gal_bin1)
-                            # gg.write(out_fname)
-                            del cat_gal_bin1
-                            del g1
-                            del g2
-
-                        else:
-                            tomo_bin_idx_bin2 = (
-                                self.results[ver].dat_shear["tom_bin_id"] == tomo_bin2
+                        if bin1 != bin2:
+                            mask_bin2 = (
+                                self.results[ver].dat_shear["tom_bin_id"] == bin2
                             )
-                            cat_gal_bin2 = treecorr.Catalog(
-                                ra=self.results[ver].dat_shear["RA"][tomo_bin_idx_bin2],
-                                dec=self.results[ver].dat_shear["Dec"][
-                                    tomo_bin_idx_bin2
-                                ],
-                                g1=g1[tomo_bin_idx_bin2],
-                                g2=pol_factor * g2[tomo_bin_idx_bin2],
-                                w=self._read_shear_cols(ver, "w_col")[
-                                    tomo_bin_idx_bin2
-                                ],
+                            cat_gal2 = treecorr.Catalog(
+                                ra=self.results[ver].dat_shear["RA"][mask_bin2],
+                                dec=self.results[ver].dat_shear["Dec"][mask_bin2],
+                                g1=g1[mask_bin2],
+                                g2=g2[mask_bin2],
+                                w=w[mask_bin2],
                                 ra_units=self.treecorr_config["ra_units"],
                                 dec_units=self.treecorr_config["dec_units"],
                                 npatch=npatch,
                             )
+                    gg.process(cat_gal1, cat2=cat_gal2)
 
-                            gg.process(cat_gal_bin1, cat2=cat_gal_bin2)
-                            # gg.write(out_fname)
-                            del cat_gal_bin1
-                            del cat_gal_bin2
-                            del g1
-                            del g2
-
-                mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
-                    R=theta_map,
-                    m2_uform="Schneider",
-                )
-                out_fname_map2 = self._output_path(
-                    f"map2_{ver}_tomo_bins={tomo_bin1}_{tomo_bin2}.txt"
-                )
-                if os.path.exists(out_fname_map2):
-                    self.print_green(f"Skipping Map2, {out_fname_map2} exists")
-                else:
-                    print(f"Writing Map2 to output file {out_fname_map2} ")
-                    gg.writeMapSq(out_fname_map2, R=theta_map, m2_uform="Schneider")
-                self._map2[ver][f"{tomo_bin1}_{tomo_bin2}"] = {
-                    "mapsq": mapsq,
-                    "mapsq_im": mapsq_im,
-                    "mxsq": mxsq,
-                    "mxsq_im": mxsq_im,
-                    "varmapsq": varmapsq,
-                }
-
+                    mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
+                        R=theta_map,
+                        m2_uform="Schneider",
+                    )
+                    self._map2[ver][f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = {
+                        "mapsq": mapsq,
+                        "mapsq_im": mapsq_im,
+                        "mxsq": mxsq,
+                        "mxsq_im": mxsq_im,
+                        "varmapsq": varmapsq,
+                    }
             self.print_done(f"Done aperture-mass dispersion for {ver}.")
 
     @property
@@ -658,8 +572,14 @@ class RealSpaceMixin:
         for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
             x = [self.map2["theta_map"] for ver in self.versions]
             # FORCE non-tomography for now
-            y = [self.map2[ver]["1_1"][mode] for ver in self.versions]
-            yerr = [np.sqrt(self.map2[ver]["1_1"]["varmapsq"]) for ver in self.versions]
+            y = [
+                self.map2[ver]["tomo_bin_all_tomo_bin_all"][mode]
+                for ver in self.versions
+            ]
+            yerr = [
+                np.sqrt(self.map2[ver]["tomo_bin_all_tomo_bin_all"]["varmapsq"])
+                for ver in self.versions
+            ]
             labels = list(self.versions)
             colors = [self.cc[ver]["colour"] for ver in self.versions]
             linestyles = [self.cc[ver]["ls"] for ver in self.versions]
@@ -691,8 +611,14 @@ class RealSpaceMixin:
         for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
             x = [self.map2["theta_map"] for ver in self.versions]
             # FORCE non-tomography for now
-            y = [np.abs(self.map2[ver]["1_1"][mode]) for ver in self.versions]
-            yerr = [np.sqrt(self.map2[ver]["1_1"]["varmapsq"]) for ver in self.versions]
+            y = [
+                np.abs(self.map2[ver]["tomo_bin_all_tomo_bin_all"][mode])
+                for ver in self.versions
+            ]
+            yerr = [
+                np.sqrt(self.map2[ver]["tomo_bin_all_tomo_bin_all"]["varmapsq"])
+                for ver in self.versions
+            ]
             xlabel = r"$\theta$ [arcmin]"
             ylabel = "dispersion"
             title = f"Aperture-mass dispersion mode {mode}"
