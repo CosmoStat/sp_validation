@@ -422,12 +422,23 @@ _CONFIG_STATS = [
 ]
 
 # Version slug for CSV output, keyed by full leak-corrected version string.
+# Row-label values for the rendered MySTRA appendix table. Capitalized for
+# display; they stay space-free (underscores, not spaces) because MySTRA's
+# {astra:value where=} parser splits on spaces and cannot match a value that
+# contains one. `{astra:value}` where-value matching is case-insensitive, so
+# queries may still be written with lowercase slugs.
 _VERSION_SLUGS = {
-    "SP_v1.4.5_leak_corr": "initial",
-    "SP_v1.4.6.3_leak_corr": "size_cuts",
-    "SP_v1.4.8_leak_corr": "masked",
-    "SP_v1.4.11.3_leak_corr": "relaxed_flags",
+    "SP_v1.4.5_leak_corr": "Initial",
+    "SP_v1.4.6.3_leak_corr": "Size_cuts",
+    "SP_v1.4.8_leak_corr": "Masked",
+    "SP_v1.4.11.3_leak_corr": "Relaxed_flags",
 }
+
+# Pretty Unicode column headers shared by the results (Table 1) and appendix
+# tables. Rendered verbatim by MySTRA (no markdown/LaTeX parsing in table
+# cells), so tidy Unicode rather than $..$ math. The `ξ₋ᴮ` and `ξₜₒₜᴮ` headers
+# are also `{astra:value col=}` query targets, so they must stay space-free.
+_STAT_HEADERS = ["Bₙ (n≤6)", "Bₙ (n≤20)", "ξ₊ᴮ", "ξ₋ᴮ", "ξₜₒₜᴮ", "Cₗᴮᴮ"]
 
 
 def _pte_row_values(pte_key, cfg, harm):
@@ -566,20 +577,10 @@ def generate_pte_tables(
         results_csv_path = output_dir / "pte_table_results.csv"
         with open(results_csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(
-                [
-                    "cut",
-                    "cosebis_n6",
-                    "cosebis_n20",
-                    "xip_B",
-                    "xim_B",
-                    "xitot_B",
-                    "cl_BB",
-                ]
-            )
+            writer.writerow(["Cut", *_STAT_HEADERS])
             for pte_key, cut_slug in [
-                ("pte_at_fiducial", "fiducial"),
-                ("pte_at_full_range", "full_range"),
+                ("pte_at_fiducial", "Fiducial"),
+                ("pte_at_full_range", "Full_range"),
             ]:
                 writer.writerow(
                     [cut_slug, *(_sig3(v) for v in _pte_row_values(pte_key, cfg, harm))]
@@ -620,8 +621,8 @@ def generate_pte_tables(
                 label = f"{label} (fiducial)"
 
             for pte_key, cut_label, cut_slug in [
-                ("pte_at_fiducial", "Fiducial", "fiducial"),
-                ("pte_at_full_range", "Full range", "full_range"),
+                ("pte_at_fiducial", "Fiducial", "Fiducial"),
+                ("pte_at_full_range", "Full range", "Full_range"),
             ]:
                 # Only show version label on first row of each pair
                 row_label = label if pte_key == "pte_at_fiducial" else ""
@@ -637,7 +638,6 @@ def generate_pte_tables(
                         _VERSION_SLUGS.get(ver, ver),
                         cut_slug,
                         *(_sig3(v) for v in _pte_row_values(pte_key, cfg, harm)),
-                        ver,
                     ]
                 )
 
@@ -656,19 +656,7 @@ def generate_pte_tables(
         appendix_csv_path = output_dir / "pte_table_appendix.csv"
         with open(appendix_csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(
-                [
-                    "version",
-                    "cut",
-                    "cosebis_n6",
-                    "cosebis_n20",
-                    "xip_B",
-                    "xim_B",
-                    "xitot_B",
-                    "cl_BB",
-                    "version_full",
-                ]
-            )
+            writer.writerow(["Version", "Cut", *_STAT_HEADERS])
             writer.writerows(appendix_csv_rows)
         print(f"  → {appendix_csv_path}")
 
