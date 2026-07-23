@@ -122,10 +122,12 @@ class PSFSystematicsMixin:
         assert self.rho_tau_method != "none"
 
         # this initializes the rho_tau_fits attribute
-        self._rho_tau_fits = {}
+        if not hasattr(self, "_rho_tau_fits"):
+            self._rho_tau_fits = {}
         quantiles = [1 - self.quantile, self.quantile]
 
-        self._xi_psf_sys = {}
+        if not hasattr(self, "_xi_psf_sys"):
+            self._xi_psf_sys = {}
         for ver in self.versions:
             params = self.set_params_rho_tau(
                 ver, self.results[ver]._params, self.cc[ver]["psf"]
@@ -411,19 +413,17 @@ class PSFSystematicsMixin:
         )
 
         if track_result:
-            if not hasattr(self.rho_tau_fits, version):
+            if version not in self.rho_tau_fits.keys():
                 self.rho_tau_fits[version] = {
-                    "flat_sample_list": {},
-                    "result_list": {},
-                    "q_list": {},
+                    "flat_samples": {},
+                    "result": {},
+                    "quantile": {},
                 }
-            self.rho_tau_fits[version]["flat_sample_list"][
-                f"tomo_bin_{tomo_bin_id}"
-            ] = flat_samples
-            self.rho_tau_fits[version]["result_list"][f"tomo_bin_{tomo_bin_id}"] = (
-                result
+            self.rho_tau_fits[version]["flat_samples"][f"tomo_bin_{tomo_bin_id}"] = (
+                flat_samples
             )
-            self.rho_tau_fits[version]["q_list"][f"tomo_bin_{tomo_bin_id}"] = q
+            self.rho_tau_fits[version]["result"][f"tomo_bin_{tomo_bin_id}"] = result
+            self.rho_tau_fits[version]["quantile"][f"tomo_bin_{tomo_bin_id}"] = q
 
         return flat_samples
 
@@ -436,7 +436,6 @@ class PSFSystematicsMixin:
         flat_samples_a = self.get_samples(ver, params, tomo_bin_a, track_result=False)
         flat_samples_b = self.get_samples(ver, params, tomo_bin_b, track_result=False)
 
-        # TODO: update the function compute_xi_psf_sys to handle two tomographic bins. For now, we will just use the samples from the first tomographic bin.
         xi_psf_sys_samples_plus = np.array(
             [
                 self.psf_fitter.compute_xi_psf_sys(sample_a, sample_b, p_or_m="p")
@@ -566,11 +565,9 @@ class PSFSystematicsMixin:
             }
 
             # From all the versions, get the maximum number of tomo_bin_ids
-            tomo_bins = {}
-            for ver in versions:
-                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
-
-                tomo_bins[ver] = {"ids": tomo_bin_ids, "pairs": tomo_bin_pairs}
+            tomo_bins = self._get_tomo_bins_for_versions(
+                versions, tomography=tomography
+            )
 
             n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
 
@@ -611,11 +608,9 @@ class PSFSystematicsMixin:
                         theta = self.tau_stat_handler.tau_stats["theta"]
                         num_theta_bins = theta.shape[0]
 
-                        theta_widths = np.diff(theta)
-                        theta_widths = np.append(theta_widths, theta_widths[-1])
-
-                        jitter_fraction = (file_idx - (len(versions) - 1) / 2) * offset
-                        jittered_theta = theta + jitter_fraction * theta_widths
+                        jittered_theta = self._get_jittered_theta(
+                            theta, file_idx, len(versions), offset
+                        )
 
                         factor_theta = (
                             np.ones_like(jittered_theta)
@@ -728,80 +723,188 @@ class PSFSystematicsMixin:
                 + f"{os.path.abspath(self.tau_stat_handler.catalogs._output)}/{savefig}",
             )
 
-    def plot_rho_tau_fits(self):
-        out_dir = self.rho_stat_handler.catalogs._output
+    def plot_rho_tau_fits(
+        self,
+        tomography=False,
+        versions=None,
+        colors=None,
+        savefig_contours=None,
+        savefig_xi_psf_sys=None,
+        savefig_format="png",
+        tomo_bin_label_position=None,
+        nsamples_to_plot=100,
+        offset=0,
+        alpha=0.3,
+        times_theta=False,
+        show=True,
+        close=True,
+    ):
+        """
+        Plot the Rho/Tau fits and the xi_psf_sys samples.
 
-        savefig = f"{out_dir}/contours_tau_stat.png"
-        psfleak_plots.plot_contours(
-            self.rho_tau_fits["flat_sample_list"],
-            names=["x0", "x1", "x2"],
-            labels=[r"\alpha", r"\beta", r"\eta"],
-            savefig=savefig,
-            legend_labels=self.versions,
-            legend_loc="upper right",
-            contour_colors=self.colors,
-            markers={"x0": 0, "x1": 1, "x2": 1},
-            show=True,
-            close=True,
-        )
-        self.print_done(f"Tau contours plot saved to {os.path.abspath(savefig)}")
-
-        plt.figure(figsize=(15, 6))
-        for mcmc_result, ver, color, flat_sample in zip(
-            self.rho_tau_fits["result_list"],
-            self.versions,
-            self.colors,
-            self.rho_tau_fits["flat_sample_list"],
-        ):
-            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
-            for i in range(100):
-                self.psf_fitter.plot_xi_psf_sys(
-                    flat_sample[-i + 1], ver, color, alpha=0.1
-                )
-            self.psf_fitter.plot_xi_psf_sys(mcmc_result[1], ver, color)
-        plt.legend()
-        out_path = os.path.abspath(f"{out_dir}/xi_psf_sys_samples.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        self.print_done(f"xi_psf_sys samples plot saved to {out_path}")
-
-        plt.figure(figsize=(15, 6))
-        for mcmc_result, ver, color, flat_sample in zip(
-            self.rho_tau_fits["result_list"],
-            self.versions,
-            self.colors,
-            self.rho_tau_fits["flat_sample_list"],
-        ):
-            ls = self.cc[ver]["ls"]
-            theta = self.psf_fitter.rho_stat_handler.rho_stats["theta"]
-            xi_psf_sys = self.xi_psf_sys[ver]
-            plt.plot(theta, xi_psf_sys["mean"], linestyle=ls, color=color)
-            plt.plot(theta, xi_psf_sys["quantiles"][0], linestyle=ls, color=color)
-            plt.plot(theta, xi_psf_sys["quantiles"][1], linestyle=ls, color=color)
-            plt.fill_between(
-                theta,
-                xi_psf_sys["quantiles"][0],
-                xi_psf_sys["quantiles"][1],
-                color=color,
-                alpha=0.25,
-                label=ver,
+        Parameters
+        ----------
+        versions : list, optional
+            List of versions to plot. If None, all versions are plotted.
+        colors : list, optional
+            List of colors for each version. If None, default colors are used.
+        savefig_contours : str, optional
+            If provided, save the contour plot to this file.
+        savefig_xi_psf_sys : str, optional
+            If provided, save the xi_psf_sys samples plot to this file.
+        nsamples_to_plot : int, optional
+            Number of xi_psf_sys samples to plot. Default is 100.
+        offset : float, optional
+            Offset to apply to the versions for better visualisation.
+        alpha : float, optional
+            Alpha value for the xi_psf_sys samples plot. Default is 0.3.
+        times_theta : bool, optional
+            If True, plot the xi_psf_sys multiplied by theta.
+        show : bool, optional
+            If True, show the figure.
+        close : bool, optional
+            If True, close the figure after saving or showing.
+        """
+        if savefig_format not in ["png", "pdf", "jpg", "jpeg", "svg"]:
+            raise ValueError(
+                "Invalid savefig_format. Must be one of: 'png', 'pdf', 'jpg', 'jpeg', 'svg'."
             )
 
-        plt.xscale("log")
-        plt.yscale("log")
-        plt.xlabel(r"$\theta$ [arcmin]")
-        plt.ylabel(r"$\xi^{\rm PSF}_{\rm sys}$")
-        plt.title(f"{1 - self.quantile:.1%}, {self.quantile:.1%} quantiles")
-        plt.legend()
-        out_path = os.path.abspath(f"{out_dir}/xi_psf_sys_quantiles.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        self.print_done(f"xi_psf_sys quantiles plot saved to {out_path}")
+        out_dir = self.rho_stat_handler.catalogs._output
 
+        versions = versions if versions is not None else self.versions
+        colors = (
+            colors
+            if colors is not None
+            else [self.cc[ver]["colour"] for ver in versions]
+        )
+
+        # Print the tau-statistics constraints on the PSF error model parameters.
+        savefig = (
+            f"{out_dir}/{savefig_contours}" if savefig_contours is not None else None
+        )
+        self.print_cyan(
+            "Only plot contours for the non-tomographic case. For tomography, the contours are not plotted."
+        )
+        sample_list = [
+            self.rho_tau_fits[ver]["flat_samples"]["tomo_bin_all"] for ver in versions
+        ]
+        psfleak_plots.plot_contours(
+            sample_list,
+            names=["x0", "x1", "x2"],
+            labels=[r"\alpha", r"\beta", r"\eta"],
+            savefig=savefig_contours,
+            legend_labels=versions,
+            legend_loc="upper right",
+            contour_colors=colors,
+            markers={"x0": 0, "x1": 1, "x2": 1},
+            show=show,
+            close=close,
+        )
+        if savefig_contours is not None:
+            self.print_done(f"Tau contours plot saved to {os.path.abspath(savefig)}")
+
+        # Plot the xi_psf_sys samples and quantiles.
+        if tomography:
+            self.print_cyan("Plot the xi_psf_sys for the tomographic case.")
+        else:
+            self.print_cyan("Plot the xi_psf_sys for the non-tomographic case.")
+
+        x_label = r"$\theta$ [arcmin]"
+        y_label_plus = (
+            r"$\theta$" if times_theta else ""
+        ) + r"$\xi^{\rm PSF, sys}_+(\theta)$"
+        y_label_minus = (
+            r"$\theta$" if times_theta else ""
+        ) + r"$\xi^{\rm PSF, sys}_-(\theta)$"
+
+        if tomo_bin_label_position is None:
+            tomo_bin_label_position = (0.05, 0.9) if times_theta else (0.8, 0.95)
+
+        y_scale = "linear" if times_theta else "log"
+
+        out_path = (
+            f"{out_dir}/{savefig_xi_psf_sys}_tomography_{tomography}_sample.{savefig_format}"
+            if savefig_xi_psf_sys is not None
+            else None
+        )
+
+        kwargs_x_y_plot_function = {
+            "nsamples_to_plot": nsamples_to_plot,
+            "alpha": alpha,
+            "offset": offset,
+            "times_theta": times_theta,
+        }
+
+        self.plot_2pcf_tomography(
+            self._xi_psf_sys_sample_x_y_plot_function,
+            x_label,
+            y_label_plus,
+            y_label_minus,
+            tomo_bin_label_position,
+            extract_text_offset=times_theta,
+            add_index_version_to_kwargs=True,
+            x_scale="log",
+            y_scale=y_scale,
+            tomography=tomography,
+            versions=versions,
+            colors=colors,
+            savefig=out_path,
+            show=show,
+            close=close,
+            **kwargs_x_y_plot_function,
+        )
+
+        # Plot the xi_psf_sys mean and std.
+        x_label = r"$\theta$ [arcmin]"
+        y_label_plus = (
+            r"$\theta$" if times_theta else ""
+        ) + r"$\xi^{\rm PSF, sys}_+(\theta)$"
+        y_label_minus = (
+            r"$\theta$" if times_theta else ""
+        ) + r"$\xi^{\rm PSF, sys}_-(\theta)$"
+
+        if tomo_bin_label_position is None:
+            tomo_bin_label_position = (0.05, 0.9) if times_theta else (0.8, 0.95)
+
+        y_scale = "linear" if times_theta else "log"
+
+        out_path = (
+            f"{out_dir}/{savefig_xi_psf_sys}_tomography_{tomography}_mean_and_std.{savefig_format}"
+            if savefig_xi_psf_sys is not None
+            else None
+        )
+
+        kwargs_x_y_plot_function = {
+            "offset": offset,
+            "times_theta": times_theta,
+            "alpha": alpha,
+        }
+
+        self.plot_2pcf_tomography(
+            self._xi_psf_sys_mean_and_std_x_y_plot_function,
+            x_label,
+            y_label_plus,
+            y_label_minus,
+            tomo_bin_label_position,
+            extract_text_offset=times_theta,
+            add_index_version_to_kwargs=True,
+            x_scale="log",
+            y_scale=y_scale,
+            tomography=tomography,
+            versions=versions,
+            colors=colors,
+            savefig=out_path,
+            show=show,
+            close=close,
+            **kwargs_x_y_plot_function,
+        )
+
+        """
         for mcmc_result, ver, flat_sample in zip(
             self.rho_tau_fits["result_list"],
             self.versions,
-            self.rho_tau_fits["flat_sample_list"],
+            self.rho_tau_fits["flat_samples"],
         ):
             self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
             for yscale in ("linear", "log"):
@@ -814,6 +917,7 @@ class PSFSystematicsMixin:
                 self.print_done(
                     f"{yscale}-scale xi_psf_sys terms plot saved to {out_path}"
                 )
+        """
 
     def plot_scale_dependent_leakage(self):
         if not hasattr(self.results[self.versions[0]], "r_corr_gp"):
@@ -1006,3 +1110,382 @@ class PSFSystematicsMixin:
         cs_plots.savefig(out_path, close_fig=False)
         cs_plots.show()
         self.print_done(f"Object-wise leakage coefficients plot saved to {out_path}")
+
+    # --- utlility functions for plotting ---
+    def plot_2pcf_tomography(
+        self,
+        x_y_plot_function,
+        x_label,
+        y_label_plus,
+        y_label_minus,
+        tomo_bin_label_position,
+        extract_text_offset,
+        add_index_version_to_kwargs,
+        x_scale=None,
+        y_scale=None,
+        tomography=False,
+        versions=None,
+        colors=None,
+        savefig=None,
+        show=True,
+        close=True,
+        **kwargs,
+    ):
+        """
+        Standard plot function for 2-point correlation functions with tomographic bins.
+
+        Parameters
+        ----------
+        x_y_plot_function : callable
+            Function to plot the x and y data. Should accept axes for `+' and `-' components, version, tomo_bin_indices, and kwargs.
+        x_label : str
+            Label for the x-axis.
+        y_label_plus : str
+            Label for the y-axis of the `+' component.
+        y_label_minus : str
+            Label for the y-axis of the `-' component.
+        tomo_bin_label_position : tuple
+            Position to place the tomographic bin labels in axes coordinates (x, y).
+        extract_text_offset : bool
+            If True, extract the y-axis offset text and include it in the y-label.
+        add_index_version_to_kwargs : bool
+            If True, add the index of the version to the kwargs for plotting.
+        x_scale : str, optional
+            Scale for the x-axis ('linear', 'log', etc.). If None, default scale is used.
+        y_scale : str, optional
+            Scale for the y-axis ('linear', 'log', etc.). If None, default scale is used.
+        tomography : bool, optional
+            If True, plot the tomographic bins. Default is False.
+        versions : list, optional
+            List of versions to plot. If None, all versions are plotted.
+        colors : list, optional
+            List of colors for each version. If None, default colors are used.
+        savefig : str, optional
+            If provided, save the figure to this file.
+        show : bool, optional
+            If True, show the figure.
+        close : bool, optional
+            If True, close the figure after saving or showing.
+        kwargs : dict
+            Additional keyword arguments to pass to the plotting function.
+        """
+        versions = versions if versions is not None else self.versions
+        colors = (
+            colors
+            if colors is not None
+            else [self.cc[ver]["colour"] for ver in versions]
+        )
+
+        # First get the max number of tomo bins among the versions.
+        tomo_bins = self._get_tomo_bins_for_versions(versions, tomography=tomography)
+
+        max_key = max(tomo_bins, key=lambda k: len(tomo_bins[k]["ids"]))
+        n_tomo_bins_plot = len(tomo_bins[max_key]["ids"])
+        reference_tomo_bin_pairs = tomo_bins[max_key]["pairs"]
+
+        n_rows = n_tomo_bins_plot
+        n_cols = n_tomo_bins_plot + 2
+
+        # First start with the quantiles plot
+        fig, axs = plt.subplots(
+            n_rows,
+            n_cols,
+            figsize=(5 * n_cols, 5 * n_rows),
+            sharex=True,
+            sharey=True,
+            gridspec_kw={"wspace": 0, "hspace": 0},
+        )
+
+        for idx, (ver, color) in enumerate(zip(versions, colors)):
+            tomo_bin_pairs = tomo_bins[ver]["pairs"]
+
+            kwargs["color"] = color
+            if add_index_version_to_kwargs:
+                kwargs["idx"] = idx
+                kwargs["versions"] = versions
+
+            for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
+                # Plot the nsamples last samples
+                ax_plus = self._get_ax_plus(axs, tomo_bin_a, tomo_bin_b)
+                ax_minus = self._get_ax_minus(axs, tomo_bin_a, tomo_bin_b)
+
+                # Apply the x_y_plot_function to plot the data
+                x_y_plot_function(
+                    ax_plus, ax_minus, ver, tomo_bin_a, tomo_bin_b, **kwargs
+                )
+
+        # Draw to extract the y-axis text offset
+        fig.canvas.draw()
+
+        # Set the visibility to false where necessary
+        self._set_ax_visibility_to_false(axs, n_tomo_bins_plot)
+
+        # Set the labels and scales for the plots
+        for tomo_bin_a, tomo_bin_b in reference_tomo_bin_pairs:
+            ax_plus = self._get_ax_plus(axs, tomo_bin_a, tomo_bin_b)
+            ax_minus = self._get_ax_minus(axs, tomo_bin_a, tomo_bin_b)
+
+            ax_plus.tick_params(
+                axis="both",
+                which="both",
+                direction="in",
+                bottom=True,
+                top=False,
+                labelbottom=tomo_bin_b == 1 or tomo_bin_b == "all",
+                left=True,
+                right=False,
+                labelleft=tomo_bin_a == 1 or tomo_bin_a == "all",
+            )
+            if x_scale is not None:
+                ax_plus.set_xscale(x_scale)
+
+            ax_plus.text(
+                tomo_bin_label_position[0],
+                tomo_bin_label_position[1],
+                f"{tomo_bin_a}-{tomo_bin_b}",
+                transform=ax_plus.transAxes,
+                verticalalignment="top",
+                bbox=dict(
+                    boxstyle="square",
+                    facecolor="white",
+                    edgecolor="black",
+                    alpha=0.8,
+                ),
+            )
+            ax_plus.axhline(0, color="k", linestyle="--")
+
+            if y_scale is not None:
+                ax_plus.set_yscale(y_scale)
+            if tomo_bin_b == 1 or tomo_bin_b == "all":
+                ax_plus.set_xlabel(r"$\theta$ [arcmin]")
+            if tomo_bin_a == 1 or tomo_bin_a == "all":
+                text_offset = (
+                    ax_plus.yaxis.get_offset_text().get_text()
+                    if extract_text_offset
+                    else ""
+                )
+                ax_plus.set_ylabel(y_label_plus + text_offset)
+            ax_plus.yaxis.get_offset_text().set_visible(
+                False
+            )  # Hide the offset text for the plus ax
+
+            # Move the ticks to the right for the minus ax
+            ax_minus.yaxis.tick_right()
+            ax_minus.yaxis.set_label_position("right")
+            ax_minus.tick_params(
+                axis="both",
+                which="both",
+                direction="in",
+                bottom=True,
+                top=False,
+                labelbottom=tomo_bin_b == n_tomo_bins_plot or tomo_bin_b == "all",
+                left=False,
+                right=True,
+                labelleft=False,
+                labelright=tomo_bin_a == 1 or tomo_bin_a == "all",
+            )
+            if x_scale is not None:
+                ax_minus.set_xscale(x_scale)
+            ax_minus.text(
+                tomo_bin_label_position[0],
+                tomo_bin_label_position[1],
+                f"{tomo_bin_a}-{tomo_bin_b}",
+                transform=ax_minus.transAxes,
+                verticalalignment="top",
+                bbox=dict(
+                    boxstyle="square",
+                    facecolor="white",
+                    edgecolor="black",
+                    alpha=0.8,
+                ),
+            )
+            ax_minus.axhline(0, color="k", linestyle="--")
+            if y_scale is not None:
+                ax_minus.set_yscale(y_scale)
+            if tomo_bin_b == n_tomo_bins_plot or tomo_bin_b == "all":
+                ax_minus.set_xlabel(x_label)
+            if tomo_bin_a == 1 or tomo_bin_a == "all":
+                text_offset = (
+                    ax_minus.yaxis.get_offset_text().get_text()
+                    if extract_text_offset
+                    else ""
+                )
+                ax_minus.set_ylabel(y_label_minus + text_offset)
+            ax_minus.yaxis.get_offset_text().set_visible(
+                False
+            )  # Hide the offset text for the minus ax
+
+        # Build the legend
+        handles = []
+        for ver, color in zip(versions, colors):
+            label = self.cc[ver]["label"] if "label" in self.cc[ver] else ver
+            handles.append(plt.Line2D([0], [0], color=color, lw=2, label=label))
+        fig.legend(
+            handles=handles,
+            loc="upper center",
+            ncol=3,
+            frameon=False,
+            bbox_to_anchor=(0.5, 0.0),
+        )
+
+        if savefig is not None:
+            plt.savefig(savefig, dpi=300, bbox_inches="tight")
+            self.print_done(f"Plot saved to {os.path.abspath(savefig)}")
+
+        if show:
+            plt.show()
+
+        if close:
+            plt.close()
+
+    def _xi_psf_sys_sample_x_y_plot_function(
+        self,
+        ax_plus,
+        ax_minus,
+        version,
+        tomo_bin_a,
+        tomo_bin_b,
+        idx,
+        versions,
+        color,
+        offset,
+        nsamples_to_plot,
+        times_theta,
+        alpha,
+    ):
+        # Load the rho-stats to compute the xi_psf_sys samples
+        base_rho = self.basename(version)
+        self.psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
+
+        # Get the angular scales for the xi_psf_sys plots
+        theta = self.psf_fitter.rho_stat_handler.rho_stats["theta"]
+
+        # Add the offset to the theta values for better visualisation
+        jittered_theta = self._get_jittered_theta(theta, idx, len(versions), offset)
+
+        # Get the parameters for the rho-tau fit
+        params = self.set_params_rho_tau(
+            version, self.results[version]._params, self.cc[version]["psf"]
+        )
+
+        # Get the xi_psf_sys samples
+        xi_psf_sys_samples_plus, xi_psf_sys_samples_minus = self.get_xi_psf_sys_samples(
+            version, params, tomo_bin_a, tomo_bin_b
+        )
+
+        y_plus = xi_psf_sys_samples_plus[-nsamples_to_plot:] * (
+            theta if times_theta else 1
+        )
+        y_minus = xi_psf_sys_samples_minus[-nsamples_to_plot:] * (
+            theta if times_theta else 1
+        )
+
+        ax_plus.plot(
+            jittered_theta,
+            y_plus.T,
+            color=color,
+            alpha=alpha,
+        )
+
+        ax_minus.plot(jittered_theta, y_minus.T, color=color, alpha=alpha)
+
+    def _xi_psf_sys_mean_and_std_x_y_plot_function(
+        self,
+        ax_plus,
+        ax_minus,
+        version,
+        tomo_bin_a,
+        tomo_bin_b,
+        idx,
+        versions,
+        color,
+        offset,
+        times_theta,
+        alpha,
+    ):
+        # Load the rho-stats to compute the xi_psf_sys mean and std.
+        base_rho = self.basename(version)
+        self.psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
+
+        # Get the angular scales for the xi_psf_sys plots
+        theta = self.psf_fitter.rho_stat_handler.rho_stats["theta"]
+
+        # Add the offset to the theta values for better visualisation
+        jittered_theta = self._get_jittered_theta(theta, idx, len(versions), offset)
+
+        xi_psf_sys = self.xi_psf_sys[version][
+            f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"
+        ]
+
+        def plot_axis(ax, ax_type):
+            """Plot depending on the axis type ('plus' or 'minus')."""
+            ax.plot(
+                jittered_theta,
+                xi_psf_sys[f"mean_{ax_type}"] * (theta if times_theta else 1),
+                color=color,
+            )
+            ax.plot(
+                jittered_theta,
+                xi_psf_sys[f"quantiles_{ax_type}"][0] * (theta if times_theta else 1),
+                color=color,
+            )
+            ax.plot(
+                jittered_theta,
+                xi_psf_sys[f"quantiles_{ax_type}"][1] * (theta if times_theta else 1),
+                color=color,
+            )
+            ax.fill_between(
+                jittered_theta,
+                xi_psf_sys[f"quantiles_{ax_type}"][0] * (theta if times_theta else 1),
+                xi_psf_sys[f"quantiles_{ax_type}"][1] * (theta if times_theta else 1),
+                color=color,
+                alpha=alpha,
+            )
+
+        # Plot the plus axis
+        plot_axis(ax_plus, "plus")
+
+        # Plot the minus axis
+        plot_axis(ax_minus, "minus")
+
+    def _get_jittered_theta(self, theta, idx, n_versions, offset):
+        """Get the jittered theta values for better visualisation."""
+        theta_widths = np.diff(theta)
+        theta_widths = np.append(theta_widths, theta_widths[-1])
+        jitter_fraction = (idx - (n_versions - 1) / 2) * offset
+        jittered_theta = theta + jitter_fraction * theta_widths
+        return jittered_theta
+
+    def _get_ax_plus(self, axs, tomo_bin_a, tomo_bin_b):
+        if (tomo_bin_a == "all") ^ (tomo_bin_b == "all"):
+            raise ValueError(
+                "Invalid combination of tomographic bins: 'all' and a specific bin."
+            )
+
+        if tomo_bin_a == "all" and tomo_bin_b == "all":
+            return axs[0]
+
+        else:
+            nrows = axs.shape[0]
+            return axs[nrows - tomo_bin_b, tomo_bin_a - 1]
+
+    def _get_ax_minus(self, axs, tomo_bin_a, tomo_bin_b):
+        if (tomo_bin_a == "all") ^ (tomo_bin_b == "all"):
+            raise ValueError(
+                "Invalid combination of tomographic bins: 'all' and a specific bin."
+            )
+
+        if tomo_bin_a == "all" and tomo_bin_b == "all":
+            return axs[2]
+
+        else:
+            ncols = axs.shape[1]
+            return axs[tomo_bin_b - 1, ncols - tomo_bin_a]
+
+    def _set_ax_visibility_to_false(self, axs, n_tomo_bins_plot):
+        """Set the visibility of empty axes to False for better visualization."""
+        if n_tomo_bins_plot == 1:
+            axs[1].set_visible(False)
+        else:
+            for i in range(n_tomo_bins_plot):
+                axs[i, n_tomo_bins_plot - i].set_visible(False)

@@ -1159,16 +1159,11 @@ class PseudoClMixin:
 
         fmt_dict = {"EE": "o", "BB": "s", "EB": "^", "BE": "v"}
         # From all the versions, get the maximum number of tomo_bin_ids
-        tomo_bins = {}
-        for ver in versions:
-            if tomography:
-                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
-            else:
-                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+        tomo_bins = self._get_tomo_bins_for_versions(versions, tomography=tomography)
 
-            tomo_bins[ver] = {"ids": tomo_bin_ids, "pairs": tomo_bin_pairs}
-
-        n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
+        max_key = max(tomo_bins, key=lambda k: len(tomo_bins[k]["ids"]))
+        n_tomo_bins_plot = len(tomo_bins[max_key]["ids"])
+        reference_tomo_bin_pairs = tomo_bins[max_key]["pairs"]
 
         fig, axs = plt.subplots(
             n_tomo_bins_plot,
@@ -1231,7 +1226,7 @@ class PseudoClMixin:
         else:
             ell_label = r"$\ell(\ell+1) C_\ell$"
 
-        for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
+        for tomo_bin_a, tomo_bin_b in reference_tomo_bin_pairs:
             if tomography:
                 ax = axs[tomo_bin_b - 1, tomo_bin_a - 1]
             else:

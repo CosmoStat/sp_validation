@@ -691,3 +691,31 @@ class CosmologyValidation(
         else:
             self.print_cyan(f"Version {version} does not have tomography information.")
             return None, None
+
+    def _get_tomo_bins_for_versions(self, versions, tomography):
+        """
+        Return a dictionary of tomo_bin_ids and tomo_bin_pairs for each version in versions.
+
+        Parameters
+        ----------
+        versions : list of str
+            List of catalog version identifiers
+        tomography : bool
+            If True, assumes tomography else returns the format for non-tomographic versions.
+
+        Returns
+        -------
+        dict
+            Dictionary with version as key and a dictionary containing 'ids' and 'pairs' as values.
+            Example: {version1: {'ids': tomo_bin_ids1, 'pairs': tomo_bin_pairs1}, ...}
+        """
+        tomo_bins = {}
+        for ver in versions:
+            if tomography:
+                tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+            else:
+                tomo_bin_ids, tomo_bin_pairs = ["all"], [("all", "all")]
+
+            tomo_bins[ver] = {"ids": tomo_bin_ids, "pairs": tomo_bin_pairs}
+
+        return tomo_bins
