@@ -7,13 +7,28 @@ Reads evidence.json files and produces:
 - evidence.json: Dashboard dependency tracking
 """
 
+import csv
 import json
 import math
 from datetime import datetime
 from pathlib import Path
 
+
 # Version number to word mapping for TeX-safe macro names
 # (avoids cleveref/siunitx conflict with numeric names)
+def _sig3(x):
+    """Format a float to 3 significant figures; scientific for |x|<1e-3 or >=1e4, else fixed."""
+    if x == "" or x is None:
+        return ""
+    x = float(x)
+    if x == 0:
+        return "0"
+    e = math.floor(math.log10(abs(x)))
+    if e < -3 or e >= 4:
+        return f"{x:.2e}"  # mantissa carries 3 sig figs, e.g. 7.37e-10
+    return f"{x:.{max(0, 2 - e)}f}"  # 3 sig figs fixed, e.g. 0.938, 0.00461
+
+
 VERSION_WORDS = {
     "5": "Five",
     "6": "Six",
@@ -406,6 +421,21 @@ _CONFIG_STATS = [
     "combined_stats",
 ]
 
+# Version slug for CSV output, keyed by full leak-corrected version string.
+_VERSION_SLUGS = {
+    "SP_v1.4.5_leak_corr": "initial",
+    "SP_v1.4.6.3_leak_corr": "size_cuts",
+    "SP_v1.4.8_leak_corr": "masked",
+    "SP_v1.4.11.3_leak_corr": "relaxed_flags",
+}
+
+
+def _pte_row_values(pte_key, cfg, harm):
+    """Build the 6 raw PTE values (floats) for one row, CSV column order."""
+    values = [cfg.get(stat, {}).get(pte_key, float("nan")) for stat in _CONFIG_STATS]
+    values.append(harm.get(pte_key, float("nan")))
+    return values
+
 
 def _pte_row_cells(pte_key, cfg, harm, bold, italic=None):
     """Build the 6 PTE table cells for one row.
@@ -533,6 +563,29 @@ def generate_pte_tables(
         results_path.write_text("\n".join(results_table))
         print(f"  → {results_path}")
 
+        results_csv_path = output_dir / "pte_table_results.csv"
+        with open(results_csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    "cut",
+                    "cosebis_n6",
+                    "cosebis_n20",
+                    "xip_B",
+                    "xim_B",
+                    "xitot_B",
+                    "cl_BB",
+                ]
+            )
+            for pte_key, cut_slug in [
+                ("pte_at_fiducial", "fiducial"),
+                ("pte_at_full_range", "full_range"),
+            ]:
+                writer.writerow(
+                    [cut_slug, *(_sig3(v) for v in _pte_row_values(pte_key, cfg, harm))]
+                )
+        print(f"  → {results_csv_path}")
+
     # Appendix table (all versions, fiducial + full-range rows) — grouped by statistic family
     if config_data or harmonic_data:
         appendix_table = []
@@ -560,14 +613,15 @@ def generate_pte_tables(
 
         # Filter to only leak_corr versions (those with labels in version_labels)
         table_versions = [v for v in versions if v in version_labels]
+        appendix_csv_rows = []
         for i, ver in enumerate(table_versions):
             label = table_labels.get(ver, version_labels.get(ver, ver))
             if ver == fiducial_version:
                 label = f"{label} (fiducial)"
 
-            for pte_key, cut_label in [
-                ("pte_at_fiducial", "Fiducial"),
-                ("pte_at_full_range", "Full range"),
+            for pte_key, cut_label, cut_slug in [
+                ("pte_at_fiducial", "Fiducial", "fiducial"),
+                ("pte_at_full_range", "Full range", "full_range"),
             ]:
                 # Only show version label on first row of each pair
                 row_label = label if pte_key == "pte_at_fiducial" else ""
@@ -577,6 +631,15 @@ def generate_pte_tables(
                 row.extend(_pte_row_cells(pte_key, cfg, harm, bold))
                 row.append(r" \\")
                 appendix_table.append(" ".join(row))
+
+                appendix_csv_rows.append(
+                    [
+                        _VERSION_SLUGS.get(ver, ver),
+                        cut_slug,
+                        *(_sig3(v) for v in _pte_row_values(pte_key, cfg, harm)),
+                        ver,
+                    ]
+                )
 
             # Visual separator between versions (except after last)
             if i < len(table_versions) - 1:
@@ -589,6 +652,25 @@ def generate_pte_tables(
         appendix_path.parent.mkdir(parents=True, exist_ok=True)
         appendix_path.write_text("\n".join(appendix_table))
         print(f"  → {appendix_path}")
+
+        appendix_csv_path = output_dir / "pte_table_appendix.csv"
+        with open(appendix_csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [
+                    "version",
+                    "cut",
+                    "cosebis_n6",
+                    "cosebis_n20",
+                    "xip_B",
+                    "xim_B",
+                    "xitot_B",
+                    "cl_BB",
+                    "version_full",
+                ]
+            )
+            writer.writerows(appendix_csv_rows)
+        print(f"  → {appendix_csv_path}")
 
 
 def generate_evidence(
