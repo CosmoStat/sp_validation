@@ -387,7 +387,7 @@ class PseudoClMixin:
             self.print_done(f"Done Pseudo-Cl covariance calculation for {ver}")
         self.print_done("Done Pseudo-Cl covariance")
 
-    def calculate_pseudo_cl_onecovariance(self):
+    def calculate_pseudo_cl_onecovariance(self, tomography=False):
         """
         Compute the pseudo-Cl covariance using OneCovariance.
         """
@@ -407,11 +407,14 @@ class PseudoClMixin:
         if not os.path.exists(template_config):
             raise ValueError(f"Template config file {template_config} does not exist")
 
-        self._pseudo_cls_onecov = {}
+        if not hasattr(self, "_pseudo_cls_onecov"):
+            self._pseudo_cls_onecov = {}
         for ver in self.versions:
             self.print_magenta(ver)
 
-            out_dir = self._output_path(f"pseudo_cl_cov_onecov_{ver}/")
+            out_dir = self._output_path(
+                "pseudo_cl/", f"pseudo_cl_cov_onecov_{ver}_tomography_{tomography}"
+            )
             os.makedirs(out_dir, exist_ok=True)
 
             if (
@@ -421,7 +424,7 @@ class PseudoClMixin:
                 and not self.force_run
             ):
                 self.print_done(f"Skipping OneCovariance calculation, {out_dir} exists")
-                self._load_onecovariance_cov(out_dir, ver)
+                self._load_onecovariance_cov(out_dir, ver, tomography)
             else:
                 mask_path = self.cc[ver]["mask"]
                 if not os.path.exists(mask_path):
@@ -434,7 +437,9 @@ class PseudoClMixin:
                     self.cc[ver]["shear"]["redshift_path"]
                 )
 
-                config_path = os.path.join(out_dir, f"config_onecov_{ver}.ini")
+                config_path = os.path.join(
+                    out_dir, f"config_onecov_{ver}_tomography_{tomography}.ini"
+                )
 
                 self.print_cyan(
                     f"Modifying OneCovariance config file and saving it to {config_path}"
@@ -446,6 +451,7 @@ class PseudoClMixin:
                     mask_path,
                     redshift_distr_path,
                     ver,
+                    tomography,
                 )
 
                 self.print_cyan("Running OneCovariance...")
@@ -457,12 +463,19 @@ class PseudoClMixin:
                         f"OneCovariance command failed with return code {ret}"
                     )
                 self.print_cyan("OneCovariance completed successfully.")
-                self._load_onecovariance_cov(out_dir, ver)
+                self._load_onecovariance_cov(out_dir, ver, tomography)
 
         self.print_done("Done Pseudo-Cl covariance with OneCovariance")
 
     def _modify_onecov_config(
-        self, template_config, config_path, out_dir, mask_path, redshift_distr_path, ver
+        self,
+        template_config,
+        config_path,
+        out_dir,
+        mask_path,
+        redshift_distr_path,
+        ver,
+        tomography,
     ):
         """
         Modify OneCovariance configuration file with correct mask, redshift distribution,
@@ -478,6 +491,10 @@ class PseudoClMixin:
             Path to the mask file
         redshift_distr_path : str
             Path to the redshift distribution file
+        ver : str
+            Version identifier for the current analysis
+        tomography : bool
+            Whether to compute tomography or not
         """
         config = configparser.ConfigParser()
         # Load the template configuration
@@ -489,10 +506,24 @@ class PseudoClMixin:
         config["survey specs"]["mask_directory"] = mask_folder
         config["survey specs"]["mask_file_lensing"] = mask_base
         config["survey specs"]["survey_area_lensing_in_deg2"] = str(self.area[ver])
-        config["survey specs"]["ellipticity_dispersion"] = str(
-            self.ellipticity_dispersion[ver]
+
+        # Update ellipticity dispersion and effective number density
+        # Account for tomography if needed
+        if tomography:
+            tomo_bin_ids, _ = self._get_tomo_bins(ver)
+        else:
+            tomo_bin_ids = ["all"]
+        input_ellipticity_distribution = ", ".join(
+            str(self.ellipticity_dispersion[ver][f"tomo_bin_{bin_id}"])
+            for bin_id in tomo_bin_ids
         )
-        config["survey specs"]["n_eff_lensing"] = str(self.n_eff_gal[ver])
+        input_n_eff_gal = ", ".join(
+            str(self.n_eff_gal[ver][f"tomo_bin_{bin_id}"]) for bin_id in tomo_bin_ids
+        )
+        config["survey specs"]["ellipticity_dispersion"] = (
+            input_ellipticity_distribution
+        )
+        config["survey specs"]["n_eff_lensing"] = input_n_eff_gal
 
         # Update redshift distribution path
         redshift_distr_base = os.path.basename(os.path.abspath(redshift_distr_path))
@@ -507,7 +538,7 @@ class PseudoClMixin:
         with open(config_path, "w") as f:
             config.write(f)
 
-    def _load_onecovariance_cov(self, out_dir, ver):
+    def _load_onecovariance_cov(self, out_dir, ver, tomography):
         self.print_cyan(f"Loading OneCovariance results from {out_dir}")
         cov_one_cov = np.genfromtxt(
             os.path.join(out_dir, "covariance_list_3x2pt_pure_Cell.dat")
@@ -515,10 +546,15 @@ class PseudoClMixin:
         gaussian_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=True)
         all_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=False)
 
-        self._pseudo_cls_onecov[ver] = {
-            "gaussian_cov": gaussian_one_cov,
-            "all_cov": all_one_cov,
-        }
+        key_to_update = "tomo" if tomography else "non_tomo"
+        self._pseudo_cls_onecov[ver].update(
+            {
+                key_to_update: {
+                    "gaussian_cov": gaussian_one_cov,
+                    "all_cov": all_one_cov,
+                }
+            }
+        )
 
     def calculate_pseudo_cl_g_ng_cov(self, gaussian_part="iNKA"):
         assert gaussian_part in ["iNKA", "OneCovariance"], (
