@@ -1013,7 +1013,7 @@ class PseudoClMixin:
         config["cosmo"]["h"] = str(cosmo["H0"] / 100.0)
         config["cosmo"]["omega_m"] = str(cosmo["Omega_m"])
         config["cosmo"]["omega_b"] = str(cosmo["Omega_b"])
-        config["cosmo"]["omega_de"] = str(cosmo["Omega_de"])
+        config["cosmo"]["omega_de"] = str(cosmo["Omega_l"])
         config["cosmo"]["sigma8"] = str(cosmo.sigma8())
         config["cosmo"]["ns"] = str(cosmo["n_s"])
         config["cosmo"]["w0"] = str(cosmo["w0"])
@@ -1025,12 +1025,14 @@ class PseudoClMixin:
         cosmo_dict = cosmo.to_dict()
 
         config["powspec evaluation"]["non_linear_model"] = str(
-            cosmo_dict.get("matter_power_spectrum")
-        )
+            cosmo_dict.get("extra_parameters", {})
+            .get("camb", {})
+            .get("halofit_version", "mead2020_feedback")  # Default to mead2020 feedback
+        )  # TODO: check what would be the default if not provided as input to align with this
         config["powspec evaluation"]["HMCode_logT_AGN"] = str(
             cosmo_dict.get("extra_parameters", {})
             .get("camb", {})
-            .get("HMCode_logT_AGN")
+            .get("HMCode_logT_AGN", 7.8)  # OneCovariance default
         )
 
     def _load_onecovariance_cov(self, out_dir, ver, tomography):
