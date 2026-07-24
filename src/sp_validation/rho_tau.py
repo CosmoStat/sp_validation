@@ -59,7 +59,6 @@ def get_rho_tau_w_cov(
     mask_gal=None,
     cov_rho=False,
     ncov=100,
-    compute_minus=True,
     **kwargs,
 ):
     """Compute rho/tau statistics and, if requested, their covariance."""

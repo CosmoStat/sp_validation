@@ -57,7 +57,7 @@ class PSFSystematicsMixin:
     @property
     def rho_tau_fits(self):
         if not hasattr(self, "_rho_tau_fits"):
-            self.calculate_rho_tau_fits()
+            self.calculate_rho_tau_fits(tomography=False)
             if self.compute_tomography:
                 self.calculate_rho_tau_fits(tomography=True)
         return self._rho_tau_fits
@@ -314,6 +314,7 @@ class PSFSystematicsMixin:
         params["dec_units"] = "deg"
 
         params["w_col"] = self.cc[ver]["shear"]["w_col"]
+        params["patch_number"] = self.cc[ver].get("patch_number", 100)
 
         return params
 
