@@ -43,7 +43,9 @@ class PseudoClMixin:
     @property
     def pseudo_cls_onecov(self):
         if not hasattr(self, "_pseudo_cls_onecov"):
-            self.calculate_pseudo_cl_onecovariance()
+            self.calculate_pseudo_cl_onecovariance(tomography=False)
+            if self.compute_tomography:
+                self.calculate_pseudo_cl_onecovariance(tomography=True)
         return self._pseudo_cls_onecov
 
     # ---------------- Pseudo-Cl calculation methods ---------------- #
@@ -600,7 +602,7 @@ class PseudoClMixin:
             self._pseudo_cls_onecov = {}
         for ver in self.versions:
             self.print_magenta(ver)
-
+            self._pseudo_cls_onecov.setdefault(ver, {})
             out_dir = self._output_path(
                 "pseudo_cl/", f"pseudo_cl_cov_onecov_{ver}_tomography_{tomography}"
             )
@@ -672,7 +674,8 @@ class PseudoClMixin:
             self._pseudo_cls_cov_g_ng.setdefault(ver, {})
             key_to_use = "tomo" if tomography else "non_tomo"
             out_file = self._output_path(
-                f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}_tomography_{tomography}.fits"
+                "pseudo_cl",
+                f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}_tomography_{tomography}.fits",
             )
             if os.path.exists(out_file) and not self.force_run:
                 self.print_done(

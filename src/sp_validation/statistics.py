@@ -7,6 +7,8 @@
               Extracted verbatim from the former basic.py.
 """
 
+import itertools
+
 import numpy as np
 from scipy import stats
 
@@ -119,10 +121,60 @@ def cov_from_one_covariance(cov_one_cov, gaussian=True):
         Square covariance matrix.
 
     """
-    n_bins = np.sqrt(cov_one_cov.shape[0]).astype(int)
-    cov = np.zeros((n_bins, n_bins))
-    index_value = 10 if gaussian else 9
-    for i in range(n_bins):
-        for j in range(n_bins):
-            cov[i, j] = cov_one_cov[i * n_bins + j, index_value]
+    # Get the ell_bins and tomo_bins for each covariance entry
+    ell1 = cov_one_cov[:, 1]
+    ell2 = cov_one_cov[:, 2]
+    tomoi = cov_one_cov[:, 5].astype(int)
+    tomoj = cov_one_cov[:, 6].astype(int)
+    tomok = cov_one_cov[:, 7].astype(int)
+    tomol = cov_one_cov[:, 8].astype(int)
+
+    # Get the values to save in the covariance
+    cov_col = 10 if gaussian else 9
+    values = cov_one_cov[:, cov_col]
+
+    # Map the ell bins to and index
+    ell_bins = np.unique(ell1)
+    n_ell_bins = len(ell_bins)
+    ell_to_idx = {ell: idx for idx, ell in enumerate(ell_bins)}
+
+    # Map the tomo bin pairs to an index
+    tomo_bin_ids = np.unique(tomoi)
+    tomo_bin_pairs = list(itertools.combinations_with_replacement(tomo_bin_ids, 2))
+    n_spectra = len(tomo_bin_pairs)
+    pair_to_idx = {pair: idx for idx, pair in enumerate(tomo_bin_pairs)}
+
+    # Initialize the covariance matrix
+    cov_size = n_ell_bins * n_spectra
+    cov = np.zeros((cov_size, cov_size))
+
+    # Get the tomo bin pair indices
+    # the ordering of OneCovariance is the same than itertools
+    a_idx = np.fromiter(
+        (pair_to_idx[(bin_i, bin_j)] for bin_i, bin_j in zip(tomoi, tomoj)),
+        dtype=int,
+        count=len(tomoi),
+    )
+    b_idx = np.fromiter(
+        (pair_to_idx[(bin_k, bin_l)] for bin_k, bin_l in zip(tomok, tomol)),
+        dtype=int,
+        count=len(tomok),
+    )
+
+    # Get the ell bin indices
+    ell1_idx = np.fromiter(
+        (ell_to_idx[ell] for ell in ell1), dtype=int, count=len(ell1)
+    )
+    ell2_idx = np.fromiter(
+        (ell_to_idx[ell] for ell in ell2), dtype=int, count=len(ell2)
+    )
+
+    # Get the row and col
+    row = a_idx * n_ell_bins + ell1_idx
+    col = b_idx * n_ell_bins + ell2_idx
+
+    # Assign the values
+    cov[row, col] = values
+    cov[col, row] = values  # Symmetrize
+
     return cov
