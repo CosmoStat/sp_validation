@@ -982,13 +982,30 @@ class PseudoClMixin:
         )
         config["survey specs"]["n_eff_lensing"] = input_n_eff_gal
 
+        # Handle the case where the redshift distribution file is tomographic
+        # Converts it to a non-tomographic distribution if needed
+        if not tomography:
+            # Load the redshift distribution
+            z, dndz = self.read_redshift_distribution(ver, is_tomography=True)
+            # Sum over tomographic bins to get the non-tomographic distribution
+            dndz_non_tomo = np.sum(dndz, axis=1)
+            # Save the non-tomographic distribution to a new file
+            non_tomo_redshift_distr_path = os.path.join(
+                out_dir, f"redshift_distribution_{ver}_non_tomo.txt"
+            )
+            np.savetxt(
+                non_tomo_redshift_distr_path,
+                np.column_stack((z, dndz_non_tomo)),
+                header="z dN/dz",
+            )
+            redshift_distr_path = non_tomo_redshift_distr_path
+
         # Update redshift distribution path
         redshift_distr_base = os.path.basename(os.path.abspath(redshift_distr_path))
         redshift_distr_folder = os.path.dirname(os.path.abspath(redshift_distr_path))
         config["redshift"]["z_directory"] = redshift_distr_folder
         config["redshift"]["zlens_file"] = redshift_distr_base
 
-        # TODO: add an update of the config file cosmological parameters using the cosmo object
         self._update_onecov_cosmo_params(config, self.cosmo)
 
         # Update output directory
