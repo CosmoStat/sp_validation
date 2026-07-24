@@ -682,7 +682,9 @@ class PseudoClMixin:
                 self._pseudo_cls_cov_g_ng[ver][key_to_use] = cov_hdu
                 continue
             if gaussian_part == "iNKA":
-                gaussian_cov = self.pseudo_cls[ver][f"cov_iNKA_{key_to_use}"].data
+                gaussian_cov = self.pseudo_cls[ver][f"cov_iNKA_{key_to_use}"][
+                    "COVAR_EE_EE"
+                ].data
                 non_gaussian_cov = (
                     self.pseudo_cls_onecov[ver][key_to_use]["all_cov"]
                     - self.pseudo_cls_onecov[ver][key_to_use]["gaussian_cov"]
