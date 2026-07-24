@@ -1,3 +1,4 @@
+import gc
 import os
 import time
 from pathlib import Path
@@ -16,22 +17,10 @@ def _extract_xip(correlations):
     return np.array([corr.xip for corr in correlations]).flatten()
 
 
-def get_params_rho_tau(cat, survey="other"):
+def get_params_rho_tau(cat):
 
     # Set parameters
     params = {}
-    # TODO to yaml file
-    if survey == "DES":
-        params["patch_number"] = 120
-        print("DES, jackknife patch number = 120")
-    elif survey == "SP_axel_v0.0":
-        params["patch_number"] = 120
-        print("SP_Axel_v0.0, jackknife patch number =120")
-    elif survey == "SP_v1.4-P3" or survey == "SP_v1.4-P3_LFmask":
-        params["patch_number"] = 120
-        print("SP_v1.4, jackknife patch number =120")
-    else:
-        params["patch_number"] = 150
     params["ra_PSF_col"] = cat["psf"]["ra_col"]
     params["dec_PSF_col"] = cat["psf"]["dec_col"]
     params["e1_PSF_col"] = cat["psf"]["e1_PSF_col"]
@@ -40,21 +29,18 @@ def get_params_rho_tau(cat, survey="other"):
     params["e2_star_col"] = cat["psf"]["e2_star_col"]
     params["PSF_size"] = cat["psf"]["PSF_size"]
     params["star_size"] = cat["psf"]["star_size"]
-    if survey != "DES":
-        params["PSF_flag"] = cat["psf"]["PSF_flag"]
-        params["star_flag"] = cat["psf"]["star_flag"]
+    params["PSF_flag"] = cat["psf"].get("PSF_flag")
+    params["star_flag"] = cat["psf"].get("star_flag")
     params["ra_units"] = "deg"
     params["dec_units"] = "deg"
+    params["patch_number"] = cat.get("patch_number", 100)  # Default patch number to 100
 
     params["ra_col"] = cat["shear"].get("ra_col", "RA")
     params["dec_col"] = cat["shear"].get("dec_col", "Dec")
     params["w_col"] = cat["shear"]["w_col"]
     params["e1_col"] = cat["shear"]["e1_col"]
     params["e2_col"] = cat["shear"]["e2_col"]
-    try:
-        params["tomo_bin_col"] = cat["shear"]["tomo_bin_col"]
-    except KeyError:
-        params["tomo_bin_col"] = None
+    params["tomo_bin_col"] = cat["shear"].get("tomo_bin_col")
     params["R11"] = cat["shear"].get("R11")
     params["R22"] = cat["shear"].get("R22")
 
@@ -66,43 +52,59 @@ def get_rho_tau_w_cov(
     version,
     treecorr_config,
     outdir,
-    base,
+    base_rho,
+    base_tau,
     method,
+    mask_star=None,
+    mask_gal=None,
     cov_rho=False,
-    npatch=None,
+    ncov=100,
+    **kwargs,
 ):
     """Compute rho/tau statistics and, if requested, their covariance."""
     if method == "th":
-        nbin_ang, nbin_rad = 100, 200
+        nbin_ang, nbin_rad = kwargs.get("nbin_ang", 100), kwargs.get("nbin_rad", 200)
+        compute_minus = kwargs.get("compute_minus", True)
         rho_stat_handler, tau_stat_handler = get_rho_tau(
             config,
             version,
             treecorr_config,
             outdir,
-            base,
+            base_rho,
+            base_tau,
             cov_rho=cov_rho,
+            mask_star=mask_star,
+            mask_gal=mask_gal,
         )
         get_theory_cov(
             config,
             version,
             treecorr_config,
             outdir,
-            base,
+            base_tau,
             nbin_ang=nbin_ang,
             nbin_rad=nbin_rad,
+            compute_minus=compute_minus,
+            mask_star=mask_star,
+            mask_gal=mask_gal,
         )
         return rho_stat_handler, tau_stat_handler
     elif method == "jk":
+        npatch = kwargs.get("npatch", 100)
         return get_jackknife_cov(
             config,
             version,
             treecorr_config,
             outdir,
-            base,
+            base_rho,
+            base_tau,
             npatch=npatch,
+            ncov=ncov,
+            mask_star=mask_star,
+            mask_gal=mask_gal,
         )
     elif method == "sim":
-        tau_cov_path = Path(outdir) / f"cov_tau_{base}_th.npy"
+        tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_th.npy"
 
         if tau_cov_path.exists():
             print(f"Found existing covariance at {tau_cov_path}")
@@ -112,8 +114,11 @@ def get_rho_tau_w_cov(
                 version,
                 treecorr_config,
                 outdir,
-                base,
+                base_rho,
+                base_tau,
                 cov_rho=cov_rho,
+                mask_star=mask_star,
+                mask_gal=mask_gal,
             )
         else:
             raise ValueError(
@@ -128,9 +133,12 @@ def get_rho_tau(
     version,
     treecorr_config,
     outdir,
-    base,
+    base_rho,
+    base_tau,
+    mask_star=None,
+    mask_gal=None,
     cov_rho=False,
-    npatch=None,
+    force_run=False,
 ):
     """
     Compute rho and tau statistics for a given version of the catalogue.
@@ -145,16 +153,28 @@ def get_rho_tau(
         TreeCorr configuration (must include 'min_sep', 'max_sep', and 'nbins').
     outdir : str
         Output directory.
+    base_rho : str
+        Base name for the rho output files.
+    base_tau : str
+        Base name for the tau output files.
+    mask_star : array-like, optional
+        Boolean mask for stars. If None, no masking is applied.
+    mask_gal : array-like, optional
+        Boolean mask for galaxies. If None, no masking is applied.
+    cov_rho : bool, optional
+        If True, compute the covariance of rho statistics.
+    force_run : bool, optional
+        If True, force the computation even if output files already exist.
     """
 
-    params = get_params_rho_tau(config[version], survey=version)
+    params = get_params_rho_tau(config[version])
 
     print("Compute Rho and Tau statistics for the version: ", version)
     start_time = time.time()
 
     outdir_path = Path(outdir)
-    rho_path = outdir_path / f"rho_stats_{base}.fits"
-    catalog_id = f"{base}_jk" if cov_rho else base
+    rho_path = outdir_path / f"rho_stats_{base_rho}.fits"
+    catalog_id = f"{base_rho}_jk" if cov_rho else base_rho
     cov_rho_path = outdir_path / f"cov_rho_{catalog_id}.npy" if cov_rho else None
 
     rho_stat_handler = RhoStat(
@@ -163,17 +183,15 @@ def get_rho_tau(
 
     rho_stats_exists = rho_path.exists()
     cov_exists = True if not cov_rho else cov_rho_path.exists()
-    need_compute = (not rho_stats_exists) or (not cov_exists)
+    need_compute = (not rho_stats_exists) or (not cov_exists) or force_run
 
     if need_compute:
         rho_stat_handler.catalogs.set_params(params, outdir)
 
-        mask = version != "DES"
-
         rho_stat_handler.build_cat_to_compute_rho(
             config[version]["psf"]["path"],
             catalog_id=catalog_id,
-            mask=mask,
+            mask=mask_star,
             hdu=(
                 config[version]["psf"]["hdu"]
                 if config[version]["psf"]["hdu"] is not None
@@ -193,7 +211,7 @@ def get_rho_tau(
         print(f"Skipping rho statistics computation, file {rho_path} already exists.")
         rho_stat_handler.load_rho_stats(rho_path.name)
 
-    tau_path = outdir_path / f"tau_stats_{base}.fits"
+    tau_path = outdir_path / f"tau_stats_{base_tau}.fits"
 
     tau_stat_handler = TauStat(
         catalogs=rho_stat_handler.catalogs,
@@ -202,13 +220,11 @@ def get_rho_tau(
         verbose=True,
     )
 
-    if tau_path.exists():
+    if tau_path.exists() and not force_run:
         print(f"Skipping tau statistics computation, file {tau_path} already exists.")
         tau_stat_handler.load_tau_stats(tau_path.name)
     else:
         tau_stat_handler.catalogs.set_params(params, outdir)
-
-        mask = version != "DES"
 
         # Build the different catalogs if necessary
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
@@ -216,7 +232,7 @@ def get_rho_tau(
                 config[version]["psf"]["path"],
                 cat_type="psf",
                 catalog_id=version,
-                mask=mask,
+                mask=mask_star,
                 hdu=(
                     config[version]["psf"]["hdu"]
                     if config[version]["psf"]["hdu"] is not None
@@ -229,7 +245,7 @@ def get_rho_tau(
             config[version]["shear"]["path"],
             cat_type="gal",
             catalog_id=version,
-            mask=mask,
+            mask=mask_gal,
         )
 
         # function to extract the tau_+
@@ -247,17 +263,17 @@ def get_theory_cov(
     base,
     nbin_ang=100,
     nbin_rad=100,
+    compute_minus=True,
+    mask_star=None,  # TODO add the masking in the theory covariance
+    mask_gal=None,
 ):
     """
     Compute an analytical estimate of the covariance matrix of rho and tau-statistics.
     """
 
-    params = get_params_rho_tau(config[version], survey=version)
+    params = get_params_rho_tau(config[version])
 
     info = config[version]
-    A = info["cov_th"]["A"] * 60 * 60
-    n_e = info["cov_th"]["n_e"]
-    n_psf = info["cov_th"]["n_psf"]
 
     path_gal = info["shear"]["path"]
     path_psf = info["psf"]["path"]
@@ -277,21 +293,23 @@ def get_theory_cov(
         path_psf=path_psf,
         hdu_psf=hdu_psf,
         treecorr_config=treecorr_config,
-        A=A,
-        n_e=n_e,
-        n_psf=n_psf,
         params=params,
+        mask_star=mask_star,
+        mask_gal=mask_gal,
     )
 
     elapsed = time.time() - start_time
     print(f"--- Rho/tau statistics for covariance computed in {elapsed:.2f}s ---")
 
-    cov = cov_tau_th.build_cov(nbin_ang=nbin_ang, nbin_rad=nbin_rad)
+    cov = cov_tau_th.build_cov(
+        nbin_ang=nbin_ang, nbin_rad=nbin_rad, compute_minus=compute_minus
+    )
     print(f"--- Covariance matrix assembled in {time.time() - start_time:.2f}s ---")
     target_cov.parent.mkdir(parents=True, exist_ok=True)
     np.save(target_cov, cov)
     print("Saved covariance matrix of version: ", version)
     del cov_tau_th
+    gc.collect()
     return
 
 
@@ -300,20 +318,24 @@ def get_jackknife_cov(
     version,
     treecorr_config,
     outdir,
-    base,
+    base_rho,
+    base_tau,
     npatch,
     ncov=100,
+    mask_star=None,
+    mask_gal=None,
+    force_run=False,
 ):
     """
     Compute the covariance matrix of rho and tau-statistics using the jackknife method.
     Also compute rho and tau-statistics.
     """
+    # TODO: Reorganise this to avoid recomputing unnecessarily the rho-stats multiple times.
+    rho_filename = f"rho_stats_{base_rho}.fits"
+    tau_filename = f"tau_stats_{base_tau}.fits"
+    tau_cov_path = Path(outdir) / f"cov_tau_{base_tau}_jk.npy"
 
-    rho_filename = f"rho_stats_{base}.fits"
-    tau_filename = f"tau_stats_{base}.fits"
-    tau_cov_path = Path(outdir) / f"cov_tau_{base}_jk.npy"
-
-    if tau_cov_path.exists():
+    if tau_cov_path.exists() and not force_run:
         print(f"Skipping covariance computation, file {tau_cov_path} already exists.")
         rho_stat_handler = RhoStat(
             output=outdir, treecorr_config=treecorr_config, verbose=False
@@ -328,13 +350,13 @@ def get_jackknife_cov(
 
         rho_path = Path(outdir) / rho_filename
         tau_path = Path(outdir) / tau_filename
-        if rho_path.exists():
+        if rho_path.exists() and not force_run:
             rho_stat_handler.load_rho_stats(rho_path.name)
-        if tau_path.exists():
+        if tau_path.exists() and not force_run:
             tau_stat_handler.load_tau_stats(tau_path.name)
         return rho_stat_handler, tau_stat_handler
 
-    params = get_params_rho_tau(config[version], survey=version)
+    params = get_params_rho_tau(config[version])
 
     rho_stat_handler = RhoStat(
         output=outdir, treecorr_config=treecorr_config, verbose=False
@@ -352,8 +374,8 @@ def get_jackknife_cov(
     tau_stat_handler.catalogs.set_params(params, outdir)
 
     for i in range(ncov):
-        tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
-        rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
+        tau_chunk = outdir + f"/cov_tau_{base_tau}{i}.npy"
+        rho_chunk = outdir + f"/cov_rho_{base_rho}{i}.npy"
         if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
             print(f"Computing rho-statistics for {version} (patch {i + 1}/{ncov})")
 
@@ -362,7 +384,7 @@ def get_jackknife_cov(
                 rho_stat_handler.build_cat_to_compute_rho(
                     config[version]["psf"]["path"],
                     catalog_id=version + str(i),
-                    mask=False,
+                    mask=mask_star,
                     hdu=config[version]["psf"]["hdu"],
                 )
 
@@ -375,7 +397,7 @@ def get_jackknife_cov(
                     config[version]["shear"]["path"],
                     cat_type="gal",
                     catalog_id=version + str(i),
-                    mask=False,
+                    mask=mask_gal,
                 )
 
             else:
@@ -425,13 +447,13 @@ def get_jackknife_cov(
             )
             tau_dict[f"gal_{version}{i + 1}"] = tau_dict.pop(f"gal_{version}{i}")
 
-    cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{version}0.npy"))
-    cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{version}0.npy"))
+    cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{base_tau}0.npy"))
+    cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{base_rho}0.npy"))
     for i in range(ncov):
-        cov_tau_loc += np.load(outdir + f"/cov_tau_{version}{i}.npy")
-        cov_rho_loc += np.load(outdir + f"/cov_rho_{version}{i}.npy")
-        os.remove(outdir + f"/cov_tau_{version}{i}.npy")
-        os.remove(outdir + f"/cov_rho_{version}{i}.npy")
+        cov_tau_loc += np.load(outdir + f"/cov_tau_{base_tau}{i}.npy")
+        cov_rho_loc += np.load(outdir + f"/cov_rho_{base_rho}{i}.npy")
+        os.remove(outdir + f"/cov_tau_{base_tau}{i}.npy")
+        os.remove(outdir + f"/cov_rho_{base_rho}{i}.npy")
 
     cov_tau = cov_tau_loc / ncov
     cov_rho = cov_rho_loc / ncov
@@ -439,7 +461,7 @@ def get_jackknife_cov(
     tau_cov_path.parent.mkdir(parents=True, exist_ok=True)
     np.save(tau_cov_path, cov_tau)
 
-    cov_rho_path = Path(outdir) / f"cov_rho_{base}_jk.npy"
+    cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
     cov_rho_path.parent.mkdir(parents=True, exist_ok=True)
     np.save(cov_rho_path, cov_rho)
 
@@ -448,11 +470,13 @@ def get_jackknife_cov(
 
 def get_samples(
     psf_fitter,
-    version,
-    base,
+    base_rho,
+    base_tau,
     cov_type="jk",
     apply_debias=None,
     sampler="emcee",
+    nsamples=10000,
+    nwalkers=124,
 ):
     """Return (alpha, beta, eta) samples using ``emcee`` or least squares.
 
@@ -460,10 +484,10 @@ def get_samples(
     ----------
     psf_fitter : PSFFitter
         PSF fitter instance that provides ``load_*`` helpers.
-    version : str
-        Catalog identifier whose rho/tau statistics are sampled.
-    base : str
-        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for filenames.
+    base_rho : str
+        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for rho-stat filenames.
+    base_tau : str
+        Precomputed basename (e.g. ``SP_v1.4_minsep=…``) used for tau-stat filenames.
     cov_type : str, optional
         Covariance label (``'jk'``, ``'th'``, or ``'sim'``). Defaults to ``'jk'``.
     apply_debias : int or None, optional
@@ -471,22 +495,29 @@ def get_samples(
     sampler : str, optional
         ``'emcee'`` for MCMC sampling, ``'lsq'`` for least squares
         (default ``'emcee'``).
+    nsamples : int, optional
+        Number of samples to draw (default ``10000``).
+    nwalkers : int, optional
+        Number of walkers for the MCMC run (default ``124``).
     """
     if sampler == "emcee":
         return get_samples_emcee(
             psf_fitter,
-            version,
-            base,
+            base_rho,
+            base_tau,
             cov_type=cov_type,
             apply_debias=apply_debias,
+            nsamples=nsamples,
+            nwalkers=nwalkers,
         )
     elif sampler == "lsq":
         return get_samples_lsq(
             psf_fitter,
-            version,
-            base,
+            base_rho,
+            base_tau,
             cov_type=cov_type,
             apply_debias=apply_debias,
+            nsamples=nsamples,
         )
     else:
         raise ValueError("Sampler must be either 'emcee' or 'lsq'.")
@@ -494,8 +525,8 @@ def get_samples(
 
 def get_samples_emcee(
     psf_fitter,
-    version,
-    base,
+    base_rho,
+    base_tau,
     nwalkers=124,
     nsamples=10000,
     cov_type="jk",
@@ -507,10 +538,10 @@ def get_samples_emcee(
     ----------
     psf_fitter : PSFFitter
         PSF fitter instance managing rho/tau statistics and covariances.
-    version : str
-        Catalog identifier whose rho/tau statistics are sampled.
-    base : str
-        Precomputed basename for locating statistics/covariance files.
+    base_rho : str
+        Precomputed basename for locating rho statistics/covariance files.
+    base_tau : str
+        Precomputed basename for locating tau statistics/covariance files.
     nwalkers : int, optional
         Number of walkers for the MCMC run (default ``124``).
     nsamples : int, optional
@@ -521,20 +552,21 @@ def get_samples_emcee(
         Jackknife patch count applied during debiasing. Disabled when ``None``.
     """
     # Load rho and tau stats
-    psf_fitter.load_rho_stat(f"rho_stats_{base}.fits")
-    psf_fitter.load_tau_stat(f"tau_stats_{base}.fits")
+    psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
+    psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
-    sample_file_path = psf_fitter.get_sample_file_path(base)
+    base_sample = f"{base_tau}_sampler_emcee_cov_tau_type_{cov_type}"
+    sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
-        flat_samples = psf_fitter.load_samples(base)
-        mcmc_result, q = psf_fitter.get_mcmc_from_samples(base)
+        flat_samples = psf_fitter.load_samples(base_sample)
+        mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
     # Or run MCMC
     else:
         print("MCMC sampling")
-        cov_filename = f"cov_tau_{base}_{cov_type}.npy"
+        cov_filename = f"cov_tau_{base_tau}_{cov_type}.npy"
         psf_fitter.load_covariance(cov_filename, cov_type="tau")
 
         debias_npatch = apply_debias if (apply_debias is not None) else None
@@ -543,16 +575,17 @@ def get_samples_emcee(
             nsamples=nsamples,
             npatch=debias_npatch,
             apply_debias=debias_npatch is not None,
-            savefig="mcmc_samples_" + version + ".png",
+            savefig="mcmc_samples_" + base_tau + ".png",
         )
-        psf_fitter.save_samples(flat_samples, base)
+        psf_fitter.save_samples(flat_samples, base_sample)
     return flat_samples, mcmc_result, q
 
 
 def get_samples_lsq(
     psf_fitter,
-    version,
-    base,
+    base_rho,
+    base_tau,
+    nsamples=10000,
     apply_debias=None,
     cov_type="jk",
 ):
@@ -562,36 +595,39 @@ def get_samples_lsq(
     ----------
     psf_fitter : PSFFitter
         PSF fitter instance managing rho/tau statistics and covariances.
-    version : str
-        Catalog identifier whose rho/tau statistics are sampled.
-    base : str
-        Precomputed basename for locating statistics/covariance files.
+    base_rho : str
+        Precomputed basename for locating rho statistics/covariance files.
+    base_tau : str
+        Precomputed basename for locating tau statistics/covariance files.
     apply_debias : int or None, optional
         Jackknife patch count applied during debiasing. Disabled when ``None``.
     cov_type : str, optional
         Covariance label (defaults to ``'jk'``).
     """
     # Load rho and tau stats
-    psf_fitter.load_rho_stat(f"rho_stats_{base}.fits")
-    psf_fitter.load_tau_stat(f"tau_stats_{base}.fits")
+    psf_fitter.load_rho_stat(f"rho_stats_{base_rho}.fits")
+    psf_fitter.load_tau_stat(f"tau_stats_{base_tau}.fits")
 
+    base_sample = f"{base_tau}_sampler_lsq_cov_tau_type_{cov_type}"
     # Check if the path exists (use base for cache key to account for different TreeCorr configs)
-    sample_file_path = psf_fitter.get_sample_path(base)
+    sample_file_path = psf_fitter.get_sample_path(base_sample)
     if os.path.exists(sample_file_path):
         print(f"Skipping sampling; {sample_file_path} exists.")
-        flat_samples = psf_fitter.load_samples(base)
+        flat_samples = psf_fitter.load_samples(base_sample)
         mcmc_result, q = psf_fitter.get_mcmc_from_samples(flat_samples)
         print(mcmc_result)
     # Or run MCMC
     else:
         print("Least square sampling")
-        tau_covariance = f"cov_tau_{base}_{cov_type}.npy"
-        rho_covariance = f"cov_rho_{base}_jk.npy"
+        tau_covariance = f"cov_tau_{base_tau}_{cov_type}.npy"
+        rho_covariance = f"cov_rho_{base_rho}_jk.npy"
         psf_fitter.load_covariance(tau_covariance, cov_type="tau")
         psf_fitter.load_covariance(rho_covariance, cov_type="rho")
         debias_npatch = apply_debias if (apply_debias is not None) else None
         flat_samples, mcmc_result, q = psf_fitter.get_least_squares_params_samples(
-            npatch=debias_npatch, apply_debias=(debias_npatch is not None)
+            npatch=debias_npatch,
+            apply_debias=(debias_npatch is not None),
+            n_samples=nsamples,
         )
-        psf_fitter.save_samples(flat_samples, base)
+        psf_fitter.save_samples(flat_samples, base_sample)
     return flat_samples, mcmc_result, q
