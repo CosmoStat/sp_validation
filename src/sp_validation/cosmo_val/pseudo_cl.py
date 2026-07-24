@@ -567,7 +567,8 @@ class PseudoClMixin:
                     ]
 
             # Merge the covariance blocks
-            self._pseudo_cls[ver]["cov_iNKA"] = self._merge_iNKA_covariance(
+            tomo_str = "tomo" if compute_tomography else "non_tomo"
+            self._pseudo_cls[ver][f"cov_iNKA_{tomo_str}"] = self._merge_iNKA_covariance(
                 ver, tomography=compute_tomography
             )
             self.print_done(f"Done Pseudo-Cl covariance calculation for {ver}")
@@ -653,7 +654,7 @@ class PseudoClMixin:
 
         self.print_done("Done Pseudo-Cl covariance with OneCovariance")
 
-    def calculate_pseudo_cl_g_ng_cov(self, gaussian_part="iNKA"):
+    def calculate_pseudo_cl_g_ng_cov(self, tomography=False, gaussian_part="iNKA"):
         assert gaussian_part in ["iNKA", "OneCovariance"], (
             "gaussian_part must be 'iNKA' or 'OneCovariance'"
         )
@@ -661,34 +662,37 @@ class PseudoClMixin:
             f"Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
 
-        self._pseudo_cls_cov_g_ng = {}
+        if not hasattr(self, "_pseudo_cls_cov_g_ng"):
+            self._pseudo_cls_cov_g_ng = {}
 
         for ver in self.versions:
             self.print_magenta(ver)
+            self._pseudo_cls_cov_g_ng.setdefault(ver, {})
+            key_to_use = "tomo" if tomography else "non_tomo"
             out_file = self._output_path(
-                f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}.fits"
+                f"pseudo_cl_cov_g_ng_{gaussian_part}_{ver}_tomography_{tomography}.fits"
             )
             if os.path.exists(out_file) and not self.force_run:
                 self.print_done(
                     f"Skipping Gaussian and Non-Gaussian covariance calculation, {out_file} exists"
                 )
                 cov_hdu = fits.open(out_file)
-                self._pseudo_cls_cov_g_ng[ver] = cov_hdu
+                self._pseudo_cls_cov_g_ng[ver][key_to_use] = cov_hdu
                 continue
             if gaussian_part == "iNKA":
-                gaussian_cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
+                gaussian_cov = self.pseudo_cls[ver][f"cov_iNKA_{tomo_str}"].data
                 non_gaussian_cov = (
-                    self.pseudo_cls_onecov[ver]["all_cov"]
-                    - self.pseudo_cls_onecov[ver]["gaussian_cov"]
+                    self.pseudo_cls_onecov[ver][key_to_use]["all_cov"]
+                    - self.pseudo_cls_onecov[ver][key_to_use]["gaussian_cov"]
                 )
                 full_cov = gaussian_cov + non_gaussian_cov
             elif gaussian_part == "OneCovariance":
-                gaussian_cov = self.pseudo_cls_onecov[ver]["gaussian_cov"]
+                gaussian_cov = self.pseudo_cls_onecov[ver][key_to_use]["gaussian_cov"]
                 non_gaussian_cov = (
-                    self.pseudo_cls_onecov[ver]["all_cov"]
-                    - self.pseudo_cls_onecov[ver]["gaussian_cov"]
+                    self.pseudo_cls_onecov[ver][key_to_use]["all_cov"]
+                    - self.pseudo_cls_onecov[ver][key_to_use]["gaussian_cov"]
                 )
-                full_cov = self.pseudo_cls_onecov[ver]["all_cov"]
+                full_cov = self.pseudo_cls_onecov[ver][key_to_use]["all_cov"]
             else:
                 raise ValueError(f"Unknown gaussian_part: {gaussian_part}")
             self.print_cyan("Saving Gaussian and Non-Gaussian covariance...")
@@ -697,7 +701,7 @@ class PseudoClMixin:
             hdu.append(fits.ImageHDU(non_gaussian_cov, name="COVAR_NON_GAUSSIAN"))
             hdu.append(fits.ImageHDU(full_cov, name="COVAR_FULL"))
             hdu.writeto(out_file, overwrite=True)
-            self._pseudo_cls_cov_g_ng[ver] = hdu
+            self._pseudo_cls_cov_g_ng[ver][key_to_use] = hdu
         self.print_done(
             f"Done Gaussian and Non-Gaussian covariance of the Pseudo-Cl's using {gaussian_part} for the Gaussian part"
         )
