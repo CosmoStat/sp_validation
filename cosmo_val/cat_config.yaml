@@ -1280,7 +1280,7 @@ GLASS_mock_validation:
     star_flag: FLAG_STAR_HSM
     star_size: SIGMA_STAR_HSM
     hdu: 1
-    path: unions_shapepipe_psf_2024_v1.6.a.fits
+    path: ../../../../n17data/UNIONS/WL/v1.6.x/unions_shapepipe_psf_2024_v1.6.a.fits
     ra_col: RA
     dec_col: Dec
     e1_PSF_col: E1_PSF_HSM
