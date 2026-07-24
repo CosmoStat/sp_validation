@@ -8,10 +8,10 @@ and plots. It depends on TreeCorr.
 
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import treecorr
 from astropy.io import fits
-from cs_util import plots as cs_plots
 
 
 class RealSpaceMixin:
@@ -263,79 +263,382 @@ class RealSpaceMixin:
         return self._map2
 
     # LG: plotting functions removed, perhaps can use Sacha's implementation in psf_systematics.py instead
+    def plot_2pcf_tomography(
+        self,
+        x_y_plot_function,
+        x_label,
+        y_label_plus,
+        y_label_minus,
+        tomo_bin_label_position,
+        extract_text_offset,
+        add_index_version_to_kwargs,
+        x_scale=None,
+        y_scale=None,
+        tomography=False,
+        versions=None,
+        colors=None,
+        savefig=None,
+        show=True,
+        close=True,
+        **kwargs,
+    ):
+        """
+        Standard plot function for 2-point correlation functions with tomographic bins.
 
-    def plot_aperture_mass_dispersion(self):
-        for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
-            x = [self.map2["theta_map"] for ver in self.versions]
-            # LG: FORCE non-tomography for now
-            y = [
-                self.map2[ver]["tomo_bin_all_tomo_bin_all"][mode]
-                for ver in self.versions
-            ]
-            yerr = [
-                np.sqrt(self.map2[ver]["tomo_bin_all_tomo_bin_all"]["varmapsq"])
-                for ver in self.versions
-            ]
-            labels = list(self.versions)
-            colors = [self.cc[ver]["colour"] for ver in self.versions]
-            linestyles = [self.cc[ver]["ls"] for ver in self.versions]
+        Parameters
+        ----------
+        x_y_plot_function : callable
+            Function to plot the x and y data. Should accept axes for `+' and `-' components, version, tomo_bin_indices, and kwargs.
+        x_label : str
+            Label for the x-axis.
+        y_label_plus : str
+            Label for the y-axis of the `+' component.
+        y_label_minus : str
+            Label for the y-axis of the `-' component.
+        tomo_bin_label_position : tuple
+            Position to place the tomographic bin labels in axes coordinates (x, y).
+        extract_text_offset : bool
+            If True, extract the y-axis offset text and include it in the y-label.
+        add_index_version_to_kwargs : bool
+            If True, add the index of the version to the kwargs for plotting.
+        x_scale : str, optional
+            Scale for the x-axis ('linear', 'log', etc.). If None, default scale is used.
+        y_scale : str, optional
+            Scale for the y-axis ('linear', 'log', etc.). If None, default scale is used.
+        tomography : bool, optional
+            If True, plot the tomographic bins. Default is False.
+        versions : list, optional
+            List of versions to plot. If None, all versions are plotted.
+        colors : list, optional
+            List of colors for each version. If None, default colors are used.
+        savefig : str, optional
+            If provided, save the figure to this file.
+        show : bool, optional
+            If True, show the figure.
+        close : bool, optional
+            If True, close the figure after saving or showing.
+        kwargs : dict
+            Additional keyword arguments to pass to the plotting function.
+        """
+        versions = versions if versions is not None else self.versions
+        colors = (
+            colors
+            if colors is not None
+            else [self.cc[ver]["colour"] for ver in versions]
+        )
 
-            xlabel = r"$\theta$ [arcmin]"
-            ylabel = "dispersion"
-            title = f"Aperture-mass dispersion {mode}"
-            out_path = self._output_path(f"{mode}.png")
-            cs_plots.plot_data_1d(
-                x,
-                y,
-                yerr,
-                title,
-                xlabel,
-                ylabel,
-                out_path=None,
-                labels=labels,
-                xlog=True,
-                xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=[-2e-6, 5e-6],
-                colors=colors,
-                linestyles=linestyles,
-                shift_x=True,
+        # First get the max number of tomo bins among the versions.
+        tomo_bins = self._get_tomo_bins_for_versions(versions, tomography=tomography)
+
+        max_key = max(tomo_bins, key=lambda k: len(tomo_bins[k]["ids"]))
+        n_tomo_bins_plot = len(tomo_bins[max_key]["ids"])
+        reference_tomo_bin_pairs = tomo_bins[max_key]["pairs"]
+
+        n_rows = n_tomo_bins_plot
+        n_cols = n_tomo_bins_plot + 2
+
+        # First start with the quantiles plot
+        fig, axs = plt.subplots(
+            n_rows,
+            n_cols,
+            figsize=(5 * n_cols, 5 * n_rows),
+            sharex=True,
+            sharey=True,
+            gridspec_kw={"wspace": 0, "hspace": 0},
+        )
+
+        for idx, (ver, color) in enumerate(zip(versions, colors)):
+            tomo_bin_pairs = tomo_bins[ver]["pairs"]
+
+            kwargs["color"] = color
+            if add_index_version_to_kwargs:
+                kwargs["idx"] = idx
+                kwargs["versions"] = versions
+
+            for tomo_bin_a, tomo_bin_b in tomo_bin_pairs:
+                # Plot the nsamples last samples
+                ax_plus = self._get_ax_plus(axs, tomo_bin_a, tomo_bin_b)
+                ax_minus = self._get_ax_minus(axs, tomo_bin_a, tomo_bin_b)
+
+                # Apply the x_y_plot_function to plot the data
+                x_y_plot_function(
+                    ax_plus, ax_minus, ver, tomo_bin_a, tomo_bin_b, **kwargs
+                )
+
+        # Draw to extract the y-axis text offset
+        fig.canvas.draw()
+
+        # Set the visibility to false where necessary
+        self._set_ax_visibility_to_false(axs, n_tomo_bins_plot)
+
+        # Set the labels and scales for the plots
+        for tomo_bin_a, tomo_bin_b in reference_tomo_bin_pairs:
+            ax_plus = self._get_ax_plus(axs, tomo_bin_a, tomo_bin_b)
+            ax_minus = self._get_ax_minus(axs, tomo_bin_a, tomo_bin_b)
+
+            ax_plus.tick_params(
+                axis="both",
+                which="both",
+                direction="in",
+                bottom=True,
+                top=False,
+                labelbottom=tomo_bin_b == 1 or tomo_bin_b == "all",
+                left=True,
+                right=False,
+                labelleft=tomo_bin_a == 1 or tomo_bin_a == "all",
             )
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done(f"linear-scale {mode} plot saved to {out_path}")
+            if x_scale is not None:
+                ax_plus.set_xscale(x_scale)
 
-        for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
-            x = [self.map2["theta_map"] for ver in self.versions]
-            # FORCE non-tomography for now
-            y = [
-                np.abs(self.map2[ver]["tomo_bin_all_tomo_bin_all"][mode])
-                for ver in self.versions
-            ]
-            yerr = [
-                np.sqrt(self.map2[ver]["tomo_bin_all_tomo_bin_all"]["varmapsq"])
-                for ver in self.versions
-            ]
-            xlabel = r"$\theta$ [arcmin]"
-            ylabel = "dispersion"
-            title = f"Aperture-mass dispersion mode {mode}"
-            out_path = self._output_path(f"{mode}_log.png")
-            cs_plots.plot_data_1d(
-                x,
-                y,
-                yerr,
-                title,
-                xlabel,
-                ylabel,
-                out_path=None,
-                labels=labels,
-                xlog=True,
-                ylog=True,
-                xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=[1e-8, 1e-5],
-                colors=colors,
-                linestyles=linestyles,
-                shift_x=True,
+            ax_plus.text(
+                tomo_bin_label_position[0],
+                tomo_bin_label_position[1],
+                f"{tomo_bin_a}-{tomo_bin_b}",
+                transform=ax_plus.transAxes,
+                verticalalignment="top",
+                bbox=dict(
+                    boxstyle="square",
+                    facecolor="white",
+                    edgecolor="black",
+                    alpha=0.8,
+                ),
             )
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done(f"log-scale {mode} plot saved to {out_path}")
+            ax_plus.axhline(0, color="k", linestyle="--")
+
+            if y_scale is not None:
+                ax_plus.set_yscale(y_scale)
+            if tomo_bin_b == 1 or tomo_bin_b == "all":
+                ax_plus.set_xlabel(r"$\theta$ [arcmin]")
+            if tomo_bin_a == 1 or tomo_bin_a == "all":
+                text_offset = (
+                    ax_plus.yaxis.get_offset_text().get_text()
+                    if extract_text_offset
+                    else ""
+                )
+                ax_plus.set_ylabel(y_label_plus + text_offset)
+            ax_plus.yaxis.get_offset_text().set_visible(
+                False
+            )  # Hide the offset text for the plus ax
+
+            # Move the ticks to the right for the minus ax
+            ax_minus.yaxis.tick_right()
+            ax_minus.yaxis.set_label_position("right")
+            ax_minus.tick_params(
+                axis="both",
+                which="both",
+                direction="in",
+                bottom=True,
+                top=False,
+                labelbottom=tomo_bin_b == n_tomo_bins_plot or tomo_bin_b == "all",
+                left=False,
+                right=True,
+                labelleft=False,
+                labelright=tomo_bin_a == 1 or tomo_bin_a == "all",
+            )
+            if x_scale is not None:
+                ax_minus.set_xscale(x_scale)
+            ax_minus.text(
+                tomo_bin_label_position[0],
+                tomo_bin_label_position[1],
+                f"{tomo_bin_a}-{tomo_bin_b}",
+                transform=ax_minus.transAxes,
+                verticalalignment="top",
+                bbox=dict(
+                    boxstyle="square",
+                    facecolor="white",
+                    edgecolor="black",
+                    alpha=0.8,
+                ),
+            )
+            ax_minus.axhline(0, color="k", linestyle="--")
+            if y_scale is not None:
+                ax_minus.set_yscale(y_scale)
+            if tomo_bin_b == n_tomo_bins_plot or tomo_bin_b == "all":
+                ax_minus.set_xlabel(x_label)
+            if tomo_bin_a == 1 or tomo_bin_a == "all":
+                text_offset = (
+                    ax_minus.yaxis.get_offset_text().get_text()
+                    if extract_text_offset
+                    else ""
+                )
+                ax_minus.set_ylabel(y_label_minus + text_offset)
+            ax_minus.yaxis.get_offset_text().set_visible(
+                False
+            )  # Hide the offset text for the minus ax
+
+        # Build the legend
+        handles = []
+        for ver, color in zip(versions, colors):
+            label = self.cc[ver]["label"] if "label" in self.cc[ver] else ver
+            handles.append(plt.Line2D([0], [0], color=color, lw=2, label=label))
+        fig.legend(
+            handles=handles,
+            loc="upper center",
+            ncol=3,
+            frameon=False,
+            bbox_to_anchor=(0.5, 0.0),
+        )
+
+        if savefig is not None:
+            plt.savefig(savefig, dpi=300, bbox_inches="tight")
+            self.print_done(f"Plot saved to {os.path.abspath(savefig)}")
+
+        if show:
+            plt.show()
+
+        if close:
+            plt.close()
+
+    def _xiplus_ximinus_sample_x_y_plot_function(
+        self,
+        ax_plus,
+        ax_minus,
+        version,
+        tomo_bin_a,
+        tomo_bin_b,
+        idx,
+        versions,
+        color,
+        offset,
+        times_theta,
+        alpha,
+    ):
+        """Plot the measured ξ± 2PCF for one version/tomographic-bin pair.
+
+        Uses the jackknife covariance from TreeCorr to plot the error bars. This function is fed into :meth:`plot_2pcf_tomography` as the ``x_y_plot_function`` argument.
+
+        Parameters
+        ----------
+        ax_plus, ax_minus : matplotlib.axes.Axes
+            Axes for the ξ+ and ξ- components.
+        version : str
+            Catalog version to plot.
+        tomo_bin_a, tomo_bin_b : int or str
+            Tomographic bin pair (``"all"`` for the non-tomographic case).
+        idx : int
+            Index of ``version`` within ``versions`` (used for the x-jitter).
+        versions : list
+            Full list of versions being plotted.
+        color : str
+            Colour for this version.
+        offset : float
+            Fractional jitter applied to θ for readability.
+        times_theta : bool
+            If True, plot θ·ξ± rather than ξ±.
+        alpha : float
+            Opacity of the plotted points/error bars.
+        """
+        # Get the measured 2PCF for this version and tomographic-bin pair.
+        gg = self.cat_ggs[version][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"]
+
+        # Angular scales of the measurement.
+        theta = gg.meanr
+
+        # Add the offset to the theta values for better visualisation.
+        jittered_theta = self._get_jittered_theta(theta, idx, len(versions), offset)
+
+        scale = theta if times_theta else 1
+
+        y_plus = gg.xip * scale
+        y_minus = gg.xim * scale
+        yerr_plus = np.sqrt(gg.varxip) * scale
+        yerr_minus = np.sqrt(gg.varxim) * scale
+
+        ax_plus.errorbar(
+            jittered_theta,
+            y_plus,
+            yerr=yerr_plus,
+            color=color,
+            alpha=alpha,
+            fmt="o",
+            markersize=3,
+            capsize=2,
+        )
+
+        ax_minus.errorbar(
+            jittered_theta,
+            y_minus,
+            yerr=yerr_minus,
+            color=color,
+            alpha=alpha,
+            fmt="o",
+            markersize=3,
+            capsize=2,
+        )
+
+    def _mapsq_mxsq_sample_x_y_plot_function(
+        self,
+        ax_plus,
+        ax_minus,
+        version,
+        tomo_bin_a,
+        tomo_bin_b,
+        idx,
+        versions,
+        color,
+        offset,
+        times_theta,
+        alpha,
+    ):
+        """Plot the aperture-mass dispersion ⟨M_ap²⟩ / ⟨M_×²⟩ for one bin pair.
+
+        Uses the jackknife covariance from TreeCorr to plot the error bars. This function is fed into :meth:`plot_2pcf_tomography` as the ``x_y_plot_function`` argument. The E-mode ⟨M_ap²⟩ is placed on the ``plus`` axis and the B-mode ⟨M_×²⟩ on the ``minus`` axis.
+
+        Parameters
+        ----------
+        ax_plus, ax_minus : matplotlib.axes.Axes
+            Axes for the E-mode (⟨M_ap²⟩) and B-mode (⟨M_×²⟩) components.
+        version : str
+            Catalog version to plot.
+        tomo_bin_a, tomo_bin_b : int or str
+            Tomographic bin pair (``"all"`` for the non-tomographic case).
+        idx : int
+            Index of ``version`` within ``versions`` (used for the x-jitter).
+        versions : list
+            Full list of versions being plotted.
+        color : str
+            Colour for this version.
+        offset : float
+            Fractional jitter applied to θ for readability.
+        times_theta : bool
+            If True, plot θ·⟨M²⟩ rather than ⟨M²⟩.
+        alpha : float
+            Opacity of the plotted points/error bars.
+        """
+        # Get the aperture-mass dispersion for this version and bin pair.
+        map2 = self.map2[version][f"tomo_bin_{tomo_bin_a}_tomo_bin_{tomo_bin_b}"]
+
+        # Angular scales of the measurement.
+        theta = self.map2["theta_map"]
+
+        # Add the offset to the theta values for better visualisation.
+        jittered_theta = self._get_jittered_theta(theta, idx, len(versions), offset)
+
+        scale = theta if times_theta else 1
+
+        y_plus = map2["mapsq"] * scale
+        y_minus = map2["mxsq"] * scale
+        # Both E- and B-mode share the same variance estimate.
+        yerr = np.sqrt(map2["varmapsq"]) * scale
+
+        ax_plus.errorbar(
+            jittered_theta,
+            y_plus,
+            yerr=yerr,
+            color=color,
+            alpha=alpha,
+            fmt="o",
+            markersize=3,
+            capsize=2,
+        )
+
+        ax_minus.errorbar(
+            jittered_theta,
+            y_minus,
+            yerr=yerr,
+            color=color,
+            alpha=alpha,
+            fmt="o",
+            markersize=3,
+            capsize=2,
+        )
