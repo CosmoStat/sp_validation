@@ -547,7 +547,7 @@ class PseudoClMixin:
         all_one_cov = cov_from_one_covariance(cov_one_cov, gaussian=False)
 
         key_to_update = "tomo" if tomography else "non_tomo"
-        self._pseudo_cls_onecov[ver].update(
+        self._pseudo_cls_onecov.setdefault(ver, {}).update(
             {
                 key_to_update: {
                     "gaussian_cov": gaussian_one_cov,

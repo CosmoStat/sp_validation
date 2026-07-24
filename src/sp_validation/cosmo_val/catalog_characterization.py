@@ -150,7 +150,9 @@ class CatalogCharacterizationMixin:
     @property
     def n_eff_gal(self):
         if not hasattr(self, "_n_eff_gal"):
-            self.calculate_n_eff_gal()
+            self.calculate_n_eff_gal(tomography=False)
+            if self.compute_tomography:
+                self.calculate_n_eff_gal(tomography=True)
         return self._n_eff_gal
 
     @property
