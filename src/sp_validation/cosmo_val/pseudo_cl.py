@@ -257,6 +257,7 @@ class PseudoClMixin:
             out_path_merged = self._output_path_pseudo_cl_cov(
                 ver, "iNKA", tomography=compute_tomography
             )
+            tomo_str = "tomo" if compute_tomography else "non_tomo"
 
             if compute_tomography:
                 tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
@@ -273,7 +274,9 @@ class PseudoClMixin:
                 self.print_done(
                     f"Skipping Pseudo-Cl iNKA covariance calculation, {out_path_merged} exists"
                 )
-                self._pseudo_cls[ver]["cov_iNKA"] = fits.open(out_path_merged)
+                self._pseudo_cls[ver][f"cov_iNKA_{tomo_str}"] = fits.open(
+                    out_path_merged
+                )
 
                 if load_all_block:
                     self.print_done("Loading all the iNKA covariance blocks")
@@ -567,7 +570,6 @@ class PseudoClMixin:
                     ]
 
             # Merge the covariance blocks
-            tomo_str = "tomo" if compute_tomography else "non_tomo"
             self._pseudo_cls[ver][f"cov_iNKA_{tomo_str}"] = self._merge_iNKA_covariance(
                 ver, tomography=compute_tomography
             )
