@@ -70,7 +70,7 @@ class PureEBMixin:
             Path to the covariance matrix for the reporting binning. Replaces the
             treecorr covariance matrix if provided, meaning that var_method has no
             effect on the results although it is still passed to
-            CosmologyValidation.calculate_2pcf.
+            CosmologyValidation.calculate_2pcf_version.
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology object to use for theoretical xi+/xi- predictions in the
             semi-analytical covariance calculation. Defaults to self.cosmo if not
@@ -112,13 +112,13 @@ class PureEBMixin:
         treecorr_config_int = self._binning(min_sep_int, max_sep_int, nbins_int)
 
         # Calculate correlation functions
-        ggs = self.calculate_2pcf(
+        ggs = self.calculate_2pcf_version(
             version,
             npatch=npatch,
             compute_tomography=compute_tomography,
             **treecorr_config,
         )
-        ggs_int = self.calculate_2pcf(
+        ggs_int = self.calculate_2pcf_version(
             version,
             npatch=npatch,
             compute_tomography=compute_tomography,

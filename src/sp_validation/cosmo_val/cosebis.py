@@ -103,7 +103,7 @@ class CosebisMixin:
             f"{max_sep_int} arcmin"
         )
 
-        ggs = self.calculate_2pcf(
+        ggs = self.calculate_2pcf_version(
             version,
             npatch=npatch,
             compute_tomography=compute_tomography,
@@ -144,7 +144,7 @@ class CosebisMixin:
                 print(f"Evaluating {len(generated_cuts)} scale cut combinations")
 
                 # Call b_modes function with scale cuts list
-                results = calculate_cosebis(
+                results[bin_key] = calculate_cosebis(
                     gg=ggs[bin_key],
                     nmodes=nmodes,
                     scale_cuts=generated_cuts,
@@ -152,13 +152,11 @@ class CosebisMixin:
                 )
             else:
                 # Single scale cut behavior: use full range
-                results = calculate_cosebis(
+                results[bin_key] = calculate_cosebis(
                     gg=ggs[bin_key], nmodes=nmodes, scale_cuts=None, cov_path=cov_path
                 )
                 # Extract single results dict from scale_cuts dictionary
-                results = next(iter(results.values()))
-
-            results[bin_key] = results  # Store results for this bin_key
+                results[bin_key] = next(iter(results[bin_key].values()))
 
         return results
 
@@ -241,7 +239,7 @@ class CosebisMixin:
         # Get or calculate results for this version
         if results is None:
             # Calculate COSEBIs using instance method
-            results = self.calculate_cosebis(
+            results_tomo = self.calculate_cosebis(
                 version,
                 min_sep_int=min_sep_int,
                 max_sep_int=max_sep_int,
@@ -256,6 +254,11 @@ class CosebisMixin:
                 max_sep=max_sep,
                 nbins=nbins,
             )
+            results = results_tomo[
+                "tomo_bin_all_tomo_bin_all"
+            ]  # LG: Extract non-tomographic results
+        elif isinstance(results, dict) and "tomo_bin_all_tomo_bin_all" in results:
+            results = results["tomo_bin_all_tomo_bin_all"]
 
         # Generate plots using specialized plotting functions
         # Extract single result for plotting if multiple scale cuts were evaluated
@@ -289,9 +292,12 @@ class CosebisMixin:
         if multiple_scale_cuts and len(results) > 1:
             # Create temporary gg object with correct binning for mapping
             treecorr_config_temp = self._binning(min_sep, max_sep, nbins)
-            gg_temp = self.calculate_2pcf(
+            ggs_temp = self.calculate_2pcf_version(
                 version, npatch=npatch, **treecorr_config_temp
             )
+            gg_temp = ggs_temp[
+                "tomo_bin_all_tomo_bin_all"
+            ]  # LG: Extract non-tomographic result
 
             plot_cosebis_scale_cut_heatmap(
                 results,

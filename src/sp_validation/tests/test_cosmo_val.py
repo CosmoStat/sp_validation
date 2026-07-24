@@ -512,7 +512,7 @@ class TestCosmologyValidation:
             **params,
         )
 
-        ggs = cv.calculate_2pcf(version)
+        ggs = cv.calculate_2pcf_version(version)
 
         # treecorr GGCorrelation with xi+/- on the configured angular grid
         # LG:Hardcoded to be non-tomographic for now

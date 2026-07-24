@@ -8,58 +8,48 @@ and plots. It depends on TreeCorr.
 
 import os
 
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
 import treecorr
+from astropy.io import fits
 from cs_util import plots as cs_plots
 
 
 class RealSpaceMixin:
-    def calculate_2pcf(
+    def calculate_2pcf_version(
         self,
         ver,
         npatch=None,
         compute_tomography=False,
-        #    save_fits=False,
         **treecorr_config,
     ):
         """
-        Calculate the two-point correlation function (2PCF) ξ± for a given catalog
+        Calculate the two-point correlation function (2PCF) ξ± for a single catalog
         version with TreeCorr.
 
+        This is the per-version child function. Use :meth:`calculate_2pcf` to run over every
+        version in ``self.versions`` in one call.
+
         By default the class instance's `npatch` and `treecorr_config` entries are
-        used to
-        initialize the TreeCorr Catalog and GGCorrelation objects, but may be
-        overridden
-        by passing keyword arguments.
+        used to initialize the TreeCorr Catalog and GGCorrelation objects, but may
+        be overridden by passing keyword arguments.
 
         Parameters:
             ver (str): The catalog version to process.
 
-            npatch (int, optional): The number of patches to use for the calculation.
-            Defaults to the instance's `npatch` attribute.
+            npatch (int, optional): The number of patches to use for the
+            calculation. Defaults to the instance's `npatch` attribute.
 
-            compute_tomography (bool, optional): Whether to compute tomographic correlations.
-            Defaults to False.
+            compute_tomography (bool, optional): Whether to compute tomographic
+            correlations. Defaults to False.
 
-            save_fits (bool, optional): Whether to save the ξ± results to FITS files.
-            Defaults to False.
-
-            **treecorr_config: Additional TreeCorr configuration parameters that will
-            override the instance's default `treecorr_config`. For example, `min_sep=1`.
+            **treecorr_config: Additional TreeCorr configuration parameters that
+            will override the instance's default `treecorr_config`. For example,
+            `min_sep=1`.
 
         Returns:
-            treecorr.GGCorrelation: The TreeCorr GGCorrelation object containing the
-            computed 2PCF results.
-
-        Notes:
-            - If the output file for the given configuration already exists, the
-              calculation is skipped, and the results are loaded from the file.
-            - If a patch file for the given configuration does not exist, it is
-              created during the process.
-            - FITS files for ξ+ and ξ− are saved with additional metadata in their
-              headers if `save_fits` is True.
+            dict: Mapping of ``"tomo_bin_{b1}_tomo_bin_{b2}"`` to the corresponding
+            treecorr.GGCorrelation object. For the non-tomographic case the single
+            key is ``"tomo_bin_all_tomo_bin_all"``.
         """
 
         npatch = npatch or self.npatch
@@ -70,12 +60,11 @@ class RealSpaceMixin:
 
         if compute_tomography:
             tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
+            if tomo_bin_ids is None or tomo_bin_pairs is None:
+                raise ValueError(f"Version {ver} does not have tomography information.")
             self.print_magenta(
                 f"Computing tomographic ξ± for {ver} with {len(tomo_bin_pairs)} bins."
             )
-
-            if tomo_bin_ids is None or tomo_bin_pairs is None:
-                raise ValueError(f"Version {ver} does not have tomography information.")
         else:
             self.print_magenta(f"Computing non-tomographic ξ± for {ver}.")
             tomo_bin_pairs = [("all", "all")]
@@ -83,381 +72,100 @@ class RealSpaceMixin:
         ggs = {f"tomo_bin_{b1}_tomo_bin_{b2}": None for b1, b2 in tomo_bin_pairs}
 
         # LG TO-DO: Change to sacc_io method
-        out_fname = self._output_path(
-            f"{ver}_xi_minsep={treecorr_config['min_sep']}_maxsep={treecorr_config['max_sep']}_nbins={treecorr_config['nbins']}_npatch={npatch}.txt"
-        )
-        if os.path.exists(out_fname):
-            self.print_done(f"Skipping 2PCF calculation, {out_fname} exists.")
-            for bin1, bin2 in tomo_bin_pairs:
-                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = treecorr.GGCorrelation(
-                    treecorr_config
+
+        patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
+
+        cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
+        g1, g2 = self._calibrated_g(ver)
+        w = self._read_shear_cols(ver, "w_col")
+
+        for bin1, bin2 in tomo_bin_pairs:
+            gg = treecorr.GGCorrelation(treecorr_config)
+
+            # Load data and create a catalog
+            if bin1 == "all" and bin2 == "all":
+                mask_bin1 = np.ones(len(g1), dtype=bool)
+            else:
+                mask_bin1 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin1
+
+            cat_gal1 = treecorr.Catalog(
+                ra=cat_gal["RA"][mask_bin1],
+                dec=cat_gal["Dec"][mask_bin1],
+                g1=g1[mask_bin1],
+                g2=g2[mask_bin1],
+                w=w[mask_bin1],
+                ra_units=self.treecorr_config["ra_units"],
+                dec_units=self.treecorr_config["dec_units"],
+                npatch=npatch,
+                patch_centers=patch_file if os.path.exists(patch_file) else None,
+            )
+            cat_gal2 = None
+
+            if bin1 != bin2:
+                mask_bin2 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin2
+                cat_gal2 = treecorr.Catalog(
+                    ra=cat_gal["RA"][mask_bin2],
+                    dec=cat_gal["Dec"][mask_bin2],
+                    g1=g1[mask_bin2],
+                    g2=g2[mask_bin2],
+                    w=w[mask_bin2],
+                    ra_units=self.treecorr_config["ra_units"],
+                    dec_units=self.treecorr_config["dec_units"],
+                    npatch=npatch,
+                    patch_centers=patch_file if os.path.exists(patch_file) else None,
                 )
-                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"].read(out_fname)
 
-        else:
-            patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
+            # If no patch file exists, save the current patches
+            if not os.path.exists(patch_file):
+                cat_gal1.write_patch_centers(patch_file)
 
-            for bin1, bin2 in tomo_bin_pairs:
-                gg = treecorr.GGCorrelation(treecorr_config)
-
-                # Load data and create a catalog
-                with self.results[ver].temporarily_read_data():
-                    if bin1 == "all" and bin2 == "all":
-                        mask_bin1 = np.ones(
-                            len(self.results[ver].dat_shear), dtype=bool
-                        )
-                    else:
-                        mask_bin1 = self.results[ver].dat_shear["tom_bin_id"] == bin1
-
-                    g1, g2 = self._calibrated_g(ver)
-                    w = self._read_shear_cols(ver, "w_col")
-
-                    cat_gal1 = treecorr.Catalog(
-                        ra=self.results[ver].dat_shear["RA"][mask_bin1],
-                        dec=self.results[ver].dat_shear["Dec"][mask_bin1],
-                        g1=g1[mask_bin1],
-                        g2=g2[mask_bin1],
-                        w=w[mask_bin1],
-                        ra_units=self.treecorr_config["ra_units"],
-                        dec_units=self.treecorr_config["dec_units"],
-                        npatch=npatch,
-                        patch_centers=patch_file
-                        if os.path.exists(patch_file)
-                        else None,
-                    )
-                    cat_gal2 = None
-
-                    if bin1 != bin2:
-                        mask_bin2 = self.results[ver].dat_shear["tom_bin_id"] == bin2
-                        cat_gal2 = treecorr.Catalog(
-                            ra=self.results[ver].dat_shear["RA"][mask_bin2],
-                            dec=self.results[ver].dat_shear["Dec"][mask_bin2],
-                            g1=g1[mask_bin2],
-                            g2=g2[mask_bin2],
-                            w=w[mask_bin2],
-                            ra_units=self.treecorr_config["ra_units"],
-                            dec_units=self.treecorr_config["dec_units"],
-                            npatch=npatch,
-                            patch_centers=patch_file
-                            if os.path.exists(patch_file)
-                            else None,
-                        )
-
-                    # If no patch file exists, save the current patches
-                    if not os.path.exists(patch_file):
-                        cat_gal1.write_patch_centers(patch_file)
-
-                # Process the catalog & write the correlation functions
-                gg.process(cat_gal1, cat2=cat_gal2)
-                ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
-                # LG TO-DO: No longer writing out text file, change to sacc_io method
-                # gg.write(out_fname, write_patch_results=True, write_cov=True)
-
-        # LG: FITS writeout function deprecated, now writing to SACC format
-
-        # Save xi_p and xi_m results to fits file
-        # (moved outside so it runs even if txt exists)
-        # if save_fits:
-        #     lst = np.arange(1, treecorr_config["nbins"] + 1)
-
-        #     col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
-        #     col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
-        #     col3 = fits.Column(name="ANGBIN", format="K", array=lst)
-        #     col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
-        #     col5 = fits.Column(name="ANG", format="D", unit="arcmin", array=gg.meanr)
-        #     coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-        #     xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
-
-        #     col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
-        #     coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-        #     ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
-
-        #     # append xi_plus header info
-        #     xiplus_dict = {
-        #         "2PTDATA": "T",
-        #         "QUANT1": "G+R",
-        #         "QUANT2": "G+R",
-        #         "KERNEL_1": "NZ_SOURCE",
-        #         "KERNEL_2": "NZ_SOURCE",
-        #         "WINDOWS": "SAMPLE",
-        #     }
-        #     for key in xiplus_dict:
-        #         xiplus_hdu.header[key] = xiplus_dict[key]
-
-        #         col1 = fits.Column(name="BIN1", format="K", array=np.ones(len(lst)))
-        #         col2 = fits.Column(name="BIN2", format="K", array=np.ones(len(lst)))
-        #         col3 = fits.Column(name="ANGBIN", format="K", array=lst)
-        #         col4 = fits.Column(name="VALUE", format="D", array=gg.xip)
-        #         col5 = fits.Column(name="ANG", format="D", unit="arcmin", array=gg.rnom)
-        #         coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-        #         xiplus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_PLUS")
-
-        #         col4 = fits.Column(name="VALUE", format="D", array=gg.xim)
-        #         coldefs = fits.ColDefs([col1, col2, col3, col4, col5])
-        #         ximinus_hdu = fits.BinTableHDU.from_columns(coldefs, name="XI_MINUS")
-
-        #         # append xi_plus header info
-        #         xiplus_dict = {
-        #             "2PTDATA": "T",
-        #             "QUANT1": "G+R",
-        #             "QUANT2": "G+R",
-        #             "KERNEL_1": "NZ_SOURCE",
-        #             "KERNEL_2": "NZ_SOURCE",
-        #             "WINDOWS": "SAMPLE",
-        #         }
-        #         for key in xiplus_dict:
-        #             xiplus_hdu.header[key] = xiplus_dict[key]
-        #     # Use same naming format as txt output
-        #     fits_base = out_fname.replace(".txt", "").replace("_xi_", "_")
-        #     xiplus_hdu.writeto(
-        #         f"{fits_base.replace(ver, f'xi_plus_{ver}')}.fits",
-        #         overwrite=True,
-        #     )
-
-        #     # append xi_minus header info
-        #     ximinus_dict = {**xiplus_dict, "QUANT1": "G-R", "QUANT2": "G-R"}
-        #     for key in ximinus_dict:
-        #         ximinus_hdu.header[key] = ximinus_dict[key]
-        #     ximinus_hdu.writeto(
-        #         f"{fits_base.replace(ver, f'xi_minus_{ver}')}.fits",
-        #         overwrite=True,
-        #     )
-
-        # Add correlation object to class
-        if not hasattr(self, "cat_ggs"):
-            self.cat_ggs = {}
-        self.cat_ggs[ver] = ggs
+            # Process the catalog & write the correlation functions
+            gg.process(cat_gal1, cat2=cat_gal2)
+            ggs[f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = gg
 
         self.print_done(f"Done 2PCF for {ver}.")
 
         return ggs
 
-    def plot_2pcf(self):
-        # Plot of n_pairs
-        plt.subplots(ncols=1, nrows=1)
+    def calculate_2pcf(
+        self,
+        npatch=None,
+        compute_tomography=False,
+        **treecorr_config,
+    ):
+        """
+        Calculate the 2PCF ξ± for every catalog version in ``self.versions``.
+
+        Parent function that iterates over ``self.versions`` and delegates the
+        per-version computation to :meth:`calculate_2pcf_version`. Results are stored
+        in ``self.cat_ggs`` keyed by version.
+
+        Parameters:
+            npatch (int, optional): Number of patches to use; defaults to the
+            instance's `npatch` attribute.
+
+            compute_tomography (bool, optional): Whether to compute tomographic
+            correlations. Defaults to False.
+
+            **treecorr_config: Additional TreeCorr configuration parameters passed
+            through to each per-version call.
+
+        Returns:
+            dict: ``self.cat_ggs``, mapping each version to its
+            ``{"tomo_bin_{b1}_tomo_bin_{b2}": treecorr.GGCorrelation}`` dict.
+        """
+        self.cat_ggs = {}
         for ver in self.versions:
-            # FORCE non-tomography for now
-            self.calculate_2pcf(ver)
-            plt.plot(
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].npairs,
-                label=ver,
-                ls=self.cc[ver]["ls"],
-                color=self.cc[ver]["colour"],
-            )
-        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-        plt.ylabel(r"$n_{\rm pair}$")
-        plt.legend()
-        out_path = self._output_path("n_pair.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        self.print_done(f"n_pair plot saved to {out_path}")
-
-        # Plot of xi_+
-        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-        for idx, ver in enumerate(self.versions):
-            plt.errorbar(
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
-                * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip,
-                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip),
-                label=ver,
-                ls=self.cc[ver]["ls"],
-                color=self.cc[ver]["colour"],
-            )
-        plt.xscale("log")
-        plt.yscale("log")
-        plt.legend()
-        plt.ticklabel_format(axis="y")
-        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-        plt.xlim([self.theta_min_plot, self.theta_max_plot])
-        plt.ylabel(r"$\xi_+(\theta)$")
-        out_path = self._output_path("xi_p.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        self.print_done(f"xi_plus plot saved to {out_path}")
-
-        # Plot of xi_-
-        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-        for idx, ver in enumerate(self.versions):
-            plt.errorbar(
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
-                * cs_plots.dx(idx, fx=1.05, nx=len(ver)),
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xim,
-                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxim),
-                label=ver,
-                ls=self.cc[ver]["ls"],
-                color=self.cc[ver]["colour"],
-            )
-        plt.xscale("log")
-        plt.yscale("log")
-        plt.legend()
-        plt.ticklabel_format(axis="y")
-        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-        plt.xlim([self.theta_min_plot, self.theta_max_plot])
-        plt.ylabel(r"$\xi_-(\theta)$")
-        out_path = self._output_path("xi_m.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        self.print_done(f"xi_minus plot saved to {out_path}")
-
-        # Plot of xi_+(theta) * theta
-        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-        for idx, ver in enumerate(self.versions):
-            plt.errorbar(
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip
-                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
-                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip)
-                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
-                label=ver,
-                ls=self.cc[ver]["ls"],
-                color=self.cc[ver]["colour"],
-            )
-        plt.xscale("log")
-        plt.legend()
-        plt.ticklabel_format(axis="y")
-        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-        plt.xlim([self.theta_min_plot, self.theta_max_plot])
-        plt.ylabel(r"$\theta \xi_+(\theta)$")
-        out_path = self._output_path("xi_p_theta.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        self.print_done(f"xi_plus_theta plot saved to {out_path}")
-
-        # Plot of xi_- * theta
-        plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-        for idx, ver in enumerate(self.versions):
-            plt.errorbar(
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
-                * cs_plots.dx(idx, len(ver)),
-                self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xim
-                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
-                yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxim)
-                * self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr,
-                label=ver,
-                ls=self.cc[ver]["ls"],
-                color=self.cc[ver]["colour"],
-            )
-        plt.xscale("log")
-        plt.legend()
-        plt.ticklabel_format(axis="y")
-        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-        plt.xlim([self.theta_min_plot, self.theta_max_plot])
-        plt.ylabel(r"$\theta \xi_-(\theta)$")
-        out_path = self._output_path("xi_m_theta.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        self.print_done(f"xi_minus_theta plot saved to {out_path}")
-
-        # Plot of xi_+ with and without xi_psf_sys
-        # but skip if xi_psf_sys is not calculated since that takes forever
-        if hasattr(self, "_xi_psf_sys"):
-            for idx, ver in enumerate(self.versions):
-                plt.subplots(ncols=1, nrows=1, figsize=(7, 7))
-                plt.errorbar(
-                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
-                    * cs_plots.dx(idx, len(ver)),
-                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip,
-                    yerr=np.sqrt(self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip),
-                    label=r"$\xi_+$",
-                    ls="solid",
-                    color="green",
-                )
-                plt.errorbar(
-                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
-                    * cs_plots.dx(idx, len(ver)),
-                    self.xi_psf_sys[ver]["mean"],
-                    yerr=np.sqrt(self.xi_psf_sys[ver]["var"]),
-                    label=r"$\xi^{\rm psf}_{+, {\rm sys}}$",
-                    ls="dotted",
-                    color="red",
-                )
-                plt.errorbar(
-                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].meanr
-                    * cs_plots.dx(idx, len(ver)),
-                    self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].xip
-                    + self.xi_psf_sys[ver]["mean"],
-                    yerr=np.sqrt(
-                        self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"].varxip
-                        + self.xi_psf_sys[ver]["var"]
-                    ),
-                    label=r"$\xi_+ + \xi^{\rm psf}_{+, {\rm sys}}$",
-                    ls="dashdot",
-                    color="magenta",
-                )
-                plt.xscale("log")
-                plt.yscale("log")
-                plt.legend()
-                plt.ticklabel_format(axis="y")
-                plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-                plt.xlim([self.theta_min_plot, self.theta_max_plot])
-                plt.ylim(1e-8, 5e-4)
-                plt.ylabel(r"$\xi_+(\theta)$")
-                out_path = self._output_path(f"xi_p_xi_psf_sys_{ver}.png")
-                cs_plots.savefig(out_path, close_fig=False)
-                cs_plots.show()
-                self.print_done(f"xi_plus_xi_psf_sys {ver} plot saved to {out_path}")
-
-    def plot_ratio_xi_sys_xi(self, threshold=0.1, offset=0.02):
-
-        plt.subplots(ncols=1, nrows=1, figsize=(10, 7))
-
-        for idx, ver in enumerate(self.versions):
-            self.calculate_2pcf(ver)
-            xi_psf_sys = self.xi_psf_sys[ver]
-            gg = self.cat_ggs[ver]["tomo_bin_all_tomo_bin_all"]
-
-            ratio = xi_psf_sys["mean"] / gg.xip
-            ratio_err = np.sqrt(
-                (np.sqrt(xi_psf_sys["var"]) / gg.xip) ** 2
-                + (xi_psf_sys["mean"] * np.sqrt(gg.varxip) / gg.xip**2) ** 2
+            self.cat_ggs[ver] = self.calculate_2pcf_version(
+                ver,
+                npatch=npatch,
+                compute_tomography=compute_tomography,
+                **treecorr_config,
             )
 
-            theta = gg.meanr
-            jittered_theta = theta * (1 + idx * offset)
+        # LG TO-DO: No longer writing out text file, change to sacc_io method
 
-            plt.errorbar(
-                jittered_theta,
-                ratio,
-                yerr=ratio_err,
-                label=ver,
-                ls=self.cc[ver]["ls"],
-                color=self.cc[ver]["colour"],
-                fmt=self.cc[ver].get("marker", None),
-                capsize=5,
-            )
-
-        plt.fill_between(
-            [self.theta_min_plot, self.theta_max_plot],
-            -threshold,
-            +threshold,
-            color="black",
-            alpha=0.1,
-            label=f"{threshold:.0%} threshold",
-        )
-        plt.plot(
-            [self.theta_min_plot, self.theta_max_plot],
-            [threshold, threshold],
-            ls="dashed",
-            color="black",
-        )
-        plt.plot(
-            [self.theta_min_plot, self.theta_max_plot],
-            [-threshold, -threshold],
-            ls="dashed",
-            color="black",
-        )
-        plt.xscale("log")
-        plt.xlabel(rf"$\theta$ [{self.treecorr_config['sep_units']}]")
-        plt.ylabel(r"$\xi^{\rm psf}_{+, {\rm sys}} / \xi_+$")
-        plt.gca().yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
-        plt.legend()
-        plt.title("Ratio of PSF systematics to cosmic shear signal")
-        out_path = self._output_path("ratio_xi_sys_xi.png")
-        cs_plots.savefig(out_path, close_fig=False)
-        cs_plots.show()
-        print(f"Ratio of xi_psf_sys to xi plot saved to {out_path}")
+        return self.cat_ggs
 
     def calculate_aperture_mass_dispersion(
         self,
@@ -478,88 +186,73 @@ class RealSpaceMixin:
         for ver in self.versions:
             if compute_tomography:
                 tomo_bin_ids, tomo_bin_pairs = self._get_tomo_bins(ver)
-                self.print_magenta(
-                    f"Computing MAP for {ver} with {len(tomo_bin_pairs)} bins."
-                )
-
                 if tomo_bin_ids is None or tomo_bin_pairs is None:
                     raise ValueError(
                         f"Version {ver} does not have tomography information."
                     )
+                self.print_magenta(
+                    f"Computing MAP for {ver} with {len(tomo_bin_pairs)} bins."
+                )
             else:
                 self.print_magenta(f"Computing non-tomographic MAP for {ver}.")
 
                 tomo_bin_pairs = [("all", "all")]
 
             self._map2.setdefault(ver, {})
+            cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
             # LG TO-DO: Change to sacc_io method
-            out_fname = self._output_path(f"xi_for_map2_{ver}.txt")
-            if os.path.exists(out_fname):
-                self.print_green(f"Skipping xi for Map2, {out_fname} exists")
-                for bin1, bin2 in tomo_bin_pairs:
-                    self._map2[ver][f"tomo_bin_{bin1}_{bin2}"] = treecorr.GGCorrelation(
-                        treecorr_config
+
+            g1, g2 = self._calibrated_g(ver)
+            w = self._read_shear_cols(ver, "w_col")
+
+            for bin1, bin2 in tomo_bin_pairs:
+                gg = treecorr.GGCorrelation(treecorr_config)
+
+                # Load data and create a catalog
+                if bin1 == "all" and bin2 == "all":
+                    mask_bin1 = np.ones(len(cat_gal), dtype=bool)
+                else:
+                    mask_bin1 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin1
+
+                cat_gal1 = treecorr.Catalog(
+                    ra=cat_gal["RA"][mask_bin1],
+                    dec=cat_gal["Dec"][mask_bin1],
+                    g1=g1[mask_bin1],
+                    g2=g2[mask_bin1],
+                    w=w[mask_bin1],
+                    ra_units=self.treecorr_config["ra_units"],
+                    dec_units=self.treecorr_config["dec_units"],
+                    npatch=npatch,
+                )
+                cat_gal2 = None
+
+                if bin1 != bin2:
+                    mask_bin2 = cat_gal[self.cc[ver]["shear"]["tomo_bin_col"]] == bin2
+                    cat_gal2 = treecorr.Catalog(
+                        ra=cat_gal["RA"][mask_bin2],
+                        dec=cat_gal["Dec"][mask_bin2],
+                        g1=g1[mask_bin2],
+                        g2=g2[mask_bin2],
+                        w=w[mask_bin2],
+                        ra_units=self.treecorr_config["ra_units"],
+                        dec_units=self.treecorr_config["dec_units"],
+                        npatch=npatch,
                     )
-                    self._map2[ver][f"tomo_bin_{bin1}_{bin2}"].read(out_fname)
 
-            else:
-                for bin1, bin2 in tomo_bin_pairs:
-                    gg = treecorr.GGCorrelation(treecorr_config)
+                gg.process(cat_gal1, cat2=cat_gal2)
 
-                    # Load data and create a catalog
-                    with self.results[ver].temporarily_read_data():
-                        if bin1 == "all" and bin2 == "all":
-                            mask_bin1 = np.ones(
-                                len(self.results[ver].dat_shear), dtype=bool
-                            )
-                        else:
-                            mask_bin1 = (
-                                self.results[ver].dat_shear["tom_bin_id"] == bin1
-                            )
-
-                        g1, g2 = self._calibrated_g(ver)
-                        w = self._read_shear_cols(ver, "w_col")
-
-                        cat_gal1 = treecorr.Catalog(
-                            ra=self.results[ver].dat_shear["RA"][mask_bin1],
-                            dec=self.results[ver].dat_shear["Dec"][mask_bin1],
-                            g1=g1[mask_bin1],
-                            g2=g2[mask_bin1],
-                            w=w[mask_bin1],
-                            ra_units=self.treecorr_config["ra_units"],
-                            dec_units=self.treecorr_config["dec_units"],
-                            npatch=npatch,
-                        )
-                        cat_gal2 = None
-
-                        if bin1 != bin2:
-                            mask_bin2 = (
-                                self.results[ver].dat_shear["tom_bin_id"] == bin2
-                            )
-                            cat_gal2 = treecorr.Catalog(
-                                ra=self.results[ver].dat_shear["RA"][mask_bin2],
-                                dec=self.results[ver].dat_shear["Dec"][mask_bin2],
-                                g1=g1[mask_bin2],
-                                g2=g2[mask_bin2],
-                                w=w[mask_bin2],
-                                ra_units=self.treecorr_config["ra_units"],
-                                dec_units=self.treecorr_config["dec_units"],
-                                npatch=npatch,
-                            )
-                    gg.process(cat_gal1, cat2=cat_gal2)
-
-                    mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
-                        R=theta_map,
-                        m2_uform="Schneider",
-                    )
-                    self._map2[ver][f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = {
-                        "mapsq": mapsq,
-                        "mapsq_im": mapsq_im,
-                        "mxsq": mxsq,
-                        "mxsq_im": mxsq_im,
-                        "varmapsq": varmapsq,
-                    }
+                mapsq, mapsq_im, mxsq, mxsq_im, varmapsq = gg.calculateMapSq(
+                    R=theta_map,
+                    m2_uform="Schneider",
+                )
+                self._map2[ver][f"tomo_bin_{bin1}_tomo_bin_{bin2}"] = {
+                    "mapsq": mapsq,
+                    "mapsq_im": mapsq_im,
+                    "mxsq": mxsq,
+                    "mxsq_im": mxsq_im,
+                    "varmapsq": varmapsq,
+                }
             self.print_done(f"Done aperture-mass dispersion for {ver}.")
 
     @property
@@ -568,10 +261,12 @@ class RealSpaceMixin:
             self.calculate_aperture_mass_dispersion()
         return self._map2
 
+    # LG: plotting functions removed, perhaps can use Sacha's implementation in psf_systematics.py instead
+
     def plot_aperture_mass_dispersion(self):
         for mode in ["mapsq", "mapsq_im", "mxsq", "mxsq_im"]:
             x = [self.map2["theta_map"] for ver in self.versions]
-            # FORCE non-tomography for now
+            # LG: FORCE non-tomography for now
             y = [
                 self.map2[ver]["tomo_bin_all_tomo_bin_all"][mode]
                 for ver in self.versions
