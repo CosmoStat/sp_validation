@@ -1019,7 +1019,11 @@ class PseudoClMixin:
         config["cosmo"]["w0"] = str(cosmo["w0"])
         config["cosmo"]["wa"] = str(cosmo["wa"])
         config["cosmo"]["neff"] = str(cosmo["Neff"])
-        config["cosmo"]["m_nu"] = str(cosmo["m_nu"])
+        config["cosmo"]["m_nu"] = str(
+            np.sum(
+                cosmo["m_nu"]
+            )  # cosmo["m_nu"] is an array of neutrino masses in eV. OneCovariance expects the sum of neutrino masses in eV.
+        )
 
         # Update powspec evaluation section
         cosmo_dict = cosmo.to_dict()
