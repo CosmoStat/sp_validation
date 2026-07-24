@@ -76,8 +76,9 @@ class RealSpaceMixin:
         patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
 
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
-        g1, g2 = self._calibrated_g(ver)
-        w = self._read_shear_cols(ver, "w_col")
+        with self.results[ver].temporarily_read_data():
+            g1, g2 = self._calibrated_g(ver)
+            w = self._read_shear_cols(ver, "w_col")
 
         for bin1, bin2 in tomo_bin_pairs:
             gg = treecorr.GGCorrelation(treecorr_config)
@@ -202,9 +203,9 @@ class RealSpaceMixin:
             cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
 
             # LG TO-DO: Change to sacc_io method
-
-            g1, g2 = self._calibrated_g(ver)
-            w = self._read_shear_cols(ver, "w_col")
+            with self.results[ver].temporarily_read_data():
+                g1, g2 = self._calibrated_g(ver)
+                w = self._read_shear_cols(ver, "w_col")
 
             for bin1, bin2 in tomo_bin_pairs:
                 gg = treecorr.GGCorrelation(treecorr_config)
