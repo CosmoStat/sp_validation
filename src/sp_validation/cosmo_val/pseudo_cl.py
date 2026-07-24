@@ -984,12 +984,50 @@ class PseudoClMixin:
         config["redshift"]["z_directory"] = redshift_distr_folder
         config["redshift"]["zlens_file"] = redshift_distr_base
 
+        # TODO: add an update of the config file cosmological parameters using the cosmo object
+        self._update_onecov_cosmo_params(config, self.cosmo)
+
         # Update output directory
         config["output settings"]["directory"] = out_dir
 
         # Save the modified configuration
         with open(config_path, "w") as f:
             config.write(f)
+
+    def _update_onecov_cosmo_params(self, config, cosmo):
+        """
+        Update the cosmological parameters in the OneCovariance configuration.
+
+        Parameters
+        ----------
+        config : configparser.ConfigParser
+            The configuration object to update.
+        cosmo
+            The cosmology object containing the parameters to set.
+        """
+        # Update cosmo params section
+        config["cosmo"]["h"] = str(cosmo["H0"] / 100.0)
+        config["cosmo"]["omega_m"] = str(cosmo["Omega_m"])
+        config["cosmo"]["omega_b"] = str(cosmo["Omega_b"])
+        config["cosmo"]["omega_de"] = str(cosmo["Omega_de"])
+        config["cosmo"]["sigma8"] = str(cosmo.sigma8())
+        config["cosmo"]["ns"] = str(cosmo["n_s"])
+        config["cosmo"]["w0"] = str(cosmo["w0"])
+        config["cosmo"]["wa"] = str(cosmo["wa"])
+        config["cosmo"]["neff"] = str(cosmo["Neff"])
+        config["cosmo"]["m_nu"] = str(cosmo["m_nu"])
+
+        # Update powspec evaluation section
+        cosmo_dict = cosmo.to_dict()
+
+        config["powspec evaluation"]["non_linear_model"] = str(
+            cosmo_dict.get("matter_power_spectrum")
+        )
+        config["powspec evaluation"]["HMCode_logT_AGN"] = str(
+            cosmo_dict.get("extra_parameters", {})
+            .get("camb", {})
+            .get("HMCode_logT_AGN")
+        )
 
     def _load_onecovariance_cov(self, out_dir, ver, tomography):
         self.print_cyan(f"Loading OneCovariance results from {out_dir}")
