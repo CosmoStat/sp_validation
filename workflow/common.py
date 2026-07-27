@@ -30,6 +30,8 @@ WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
     "blind": r"[ABC]",
     "nbins": r"\d+",
+    # Without this, npatch greedily swallows a trailing {tomo_suffix}.
+    "npatch": r"\d+",
     "min_sep": r"[0-9.]+",
     "max_sep": r"[0-9.]+",
     "gaussian": r"(g|ng)",
@@ -37,6 +39,8 @@ WILDCARD_CONSTRAINTS = {
     "block_pm": r"(\+\+|--|\+-)",
     "block_i": r"[123]",
     "mask_suffix": r"(_masked)?",
+    # Empty means non-tomographic, so existing paths are unchanged.
+    "tomo_suffix": r"(_tomo)?",
     "mock_id": r"\d{5}",
     "nside": r"\d+",
 }
@@ -80,8 +84,15 @@ def resolve_covariance_version(version):
 # Keep the two in sync by construction: covariance_base() formats this string.
 COV_BASE_TEMPLATE = (
     "covariance_{version}_{blind}_{gaussian}"
-    "_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_{probe}{mask_suffix}"
+    "_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_{probe}"
+    "{mask_suffix}{tomo_suffix}"
 )
+
+# Tomographic covariances are defined for cosmic shear only. The pattern above
+# has to carry {tomo_suffix} for every probe (a wildcard cannot be conditional
+# on another wildcard), so the restriction is enforced in covariance_base()
+# instead — every dir/path/base helper routes through it.
+TOMO_PROBES = {"wl"}
 
 
 def cov_output(suffix):
@@ -111,6 +122,7 @@ def covariance_base(
     nbins=None,
     probe=None,
     mask_suffix=None,
+    tomo_suffix=None,
     resolve_version=True,
     fiducial=None,
     default_mask_suffix=None,
@@ -126,6 +138,12 @@ def covariance_base(
         mask_suffix = (
             DEFAULT_MASK_SUFFIX if default_mask_suffix is None else default_mask_suffix
         )
+    tomo_suffix = tomo_suffix or ""
+    if tomo_suffix and probe not in TOMO_PROBES:
+        raise ValueError(
+            f"Tomographic covariance is only defined for probe in {sorted(TOMO_PROBES)}, "
+            f"got probe={probe!r} with tomo_suffix={tomo_suffix!r}."
+        )
     cov_version = resolve_covariance_version(version) if resolve_version else version
     return COV_BASE_TEMPLATE.format(
         version=cov_version,
@@ -136,6 +154,7 @@ def covariance_base(
         nbins=nbins,
         probe=probe,
         mask_suffix=mask_suffix,
+        tomo_suffix=tomo_suffix,
     )
 
 
@@ -148,6 +167,7 @@ def covariance_dir(
     nbins=None,
     probe=None,
     mask_suffix=None,
+    tomo_suffix=None,
     resolve_version=True,
 ):
     """Construct covariance directory path."""
@@ -160,6 +180,7 @@ def covariance_dir(
         nbins,
         probe,
         mask_suffix,
+        tomo_suffix,
         resolve_version=resolve_version,
     )
     return str(COSMO_INFERENCE / f"data/covariance/{base}")
@@ -174,6 +195,7 @@ def covariance_path(
     nbins=None,
     probe=None,
     mask_suffix=None,
+    tomo_suffix=None,
     suffix=".dat",
     resolve_version=True,
 ):
@@ -187,6 +209,7 @@ def covariance_path(
         nbins,
         probe,
         mask_suffix,
+        tomo_suffix,
         resolve_version=resolve_version,
     )
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")

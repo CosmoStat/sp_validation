@@ -100,15 +100,15 @@ rule covariance_ini_onecov:
     params:
         outdir=lambda w: covariance_dir(
             w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, resolve_version=False,
+            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
         ),
         out_filename=lambda w: covariance_base(
             w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, resolve_version=False,
+            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
         ) + ".dat",
         out_plot_filename=lambda w: covariance_base(
             w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, resolve_version=False,
+            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
         ) + "_corr_plot.pdf",
         ng_value=lambda w: "1" if w.gaussian == "ng" else "0",
         do_ggl=lambda w: str(w.probe in ("ggl", "3x2pt")),
@@ -199,10 +199,8 @@ ellipticity_dispersion = {params.sigma_e_param}
 {params.n_e_clust_line}
 
 [redshift]
-zlens_directory = /n23data1/n06data/lgoh/scratch/UNIONS/OneCovariance/input/redshift_distribution/
-# {params.nz_dir}
-zlens_file = K1000_NS_V1.0.0A_ugriZYJHKs_photoz_SG_mask_LF_svn_309c_2Dbins_v2_goldclasses_THELI_INT_DIRcols_Fid_blindC_TOMO1_Nz.ascii,K1000_NS_V1.0.0A_ugriZYJHKs_photoz_SG_mask_LF_svn_309c_2Dbins_v2_goldclasses_THELI_INT_DIRcols_Fid_blindC_TOMO2_Nz.ascii
-# {params.nz_lens}
+zlens_directory = {params.nz_dir}
+zlens_file = {params.nz_lens}
 zclust_file = {params.nz_clust}
 value_loc_in_lensbin = mid
 value_loc_in_clustbin = mid
@@ -274,11 +272,12 @@ rule covariance_onecov:
     params:
         outdir=lambda w: covariance_dir(
             w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, resolve_version=False,
+            w.probe, w.mask_suffix, w.tomo_suffix, resolve_version=False,
         ),
         ini_path=lambda w: covariance_path(
             w.version, w.blind, w.gaussian, w.min_sep, w.max_sep, w.nbins,
-            w.probe, w.mask_suffix, suffix=".ini", resolve_version=False,
+            w.probe, w.mask_suffix, w.tomo_suffix, suffix=".ini",
+            resolve_version=False,
         ),
         onecov=config["tools"]["onecov_executable"],
         python_executable=config["tools"]["python_executable"],
@@ -368,13 +367,13 @@ rule generate_glass_mock_rhotau_samples:
         """
 
 
-def fiducial_covariance_outputs(mask_suffix="", probe=None):
+def fiducial_covariance_outputs(mask_suffix="", probe=None, tomo_suffix=""):
     """Return processed covariance files for fiducial version/blind."""
     probe = probe or DEFAULT_PROBE
     path = covariance_path(
         FIDUCIAL["version"], FIDUCIAL["blind"], FIDUCIAL["gaussian"],
         FIDUCIAL["min_sep"], FIDUCIAL["max_sep"], FIDUCIAL["nbins"],
-        probe, mask_suffix,
+        probe, mask_suffix, tomo_suffix,
     )
     return path
 

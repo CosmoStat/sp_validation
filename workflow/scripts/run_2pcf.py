@@ -12,10 +12,11 @@ orchestration:
         --cat-config /path/to/cosmo_val/cat_config.yaml \
         --out <output_dir>
 
-The measurement itself is unchanged — ``CosmologyValidation.calculate_2pcf``
-does the TreeCorr work and writes the ``.txt`` dump plus ξ+/ξ- FITS files into
-``output_dir``. ``output_dir`` is passed explicitly (rather than via the
-``COSMO_VAL`` env hook) so lc can point each run at its own ``{output}`` tree.
+``CosmologyValidation.calculate_2pcf`` does the TreeCorr work and returns the
+ξ± ``GGCorrelation`` objects in memory; it no longer writes the ``.txt`` dump
+or the ξ+/ξ- FITS files. ``output_dir`` is still passed explicitly (rather than
+via the ``COSMO_VAL`` env hook) so the patch-centre file lands in each run's own
+``{output}`` tree.
 """
 
 import argparse
@@ -25,15 +26,15 @@ from sp_validation.cosmo_val import CosmologyValidation
 
 def run_2pcf(
     ver,
+    npatch,
+    compute_tomography,
     min_sep,
     max_sep,
     nbins,
-    npatch,
     cat_config,
     output_dir,
-    save_fits=True,
 ):
-    """Measure ξ±(θ) for ``ver`` and write it under ``output_dir``.
+    """Measure ξ±(θ) for ``ver``.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
@@ -47,9 +48,8 @@ def run_2pcf(
         output_dir=output_dir,
     )
     return cv.calculate_2pcf(
-        ver=ver,
         npatch=npatch,
-        save_fits=save_fits,
+        compute_tomography=compute_tomography,
         min_sep=min_sep,
         max_sep=max_sep,
         nbins=nbins,
@@ -60,17 +60,17 @@ def _from_snakemake(smk):
     p = smk.params
     run_2pcf(
         ver=p["ver"],
+        npatch=int(p["npatch"]),
+        compute_tomography=p.get("compute_tomography", False),
         min_sep=float(p["min_sep"]),
         max_sep=float(p["max_sep"]),
         nbins=int(p["nbins"]),
-        npatch=int(p["npatch"]),
         # cat_config / output_dir were previously resolved via an os.chdir into
         # the cosmo_val dir + the COSMO_VAL env var; expose them as optional
         # params so the rule can pass them explicitly, falling back to the
         # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
         cat_config=p.get("cat_config", "./cat_config.yaml"),
         output_dir=p.get("output_dir", None),
-        save_fits=True,
     )
 
 
@@ -82,6 +82,11 @@ def _from_cli(argv=None):
         "--ver",
         required=True,
         help="Catalog version key in cat_config, e.g. SP_v1.4.6.3_leak_corr",
+    )
+    ap.add_argument(
+        "--tomo",
+        action="store_true",
+        help="Compute tomographic ξ±(θ) measurement. True or False.",
     )
     ap.add_argument(
         "--min-sep", type=float, required=True, help="Min separation [arcmin]"
@@ -97,17 +102,16 @@ def _from_cli(argv=None):
         "--cat-config", required=True, help="Absolute path to cat_config.yaml"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
-    ap.add_argument("--no-fits", action="store_true", help="Skip ξ+/ξ- FITS export")
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
+        npatch=a.npatch,
+        compute_tomography=a.tomo,
         min_sep=a.min_sep,
         max_sep=a.max_sep,
         nbins=a.nbins,
-        npatch=a.npatch,
         cat_config=a.cat_config,
         output_dir=a.out,
-        save_fits=not a.no_fits,
     )
 
 
