@@ -29,6 +29,7 @@ class CosebisMixin:
         cov_path=None,
         scale_cuts=None,
         evaluate_all_scale_cuts=False,
+        compute_tomography=False,
         min_sep=None,
         max_sep=None,
         nbins=None,
@@ -68,6 +69,8 @@ class CosebisMixin:
             If True, evaluates COSEBIs for all possible scale cut combinations
             using the reporting binning parameters. Ignored when scale_cuts is
             provided. Defaults to False.
+        compute_tomography : bool, optional
+            If True, computes COSEBIs for all tomographic bin combinations. Defaults to False.s
         min_sep : float, optional
             Minimum separation for reporting binning (only used when
             evaluate_all_scale_cuts=True). Defaults to self.treecorr_config["min_sep"].
@@ -99,44 +102,61 @@ class CosebisMixin:
             f"Computing fine-binned 2PCF with {nbins_int} bins from {min_sep_int} to "
             f"{max_sep_int} arcmin"
         )
-        gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
 
-        if scale_cuts is not None:
-            # Explicit scale cuts provided
-            print(f"Evaluating {len(scale_cuts)} explicit scale cuts")
-            results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=scale_cuts, cov_path=cov_path
-            )
-        elif evaluate_all_scale_cuts:
-            # Use reporting binning parameters or inherit from class config
-            binning = self._binning(min_sep, max_sep, nbins)
-            min_sep, max_sep, nbins = (
-                binning["min_sep"],
-                binning["max_sep"],
-                binning["nbins"],
-            )
+        ggs = self.calculate_2pcf_version(
+            version,
+            npatch=npatch,
+            compute_tomography=compute_tomography,
+            **treecorr_config,
+        )
+        results = {
+            bin_key: None for bin_key in ggs.keys()
+        }  # Initialize results dictionary
 
-            # Generate scale cuts using np.geomspace (no TreeCorr needed)
-            bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
-            generated_cuts = [
-                (bin_edges[start], bin_edges[stop])
-                for start in range(nbins)
-                for stop in range(start + 1, nbins + 1)
-            ]
+        for bin_key in ggs.keys():
+            # LG TO-DO: account for tomographic scale-cuts
+            if scale_cuts is not None:
+                # Explicit scale cuts provided
+                print(f"Evaluating {len(scale_cuts)} explicit scale cuts")
+                results[bin_key] = calculate_cosebis(
+                    gg=ggs[bin_key],
+                    nmodes=nmodes,
+                    scale_cuts=scale_cuts,
+                    cov_path=cov_path,
+                )
+            elif evaluate_all_scale_cuts:
+                # Use reporting binning parameters or inherit from class config
+                binning = self._binning(min_sep, max_sep, nbins)
+                min_sep, max_sep, nbins = (
+                    binning["min_sep"],
+                    binning["max_sep"],
+                    binning["nbins"],
+                )
 
-            print(f"Evaluating {len(generated_cuts)} scale cut combinations")
+                # Generate scale cuts using np.geomspace (no TreeCorr needed)
+                bin_edges = np.geomspace(min_sep, max_sep, nbins + 1)
+                generated_cuts = [
+                    (bin_edges[start], bin_edges[stop])
+                    for start in range(nbins)
+                    for stop in range(start + 1, nbins + 1)
+                ]
 
-            # Call b_modes function with scale cuts list
-            results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=generated_cuts, cov_path=cov_path
-            )
-        else:
-            # Single scale cut behavior: use full range
-            results = calculate_cosebis(
-                gg=gg, nmodes=nmodes, scale_cuts=None, cov_path=cov_path
-            )
-            # Extract single results dict from scale_cuts dictionary
-            results = next(iter(results.values()))
+                print(f"Evaluating {len(generated_cuts)} scale cut combinations")
+
+                # Call b_modes function with scale cuts list
+                results[bin_key] = calculate_cosebis(
+                    gg=ggs[bin_key],
+                    nmodes=nmodes,
+                    scale_cuts=generated_cuts,
+                    cov_path=cov_path,
+                )
+            else:
+                # Single scale cut behavior: use full range
+                results[bin_key] = calculate_cosebis(
+                    gg=ggs[bin_key], nmodes=nmodes, scale_cuts=None, cov_path=cov_path
+                )
+                # Extract single results dict from scale_cuts dictionary
+                results[bin_key] = next(iter(results[bin_key].values()))
 
         return results
 
@@ -152,6 +172,7 @@ class CosebisMixin:
         cov_path=None,
         scale_cuts=None,  # Explicit scale cuts
         evaluate_all_scale_cuts=False,  # Grid-based scale cuts
+        compute_tomography=False,
         min_sep=None,
         max_sep=None,
         nbins=None,  # Reporting binning
@@ -218,7 +239,7 @@ class CosebisMixin:
         # Get or calculate results for this version
         if results is None:
             # Calculate COSEBIs using instance method
-            results = self.calculate_cosebis(
+            results_tomo = self.calculate_cosebis(
                 version,
                 min_sep_int=min_sep_int,
                 max_sep_int=max_sep_int,
@@ -228,10 +249,16 @@ class CosebisMixin:
                 cov_path=cov_path,
                 scale_cuts=scale_cuts,
                 evaluate_all_scale_cuts=evaluate_all_scale_cuts,
+                compute_tomography=False,  # LG: Hardcoded to False for now
                 min_sep=min_sep,
                 max_sep=max_sep,
                 nbins=nbins,
             )
+            results = results_tomo[
+                "tomo_bin_all_tomo_bin_all"
+            ]  # LG: Extract non-tomographic results
+        elif isinstance(results, dict) and "tomo_bin_all_tomo_bin_all" in results:
+            results = results["tomo_bin_all_tomo_bin_all"]
 
         # Generate plots using specialized plotting functions
         # Extract single result for plotting if multiple scale cuts were evaluated
@@ -265,9 +292,12 @@ class CosebisMixin:
         if multiple_scale_cuts and len(results) > 1:
             # Create temporary gg object with correct binning for mapping
             treecorr_config_temp = self._binning(min_sep, max_sep, nbins)
-            gg_temp = self.calculate_2pcf(
+            ggs_temp = self.calculate_2pcf_version(
                 version, npatch=npatch, **treecorr_config_temp
             )
+            gg_temp = ggs_temp[
+                "tomo_bin_all_tomo_bin_all"
+            ]  # LG: Extract non-tomographic result
 
             plot_cosebis_scale_cut_heatmap(
                 results,

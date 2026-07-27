@@ -29,6 +29,7 @@ class PureEBMixin:
         max_sep_int=300,
         nbins_int=100,
         npatch=256,
+        compute_tomography=False,
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
@@ -61,13 +62,15 @@ class PureEBMixin:
         npatch : int, optional
             Number of patches for the jackknife or bootstrap resampling. Defaults to
             the value in self.npatch if not provided.
+        compute_tomography : bool, optional
+            Whether to compute tomographic (cross-bin) pure E/B modes. Defaults to False.
         var_method : str, optional
             Variance estimation method. Defaults to "jackknife".
         cov_path_int : str, optional
             Path to the covariance matrix for the reporting binning. Replaces the
             treecorr covariance matrix if provided, meaning that var_method has no
             effect on the results although it is still passed to
-            CosmologyValidation.calculate_2pcf.
+            CosmologyValidation.calculate_2pcf_version.
         cosmo_cov : pyccl.Cosmology, optional
             Cosmology object to use for theoretical xi+/xi- predictions in the
             semi-analytical covariance calculation. Defaults to self.cosmo if not
@@ -109,10 +112,21 @@ class PureEBMixin:
         treecorr_config_int = self._binning(min_sep_int, max_sep_int, nbins_int)
 
         # Calculate correlation functions
-        gg = self.calculate_2pcf(version, npatch=npatch, **treecorr_config)
-        gg_int = self.calculate_2pcf(version, npatch=npatch, **treecorr_config_int)
+        ggs = self.calculate_2pcf_version(
+            version,
+            npatch=npatch,
+            compute_tomography=compute_tomography,
+            **treecorr_config,
+        )
+        ggs_int = self.calculate_2pcf_version(
+            version,
+            npatch=npatch,
+            compute_tomography=compute_tomography,
+            **treecorr_config_int,
+        )
 
         # Get redshift distribution if using analytic covariance
+        # LG TO-DO: check tomographic redshift distribution handling
         z_dist = (
             np.column_stack(self.get_redshift(version))
             if cov_path_int is not None
@@ -120,15 +134,20 @@ class PureEBMixin:
         )
 
         # Delegate to b_modes module
-        results = calculate_pure_eb_correlation(
-            gg=gg,
-            gg_int=gg_int,
-            var_method=var_method,
-            cov_path_int=cov_path_int,
-            cosmo_cov=cosmo_cov,
-            n_samples=n_samples,
-            z_dist=z_dist,
-        )
+        results = {
+            bin_key: None for bin_key in ggs.keys()
+        }  # Initialize results dictionary
+
+        for bin_key in ggs.keys():
+            results[bin_key] = calculate_pure_eb_correlation(
+                gg=ggs[bin_key],
+                gg_int=ggs_int[bin_key],
+                var_method=var_method,
+                cov_path_int=cov_path_int,
+                cosmo_cov=cosmo_cov,
+                n_samples=n_samples,
+                z_dist=z_dist,
+            )
 
         return results
 
