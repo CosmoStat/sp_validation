@@ -201,7 +201,7 @@ layout (e.g. the DES 2pt-FITS convention) permute explicitly via
 <code class="docutils literal notranslate"><span class="pre">s.indices</span></code> rather than assuming global order.</p>
 </dd>
 </dl>
-<dl class="simple">
+<dl>
 <dt>Optionality: a file’s contents are flexible about which components of</dt><dd><p>a statistic it actually has. <code class="docutils literal notranslate"><span class="pre">add_pseudo_cl</span></code> requires EE (the
 bandpower window’s reference series) but BB and EB are optional
 — an analysis that never computed EB simply omits it.
@@ -220,6 +220,18 @@ naming that component explicitly (<code class="docutils literal notranslate"><sp
 <code class="docutils literal notranslate"><span class="pre">extract</span></code>) still fails loud on no match — silence is reserved
 for “this file doesn’t have that optional piece”, never for
 “you asked for something specific and it isn’t there”.</p>
+<p><strong>Converters.</strong> The tail of this module holds converters between
+the SACC layout above and external analysis-tool file formats —
+the CosmoSIS “2pt FITS” (<code class="docutils literal notranslate"><span class="pre">sacc_to_twopoint_fits</span></code>) and
+OneCovariance’s redshift / covariance files (<code class="docutils literal notranslate"><span class="pre">write_nz</span></code>,
+<code class="docutils literal notranslate"><span class="pre">nz_config_stanza</span></code>, <code class="docutils literal notranslate"><span class="pre">read_nz</span></code>, <code class="docutils literal notranslate"><span class="pre">covariance_blocks</span></code>). The
+2pt-FITS converter reproduces today’s hand-assembled product from
+<code class="docutils literal notranslate"><span class="pre">cosmo_inference/scripts/cosmosis_fitting.py</span></code> HDU-for-HDU and
+byte-for-byte (verified against that writer), and is single-bin
+only today — it fails fast on a multi-bin SACC (tomographic
+emission lands with the tomographic round). The OneCovariance
+converters are coupled to SACC by file format only; OneCovariance
+itself is not a dependency.</p>
 </dd>
 </dl>
 <dl class="py function">
@@ -731,6 +743,284 @@ analysis, plotting or inference code — may pass <code class="docutils literal 
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._twopoint_hdu">
+<span class="sig-name descname"><span class="pre">_twopoint_hdu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ang</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ang_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_twopoint_hdu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._twopoint_hdu" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._twopoint_hdu'">¶</a></dt>
+<dd><p>Build one 2pt BinTableHDU (BIN1/BIN2/ANGBIN/VALUE/ANG).</p>
+<p>Reproduces <code class="docutils literal notranslate"><span class="pre">cosmosis_fitting.py._create_2pt_hdu</span></code> /<code class="docutils literal notranslate"><span class="pre">cl_to_fits</span></code> exactly:
+same column order and formats, the <code class="docutils literal notranslate"><span class="pre">2PTDATA</span></code> marker, the QUANT pair for
+<code class="docutils literal notranslate"><span class="pre">name</span></code>, and NZ_SOURCE kernels. <code class="docutils literal notranslate"><span class="pre">ang_unit</span></code> stamps <code class="docutils literal notranslate"><span class="pre">TUNIT</span></code> on the ANG
+column (“arcmin” for real-space ξ/τ; unset for Cℓ, whose ANG is ℓ).</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._nz_hdu">
+<span class="sig-name descname"><span class="pre">_nz_hdu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_nz_hdu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._nz_hdu" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._nz_hdu'">¶</a></dt>
+<dd><p>Build the NZDATA HDU from the SACC <code class="docutils literal notranslate"><span class="pre">source_i</span></code> NZ tracers.</p>
+<p>Reproduces <code class="docutils literal notranslate"><span class="pre">cosmosis_fitting.py.nz_to_fits</span></code>: Z_MID from the tracer <code class="docutils literal notranslate"><span class="pre">z</span></code>
+grid (assumed uniform), Z_LOW/Z_HIGH as ± half a step, one <code class="docutils literal notranslate"><span class="pre">BIN{i+1}</span></code>
+column per source bin, and the NZDATA/NBIN/NZ header cards. All source bins
+are required to share the <code class="docutils literal notranslate"><span class="pre">z</span></code> grid — the single <code class="docutils literal notranslate"><span class="pre">Z_MID</span></code> axis of the
+DES NZDATA table.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._cov_hdu">
+<span class="sig-name descname"><span class="pre">_cov_hdu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_names</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_starts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'COVMAT'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name_in_ctor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_cov_hdu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._cov_hdu" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._cov_hdu'">¶</a></dt>
+<dd><p>Build a covariance ImageHDU with <code class="docutils literal notranslate"><span class="pre">NAME_i</span></code>/<code class="docutils literal notranslate"><span class="pre">STRT_i</span></code> block headers.</p>
+<p>Reproduces the two covariance builders in <code class="docutils literal notranslate"><span class="pre">cosmosis_fitting.py</span></code> card for
+card. The blocked ξ/τ <code class="docutils literal notranslate"><span class="pre">covdat_to_fits</span></code> builds <code class="docutils literal notranslate"><span class="pre">ImageHDU(cov)</span></code> unnamed
+and stamps <code class="docutils literal notranslate"><span class="pre">COVDATA</span></code> then <code class="docutils literal notranslate"><span class="pre">EXTNAME</span></code> from a dict; the <code class="docutils literal notranslate"><span class="pre">cov_cl_to_fits</span></code>
+CELL covariance builds <code class="docutils literal notranslate"><span class="pre">ImageHDU(cov,</span> <span class="pre">name="COVMAT_CELL")</span></code> (so the EXTNAME
+card is created early, with astropy’s standard comment) before re-stamping.
+<code class="docutils literal notranslate"><span class="pre">name_in_ctor</span></code> selects the second form so the card order matches exactly.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._type_major_xi">
+<span class="sig-name descname"><span class="pre">_type_major_xi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_type_major_xi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._type_major_xi" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._type_major_xi'">¶</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">(theta,</span> <span class="pre">xip,</span> <span class="pre">xim)</span></code> for one bin pair from the SACC reporting grid.</p>
+<p><code class="docutils literal notranslate"><span class="pre">get_xi</span></code> already returns each statistic in insertion (= ascending
+θ) order; the type-major split (all ξ+, then all ξ−) is exactly the two
+arrays it hands back, so no further permutation is needed for a single pair.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._require_single_bin">
+<span class="sig-name descname"><span class="pre">_require_single_bin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_require_single_bin"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._require_single_bin" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._require_single_bin'">¶</a></dt>
+<dd><p>Fail fast unless the SACC is a valid single-bin ξ product.</p>
+<p>The converter emits the single-bin 2pt-FITS today’s CosmoSIS pipeline reads
+(BIN1/BIN2 all 1, one NZ column). A tomographic SACC would otherwise slip
+through silently — <code class="docutils literal notranslate"><span class="pre">n_bins</span></code> alone drives the NZDATA column count while the
+ξ/covariance are read from bin <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0)</span></code> only, so a 2-bin file would emit a
+<code class="docutils literal notranslate"><span class="pre">NBIN=2</span></code> n(z) beside a data vector holding just the <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0)</span></code> pair.
+Guards both the empty-ξ case and the single-bin contract; tomographic
+emission lands with the tomographic round.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.sacc_to_twopoint_fits">
+<span class="sig-name descname"><span class="pre">sacc_to_twopoint_fits</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho_stats_hdu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_stats_hdu</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#sacc_to_twopoint_fits"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.sacc_to_twopoint_fits" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.sacc_to_twopoint_fits'">¶</a></dt>
+<dd><p>Convert an analysis SACC to a CosmoSIS 2pt-FITS file.</p>
+<p>The assembled <code class="docutils literal notranslate"><span class="pre">HDUList</span></code> matches today’s <code class="docutils literal notranslate"><span class="pre">cosmosis_fitting.py</span></code> product
+for the configuration the SACC describes: PRIMARY, NZ_SOURCE, COVMAT, then
+(if present) COVMAT_CELL, XI_PLUS, XI_MINUS, (if present) CELL_EE / CELL_BB,
+and (if the rho/tau sidecars are supplied) TAU_0_PLUS, TAU_2_PLUS,
+RHO_STATS. The data vector and its covariance are laid out type-major
+(all ξ+, then all ξ−, then the τ blocks), which is the DES <code class="docutils literal notranslate"><span class="pre">twopoint</span></code>
+convention CosmoSIS reads.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Analysis SACC (reporting ξ±, optional pseudo-Cℓ, covariance, and — for the
+ρ/τ product — the τ data points; see <code class="docutils literal notranslate"><span class="pre">rho_stats_hdu</span></code>).</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Output FITS path (overwritten).</p></li>
+<li><p><strong>rho_stats_hdu</strong> (<em>astropy.io.fits.BinTableHDU</em><em>, </em><em>optional</em>) – The rho-stats / tau-stats sidecar HDUs, copied verbatim as today’s
+assembly does. Required together to write the ρ/τ product; the SACC
+alone cannot rebuild the <code class="docutils literal notranslate"><span class="pre">varrho_*</span></code> columns Sacha’s fork reads. When
+omitted, a pure ξ (± Cℓ) product is written.</p></li>
+<li><p><strong>tau_stats_hdu</strong> (<em>astropy.io.fits.BinTableHDU</em><em>, </em><em>optional</em>) – The rho-stats / tau-stats sidecar HDUs, copied verbatim as today’s
+assembly does. Required together to write the ρ/τ product; the SACC
+alone cannot rebuild the <code class="docutils literal notranslate"><span class="pre">varrho_*</span></code> columns Sacha’s fork reads. When
+omitted, a pure ξ (± Cℓ) product is written.</p></li>
+<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Number of source tomographic bins. Must be <code class="docutils literal notranslate"><span class="pre">1</span></code>: this converter emits
+the single-bin 2pt-FITS today’s CosmoSIS pipeline consumes. Tomographic
+emission (multiple bin pairs, per-pair BIN1/BIN2, one NZ column per bin)
+lands with the tomographic round; the converter fails fast on anything
+else rather than silently truncating to bin <code class="docutils literal notranslate"><span class="pre">(0,</span> <span class="pre">0)</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The assembled list, also written to <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>astropy.io.fits.HDUList</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If the SACC has no ξ points; if <code class="docutils literal notranslate"><span class="pre">n_bins</span> <span class="pre">!=</span> <span class="pre">1</span></code> or the SACC’s ξ tracer
+pairs are anything other than exactly <code class="docutils literal notranslate"><span class="pre">{(source_0,</span> <span class="pre">source_0)}</span></code> (the
+single-bin contract); or if exactly one of the ρ/τ sidecars is supplied.</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._build_cell">
+<span class="sig-name descname"><span class="pre">_build_cell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_build_cell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._build_cell" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._build_cell'">¶</a></dt>
+<dd><p>Build the CELL_EE 2pt HDU plus the COVMAT_CELL HDU from the SACC pseudo-Cℓ.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> when the SACC has no pseudo-Cℓ. Only CELL_EE is
+emitted — the harmonic <code class="docutils literal notranslate"><span class="pre">2pt_like</span></code> fits <code class="docutils literal notranslate"><span class="pre">data_sets=CELL_EE</span></code>, and today’s
+assembly appends CELL_EE alone (it builds a CELL_BB HDU but discards it).
+The SACC still carries EE/BB/EB with bandpower windows for the B-mode
+null-test path; this converter surfaces only the block CosmoSIS reads. The
+CELL covariance (the EE bandpower covariance) lives in its own COVMAT_CELL
+ImageHDU, matching today’s product.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._build_covmat">
+<span class="sig-name descname"><span class="pre">_build_covmat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rho_tau</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_build_covmat"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._build_covmat" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._build_covmat'">¶</a></dt>
+<dd><p>Assemble the blocked COVMAT (ξ± type-major, then the τ blocks).</p>
+<p>The ξ covariance is pulled from the SACC as the contiguous ξ+/ξ− block for
+the pair and permuted from pair-major (SACC) to type-major (2pt-FITS). Under
+<code class="docutils literal notranslate"><span class="pre">use_rho_tau</span></code> the τ_0/τ_2 covariance blocks are appended block-diagonally
+with zero ξ↔τ cross-blocks, exactly as <code class="docutils literal notranslate"><span class="pre">covdat_to_fits</span></code> builds them.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._block_diag">
+<span class="sig-name descname"><span class="pre">_block_diag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">blocks</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_block_diag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._block_diag" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._block_diag'">¶</a></dt>
+<dd><p>Stack square blocks block-diagonally with zero cross-blocks.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io._build_rho_tau">
+<span class="sig-name descname"><span class="pre">_build_rho_tau</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rho_stats_hdu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tau_stats_hdu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_rho_tau</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#_build_rho_tau"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io._build_rho_tau" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io._build_rho_tau'">¶</a></dt>
+<dd><p>Build the TAU_{0,2}_PLUS 2pt HDUs and the verbatim RHO_STATS HDU.</p>
+<p>Mirrors <code class="docutils literal notranslate"><span class="pre">tau_to_fits</span></code> / <code class="docutils literal notranslate"><span class="pre">rho_to_fits</span></code>: τ_0/τ_2 read their <code class="docutils literal notranslate"><span class="pre">tau_k_p</span></code>
+columns onto the shared ξ θ grid (consistency step); RHO_STATS is copied
+verbatim from the sidecar with its θ column forced onto the ξ grid. The
+<code class="docutils literal notranslate"><span class="pre">varrho_*</span></code> columns ride along in the copy — they are why the sidecar is
+required (the SACC cannot supply them).</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.nz_table">
+<span class="sig-name descname"><span class="pre">nz_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#nz_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.nz_table" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.nz_table'">¶</a></dt>
+<dd><p>Stack the SACC <code class="docutils literal notranslate"><span class="pre">source_i</span></code> NZ tracers into a OneCovariance n(z) table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – SACC holding <code class="docutils literal notranslate"><span class="pre">source_0</span> <span class="pre">…</span> <span class="pre">source_{n_bins-1}</span></code> NZ tracers.</p></li>
+<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of tomographic source bins to write.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Array of shape <code class="docutils literal notranslate"><span class="pre">(n_z,</span> <span class="pre">n_bins</span> <span class="pre">+</span> <span class="pre">1)</span></code>: column 0 the shared redshift
+grid, columns <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">…</span> <span class="pre">n_bins</span></code> the per-bin <code class="docutils literal notranslate"><span class="pre">n(z)</span></code>. This is the
+OneCovariance combined-file layout (<code class="docutils literal notranslate"><span class="pre">redshift</span>  <span class="pre">n_1(z)</span> <span class="pre">…</span> <span class="pre">n_N(z)</span></code>).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)">numpy.ndarray</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If any source bin is missing, or if the bins do not share one z grid
+(OneCovariance’s combined file has a single redshift column, so the
+grids must agree bin-for-bin).</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.write_nz">
+<span class="sig-name descname"><span class="pre">write_nz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_bins</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">dir_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'zlens_directory'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">header</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#write_nz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.write_nz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.write_nz'">¶</a></dt>
+<dd><p>Write the OneCovariance combined n(z) input file from a SACC.</p>
+<p>OneCovariance reads the source redshift distribution as a plain
+whitespace-delimited text file whose column 0 is the shared redshift grid
+and whose remaining columns are the per-bin <code class="docutils literal notranslate"><span class="pre">n(z)</span></code> (<code class="docutils literal notranslate"><span class="pre">redshift</span>  <span class="pre">n_1(z)</span>
+<span class="pre">…</span> <span class="pre">n_N(z)</span></code>) — no <code class="docutils literal notranslate"><span class="pre">z_low</span></code>/<code class="docutils literal notranslate"><span class="pre">z_high</span></code> edges. This writes that file from the
+SACC <code class="docutils literal notranslate"><span class="pre">source_i</span></code> NZ tracers and returns the <code class="docutils literal notranslate"><span class="pre">[redshift]</span></code> config stanza
+that points OneCovariance at it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s</strong> (<em>sacc.Sacc</em>) – Analysis SACC with the <code class="docutils literal notranslate"><span class="pre">source_i</span></code> NZ tracers.</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – Output text-file path (overwritten). Its directory + basename become
+the <code class="docutils literal notranslate"><span class="pre">[redshift]</span></code> directory/file config values.</p></li>
+<li><p><strong>n_bins</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of tomographic source bins to write.</p></li>
+<li><p><strong>dir_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Config key for the redshift directory. Default <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code>
+(upstream canonical). Pass <code class="docutils literal notranslate"><span class="pre">"z_directory"</span></code> for the UNIONS template
+driven by <code class="docutils literal notranslate"><span class="pre">pseudo_cl.py._modify_onecov_config</span></code>.</p></li>
+<li><p><strong>header</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default) prepend a <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">redshift</span>  <span class="pre">n_1(z)</span> <span class="pre">…</span></code> comment header
+naming the columns; OneCovariance’s <code class="docutils literal notranslate"><span class="pre">genfromtxt</span></code>-style reader ignores
+it. Set <code class="docutils literal notranslate"><span class="pre">False</span></code> for a bare numeric file.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <code class="docutils literal notranslate"><span class="pre">[redshift]</span></code> config stanza (see <a class="reference internal" href="#sp_validation.sacc_io.nz_config_stanza" title="sp_validation.sacc_io.nz_config_stanza"><code class="xref py py-func docutils literal notranslate"><span class="pre">nz_config_stanza()</span></code></a>), naming
+the file just written.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.nz_config_stanza">
+<span class="sig-name descname"><span class="pre">nz_config_stanza</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">dir_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'zlens_directory'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_loc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mid'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#nz_config_stanza"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.nz_config_stanza" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.nz_config_stanza'">¶</a></dt>
+<dd><p>Build the OneCovariance <code class="docutils literal notranslate"><span class="pre">[redshift]</span></code> config stanza for an n(z) file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>directory</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Directory holding the n(z) file (OneCovariance <code class="docutils literal notranslate"><span class="pre">*_directory</span></code> value).</p></li>
+<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – n(z) file basename (OneCovariance <code class="docutils literal notranslate"><span class="pre">zlens_file</span></code> value).</p></li>
+<li><p><strong>dir_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Directory config key — <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code> (upstream) or
+<code class="docutils literal notranslate"><span class="pre">"z_directory"</span></code> (UNIONS template). Default <code class="docutils literal notranslate"><span class="pre">"zlens_directory"</span></code>.</p></li>
+<li><p><strong>value_loc</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">value_loc_in_lensbin</span></code> — where in each histogram bin the tabulated
+<code class="docutils literal notranslate"><span class="pre">n(z)</span></code> value sits (<code class="docutils literal notranslate"><span class="pre">mid</span></code>/<code class="docutils literal notranslate"><span class="pre">left</span></code>/<code class="docutils literal notranslate"><span class="pre">right</span></code>). Default <code class="docutils literal notranslate"><span class="pre">"mid"</span></code>,
+matching the bin-centred grids the SACC stores.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <code class="docutils literal notranslate"><span class="pre">[redshift]</span></code> key/value pairs: <code class="docutils literal notranslate"><span class="pre">{dir_key:</span> <span class="pre">directory,</span> <span class="pre">"zlens_file":</span>
+<span class="pre">filename,</span> <span class="pre">"value_loc_in_lensbin":</span> <span class="pre">value_loc}</span></code>. Assign these under
+<code class="docutils literal notranslate"><span class="pre">config["redshift"]</span></code> of a OneCovariance <code class="docutils literal notranslate"><span class="pre">configparser</span></code> config.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.read_nz">
+<span class="sig-name descname"><span class="pre">read_nz</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#read_nz"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.read_nz" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.read_nz'">¶</a></dt>
+<dd><p>Read a OneCovariance combined n(z) file back to <code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">nz_columns)</span></code>.</p>
+<p>Inverse of <a class="reference internal" href="#sp_validation.sacc_io.write_nz" title="sp_validation.sacc_io.write_nz"><code class="xref py py-func docutils literal notranslate"><span class="pre">write_nz()</span></code></a> (the numeric round-trip; the config stanza is
+not stored in the file). Comment/header lines are skipped.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – n(z) text file (column 0 = z, columns 1… = per-bin n(z)).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(z,</span> <span class="pre">nz)</span></code> where <code class="docutils literal notranslate"><span class="pre">z</span></code> is the shared redshift grid (shape <code class="docutils literal notranslate"><span class="pre">(n_z,)</span></code>)
+and <code class="docutils literal notranslate"><span class="pre">nz</span></code> is the per-bin distributions (shape <code class="docutils literal notranslate"><span class="pre">(n_z,</span> <span class="pre">n_bins)</span></code>).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="sp_validation.sacc_io.covariance_blocks">
+<span class="sig-name descname"><span class="pre">covariance_blocks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cov_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">selectors</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">gaussian</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/sp_validation/sacc_io.html#covariance_blocks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#sp_validation.sacc_io.covariance_blocks" title="Link to this definition" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#sp_validation.sacc_io.covariance_blocks'">¶</a></dt>
+<dd><p>Reshape a OneCovariance <code class="docutils literal notranslate"><span class="pre">covariance_list</span></code> table into SACC cov blocks.</p>
+<p>OneCovariance emits a flat <code class="docutils literal notranslate"><span class="pre">covariance_list_*.dat</span></code> table with one row per
+<code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code> element pair (row-major, <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">=</span> <span class="pre">i·n</span> <span class="pre">+</span> <span class="pre">j</span></code>); the covariance value
+lives in column 10 (Gaussian) or column 9 (Gaussian+non-Gaussian). This
+reshapes the flat table into dense square block(s) — reusing
+<a class="reference internal" href="sp_validation.statistics.html#sp_validation.statistics.cov_from_one_covariance" title="sp_validation.statistics.cov_from_one_covariance"><code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.statistics.cov_from_one_covariance()</span></code></a> for the per-block
+reshape — and pairs each with its SACC selector, ready for
+<code class="xref py py-func docutils literal notranslate"><span class="pre">sp_validation.assemble_covariance()</span></code>.</p>
+<p>Single-statistic case: pass the whole table and one selector; you get one
+<code class="docutils literal notranslate"><span class="pre">(selector,</span> <span class="pre">dense)</span></code> block. Multi-statistic case (tomography-ready): pass a
+sequence of <code class="docutils literal notranslate"><span class="pre">(selector,</span> <span class="pre">sub_table)</span></code> pairs — each <code class="docutils literal notranslate"><span class="pre">sub_table</span></code> a
+contiguous slice of the flat output for one statistic / bin-pair — and each
+is reshaped and re-paired with its selector in order. The API is thus shaped
+to extend to multi-probe blocking without over-fitting the single-bin case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cov_list</strong> (<a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>numpy.ndarray</em></a><em> or </em><em>sequence</em>) – Either the flat OneCovariance table (2-D array, one row per pair) for a
+single block, or — for the multi-block form — a sequence of
+<code class="docutils literal notranslate"><span class="pre">(selector,</span> <span class="pre">sub_table)</span></code> pairs. In the multi-block form <code class="docutils literal notranslate"><span class="pre">selectors</span></code>
+must be <code class="docutils literal notranslate"><span class="pre">None</span></code> (the selectors travel with the sub-tables).</p></li>
+<li><p><strong>selectors</strong> (<em>selector</em><em> or </em><em>None</em>) – For the single-block form, the SACC selector for the whole table (a
+<code class="docutils literal notranslate"><span class="pre">(data_type,</span> <span class="pre">tracers[,</span> <span class="pre">tags])</span></code> tuple or an index array, as
+<a class="reference internal" href="#sp_validation.sacc_io.assemble_covariance" title="sp_validation.sacc_io.assemble_covariance"><code class="xref py py-func docutils literal notranslate"><span class="pre">assemble_covariance()</span></code></a> accepts). Must be <code class="docutils literal notranslate"><span class="pre">None</span></code> for the
+multi-block form.</p></li>
+<li><p><strong>gaussian</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>optional</em>) – Select the Gaussian-only column (<code class="docutils literal notranslate"><span class="pre">True</span></code>, default) or the
+Gaussian+non-Gaussian column (<code class="docutils literal notranslate"><span class="pre">False</span></code>); passed straight through to
+<code class="docutils literal notranslate"><span class="pre">cov_from_one_covariance</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Ordered <code class="docutils literal notranslate"><span class="pre">(selector,</span> <span class="pre">dense_cov)</span></code> pairs, directly consumable by
+<code class="docutils literal notranslate"><span class="pre">assemble_covariance(s,</span> <span class="pre">blocks)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a></p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
 <div class="mr-auto">
@@ -785,6 +1075,21 @@ analysis, plotting or inference code — may pass <code class="docutils literal 
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.update_statistic'" class="reference internal" href="#sp_validation.sacc_io.update_statistic"><code class="docutils literal notranslate"><span class="pre">update_statistic()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.save'" class="reference internal" href="#sp_validation.sacc_io.save"><code class="docutils literal notranslate"><span class="pre">save()</span></code></a></li>
 <li><a :data-current="activeSection === '#sp_validation.sacc_io.load'" class="reference internal" href="#sp_validation.sacc_io.load"><code class="docutils literal notranslate"><span class="pre">load()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._twopoint_hdu'" class="reference internal" href="#sp_validation.sacc_io._twopoint_hdu"><code class="docutils literal notranslate"><span class="pre">_twopoint_hdu()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._nz_hdu'" class="reference internal" href="#sp_validation.sacc_io._nz_hdu"><code class="docutils literal notranslate"><span class="pre">_nz_hdu()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._cov_hdu'" class="reference internal" href="#sp_validation.sacc_io._cov_hdu"><code class="docutils literal notranslate"><span class="pre">_cov_hdu()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._type_major_xi'" class="reference internal" href="#sp_validation.sacc_io._type_major_xi"><code class="docutils literal notranslate"><span class="pre">_type_major_xi()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._require_single_bin'" class="reference internal" href="#sp_validation.sacc_io._require_single_bin"><code class="docutils literal notranslate"><span class="pre">_require_single_bin()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.sacc_to_twopoint_fits'" class="reference internal" href="#sp_validation.sacc_io.sacc_to_twopoint_fits"><code class="docutils literal notranslate"><span class="pre">sacc_to_twopoint_fits()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._build_cell'" class="reference internal" href="#sp_validation.sacc_io._build_cell"><code class="docutils literal notranslate"><span class="pre">_build_cell()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._build_covmat'" class="reference internal" href="#sp_validation.sacc_io._build_covmat"><code class="docutils literal notranslate"><span class="pre">_build_covmat()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._block_diag'" class="reference internal" href="#sp_validation.sacc_io._block_diag"><code class="docutils literal notranslate"><span class="pre">_block_diag()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io._build_rho_tau'" class="reference internal" href="#sp_validation.sacc_io._build_rho_tau"><code class="docutils literal notranslate"><span class="pre">_build_rho_tau()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.nz_table'" class="reference internal" href="#sp_validation.sacc_io.nz_table"><code class="docutils literal notranslate"><span class="pre">nz_table()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.write_nz'" class="reference internal" href="#sp_validation.sacc_io.write_nz"><code class="docutils literal notranslate"><span class="pre">write_nz()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.nz_config_stanza'" class="reference internal" href="#sp_validation.sacc_io.nz_config_stanza"><code class="docutils literal notranslate"><span class="pre">nz_config_stanza()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.read_nz'" class="reference internal" href="#sp_validation.sacc_io.read_nz"><code class="docutils literal notranslate"><span class="pre">read_nz()</span></code></a></li>
+<li><a :data-current="activeSection === '#sp_validation.sacc_io.covariance_blocks'" class="reference internal" href="#sp_validation.sacc_io.covariance_blocks"><code class="docutils literal notranslate"><span class="pre">covariance_blocks()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -793,7 +1098,7 @@ analysis, plotting or inference code — may pass <code class="docutils literal 
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 21 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 29 Jul, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>
