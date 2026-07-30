@@ -1124,6 +1124,22 @@ class CalibrateCat(BaseCat):
         fpath = self._params["input_path"]
         verbose = self._params["verbose"]
 
+        # Image-simulation path: a single per-run comprehensive catalogue in
+        # FITS, not the joined multi-patch HDF5 the data path builds. Read the
+        # FITS table directly into memory; there is no separate data_ext group.
+        extension = os.path.splitext(fpath)[1]
+        if extension == ".fits":
+            if verbose:
+                print(f"Reading FITS file {fpath}, HDU 1...")
+            dat = fits.getdata(fpath, 1)
+            dat_ext = None
+            if verbose:
+                print(
+                    f"Found {len(dat)} (~{format.millify(len(dat))}) objects"
+                    + " in catalogue"
+                )
+            return dat, dat_ext
+
         if verbose:
             print(f"Reading HDF5 file {fpath}...")
 
