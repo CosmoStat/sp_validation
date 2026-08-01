@@ -169,6 +169,7 @@ rule covariance_cosmocov:
         module load gcc
         module unload intelpython || true
         module load intelpython/3-2024.1.0
+	module unload openmpi || true
         module load openmpi
 
         cd {params.outdir}
