@@ -110,6 +110,47 @@ rule inference_prep:
         """
 
 
+# cosmosis_root as used by cosmosis_fitting.py / the generated ini's [output]
+# filename (SCRATCH = {CHAINS_DIR}/{FIDUCIAL_COSMOSIS_ROOT}).
+FIDUCIAL_COSMOSIS_ROOT = (
+    f"{FIDUCIAL['version']}_{FIDUCIAL['blind']}"
+    f"_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}"
+    f"_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}"
+)
+
+
+rule inference_run_fiducial:
+    """Run the CosmoSIS PolyChord sampler for the fiducial parameter set.
+
+    cosmosis lives in the user's own ~/.local install, not the apptainer
+    image, so this runs directly on the compute node (container: None).
+    PolyChord resumes from its checkpoint (resume=T in the generated ini)
+    on rerun, so an under-estimated runtime just means a later rerun picks
+    up where it left off rather than starting over.
+    """
+    input:
+        config_file=rules.inference_prep.output.config_file.format(
+            version=FIDUCIAL["version"], blind=FIDUCIAL["blind"],
+            min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"],
+            nbins=FIDUCIAL["nbins"], npatch=FIDUCIAL["npatch"]
+        ),
+    output:
+        # ini [output] filename = %(SCRATCH)s/{root}/samples_{root}.txt, and
+        # SCRATCH is itself {CHAINS_DIR}/{root} -- {root} appears twice.
+        samples=f"{CHAINS_DIR}/{FIDUCIAL_COSMOSIS_ROOT}/{FIDUCIAL_COSMOSIS_ROOT}/samples_{FIDUCIAL_COSMOSIS_ROOT}.txt",
+    container: None
+    threads: 1
+    resources:
+        mem_mb=16000,
+        runtime=2820,  # ~47h, under the comp/pscomp 2-day cap
+    shell:
+        """
+        source ~/.local/bin/cosmosis-configure
+        cd {COSMO_INFERENCE_RUNDIR}
+        cosmosis {input.config_file}
+        """
+
+
 rule inference_fiducial:
     input:
         # Use the same output patterns as inference_prep with FIDUCIAL params
@@ -122,7 +163,8 @@ rule inference_fiducial:
             version=FIDUCIAL["version"], blind=FIDUCIAL["blind"],
             min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"],
             nbins=FIDUCIAL["nbins"], npatch=FIDUCIAL["npatch"]
-        )
+        ),
+        rules.inference_run_fiducial.output.samples,
 
 
 rule inference_glass_mocks:
