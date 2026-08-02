@@ -175,7 +175,7 @@ def cl_to_fits(ell, cl_ee, cl_bb):
     return cl_ee_hdu, cl_bb_hdu
 
 
-def cov_cl_to_fits(cov_file, cov_hdu="COVAR_FULL"):
+def cov_cl_to_fits(cov_file, cov_hdu="COVAR_EE_EE"):
     """Convert pseudo-C_ell covariance to a CosmoSIS ImageHDU."""
     if cov_file.endswith(".fits"):
         with fits.open(cov_file) as hdul:
@@ -725,7 +725,7 @@ if __name__ == "__main__":
             ell, cl_ee, cl_bb = load_pseudo_cl(args.cl_file)
             print(f"Loaded Cl: {len(ell)} multipoles")
             cl_ee_hdu, cl_bb_hdu = cl_to_fits(ell, cl_ee, cl_bb)
-            cov_cl_hdu = cov_cl_to_fits(args.cov_cl, cov_hdu="COVAR_FULL")
+            cov_cl_hdu = cov_cl_to_fits(args.cov_cl, cov_hdu="COVAR_EE_EE")
             print("Loaded pseudo-Cl covariance")
 
         rho_hdu = None
@@ -750,7 +750,7 @@ if __name__ == "__main__":
                     args.cov_xi,
                     filename_cov_tau=args.cov_tau,
                     filename_cov_cl=args.cov_cl,
-                    cov_hdu="COVAR_FULL",
+                    cov_hdu="COVAR_EE_EE",
                 )
             else:
                 cov_hdu = covdat_to_fits(args.cov_xi, filename_cov_tau=args.cov_tau)

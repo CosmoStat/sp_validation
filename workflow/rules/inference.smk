@@ -1,9 +1,10 @@
 # Imports from Snakefile: FIDUCIAL, COSMO_INFERENCE, COSMO_VAL, covariance_path, build_redshift_path, fiducial_binning_suffix
-# NOTE: dormant subsystem. The file-name plumbing (config-driven paths + the
-# producer-tagged pseudo-Cl names) is fixed and the DAG is valid, but it has not
-# been run end-to-end. Reviving it still needs the FITS-CONTENT plumbing
-# reconciled: cosmosis_fitting.py reads ELL/EE/BB + COVAR_FULL, while the
-# producers write PSEUDO_CELL/ELL + COVAR_BB_BB.
+# NOTE (2026-08-01): FITS-CONTENT plumbing reconciled -- cosmosis_fitting.py's
+# cov_cl_to_fits() now reads COVAR_EE_EE (the block pseudo_cl.py actually
+# writes) instead of a nonexistent COVAR_FULL. inference_prep runs end-to-end.
+# inference_fiducial itself has no output/shell -- it only verifies inference_prep's
+# outputs exist; running the CosmoSIS sampler on the generated .ini is still a
+# manual step (cosmosis_fitting.py prints the command), not wired into this DAG.
 
 # Output root for CosmoSIS data products + configs. COSMO_INFERENCE (common.py)
 # already resolves to THIS repo's cosmo_inference dir, so the products land

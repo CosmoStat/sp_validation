@@ -128,6 +128,7 @@ class PseudoClMixin:
                 # Load redshift distribution and calculate theory C_ell
                 path_redshift_distr = self.cc[ver]["shear"]["redshift_path"]
                 z, dndz = np.loadtxt(path_redshift_distr, unpack=True)
+                # cs_util >= 0.2.2 returns a dict indexed by tomographic bin pair
                 fiducial_cl = (
                     get_theo_c_ell(
                         ell=ell,
@@ -135,7 +136,7 @@ class PseudoClMixin:
                         nz=dndz,
                         backend="ccl",
                         cosmo=self.cosmo,
-                    )
+                    )["W1xW1"]
                     * pw**2
                 )
 
