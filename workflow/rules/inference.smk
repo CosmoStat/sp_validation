@@ -145,7 +145,9 @@ rule inference_run_fiducial:
         runtime=2820,  # ~47h, under the comp/pscomp 2-day cap
     shell:
         """
+        set +u
         source ~/.local/bin/cosmosis-configure
+        set -u
         cd {COSMO_INFERENCE_RUNDIR}
         cosmosis {input.config_file}
         """
