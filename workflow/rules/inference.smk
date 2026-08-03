@@ -169,6 +169,102 @@ rule inference_fiducial:
         rules.inference_run_fiducial.output.samples,
 
 
+# Ad hoc alternative to the polychord fiducial run above: same blind-A
+# fiducial inputs, but the nautilus sampler (48-core SMP, no MPI rebuild
+# needed) and chains written locally under COSMO_INFERENCE instead of
+# guerrini's shared CHAINS_DIR. Kept as separate rules/root name so this
+# doesn't disturb the polychord run above.
+NAUTILUS_COSMOSIS_ROOT = FIDUCIAL_COSMOSIS_ROOT + "_nautilus"
+NAUTILUS_CHAINS_DIR = str(COSMO_INFERENCE / "chains")
+
+
+rule inference_prep_nautilus:
+    input:
+        cov_matrix=covariance_path(
+            FIDUCIAL["version"], FIDUCIAL["blind"],
+            min_sep=FIDUCIAL["min_sep"], max_sep=FIDUCIAL["max_sep"], nbins=FIDUCIAL["nbins"]
+        ),
+        xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
+        xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
+        nz_file=build_redshift_path(FIDUCIAL["version"], FIDUCIAL["blind"]),
+        rho_stats=str(COSMO_VAL / f"rho_tau_stats/rho_stats_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
+        tau_stats=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}.fits"),
+        tau_cov=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep']}_maxsep={FIDUCIAL['max_sep']}_nbins={FIDUCIAL['nbins']}_npatch={FIDUCIAL['npatch']}_th.npy"),
+        pseudo_cl=pseudo_cl_assets(FIDUCIAL["version"])[0],
+        pseudo_cl_cov=pseudo_cl_assets(FIDUCIAL["version"])[1],
+    output:
+        fits_file=str(COSMO_INFERENCE_PROD / f"data/{NAUTILUS_COSMOSIS_ROOT}/cosmosis_{NAUTILUS_COSMOSIS_ROOT}.fits"),
+        config_file=str(COSMO_INFERENCE_PROD / f"cosmosis_config/output/cosmosis_pipeline_{NAUTILUS_COSMOSIS_ROOT}.ini"),
+    params:
+        cosmosis_root=NAUTILUS_COSMOSIS_ROOT,
+        data_dir=f"{NAUTILUS_CHAINS_DIR}/{NAUTILUS_COSMOSIS_ROOT}",
+        output_root=str(COSMO_INFERENCE_PROD),
+    threads: 1
+    resources:
+        mem_mb=8000,
+        runtime=10,
+    shell:
+        """
+        cd {COSMO_INFERENCE_RUNDIR}
+
+        python scripts/cosmosis_fitting.py \
+            --cosmosis-root {params.cosmosis_root} \
+            --sampler-template cosmosis_pipeline_A_psf_nautilus.ini \
+            --nz-file {input.nz_file} \
+            --data-dir {params.data_dir} \
+            --output-root {params.output_root} \
+            --xi {input.xi_plus} {input.xi_minus} \
+            --cov-xi {input.cov_matrix} \
+            --use-rho-tau \
+            --rho-stats {input.rho_stats} \
+            --tau-stats {input.tau_stats} \
+            --cov-tau {input.tau_cov} \
+            --cl-file {input.pseudo_cl} \
+            --cov-cl {input.pseudo_cl_cov}
+        """
+
+
+rule inference_run_nautilus_fiducial:
+    """Run the nautilus sampler with 48-core SMP (cosmosis --smp, plain
+    Python multiprocessing -- no MPI build needed, unlike polychord).
+    """
+    input:
+        config_file=rules.inference_prep_nautilus.output.config_file,
+    output:
+        # Same double-nesting as the polychord samples path (see above):
+        # ini [output] filename = %(SCRATCH)s/{root}/samples_{root}.txt,
+        # and SCRATCH is itself {data_dir} = {NAUTILUS_CHAINS_DIR}/{root}.
+        samples=f"{NAUTILUS_CHAINS_DIR}/{NAUTILUS_COSMOSIS_ROOT}/{NAUTILUS_COSMOSIS_ROOT}/samples_{NAUTILUS_COSMOSIS_ROOT}.txt",
+    container: None
+    threads: 1
+    resources:
+        mem_mb=64000,
+        runtime=2820,  # ~47h, under the comp/pscomp 2-day cap
+        cpus_per_task=48,
+    shell:
+        """
+        set +u
+        source ~/.local/bin/cosmosis-configure
+        set -u
+        # Cap internal per-process threading: with 48 SMP worker processes,
+        # unrestricted OpenBLAS/OMP threading blows past candide's per-user
+        # ulimit -u (max processes/threads per node) almost instantly.
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        export MKL_NUM_THREADS=1
+        export NUMEXPR_NUM_THREADS=1
+        cd {COSMO_INFERENCE_RUNDIR}
+        cosmosis --smp 48 {input.config_file}
+        """
+
+
+rule inference_nautilus_fiducial:
+    input:
+        rules.inference_prep_nautilus.output.fits_file,
+        rules.inference_prep_nautilus.output.config_file,
+        rules.inference_run_nautilus_fiducial.output.samples,
+
+
 rule inference_glass_mocks:
     input:
         expand(GLASS_MOCK_FITS_PATTERN, mock_id=[f"{i:05d}" for i in range(GLASS_MOCK_SEED_RANGE[0], GLASS_MOCK_SEED_RANGE[1] + 1)])

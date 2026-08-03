@@ -458,6 +458,9 @@ def generate_cosmosis_config(args):
         template_base_realspace = "cosmosis_pipeline_A_ia.ini"
         values_file = "values_ia.ini"
 
+    if args.sampler_template:
+        template_base_realspace = args.sampler_template
+
     if args.mock:
         priors_file = "priors_mock.ini"
     elif args.use_rho_tau:
@@ -546,6 +549,14 @@ Example for glass mock v0 (mock data):
 
     parser.add_argument(
         "--cosmosis-root", type=str, required=True, help="CosmoSIS root identifier"
+    )
+    parser.add_argument(
+        "--sampler-template",
+        type=str,
+        default=None,
+        help="Override the real-space template filename (relative to "
+        "--template-dir), e.g. cosmosis_pipeline_A_psf_nautilus.ini to swap "
+        "sampler. Defaults to the standard psf/ia template.",
     )
     parser.add_argument(
         "--data-dir", type=str, required=True, help="Output MCMC chain directory"
