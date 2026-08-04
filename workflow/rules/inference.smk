@@ -241,6 +241,10 @@ rule inference_run_nautilus_fiducial:
         mem_mb=64000,
         runtime=2820,  # ~47h, under the comp/pscomp 2-day cap
         cpus_per_task=48,
+        # n23 confirmed 2026-08-03: /n23data1 automount broken there (even
+        # plain ls/cd fail) -- every SLURM attempt landing there died
+        # instantly with no log, before our script could even start.
+        slurm_extra="--exclude=n17,n09,n36,n23",
     shell:
         """
         set +u
