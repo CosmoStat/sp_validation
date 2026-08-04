@@ -1,21 +1,21 @@
 # Two-point data-vector rules: xi, rho/tau, and pseudo-Cl products.
 
-
+# LG: currently calculates the unblinded 2PCF. Don't look!
 rule xi:
-    input:
-        catalog=get_shear_catalog,
+    """ξ±(θ) two-point correlation for one catalog version, as a SACC file."""
     output:
-        str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        str(COSMO_VAL / "xi_plus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        str(COSMO_VAL / "xi_minus_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
+        sacc=str(COSMO_VAL / "xi_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}{tomo_suffix}.sacc"),
     threads: 24
     params:
         ver="{version}",
-        compute_tomography="{compute_tomography}",
+        compute_tomography=lambda w: w.tomo_suffix == "_tomo",
         npatch="{npatch}",
         min_sep="{min_sep}",
         max_sep="{max_sep}",
         nbins="{nbins}",
+        cat_config=CAT_CONFIG,
+        sacc_path=output.sacc,
+        data_type="data"
     resources:
         mem_mb=30000,
         disk_mb=20000,

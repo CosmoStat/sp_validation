@@ -9,6 +9,7 @@ figures whose names are internal.
 from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
 from snakemake.script import snakemake
 
+# LG : This is now DEPRECATED, NOT TO BE USED, since we are no longer plotting unblinded data vectors.
 _unbuffer_streams()
 cv = make_cv(snakemake)
 cv.plot_2pcf()

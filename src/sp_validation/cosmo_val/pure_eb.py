@@ -164,6 +164,7 @@ class PureEBMixin:
         max_sep_int=300,
         nbins_int=1000,
         npatch=None,
+        compute_tomography=False,  # LG: Hardcoded to False for now
         var_method="jackknife",
         cov_path_int=None,
         cosmo_cov=None,
@@ -280,6 +281,7 @@ class PureEBMixin:
                 min_sep_int=min_sep_int,
                 max_sep_int=max_sep_int,
                 nbins_int=nbins_int,
+                compute_tomography=False,  # LG: Hardcoded to False for now
                 npatch=npatch,
                 var_method=var_method,
                 cov_path_int=cov_path_int,

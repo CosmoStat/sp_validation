@@ -92,8 +92,6 @@ class RealSpaceMixin:
 
         ggs = {f"tomo_bin_{b1}_tomo_bin_{b2}": None for b1, b2 in tomo_bin_pairs}
 
-        # LG TO-DO: Change to sacc_io method
-
         patch_file = self._output_path(f"{ver}_patches_npatch={npatch}.dat")
 
         cat_gal = fits.getdata(self.cc[ver]["shear"]["path"])
@@ -190,14 +188,14 @@ class RealSpaceMixin:
     def save_2pcf_sacc(
         self,
         ver,
-        path,
+        sacc_path,
         ggs=None,
         *,
         type,
         grid="reporting",
         metadata=None,
     ):
-        """Write the measured ξ± for ``ver`` to ``path`` as a SACC file.
+        """Write the measured ξ± for ``ver`` to ``sacc_path`` as a SACC file.
 
         Serialises the TreeCorr output of :meth:`calculate_2pcf_version` (or of
         :meth:`calculate_2pcf`, via ``self.cat_ggs``) into the standard layout
@@ -227,10 +225,8 @@ class RealSpaceMixin:
         ----------
         ver : str
             Catalog version, used for the n(z) lookup and stamped as metadata.
-        path : str
-            Output path (overwritten). Passed in by the caller rather than
-            derived here, so a Snakemake rule gets the exact filename it
-            declared as its output.
+        sacc_path : str
+            Path to the SACC product.
         ggs : dict, optional
             ``{"tomo_bin_{b1}_tomo_bin_{b2}": treecorr.GGCorrelation}`` as
             returned by :meth:`calculate_2pcf_version`. Defaults to
@@ -295,8 +291,8 @@ class RealSpaceMixin:
                 weight=gg.weight,
             )
 
-        sacc_io.save(s, path, type=type)
-        self.print_done(f"Wrote ξ± SACC for {ver} to {path}.")
+        sacc_io.save(s, sacc_path, type=type)
+        self.print_done(f"Wrote ξ± SACC for {ver} to {sacc_path}.")
         return s
 
     def calculate_aperture_mass_dispersion(

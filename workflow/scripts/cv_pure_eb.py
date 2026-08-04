@@ -1,11 +1,13 @@
 """Rule cv_pure_eb: pure E/B-mode decomposition for one version.
 
 Compute + plot rule (per version). plot_pure_eb calls calculate_pure_eb, which
-runs two TreeCorr correlations (reporting + integration binning); the reporting
-binning reuses the cv_2pcf data vector via calculate_2pcf's skip-if-exists
-path. Writes the {version}_eb_..._data.npz data product (declared output) plus
-companion figures, and the per-version E/B PTEs that cv_summarize_bmodes
-collects.
+runs two TreeCorr correlations of its own (reporting + integration binning) —
+it reads no data vector from disk, so this rule declares no xi input. Writes
+the {version}_eb_..._data.npz data product (declared output) plus companion
+figures, and the per-version E/B PTEs that cv_summarize_bmodes collects.
+
+Non-tomographic: plot_pure_eb does not forward compute_tomography to
+calculate_pure_eb, so the measurement runs on the single "all" bin pair.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, verify_outputs

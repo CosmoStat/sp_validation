@@ -15,18 +15,16 @@ orchestration:
 ``CosmologyValidation.calculate_2pcf`` does the TreeCorr work and
 ``save_2pcf_sacc`` writes the result as a SACC file. Both live on the class:
 serialising needs the version's n(z) and its tomographic bin map, so this
-script only decides *where* the file goes — from the ``sacc_path`` param under
-Snakemake, from ``--sacc`` on the CLI (defaulting to the untagged
-``xi_{ver}.sacc`` under ``--out``, since each lc recipe gets its own output
-tree). Snakemake requires the file to appear at exactly the path the rule
-declared as an output, which is why the path is passed in rather than derived
-inside the class. ``output_dir`` is passed explicitly
-(rather than via the ``COSMO_VAL`` env hook) so lc can point each run at its
-own ``{output}`` tree.
+script only names the file — from the ``sacc_name`` param under Snakemake, from
+``--sacc`` on the CLI (defaulting to the untagged ``xi_{ver}.sacc``, since each
+lc recipe gets its own output tree). The *directory* is not this script's to
+choose: ``save_2pcf_sacc`` joins the name onto the version's output directory,
+so the SACC lands beside every other product of the run. Under Snakemake that
+directory comes from the catalog config; on the CLI ``--out`` overrides it, so
+lc can point each run at its own ``{output}`` tree.
 """
 
 import argparse
-import os
 
 from sp_validation.cosmo_val import CosmologyValidation
 
@@ -43,13 +41,16 @@ def run_2pcf(
     sacc_path,
     data_type="data",
 ):
-    """Measure ξ±(θ) for ``ver`` and write it to ``sacc_path``.
+    """Measure ξ±(θ) for ``ver`` and write it as the SACC file ``sacc_name``.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
-    ``cat_config['paths']['output']`` so products land where lc expects.
+    ``cat_config['paths']['output']`` so products land where lc expects, and
+    is left ``None`` under Snakemake so the directory comes from the catalog
+    config. ``sacc_name`` is a bare filename — ``save_2pcf_sacc`` joins it onto
+    whichever of the two that resolves to.
 
     ``data_type`` is the ``'data'``/``'mock'`` provenance stamp SACC requires.
     It defaults to ``'data'`` because that is the fail-safe direction: a mock
@@ -78,22 +79,14 @@ def _from_snakemake(smk):
     p = smk.params
     run_2pcf(
         ver=p["ver"],
-        compute_tomography=bool(p["compute_tomography"]),
+        compute_tomography=str(p["compute_tomography"]).lower() == "true",
         npatch=int(p["npatch"]),
         min_sep=float(p["min_sep"]),
         max_sep=float(p["max_sep"]),
         nbins=int(p["nbins"]),
-        # cat_config / output_dir were previously resolved via an os.chdir into
-        # the cosmo_val dir + the COSMO_VAL env var; expose them as optional
-        # params so the rule can pass them explicitly, falling back to the
-        # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
         cat_config=p.get("cat_config", "./cat_config.yaml"),
-        output_dir=p.get("output_dir", None),
-        # Taken from params, so the rule must keep this in sync with the SACC
-        # path it declares as an output — Snakemake checks for that exact file
-        # once the job returns, and a mismatch fails the job as a missing
-        # output after the measurement has already run.
-        sacc_path=p.get("sacc_path", None),
+        output_dir=None,
+        sacc_path=p["sacc_path"],
         data_type=p.get("data_type", "data"),
     )
 
@@ -128,8 +121,8 @@ def _from_cli(argv=None):
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
         "--sacc",
-        default=None,
-        help="SACC output path (default: xi_{ver}.sacc under --out)",
+        required=True,
+        help="Path to SACC file, written under --out (default: xi_{ver}.sacc)",
     )
     ap.add_argument(
         "--type",
@@ -138,10 +131,7 @@ def _from_cli(argv=None):
         help="Catalog provenance stamped on the SACC file, default=%(default)s",
     )
     a = ap.parse_args(argv)
-    # Each lc/ASTRA recipe gets its own output directory, so the untagged
-    # native name is unambiguous there — same convention as
-    # generate_pseudo_cl.py, which leaves its native product under --out.
-    sacc_path = a.sacc or os.path.join(a.out, f"xi_{a.ver}.sacc")
+
     run_2pcf(
         ver=a.ver,
         compute_tomography=a.compute_tomography,
@@ -151,7 +141,7 @@ def _from_cli(argv=None):
         npatch=a.npatch,
         cat_config=a.cat_config,
         output_dir=a.out,
-        sacc_path=sacc_path,
+        sacc_path=a.sacc,
         data_type=a.type,
     )
 

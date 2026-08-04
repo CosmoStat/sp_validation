@@ -2,9 +2,13 @@
 
 Compute + plot rule (per version). plot_cosebis calls calculate_cosebis over a
 fine integration binning (the 2000-bin TreeCorr is the dominant cost) and
-evaluates the configured scale cuts. Writes the {version}_eb_..._data.npz
-COSEBIs data product (declared output) plus figures, and the per-version
-COSEBIs PTE that cv_summarize_bmodes collects.
+evaluates the configured scale cuts. The TreeCorr run is its own, so this rule
+declares no xi input. Writes the {version}_eb_..._data.npz COSEBIs data product
+(declared output) plus figures, and the per-version COSEBIs PTE that
+cv_summarize_bmodes collects.
+
+Non-tomographic: plot_cosebis passes compute_tomography=False and then reads
+the single "tomo_bin_all_tomo_bin_all" entry back out of the result.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, verify_outputs
