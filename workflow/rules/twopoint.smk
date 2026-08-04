@@ -11,11 +11,11 @@ rule xi:
     threads: 24
     params:
         ver="{version}",
+        compute_tomography="{compute_tomography}",
+        npatch="{npatch}",
         min_sep="{min_sep}",
         max_sep="{max_sep}",
         nbins="{nbins}",
-        npatch="{npatch}",
-        fits=False,
     resources:
         mem_mb=30000,
         disk_mb=20000,
