@@ -278,21 +278,31 @@ class PureEBMixin:
             )
 
             # Get or calculate results for this version
-            version_results = results_list[idx] or self.calculate_pure_eb(
-                version,
-                min_sep=min_sep,
-                max_sep=max_sep,
-                nbins=nbins,
-                min_sep_int=min_sep_int,
-                max_sep_int=max_sep_int,
-                nbins_int=nbins_int,
-                compute_tomography=False,  # LG: Hardcoded to False for now
-                npatch=npatch,
-                var_method=var_method,
-                cov_path_int=cov_path_int,
-                cosmo_cov=cosmo_cov,
-                n_samples=n_samples,
-            )
+            version_results = results_list[idx]
+            if version_results is None:
+                version_results_tomo = self.calculate_pure_eb(
+                    version,
+                    min_sep=min_sep,
+                    max_sep=max_sep,
+                    nbins=nbins,
+                    min_sep_int=min_sep_int,
+                    max_sep_int=max_sep_int,
+                    nbins_int=nbins_int,
+                    compute_tomography=False,  # LG: Hardcoded to False for now
+                    npatch=npatch,
+                    var_method=var_method,
+                    cov_path_int=cov_path_int,
+                    cosmo_cov=cosmo_cov,
+                    n_samples=n_samples,
+                )
+                version_results = version_results_tomo[
+                    "tomo_bin_all_tomo_bin_all"
+                ]  # LG: Extract non-tomographic results
+            elif (
+                isinstance(version_results, dict)
+                and "tomo_bin_all_tomo_bin_all" in version_results
+            ):
+                version_results = version_results["tomo_bin_all_tomo_bin_all"]
 
             # Calculate E/B statistics for all bin combinations
             version_results = calculate_eb_statistics(

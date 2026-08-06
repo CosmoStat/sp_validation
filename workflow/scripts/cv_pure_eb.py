@@ -6,8 +6,9 @@ it reads no data vector from disk, so this rule declares no xi input. Writes
 the {version}_eb_..._data.npz data product (declared output) plus companion
 figures, and the per-version E/B PTEs that cv_summarize_bmodes collects.
 
-Non-tomographic: plot_pure_eb does not forward compute_tomography to
-calculate_pure_eb, so the measurement runs on the single "all" bin pair.
+Non-tomographic: plot_pure_eb forwards a hardcoded compute_tomography=False to
+calculate_pure_eb and then reads the single "tomo_bin_all_tomo_bin_all" entry
+back out of the result, so the measurement runs on the single "all" bin pair.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, verify_outputs
