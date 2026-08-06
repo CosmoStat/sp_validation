@@ -631,6 +631,13 @@ class TestCosmologyValidation:
             nbins_int=600,
         )
 
+        # calculate_pure_eb keys its results by tomographic bin pair, mirroring
+        # calculate_2pcf_version. Non-tomographic (compute_tomography=False, the
+        # default) means exactly one pair -- the all-galaxy auto-correlation --
+        # so assert that and unwrap it to the per-bin mode dict.
+        assert list(results) == ["tomo_bin_all_tomo_bin_all"]
+        results = results["tomo_bin_all_tomo_bin_all"]
+
         # Reference mode vectors from the seeded synthetic catalog + Schneider
         # transform. Deterministic (full-sample treecorr, no RNG); regenerate by
         # running calculate_pure_eb with the setup above and printing repr() of

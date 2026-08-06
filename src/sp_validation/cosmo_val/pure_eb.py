@@ -82,7 +82,12 @@ class PureEBMixin:
         Returns
         -------
         dict
-            A dictionary containing the following keys:
+            Mapping of ``"tomo_bin_{b1}_tomo_bin_{b2}"`` to that bin pair's pure
+            E/B results, following the keys of :meth:`calculate_2pcf_version`.
+            With ``compute_tomography=False`` the single key is
+            ``"tomo_bin_all_tomo_bin_all"``.
+
+            Each value is a dictionary containing the following keys:
 
             - "xip_E": Pure E-mode correlation function for xi+.
             - "xim_E": Pure E-mode correlation function for xi-.
