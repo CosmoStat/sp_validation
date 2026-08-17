@@ -24,6 +24,10 @@ rule xi:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        # Stamped as the part's SACC `type`. An unconcealed blindable part only
+        # assembles when it declares itself a mock (assert_consistent_blind), so
+        # this is what makes a mock campaign's terminal assembly possible at all.
+        type=run_type(),
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -82,6 +86,7 @@ rule xi_highres:
         nbins=_INTEGRATION["nbins"],
         out=str(COSMO_VAL),
         scripts=WORKFLOW_SCRIPTS,
+        run_type=run_type(),
     threads: 24
     resources:
         mem_mb=40000,
@@ -90,7 +95,8 @@ rule xi_highres:
         "python {params.scripts}/run_2pcf_highres.py "
         "--version {params.version} --cat-config {params.cat_config} "
         "--min-sep {params.min_sep} --max-sep {params.max_sep} "
-        "--nbins {params.nbins} --npatch 1 --out {params.out}"
+        "--nbins {params.nbins} --npatch 1 --out {params.out} "
+        "--run-type {params.run_type}"
 
 
 rule run_cosmo_val:
@@ -111,7 +117,23 @@ rule run_cosmo_val:
         """
 
 
+def rho_tau_inputs(w):
+    """ρ/τ has no blindable input; on a data run it binds the commitment.
+
+    ρ/τ carries no cosmological vector, so it is never shifted — but the
+    fail-closed load gate assemble_sacc opens every part through admits only
+    concealed parts on a data run. Binding commitment.json lets the writer stamp
+    the part concealed pass-through (values untouched). A mock run binds nothing
+    and the part stays plaintext.
+    """
+    if not is_data_run():
+        return {}
+    return {"commitment": blind_state_paths(w.version)["commitment"]}
+
+
 rule rho_tau_stats:
+    input:
+        unpack(rho_tau_inputs),
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
@@ -127,6 +149,7 @@ rule rho_tau_stats:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        type=run_type(),
     resources:
         mem_mb=30000,
         disk_mb=20000,

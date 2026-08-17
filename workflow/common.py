@@ -226,6 +226,19 @@ def get_shear_catalog(wildcards):
 # DAG-build time. test_blinding_wiring asserts the two stay in lockstep.
 
 
+def run_type():
+    """The campaign's run type, ``"data"`` or ``"mock"``.
+
+    Every part writer stamps this as the SACC ``type`` metadata, which is what
+    ``blinding.assert_consistent_blind`` reads at assembly: a plaintext
+    blindable part may only assemble when it declares itself a mock. A function
+    rather than the ``RUN_TYPE`` global because ``from common import *`` binds
+    names before ``configure()`` runs, so only a call reads the configured
+    value.
+    """
+    return RUN_TYPE
+
+
 def is_data_run():
     """True when blinding is active (production data runs); False for mocks."""
     return RUN_TYPE == "data"
@@ -349,6 +362,9 @@ def cv_init_params(config, version_list=None):
         nrandom_cell=cv["nrandom_cell"],
         cell_method=cv["cell_method"],
         nside_mask=cv["nside_mask"],
+        # Stamped as the SACC `type` of every part the cv writes; RUN_TYPE reads
+        # from this same key (see configure()).
+        run_type=cv.get("type", "data"),
     )
     if cv.get("path_onecovariance"):
         params["path_onecovariance"] = cv["path_onecovariance"]

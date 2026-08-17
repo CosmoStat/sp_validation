@@ -203,7 +203,7 @@ class CosebisMixin:
             from ..blinding import stamp_concealed_passthrough
 
             stamp_concealed_passthrough(s, commitment_path)
-        sacc_io.save(s, out_path, type="data")
+        sacc_io.save(s, out_path, type=self.run_type)
 
     def plot_cosebis(
         self,

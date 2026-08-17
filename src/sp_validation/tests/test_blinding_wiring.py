@@ -16,9 +16,11 @@ cosmo_val DAG dry-run.
 """
 
 import importlib.util
+import json
 import os
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 import numpy as np
@@ -103,7 +105,7 @@ def test_blindable_part_switches_on_run_type(monkeypatch):
 # --------------------------------------------------------------------------- #
 META = {"catalogue_version": "vSYNTH", "npatch": 1}
 # Two arbitrary-but-consistent hex stamps standing in for a real blind's
-# sha256(seed) / config digest; the assembly only checks they agree across parts.
+# seed commitment / config digest; the assembly only checks they agree across parts.
 _COMMIT = "a" * 64
 _DIGEST = "b" * 64
 
@@ -117,12 +119,14 @@ def _spd(n, seed):
     return a @ a.T + n * np.eye(n)
 
 
-def _data_parts(tmp_path, *, conceal, one_plaintext=False):
-    """Write the five per-statistic parts as ``type='data'``.
+def _data_parts(tmp_path, *, conceal, one_plaintext=False, run_type="data"):
+    """Write the five per-statistic parts, stamped ``type=run_type``.
 
     ``conceal`` stamps every part with the shared blind (concealed=True). With
     ``one_plaintext`` the ξ± reporting part is left unconcealed — a blinded /
-    plaintext mix the assembly must refuse.
+    plaintext mix the assembly must refuse. ``run_type='mock'`` writes the parts
+    as a mock campaign's producers do, which is the only way an unconcealed
+    blindable part is allowed through the assembly.
     """
     nz = {0: _nz()}
     theta = np.geomspace(1.0, 100.0, 6)
@@ -162,7 +166,7 @@ def _data_parts(tmp_path, *, conceal, one_plaintext=False):
         if conceal and not (one_plaintext and name == "xi_reporting"):
             blinding._stamp_provenance(part, _COMMIT, "A", _DIGEST)
         p = tmp_path / f"{name}.sacc"
-        sio.save(part, str(p), type="data")
+        sio.save(part, str(p), type=run_type)
         paths[name] = str(p)
     return paths
 
@@ -226,6 +230,87 @@ def test_data_assemble_stamps_the_draw_scheme_on_the_terminal_file(tmp_path):
     out = tmp_path / "vSYNTH.sacc"
     asm.assemble_sacc("vSYNTH", paths, str(out), placeholder_var=1.0)
     assert sio.load(str(out)).metadata["blind_draw_scheme"] == blinding.draw_scheme()
+
+
+def test_mock_assemble_succeeds_without_a_blind(tmp_path):
+    """A mock campaign assembles its plaintext parts — the gate's mock branch is
+    reachable from real producers, not only from test fixtures.
+
+    Every part writer stamps the campaign's run type (CosmologyValidation's
+    ``run_type``, ``run_2pcf``'s ``run_type=``, ``run_2pcf_highres``'s
+    ``--run-type``), so a ``mock`` campaign's parts declare themselves mocks and
+    ``assert_consistent_blind`` lets them through unconcealed. The same parts
+    stamped ``type='data'`` fail closed — that is
+    ``test_data_assemble_fails_closed_on_unblinded_part``.
+    """
+    paths = _data_parts(tmp_path, conceal=False, run_type="mock")
+    out = tmp_path / "vSYNTH.sacc"
+    s = asm.assemble_sacc("vSYNTH", paths, str(out), placeholder_var=1.0)
+    assert "concealed" not in s.metadata
+    # No escape hatch: a mock part is not gated by the fail-closed loader.
+    assert sio.load(str(out)).metadata["type"] == "mock"
+
+
+def test_rho_tau_part_is_stamped_concealed_from_the_commitment(tmp_path):
+    """ρ/τ carries no cosmological vector, but a data run's assembly still opens
+    it through the fail-closed load gate — so its writer must stamp it.
+
+    This drives the real writer (``PSFSystematicsMixin.rho_tau_to_sacc_part``)
+    with the commitment the ``rho_tau_stats`` rule binds on a data run, and
+    checks the emitted part loads without the escape hatch. Without the stamp a
+    data run's ``assemble_sacc`` dies on the ρ/τ part before custody is ever
+    checked.
+    """
+    from sp_validation.cosmo_val.psf_systematics import PSFSystematicsMixin
+
+    blind_dir = tmp_path / "blind"
+    blind_dir.mkdir()
+    commitment = blinding.blind_init(str(blind_dir), log=lambda *_: None)["commitment"]
+    theta = np.geomspace(1.0, 100.0, 6)
+    rng = np.random.default_rng(11)
+    rho = {"theta": theta}
+    tau = {"theta": theta}
+    for k in sw.RHO_K:
+        for sign in ("p", "m"):
+            rho[f"rho_{k}_{sign}"] = rng.normal(size=6) * 1e-6
+            rho[f"varrho_{k}_{sign}"] = rng.uniform(1e-14, 1e-13, 6)
+    for k in sw.TAU_K:
+        for sign in ("p", "m"):
+            tau[f"tau_{k}_{sign}"] = rng.normal(size=6) * 1e-6
+            tau[f"vartau_{k}_{sign}"] = rng.uniform(1e-14, 1e-13, 6)
+
+    class _Writer(PSFSystematicsMixin):
+        """The writer's collaborators, stubbed — the method under test is real."""
+
+        run_type = "data"
+
+        def sacc_nz(self, version):
+            return {0: _nz()}
+
+        def sacc_metadata(self, version):
+            return dict(META)
+
+        def print_magenta(self, *args, **kwargs):
+            pass
+
+    out_dir = tmp_path / "rho_tau_stats"
+    out_dir.mkdir()
+    _Writer().rho_tau_to_sacc_part(
+        "vSYNTH",
+        str(out_dir),
+        "vSYNTH",
+        types.SimpleNamespace(rho_stats=rho),
+        types.SimpleNamespace(tau_stats=tau),
+        commitment_path=commitment,
+    )
+
+    written = sio.load(str(out_dir / "rho_tau_vSYNTH.sacc"))
+    assert written.metadata["concealed"] is True
+    assert written.metadata["blind_draw_scheme"] == blinding.draw_scheme()
+    with open(commitment, encoding="utf-8") as f:
+        committed = json.load(f)
+    assert written.metadata["blind_commitment"] == committed["seed_commitment"]
+    assert written.metadata["blind_config_digest"] == committed["config_digest"]
 
 
 def test_assert_consistent_blind_rejects_divergent_commitments(tmp_path):

@@ -708,7 +708,7 @@ class PseudoClMixin:
             cl_all,
             wsp,
         )
-        sacc_io.save(s, out_path, type="data")
+        sacc_io.save(s, out_path, type=self.run_type)
 
     def plot_pseudo_cl(self):
         """

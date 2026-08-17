@@ -91,6 +91,10 @@ NBINS = None
 NPATCH = None
 OUTPUT_DIR = None
 PATCH_FILE = None
+# Campaign run type, stamped as the part's SACC `type`. Custody state, not
+# decoration: a plaintext blindable part may only enter an assembly when it
+# declares itself a mock (blinding.assert_consistent_blind).
+RUN_TYPE = "data"
 
 
 def parse_args(argv=None):
@@ -121,6 +125,12 @@ def parse_args(argv=None):
         "--max-sep", type=float, default=300.0, help="Max separation [arcmin]"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--run-type",
+        default="data",
+        choices=("data", "mock"),
+        help="Campaign run type stamped as the part's SACC `type`",
+    )
     return ap.parse_args(argv)
 
 
@@ -233,7 +243,7 @@ def write_xi_integration_sacc(gg):
         variances=np.concatenate([gg.varxip, gg.varxim]),
     )
     out_path = os.path.join(OUTPUT_DIR, f"{VERSION}_xi_integration.sacc")
-    sacc_io.save(s, out_path, type="data")
+    sacc_io.save(s, out_path, type=RUN_TYPE)
     log(f"  Wrote {out_path}")
 
 
@@ -297,10 +307,11 @@ def resolve_shear_config(cat_config_path, version):
 
 def main():
     global CAT_PATH, VERSION, E1_COL, E2_COL, W_COL, REDSHIFT_PATH
-    global TMIN, TMAX, NBINS, NPATCH, OUTPUT_DIR, PATCH_FILE
+    global TMIN, TMAX, NBINS, NPATCH, OUTPUT_DIR, PATCH_FILE, RUN_TYPE
 
     args = parse_args()
     VERSION = args.version
+    RUN_TYPE = args.run_type
     NBINS = args.nbins
     NPATCH = args.npatch
     TMIN = args.min_sep

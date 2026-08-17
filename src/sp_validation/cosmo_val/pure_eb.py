@@ -135,7 +135,12 @@ class PureEBMixin:
         return results
 
     def pure_eb_to_sacc_part(
-        self, version, out_path, results, eb_override=None, commitment_path=None
+        self,
+        version,
+        out_path,
+        results,
+        eb_override=None,
+        commitment_path=None,
     ):
         """Write the pure-E/B SACC part (six ``PURE_KEYS`` blocks + covariance).
 
@@ -166,7 +171,7 @@ class PureEBMixin:
             from ..blinding import stamp_concealed_passthrough
 
             stamp_concealed_passthrough(s, commitment_path)
-        sacc_io.save(s, out_path, type="data")
+        sacc_io.save(s, out_path, type=self.run_type)
 
     def plot_pure_eb(
         self,
