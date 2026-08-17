@@ -13,10 +13,10 @@ its own standalone part SACC (reporting ξ±, integration ξ±, pseudo-Cℓ), as
 per-part-at-birth architecture; derived statistics (COSEBIs, pure-E/B) are
 never stored in parts — they are computed downstream from the (blinded) integration
 ξ± through the pipeline seams ``b_modes.cosebis_from_xi`` /
-``b_modes.pure_eb_from_xi``, exactly as the pipeline does. The fork's
-``ConcealDataVector`` carries no data-vector consistency check (only the
-length guard), so fixture ξ± values are smooth synthetic templates — no
-theory fill is needed to blind.
+``b_modes.pure_eb_from_xi``, exactly as the pipeline does. The blinding path
+hands the fork no data vector at all (``smokescreen.concealing_factor`` is a
+pure theory difference), so fixture ξ± values are smooth synthetic templates —
+no theory fill is needed to blind.
 """
 
 import json
@@ -418,6 +418,7 @@ def test_provenance_metadata_contract(monkeypatch):
     assert blinded.metadata["blind"] == "B"
     assert blinded.metadata["blind_commitment"] == bd.seed_commitment("seed")
     assert blinded.metadata["blind_config_digest"] == c.config_digest()
+    assert blinded.metadata["blind_draw_scheme"] == bd.draw_scheme()
     assert "seed_smokescreen" not in blinded.metadata
     assert blinded.metadata["catalogue_version"] == "vTEST"
 
@@ -455,6 +456,170 @@ def test_unblind_fails_closed_on_wrong_seed_or_config(monkeypatch):
 
 
 # --------------------------------------------------------------------------- #
+# The vector core: full-length theory in, block slice out (fast — fake backend)
+# --------------------------------------------------------------------------- #
+def _fake_factory(indices, hole=None):
+    """A backend that fills ``indices`` with ``sigma8 * arange`` and nothing else.
+
+    Mimics the real backends' contract — a block's ``theory_fn`` reads its
+    layout off the SACC it is given and returns a full-length vector, NaN on
+    every row outside its own block — without importing CCL. ``hole`` leaves
+    one row of the block itself unfilled.
+    """
+
+    def factory(s, theory):
+        def theory_fn(params):
+            out = np.full(len(s.mean), np.nan)
+            out[indices] = params["sigma8"] * np.arange(len(indices))
+            if hole is not None:
+                out[hole] = np.nan
+            return out
+
+        return theory_fn
+
+    return factory
+
+
+def test_concealing_factor_slices_its_own_block_from_a_full_length_vector():
+    """The factor is the theory difference at the block's rows, and the rows
+    the backend does not fill are never read.
+
+    This is the shape of the whole path after the sub-SACC carving came out:
+    the backend is driven off the assembled SACC directly, returns a
+    full-length vector that is NaN everywhere but its own block, and
+    ``_concealing_factor`` returns exactly that block's rows. Checked against
+    :func:`hidden_params`, which reaches the same hidden point by an
+    independent route.
+    """
+    ordered = ["xi_reporting", "cl", "rho_tau", "xi_integration"]
+    s = sio.gather([make_parts(nbins=1)[k] for k in ordered])
+    blocks = bd._blindable_blocks(s)
+    assert len(blocks) == 3, "assembled file carries all three blindable blocks"
+
+    cfg = bd.BlindingConfig()
+    delta = bd.hidden_params("seed", cfg)["sigma8"] - cfg.theory.ccl_params()["sigma8"]
+    assert delta != 0.0
+    for _, indices, _ in blocks:
+        factor = bd._concealing_factor(s, indices, _fake_factory(indices), cfg, "seed")
+        assert factor.shape == (len(indices),)
+        assert np.allclose(factor, delta * np.arange(len(indices)))
+
+
+def test_concealing_factor_refuses_a_row_its_backend_cannot_fill():
+    """A NaN on a row the block *claims* is a layout the backend cannot cover.
+
+    Slicing to the block drops the NaNs outside it by construction; this is
+    the converse guard, and it has to be explicit — without it a row the
+    backend silently skipped would be shifted by NaN, destroying that point
+    with no error anywhere.
+    """
+    part = make_xi_part("reporting")
+    ((_, indices, _),) = bd._blindable_blocks(part)
+    with pytest.raises(ValueError, match="unfilled"):
+        bd._concealing_factor(
+            part,
+            indices,
+            _fake_factory(indices, hole=indices[0]),
+            bd.BlindingConfig(),
+            "seed",
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Draw-scheme binding: the blind is (seed, config, draw semantics)
+# --------------------------------------------------------------------------- #
+def test_draw_scheme_is_the_installed_fork_constant():
+    """The recorded scheme is read from Smokescreen, not hardcoded here."""
+    import smokescreen
+
+    assert bd.draw_scheme() == int(smokescreen.DRAW_SCHEME)
+    assert isinstance(bd.draw_scheme(), int)
+
+
+def test_assert_draw_scheme_message_names_both_versions(monkeypatch):
+    """A scheme mismatch says which scheme made the blind and which is installed."""
+    monkeypatch.setattr(bd, "draw_scheme", lambda: 2)
+    bd._assert_draw_scheme(2, "the blind")  # matching scheme is silent
+    with pytest.raises(ValueError, match=r"DRAW_SCHEME=1.*DRAW_SCHEME=2"):
+        bd._assert_draw_scheme(1, "the blind")
+    with pytest.raises(ValueError, match="no draw-scheme record"):
+        bd._assert_draw_scheme(None, "the blind")
+
+
+def test_unblind_refuses_a_blind_drawn_under_another_scheme(monkeypatch):
+    """The finding this closes: a blind added under one draw scheme and
+    subtracted under another silently produces a wrong data vector, because
+    the seed hash, the config digest and the escrow check all still pass. The
+    scheme must be part of the custody state, checked before any subtraction.
+    """
+    _patch_constant_factor(monkeypatch)
+    blinded = bd.blind_sacc(make_xi_part("reporting"), "seed", log=_NOLOG)
+    assert blinded.metadata["blind_draw_scheme"] == bd.draw_scheme()
+
+    # everything else about this file is valid — only the draw semantics moved
+    monkeypatch.setattr(
+        bd, "draw_scheme", lambda: blinded.metadata["blind_draw_scheme"] + 1
+    )
+    with pytest.raises(ValueError, match="DRAW_SCHEME"):
+        bd.unblind_sacc(blinded, "seed", log=_NOLOG)
+
+
+def test_unblind_refuses_a_file_predating_scheme_binding(monkeypatch):
+    """A blinded file with no scheme record fails closed, not open."""
+    _patch_constant_factor(monkeypatch)
+    blinded = bd.blind_sacc(make_xi_part("reporting"), "seed", log=_NOLOG)
+    del blinded.metadata["blind_draw_scheme"]
+    with pytest.raises(ValueError, match="no draw-scheme record"):
+        bd.unblind_sacc(blinded, "seed", log=_NOLOG)
+
+
+def test_unblind_strips_the_scheme_stamp_with_the_rest(monkeypatch):
+    _patch_constant_factor(monkeypatch)
+    blinded = bd.blind_sacc(make_xi_part("reporting"), "seed", log=_NOLOG)
+    part = bd.unblind_sacc(blinded, "seed", log=_NOLOG)
+    assert "blind_draw_scheme" not in part.metadata
+
+
+def test_read_seed_fails_closed_on_scheme_drift(tmp_path, monkeypatch):
+    """blind_part reads the seed through _read_seed, so a scheme change between
+    blinding part 1 and part 2 is caught before the second part is shifted."""
+    bd.blind_init(str(tmp_path), log=_NOLOG)
+    monkeypatch.setattr(bd, "draw_scheme", lambda: 99)
+    with pytest.raises(ValueError, match="DRAW_SCHEME"):
+        bd._read_seed(str(tmp_path), bd.BlindingConfig())
+
+
+def test_stamp_passthrough_carries_the_committed_scheme(tmp_path, monkeypatch):
+    """A pass-through part inherits the blind's scheme, and cannot be stamped
+    from an install that draws differently."""
+    paths = bd.blind_init(str(tmp_path), log=_NOLOG)
+    s = bd.stamp_concealed_passthrough(make_rho_part(), paths["commitment"])
+    assert s.metadata["blind_draw_scheme"] == bd.draw_scheme()
+
+    monkeypatch.setattr(bd, "draw_scheme", lambda: 99)
+    with pytest.raises(ValueError, match="DRAW_SCHEME"):
+        bd.stamp_concealed_passthrough(make_rho_part(), paths["commitment"])
+
+
+def test_assert_consistent_blind_refuses_divergent_or_foreign_schemes(monkeypatch):
+    """Parts blinded under different schemes never assemble; nor does a set
+    that agrees with itself but not with the installed fork."""
+    parts = make_parts(nbins=1, with_rho=False)
+    for p in parts.values():
+        _stamp(p)
+    parts["cl"].metadata["blind_draw_scheme"] = bd.draw_scheme() + 1
+    with pytest.raises(ValueError, match="different blind commitments"):
+        bd.assert_consistent_blind(list(parts.values()))
+
+    parts = make_parts(nbins=1, with_rho=False)
+    for p in parts.values():
+        _stamp(p)
+        p.metadata["blind_draw_scheme"] = bd.draw_scheme() + 1
+    with pytest.raises(ValueError, match="DRAW_SCHEME"):
+        bd.assert_consistent_blind(list(parts.values()))
+
+
+# --------------------------------------------------------------------------- #
 # blind-init custody + assembly hash assertion (fast — encryption only)
 # --------------------------------------------------------------------------- #
 def test_blind_init_writes_commitment_and_encrypted_bundle_only(tmp_path):
@@ -462,7 +627,7 @@ def test_blind_init_writes_commitment_and_encrypted_bundle_only(tmp_path):
     paths = bd.blind_init(str(tmp_path), log=_NOLOG)
     with open(paths["commitment"], encoding="utf-8") as f:
         commitment = json.load(f)
-    assert set(commitment) == {"label", "seed_sha256", "config_digest"}
+    assert set(commitment) == {"label", "seed_sha256", "config_digest", "draw_scheme"}
     assert len(commitment["seed_sha256"]) == 64
     assert commitment["config_digest"] == bd.BlindingConfig().config_digest()
     # exactly the three custody outputs, no plaintext bundle
@@ -507,6 +672,7 @@ def test_assert_consistent_blind_shared_stamp():
         "blind": "A",
         "blind_commitment": bd.seed_commitment("s"),
         "blind_config_digest": bd.BlindingConfig().config_digest(),
+        "blind_draw_scheme": bd.draw_scheme(),
     }
 
 
@@ -681,8 +847,12 @@ def test_ac2_on_file_shift_equals_theory_difference_per_part(transfer_function):
         hiddens.append(hidden)
         fiducial = cfg.theory.ccl_params()
         ((block_name, indices, factory),) = bd._blindable_blocks(part)
-        theory = factory(bd._extract_block(part, indices), cfg.theory)
-        expected = theory(hidden) - theory(fiducial)
+        # Independent of the blinding path: the factory is driven directly off
+        # the part, at the hidden point recovered by hidden_params, and the two
+        # theory vectors are differenced here rather than by the fork. The
+        # factory fills only its own block, so slice to it.
+        theory = factory(part, cfg.theory)
+        expected = (theory(hidden) - theory(fiducial))[indices]
         actual = np.array(blinded.mean)[indices] - np.array(part.mean)[indices]
         gap = np.max(np.abs(actual - expected))
         scale = np.max(np.abs(expected))
@@ -989,7 +1159,7 @@ def test_ac6_ac8_end_to_end_init_parts_gather_unblind(tmp_path):
         assert not np.array_equal(np.array(blinded.mean), np.array(parts[name].mean))
     with open(init["commitment"], encoding="utf-8") as f:
         commitment = json.load(f)
-    assert set(commitment) == {"label", "seed_sha256", "config_digest"}
+    assert set(commitment) == {"label", "seed_sha256", "config_digest", "draw_scheme"}
     blinded_parts = {n: sio.load(p["blinded"]) for n, p in out_paths.items()}
     for b in blinded_parts.values():
         assert b.metadata["blind_commitment"] == commitment["seed_sha256"]

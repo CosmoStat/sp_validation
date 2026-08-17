@@ -113,6 +113,30 @@ def _verify(args):
         problems.append("blind_commitment does not match the committed sha256(seed)")
     if s.metadata.get("blind_config_digest") != commitment["config_digest"]:
         problems.append("blind_config_digest does not match the committed digest")
+    # The draw scheme is checked three ways: file ↔ commitment, and both against
+    # the installed fork. A scheme mismatch is the one blinding failure with no
+    # numerical symptom — the unblind would subtract a different shift than was
+    # added and every other check here would still pass.
+    installed = blinding.draw_scheme()
+    file_scheme = s.metadata.get("blind_draw_scheme")
+    committed = commitment.get("draw_scheme")
+    if file_scheme is None or committed is None:
+        problems.append(
+            "no draw-scheme record on the file and/or in the commitment — "
+            "this blind predates draw-scheme binding and cannot be verified "
+            "reproducible"
+        )
+    elif int(file_scheme) != int(committed):
+        problems.append(
+            f"blind_draw_scheme {int(file_scheme)} does not match the committed "
+            f"draw_scheme {int(committed)}"
+        )
+    elif int(file_scheme) != installed:
+        problems.append(
+            f"blind was drawn under Smokescreen DRAW_SCHEME={int(file_scheme)} "
+            f"but the installed fork implements DRAW_SCHEME={installed} — this "
+            "install cannot reproduce the shift"
+        )
     if "seed_smokescreen" in s.metadata:
         problems.append("PLAINTEXT SEED LEAKED into file metadata (seed_smokescreen)")
     if problems:

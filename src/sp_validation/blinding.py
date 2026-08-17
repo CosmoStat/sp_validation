@@ -12,20 +12,25 @@
 
     **The fork is the concealment engine.** The hidden cosmology is drawn by
     the ``UNIONS-WL/Smokescreen`` fork's own CCL-native, per-key-independent
-    draw; each part goes through its ``ConcealDataVector(fiducial_params,
-    shifts_dict, sacc_data, *, seed, theory_fn)`` entry point. This module
-    supplies the two sp_validation-specific pieces: the three ``theory_fn``
-    backends matching each part's row layout (reporting ξ±, integration ξ±, pseudo-Cℓ)
-    and the SACC handling around the concealed vectors.
+    draw. Blinding is a vector operation, so this module calls the fork's
+    vector core directly — ``smokescreen.concealing_factor(fiducial_params,
+    shifts_dict, *, seed, theory_fn)``, which returns
+    ``t(hidden) − t(fiducial)`` and never sees a SACC. This module supplies
+    the two sp_validation-specific pieces: the three ``theory_fn`` backends
+    matching each part's row layout (reporting ξ±, integration ξ±, pseudo-Cℓ)
+    and the SACC handling around the returned factors.
 
     **Envelope calibration.** The blinding intent is an amplitude smear of a
     chosen (S8, Ωm) box. The fork draws in CCL-native primitives, so
     :meth:`BlindingConfig.shifts_dict` maps the intended box to
     ``{sigma8, Omega_c}`` half-widths evaluated at the fiducial —
-    ``σ8 = S8/√(Ωm/0.3)``, ``Ω_c = Ωm − Ω_b − Ω_ν``. The same seed yields
-    the same hidden cosmology across all part passes (the fork's draw depends
-    only on ``(key, seed)``), so the blinded parts are mutually consistent by
-    construction.
+    ``σ8 = S8/√(Ωm/0.3)``, ``Ω_c = Ωm − Ω_b − Ω_ν``. Under the installed draw
+    scheme the deltas depend only on ``(key, seed, shift_distr)``, so one seed
+    yields one hidden cosmology across all part passes and the blinded parts
+    are mutually consistent by construction. That "only" is a property of the
+    *draw scheme*, not of the seed: :func:`draw_scheme` records which scheme a
+    blind was drawn under and every custody gate refuses an install that
+    disagrees (see **Custody** below).
 
     **Derived statistics are born blinded.** COSEBIs and pure-E/B are never
     touched by this module: the pipeline's own estimators
@@ -37,17 +42,23 @@
 
     **Custody: hash commitment, no keyholder.** :func:`blind_init` runs once
     per catalogue version: it draws an OS-entropy seed, publishes
-    ``sha256(seed)`` plus a canonical config digest as a repo-committable
-    ``commitment.json``, and encrypts the seed into a Fernet bundle
-    (``smokescreen.encryption``) — the plaintext seed is never written.
+    ``sha256(seed)``, a canonical config digest, and the installed fork's
+    ``DRAW_SCHEME`` as a repo-committable ``commitment.json``, and encrypts
+    the seed into a Fernet bundle (``smokescreen.encryption``) — the plaintext
+    seed is never written. The three together, not the seed alone, are what
+    reproduces a blind: seed and config fix *which* shift, the draw scheme
+    fixes *how* the seed becomes that shift.
+
     Each :func:`blind_part` call reads that fixed state, conceals one part,
     escrows the part's true vector into its own encrypted bundle beside the
-    blinded output, and deletes the plaintext part. Terminal assembly
-    (:func:`sp_validation.sacc_io.gather`) calls
-    :func:`assert_consistent_blind` to fail closed unless every blindable
-    part carries the identical ``blind_commitment``. :func:`unblind_part`
-    verifies both hashes against the commitment *before* subtracting
-    anything, then restores the true part.
+    blinded output, and deletes the plaintext part. Every path that assembles
+    parts into the one-file product goes through
+    :func:`sp_validation.sacc_io.gather` — the production assembler is passed
+    *into* it rather than wrapped around it — and gather calls
+    :func:`assert_consistent_blind` to fail closed unless every blindable part
+    carries the identical ``blind_commitment``, ``blind_config_digest`` and
+    ``blind_draw_scheme``. :func:`unblind_part` verifies all three against the
+    commitment *before* subtracting anything, then restores the true part.
 """
 
 import dataclasses
@@ -89,8 +100,11 @@ class BlindingConfig:
         ``ΔS8/√(Ωm_fid/0.3)`` in σ8 (at fixed Ωm), and a ΔΩm half-width maps
         one-to-one to Ω_c (Ω_b and Ω_ν are fixed). Exact enough for a
         blinding smear — the target is a characteristic amplitude, not a
-        precise (S8, Ωm) posterior. The fork draws each key independently as
-        ``U(fid − h, fid + h)``.
+        precise (S8, Ωm) posterior. Under the installed draw scheme the fork
+        draws each key independently as ``U(fid − h, fid + h)``, so adding or
+        resizing one key never moves another; :func:`draw_scheme` is what
+        makes that independence a guarantee rather than a hope, by refusing an
+        install whose draw semantics differ from the blind's.
         """
         return {
             "sigma8": self.s8_half_width / np.sqrt(self.theory.Omega_m / 0.3),
@@ -166,15 +180,68 @@ def seed_commitment(seed):
     return hashlib.sha256(seed.encode("utf-8")).hexdigest()
 
 
+def draw_scheme():
+    """The installed Smokescreen fork's shift-draw semantics version.
+
+    ``smokescreen.DRAW_SCHEME`` is the fork's own version number for *how* a
+    seed becomes a set of parameter deltas — scheme 1 is upstream DESC's one
+    global RNG stream consumed over the sorted keys, scheme 2 (this fork) a
+    per-key RNG derived from ``(seed, key)``. Two installs that agree on
+    ``(seed, config)`` but disagree on this number draw *different* hidden
+    cosmologies from the same inputs.
+
+    That is the one blinding failure with no loud symptom: a blind added under
+    one scheme and subtracted under another leaves a residual smooth
+    cosmological shift in the "unblinded" vector, which every hash, digest and
+    escrow check would still pass. So the scheme is bound into the blind's
+    custody state — ``commitment.json`` and every blinded file's
+    ``blind_draw_scheme`` — and re-checked against this function wherever a
+    shift is drawn or subtracted (:func:`_assert_draw_scheme`).
+    """
+    from smokescreen import DRAW_SCHEME
+
+    return int(DRAW_SCHEME)
+
+
+def _assert_draw_scheme(recorded, what):
+    """Fail closed unless ``recorded`` is the installed fork's draw scheme.
+
+    ``what`` names the surface the scheme was read from, for the message.
+    A missing record (``None``) is a failure, not a pass: a blind whose scheme
+    is unknown cannot be shown to be reproducible by this install.
+    """
+    installed = draw_scheme()
+    if recorded is None:
+        raise ValueError(
+            f"{what} carries no draw-scheme record — refusing to proceed. "
+            f"It predates draw-scheme binding, so there is no way to tell "
+            f"whether the installed Smokescreen (DRAW_SCHEME={installed}) "
+            f"reproduces the shift it was blinded with."
+        )
+    if int(recorded) != installed:
+        raise ValueError(
+            f"{what} was drawn under Smokescreen DRAW_SCHEME={int(recorded)} "
+            f"but the installed fork implements DRAW_SCHEME={installed} — "
+            f"refusing to proceed. The same seed draws a different hidden "
+            f"cosmology under a different scheme, so this install would "
+            f"subtract the wrong shift and pass every other check. Install "
+            f"the Smokescreen the blind was made with."
+        )
+
+
 def hidden_params(seed, config):
     """The hidden CCL parameter point the fork realizes for ``(seed, config)``.
 
     Re-runs the fork's own draw (``smokescreen.param_shifts.draw_param_shifts``
     — per-key-independent, local RNG) on the calibrated envelope and overlays
-    the deltas on the fiducial, exactly as ``ConcealDataVector`` does
-    internally. Deterministic: same ``(seed, config)`` ⇒ same hidden point,
-    forever — the reproducibility contract unblinding relies on, and what
-    makes every part share one hidden cosmology under one seed.
+    the deltas on the fiducial, exactly as
+    ``smokescreen.concealing_factor`` does internally. Deterministic under a
+    fixed draw scheme: same ``(seed, config)`` ⇒ same hidden point on any
+    install whose :func:`draw_scheme` matches — the reproducibility contract
+    unblinding relies on, and what makes every part share one hidden cosmology
+    under one seed. This is an introspection helper (what *was* the hidden
+    cosmology, once revealed); the blinding path itself never calls it, and so
+    does not check the scheme here — every gate that acts on a shift does.
     """
     from smokescreen.param_shifts import draw_param_shifts
 
@@ -315,7 +382,7 @@ def cl_theory_fn(block, theory):
 
 
 # --------------------------------------------------------------------------- #
-# Extract → conceal → merge, per block
+# The concealing factor, per block
 # --------------------------------------------------------------------------- #
 def _blindable_blocks(s):
     """The blindable blocks of a SACC as ``(name, indices, factory)``.
@@ -323,10 +390,9 @@ def _blindable_blocks(s):
     Works identically on a standalone part (which carries exactly one block)
     and on the assembled one-file product (whose integration rows are selected by
     the ``grid`` tag — the layout contract's per-block tag selection).
-    ``indices`` are each block's recorded row indices (ascending, so the
-    extracted sub-SACC preserves row order); ``factory`` builds the matching
-    ``theory_fn`` from the extracted sub-SACC. Blocks absent from the file
-    are simply not listed.
+    ``indices`` are each block's recorded row indices (ascending); ``factory``
+    builds the matching ``theory_fn`` from the SACC those indices point into.
+    Blocks absent from the file are simply not listed.
     """
     blocks = []
     for grid in ("reporting", "integration"):
@@ -345,43 +411,54 @@ def _blindable_blocks(s):
     return blocks
 
 
-def _extract_block(s, indices):
-    """Extract rows ``indices`` (ascending) into a sub-SACC, order preserved.
-
-    Deliberately index-based rather than ``sacc_io.extract`` /
-    ``update_statistic`` (which select and merge by ``(data_type, tracers,
-    tags)``): Smokescreen's ``ConcealDataVector`` aligns its ``theory_fn``
-    output to the sub-SACC's ``mean`` element-for-element by row position, so
-    the block must be carved and written back by contiguous integer index, not
-    by tag-matching. This is the one place the row-index path is load-bearing.
-    """
-    sub = s.copy()
-    sub.keep_indices(np.asarray(indices, dtype=int))
-    return sub
-
-
 def _concealing_factor(s, indices, factory, config, seed):
-    """The fork-computed additive concealing factor for one block.
+    """The fork-computed additive concealing factor for one block of ``s``.
 
-    Extracts the block into a sub-SACC containing exactly the rows the
-    ``theory_fn`` spans (the fork's length guard enforces the agreement),
-    drives ``ConcealDataVector`` with the fiducial point, the calibrated
-    envelope, and the block's ``theory_fn``, and returns the factor
-    ``t(hidden) − t(fiducial)`` aligned to ``indices``.
+    Blinding is a vector operation, so this goes straight to the fork's vector
+    core: ``smokescreen.concealing_factor`` draws the hidden deltas from
+    ``seed``, overlays them on the fiducial, evaluates the block's
+    ``theory_fn`` at both points and differences them. No data vector and no
+    SACC reach the fork — nothing is carved out of ``s``, and ``s`` itself is
+    not modified.
+
+    The factory reads its layout off ``s`` directly, so the returned vector is
+    full-length: a block's ``theory_fn`` fills only its own rows and leaves
+    every other row NaN. Slicing to ``indices`` drops those NaNs by
+    construction; the finite check then proves the converse — that the
+    factory filled *all* of this block's rows. A row the block claims but the
+    factory cannot cover (a pair carrying ξ− without ξ+, say) would otherwise
+    write NaN into the data vector, silently.
+
+    Both :func:`blind_sacc` and :func:`unblind_sacc` reach the fork through
+    this one function, so the added and the subtracted shift cannot drift
+    apart.
+
+    Returns
+    -------
+    np.ndarray
+        ``t(hidden) − t(fiducial)``, aligned to ``indices``.
     """
-    from smokescreen import ConcealDataVector
+    from smokescreen import concealing_factor
 
-    sub = _extract_block(s, indices)
-    smoke = ConcealDataVector(
-        config.theory.ccl_params(),
-        config.shifts_dict(),
-        sub,
-        seed=seed,
-        theory_fn=factory(sub, config.theory),
+    full = np.asarray(
+        concealing_factor(
+            config.theory.ccl_params(),
+            config.shifts_dict(),
+            seed=seed,
+            theory_fn=factory(s, config.theory),
+            factor_type="add",
+        ),
+        dtype=float,
     )
-    smoke.calculate_concealing_factor(factor_type="add")
-    concealed = smoke.apply_concealing_to_likelihood_datavec()
-    return np.asarray(concealed, dtype=float) - np.asarray(sub.mean, dtype=float)
+    factor = full[indices]
+    if not np.all(np.isfinite(factor)):
+        raise ValueError(
+            f"the theory backend left {int(np.sum(~np.isfinite(factor)))} of "
+            f"{len(indices)} blindable rows unfilled — refusing to blind "
+            "(these rows would be shifted by NaN). The block's row layout is "
+            "not fully covered by its theory_fn."
+        )
+    return factor
 
 
 def _set_values(s, indices, values):
@@ -399,11 +476,13 @@ def blind_sacc(part, seed, config=None, label="A", log=print):
     """Return a blinded copy of a part SACC (covariance and tags untouched).
 
     Per blindable block present (a standalone part carries exactly one —
-    reporting ξ±, integration ξ±, or pseudo-Cℓ_EE): extract the block into a sub-SACC,
-    conceal through the fork, write the shifted values back at their
-    recorded indices (row order preserved). Provenance is stamped and any
-    leaked seed key stripped. A file with no blindable block (e.g. a ρ/τ
-    diagnostic part) is refused loudly — it should never see a blind call.
+    reporting ξ±, integration ξ±, or pseudo-Cℓ_EE): ask the fork for the
+    block's concealing factor (:func:`_concealing_factor`) and add it at the
+    block's recorded indices. Row order, tags, n(z) and covariance are
+    untouched — only ``value`` changes, and only on blindable rows.
+    Provenance is stamped and any leaked seed key stripped. A file with no
+    blindable block (e.g. a ρ/τ diagnostic part) is refused loudly — it should
+    never see a blind call.
     """
     config = config or BlindingConfig()
     if _concealed(part):
@@ -428,17 +507,20 @@ def blind_sacc(part, seed, config=None, label="A", log=print):
 def unblind_sacc(blinded, seed, config=None, log=print):
     """Recover the true part SACC from a blinded one + the revealed ``seed``.
 
-    Verifies ``sha256(seed)`` and the config digest against the stamped
-    metadata (loud failure on either mismatch — verification precedes
-    subtraction), recomputes each block's shift from the seed through the
-    same backends, and subtracts it. Works on a standalone part or on the
-    assembled file (integration rows selected by the ``grid`` tag). Derived
-    statistics, if present (assembled file), are *not* recomputed here — the
-    pipeline's own estimators re-derive them from the unblinded integration ξ±.
+    Verifies the stamped draw scheme against the installed fork, then
+    ``sha256(seed)`` and the config digest against the stamped metadata (loud
+    failure on any of the three — verification precedes subtraction), then
+    recomputes each block's shift through :func:`_concealing_factor`, the same
+    call :func:`blind_sacc` added it with, and subtracts it. Works on a
+    standalone part or on the assembled file (integration rows selected by the
+    ``grid`` tag). Derived statistics, if present (assembled file), are *not*
+    recomputed here — the pipeline's own estimators re-derive them from the
+    unblinded integration ξ±.
     """
     config = config or BlindingConfig()
     if not _concealed(blinded):
         raise ValueError("file is not concealed — nothing to unblind")
+    _assert_draw_scheme(blinded.metadata.get("blind_draw_scheme"), "this blinded file")
     if seed_commitment(seed) != blinded.metadata["blind_commitment"]:
         raise ValueError(
             "seed does not match blind_commitment — refusing to unblind "
@@ -451,34 +533,46 @@ def unblind_sacc(blinded, seed, config=None, log=print):
             "added)"
         )
 
-    hidden = hidden_params(seed, config)
-    fiducial = config.theory.ccl_params()
     part = blinded.copy()
     for name, indices, factory in _blindable_blocks(blinded):
-        theory = factory(_extract_block(blinded, indices), config.theory)
-        factor = theory(hidden) - theory(fiducial)
+        factor = _concealing_factor(blinded, indices, factory, config, seed)
         _set_values(part, indices, np.asarray(part.mean)[indices] - factor)
         log(f"[unblind] {name}: subtracted {len(indices)} shifts")
 
-    for key in ("concealed", "blind", "blind_commitment", "blind_config_digest"):
+    for key in (
+        "concealed",
+        "blind",
+        "blind_commitment",
+        "blind_config_digest",
+        "blind_draw_scheme",
+    ):
         part.metadata.pop(key, None)
     return part
 
 
-def _stamp_provenance(s, commitment, label, config_digest):
+def _stamp_provenance(s, commitment, label, config_digest, scheme=None):
     """Stamp the blind's public provenance; strip any leaked seed.
 
     ``blind_commitment`` (sha256 of the seed) ties the file to its blind
     without revealing it; ``blind_config_digest`` pins the envelope +
-    fiducial the shift was drawn against; ``concealed``/``blind`` mark the
-    file. ``seed_smokescreen`` — the raw seed Smokescreen's own writer would
-    stamp — is popped defensively: the seed must never ride a kept file.
+    fiducial the shift was drawn against; ``blind_draw_scheme`` pins the
+    Smokescreen draw semantics that turned the seed into that shift (see
+    :func:`draw_scheme`); ``concealed``/``blind`` mark the file. The three
+    together are what an unblind must reproduce. ``seed_smokescreen`` — the
+    raw seed upstream Smokescreen's writer would stamp — is popped
+    defensively: the seed must never ride a kept file.
+
+    ``scheme`` defaults to the installed fork's, which is the right answer
+    whenever this call is stamping a blind that was just computed. Callers
+    propagating an existing blind's provenance pass that blind's recorded
+    scheme instead.
     """
     s.metadata.pop("seed_smokescreen", None)
     s.metadata["concealed"] = True
     s.metadata["blind"] = label
     s.metadata["blind_commitment"] = commitment
     s.metadata["blind_config_digest"] = config_digest
+    s.metadata["blind_draw_scheme"] = draw_scheme() if scheme is None else int(scheme)
 
 
 def stamp_concealed_passthrough(s, commitment_path):
@@ -489,12 +583,16 @@ def stamp_concealed_passthrough(s, commitment_path):
     values are blind by construction and only the provenance stamp is missing.
     ρ/τ carries no cosmological vector at all — the stamp merely clears it for
     assembly under the blind (values unchanged either way). Both cases need the
-    four custody keys the fail-closed load gate and :func:`assert_consistent_blind`
+    custody keys the fail-closed load gate and :func:`assert_consistent_blind`
     check: ``concealed``, ``blind`` (label), ``blind_commitment``
-    (= ``seed_sha256``), ``blind_config_digest``. This reads those from the
-    version's ``commitment.json`` (written by :func:`blind_init`) and stamps them
-    via :func:`_stamp_provenance`, so a pass-through part shares the exact same
-    ``(commitment, digest)`` custody state as the blinded ξ±/pseudo-Cℓ parts.
+    (= ``seed_sha256``), ``blind_config_digest``, ``blind_draw_scheme``. This
+    reads those from the version's ``commitment.json`` (written by
+    :func:`blind_init`) and stamps them via :func:`_stamp_provenance`, so a
+    pass-through part shares the exact same custody state as the blinded
+    ξ±/pseudo-Cℓ parts. The committed draw scheme is checked against the
+    installed fork first: a pass-through part is blind because it was derived
+    from parts blinded under that scheme, so stamping it from an install that
+    draws differently would mint a custody claim this install cannot honour.
 
     Unlike :func:`blind_sacc`, this shifts nothing and does not require a
     blindable block — it is the seam for parts blinded (or made blind-irrelevant)
@@ -502,8 +600,15 @@ def stamp_concealed_passthrough(s, commitment_path):
     """
     with open(commitment_path, encoding="utf-8") as f:
         commitment = json.load(f)
+    _assert_draw_scheme(
+        commitment.get("draw_scheme"), f"the blind at {commitment_path}"
+    )
     _stamp_provenance(
-        s, commitment["seed_sha256"], commitment["label"], commitment["config_digest"]
+        s,
+        commitment["seed_sha256"],
+        commitment["label"],
+        commitment["config_digest"],
+        scheme=commitment["draw_scheme"],
     )
     return s
 
@@ -518,9 +623,12 @@ def assert_consistent_blind(parts):
     part is *blindable* if it carries a blindable block (ξ± or pseudo-Cℓ_EE);
     ρ/τ diagnostic and covariance-only parts are exempt. Fails closed —
     ``ValueError`` — if blinded and plaintext blindable parts are mixed, or
-    if two parts carry different ``blind_commitment``/``blind_config_digest``
-    (they were blinded under different seeds or configs and must never be
-    combined). The consistency key is ``(commitment, digest)`` only — the
+    if two parts carry different
+    ``blind_commitment``/``blind_config_digest``/``blind_draw_scheme`` (they
+    were blinded under different seeds, configs or draw semantics and must
+    never be combined), or if the shared draw scheme is not the installed
+    fork's (this install could not unblind what it is about to assemble).
+    The consistency key is ``(commitment, digest, scheme)`` — the
     ``blind`` *label* is informational provenance, not custody state, so
     parts blinded under one seed+config but tagged with different ``--label``
     values assemble cleanly (a distinct warning is logged, not a failure).
@@ -538,8 +646,9 @@ def assert_consistent_blind(parts):
     -------
     dict or None
         The shared blind metadata (``concealed``, ``blind``,
-        ``blind_commitment``, ``blind_config_digest``) for the gather to
-        stamp on the assembled file, or ``None`` when nothing is blinded.
+        ``blind_commitment``, ``blind_config_digest``, ``blind_draw_scheme``)
+        for the gather to stamp on the assembled file, or ``None`` when
+        nothing is blinded.
     """
     blindable = [p for p in parts if _blindable_blocks(p)]
     concealed = [p for p in blindable if _concealed(p)]
@@ -562,18 +671,26 @@ def assert_consistent_blind(parts):
             f"({len(concealed)} of {len(blindable)} blinded) — refusing to "
             "combine (a plaintext part beside blinded ones leaks the shift)"
         )
-    # Custody state is (commitment, digest) only — the label is provenance.
+    # Custody state is (commitment, digest, scheme) — the label is provenance.
+    # `.get` on the scheme so a part predating scheme binding reads as None and
+    # fails at _assert_draw_scheme with its explanation, not with a KeyError.
     stamps = {
-        (p.metadata["blind_commitment"], p.metadata["blind_config_digest"])
+        (
+            p.metadata["blind_commitment"],
+            p.metadata["blind_config_digest"],
+            p.metadata.get("blind_draw_scheme"),
+        )
         for p in concealed
     }
     if len(stamps) != 1:
         raise ValueError(
             "parts carry different blind commitments — they were blinded "
-            "under different seeds or configs and must never be combined: "
-            + "; ".join(f"({c[:12]}…, {d[:12]}…)" for c, d in stamps)
+            "under different seeds, configs or draw schemes and must never be "
+            "combined: "
+            + "; ".join(f"({c[:12]}…, {d[:12]}…, scheme {v})" for c, d, v in stamps)
         )
-    ((commitment, digest),) = stamps
+    ((commitment, digest, scheme),) = stamps
+    _assert_draw_scheme(scheme, "the blind these parts share")
     labels = sorted({p.metadata["blind"] for p in concealed})
     if len(labels) != 1:
         warnings.warn(
@@ -587,6 +704,7 @@ def assert_consistent_blind(parts):
         "blind": labels[0],
         "blind_commitment": commitment,
         "blind_config_digest": digest,
+        "blind_draw_scheme": int(scheme),
     }
 
 
@@ -619,7 +737,9 @@ def blind_init(blind_dir, config=None, label="A", log=print):
 
     1. Draw an OS-entropy seed (never written in plaintext, never returned).
     2. Write ``commitment.json`` (repo-committable): ``sha256(seed)`` + the
-       canonical config digest + the blind label.
+       canonical config digest + the installed fork's draw scheme + the blind
+       label. Those first three are the full reproducibility statement — see
+       :func:`draw_scheme` for why the seed and config alone are not.
     3. Encrypt the seed into a Fernet bundle (``smokescreen.encryption``);
        the temporary plaintext is deleted by the encryptor.
 
@@ -650,6 +770,7 @@ def blind_init(blind_dir, config=None, label="A", log=print):
         "label": label,
         "seed_sha256": seed_commitment(seed),
         "config_digest": config.config_digest(),
+        "draw_scheme": draw_scheme(),
     }
     with open(paths["commitment"], "w", encoding="utf-8") as f:
         json.dump(commitment, f, indent=2, sort_keys=True)
@@ -667,9 +788,12 @@ def blind_init(blind_dir, config=None, label="A", log=print):
 def _read_seed(blind_dir, config):
     """Decrypt the seed bundle and verify it against the commitment.
 
-    Both ``sha256(seed)`` and the config digest are checked before the seed
-    is handed to any caller — a tampered bundle or a drifted config fails
-    loud here, whether the caller is about to blind or to unblind.
+    ``sha256(seed)``, the config digest, and the committed draw scheme are all
+    checked before the seed is handed to any caller — a tampered bundle, a
+    drifted config or a Smokescreen that draws differently from the one that
+    fixed this blind all fail loud here, whether the caller is about to blind
+    or to unblind. The scheme check is what stops a re-blind of a later part
+    from landing a different hidden cosmology than the earlier parts got.
 
     Returns
     -------
@@ -680,6 +804,7 @@ def _read_seed(blind_dir, config):
     bundle = _read_encrypted_json(paths["bundle"], paths["key"])
     with open(paths["commitment"], encoding="utf-8") as f:
         commitment = json.load(f)
+    _assert_draw_scheme(commitment.get("draw_scheme"), f"the blind in {blind_dir}")
     if seed_commitment(bundle["seed"]) != commitment["seed_sha256"]:
         raise ValueError(
             "bundle seed does not match the committed sha256(seed) — refusing "
@@ -751,8 +876,9 @@ def blind_part(part_path, blind_dir, config=None, keep_input=False, log=print):
 def unblind_part(blinded_path, blind_dir, out_path, config=None, log=print):
     """Unblind one blinded part (or the assembled file), verifying first.
 
-    Decrypts the seed bundle and verifies both ``sha256(seed)`` and the
-    config digest against ``commitment.json`` (fail closed on either —
+    Decrypts the seed bundle and verifies ``sha256(seed)``, the config digest
+    and the draw scheme against ``commitment.json``, and the same three
+    against the blinded file's own stamps (fail closed on any —
     verification precedes subtraction), recomputes the part's shift from the
     seed and subtracts it (:func:`unblind_sacc`). **The seed-subtracted
     vector is the authority** — the seed plus its commitment is the custody
