@@ -334,12 +334,43 @@ def test_theory_config_ccl_params_exact_keyset():
 # --------------------------------------------------------------------------- #
 # Commitment + the fork's draw (fast; smokescreen import is light)
 # --------------------------------------------------------------------------- #
-def test_commitment_is_sha256_of_seed():
+def test_commitment_is_the_forks_domain_separated_digest():
+    """One definition of the commitment, and it is the fork's."""
     import hashlib
 
+    import smokescreen
+
     seed = "the-secret"
-    assert bd.seed_commitment(seed) == hashlib.sha256(seed.encode()).hexdigest()
+    assert bd.seed_commitment(seed) == smokescreen.seed_commitment(seed)
+    assert (
+        bd.seed_commitment(seed)
+        == hashlib.sha256(
+            smokescreen.COMMITMENT_DOMAIN + seed.encode("utf-8")
+        ).hexdigest()
+    )
     assert bd.seed_commitment("right") != bd.seed_commitment("wrong")
+
+
+def test_commitment_does_not_embed_the_rng_seed():
+    """The published commitment must not carry the effective RNG seed.
+
+    The fork derives the base seed for its per-key RNG from the *undomained*
+    sha256 of the seed string, taking the digest's first 8 bytes. A commitment
+    hashed over the bare seed would therefore publish that base seed verbatim in
+    its first 16 hex characters, and anyone holding the (public) commitment and
+    the (public) fiducial config could redraw the hidden cosmology and subtract
+    the blind. The domain prefix is what breaks that identity — this is the
+    regression guard for it.
+    """
+    import secrets
+
+    from smokescreen.param_shifts import _normalize_seed
+
+    # The third seed is drawn exactly as blind_init draws a production one.
+    for seed in ("my_secret_seed", "the-secret", secrets.token_hex(16)):
+        commitment = bd.seed_commitment(seed)
+        assert int(commitment[:16], 16) != _normalize_seed(seed)
+        assert str(_normalize_seed(seed)) not in commitment
 
 
 def test_hidden_params_deterministic_and_in_envelope():
@@ -627,8 +658,13 @@ def test_blind_init_writes_commitment_and_encrypted_bundle_only(tmp_path):
     paths = bd.blind_init(str(tmp_path), log=_NOLOG)
     with open(paths["commitment"], encoding="utf-8") as f:
         commitment = json.load(f)
-    assert set(commitment) == {"label", "seed_sha256", "config_digest", "draw_scheme"}
-    assert len(commitment["seed_sha256"]) == 64
+    assert set(commitment) == {
+        "label",
+        "seed_commitment",
+        "config_digest",
+        "draw_scheme",
+    }
+    assert len(commitment["seed_commitment"]) == 64
     assert commitment["config_digest"] == bd.BlindingConfig().config_digest()
     # exactly the three custody outputs, no plaintext bundle
     assert {p.name for p in tmp_path.iterdir()} == {
@@ -638,7 +674,7 @@ def test_blind_init_writes_commitment_and_encrypted_bundle_only(tmp_path):
     }
     # the decrypted seed matches the public commitment
     bundle = bd._read_encrypted_json(paths["bundle"], paths["key"])
-    assert bd.seed_commitment(bundle["seed"]) == commitment["seed_sha256"]
+    assert bd.seed_commitment(bundle["seed"]) == commitment["seed_commitment"]
     # one-shot custody: a second init in the same dir refuses
     with pytest.raises(FileExistsError, match="refusing to overwrite"):
         bd.blind_init(str(tmp_path), log=_NOLOG)
@@ -1159,10 +1195,15 @@ def test_ac6_ac8_end_to_end_init_parts_gather_unblind(tmp_path):
         assert not np.array_equal(np.array(blinded.mean), np.array(parts[name].mean))
     with open(init["commitment"], encoding="utf-8") as f:
         commitment = json.load(f)
-    assert set(commitment) == {"label", "seed_sha256", "config_digest", "draw_scheme"}
+    assert set(commitment) == {
+        "label",
+        "seed_commitment",
+        "config_digest",
+        "draw_scheme",
+    }
     blinded_parts = {n: sio.load(p["blinded"]) for n, p in out_paths.items()}
     for b in blinded_parts.values():
-        assert b.metadata["blind_commitment"] == commitment["seed_sha256"]
+        assert b.metadata["blind_commitment"] == commitment["seed_commitment"]
     # no plaintext json anywhere beside the blind outputs
     assert not list(tmp_path.rglob("*escrow.json"))
     assert not (blind_dir / "blind_seed.json").exists()
@@ -1177,7 +1218,7 @@ def test_ac6_ac8_end_to_end_init_parts_gather_unblind(tmp_path):
         ],
         metadata={"catalogue_version": "vTEST", "type": "mock"},
     )
-    assert assembled.metadata["blind_commitment"] == commitment["seed_sha256"]
+    assert assembled.metadata["blind_commitment"] == commitment["seed_commitment"]
     # born-blinded derived statistics from the blinded parts differ from truth
     En_b, Bn_b, _ = _derive_downstream(
         blinded_parts["xi_reporting"], blinded_parts["xi_integration"]
@@ -1185,10 +1226,10 @@ def test_ac6_ac8_end_to_end_init_parts_gather_unblind(tmp_path):
     assert not np.allclose(En_b, En_true, atol=0)
 
     # -- fail-closed on tampered commitment (AC6) --------------------------- --
-    tampered = dict(commitment, seed_sha256="0" * 64)
+    tampered = dict(commitment, seed_commitment="0" * 64)
     with open(init["commitment"], "w", encoding="utf-8") as f:
         json.dump(tampered, f)
-    with pytest.raises(ValueError, match="sha256"):
+    with pytest.raises(ValueError, match="committed seed commitment"):
         bd.unblind_part(
             out_paths["xi_integration"]["blinded"],
             str(blind_dir),

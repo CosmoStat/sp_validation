@@ -42,12 +42,13 @@
 
     **Custody: hash commitment, no keyholder.** :func:`blind_init` runs once
     per catalogue version: it draws an OS-entropy seed, publishes
-    ``sha256(seed)``, a canonical config digest, and the installed fork's
-    ``DRAW_SCHEME`` as a repo-committable ``commitment.json``, and encrypts
-    the seed into a Fernet bundle (``smokescreen.encryption``) — the plaintext
-    seed is never written. The three together, not the seed alone, are what
-    reproduces a blind: seed and config fix *which* shift, the draw scheme
-    fixes *how* the seed becomes that shift.
+    the seed commitment (:func:`seed_commitment`), a canonical config digest,
+    and the installed fork's ``DRAW_SCHEME`` as a repo-committable
+    ``commitment.json``, and encrypts the seed into a Fernet bundle
+    (``smokescreen.encryption``) — the plaintext seed is never written. The
+    three together, not the seed alone, are what reproduces a blind: seed and
+    config fix *which* shift, the draw scheme fixes *how* the seed becomes that
+    shift.
 
     Each :func:`blind_part` call reads that fixed state, conceals one part,
     escrows the part's true vector into its own encrypted bundle beside the
@@ -59,6 +60,15 @@
     carries the identical ``blind_commitment``, ``blind_config_digest`` and
     ``blind_draw_scheme``. :func:`unblind_part` verifies all three against the
     commitment *before* subtracting anything, then restores the true part.
+
+    Custody has no back door, including for its own history: a blind fixed
+    before the draw scheme was bound into ``commitment.json`` carries no
+    scheme record, and :func:`_assert_draw_scheme` refuses it ahead of every
+    seed read, so neither :func:`blind_part` nor :func:`unblind_part` will run
+    on it. Such a blind is recoverable only by hand, by decrypting its per-part
+    escrow bundles (:func:`_read_encrypted_json`) and reading ``true_mean``
+    back out. No such blind exists — the scheme has been bound since before
+    the first real blind — and the CLI deliberately offers no override.
 """
 
 import dataclasses
@@ -125,7 +135,7 @@ class BlindingConfig:
         digests and deny a legitimate unblind. Python's ``json`` then emits
         each float via its shortest round-trip ``repr``, so two runs of the
         same config produce byte-identical digests. Checked (with
-        ``sha256(seed)``) at unblind, so a wrong envelope or a mismatched
+        the seed commitment) at unblind, so a wrong envelope or a mismatched
         P(k) recipe cannot silently subtract a wrong shift.
         """
         payload = {
@@ -172,12 +182,22 @@ class BlindingConfig:
 # Custody primitives
 # --------------------------------------------------------------------------- #
 def seed_commitment(seed):
-    """Public commitment for a seed: its sha256 hex digest.
+    """Public commitment for a seed: the fork's domain-separated sha256 digest.
 
     Safe to publish and commit to the repo — it ties a blinded file to its
     blind without revealing the seed, and lets unblind refuse a wrong seed.
+
+    This delegates to :func:`smokescreen.seed_commitment` so the commitment has
+    exactly one definition across the blinding stack. That function hashes
+    ``smokescreen.COMMITMENT_DOMAIN + str(seed)``, *not* the bare seed, and the
+    domain prefix is load-bearing: the fork derives the RNG base seed from the
+    bare sha256 of the same string, so an undomained commitment would publish
+    that base seed verbatim in its first 16 hex characters and the blind would
+    be recoverable from the artifact meant to protect it.
     """
-    return hashlib.sha256(seed.encode("utf-8")).hexdigest()
+    from smokescreen import seed_commitment as _fork_seed_commitment
+
+    return _fork_seed_commitment(seed)
 
 
 def draw_scheme():
@@ -454,9 +474,9 @@ def _concealing_factor(s, indices, factory, config, seed):
     if not np.all(np.isfinite(factor)):
         raise ValueError(
             f"the theory backend left {int(np.sum(~np.isfinite(factor)))} of "
-            f"{len(indices)} blindable rows unfilled — refusing to blind "
-            "(these rows would be shifted by NaN). The block's row layout is "
-            "not fully covered by its theory_fn."
+            f"{len(indices)} blindable rows unfilled — refusing to apply the "
+            "concealing factor (these rows would be shifted by NaN). The "
+            "block's row layout is not fully covered by its theory_fn."
         )
     return factor
 
@@ -508,7 +528,7 @@ def unblind_sacc(blinded, seed, config=None, log=print):
     """Recover the true part SACC from a blinded one + the revealed ``seed``.
 
     Verifies the stamped draw scheme against the installed fork, then
-    ``sha256(seed)`` and the config digest against the stamped metadata (loud
+    the seed commitment and the config digest against the stamped metadata (loud
     failure on any of the three — verification precedes subtraction), then
     recomputes each block's shift through :func:`_concealing_factor`, the same
     call :func:`blind_sacc` added it with, and subtracts it. Works on a
@@ -585,7 +605,7 @@ def stamp_concealed_passthrough(s, commitment_path):
     assembly under the blind (values unchanged either way). Both cases need the
     custody keys the fail-closed load gate and :func:`assert_consistent_blind`
     check: ``concealed``, ``blind`` (label), ``blind_commitment``
-    (= ``seed_sha256``), ``blind_config_digest``, ``blind_draw_scheme``. This
+    (= ``seed_commitment``), ``blind_config_digest``, ``blind_draw_scheme``. This
     reads those from the version's ``commitment.json`` (written by
     :func:`blind_init`) and stamps them via :func:`_stamp_provenance`, so a
     pass-through part shares the exact same custody state as the blinded
@@ -605,7 +625,7 @@ def stamp_concealed_passthrough(s, commitment_path):
     )
     _stamp_provenance(
         s,
-        commitment["seed_sha256"],
+        commitment["seed_commitment"],
         commitment["label"],
         commitment["config_digest"],
         scheme=commitment["draw_scheme"],
@@ -736,7 +756,7 @@ def blind_init(blind_dir, config=None, label="A", log=print):
     Runs once per catalogue version:
 
     1. Draw an OS-entropy seed (never written in plaintext, never returned).
-    2. Write ``commitment.json`` (repo-committable): ``sha256(seed)`` + the
+    2. Write ``commitment.json`` (repo-committable): the seed commitment + the
        canonical config digest + the installed fork's draw scheme + the blind
        label. Those first three are the full reproducibility statement — see
        :func:`draw_scheme` for why the seed and config alone are not.
@@ -768,7 +788,7 @@ def blind_init(blind_dir, config=None, label="A", log=print):
     seed = secrets.token_hex(16)
     commitment = {
         "label": label,
-        "seed_sha256": seed_commitment(seed),
+        "seed_commitment": seed_commitment(seed),
         "config_digest": config.config_digest(),
         "draw_scheme": draw_scheme(),
     }
@@ -788,7 +808,7 @@ def blind_init(blind_dir, config=None, label="A", log=print):
 def _read_seed(blind_dir, config):
     """Decrypt the seed bundle and verify it against the commitment.
 
-    ``sha256(seed)``, the config digest, and the committed draw scheme are all
+    The seed commitment, the config digest, and the committed draw scheme are all
     checked before the seed is handed to any caller — a tampered bundle, a
     drifted config or a Smokescreen that draws differently from the one that
     fixed this blind all fail loud here, whether the caller is about to blind
@@ -805,9 +825,9 @@ def _read_seed(blind_dir, config):
     with open(paths["commitment"], encoding="utf-8") as f:
         commitment = json.load(f)
     _assert_draw_scheme(commitment.get("draw_scheme"), f"the blind in {blind_dir}")
-    if seed_commitment(bundle["seed"]) != commitment["seed_sha256"]:
+    if seed_commitment(bundle["seed"]) != commitment["seed_commitment"]:
         raise ValueError(
-            "bundle seed does not match the committed sha256(seed) — refusing "
+            "bundle seed does not match the committed seed commitment — refusing "
             "to proceed"
         )
     if config.config_digest() != commitment["config_digest"]:
@@ -856,7 +876,7 @@ def blind_part(part_path, blind_dir, config=None, keep_input=False, log=print):
         paths["escrow"],
         {
             "label": commitment["label"],
-            "seed_sha256": commitment["seed_sha256"],
+            "seed_commitment": commitment["seed_commitment"],
             "true_mean": np.asarray(part.mean, dtype=float).tolist(),
         },
     )
@@ -876,7 +896,7 @@ def blind_part(part_path, blind_dir, config=None, keep_input=False, log=print):
 def unblind_part(blinded_path, blind_dir, out_path, config=None, log=print):
     """Unblind one blinded part (or the assembled file), verifying first.
 
-    Decrypts the seed bundle and verifies ``sha256(seed)``, the config digest
+    Decrypts the seed bundle and verifies the seed commitment, the config digest
     and the draw scheme against ``commitment.json``, and the same three
     against the blinded file's own stamps (fail closed on any —
     verification precedes subtraction), recomputes the part's shift from the
@@ -885,7 +905,7 @@ def unblind_part(blinded_path, blind_dir, out_path, config=None, log=print):
     root of trust, and the returned vector is what the seed math produced.
 
     When the part's escrow bundle exists beside the blinded file it serves
-    two subordinate roles, and only after its stored ``seed_sha256`` is
+    two subordinate roles, and only after its stored ``seed_commitment`` is
     verified to match the same commitment (so an escrow from a different
     blind can never be trusted): (1) a *tighter equality check* — the seed
     subtraction and the escrowed truth must agree to ``1e-6`` relative or the
@@ -910,7 +930,7 @@ def unblind_part(blinded_path, blind_dir, out_path, config=None, log=print):
     escrow = part_paths(unblinded_stem + ext)
     if os.path.exists(escrow["escrow"]):
         bundle = _read_encrypted_json(escrow["escrow"], escrow["escrow_key"])
-        if bundle.get("seed_sha256") != commitment["seed_sha256"]:
+        if bundle.get("seed_commitment") != commitment["seed_commitment"]:
             raise ValueError(
                 "escrow bundle beside the blinded file was written under a "
                 "different seed than the commitment — refusing to trust it "

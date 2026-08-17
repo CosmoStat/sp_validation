@@ -30,9 +30,9 @@ rule blind_init:
     """Fix the blind for one catalogue version (blind-init).
 
     Draws an OS-entropy seed, writes the repo-committable commitment.json
-    (sha256(seed) + config digest) and the Fernet-encrypted seed bundle. Runs
-    once per version and refuses to overwrite existing state — a blind is a
-    one-shot custody event.
+    (seed commitment + config digest + the installed fork's draw scheme) and the
+    Fernet-encrypted seed bundle. Runs once per version and refuses to overwrite
+    existing state — a blind is a one-shot custody event.
     """
     output:
         commitment=str(COSMO_VAL / "blind" / "{version}" / "commitment.json"),

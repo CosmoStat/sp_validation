@@ -7,15 +7,20 @@ Per-part data-vector blinding with :mod:`sp_validation.blinding`
 
 ``blind-init`` runs once per catalogue version: it draws an OS-entropy seed
 (never printed, never written in plaintext), publishes a repo-committable
-``commitment.json`` (``sha256(seed)`` + config digest), and encrypts the seed
-into a Fernet bundle. ``blind-part`` blinds one intermediate part SACC
-(reporting ξ±, integration ξ±, or pseudo-Cℓ) under that fixed state, escrows
-the true vector into a per-part encrypted bundle beside the blinded output,
-and deletes the plaintext part. ``unblind`` verifies both commitment hashes
-and restores a true part (bit-for-bit when the part's escrow bundle is beside
-it); it also works on the assembled ``{version}.sacc`` (integration rows
-selected by the ``grid`` tag). ``verify`` is a cheap, seedless check that a
-blinded file matches a commitment.
+``commitment.json`` (the seed commitment + the config digest + the installed
+Smokescreen fork's draw scheme), and encrypts the seed into a Fernet bundle.
+Those three, not the seed alone, are what reproduces a blind: seed and config
+fix *which* shift, the draw scheme fixes *how* the seed becomes that shift.
+``blind-part`` blinds one intermediate part SACC (reporting ξ±, integration ξ±,
+or pseudo-Cℓ) under that fixed state, escrows the true vector into a per-part
+encrypted bundle beside the blinded output, and deletes the plaintext part.
+``unblind`` verifies all three commitments and restores a true part
+(bit-for-bit when the part's escrow bundle is beside it); it also works on the
+assembled ``{version}.sacc`` (integration rows selected by the ``grid`` tag).
+``verify`` is a cheap, seedless check that a blinded file matches a commitment
+— seedless, but not environment-independent: it also compares both recorded
+draw schemes against the installed fork, so it reports a problem on a machine
+whose Smokescreen draws differently even when file and commitment agree.
 
 :Authors: Cail Daley
 
@@ -102,15 +107,28 @@ def _unblind(args):
 
 
 def _verify(args):
-    """Seedless check: blinded-file metadata ↔ commitment JSON."""
-    s = sacc_io.load(args.blinded)
+    """Seedless check: blinded-file metadata ↔ commitment JSON ↔ this install.
+
+    No seed is read, so this cannot confirm that the blind is *subtractable* —
+    only that the file's three custody stamps agree with the commitment, and
+    that the recorded draw scheme is the one this install implements. That last
+    check makes the result environment-dependent by design: a machine carrying a
+    different Smokescreen reports a problem even when file and commitment agree
+    perfectly, because that machine could not unblind the file.
+
+    Loads with ``allow_unblinded=True``: the whole job here is to report on a
+    file's custody state, including the state where the file is not concealed at
+    all, which the fail-closed loader would otherwise raise on before any
+    diagnostic could be assembled.
+    """
+    s = sacc_io.load(args.blinded, allow_unblinded=True)
     with open(args.commitment, encoding="utf-8") as f:
         commitment = json.load(f)
     problems = []
     if not s.metadata.get("concealed"):
         problems.append("file is not marked concealed")
-    if s.metadata.get("blind_commitment") != commitment["seed_sha256"]:
-        problems.append("blind_commitment does not match the committed sha256(seed)")
+    if s.metadata.get("blind_commitment") != commitment["seed_commitment"]:
+        problems.append("blind_commitment does not match the committed seed commitment")
     if s.metadata.get("blind_config_digest") != commitment["config_digest"]:
         problems.append("blind_config_digest does not match the committed digest")
     # The draw scheme is checked three ways: file ↔ commitment, and both against
