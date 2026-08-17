@@ -200,6 +200,34 @@ def test_data_assemble_refuses_blinded_plaintext_mix(tmp_path):
         )
 
 
+def test_data_assemble_runs_behind_the_custody_guard(tmp_path, monkeypatch):
+    """The custody guard is reached *through* the production assembly.
+
+    Every part here is concealed, so every part clears the fail-closed load
+    gate — the earlier tests all stop there. Only
+    ``blinding.assert_consistent_blind`` can catch what is wrong with this
+    assembly: the install's Smokescreen draws shifts under a different scheme
+    than the one that made the blind, so it could never unblind what it is
+    about to write. That ``assemble_sacc`` raises is the check that it runs
+    through :func:`sacc_io.gather` like every other assembly path, rather than
+    reimplementing the custody wrapper around its own assembler.
+    """
+    paths = _data_parts(tmp_path, conceal=True)
+    monkeypatch.setattr(blinding, "draw_scheme", lambda: 99)
+    with pytest.raises(ValueError, match="DRAW_SCHEME"):
+        asm.assemble_sacc(
+            "vSYNTH", paths, str(tmp_path / "vSYNTH.sacc"), placeholder_var=1.0
+        )
+
+
+def test_data_assemble_stamps_the_draw_scheme_on_the_terminal_file(tmp_path):
+    """The assembled file carries the blind's draw scheme, like its parts."""
+    paths = _data_parts(tmp_path, conceal=True)
+    out = tmp_path / "vSYNTH.sacc"
+    asm.assemble_sacc("vSYNTH", paths, str(out), placeholder_var=1.0)
+    assert sio.load(str(out)).metadata["blind_draw_scheme"] == blinding.draw_scheme()
+
+
 def test_assert_consistent_blind_rejects_divergent_commitments(tmp_path):
     """Two ξ± parts blinded under different commitments must never combine."""
     nz = {0: _nz()}

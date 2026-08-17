@@ -994,25 +994,35 @@ def load(path, *, allow_unblinded=False):
 # Everything above this banner is byte-identical to feat/sacc-2-sacc-io; only
 # gather() and its blind-custody call site live here.
 # --------------------------------------------------------------------------- #
-def gather(parts, metadata=None):
+def gather(parts, metadata=None, assemble=None):
     """Assemble standalone part SACCs into the one-file ``{version}.sacc``.
 
     Each part is an intermediate product as it came off its producing rule
-    (reporting ξ±, integration ξ±, pseudo-Cℓ, ρ/τ, …). Assembly itself — the
-    first-wins tracer union, in-order point concatenation with all tags
-    (bandpower windows included), and the block-diagonal covariance — is
-    exactly :func:`merge`, so gather delegates to it and adds only the one
-    thing merge cannot know about: **blind custody.**
+    (reporting ξ±, integration ξ±, pseudo-Cℓ, ρ/τ, …). Gather is **the** terminal
+    seam: every path that combines parts into the one-file product goes
+    through here, because this is where the one thing an assembler cannot know
+    about is enforced — **blind custody.**
 
-    **Blind custody (the module's one blind-aware call site):**
+    **Blind custody.**
     :func:`sp_validation.blinding.assert_consistent_blind` runs before the
-    merge — it fails closed unless every blindable part carries the identical
-    ``blind_commitment``/``blind_config_digest`` (or, when nothing is blinded,
-    every blindable part is declared ``type='mock'``). Its returned shared
-    stamp is written onto the assembled file so the one-file product carries
-    the blind it was built from; the blinded parts already carry those keys,
-    so merge preserves them and this stamp is a consistent (idempotent)
-    re-affirmation.
+    assembly — it fails closed unless every blindable part carries the
+    identical ``blind_commitment``/``blind_config_digest``/``blind_draw_scheme``
+    (or, when nothing is blinded, every blindable part is declared
+    ``type='mock'``). Its returned shared stamp is written onto the assembled
+    file so the one-file product carries the blind it was built from; the
+    blinded parts already carry those keys, so the assembly preserves them and
+    this stamp is a consistent (idempotent) re-affirmation.
+
+    **The assembly itself is the caller's.** Two exist and both are real:
+    :func:`merge` (the default) does the first-wins tracer union, in-order
+    point concatenation with all tags, and a covariance built from whatever the
+    parts carry — the right thing when parts are already covariance-bearing.
+    :func:`sp_validation.cosmo_val.sacc_writers.assemble_analysis_sacc` rebuilds
+    from a given n(z) + metadata and *requires* one covariance block per part —
+    the right thing for the production terminal, where the ξ± and pseudo-Cℓ
+    parts are born cov-less and have their blocks injected first. Passing the
+    assembler in, rather than duplicating the custody wrapper around each one,
+    is what keeps the guard un-bypassable.
 
     Parameters
     ----------
@@ -1020,6 +1030,9 @@ def gather(parts, metadata=None):
         The part SACCs, in the assembly (covariance) order.
     metadata : dict, optional
         Extra key/value pairs to store on the assembled file's metadata.
+    assemble : callable, optional
+        ``assemble(parts) -> sacc.Sacc``. Defaults to :func:`merge`. Bind any
+        further arguments (n(z), metadata) into the callable.
 
     Returns
     -------
@@ -1030,7 +1043,7 @@ def gather(parts, metadata=None):
 
     parts = list(parts)
     stamp = blinding.assert_consistent_blind(parts)
-    s = merge(parts)
+    s = (assemble or merge)(parts)
     for key, value in {**(metadata or {}), **(stamp or {})}.items():
         s.metadata[key] = value
     return s
