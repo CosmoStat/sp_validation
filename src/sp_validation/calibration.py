@@ -883,8 +883,8 @@ class metacal:
             weight
 
         """
-        C11 = data[f"{prefix}_G1_ERR_NOSHEAR"]
-        C22 = data[f"{prefix}_G2_ERR_NOSHEAR"]
+        C11 = data[f"{prefix}_E1_ERR_NOSHEAR"]
+        C22 = data[f"{prefix}_E2_ERR_NOSHEAR"]
         if mask is not None:
             C11 = C11[mask]
             C22 = C22[mask]

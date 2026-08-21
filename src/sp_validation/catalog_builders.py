@@ -366,8 +366,14 @@ class JointCat(BaseCat):
         hdu_lists = []
         for patch in patches:
             input_path = f"{base_path}/{patch}/{input_sub_path}"
+            extension = os.path.splitext(input_path)[1]
             try:
-                hdu_list = fits.open(input_path)
+                if extension in (".hdf5", ".hd5"):
+                    hdu_list = h5py.File(input_path, "r")
+                    this_n = hdu_list["data"].shape[0]
+                else:
+                    hdu_list = fits.open(input_path)
+                    this_n = int(hdu_list[self._params["hdu"]].header["NAXIS2"])
             except Exception as err:
                 raise ValueError(
                     f"Could not open file {input_path} at HDU"
@@ -375,7 +381,6 @@ class JointCat(BaseCat):
                 ) from err
             hdu_lists.append(hdu_list)
 
-            this_n = int(hdu_list[self._params["hdu"]].header["NAXIS2"])
             n_obj_list.append(this_n)
             n_obj += this_n
 
@@ -569,11 +574,14 @@ class JointCat(BaseCat):
             input base directory path; default is "."
 
         """
-        input_sub_path = (
-            f"sp_output/shape_catalog_comprehensive_{self._params['sh']}.fits"
-        )
+        input_base = f"sp_output/shape_catalog_comprehensive_{self._params['sh']}"
+        input_sub_path = f"{input_base}.fits"
+        for ext in (".hdf5", ".hd5", ".fits"):
+            if os.path.isfile(f"{base_path}/{patches[0]}/{input_base}{ext}"):
+                input_sub_path = f"{input_base}{ext}"
+                break
 
-        # Get input FITS files
+        # Get input files (FITS or HDF5)
         hdu_lists, n_obj_list, n_obj = self.get_n_obj(
             patches,
             base_path,
@@ -581,12 +589,15 @@ class JointCat(BaseCat):
         )
 
         # Read data
+        extension = os.path.splitext(input_sub_path)[1]
         start = end = 0
         for idx, patch in enumerate(patches):
             input_path = f"{base_path}/{patch}/{input_sub_path}"
             try:
-                dat = fits.getdata(input_path, self._params["hdu"])
-                # dat = hdu_lists[idx][self._params["hdu"]].data
+                if extension in (".hdf5", ".hd5"):
+                    dat = hdu_lists[idx]["data"][()]
+                else:
+                    dat = fits.getdata(input_path, self._params["hdu"])
 
                 hdu_lists[idx].close()
             except Exception as err:

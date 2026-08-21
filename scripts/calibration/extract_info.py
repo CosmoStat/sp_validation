@@ -73,6 +73,57 @@ else:
         galaxy_cat_path, name, stats_file, param_path=param_list_path
     )
 
+# v1.3 old-grammar compatibility shim.
+# Pre-shapepipe#761 catalogues (e.g. v1.3.x) store ellipticity as a single
+# combined `NGMIX_ELL_<suffix>` 2-vector rather than split E1/E2 scalars, and
+# use `NGMIX_Tpsf_<suffix>`/`NGMIX_T_PSFo_NOSHEAR` rather than
+# `NGMIX_T_PSF_RECONV_<suffix>`/`NGMIX_T_PSF_ORIG_NOSHEAR`. The rest of this
+# script assumes the current (split) grammar; synthesize those field names
+# here from their old-grammar counterparts when present, so nothing below
+# needs to know which vintage of catalogue it's reading. No-op for
+# catalogues that already have the current grammar natively.
+# MKDEBUG: These changes are not to be merged in a newer version.
+if hasattr(dd, "dtype") and dd.dtype.names is not None:
+    import numpy.lib.recfunctions as _rfn
+
+    _key_base = shape.upper()
+    _new_names, _new_data = [], []
+
+    def _shim_add(new_name, data):
+        if new_name not in dd.dtype.names:
+            _new_names.append(new_name)
+            _new_data.append(data)
+
+    for _suf in ("1M", "1P", "2M", "2P", "NOSHEAR"):
+        _ell_col = f"{_key_base}_ELL_{_suf}"
+        if _ell_col in dd.dtype.names:
+            _shim_add(f"{_key_base}_E1_{_suf}", dd[_ell_col][:, 0])
+            _shim_add(f"{_key_base}_E2_{_suf}", dd[_ell_col][:, 1])
+        _tpsf_col = f"{_key_base}_Tpsf_{_suf}"
+        if _tpsf_col in dd.dtype.names:
+            _shim_add(f"{_key_base}_T_PSF_RECONV_{_suf}", dd[_tpsf_col])
+
+    _psfo_col = f"{_key_base}_ELL_PSFo_NOSHEAR"
+    if _psfo_col in dd.dtype.names:
+        _shim_add(f"{_key_base}_E1_PSF_ORIG_NOSHEAR", dd[_psfo_col][:, 0])
+        _shim_add(f"{_key_base}_E2_PSF_ORIG_NOSHEAR", dd[_psfo_col][:, 1])
+
+    _tpsfo_col = f"{_key_base}_T_PSFo_NOSHEAR"
+    if _tpsfo_col in dd.dtype.names:
+        _shim_add(f"{_key_base}_T_PSF_ORIG_NOSHEAR", dd[_tpsfo_col])
+
+    # Only the NOSHEAR branch error is real data in v1.3.x catalogues (the
+    # per-suffix NGMIX_ELL_ERR_{1M,1P,2M,2P} columns exist in the hdf5 dtype
+    # but were never populated by create_final_cat.py -- they're zero-filled
+    # placeholders, not measured errors -- so deliberately not shimmed here).
+    _ellerr_col = f"{_key_base}_ELL_ERR_NOSHEAR"
+    if _ellerr_col in dd.dtype.names:
+        _shim_add(f"{_key_base}_E1_ERR_NOSHEAR", dd[_ellerr_col][:, 0])
+        _shim_add(f"{_key_base}_E2_ERR_NOSHEAR", dd[_ellerr_col][:, 1])
+
+    if _new_names:
+        dd = _rfn.append_fields(dd, _new_names, _new_data, usemask=False)
+
 n_obj = len(dd)
 print_stats(
     f"Read {n_obj} objects from file {galaxy_cat_path}", stats_file, verbose=verbose
@@ -83,8 +134,8 @@ print_stats(
 
 # PSF keys
 key_base = shape.upper()
-key_PSF_g1 = f"{key_base}_G1_PSF_ORIG_NOSHEAR"
-key_PSF_g2 = f"{key_base}_G2_PSF_ORIG_NOSHEAR"
+key_PSF_g1 = f"{key_base}_E1_PSF_ORIG_NOSHEAR"
+key_PSF_g2 = f"{key_base}_E2_PSF_ORIG_NOSHEAR"
 key_PSF_size = f"{key_base}_T_PSF_ORIG_NOSHEAR"
 size_to_fwhm = T_to_fwhm
 
@@ -92,7 +143,7 @@ print_stats("Galaxies:", stats_file, verbose=verbose)
 n_tot = spv_cat.print_some_quantities(dd, stats_file, verbose=verbose)
 spv_cat.print_mean_ellipticity(
     dd,
-    [f"{key_base}_G1_NOSHEAR", f"{key_base}_G2_NOSHEAR"],
+    [f"{key_base}_E1_NOSHEAR", f"{key_base}_E2_NOSHEAR"],
     1,
     n_tot,
     stats_file,
@@ -118,12 +169,37 @@ print_stats(f"Tiles in input catalogue: {n_found}", stats_file, verbose=verbose)
 if star_cat_path:
     d_star = fits.getdata(star_cat_path, hdu_star_cat)
 
+    # v1.3 old-grammar compatibility shim (star catalogue).
+    # Pre-shapepipe#761 star catalogues name HSM columns with a trailing
+    # `_HSM` suffix (e.g. `E1_PSF_HSM`) rather than the current leading
+    # `HSM_` prefix (`HSM_E1_PSF`). Strip the astropy FITS_rec wrapper (its
+    # own column-name metadata otherwise shadows a plain dtype rename) and
+    # rename in place when the old-style names are present. No-op for
+    # catalogues that already have the current grammar natively.
+    if "HSM_E1_PSF" not in d_star.dtype.names and "E1_PSF_HSM" in d_star.dtype.names:
+        import numpy.lib.recfunctions as _rfn
+
+        d_star = np.array(d_star)
+        d_star = _rfn.rename_fields(
+            d_star,
+            {
+                "E1_PSF_HSM": "HSM_E1_PSF",
+                "E2_PSF_HSM": "HSM_E2_PSF",
+                "SIGMA_PSF_HSM": "HSM_SIGMA_PSF",
+                "E1_STAR_HSM": "HSM_E1_STAR",
+                "E2_STAR_HSM": "HSM_E2_STAR",
+                "SIGMA_STAR_HSM": "HSM_SIGMA_STAR",
+                "FLAG_PSF_HSM": "HSM_FLAG_PSF",
+                "FLAG_STAR_HSM": "HSM_FLAG_STAR",
+            },
+        )
+
 if star_cat_path:
     print_stats("Stars:", stats_file, verbose=verbose)
     n_tot = spv_cat.print_some_quantities(d_star, stats_file, verbose=verbose)
     spv_cat.print_mean_ellipticity(
         d_star,
-        ["HSM_G1_PSF", "HSM_G2_PSF"],
+        ["HSM_E1_PSF", "HSM_E2_PSF"],
         1,
         n_tot,
         stats_file,
@@ -162,7 +238,7 @@ if star_cat_path:
         (dd["FLAGS"][ind_star] == 0)
         & (dd["IMAFLAGS_ISO"][ind_star] == 0)
         & (dd["NGMIX_MCAL_FLAGS"][ind_star] == 0)
-        & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
+        & (dd["NGMIX_E1_PSF_ORIG_NOSHEAR"][ind_star] != -10)
     )
 
     ra_star, dec_star, g_star_psf = spv_cat.match_subsample(
@@ -191,7 +267,7 @@ if star_cat_path:
 
 spv_cat.check_invalid(
     dd,
-    [key_PSF_g1, f"{key_base}_G1_NOSHEAR"],
+    [key_PSF_g1, f"{key_base}_E1_NOSHEAR"],
     [-10, -10],
     stats_file,
     name=["`PSF", "galaxy ellipticity"],
@@ -250,8 +326,8 @@ _, _, iv_w = metacal.get_variance_ivweights(dd, sigma_eps_prior, mask=None)
 
 mag = spv_cat.get_col(dd, "MAG_AUTO", None, None)
 snr = spv_cat.get_snr(shape, dd, None, None)
-g1_uncal = dd[f"{key_base}_G1_NOSHEAR"]
-g2_uncal = dd[f"{key_base}_G2_NOSHEAR"]
+g1_uncal = dd[f"{key_base}_E1_NOSHEAR"]
+g2_uncal = dd[f"{key_base}_E2_NOSHEAR"]
 
 # Comprehensive catalogue without cuts nor mask applied
 if verbose:

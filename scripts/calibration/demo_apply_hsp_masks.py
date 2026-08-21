@@ -55,17 +55,13 @@ print(bits)
 # +
 # Set parameters
 base = "unions_shapepipe_comprehensive"
-ver = "v1.3.c"
-
-if ver == "v1.3.c":
-    year = 2022
-else:
-    year = 2024
-ver_maj = "v1.5"
+ver_maj = "v1.3"
+ver = f"{ver_maj}.c"
+year = 2024
 
 obj._params["input_path"] = f"{base}_{year}_{ver_maj}.c.hdf5"
 obj._params["output_path"] = f"{base}_struc_{year}_{ver_maj}.c.hdf5"
-obj._params["mask_dir"] = f"{os.environ['HOME']}/{ver_maj}.x/masks"
+obj._params["mask_dir"] = f"{os.environ['HOME']}/unions_wl/masks"
 
 obj._params["nside"] = 131072
 obj._params["file_base"] = "mask_r_"

@@ -3,7 +3,7 @@
 
 # General parameters (can also given on command line)
 params:
-  input_path: ./unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
+  input_path: shape_catalog_comprehensive_ngmix.fits
   cmatrices: False
   sky_regions: False
   verbose: True
@@ -23,12 +23,6 @@ dat:
     kind: equal
     value: True
 
-  # ShapePipe flags
-  - col_name: IMAFLAGS_ISO
-    label: SP mask
-    kind: equal
-    value: 0
-
   # Number of epochs
   - col_name: N_EPOCH
     label: r"$n_{\rm epoch}$"
@@ -47,7 +41,7 @@ dat:
     kind: equal
     value: 0
 
-  # invalid PSF ellipticities
+  # invalid PSF ellipticities (ShapePipe-v2 grammar: scalar G1/G2 components)
   - col_name: NGMIX_G1_PSF_ORIG_NOSHEAR
     label: "bad PSF ellipticity comp 1"
     kind: not_equal
@@ -56,39 +50,6 @@ dat:
     label: "bad PSF ellipticity comp 2"
     kind: not_equal
     value: -10
-
-## Using columns in 'dat_ext' group (post-processing flags)
-dat_ext:
-
-  # Stars
-  - col_name: 4_Stars
-    label: "Stars"
-    kind: equal
-    value: False
-
-  # Manual mask
-  - col_name: 8_Manual
-    label: "manual mask"
-    kind: equal
-    value: False
-
-  # r-band footprint
-  - col_name: 64_r
-    label: "r-band imaging"
-    kind: equal
-    value: False
-
-  # Maximask
-  - col_name: 1024_Maximask
-    label: "maximask"
-    kind: equal
-    value: False
-
-  # Rough pointing coverage
-  - col_name: npoint3
-    label: r"$n_{\rm pointing}$"
-    kind: greater_equal
-    value: 3
 
 # Metacal parameters
 metacal:
@@ -106,5 +67,11 @@ metacal:
   # Correct relative size for ellipticity?
   gal_size_corr_ell: False
 
-  # Weight for global response matrix, None for unweighted mean
-  global_R_weight: w
+  # Weight for global response matrix, None for unweighted mean.
+  # Unweighted for image sims: no weights anywhere in sim m-bias (#227),
+  # and the w_des-weighted R had N_eff ~ 20-100 objects.
+  global_R_weight: null
+
+  # Subtract additive bias (mean shear)? Use False for constant-shear
+  # image sims
+  additive_correction: False
