@@ -9,6 +9,10 @@ Two-panel figure:
 """
 
 import json
+
+# plotting_utils lives in papers/bmodes/scripts (a different workflow); make it
+# importable when running from the generic workflow, else fall back to defaults.
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -17,12 +21,20 @@ import numpy as np
 import seaborn as sns
 import treecorr
 from cosmo_numba.B_modes.cosebis import COSEBIS
-from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
 from scipy.stats import chi2 as chi2_dist
+
+sys.path.append(
+    str(Path(__file__).resolve().parents[2] / "papers" / "bmodes" / "scripts")
+)
+try:
+    from plotting_utils import FIG_WIDTH_SINGLE, PAPER_MPLSTYLE
+except ImportError:  # pragma: no cover
+    FIG_WIDTH_SINGLE, PAPER_MPLSTYLE = 3.5, None
 
 from sp_validation.b_modes import scale_cut_to_bins
 
-plt.style.use(PAPER_MPLSTYLE)
+if PAPER_MPLSTYLE:
+    plt.style.use(PAPER_MPLSTYLE)
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Load scatter results
@@ -52,14 +64,15 @@ print(f"Loaded {n_mocks} mock COSEBIS results, {nmodes} modes each")
 # Analytic COSEBIS covariance from ξ± covariance
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-gg_ref = treecorr.GGCorrelation(
-    min_sep=0.5, max_sep=500, nbins=1000, sep_units="arcmin"
+# The covariance lives on its OWN theta grid (the paper integration grid,
+# 0.5-300 arcmin, 1000 log bins). Indices must be computed on THAT grid, not
+# on the mock fine grid (0.5-500): equal index does not mean equal theta.
+cov_gg = treecorr.GGCorrelation(
+    min_sep=0.5, max_sep=300.0, nbins=1000, sep_units="arcmin"
 )
-gg_ref.read(xi_ref_path)
-
-start, stop = scale_cut_to_bins(gg_ref, theta_min, theta_max)
-theta_cut = gg_ref.meanr[start:stop].astype(float)
-nbins_xi = len(gg_ref.meanr)
+start, stop = scale_cut_to_bins(cov_gg, theta_min, theta_max)
+theta_cut = np.exp(cov_gg.logr[start:stop]).astype(float)
+nbins_xi = cov_gg.nbins
 
 cov_xipm = np.loadtxt(cov_path)
 inds = np.arange(start, stop)
