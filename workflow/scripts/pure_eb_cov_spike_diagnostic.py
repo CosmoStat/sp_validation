@@ -104,6 +104,20 @@ def _load_inputs(pure_cov_path, fine_cov_path):
     return theta, theta_int, covariance, stored_covariance
 
 
+def _all_b_rows(theta):
+    """All xip_B and xim_B rows, in output order."""
+
+    n = len(theta)
+    rows = []
+    labels = []
+    for output_name in ("xip_B", "xim_B"):
+        base = _OUTPUT_NAMES.index(output_name) * n
+        for index in range(n):
+            rows.append(base + index)
+            labels.append(f"{output_name} bin {index} ({theta[index]:.4g} arcmin)")
+    return np.asarray(rows, dtype=int), labels
+
+
 def _selected_rows(theta, neighbor_radius):
     """Select target bins and adjacent bins, preserving target order."""
 
@@ -405,7 +419,10 @@ def _plot_weights(theta_int, rows, labels, weights, out_path):
 
 def diagnose(args):
     theta, theta_int, fine_cov, stored_cov = _load_inputs(args.pure_cov, args.fine_cov)
-    rows, labels = _selected_rows(theta, args.neighbor_radius)
+    if args.all_b_rows:
+        rows, labels = _all_b_rows(theta)
+    else:
+        rows, labels = _selected_rows(theta, args.neighbor_radius)
     mean_fine = (
         _load_mean_fine(args.mean_fine, len(theta_int)) if args.mean_fine else None
     )
@@ -533,6 +550,11 @@ def _parser(argv=None):
     parser.add_argument("--min-sep", type=float, default=1.0)
     parser.add_argument("--max-sep", type=float, default=250.0)
     parser.add_argument("--neighbor-radius", type=int, default=1)
+    parser.add_argument(
+        "--all-b-rows",
+        action="store_true",
+        help="Extract weight rows for ALL xip_B and xim_B reporting bins.",
+    )
     parser.add_argument(
         "--mean-fine",
         type=Path,

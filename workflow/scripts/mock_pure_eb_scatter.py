@@ -22,6 +22,7 @@ from pathlib import Path
 import numpy as np
 import treecorr
 from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+from scipy import sparse
 
 _EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
 _ID_RE = re.compile(r"(?:glass_mock_|mock_)(\d{5})")
@@ -31,6 +32,63 @@ def _native(values):
     """Return a native-byte-order float array for numba inputs."""
 
     return np.asarray(values, dtype=float)
+
+
+def _make_binning_matrix(reporting, theta, npairs):
+    """Build the normalized fine-to-reporting pair-count matrix."""
+
+    npairs = np.asarray(npairs, dtype=float)
+    if npairs.shape != theta.shape:
+        raise ValueError("npairs must have one entry per integration bin")
+    if not np.all(np.isfinite(npairs)) or np.any(npairs < 0):
+        raise ValueError("npairs must be finite and non-negative")
+    reporting_edges = np.concatenate(
+        [_native(reporting.left_edges), [_native(reporting.right_edges)[-1]]]
+    )
+    bin_indices = np.digitize(theta, reporting_edges) - 1
+    valid = (bin_indices >= 0) & (bin_indices < len(reporting.meanr)) & (npairs > 0)
+    row_indices = bin_indices[valid]
+    col_indices = np.where(valid)[0]
+    matrix = sparse.csr_matrix(
+        (npairs[valid], (row_indices, col_indices)),
+        shape=(len(reporting.meanr), len(theta)),
+    )
+    row_sums = np.asarray(matrix.sum(axis=1)).ravel()
+    if np.any(row_sums == 0):
+        raise ValueError("At least one reporting bin has no integration samples")
+    return sparse.diags(1.0 / row_sums) @ matrix
+
+
+def _average_modes(modes, binning_matrix, fine_indices):
+    """Average finite fine-grid modes, renormalizing each block separately."""
+
+    matrix = binning_matrix[:, fine_indices]
+    averaged = []
+    dropped = []
+    for block_name, values in zip(_EB_KEYS, modes):
+        values = np.asarray(values, dtype=float)
+        finite = np.isfinite(values)
+        dropped.append(int(np.count_nonzero(~finite)))
+        block_matrix = matrix[:, finite]
+        block_values = values[finite]
+        row_sums = np.asarray(block_matrix.sum(axis=1)).ravel()
+        if np.any(row_sums == 0):
+            empty = np.flatnonzero(row_sums == 0).tolist()
+            raise ValueError(
+                f"All finite fine bins were dropped for {block_name} in "
+                f"reporting bins {empty}"
+            )
+        block_matrix = sparse.diags(1.0 / row_sums) @ block_matrix
+        averaged.append(np.asarray(block_matrix @ block_values).ravel())
+    return tuple(averaged), np.asarray(dropped, dtype=int)
+
+
+def _print_drop_counts(counts, mock_id):
+    details = ", ".join(f"{name}={count}" for name, count in zip(_EB_KEYS, counts))
+    print(
+        f"Dropped non-finite outputs for mock {mock_id}: {details}",
+        flush=True,
+    )
 
 
 def _mock_id_from_path(path: Path) -> str:
@@ -67,6 +125,7 @@ def compute_one(
     reporting_max_sep: float = 250.0,
     reporting_nbins: int = 20,
     integration_max_sep: float | None = None,
+    transform_averaged: bool = False,
 ) -> Path:
     """Transform one fine/reporting pair and write its six pure-mode arrays."""
 
@@ -102,6 +161,7 @@ def compute_one(
     theta_int = _native(gg_int.meanr)
     xip_int = _native(gg_int.xip)
     xim_int = _native(gg_int.xim)
+    npairs_int = _native(gg_int.npairs)
     if integration_max_sep is not None:
         # The paper covariance input ends at 300 arcmin.  The production GLASS
         # file ends at 500 arcmin; retaining the default full file is required
@@ -115,20 +175,39 @@ def compute_one(
                 "integration_max_sep leaves too few fine xi bins: "
                 f"{integration_max_sep}"
             )
-        theta_int, xip_int, xim_int = (
-            values[keep] for values in (theta_int, xip_int, xim_int)
+        theta_int, xip_int, xim_int, npairs_int = (
+            values[keep] for values in (theta_int, xip_int, xim_int, npairs_int)
         )
-    pure_modes = get_pure_EB_modes(
-        theta=_native(gg.meanr),
-        xip=_native(gg.xip),
-        xim=_native(gg.xim),
-        theta_int=theta_int,
-        xip_int=xip_int,
-        xim_int=xim_int,
-        tmin=tmin,
-        tmax=tmax,
-        parallel=True,
-    )
+    if transform_averaged:
+        binning_matrix = _make_binning_matrix(gg, theta_int, npairs_int)
+        fine_indices = np.flatnonzero(
+            np.asarray(binning_matrix.sum(axis=0)).ravel() > 0
+        )
+        pure_modes = get_pure_EB_modes(
+            theta=theta_int[fine_indices],
+            xip=xip_int[fine_indices],
+            xim=xim_int[fine_indices],
+            theta_int=theta_int,
+            xip_int=xip_int,
+            xim_int=xim_int,
+            tmin=tmin,
+            tmax=tmax,
+            parallel=True,
+        )
+        pure_modes, dropped = _average_modes(pure_modes, binning_matrix, fine_indices)
+        _print_drop_counts(dropped, mock_id)
+    else:
+        pure_modes = get_pure_EB_modes(
+            theta=_native(gg.meanr),
+            xip=_native(gg.xip),
+            xim=_native(gg.xim),
+            theta_int=theta_int,
+            xip_int=xip_int,
+            xim_int=xim_int,
+            tmin=tmin,
+            tmax=tmax,
+            parallel=True,
+        )
     arrays = dict(zip(_EB_KEYS, (_native(values) for values in pure_modes)))
 
     if not all(np.all(np.isfinite(values)) for values in arrays.values()):
@@ -148,6 +227,7 @@ def compute_one(
             if integration_max_sep is not None
             else float(gg_int.meanr[-1])
         ),
+        transform="averaged" if transform_averaged else "pointwise",
         **arrays,
     )
     print(
@@ -188,6 +268,11 @@ def _standalone_args(argv=None):
             "Optional upper cut on the fine grid; use 300 to match the "
             "paper CosmoCov integration input."
         ),
+    )
+    parser.add_argument(
+        "--transform-averaged",
+        action="store_true",
+        help="Transform on the fine grid, then average each output block.",
     )
     return parser.parse_args(argv)
 
@@ -235,6 +320,7 @@ def _standalone_main(argv=None):
             reporting_path,
             output_path,
             integration_max_sep=args.integration_max_sep,
+            transform_averaged=args.transform_averaged,
         )
 
 

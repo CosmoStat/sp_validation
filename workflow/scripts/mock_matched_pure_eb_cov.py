@@ -22,6 +22,8 @@ from pathlib import Path
 import numpy as np
 from scipy import sparse
 
+_EB_KEYS = ("xip_E", "xim_E", "xip_B", "xim_B", "xip_amb", "xim_amb")
+
 
 def _build_cosmology(cosmo_params):
     """Build the same CCL cosmology used by the paper chunk script."""
@@ -37,20 +39,25 @@ def _build_cosmology(cosmo_params):
     )
 
 
-def _load_xi(path, min_sep, max_sep, nbins):
+def _load_xi(path, min_sep, max_sep, nbins, require_npairs=False):
     """Load a paper TreeCorr text dump and reconstruct its bin edges."""
 
     data = np.loadtxt(path, comments="#", max_rows=nbins)
     if data.shape[0] != nbins:
         raise ValueError(f"Expected {nbins} ξ rows in {path}, found {data.shape[0]}")
+    if require_npairs and data.shape[1] <= 10:
+        raise ValueError(f"Expected an npairs column at index 10 in {path}")
     edges = np.logspace(np.log10(min_sep), np.log10(max_sep), nbins + 1)
-    return {
+    result = {
         "meanr": np.asarray(data[:, 1], dtype=float),
         "xip": np.asarray(data[:, 3], dtype=float),
         "xim": np.asarray(data[:, 4], dtype=float),
         "left_edges": edges[:-1],
         "right_edges": edges[1:],
     }
+    if data.shape[1] > 10:
+        result["npairs"] = np.asarray(data[:, 10], dtype=float)
+    return result
 
 
 def _load_nz(path):
@@ -60,22 +67,56 @@ def _load_nz(path):
     return np.asarray(data[:, :2], dtype=float)
 
 
-def _make_binning_matrix(reporting, integration):
+def _make_binning_matrix(reporting, integration, npairs):
+    npairs = np.asarray(npairs, dtype=float)
+    if npairs.shape != integration["meanr"].shape:
+        raise ValueError("npairs must have one entry per integration bin")
+    if not np.all(np.isfinite(npairs)) or np.any(npairs < 0):
+        raise ValueError("npairs must be finite and non-negative")
     reporting_edges = np.concatenate(
         [reporting["left_edges"], [reporting["right_edges"][-1]]]
     )
     bin_indices = np.digitize(integration["meanr"], reporting_edges) - 1
-    valid = (bin_indices >= 0) & (bin_indices < len(reporting["meanr"]))
+    valid = (bin_indices >= 0) & (bin_indices < len(reporting["meanr"])) & (npairs > 0)
     row_indices = bin_indices[valid]
     col_indices = np.where(valid)[0]
     matrix = sparse.csr_matrix(
-        (np.ones(len(row_indices)), (row_indices, col_indices)),
+        (npairs[valid], (row_indices, col_indices)),
         shape=(len(reporting["meanr"]), len(integration["meanr"])),
     )
     row_sums = np.asarray(matrix.sum(axis=1)).ravel()
     if np.any(row_sums == 0):
         raise ValueError("At least one reporting bin has no integration samples")
     return sparse.diags(1.0 / row_sums) @ matrix
+
+
+def _average_modes(modes, binning_matrix, fine_indices):
+    """Average finite fine-grid modes, renormalizing each block separately."""
+
+    matrix = binning_matrix[:, fine_indices]
+    averaged = []
+    dropped = []
+    for block_name, values in zip(_EB_KEYS, modes):
+        values = np.asarray(values, dtype=float)
+        finite = np.isfinite(values)
+        dropped.append(int(np.count_nonzero(~finite)))
+        block_matrix = matrix[:, finite]
+        block_values = values[finite]
+        row_sums = np.asarray(block_matrix.sum(axis=1)).ravel()
+        if np.any(row_sums == 0):
+            empty = np.flatnonzero(row_sums == 0).tolist()
+            raise ValueError(
+                f"All finite fine bins were dropped for {block_name} in "
+                f"reporting bins {empty}"
+            )
+        block_matrix = sparse.diags(1.0 / row_sums) @ block_matrix
+        averaged.append(np.asarray(block_matrix @ block_values).ravel())
+    return tuple(averaged), np.asarray(dropped, dtype=int)
+
+
+def _print_drop_counts(label, counts):
+    details = ", ".join(f"{name}={count}" for name, count in zip(_EB_KEYS, counts))
+    print(f"Dropped non-finite {label}: {details}", flush=True)
 
 
 def _sample_bounds(n_samples, n_batches, batch_id):
@@ -104,6 +145,7 @@ def build_covariance(
     pad_xim=True,
     interp_order=5,
     diagonal_covariance=False,
+    transform_averaged=False,
 ):
     """Generate and save the 120×120 mock-matched covariance."""
 
@@ -114,7 +156,13 @@ def build_covariance(
     from cs_util.cosmo import PLANCK18, get_theo_xi
 
     reporting = _load_xi(xi_reporting_path, min_sep, max_sep, nbins)
-    integration = _load_xi(xi_integration_path, min_sep_int, max_sep_int, nbins_int)
+    integration = _load_xi(
+        xi_integration_path,
+        min_sep_int,
+        max_sep_int,
+        nbins_int,
+        require_npairs=True,
+    )
     covariance = np.asarray(np.loadtxt(covariance_path), dtype=float)
     expected_shape = (2 * nbins_int, 2 * nbins_int)
     if covariance.shape != expected_shape:
@@ -139,7 +187,12 @@ def build_covariance(
             cosmo=cosmo,
         )
     )
-    binning_matrix = _make_binning_matrix(reporting, integration)
+    binning_matrix = _make_binning_matrix(reporting, integration, integration["npairs"])
+    if transform_averaged:
+        fine_indices = np.flatnonzero(
+            np.asarray(binning_matrix.sum(axis=0)).ravel() > 0
+        )
+        dropped_mc = np.zeros(len(_EB_KEYS), dtype=int)
 
     all_samples = []
     for batch_id in range(n_batches):
@@ -159,21 +212,41 @@ def build_covariance(
 
         transformed = []
         for index in range(n_batch):
-            modes = get_pure_EB_modes(
-                theta=reporting["meanr"],
-                theta_int=integration["meanr"],
-                xip=samples_xip_rep[index],
-                xim=samples_xim_rep[index],
-                xip_int=samples_xip_int[index],
-                xim_int=samples_xim_int[index],
-                tmin=min_sep,
-                tmax=max_sep,
-                pad_xim=pad_xim,
-                interp_order=interp_order,
-                parallel=True,
-            )
+            if transform_averaged:
+                modes = get_pure_EB_modes(
+                    theta=integration["meanr"][fine_indices],
+                    theta_int=integration["meanr"],
+                    xip=samples_xip_int[index][fine_indices],
+                    xim=samples_xim_int[index][fine_indices],
+                    xip_int=samples_xip_int[index],
+                    xim_int=samples_xim_int[index],
+                    tmin=min_sep,
+                    tmax=max_sep,
+                    pad_xim=pad_xim,
+                    interp_order=interp_order,
+                    parallel=True,
+                )
+                modes, dropped = _average_modes(modes, binning_matrix, fine_indices)
+                dropped_mc += dropped
+            else:
+                modes = get_pure_EB_modes(
+                    theta=reporting["meanr"],
+                    theta_int=integration["meanr"],
+                    xip=samples_xip_rep[index],
+                    xim=samples_xim_rep[index],
+                    xip_int=samples_xip_int[index],
+                    xim_int=samples_xim_int[index],
+                    tmin=min_sep,
+                    tmax=max_sep,
+                    pad_xim=pad_xim,
+                    interp_order=interp_order,
+                    parallel=True,
+                )
             transformed.append(np.concatenate(modes))
         all_samples.append(np.asarray(transformed, dtype=float))
+
+    if transform_averaged:
+        _print_drop_counts("MC outputs", dropped_mc)
 
     eb_samples = np.vstack(all_samples)
     cov_pure_eb = np.cov(eb_samples.T)
@@ -183,20 +256,43 @@ def build_covariance(
         )
 
     # Match gather_pure_eb_chunks.py's package exactly, with provenance extras.
-    modes_data = get_pure_EB_modes(
-        theta=reporting["meanr"],
-        xip=reporting["xip"],
-        xim=reporting["xim"],
-        theta_int=integration["meanr"],
-        xip_int=integration["xip"],
-        xim_int=integration["xim"],
-        tmin=min_sep,
-        tmax=max_sep,
-        pad_xim=pad_xim,
-        interp_order=interp_order,
-        parallel=True,
-    )
+    if transform_averaged:
+        modes_data = get_pure_EB_modes(
+            theta=integration["meanr"][fine_indices],
+            xip=integration["xip"][fine_indices],
+            xim=integration["xim"][fine_indices],
+            theta_int=integration["meanr"],
+            xip_int=integration["xip"],
+            xim_int=integration["xim"],
+            tmin=min_sep,
+            tmax=max_sep,
+            pad_xim=pad_xim,
+            interp_order=interp_order,
+            parallel=True,
+        )
+        modes_data, dropped_data = _average_modes(
+            modes_data, binning_matrix, fine_indices
+        )
+        _print_drop_counts("data outputs", dropped_data)
+    else:
+        modes_data = get_pure_EB_modes(
+            theta=reporting["meanr"],
+            xip=reporting["xip"],
+            xim=reporting["xim"],
+            theta_int=integration["meanr"],
+            xip_int=integration["xip"],
+            xim_int=integration["xim"],
+            tmin=min_sep,
+            tmax=max_sep,
+            pad_xim=pad_xim,
+            interp_order=interp_order,
+            parallel=True,
+        )
     xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = modes_data
+    if transform_averaged and not all(
+        np.all(np.isfinite(values)) for values in modes_data
+    ):
+        raise ValueError("Non-finite pure E/B output after averaging")
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -221,6 +317,8 @@ def build_covariance(
         pad_xim=pad_xim,
         interp_order=interp_order,
         diagonal_covariance=diagonal_covariance,
+        transform="averaged" if transform_averaged else "pointwise",
+        weighting="npairs",
     )
     print(f"Saved {output_path} with cov_pure_eb shape {cov_pure_eb.shape}", flush=True)
     return output_path
@@ -266,6 +364,11 @@ def _parser(argv=None):
         action="store_true",
         help="Diagnostic: zero all off-diagonal CosmoCov elements.",
     )
+    parser.add_argument(
+        "--transform-averaged",
+        action="store_true",
+        help="Transform on the fine grid, then average each output block.",
+    )
     return parser.parse_args(argv)
 
 
@@ -289,6 +392,7 @@ def _main(argv=None):
         pad_xim=not args.no_pad_xim,
         interp_order=args.interp_order,
         diagonal_covariance=args.diagonal_covariance,
+        transform_averaged=args.transform_averaged,
     )
 
 
