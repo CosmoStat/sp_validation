@@ -183,6 +183,12 @@ def compute_one(
         fine_indices = np.flatnonzero(
             np.asarray(binning_matrix.sum(axis=0)).ravel() > 0
         )
+        # Widened to the integration-grid extent: evaluating the transform at
+        # fine bins abutting the reporting limits leaves <interp_order+1
+        # quadrature nodes there (degenerate spline -> silent huge garbage).
+        # With the fine-grid limits every evaluation point keeps real support
+        # and the result is insensitive to edge trimming.  Note this defines
+        # the pure modes over the wider separation interval.
         pure_modes = get_pure_EB_modes(
             theta=theta_int[fine_indices],
             xip=xip_int[fine_indices],
@@ -190,8 +196,8 @@ def compute_one(
             theta_int=theta_int,
             xip_int=xip_int,
             xim_int=xim_int,
-            tmin=tmin,
-            tmax=tmax,
+            tmin=float(theta_int.min()) * (1 - 1e-9),
+            tmax=float(theta_int.max()) * (1 + 1e-9),
             parallel=True,
         )
         pure_modes, dropped = _average_modes(pure_modes, binning_matrix, fine_indices)

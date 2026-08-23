@@ -195,6 +195,12 @@ def build_covariance(
         dropped_mc = np.zeros(len(_EB_KEYS), dtype=int)
 
     all_samples = []
+    # Averaged-operator integration limits: the fine-grid extent (matching
+    # mock_pure_eb_scatter.py exactly), not the reporting edges — see comment
+    # at the get_pure_EB_modes call.
+    tmin_avg = float(integration["meanr"].min()) * (1 - 1e-9)
+    tmax_avg = float(integration["meanr"].max()) * (1 + 1e-9)
+
     for batch_id in range(n_batches):
         start, stop = _sample_bounds(n_samples, n_batches, batch_id)
         n_batch = stop - start
@@ -220,8 +226,14 @@ def build_covariance(
                     xim=samples_xim_int[index][fine_indices],
                     xip_int=samples_xip_int[index],
                     xim_int=samples_xim_int[index],
-                    tmin=min_sep,
-                    tmax=max_sep,
+                    # Widened to the integration-grid extent: evaluating the
+                    # transform at fine bins abutting the reporting limits
+                    # leaves <interp_order+1 quadrature nodes there (degenerate
+                    # spline -> silent 1e160+ garbage). With the fine-grid
+                    # limits every evaluation point keeps >=29 nodes of support
+                    # and the result is insensitive to edge trimming.
+                    tmin=tmin_avg,
+                    tmax=tmax_avg,
                     pad_xim=pad_xim,
                     interp_order=interp_order,
                     parallel=True,
@@ -264,8 +276,8 @@ def build_covariance(
             theta_int=integration["meanr"],
             xip_int=integration["xip"],
             xim_int=integration["xim"],
-            tmin=min_sep,
-            tmax=max_sep,
+            tmin=tmin_avg,
+            tmax=tmax_avg,
             pad_xim=pad_xim,
             interp_order=interp_order,
             parallel=True,
