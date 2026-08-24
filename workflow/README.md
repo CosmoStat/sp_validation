@@ -57,3 +57,22 @@ that same `apptainer exec` line, since the slurm executor's `--export=ALL`
 propagates the driver's env, not a profile flag). Per-rule `mem_mb` / `runtime`
 stay on the rules. Off-cluster, drop `--profile` and add `-j N`. See the
 profile's own comments for the full rationale.
+
+### Never write `/automnt/nXXdataN` in a path
+
+Use the plain form `/nXXdataN/...` in every rule, config, and invocation
+directory. `/automnt/nXXdataN` works only from a node that does *not* own that
+disk. On the owning node the disk is mounted directly at `/nXXdataN` and there
+is no `/automnt/nXXdataN` entry at all, so a job that lands there dies about one
+second after the allocation starts, before any log file is written. This is why
+`n17` is in the profile's exclude list. Every canonical path in `common.py`
+already uses the plain form; keep new paths the same.
+
+### Snakemake version: host or container, not both
+
+Apptainer passes your `PATH` and mounts your `$HOME` into the container, so a
+host-side `pip install --user snakemake` in `~/.local` can shadow the container's
+own pinned Snakemake. Mixing the two versions in one session produces confusing
+errors. Inside the container, check that `which snakemake` gives
+`/app/.venv/bin/snakemake`. If you drive the workflow from the host instead, use
+the same Snakemake version that `uv.lock` pins.

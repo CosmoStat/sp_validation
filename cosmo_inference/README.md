@@ -6,6 +6,15 @@ This folder contains the files neccessary to run the cosmological inference pipe
 ### Requirements
 To run the pipeline, one would need to have installed [CosmoSIS](https://cosmosis.readthedocs.io/en/latest/). To sample the PSF leakage parameters, the fork of [cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/) of Sacha Guerrini has to be used.
 
+Run CosmoSIS with `--mpi`, not `--smp`. The `--smp` process pool is fragile and
+barely maintained upstream: its `bcast`, `gather` and `allreduce` methods all
+return a `self.data` attribute that is never set, so a run can crash right after
+sampling finishes (upstream issue
+[cosmosis#170](https://github.com/cosmosis-developers/cosmosis/issues/170) — the
+`allreduce` crash was fixed in cosmosis 3.16.1, the rest is still open). Use
+cosmosis 3.16.1 or newer, and prefer `--mpi`, which is what the upstream
+maintainer recommends.
+
 ### To Run
 The inference pipeline is now orchestrated through Python. Run the main Snakemake workflow from the parent directory:
 
