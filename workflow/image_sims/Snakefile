@@ -33,8 +33,16 @@ there under ``if "image_sims" in config``.
 configfile: "workflow/image_sims/config.yaml"
 
 
-# The image-sims rules own their container invocation explicitly, so no
-# top-level container is needed here.
+# No single image covers this chain -- the ShapePipe stages (pipeline, merge)
+# and the sp_validation stages (manifest, extract, calibrate, m_bias) run in
+# two different images (config["image_sims"]["sif"] / ["sif_pipeline"]), so
+# there is no correct *default* to set here. Each rule in
+# workflow/rules/image_sims.smk instead declares its own ``container: SIF`` /
+# ``container: SIF_PIPELINE``; Snakemake wraps every job through the
+# profile's ``software-deployment-method: apptainer`` exactly as it does for
+# the single-image rules elsewhere -- no rule shells out to ``apptainer exec``
+# itself. ``container: None`` here just means "no module-level fallback",
+# not "unwrapped": every included rule sets its own.
 container: None
 
 

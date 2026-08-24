@@ -6,34 +6,51 @@
 #         -s workflow/image_sims/Snakefile \
 #         --configfile <run config> <target>
 #
-# and Snakemake owns all scheduling -- it fans out one SLURM job per branch x
-# tile and drives them against the cluster, MPI-free.  Everything here is
-# cluster policy (executor, account, partition, node excludes, per-job
-# defaults); it carries no science and no workflow logic.
+# and Snakemake owns everything: scheduling (one SLURM job per branch x tile,
+# fanned out against the cluster, MPI-free) *and* the container -- every rule
+# runs through Snakemake's own container wrapping (``container:`` on the rule
+# or an inherited module-level default; see workflow/Snakefile), never a
+# rule's own ``apptainer exec`` shell call. This file is the single home for
+# that: ``software-deployment-method: apptainer`` turns the wrapping on,
+# ``apptainer-args`` carries the bind mounts every rule needs. Rules stay
+# plain ``shell:``/``script:`` commands with no container knowledge at all.
 #
-# What is deliberately NOT here:
+# The orchestrator itself (``snakemake``) is a thin host-side tool, pinned via
+# ``uv tool install`` (see workflow/README.md) -- it is never run from inside
+# an ``apptainer shell``. It spawns the apptainer wrapping per job; there is
+# exactly one container per job, never a nested one.
 #
-#   * Container / apptainer settings.  The image-sims rules set
-#     ``container: None`` and own their ``apptainer exec`` call through the
-#     shared ``EXEC`` prefix (one image for every stage, with PYTHONPATH /
-#     PSF_DICT / OMP_NUM_THREADS injected there).  So no
-#     ``software-deployment-method: apptainer`` / ``apptainer-args`` -- those
-#     would wrap a *second*, redundant container around jobs that already run
-#     inside one.
+# Two explicit exceptions still set ``container: None`` and own an inline
+# ``apptainer exec``/host-toolchain call directly in their rule: ``xi_highres``
+# (multi-node MPI -- Snakemake's wrapping puts the whole shell command in one
+# container, which cannot spawn per-rank containers across nodes) and
+# ``covariance_cosmocov`` (calls a host-compiled Fortran/C binary via
+# environment-modules, not a Python entry point). Both are documented at their
+# rule definition in workflow/rules/.
 #
-#   * OMP_NUM_THREADS.  It is pinned to 1 on the ``apptainer exec`` line in
-#     workflow/rules/image_sims.smk, not here.  The slurm executor submits with
-#     ``--export=ALL``, which propagates the *driver's* ambient environment; a
-#     profile only sets CLI flags, never the driver's own env, so an
-#     ``OMP_NUM_THREADS`` set here would silently depend on the operator having
-#     exported it by hand.  Injecting it at the container boundary puts it where
-#     the compute runs, committed and independent of the launching shell.
+# What is still deliberately NOT here:
+#
+#   * OMP_NUM_THREADS.  The slurm executor submits with ``--export=ALL``,
+#     which propagates the *driver's* ambient environment; a profile only sets
+#     CLI flags, never the driver's own env, so an ``OMP_NUM_THREADS`` set here
+#     would silently depend on the operator having exported it by hand. Rules
+#     that need it pinned set it themselves (``envvars:`` / ``params:``), which
+#     keeps it committed and independent of the launching shell.
 #
 #   * Per-rule resources (mem_mb, runtime).  Those live on each rule in the
 #     .smk; the ``default-resources`` below are only the floor for rules that
 #     set none.
 
 executor: slurm
+
+# Every rule runs inside the sp_validation container -- the top-level
+# ``container:`` in workflow/Snakefile / workflow/image_sims/Snakefile (or a
+# rule's own override, e.g. the image-sims SIF/SIF_PIPELINE pair) names the
+# image; this just turns Snakemake's wrapping on and supplies the binds. Kept
+# in sync with the ``app`` bash function's raw ``apptainer exec`` in the
+# top-level UNIONS CLAUDE.md -- update both together.
+software-deployment-method: apptainer
+apptainer-args: "--bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data"
 
 # Cluster policy applied to every job unless a rule overrides it.  The excludes
 # are the flaky/no-internet candide nodes (n17 mount issues, n09 no internet,

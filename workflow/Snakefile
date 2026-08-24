@@ -35,6 +35,12 @@ from common import *
 wildcard_constraints:
     **WILDCARD_CONSTRAINTS
 
+# Container smoke test — validates the profile-driven container contract
+# (executor: slurm + software-deployment-method: apptainer + apptainer-args)
+# that every rule below inherits. No config gate: it needs nothing from a
+# run config, so it is always available as a target.
+include: "rules/container_smoke.smk"
+
 # Compute rules (infrastructure — raw outputs, no evidence.json)
 include: "rules/twopoint.smk"
 include: "rules/covariance.smk"
