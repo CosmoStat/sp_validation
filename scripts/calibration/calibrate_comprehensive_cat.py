@@ -196,16 +196,6 @@ add_cols_data = {}
 for key in add_cols:
     add_cols_data[key] = cat.get_col(dat, key, mask_combined._mask, mask_metacal)
 
-# Keep original NOSHEAR column, override with 1P PSF values (FHP/MK hack)
-print(
-    "FHP/MK hack: explicit copying of the metacal no-shear (updated from 1p)"
-    + " PSF size"
-)
-add_cols_data["NGMIX_T_PSF_RECONV_NOSHEAR_orig"] = add_cols_data[
-    "NGMIX_T_PSF_RECONV_NOSHEAR"
-]
-add_cols_data["NGMIX_T_PSF_RECONV_NOSHEAR"] = gal_metacal.ns["Tpsf"][mask_metacal]
-
 # %%
 # Additional post-processing columns to write to output cat
 add_cols_post = [
