@@ -209,8 +209,10 @@ class PSFSystematicsMixin:
 
         self.print_done("Finished scale-dependent leakage calculation.")
 
-    def calculate_objectwise_leakage(self):
+    def calculate_objectwise_leakage(self, tomography=False):
         # TODO: Upgrade for tomography
+
+        # TODO: remove and save the results of the scale-dependent leakage independently
         if not hasattr(self.results[self.versions[0]], "alpha_leak_mean"):
             self.calculate_scale_dependent_leakage()
 
@@ -452,6 +454,62 @@ class PSFSystematicsMixin:
         ).reshape(-1, nbins)
 
         return xi_psf_sys_samples_plus, xi_psf_sys_samples_minus
+
+    def _get_alpha_leakage(
+        self,
+        rho_stat_handler,
+        tau_stat_handler,
+        cov_rho=None,
+        cov_tau=None,
+        n_samples=10_000,
+    ):
+        """
+        Compute the alpha leakage parameter from the rho and tau statistics.
+
+        Parameters
+        ----------
+        rho_stat_handler : RhoStatHandler
+            The handler for the rho statistics.
+        tau_stat_handler : TauStatHandler
+            The handler for the tau statistics.
+        cov_rho : np.ndarray, optional
+            The covariance matrix for the rho statistics. If None, it will be computed.
+        cov_tau : np.ndarray, optional
+            The covariance matrix for the tau statistics. If None, it will be computed.
+
+        Returns
+        -------
+        alpha_leak : float
+            The estimated alpha leakage parameter.
+        """
+        if cov_rho is None:
+            cov_rho = np.diag(rho_stat_handler.rho_stats["varrho_0_p"])
+        if cov_tau is None:
+            cov_tau = np.diag(tau_stat_handler.tau_stats["vartau_0_p"])
+
+        theta = rho_stat_handler.rho_stats["theta"]
+        n_bins = len(theta)
+        alpha = (
+            tau_stat_handler.tau_stats["tau_0_p"]
+            / rho_stat_handler.rho_stats["rho_0_p"]
+        )
+
+        # Derive alpha_err by sampling from the covariance matrices of rho and tau statistics
+        rho_samples = np.random.multivariate_normal(
+            mean=rho_stat_handler.rho_stats["rho_0_p"],
+            cov=cov_rho[:n_bins, :n_bins],
+            size=n_samples,
+        )
+        tau_samples = np.random.multivariate_normal(
+            mean=tau_stat_handler.tau_stats["tau_0_p"],
+            cov=cov_tau[:n_bins, :n_bins],
+            size=n_samples,
+        )
+
+        alpha_samples = tau_samples / rho_samples
+        alpha_err = np.std(alpha_samples, axis=0)
+
+        return theta, alpha, alpha_err
 
     # --- plotting functions ---
     def plot_rho_stats(
@@ -920,150 +978,190 @@ class PSFSystematicsMixin:
                 )
         """
 
-    def plot_scale_dependent_leakage(self):
-        if not hasattr(self.results[self.versions[0]], "r_corr_gp"):
-            self.calculate_scale_dependent_leakage()
+    def plot_scale_dependent_leakage(
+        self,
+        tomography=False,
+        cov_type=None,
+        versions=None,
+        colors=None,
+        offset=0,
+        savefig=None,
+        show=True,
+        close=True,
+        plot_theta_times_tau=False,
+        ylim_alpha=False,
+        fmt="",
+        capsize=2,
+    ):
+        # First plot alpha leakage
+        self.plot_scale_dependent_alpha(
+            tomography=tomography,
+            cov_type=cov_type,
+            versions=versions,
+            colors=colors,
+            offset=offset,
+            savefig=savefig,
+            show=show,
+            close=close,
+            fmt=fmt,
+            capsize=capsize,
+            ylim_alpha=ylim_alpha,
+        )
 
-        theta = []
-        y = []
-        yerr = []
-        labels = []
-        colors = []
-        linestyles = []
-        markers = []
+        # Second plot xi_sys
+        self.plot_xi_sys_from_scale_dependent_leakage(
+            tomography=tomography,
+            cov_type=cov_type,
+            versions=versions,
+            colors=colors,
+            offset=offset,
+            savefig=savefig,
+            show=show,
+            close=close,
+            plot_theta_times_tau=plot_theta_times_tau,
+            fmt=fmt,
+            capsize=capsize,
+        )
 
-        for ver in self.versions:
-            if hasattr(self.results[ver], "r_corr_gp"):
-                theta.append(self.results[ver].r_corr_gp.meanr)
-                y.append(self.results[ver].alpha_leak)
-                yerr.append(self.results[ver].sig_alpha_leak)
-                labels.append(ver)
-                colors.append(self.cc[ver]["colour"])
-                linestyles.append(self.cc[ver]["ls"])
-                markers.append(self.cc[ver]["marker"])
+    def plot_scale_dependent_alpha(
+        self,
+        tomography=False,
+        cov_type=None,
+        versions=None,
+        colors=None,
+        offset=0,
+        savefig=None,
+        show=True,
+        close=True,
+        fmt="",
+        capsize=2,
+        ylim_alpha=False,
+    ):
+        if versions is None:
+            versions = self.versions
 
-        if len(theta) > 0:
-            # Log x
-            out_path = self._output_path("alpha_leak_log.png")
+        if colors is None:
+            colors = [self.cc[ver]["colour"] for ver in versions]
 
-            title = r"$\alpha$ leakage"
-            xlabel = r"$\theta$ [arcmin]"
-            ylabel = r"$\alpha(\theta)$"
-            cs_plots.plot_data_1d(
-                theta,
-                y,
-                yerr,
-                title,
-                xlabel,
-                ylabel,
-                out_path=None,
-                xlog=True,
-                xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=self.ylim_alpha,
-                labels=labels,
-                colors=colors,
-                linestyles=linestyles,
-                shift_x=True,
+        if len(colors) != len(versions):
+            raise ValueError("Colors and versions must have the same length.")
+
+        if cov_type is None:
+            self.print_cyan("Using the error bars from the tau-statistics files")
+        else:
+            self.print_cyan(
+                f"Using the error bars from the covariance files of type: {cov_type}"
             )
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done(f"Log-scale alpha leakage plot saved to {out_path}")
 
-            # Lin x
-            out_path = self._output_path("alpha_leak_lin.png")
+        tomo_bins = self._get_tomo_bins_for_versions(versions, tomography=tomography)
 
-            title = r"$\alpha$ leakage"
-            xlabel = r"$\theta$ [arcmin]"
-            ylabel = r"$\alpha(\theta)$"
-            cs_plots.plot_data_1d(
-                theta,
-                y,
-                yerr,
-                title,
-                xlabel,
-                ylabel,
-                out_path=None,
-                xlog=False,
-                xlim=[-10, self.theta_max_plot],
-                ylim=self.ylim_alpha,
-                labels=labels,
-                colors=colors,
-                linestyles=linestyles,
-                shift_x=False,
-            )
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done(f"Lin-scale alpha leakage plot saved to {out_path}")
+        n_tomo_bins_plot = max(len(bins["ids"]) for bins in tomo_bins.values())
 
-        # Plot xi_sys
-        y = []
-        yerr = []
-        colors = []
-        linestyles = []
+        out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
 
-        for ver in self.versions:
-            if hasattr(self.results[ver], "C_sys_p"):
-                y.append(self.results[ver].C_sys_p)
-                yerr.append(self.results[ver].C_sys_std_p)
-                labels.append(ver)
-                colors.append(self.cc[ver]["colour"])
-                linestyles.append(self.cc[ver]["ls"])
+        fig, axs = plt.subplots(
+            n_tomo_bins_plot, 1, figsize=(8, 3 * n_tomo_bins_plot), sharex=True
+        )
 
-        if len(y) > 0:
-            xlabel = r"$\theta$ [arcmin]"
-            ylabel = r"$\xi^{\rm sys}_+(\theta)$"
-            title = "Cross-correlation leakage"
-            out_path = self._output_path("xi_sys_p.png")
-            cs_plots.plot_data_1d(
-                theta,
-                y,
-                yerr,
-                title,
-                xlabel,
-                ylabel,
-                out_path=None,
-                labels=labels,
-                xlog=True,
-                xlim=[self.theta_min_plot, self.theta_max_plot],
-                colors=colors,
-                linestyles=linestyles,
-                # shift_x=True,
-            )
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done(f"xi_sys_plus plot saved to {out_path}")
+        # Iterate upon each version
+        for ver, color in zip(versions, colors):
+            label = self.cc[ver]["label"] if "label" in self.cc[ver] else ver
+            # Iterate upon each tomographic bin
+            for tomo_bin_id in tomo_bins[ver]["ids"]:
+                base_rho = self.basename(ver)
+                base_tau = self.basename(ver, tomo_bin_a=tomo_bin_id)
+                self.rho_stat_handler.load_rho_stats(f"rho_stats_{base_rho}.fits")
+                self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau}.fits")
 
-        y = []
-        yerr = []
-        for ver in self.versions:
-            if hasattr(self.results[ver], "C_sys_m"):
-                y.append(self.results[ver].C_sys_m)
-                yerr.append(self.results[ver].C_sys_std_m)
+                if cov_type is not None:
+                    cov_tau_path = Path(out_dir) / f"cov_tau_{base_tau}_{cov_type}.npy"
+                    cov_tau = np.load(cov_tau_path)
+                    cov_rho_path = Path(out_dir) / f"cov_rho_{base_rho}_jk.npy"
+                    cov_rho = np.load(cov_rho_path)
+                else:
+                    cov_tau = None
+                    cov_rho = None
 
-        if len(y) > 0:
-            xlabel = r"$\theta$ [arcmin]"
-            ylabel = r"$\xi^{\rm sys}_-(\theta)$"
-            title = "Cross-correlation leakage"
-            out_path = self._output_path("xi_sys_m.png")
-            cs_plots.plot_data_1d(
-                theta,
-                y,
-                yerr,
-                title,
-                xlabel,
-                ylabel,
-                out_path=None,
-                labels=labels,
-                xlog=True,
-                xlim=[self.theta_min_plot, self.theta_max_plot],
-                ylim=[-1e-7, 1e-6],
-                colors=colors,
-                linestyles=linestyles,
-                # shift_x=True,
-            )
-            cs_plots.savefig(out_path, close_fig=False)
-            cs_plots.show()
-            self.print_done(f"xi_sys_minus plot saved to {out_path}")
+                # Get the error bar sampling from the covariance matrices
+                theta, alpha, alpha_err = self._get_alpha_leakage(
+                    self.rho_stat_handler, self.tau_stat_handler, cov_rho, cov_tau
+                )
+
+                jittered_theta = self._get_jittered_theta(
+                    theta, versions.index(ver), len(versions), offset
+                )
+
+                if tomo_bin_id == "all":
+                    ax = axs
+                else:
+                    ax = axs[tomo_bin_id - 1]
+
+                ax.errorbar(
+                    jittered_theta,
+                    alpha,
+                    yerr=alpha_err,
+                    fmt=fmt,
+                    label=f"{label}",
+                    capsize=capsize,
+                    color=color,
+                )
+
+        if tomography:
+            for i, ax in enumerate(axs):
+                ax.set_xscale("log")
+                ax.set_xlim(self.theta_min_plot, self.theta_max_plot)
+                if ylim_alpha:
+                    ax.set_ylim(self.ylim_alpha)
+                ax.set_ylabel(rf"$\alpha_{i + 1}(\theta)$")
+                if i == len(axs) - 1:
+                    ax.set_xlabel(r"$\theta$ [arcmin]")
+        else:
+            axs.set_xscale("log")
+            axs.set_xlim(self.theta_min_plot, self.theta_max_plot)
+            if ylim_alpha:
+                axs.set_ylim(self.ylim_alpha)
+            axs.set_ylabel(r"$\alpha_{\rm all}(\theta)$")
+            axs.set_xlabel(r"$\theta$ [arcmin]")
+
+        if tomography:
+            handles, labels = axs[0].get_legend_handles_labels()
+        else:
+            handles, labels = axs.get_legend_handles_labels()
+
+        fig.legend(
+            handles,
+            labels,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.02),
+            ncol=3,
+            frameon=False,
+        )
+
+        if savefig is not None:
+            plt.savefig(savefig, dpi=300, bbox_inches="tight")
+            self.print_done(f"Scale-dependent alpha leakage plot saved to {savefig}")
+
+        if show:
+            plt.show()
+
+        if close:
+            plt.close()
+
+    def plot_xi_sys_from_scale_dependent_leakage(
+        self,
+        tomography=False,
+        cov_type=None,
+        versions=None,
+        colors=None,
+        offset=0,
+        savefig=None,
+        show=True,
+        close=True,
+        plot_theta_times_tau=False,
+        fmt="",
+        capsize=2,
+    ):
+        pass
 
     def plot_objectwise_leakage(self):
         if not hasattr(self, "leakage_coeff"):
@@ -1490,3 +1588,6 @@ class PSFSystematicsMixin:
         else:
             for i in range(n_tomo_bins_plot):
                 axs[i, n_tomo_bins_plot - i].set_visible(False)
+
+
+# %%
