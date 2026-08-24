@@ -16,11 +16,20 @@ cosmosis 3.16.1 or newer, and prefer `--mpi`, which is what the upstream
 maintainer recommends.
 
 ### To Run
-The inference pipeline is now orchestrated through Python. Run the main Snakemake workflow from the parent directory:
+The inference pipeline is orchestrated through Snakemake. On the candide
+cluster, drive it with the committed profile — see
+[`workflow/README.md`](../workflow/README.md) for the one-time
+`uv tool install` setup and the full explanation. From the repository root:
 
 ```bash
-snakemake -j<jobs> inference_fiducial
+snakemake --profile workflow/profiles/candide \
+    -s workflow/Snakefile \
+    inference_fiducial --configfile <run config>
 ```
+
+Off-cluster, drop `--profile` and add `-j <jobs>` instead. Each job runs
+inside the sp_validation container automatically — no `apptainer shell` or
+`apptainer exec` needed by hand.
 
 This will automatically execute all steps:
 1. Calculate 2PCF ($\xi_{pm}$) via `cosmo_val.py`

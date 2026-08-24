@@ -145,6 +145,14 @@ EOF
 
 
 rule covariance_cosmocov:
+    """Run the host-compiled CosmoCov binary.
+
+    Exception to the profile-driven container model (see
+    workflow/profiles/candide/config.yaml): CosmoCov is a host-compiled
+    Fortran/C binary loaded through environment-modules (`module load gcc
+    intelpython openmpi`), not a Python entry point the container ships.
+    `container: None` is required here, not a leftover of the old convention.
+    """
     input:
         rules.covariance_ini.output,
     output:
@@ -203,13 +211,13 @@ rule covariance_glass_mock:
             seed=range(config["glass_mocks"]["seed_range"][0], config["glass_mocks"]["seed_range"][1] + 1),
         ),
     output:
-        xi_covariance="/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/xi_covariance.npy",
-        cl_covariance="/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/cl_covariance.npy",
-        combined_covariance="/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/combined_covariance.npy",
-        correlation_plot="/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/combined_correlation.png",
-        xi_mean="/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/xi_mean.npy",
-        cl_mean="/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/cl_mean.npy",
-        combined_mean="/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/combined_mean.npy",
+        xi_covariance="results/covariance/glass_mock_v1.4.6/xi_covariance.npy",
+        cl_covariance="results/covariance/glass_mock_v1.4.6/cl_covariance.npy",
+        combined_covariance="results/covariance/glass_mock_v1.4.6/combined_covariance.npy",
+        correlation_plot="results/covariance/glass_mock_v1.4.6/combined_correlation.png",
+        xi_mean="results/covariance/glass_mock_v1.4.6/xi_mean.npy",
+        cl_mean="results/covariance/glass_mock_v1.4.6/cl_mean.npy",
+        combined_mean="results/covariance/glass_mock_v1.4.6/combined_mean.npy",
     script:
         "../scripts/compute_glass_mock_covariance.py"
 
@@ -232,8 +240,13 @@ rule generate_glass_mock_rhotau_samples:
         output_dir="results/glass_mock_rhotau_samples",
     threads: 1
     shell:
+        # A CLI script, not `script:`: it takes a single `--mock-ids` range and
+        # this rule wants one call per mock_id wildcard, so `script:` (which
+        # only sees this one job's input/output) would need the same argparse
+        # rewritten as snakemake.* access for no behavior change. Left as a
+        # plain shell call.
         """
-        python /n17data/cdaley/unions/pure_eb/code/sp_validation/workflow/scripts/generate_glass_mock_rhotau_samples.py \
+        python {WORKFLOW_SCRIPTS}/generate_glass_mock_rhotau_samples.py \
             --cov-tau {input.cov_tau} \
             --ref-tau {input.ref_tau} \
             --output-dir {params.output_dir} \
@@ -242,6 +255,15 @@ rule generate_glass_mock_rhotau_samples:
 
 
 rule covariance_process:
+    """Post-process a raw CosmoCov matrix into the analysis-ready form.
+
+    NOTE (pre-existing, unrelated to containerization): the script this rule
+    calls, cosmo_inference/scripts/cosmocov_process.py, was deleted in the
+    cosmo_inference cleanup (#236) and was never restored. This rule -- on
+    the default path via fiducial_covariance_outputs() -- currently fails
+    with FileNotFoundError. Flagging here rather than silently working
+    around it; needs either restoring the script or rewriting this rule.
+    """
     input:
         str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
     output:
@@ -253,7 +275,7 @@ rule covariance_process:
     threads: 1
     shell:
         """
-        python /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/scripts/cosmocov_process.py {input} {params.output_stub}
+        python {COSMO_INFERENCE}/scripts/cosmocov_process.py {input} {params.output_stub}
         """
 
 

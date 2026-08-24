@@ -87,6 +87,11 @@ docker run --rm -it ghcr.io/cosmostat/sp_validation:develop python -c "import sp
 
 We do not currently build images for Apple Silicon/arm64; however the amd64 images should work on these systems, albeit with reduced performance.
 
+This shell is for interactive development and debugging. To run the analysis
+workflow (`workflow/`), do not enter this shell — see
+[`workflow/README.md`](workflow/README.md): Snakemake runs on the host, and
+the profile puts each job in the container itself.
+
 
 
 ## Flow chart

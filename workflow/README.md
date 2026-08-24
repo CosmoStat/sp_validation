@@ -51,12 +51,20 @@ Give the target *before* `--configfile`: `--configfile` takes one-or-more
 paths, so a target after it is read as a config file ("No such file:
 im_mbias"). Always dry-run first with `-n`.
 
-The profile carries only cluster policy — no container settings (the image-sims
-rules own their `apptainer exec` call) and no `OMP_NUM_THREADS` (pinned to 1 at
-that same `apptainer exec` line, since the slurm executor's `--export=ALL`
-propagates the driver's env, not a profile flag). Per-rule `mem_mb` / `runtime`
-stay on the rules. Off-cluster, drop `--profile` and add `-j N`. See the
-profile's own comments for the full rationale.
+Every rule runs inside the sp_validation container: the profile sets
+`software-deployment-method: apptainer` and `apptainer-args` (the bind mounts),
+and Snakemake wraps each job's `shell:`/`script:` command in `apptainer exec`
+itself — no rule writes its own `apptainer exec` call. The image name comes
+from the `container:` directive in `workflow/Snakefile` (or a rule's own
+override, e.g. the image-sims `SIF`/`SIF_PIPELINE` pair). Two rules are
+explicit, documented exceptions and keep `container: None` with an inline
+`apptainer exec`/host-toolchain call — `xi_highres` (multi-node MPI) and
+`covariance_cosmocov` (a host-compiled binary) — see their docstrings in
+`workflow/rules/`. `OMP_NUM_THREADS` is not set by the profile either: the
+slurm executor's `--export=ALL` propagates the driver's env, not a profile
+flag, so a rule that needs it pinned sets it itself. Per-rule `mem_mb` /
+`runtime` stay on the rules. Off-cluster, drop `--profile` and add `-j N`. See
+the profile's own comments for the full rationale.
 
 ### Never write `/automnt/nXXdataN` in a path
 
@@ -68,11 +76,26 @@ second after the allocation starts, before any log file is written. This is why
 `n17` is in the profile's exclude list. Every canonical path in `common.py`
 already uses the plain form; keep new paths the same.
 
-### Snakemake version: host or container, not both
+### Run Snakemake from the host, never from inside the container
 
-Apptainer passes your `PATH` and mounts your `$HOME` into the container, so a
-host-side `pip install --user snakemake` in `~/.local` can shadow the container's
-own pinned Snakemake. Mixing the two versions in one session produces confusing
-errors. Inside the container, check that `which snakemake` gives
-`/app/.venv/bin/snakemake`. If you drive the workflow from the host instead, use
-the same Snakemake version that `uv.lock` pins.
+`snakemake` is a thin host-side tool, pinned once per machine:
+
+```bash
+uv tool install snakemake==9.23.1 --with snakemake-executor-plugin-slurm
+```
+
+(match the version to `snakemake` in this repo's `uv.lock`). Run every
+`snakemake` command directly on the host — do not `apptainer shell` first.
+Snakemake itself never touches the science stack; it only reads rule
+definitions and submits jobs. Each job carries its own `apptainer exec`
+wrapping from the profile (see above), so the container is where the science
+code runs, not where the orchestrator runs — one container per job, never a
+nested one.
+
+Driving Snakemake from inside a container shell used to be the recommended
+path, and is why an old `~/.local/bin/snakemake` (or any host-side `pip
+install --user snakemake`) is worth checking for: Apptainer passes your `PATH`
+and mounts your `$HOME` by default, so a leftover host install can silently
+shadow the one `uv tool install` just set up. Run `which snakemake` and
+confirm it resolves under `uv`'s tool directory (`uv tool dir`), not
+`~/.local/bin`.

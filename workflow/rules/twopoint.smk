@@ -25,7 +25,17 @@ rule xi:
 
 
 rule xi_highres:
-    """High-resolution xi for COSEBIS integration."""
+    """High-resolution xi for COSEBIS integration.
+
+    Exception to the profile-driven container model (see
+    workflow/profiles/candide/config.yaml): this is multi-node MPI, one
+    `apptainer exec` per rank. Snakemake's own container wrapping puts the
+    *whole* shell command -- `mpiexec` included -- inside a single container
+    instance, so only rank 0's node would run inside it; the other ranks,
+    spawned by SLURM/PMI on their own nodes, would land bare on the host.
+    `container: None` plus an explicit `mpiexec -n N apptainer exec ...`
+    per-rank is therefore required, not a leftover of the old convention.
+    """
     container: None
     output:
         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
@@ -40,30 +50,14 @@ rule xi_highres:
         slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
         mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
     shell:
+        # Container path kept in sync by hand with the top-level `container:`
+        # in workflow/Snakefile -- this rule cannot inherit it, see docstring.
         "{resources.mpi} -n {resources.tasks} "
         "apptainer exec "
         "--bind /home,/n09data,/n17data,/n23data1,/softs "
         "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
         "/n17data/cdaley/containers/containers "
-        "python /n17data/cdaley/unions/pure_eb/code/sp_validation/workflow/scripts/run_2pcf_highres.py"
-
-
-rule run_cosmo_val:
-    """Full CosmoVal diagnostic suite."""
-    output:
-        sentinel=str(COSMO_VAL / "run_cosmo_val.done"),
-    threads: 24
-    resources:
-        mem_mb=60000,
-        disk_mb=20000,
-        runtime=360,
-    shell:
-        """
-        export PYTHONPATH="/home/cdaley/.local/lib/python3.12/site-packages:${{PYTHONPATH:-}}"
-        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val \
-        && python run_cosmo_val.py \
-        && touch {output.sentinel}
-        """
+        "python {WORKFLOW_SCRIPTS}/run_2pcf_highres.py"
 
 
 rule rho_tau_stats:
