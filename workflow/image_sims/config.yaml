@@ -31,9 +31,12 @@ image_sims:
   # shadows pure-Python code only, never binary deps.
   sif: /n17data/cdaley/containers/sp_validation_im_sims.sif          # extract/calibrate/m-bias
   sif_pipeline: /n17data/cdaley/containers/shapepipe_im_sims-runtime.sif  # pipeline/merge
-  # Apptainer bind mounts.  /automnt is required when repos/data are
-  # automounted (candide gotcha); harmless otherwise.  [operational]
-  binds: /n17data,/n09data,/home,/automnt
+  # Bind mounts are no longer set per-run: each rule below carries a plain
+  # ``container: sif``/``container: sif_pipeline`` directive, and Snakemake
+  # wraps its ``shell:`` command in that image via the driving profile's
+  # ``apptainer-args`` (workflow/profiles/candide/config.yaml) -- one bind
+  # list for every containerized rule in the whole workflow, not a value
+  # threaded through image_sims config.
 
   # --- repositories -----------------------------------------------------
   # Bound into the image; both repos' src go on PYTHONPATH so this branch's
