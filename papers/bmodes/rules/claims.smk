@@ -347,10 +347,11 @@ rule pure_eb_data_vector:
 
     Uses fiducial blind only (FIDUCIAL["blind"]) for PTE calculation.
 
-    Produces 9 figures:
-    - figure.png: fiducial version, leak-corrected, no title (paper)
-    - figure_v{X.Y.Z}.png: each version, leak-corrected, with title
-    - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
+    The CLI (7074dcdb) plots the fiducial catalog only — the per-version
+    figure loop it used to run under `script:` is gone, so this rule no
+    longer declares the eight figure_v*.png outputs. The per-version
+    semianalytic/covariance inputs are kept: they carry no data into the CLI
+    but keep the whole version sweep in the DAG for this convenience target.
     """
     input:
         specs=[
@@ -359,6 +360,8 @@ rule pure_eb_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
+        pure_eb_fiducial=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz",
+        reporting_cov=_reporting_cov_path(FIDUCIAL_VERSION, FIDUCIAL["blind"]),
         # Per-version inputs: pure_eb_{version} and cov_{version} for all versions
         **{f"pure_eb_{ver}": f"results/paper_plots/intermediate/{ver}_{FIDUCIAL['blind']}_pure_eb_semianalytic.npz"
            for ver in VERSIONS_ALL_FOR_PLOTS},
@@ -366,10 +369,22 @@ rule pure_eb_data_vector:
            for ver in VERSIONS_ALL_FOR_PLOTS},
     output:
         evidence=f"{TAPESTRY_DIR}/pure_eb_data_vector/evidence.json",
+        figure=f"{TAPESTRY_DIR}/pure_eb_data_vector/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_data_vector.pdf",
-        **_per_version_figure_outputs(f"{TAPESTRY_DIR}/pure_eb_data_vector"),
-    script:
-        "../scripts/pure_eb_data_vector.py"
+    params:
+        script=f"{SCRIPTS_DIR}/pure_eb_data_vector.py",
+        outdir=f"{TAPESTRY_DIR}/pure_eb_data_vector",
+    shell:
+        """
+        python {params.script} \
+            --config {input.config} \
+            --pure-eb-data {input.pure_eb_fiducial} \
+            --reporting-cov {input.reporting_cov} \
+            --specs {input.specs} \
+            --out {params.outdir}
+
+        cp {params.outdir}/pure_eb_data_vector.pdf {output.paper_figure}
+        """
 
 
 rule pure_eb_version_comparison:
@@ -390,15 +405,24 @@ rule pure_eb_version_comparison:
             f"results/paper_plots/intermediate/{ver}_A_pure_eb_semianalytic.npz"
             for ver in VERSIONS_LEAK_CORR
         ],
-    params:
-        version_labels=VERSION_LABELS,
-        versions=VERSIONS_LEAK_CORR,
     output:
         evidence=f"{TAPESTRY_DIR}/pure_eb_version_comparison/evidence.json",
         figure=f"{TAPESTRY_DIR}/pure_eb_version_comparison/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/pure_eb_versions.pdf",
-    script:
-        "../scripts/pure_eb_version_comparison.py"
+    params:
+        script=f"{SCRIPTS_DIR}/pure_eb_version_comparison.py",
+        outdir=f"{TAPESTRY_DIR}/pure_eb_version_comparison",
+        results_dir=PURE_EB_INTERMEDIATE,
+    shell:
+        """
+        python {params.script} \
+            --config {input.config} \
+            --results-dir {params.results_dir} \
+            --specs {input.specs} \
+            --out {params.outdir}
+
+        cp {params.outdir}/pure_eb_versions.pdf {output.paper_figure}
+        """
 
 
 rule pure_eb_covariance:
@@ -424,8 +448,19 @@ rule pure_eb_covariance:
         evidence=f"{TAPESTRY_DIR}/pure_eb_covariance/evidence.json",
         figure=f"{TAPESTRY_DIR}/pure_eb_covariance/figure.png",
         paper_figure=f"{PAPER_FIGURES_DIR}/eb_covariance.pdf",
-    script:
-        "../scripts/pure_eb_covariance.py"
+    params:
+        script=f"{SCRIPTS_DIR}/pure_eb_covariance.py",
+        outdir=f"{TAPESTRY_DIR}/pure_eb_covariance",
+    shell:
+        """
+        python {params.script} \
+            --config {input.config} \
+            --pure-eb-data {input.pure_eb_data} \
+            --specs {input.specs} \
+            --out {params.outdir}
+
+        cp {params.outdir}/eb_covariance.pdf {output.paper_figure}
+        """
 
 
 rule calculate_pure_eb_ptes:
@@ -443,13 +478,21 @@ rule calculate_pure_eb_ptes:
     wildcard_constraints:
         blind=r"[ABC]",
     params:
-        version="{version}",
+        script=f"{SCRIPTS_DIR}/calculate_pure_eb_ptes.py",
+        outdir=PURE_EB_INTERMEDIATE,
         n_samples=config["covariance"]["n_samples"],
     resources:
         mem_mb=16000,
         runtime=30,
-    script:
-        "../scripts/calculate_pure_eb_ptes.py"
+    shell:
+        """
+        python {params.script} \
+            --version {wildcards.version} \
+            --blind {wildcards.blind} \
+            --pure-eb-data {input.pure_eb_data} \
+            --n-samples {params.n_samples} \
+            --out {params.outdir}
+        """
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
