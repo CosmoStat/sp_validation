@@ -27,7 +27,13 @@ import os
 
 import numpy as np
 import tqdm
-from scipy import sparse
+from pure_eb_operator import (
+    fine_support,
+    load_xi,
+    make_binning_matrix,
+    print_drop_counts,
+    pure_eb_modes,
+)
 
 
 def _build_cosmology(cosmo_params):
@@ -41,22 +47,6 @@ def _build_cosmology(cosmo_params):
         sigma8=cosmo_params["sigma_8"],
         n_s=cosmo_params["n_s"],
     )
-
-
-def _load_xi(path, min_sep, max_sep, nbins):
-    """Load ξ± from a TreeCorr text dump and recompute the log bin edges."""
-    data = np.loadtxt(path, comments="#", max_rows=nbins)
-    meanr = data[:, 1]
-    xip = data[:, 3]
-    xim = data[:, 4]
-    bin_edges = np.logspace(np.log10(min_sep), np.log10(max_sep), nbins + 1)
-    return {
-        "meanr": meanr,
-        "xip": xip,
-        "xim": xim,
-        "left_edges": bin_edges[:-1],
-        "right_edges": bin_edges[1:],
-    }
 
 
 def compute_chunk(
@@ -77,8 +67,8 @@ def compute_chunk(
     nbins_int,
     output_dir,
     cosmo_params=None,
+    transform_averaged=True,
 ):
-    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
     from cs_util.cosmo import PLANCK18, get_theo_xi
 
     from sp_validation.cosmo_val import CosmologyValidation
@@ -97,8 +87,14 @@ def compute_chunk(
         f"({n_samples_chunk} samples)"
     )
 
-    gg = _load_xi(xi_reporting, min_sep, max_sep, nbins)
-    gg_int = _load_xi(xi_integration, min_sep_int, max_sep_int, nbins_int)
+    gg = load_xi(xi_reporting, min_sep, max_sep, nbins)
+    gg_int = load_xi(
+        xi_integration,
+        min_sep_int,
+        max_sep_int,
+        nbins_int,
+        require_npairs=transform_averaged,
+    )
 
     cv = CosmologyValidation(
         versions=[version],
@@ -115,17 +111,12 @@ def compute_chunk(
     cov_int = np.loadtxt(cov_integration)
 
     theta_int = gg_int["meanr"]
-    reporting_bin_edges = np.concatenate([gg["left_edges"], [gg["right_edges"][-1]]])
-    bin_indices = np.digitize(theta_int, reporting_bin_edges) - 1
-    valid_mask = (bin_indices >= 0) & (bin_indices < len(gg["meanr"]))
-    row_indices, col_indices = bin_indices[valid_mask], np.where(valid_mask)[0]
-
-    binning_matrix = sparse.csr_matrix(
-        (np.ones(len(row_indices)), (row_indices, col_indices)),
-        shape=(len(gg["meanr"]), nbins_int),
+    # Pair-count weights for the averaged operator; uniform for the legacy
+    # pointwise path, where the matrix only rebins samples to the reporting grid.
+    binning_matrix = make_binning_matrix(
+        gg, gg_int, gg_int["npairs"] if transform_averaged else None
     )
-    row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
-    binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
+    fine_indices = fine_support(binning_matrix) if transform_averaged else None
 
     # One n(z) gives one tracer pair: get_theo_xi's single (xi+, xi-) entry.
     (xi_pm,) = get_theo_xi(
@@ -145,21 +136,27 @@ def compute_chunk(
     samples_rep_xip = (binning_matrix @ samples_int_xip.T).T
     samples_rep_xim = (binning_matrix @ samples_int_xim.T).T
 
-    transformed_samples = [
-        np.concatenate(
-            get_pure_EB_modes(
-                theta=gg["meanr"],
-                theta_int=gg_int["meanr"],
-                xip=samples_rep_xip[i],
-                xim=samples_rep_xim[i],
-                xip_int=samples_int_xip[i],
-                xim_int=samples_int_xim[i],
-                tmin=min_sep,
-                tmax=max_sep,
-            )
+    transformed_samples = []
+    dropped_total = np.zeros(6, dtype=int)
+    for i in tqdm.tqdm(range(n_samples_chunk), desc=f"Chunk {chunk_id}"):
+        modes, dropped = pure_eb_modes(
+            theta_rep=gg["meanr"],
+            xip_rep=samples_rep_xip[i],
+            xim_rep=samples_rep_xim[i],
+            theta_int=theta_int,
+            xip_int=samples_int_xip[i],
+            xim_int=samples_int_xim[i],
+            tmin=min_sep,
+            tmax=max_sep,
+            transform_averaged=transform_averaged,
+            binning_matrix=binning_matrix,
+            fine_indices=fine_indices,
         )
-        for i in tqdm.tqdm(range(n_samples_chunk), desc=f"Chunk {chunk_id}")
-    ]
+        dropped_total += dropped
+        transformed_samples.append(np.concatenate(modes))
+
+    if transform_averaged:
+        print_drop_counts("MC outputs", dropped_total)
 
     eb_samples = np.array(transformed_samples)
 
@@ -189,6 +186,13 @@ def _from_cli(argv=None):
     ap.add_argument("--nbins-int", type=int, default=1000)
     ap.add_argument("--npatch", type=int, default=1)
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--transform-averaged",
+        dest="transform_averaged",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Transform on the fine grid, then npairs-average each output block.",
+    )
     a = ap.parse_args(argv)
     compute_chunk(
         chunk_id=a.chunk_id,
@@ -207,6 +211,7 @@ def _from_cli(argv=None):
         max_sep_int=a.max_sep_int,
         nbins_int=a.nbins_int,
         output_dir=a.out,
+        transform_averaged=a.transform_averaged,
     )
 
 

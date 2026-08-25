@@ -221,6 +221,10 @@ rule cosebis_binning_comparison:
 # Number of parallel chunks for MC covariance estimation
 N_PURE_EB_CHUNKS = config["pure_eb"]["n_chunks"]
 
+# Fine-grid transform + npairs averaging (the fiducial pure-E/B operator).
+# Must be identical for the chunks and the gather.
+PURE_EB_TRANSFORM_AVERAGED = config["pure_eb"]["transform_averaged"]
+
 
 rule precompute_pure_eb_chunk:
     """Compute a chunk of MC samples for pure E/B covariance (scatter)."""
@@ -237,6 +241,7 @@ rule precompute_pure_eb_chunk:
         n_chunks=N_PURE_EB_CHUNKS,
         n_samples=config["covariance"]["n_samples"],
         cosmo_params=PLANCK18,
+        transform_averaged=PURE_EB_TRANSFORM_AVERAGED,
         **FIDUCIAL_BINNING,
     resources:
         mem_mb=8000,
@@ -260,6 +265,7 @@ rule precompute_pure_eb:
         "results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz",
     params:
         version="{version}",
+        transform_averaged=PURE_EB_TRANSFORM_AVERAGED,
         **FIDUCIAL_BINNING,
     resources:
         mem_mb=8000,

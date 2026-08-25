@@ -138,6 +138,12 @@ pure_eb:
   # Number of parallel chunks for MC covariance estimation
   n_chunks: 20
 
+  # Fiducial operator: evaluate the Schneider+22 transform on the fine
+  # integration grid, then npairs-average into the reporting bins
+  # (scripts/pure_eb_operator.py). false restores the legacy pointwise
+  # operator, whose per-bin sigma spikes this fixes.
+  transform_averaged: true
+
 # pixel mask processing for survey geometry and CosmoCov integration
 pixel_mask:
   # Target nside values for downgrading (balance accuracy vs computational cost)

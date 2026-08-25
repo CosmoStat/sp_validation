@@ -22,12 +22,13 @@ import glob
 import os
 
 import numpy as np
-
-
-def _load_xi(path, nbins):
-    """Load ξ± from a TreeCorr text dump."""
-    data = np.loadtxt(path, comments="#", max_rows=nbins)
-    return {"meanr": data[:, 1], "xip": data[:, 3], "xim": data[:, 4]}
+from pure_eb_operator import (
+    fine_support,
+    load_xi,
+    make_binning_matrix,
+    print_drop_counts,
+    pure_eb_modes,
+)
 
 
 def gather(
@@ -39,26 +40,48 @@ def gather(
     min_sep,
     max_sep,
     nbins,
+    min_sep_int,
+    max_sep_int,
     nbins_int,
     output_dir,
+    transform_averaged=True,
 ):
-    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
-
     print(f"Gathering pure E/B for blind {blind}")
 
-    gg = _load_xi(xi_reporting, nbins)
-    gg_int = _load_xi(xi_integration, nbins_int)
+    gg = load_xi(xi_reporting, min_sep, max_sep, nbins)
+    gg_int = load_xi(
+        xi_integration,
+        min_sep_int,
+        max_sep_int,
+        nbins_int,
+        require_npairs=transform_averaged,
+    )
 
-    eb_results = get_pure_EB_modes(
-        theta=gg["meanr"],
-        xip=gg["xip"],
-        xim=gg["xim"],
+    # Must match precompute_pure_eb_chunk.py exactly: the point estimate and the
+    # MC covariance have to come from the same operator.
+    if transform_averaged:
+        binning_matrix = make_binning_matrix(gg, gg_int, gg_int["npairs"])
+        fine_indices = fine_support(binning_matrix)
+    else:
+        binning_matrix = fine_indices = None
+
+    eb_results, dropped = pure_eb_modes(
+        theta_rep=gg["meanr"],
+        xip_rep=gg["xip"],
+        xim_rep=gg["xim"],
         theta_int=gg_int["meanr"],
         xip_int=gg_int["xip"],
         xim_int=gg_int["xim"],
         tmin=min_sep,
         tmax=max_sep,
+        transform_averaged=transform_averaged,
+        binning_matrix=binning_matrix,
+        fine_indices=fine_indices,
     )
+    if transform_averaged:
+        print_drop_counts("data outputs", dropped)
+        if not all(np.all(np.isfinite(values)) for values in eb_results):
+            raise ValueError("Non-finite pure E/B output after averaging")
     xip_E, xim_E, xip_B, xim_B, xip_amb, xim_amb = eb_results
 
     chunk_files = sorted(chunk_files)
@@ -85,6 +108,7 @@ def gather(
         "xip_amb": xip_amb,
         "xim_amb": xim_amb,
         "cov_pure_eb": cov_pure_eb,
+        "transform": "averaged" if transform_averaged else "pointwise",
     }
 
     os.makedirs(output_dir, exist_ok=True)
@@ -120,6 +144,13 @@ def _from_cli(argv=None):
     ap.add_argument("--nbins-int", type=int, default=1000)
     ap.add_argument("--npatch", type=int, default=1)
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--transform-averaged",
+        dest="transform_averaged",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Transform on the fine grid, then npairs-average each output block.",
+    )
     a = ap.parse_args(argv)
     gather(
         version=a.version,
@@ -130,8 +161,11 @@ def _from_cli(argv=None):
         min_sep=a.min_sep,
         max_sep=a.max_sep,
         nbins=a.nbins,
+        min_sep_int=a.min_sep_int,
+        max_sep_int=a.max_sep_int,
         nbins_int=a.nbins_int,
         output_dir=a.out,
+        transform_averaged=a.transform_averaged,
     )
 
 
