@@ -43,11 +43,11 @@ dependencies = [
     "jupyterlab",
     "jupytext>=1.15",
     "lenspack",
+    # Sacha's fork of OneCovariance with the bug fix for numpy>2
+    "levin @ git+https://github.com/sachaguer/OneCovariance.git@main",
     "lmfit",
     "numexpr",
     "numpy>=2.0",
-    # Sacha's fork of OneCovariance with the bug fix for numpy>2
-    "onecovariance @ git+https://github.com/sachaguer/OneCovariance.git@main",
     "opencv-python-headless",
     "pyccl",
     "pyarrow",
