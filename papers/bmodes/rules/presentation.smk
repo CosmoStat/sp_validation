@@ -147,11 +147,5 @@ rule presentation_pte_cosebis:
         ],
     output:
         f"{TALK_DIR}/images/pte_cosebis_talk.png",
-    container:
-        None
     shell:
-        """
-        apptainer exec --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data \
-            /n17data/cdaley/containers/containers/ \
-            python {TALK_DIR}/plot_pte_cosebis_talk.py
-        """
+        "python {TALK_DIR}/plot_pte_cosebis_talk.py"

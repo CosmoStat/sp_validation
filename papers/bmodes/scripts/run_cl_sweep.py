@@ -13,7 +13,7 @@ Per-version footprint masks resolve internally from cat_config (the version's
 ``mask:`` entry), so no per-version mask wiring is needed here. Serial over
 versions; the estimator uses the recipe's full core allocation per call.
 
-    apptainer exec ... /usr/local/bin/python run_cl_sweep.py \
+    python run_cl_sweep.py \
         --config .../config.yaml --cat-config .../cat_config.yaml \
         --nside 1024 --npatch 1 --binning powspace --nbins 32 --power 0.5 \
         --blind A --out <dir>
