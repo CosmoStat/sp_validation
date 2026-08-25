@@ -511,6 +511,51 @@ class PSFSystematicsMixin:
 
         return theta, alpha, alpha_err
 
+    def _compute_scale_dependent_xi_psf_sys(
+        self, rho_0, tau_0_a, tau_0_b, cov_rho, cov_tau_a, cov_tau_b, n_samples=10_000
+    ):
+        """
+        Compute the scale-dependent xi_psf_sys from the rho and tau statistics.
+
+        Parameters
+        ----------
+        rho_0 : np.ndarray
+            The rho_0 statistics.
+        tau_0_a : np.ndarray
+            The tau_0 statistics for tomographic bin a.
+        tau_0_b : np.ndarray
+            The tau_0 statistics for tomographic bin b.
+        cov_rho : np.ndarray
+            The covariance matrix for the rho statistics.
+        cov_tau_a : np.ndarray
+            The covariance matrix for the tau statistics for tomographic bin a.
+        cov_tau_b : np.ndarray
+            The covariance matrix for the tau statistics for tomographic bin b.
+        """
+        # Compute xi_psf_sys for each scale using the formula:
+        xi_psf_sys = (tau_0_a * tau_0_b) / rho_0
+
+        # Derive the error bars by sampling the statistics
+        rho_samples = np.random.multivariate_normal(
+            mean=rho_0,
+            cov=cov_rho,
+            size=n_samples,
+        )
+        tau_samples_a = np.random.multivariate_normal(
+            mean=tau_0_a,
+            cov=cov_tau_a,
+            size=n_samples,
+        )
+        tau_samples_b = np.random.multivariate_normal(
+            mean=tau_0_b,
+            cov=cov_tau_b,
+            size=n_samples,
+        )
+        xi_psf_sys_samples = (tau_samples_a * tau_samples_b) / rho_samples
+        xi_psf_sys_err = np.std(xi_psf_sys_samples, axis=0)
+
+        return xi_psf_sys, xi_psf_sys_err
+
     # --- plotting functions ---
     def plot_rho_stats(
         self,
@@ -959,25 +1004,6 @@ class PSFSystematicsMixin:
             **kwargs_x_y_plot_function,
         )
 
-        """
-        for mcmc_result, ver, flat_sample in zip(
-            self.rho_tau_fits["result_list"],
-            self.versions,
-            self.rho_tau_fits["flat_samples"],
-        ):
-            self.psf_fitter.load_rho_stat(f"rho_stats_{self.basename(ver)}.fits")
-            for yscale in ("linear", "log"):
-                out_path = os.path.abspath(
-                    f"{out_dir}/xi_psf_sys_terms_{yscale}_{ver}.png"
-                )
-                self.psf_fitter.plot_xi_psf_sys_terms(
-                    ver, mcmc_result[1], out_path, yscale=yscale, show=True
-                )
-                self.print_done(
-                    f"{yscale}-scale xi_psf_sys terms plot saved to {out_path}"
-                )
-        """
-
     def plot_scale_dependent_leakage(
         self,
         tomography=False,
@@ -1009,16 +1035,31 @@ class PSFSystematicsMixin:
         )
 
         # Second plot xi_sys
-        self.plot_xi_sys_from_scale_dependent_leakage(
+        self.plot_2pcf_tomography(
+            self._scale_dependent_xi_psf_sys_x_y_plot_function,
+            x_label=r"$\theta$ [arcmin]",
+            y_label_plus=(r"$\theta$" if plot_theta_times_tau else "")
+            + r"$\xi^{\rm PSF, sys}_+(\theta)$",
+            y_label_minus=(r"$\theta$" if plot_theta_times_tau else "")
+            + r"$\xi^{\rm PSF, sys}_-(\theta)$",
+            tomo_bin_label_position=(0.05, 0.9)
+            if not plot_theta_times_tau
+            else (0.8, 0.95),
+            extract_text_offset=plot_theta_times_tau,
+            add_index_version_to_kwargs=True,
+            x_scale="log",
+            y_scale="linear" if plot_theta_times_tau else "log",
             tomography=tomography,
-            cov_type=cov_type,
             versions=versions,
             colors=colors,
-            offset=offset,
-            savefig=savefig,
+            savefig=savefig.replace(".png", "_xi_psf_sys.png")
+            if savefig is not None
+            else None,
             show=show,
             close=close,
-            plot_theta_times_tau=plot_theta_times_tau,
+            offset=offset,
+            cov_type=cov_type,
+            times_theta=plot_theta_times_tau,
             fmt=fmt,
             capsize=capsize,
         )
@@ -1115,6 +1156,7 @@ class PSFSystematicsMixin:
                 ax.set_ylabel(rf"$\alpha_{i + 1}(\theta)$")
                 if i == len(axs) - 1:
                     ax.set_xlabel(r"$\theta$ [arcmin]")
+                ax.text(0.05, 0.9, f"Tomo bin {i + 1}", transform=ax.transAxes)
         else:
             axs.set_xscale("log")
             axs.set_xlim(self.theta_min_plot, self.theta_max_plot)
@@ -1122,6 +1164,7 @@ class PSFSystematicsMixin:
                 axs.set_ylim(self.ylim_alpha)
             axs.set_ylabel(r"$\alpha_{\rm all}(\theta)$")
             axs.set_xlabel(r"$\theta$ [arcmin]")
+            axs.text(0.05, 0.9, "All tomographic bins", transform=axs.transAxes)
 
         if tomography:
             handles, labels = axs[0].get_legend_handles_labels()
@@ -1146,22 +1189,6 @@ class PSFSystematicsMixin:
 
         if close:
             plt.close()
-
-    def plot_xi_sys_from_scale_dependent_leakage(
-        self,
-        tomography=False,
-        cov_type=None,
-        versions=None,
-        colors=None,
-        offset=0,
-        savefig=None,
-        show=True,
-        close=True,
-        plot_theta_times_tau=False,
-        fmt="",
-        capsize=2,
-    ):
-        pass
 
     def plot_objectwise_leakage(self):
         if not hasattr(self, "leakage_coeff"):
@@ -1546,6 +1573,85 @@ class PSFSystematicsMixin:
 
         # Plot the minus axis
         plot_axis(ax_minus, "minus")
+
+    def _scale_dependent_xi_psf_sys_x_y_plot_function(
+        self,
+        ax_plus,
+        ax_minus,
+        version,
+        tomo_bin_a,
+        tomo_bin_b,
+        idx,
+        versions,
+        color,
+        offset,
+        cov_type,
+        times_theta,
+        fmt,
+        capsize,
+    ):
+        # Load the rho-stats and the tau-stats
+        base_rho = self.basename(version)
+        base_tau_a = self.basename(version, tomo_bin_a=tomo_bin_a)
+        base_tau_b = self.basename(version, tomo_bin_a=tomo_bin_b)
+        self.rho_stat_handler.load_rho_stats(f"rho_stats_{base_rho}.fits")
+
+        theta = self.rho_stat_handler.rho_stats["theta"]
+        n_bins = len(theta)
+        rho_0_p = self.rho_stat_handler.rho_stats["rho_0_p"]
+        rho_0_m = self.rho_stat_handler.rho_stats["rho_0_m"]
+
+        self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau_a}.fits")
+
+        tau_0_p_a = self.tau_stat_handler.tau_stats["tau_0_p"]
+        tau_0_m_a = self.tau_stat_handler.tau_stats["tau_0_m"]
+
+        self.tau_stat_handler.load_tau_stats(f"tau_stats_{base_tau_b}.fits")
+
+        tau_0_p_b = self.tau_stat_handler.tau_stats["tau_0_p"]
+        tau_0_m_b = self.tau_stat_handler.tau_stats["tau_0_m"]
+
+        if cov_type is not None:
+            outdir = f"{self.cc['paths']['output']}/rho_tau_stats"
+            cov_tau_path = Path(outdir) / f"cov_tau_{base_tau_a}_{cov_type}.npy"
+            cov_tau_p_a = np.load(cov_tau_path)[:n_bins, :n_bins]
+            cov_tau_path = Path(outdir) / f"cov_tau_{base_tau_b}_{cov_type}.npy"
+            cov_tau_p_b = np.load(cov_tau_path)[:n_bins, :n_bins]
+            cov_rho_path = Path(outdir) / f"cov_rho_{base_rho}_jk.npy"
+            cov_rho_p = np.load(cov_rho_path)[:n_bins, :n_bins]
+        else:
+            cov_tau_p_a = np.diag(self.tau_stat_handler.tau_stats["vartau_0_p"])
+            cov_tau_p_b = np.diag(self.tau_stat_handler.tau_stats["vartau_0_p"])
+            cov_rho_p = np.diag(self.rho_stat_handler.rho_stats["varrho_0_p"])
+
+        cov_tau_m_a = np.diag(self.tau_stat_handler.tau_stats["vartau_0_m"])
+        cov_tau_m_b = np.diag(self.tau_stat_handler.tau_stats["vartau_0_m"])
+        cov_rho_m = np.diag(self.rho_stat_handler.rho_stats["varrho_0_m"])
+
+        # Compute the scale-dependent xi_psf_sys and its error bars
+        xi_psf_sys_plus, xi_psf_sys_plus_err = self._compute_scale_dependent_xi_psf_sys(
+            rho_0_p, tau_0_p_a, tau_0_p_b, cov_rho_p, cov_tau_p_a, cov_tau_p_b
+        )
+        xi_psf_sys_minus, xi_psf_sys_minus_err = (
+            self._compute_scale_dependent_xi_psf_sys(
+                rho_0_m, tau_0_m_a, tau_0_m_b, cov_rho_m, cov_tau_m_a, cov_tau_m_b
+            )
+        )
+
+        jittered_theta = self._get_jittered_theta(theta, idx, len(versions), offset)
+
+        y_plus = xi_psf_sys_plus * (theta if times_theta else 1)
+        y_plus_err = xi_psf_sys_plus_err * (theta if times_theta else 1)
+        y_minus = xi_psf_sys_minus * (theta if times_theta else 1)
+        y_minus_err = xi_psf_sys_minus_err * (theta if times_theta else 1)
+
+        ax_plus.errorbar(
+            jittered_theta, y_plus, yerr=y_plus_err, fmt=fmt, capsize=capsize
+        )
+
+        ax_minus.errorbar(
+            jittered_theta, y_minus, yerr=y_minus_err, fmt=fmt, capsize=capsize
+        )
 
     def _get_jittered_theta(self, theta, idx, n_versions, offset):
         """Get the jittered theta values for better visualisation."""
