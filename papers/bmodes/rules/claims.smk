@@ -12,6 +12,11 @@ Claims depend on methods (for technique definitions) and compute outputs (for da
 # COSMO_VAL, COSMO_INFERENCE, covariance_path() defined in Snakefile
 COSMO_VAL_OUTPUT = str(COSMO_VAL)  # String version for f-string interpolation
 
+# Several claim scripts are argparse CLIs with no snakemake object, so their
+# rules shell out instead of using `script:`.
+# realpath: the run directory reaches this workflow through a symlink.
+SCRIPTS_DIR = os.path.join(os.path.realpath(str(workflow.basedir)), "scripts")
+
 # Fiducial binning parameters — used by multiple pure E/B rules
 # Avoids repeating FIDUCIAL[key] in each rule's params block
 FIDUCIAL_BINNING = {
@@ -165,10 +170,12 @@ rule cosebis_data_vector:
     Single-panel figure combining fiducial and full angular ranges.
     Paper figure for main text. PTEs are in cosebis_pte_matrix.
 
-    Produces 9 figures:
-    - figure.png: fiducial version, leak-corrected, no title (paper)
-    - figure_v{X.Y.Z}.png: each version, leak-corrected, with title
-    - figure_v{X.Y.Z}_uncorrected.png: each version, uncorrected, with title
+    The eight per-version figure_v*.png outputs are gone: the CLI refactor
+    (b2156a27) dropped the per-version figure loop, so the script plots the
+    fiducial catalog only. If you came looking for those figures, that loop is
+    what has to come back — the rule cannot declare outputs nothing writes.
+    The per-version xi/cov inputs are kept: they carry no data into the CLI
+    but keep the whole version sweep in the DAG for this target.
     """
     input:
         specs=[
@@ -177,17 +184,29 @@ rule cosebis_data_vector:
             f"{CONFIG_DIR}/1d_plots.md",
         ],
         config=f"{CONFIG_DIR}/config.yaml",
+        xi_fiducial=_xi_integration_path(FIDUCIAL_VERSION),
+        cov_fiducial=_cov_integration_path(FIDUCIAL_VERSION, "A"),
         # Per-version inputs: xi_{version} and cov_{version} for all versions
         **{f"xi_{ver}": _xi_integration_path(ver) for ver in VERSIONS_ALL_FOR_PLOTS},
         **{f"cov_{ver}": _cov_integration_path(ver, "A") for ver in VERSIONS_ALL_FOR_PLOTS},
-    params:
-        cov_base_dir=str(COSMO_INFERENCE / "data/covariance"),
     output:
         evidence=f"{TAPESTRY_DIR}/cosebis_data_vector/evidence.json",
+        figure=f"{TAPESTRY_DIR}/cosebis_data_vector/figure.png",
+        modes=f"{TAPESTRY_DIR}/cosebis_data_vector/cosebis_modes_{FIDUCIAL_VERSION}.npz",
         paper_figure=f"{PAPER_FIGURES_DIR}/cosebis_data_vector.pdf",
-        **_per_version_figure_outputs(f"{TAPESTRY_DIR}/cosebis_data_vector"),
-    script:
-        "../scripts/cosebis_data_vector.py"
+    params:
+        script=f"{SCRIPTS_DIR}/cosebis_data_vector.py",
+        outdir=f"{TAPESTRY_DIR}/cosebis_data_vector",
+    shell:
+        """
+        python {params.script} \
+            --config {input.config} \
+            --xi-integration {input.xi_fiducial} \
+            --cov-integration {input.cov_fiducial} \
+            --out {params.outdir}
+
+        cp {params.outdir}/cosebis_data_vector.pdf {output.paper_figure}
+        """
 
 
 rule cosebis_binning_comparison:
@@ -227,10 +246,6 @@ PURE_EB_TRANSFORM_AVERAGED = config["pure_eb"]["transform_averaged"]
 PURE_EB_TRANSFORM_FLAG = (
     "--transform-averaged" if PURE_EB_TRANSFORM_AVERAGED else "--no-transform-averaged"
 )
-
-# Both pure-EB scripts are CLIs (no snakemake object), so these rules shell out.
-# realpath: the run directory reaches this workflow through a symlink.
-SCRIPTS_DIR = os.path.join(os.path.realpath(str(workflow.basedir)), "scripts")
 
 PURE_EB_INTERMEDIATE = "results/paper_plots/intermediate"
 
