@@ -63,6 +63,11 @@ def _path_matches_version(path, version):
     # For uncorrected versions, reject if the path contains the leak_corr variant
     if not version.endswith("_leak_corr") and (version + "_leak_corr") in path_str:
         return False
+    # Reject ecut variants unless an ecut version was asked for: the CLI globs a
+    # whole PTE directory, so 'SP_v1.4.11.3' would otherwise pick up
+    # 'SP_v1.4.11.3_ecut07_leak_corr' (the snakemake file list never held it).
+    if "_ecut" not in version and "_ecut" in path_str:
+        return False
     return True
 
 

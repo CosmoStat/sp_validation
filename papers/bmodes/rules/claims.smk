@@ -631,8 +631,28 @@ rule config_space_pte_matrices:
         figure_appendix=f"{TAPESTRY_DIR}/config_space_pte_matrices/figure_appendix.png",
         paper_figure_fiducial=f"{PAPER_FIGURES_DIR}/config_space_pte_fiducial.pdf",
         paper_figure_appendix=f"{PAPER_FIGURES_DIR}/config_space_pte_composite_appendix.pdf",
-    script:
-        "../scripts/config_space_pte_matrices.py"
+    params:
+        script=f"{SCRIPTS_DIR}/config_space_pte_matrices.py",
+        outdir=f"{TAPESTRY_DIR}/config_space_pte_matrices",
+        pte_intermediate_dir=PURE_EB_INTERMEDIATE,
+        # The CLI auto-detects the COSEBI PTE layout under this directory:
+        # gathered cosebis_ptes_{version}_{blind}.npz if present, else the
+        # {version}/{blind}/pte_*.json scatter that compute_cosebis_pte writes.
+        # The explicit file lists above remain the DAG dependency.
+        cosebis_pte_dir=f"{TAPESTRY_DIR}/cosebis_pte_matrix/pte_values",
+        blind=FIDUCIAL["blind"],
+    shell:
+        """
+        python {params.script} \
+            --config {input.config} \
+            --pte-intermediate-dir {params.pte_intermediate_dir} \
+            --cosebis-pte-dir {params.cosebis_pte_dir} \
+            --blind {params.blind} \
+            --out {params.outdir}
+
+        cp {params.outdir}/config_space_pte_fiducial.pdf {output.paper_figure_fiducial}
+        cp {params.outdir}/config_space_pte_composite_appendix.pdf {output.paper_figure_appendix}
+        """
 
 
 rule harmonic_space_pte_matrices:
