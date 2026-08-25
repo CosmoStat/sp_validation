@@ -27,8 +27,11 @@ def _load_snakemake():
             "results/paper_plots/pure_eb_covariance.png",
             str(Path.cwd()),
         )
-    from snakemake.script import snakemake
-
+    # `snakemake` is already the module global Snakemake's `script:`
+    # preamble injected before this file began executing (`from
+    # snakemake.script import snakemake` is IDE-hint-only and raises
+    # ImportError if actually executed -- snakemake.script has no such
+    # runtime attribute).
     return snakemake
 
 

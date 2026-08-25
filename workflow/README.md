@@ -99,3 +99,33 @@ and mounts your `$HOME` by default, so a leftover host install can silently
 shadow the one `uv tool install` just set up. Run `which snakemake` and
 confirm it resolves under `uv`'s tool directory (`uv tool dir`), not
 `~/.local/bin`.
+
+### Container image invariants (not tracked in this repo)
+
+The `script:` directive works by bind-mounting the host orchestrator's own
+`snakemake` install into the job's container and `sys.path.extend`-ing it in
+(appended, not prepended) — so anything already importable inside the image
+under that name wins the lookup instead. The image at
+`/n17data/cdaley/containers/containers` is a writable sandbox (see the
+top-level UNIONS `CLAUDE.md`), not built from a tracked recipe, so these two
+invariants live only in the image itself and must be re-applied by hand after
+any rebuild:
+
+- **No `snakemake` (or `snakemake-executor-plugin-slurm`) pip-installed
+  inside the image.** A leftover in-image install — from the old
+  apptainer-shell-then-snakemake-inside pattern this profile-driven setup
+  retired — shadows the host-mounted orchestrator ahead of it on `sys.path`
+  and breaks `script:`'s own unpickling preamble (`ModuleNotFoundError: No
+  module named 'snakemake.iocontainers'` if the in-image version predates
+  that submodule). Check with `apptainer exec ... python3 -m pip show
+  snakemake` — `Required-by:` should list nothing outside the snakemake
+  family itself before removing it.
+- **`/.singularity.d/env/50-bashrc.sh` must not source the host `~/.bashrc`
+  for `apptainer exec`/`run`, only for an interactive `apptainer shell`.**
+  Apptainer sources every `/.singularity.d/env/*.sh` for all three actions;
+  gate any host-dotfile sourcing on `[ "$APPTAINER_COMMAND" = "shell" ]` (set
+  by Apptainer itself before these scripts run). Without the guard, a host
+  dotfile that mutates `PATH` (e.g. an `asdf` init) runs on every job too and
+  can push host tools — including a host-side `~/.local/bin/python` — ahead
+  of the image's own `/usr/local/bin`, so a bare `python` in a rule's
+  `shell:`/`script:` silently executes outside the container.

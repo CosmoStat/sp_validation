@@ -72,8 +72,10 @@ def export_power_spectrum(
 
 def main():
     """Process single mask power spectrum (Snakemake script entry point)."""
-    from snakemake.script import snakemake
-
+    # `snakemake` is injected as a module global by Snakemake's `script:`
+    # preamble before this file runs (`from snakemake.script import
+    # snakemake` is IDE-hint-only and raises ImportError if actually
+    # executed -- snakemake.script has no such runtime attribute).
     mask_path = snakemake.input.mask
     output_path = str(snakemake.output.power_spectrum)
 
