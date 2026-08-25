@@ -46,6 +46,8 @@ dependencies = [
     "lmfit",
     "numexpr",
     "numpy>=2.0",
+    # Sacha's fork of OneCovariance with the bug fix for numpy>2
+    "onecovariance @ git+https://github.com/sachaguer/OneCovariance@main",
     "opencv-python-headless",
     "pyccl",
     "pyarrow",
