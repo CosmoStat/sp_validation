@@ -224,29 +224,76 @@ N_PURE_EB_CHUNKS = config["pure_eb"]["n_chunks"]
 # Fine-grid transform + npairs averaging (the fiducial pure-E/B operator).
 # Must be identical for the chunks and the gather.
 PURE_EB_TRANSFORM_AVERAGED = config["pure_eb"]["transform_averaged"]
+PURE_EB_TRANSFORM_FLAG = (
+    "--transform-averaged" if PURE_EB_TRANSFORM_AVERAGED else "--no-transform-averaged"
+)
+
+# Both pure-EB scripts are CLIs (no snakemake object), so these rules shell out.
+# realpath: the run directory reaches this workflow through a symlink.
+SCRIPTS_DIR = os.path.join(os.path.realpath(str(workflow.basedir)), "scripts")
+
+PURE_EB_INTERMEDIATE = "results/paper_plots/intermediate"
 
 
 rule precompute_pure_eb_chunk:
-    """Compute a chunk of MC samples for pure E/B covariance (scatter)."""
+    """Compute a chunk of MC samples for pure E/B covariance (scatter).
+
+    The averaged operator evaluates the Schneider+22 transform at every fine
+    bin inside the reporting support (863 of 1000 at fiducial binning) rather
+    than at the 20 reporting bins, so the transform runs numba-parallel across
+    {threads} and the runtime budget is raised accordingly.
+    """
     input:
         cov_integration=lambda w: _cov_integration_path(w.version, w.blind),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/chunks/{version}_{blind}_pure_eb_chunk_{chunk_id}.npz",
+        f"{PURE_EB_INTERMEDIATE}/chunks/{{version}}_{{blind}}_pure_eb_chunk_{{chunk_id}}.npz",
     params:
-        version="{version}",
-        blind="{blind}",
-        chunk_id="{chunk_id}",
+        script=f"{SCRIPTS_DIR}/precompute_pure_eb_chunk.py",
+        cat_config=CAT_CONFIG,
         n_chunks=N_PURE_EB_CHUNKS,
         n_samples=config["covariance"]["n_samples"],
-        cosmo_params=PLANCK18,
-        transform_averaged=PURE_EB_TRANSFORM_AVERAGED,
+        transform_flag=PURE_EB_TRANSFORM_FLAG,
         **FIDUCIAL_BINNING,
+    threads: 8
     resources:
         mem_mb=8000,
-    script:
-        "../scripts/precompute_pure_eb_chunk.py"
+        runtime=120,
+    shell:
+        """
+        export NUMBA_NUM_THREADS={threads}
+        export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+        export NUMEXPR_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1
+
+        # The CLI names its own output <out>/pure_eb_chunk_<id>.npz, which has
+        # no version/blind prefix — stage it, then move it onto {output}.
+        stage={output}.stage
+        rm -rf $stage && mkdir -p $stage
+
+        python {params.script} \
+            --chunk-id {wildcards.chunk_id} \
+            --n-chunks {params.n_chunks} \
+            --n-samples {params.n_samples} \
+            --version {wildcards.version} \
+            --blind {wildcards.blind} \
+            --cat-config {params.cat_config} \
+            --xi-reporting {input.xi_reporting} \
+            --xi-integration {input.xi_integration} \
+            --cov-integration {input.cov_integration} \
+            --min-sep {params.min_sep} \
+            --max-sep {params.max_sep} \
+            --nbins {params.nbins} \
+            --min-sep-int {params.min_sep_int} \
+            --max-sep-int {params.max_sep_int} \
+            --nbins-int {params.nbins_int} \
+            --npatch {params.npatch} \
+            {params.transform_flag} \
+            --out $stage
+
+        mv $stage/pure_eb_chunk_{wildcards.chunk_id}.npz {output}
+        rm -rf $stage
+        """
 
 
 rule precompute_pure_eb:
@@ -256,22 +303,43 @@ rule precompute_pure_eb:
         blind=r"[ABC]",
     input:
         chunks=expand(
-            "results/paper_plots/intermediate/chunks/{{version}}_{{blind}}_pure_eb_chunk_{chunk_id}.npz",
+            f"{PURE_EB_INTERMEDIATE}/chunks/{{{{version}}}}_{{{{blind}}}}_pure_eb_chunk_{{chunk_id}}.npz",
             chunk_id=range(N_PURE_EB_CHUNKS),
         ),
         xi_reporting=lambda w: _xi_reporting_path(w.version),
         xi_integration=lambda w: _xi_integration_path(w.version),
     output:
-        "results/paper_plots/intermediate/{version}_{blind}_pure_eb_semianalytic.npz",
+        f"{PURE_EB_INTERMEDIATE}/{{version}}_{{blind}}_pure_eb_semianalytic.npz",
     params:
-        version="{version}",
-        transform_averaged=PURE_EB_TRANSFORM_AVERAGED,
+        script=f"{SCRIPTS_DIR}/gather_pure_eb_chunks.py",
+        outdir=PURE_EB_INTERMEDIATE,
+        transform_flag=PURE_EB_TRANSFORM_FLAG,
         **FIDUCIAL_BINNING,
+    threads: 8
     resources:
         mem_mb=8000,
-        runtime=5,
-    script:
-        "../scripts/gather_pure_eb_chunks.py"
+        runtime=30,
+    shell:
+        """
+        export NUMBA_NUM_THREADS={threads}
+        export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+
+        python {params.script} \
+            --version {wildcards.version} \
+            --blind {wildcards.blind} \
+            --xi-reporting {input.xi_reporting} \
+            --xi-integration {input.xi_integration} \
+            --chunks {input.chunks} \
+            --min-sep {params.min_sep} \
+            --max-sep {params.max_sep} \
+            --nbins {params.nbins} \
+            --min-sep-int {params.min_sep_int} \
+            --max-sep-int {params.max_sep_int} \
+            --nbins-int {params.nbins_int} \
+            --npatch {params.npatch} \
+            {params.transform_flag} \
+            --out {params.outdir}
+        """
 
 
 rule pure_eb_data_vector:
