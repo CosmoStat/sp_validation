@@ -50,7 +50,7 @@ executor: slurm
 # in sync with the ``app`` bash function's raw ``apptainer exec`` in the
 # top-level UNIONS CLAUDE.md -- update both together.
 software-deployment-method: apptainer
-apptainer-args: "--bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data"
+apptainer-args: "--cleanenv --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data"
 
 # Cluster policy applied to every job unless a rule overrides it.  The excludes
 # are the flaky/no-internet candide nodes (n17 mount issues, n09 no internet,
