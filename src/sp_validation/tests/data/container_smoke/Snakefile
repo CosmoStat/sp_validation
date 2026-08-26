@@ -1,7 +1,7 @@
 # Standalone workflow exercised by src/sp_validation/tests/test_container_smoke.py.
 #
 # The module-level `container:` below mirrors what every real workflow does
-# (workflow/Snakefile line 11) -- Snakemake has no way to take a default image
+# (workflow/Snakefile) -- Snakemake has no way to take a default image
 # from a profile. Everything else under test arrives from the driving profile
 # (workflow/profiles/candide): the slurm executor, `software-deployment-method:
 # apptainer` that turns container wrapping on, and the `apptainer-args` binds.
@@ -12,7 +12,7 @@
 # See container_smoke.py for what the job checks and why.
 
 
-container: "/n17data/cdaley/containers/containers"
+container: config.get("container", "/n17data/cdaley/containers/snakemake-sif/current.sif")
 
 
 rule container_smoke:

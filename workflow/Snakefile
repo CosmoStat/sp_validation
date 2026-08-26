@@ -8,7 +8,10 @@
 # or run standalone with --configfile pointing at a paper config
 # (e.g. papers/bmodes/config/config.yaml).
 
-container: "/n17data/cdaley/containers/containers"
+# The one image every call site uses, workflow and interactive alike. Built by
+# CI from the GHCR image and refreshed deliberately -- see workflow/README.md.
+# Override with `--config container=/path/to/my.sif`.
+container: config.get("container", "/n17data/cdaley/containers/snakemake-sif/current.sif")
 
 envvars:
     "PYTHONUNBUFFERED",

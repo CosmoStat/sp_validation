@@ -12,6 +12,7 @@ IDE-hint-only and raises ImportError if actually executed).
 """
 
 import hashlib
+import os
 import re
 import subprocess
 
@@ -34,20 +35,31 @@ def _git(repo, *args):
         return None
 
 
-def _sif_revision(sif_path):
-    """``org.opencontainers.image.revision`` from the SIF's OCI labels.
+def _sif_revision():
+    """``org.opencontainers.image.revision`` from the running image's OCI labels.
 
-    Plain-text scan of the image file -- no exec, no container start.
+    Read the image actually mounted, which Apptainer names in
+    ``APPTAINER_CONTAINER``, rather than the configured ``sif`` -- a run may
+    override it, and ``current.sif`` is a moving target either way.
+    Chunked plain-text scan: no exec, no container start, no 1.5 GB in memory.
     """
+    sif_path = os.environ.get("APPTAINER_CONTAINER")
+    if not sif_path:
+        return None
+    pattern = re.compile(
+        rb'org\.opencontainers\.image\.revision"?[:=]"?([0-9a-f]{7,40})'
+    )
+    tail = b""
     try:
         with open(sif_path, "rb") as fh:
-            blob = fh.read()
+            while chunk := fh.read(8 << 20):
+                m = pattern.search(tail + chunk)
+                if m:
+                    return m.group(1).decode()
+                tail = chunk[-128:]
     except OSError:
         return None
-    m = re.search(
-        rb'org\.opencontainers\.image\.revision"?[:=]"?([0-9a-f]{7,40})', blob
-    )
-    return m.group(1).decode() if m else None
+    return None
 
 
 with open(manifest_path) as fh:
@@ -86,7 +98,7 @@ mbias_cfg = {
         },
         "container": {
             "sif": params.sif,
-            "ghcr_revision": _sif_revision(params.sif),
+            "ghcr_revision": _sif_revision(),
         },
     },
 }

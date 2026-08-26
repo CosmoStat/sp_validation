@@ -19,7 +19,7 @@
 #     --out <output_dir> [--blind A] [--versions "v1 v2 ..."]
 set -euo pipefail
 
-CONTAINER=/n17data/cdaley/containers/containers/
+CONTAINER=/n17data/cdaley/containers/snakemake-sif/current.sif
 WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
 SRC=$WT/src
 WSCRIPTS=$WT/workflow/scripts

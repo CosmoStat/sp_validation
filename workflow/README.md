@@ -66,6 +66,25 @@ flag, so a rule that needs it pinned sets it itself. Per-rule `mem_mb` /
 `runtime` stay on the rules. Off-cluster, drop `--profile` and add `-j N`. See
 the profile's own comments for the full rationale.
 
+### Running your own checkout instead of the image's code
+
+Rules import the `sp_validation` baked into the image. To run a working copy
+instead — testing a branch without rebuilding — prepend it to `PYTHONPATH` at
+the container boundary. Apptainer forwards `APPTAINERENV_`-prefixed host
+variables into the job (this survives the profile's `--cleanenv`, which strips
+everything else), so setting it on the `snakemake` invocation reaches every
+rule:
+
+```bash
+APPTAINERENV_PYTHONPATH=/path/to/your/sp_validation/src \
+    snakemake --profile workflow/profiles/candide -s workflow/Snakefile <target>
+```
+
+The checkout has to sit under one of the profile's bind mounts to be visible
+inside the job. This is a user-side override on purpose: nothing in the
+workflow sets it, so a run reproduces from the image alone unless you ask
+otherwise.
+
 ### Never write `/automnt/nXXdataN` in a path
 
 Use the plain form `/nXXdataN/...` in every rule, config, and invocation
@@ -100,35 +119,87 @@ shadow the one `uv tool install` just set up. Run `which snakemake` and
 confirm it resolves under `uv`'s tool directory (`uv tool dir`), not
 `~/.local/bin`.
 
-### Container image invariants (not tracked in this repo)
+### The container image
 
-The `script:` directive works by bind-mounting the host orchestrator's own
-`snakemake` install into the job's container and `sys.path.extend`-ing it in
-(appended, not prepended) — so anything already importable inside the image
-under that name wins the lookup instead. The image at
-`/n17data/cdaley/containers/containers` is a writable sandbox (see the
-top-level UNIONS `CLAUDE.md`), not built from a tracked recipe, so these two
-invariants live only in the image itself and must be re-applied by hand after
-any rebuild:
+Everything runs one image, reached by one path:
 
-- **No `snakemake` (or `snakemake-executor-plugin-slurm`) pip-installed
-  inside the image.** A leftover in-image install — from the old
-  apptainer-shell-then-snakemake-inside pattern this profile-driven setup
-  retired — shadows the host-mounted orchestrator ahead of it on `sys.path`
-  and breaks `script:`'s own unpickling preamble (`ModuleNotFoundError: No
-  module named 'snakemake.iocontainers'` if the in-image version predates
-  that submodule). Check with `apptainer exec ... python3 -m pip show
-  snakemake` — `Required-by:` should list nothing outside the snakemake
-  family itself before removing it.
-- **`/.singularity.d/env/50-bashrc.sh` must not source the host `~/.bashrc`
-  for `apptainer exec`/`run`, only for an interactive `apptainer shell`.**
-  Apptainer sources every `/.singularity.d/env/*.sh` for all three actions;
-  gate any host-dotfile sourcing on `[ "$APPTAINER_COMMAND" = "shell" ]` (set
-  by Apptainer itself before these scripts run). Without the guard, a host
-  dotfile that mutates `PATH` (e.g. an `asdf` init) runs on every job too and
-  can push host tools — including a host-side `~/.local/bin/python` — ahead
-  of the image's own `/usr/local/bin`, so a bare `python` in a rule's
-  `shell:`/`script:` silently executes outside the container.
+```
+/n17data/cdaley/containers/snakemake-sif/current.sif
+```
+
+That single string is what `workflow/Snakefile`, the paper Snakefiles, the
+image-sims `sif:` config key, the `xi_highres` MPI rule's own `apptainer exec`,
+and the `papers/bmodes/scripts/run_*.sh` drivers all use. Snakemake treats a
+local path as local: it never pulls, never consults a cache, and never touches
+the network during a run.
+
+**Where the image comes from.** CI (`.github/workflows/deploy-image.yml`) builds
+it on every push, `FROM ghcr.io/cosmostat/shapepipe:im_sims` with `uv sync
+--frozen` against `uv.lock`, and publishes to
+`ghcr.io/cosmostat/sp_validation` tagged by branch — so `:develop` tracks the
+tip of `develop`. The package is public; no credentials are needed. Because
+`current.sif` is a file rather than a tag, **CI publishing a new image does not
+change what your jobs run.** Someone has to refresh it deliberately, which is
+the point.
+
+**Refreshing** — one person does it for everybody:
+
+```bash
+# From a compute node (~1.5 GB / ~15 min; never on the login node).
+salloc -p comp -c 4 --time=01:00:00 --no-shell     # note the job id
+export APPTAINER_CACHEDIR=/n17data/cdaley/containers/.apptainer-cache/cache
+export APPTAINER_TMPDIR=/n17data/cdaley/containers/.apptainer-cache/tmp
+srun --jobid=<id> bash -c 'cd /n17data/cdaley/containers/snakemake-sif && \
+  apptainer pull --force --name next.sif \
+  docker://ghcr.io/cosmostat/sp_validation:develop && \
+  mv -f next.sif current.sif'
+scancel <id>
+```
+
+Pull to `next.sif` and `mv` — never pull straight onto `current.sif`. `mv`
+within one directory is an atomic rename, so a job either gets the whole old
+image or the whole new one. Pulling in place would leave `current.sif` a
+half-written file for the ~15 minutes the pull takes, and any job starting in
+that window would fail. Jobs already running hold the old inode open and finish
+against it unharmed.
+
+To check what you have:
+
+```bash
+apptainer inspect --labels /n17data/cdaley/containers/snakemake-sif/current.sif
+```
+
+`org.opencontainers.image.revision` is the sp_validation commit the image was
+built from. The image-sims workflow records it in `m_bias_config.yaml` as
+`ghcr_revision`, so a result file says which image produced the number.
+
+**Interactive use** — the same image, the same path:
+
+```bash
+apptainer exec --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data \
+  /n17data/cdaley/containers/snakemake-sif/current.sif <command>
+```
+
+This is what Cail's `app` shell function points at (the function lives in his
+shell config, not this repo). There is one image, not two — a refresh moves
+interactive use and the workflow together, with nothing to keep in sync.
+
+**Running your own image** instead of the shared one:
+
+```bash
+snakemake --profile workflow/profiles/candide --config container=/path/to/my.sif <target>
+```
+
+For the image-sims workflow, set `image_sims: {sif: /path/to/my.sif}` in your run
+config — it is already a config key. Your image has to sit under one of the
+profile's bind mounts to be visible.
+
+One invariant survives from the old hand-built sandbox and still applies: the
+`script:` directive bind-mounts the host orchestrator's `snakemake` into the job
+and *appends* it to `sys.path`, so a `snakemake` importable inside the image
+wins the lookup. If `script:` rules start failing with `ModuleNotFoundError: No
+module named 'snakemake.iocontainers'` or similar, an in-image snakemake older
+than the host's is the first thing to check.
 
 ### `snakemake` in `script:` files
 

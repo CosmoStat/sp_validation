@@ -55,13 +55,13 @@ rule xi_highres:
         slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
         mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
     shell:
-        # Container path kept in sync by hand with the top-level `container:`
-        # in workflow/Snakefile -- this rule cannot inherit it, see docstring.
+        # Same image path as the top-level `container:` in workflow/Snakefile;
+        # this rule cannot inherit it, see docstring.
         "{resources.mpi} -n {resources.tasks} "
         "apptainer exec "
         "--bind /home,/n09data,/n17data,/n23data1,/softs "
         "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
-        "/n17data/cdaley/containers/containers "
+        "/n17data/cdaley/containers/snakemake-sif/current.sif "
         "python {input.script}"
 
 
