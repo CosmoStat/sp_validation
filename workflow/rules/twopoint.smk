@@ -37,6 +37,8 @@ rule xi_highres:
     per-rank is therefore required, not a leftover of the old convention.
     """
     container: None
+    input:
+        script=workflow.source_path("../scripts/run_2pcf_highres.py"),
     output:
         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
         xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
@@ -57,7 +59,7 @@ rule xi_highres:
         "--bind /home,/n09data,/n17data,/n23data1,/softs "
         "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
         "/n17data/cdaley/containers/containers "
-        "python {WORKFLOW_SCRIPTS}/run_2pcf_highres.py"
+        "python {input.script}"
 
 
 rule rho_tau_stats:

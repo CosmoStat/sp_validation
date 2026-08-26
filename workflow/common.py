@@ -5,12 +5,6 @@ import os
 import re
 from pathlib import Path
 
-# Absolute path to workflow/scripts/ for the few rules that must call a
-# script from `shell:` (e.g. wrapped in `mpiexec`): a composing paper
-# Snakefile runs with its own directory as the workdir, so a relative path
-# would miss.
-WORKFLOW_SCRIPTS = Path(__file__).resolve().parent / "scripts"
-
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(

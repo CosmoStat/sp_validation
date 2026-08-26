@@ -138,9 +138,10 @@ rule unblinding_ceremony:
     Via snakemake:
         snakemake unblinding_ceremony --config ceremony_blind=B --nolock
     Standalone:
-        app python workflow/scripts/unblinding_ceremony.py B
+        app python scripts/unblinding_ceremony.py B
     """
     input:
+        script=workflow.source_path("../scripts/unblinding_ceremony.py"),
         xi_data=f"{_CEREMONY_COSMOSIS_DIR}/{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}/cosmosis_{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}.fits",
         pure_eb=f"results/paper_plots/intermediate/{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_pure_eb_semianalytic.npz",
         pseudo_cl=_pseudo_cl_path(FIDUCIAL_VERSION, blind=_CEREMONY_BLIND),
@@ -159,7 +160,7 @@ rule unblinding_ceremony:
         bestfit_root_halofit_cell=f"{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_halofit_cell",
         bestfit_root_config=f"{FIDUCIAL_VERSION}_{_CEREMONY_BLIND}_10_80",
     shell:
-        "python workflow/scripts/unblinding_ceremony.py {params.blind} --chain-version {params.chain_version}"
+        "python {input.script} {params.blind} --chain-version {params.chain_version}"
 
 
 rule all_tapestry:

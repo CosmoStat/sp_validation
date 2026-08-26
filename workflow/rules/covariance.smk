@@ -230,6 +230,7 @@ rule generate_glass_mock_rhotau_samples:
     Only tau is sampled; inference_prep_glass_mock uses real rho data.
     """
     input:
+        script=workflow.source_path("../scripts/generate_glass_mock_rhotau_samples.py"),
         cov_tau=str(COSMO_VAL / f"rho_tau_stats/cov_tau_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}_th.npy"),
         ref_tau=str(COSMO_VAL / f"rho_tau_stats/tau_stats_{FIDUCIAL['mock_version']}{fiducial_binning_suffix()}.fits"),
     output:
@@ -240,7 +241,7 @@ rule generate_glass_mock_rhotau_samples:
     threads: 1
     shell:
         """
-        python {WORKFLOW_SCRIPTS}/generate_glass_mock_rhotau_samples.py \
+        python {input.script} \
             --cov-tau {input.cov_tau} \
             --ref-tau {input.ref_tau} \
             --output-dir {params.output_dir} \
