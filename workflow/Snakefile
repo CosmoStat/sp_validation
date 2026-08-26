@@ -14,11 +14,10 @@ envvars:
 import os
 import sys
 
-# Host OpenMPI libs for MPI rules inside the container.
-# Apptainer passes APPTAINERENV_* vars into the container as their unprefixed names.
-# Only affects rules that import mpi4py; safe for all other rules.
-os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8/lib"
-
+# Machine-specific env (the host OpenMPI libs MPI rules need inside the
+# container) is not set here: it belongs to the machine, so it rides the
+# candide profile's `apptainer-args --env`. See workflow/profiles/.
+#
 # Shared helpers live in common.py next to this Snakefile. Snakemake's `module`
 # imports rules, not Python globals, so helpers travel by plain Python import;
 # when composed, the paper Snakefile has already imported common and this hits
@@ -26,12 +25,17 @@ os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8
 sys.path.insert(0, os.path.realpath(str(workflow.basedir)))
 import common
 
+# configure() also prepends this checkout's src/ to the container's PYTHONPATH
+# (common.inject_checkout_pythonpath), so the launched tree's sp_validation --
+# not the image's baked copy -- is what rules import. `--config
+# checkout_pythonpath=false` opts out.
 common.configure(config)
 from common import *
 
 # The one image every call site uses, workflow and interactive alike -- the CI
 # tag, pulled into the profile's apptainer-prefix on first use (see
-# workflow/README.md). Override with `--config container=/path/to/my.sif`.
+# workflow/README.md). Override with `--config container=<uri or .sif>`, e.g.
+# a branch's own CI image `docker://ghcr.io/cosmostat/sp_validation:<branch>`.
 container: config.get("container", CONTAINER_URI)
 
 # Wildcard constraints — centralized in common.py, not in individual rule files

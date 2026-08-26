@@ -5,12 +5,18 @@ import os
 import re
 from pathlib import Path
 
-# The one image every entry point declares. A registry tag, not a file:
-# Snakemake pulls it into the profile's ``apptainer-prefix`` on first use and
-# reuses the cached copy thereafter (see workflow/README.md). Override anywhere
-# with ``--config container=/path/to/my.sif``. Host-side callers that need a
-# concrete file read this value via workflow/scripts/container_path.py.
+# The one image every entry point declares, and the single source of truth for
+# it. A registry tag, not a file: Snakemake pulls it into the profile's
+# ``apptainer-prefix`` on first use and reuses the cached copy thereafter (see
+# workflow/README.md). Override anywhere with ``--config
+# container=docker://ghcr.io/cosmostat/sp_validation:<branch>`` (to run a
+# branch's own CI image) or a local ``.sif`` path. Host-side callers that need a
+# concrete file use ``{apptainer-prefix}/current.sif``, the symlink the refresh
+# recipe maintains onto whatever Snakemake last pulled.
 CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
+
+# This checkout's importable source tree: workflow/common.py -> <repo>/src.
+REPO_SRC = Path(__file__).resolve().parent.parent / "src"
 
 
 # Output roots are env-overridable so a reproduction run can write into a
@@ -58,9 +64,44 @@ CATALOG_CONFIG = None
 PLANCK18 = None
 
 
+def inject_checkout_pythonpath(workflow_config):
+    """Make the launched checkout's ``src`` win over the image's baked copy.
+
+    Snakemake's ``script:`` directive already runs the *checkout's* script
+    files, so without this a rule executes new script code against an old
+    ``import sp_validation`` -- the two halves of one commit, split. Prepending
+    ``REPO_SRC`` closes that: the image stays the frozen dependency stack, the
+    checkout supplies sp_validation. This mirrors what the image-sims chain has
+    always done for both repos (``_ENV_PREFIX`` in rules/image_sims.smk).
+
+    Apptainer forwards ``APPTAINERENV_``-prefixed host variables into the job as
+    their unprefixed names, surviving the profile's ``--cleanenv``; setting it
+    here on the driver reaches every containerized rule. Any value the user
+    already exported is preserved behind ours.
+
+    Opt out with ``--config checkout_pythonpath=false`` to reproduce a run from
+    the image alone. Note the caveat: ``rerun-triggers: code`` watches rule and
+    script files, not ``src/``, so editing a module under ``src/`` does not by
+    itself mark outputs stale -- force with ``-F``/``--forcerun``.
+    """
+    flag = workflow_config.get("checkout_pythonpath", True)
+    # `--config key=false` can arrive as the *string* "false" depending on how
+    # Snakemake parses the value, so don't lean on truthiness alone.
+    if isinstance(flag, str):
+        flag = flag.strip().lower() not in ("false", "no", "0", "off", "")
+    if not flag:
+        return
+    if not REPO_SRC.is_dir():
+        return
+    existing = os.environ.get("APPTAINERENV_PYTHONPATH", "")
+    parts = [str(REPO_SRC)] + [p for p in existing.split(":") if p]
+    os.environ["APPTAINERENV_PYTHONPATH"] = ":".join(parts)
+
+
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
+    inject_checkout_pythonpath(workflow_config)
     CATALOG_CONFIG = workflow_config
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
