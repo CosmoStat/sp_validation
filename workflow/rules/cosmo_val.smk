@@ -45,7 +45,7 @@ CV_BINNING = (
     f"_nbins={CV['nbins']}_npatch={CV['npatch']}"
 )
 
-
+# LG: DEPRACATED, xi_pm vectors no longer written to txt files.
 def cv_xi_txt(version):
     """Path to the 2pcf data vector calculate_2pcf writes for a version.
 
@@ -238,8 +238,9 @@ rule cv_additive_bias:
         "../scripts/cv_additive_bias.py"
 
 
+# LG: DEPRACATED since we do not plot unblinded data vectors.
 rule cv_plot_2pcf:
-    """n_pairs / xi± overlay across versions."""
+    """Tomographic xi± across versions."""
     input:
         xi=[cv_xi_txt(v) for v in CV_VERSIONS],
     output:
@@ -251,11 +252,15 @@ rule cv_plot_2pcf:
     script:
         "../scripts/cv_plot_2pcf.py"
 
-
+# LG: DEPRACATED since we do not plot unblinded data vectors.
 rule cv_ratio_xi_sys_xi:
     """Ratio of PSF systematics (xi_psf_sys) to the cosmic-shear signal (xi+)."""
     input:
-        xi=[cv_xi_txt(v) for v in CV_VERSIONS],
+        # The xi txt this used to declare is written by nothing since
+        # calculate_2pcf stopped emitting it; cv_xi_txt is gone with it. The
+        # rule recomputes xi_psf_sys itself, so the entry is simply dropped —
+        # left in place it is a parse-time NameError that takes the whole
+        # workflow down, deprecated or not.
         rho=[cv_rho_stats(v) for v in CV_VERSIONS],
         tau=[cv_tau_stats(v) for v in CV_VERSIONS],
     output:
@@ -294,8 +299,6 @@ rule cv_pseudo_cl:
 
 rule cv_pure_eb:
     """Pure E/B-mode decomposition for one version (config-space)."""
-    input:
-        xi=lambda w: cv_xi_txt(w.version),
     output:
         npz=cv_pure_eb_npz("{version}"),
     params:
@@ -316,8 +319,9 @@ rule cv_pure_eb:
 
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
-    input:
-        xi=lambda w: cv_xi_txt(w.version),
+    # No xi input, for the same reason as cv_pure_eb: calculate_cosebis runs
+    # its own TreeCorr over the fine integration binning, and the xi txt it
+    # used to declare is no longer written by anything.
     output:
         npz=cv_cosebis_npz("{version}"),
     params:
