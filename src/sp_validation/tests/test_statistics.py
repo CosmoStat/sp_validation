@@ -150,47 +150,129 @@ def test_chi2_and_pte_diagonal_reduces_to_sum_of_squares():
 
 
 def test_cov_from_one_covariance_selects_gaussian_column():
-    """Pin the reshaped matrix and prove the gaussian column selection.
-
-    WHAT IS PINNED: ``cov_from_one_covariance`` reads a flat OneCovariance
-    table with one row per ``(i, j)`` pair (row-major, ``k = i*n_bins + j``)
-    and lays the chosen column into a square matrix. Column 10 carries the
-    Gaussian-only term (``gaussian=True``); column 9 the Gaussian+non-Gaussian
-    term (``gaussian=False``). With a deterministic table whose entries encode
-    their row and column, both reshaped matrices are pinned as literals.
-
-    WHY TEETH: the only difference between the two calls is the column index
-    (10 vs 9), so the two pinned matrices differ by exactly 1 in every entry,
-    proving the gaussian flag selects the right column. A companion check
-    places a unique tag ``10*i + j`` in column 10 and asserts the reshape is
-    row-major (``cov[i, j]`` lands at row ``i*n_bins + j``), so a transposed
-    or column-major refactor would change the recovered matrix.
-    """
-    # Two-bin table -> 4 rows; entry (row k, col c) = 10*k + c, so the
-    # chosen-column values are distinct and self-documenting. Row k carries
-    # the (i, j) pair with k = i*n_bins + j, so rows 0..3 -> (0,0),(0,1),
-    # (1,0),(1,1). Column 10 holds values 10, 20, 30, 40; column 9 holds
-    # 9, 19, 29, 39.
-    one_cov = np.array([np.arange(11.0) + 10.0 * k for k in range(4)])
+    """Pin the reshaped matrix and prove the gaussian column selection."""
+    # obs, ell1, ell2, s1, s2, tomoi, tomoj, tomok, tomol, cov, covg, covng, covssc
+    one_cov = np.array(
+        [
+            [0.0, 10.0, 10.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 99.0, 100.0, 0.0, 0.0],
+            [0.0, 10.0, 20.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 100.0, 101.0, 0.0, 0.0],
+            [0.0, 20.0, 20.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 110.0, 111.0, 0.0, 0.0],
+        ]
+    )
 
     cov_gauss = cov_from_one_covariance(one_cov, gaussian=True)
     cov_nongauss = cov_from_one_covariance(one_cov, gaussian=False)
 
-    npt.assert_allclose(cov_gauss, [[10.0, 20.0], [30.0, 40.0]], rtol=1e-12)
-    npt.assert_allclose(cov_nongauss, [[9.0, 19.0], [29.0, 39.0]], rtol=1e-12)
+    npt.assert_allclose(cov_gauss, [[100.0, 101.0], [101.0, 111.0]], rtol=1e-12)
+    npt.assert_allclose(cov_nongauss, [[99.0, 100.0], [100.0, 110.0]], rtol=1e-12)
 
-    # TEETH: the gaussian flag shifts the column by one, so every entry of the
-    # gaussian matrix exceeds its non-gaussian counterpart by exactly 1.
+    # TEETH: the gaussian flag shifts the column by one, so every entry of
+    # the gaussian matrix exceeds its non-gaussian counterpart by exactly 1.
     npt.assert_allclose(cov_gauss - cov_nongauss, 1.0, rtol=1e-12)
 
-    # TEETH: the (i, j) -> row k = i*n_bins + j layout is row-major. Tag
-    # column 10 with 10*i + j and check it lands at cov[i, j], not cov[j, i].
-    tagged = np.zeros((4, 11))
-    for i in range(2):
-        for j in range(2):
-            tagged[i * 2 + j, 10] = 10.0 * i + j
+
+def test_cov_from_one_covariance_orders_tomo_blocks():
+    """Pin the tomo-block ordering against ``combinations_with_replacement``."""
+    # obs, ell1, ell2, s1, s2, tomoi, tomoj, tomok, tomol, cov, covg, covng, covssc
+    one_cov = np.array(
+        [
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                -1.0,
+                0.0,
+                0.0,
+                0.0,
+            ],  # (a,b)=(0,0)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                0.0,
+                1.0,
+                0.0,
+                0.0,
+            ],  # (0,1)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                2.0,
+                1.0,
+                2.0,
+                0.0,
+                0.0,
+            ],  # (0,2)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                1.0,
+                2.0,
+                10.0,
+                11.0,
+                0.0,
+                0.0,
+            ],  # (1,1)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                1.0,
+                2.0,
+                2.0,
+                2.0,
+                11.0,
+                12.0,
+                0.0,
+                0.0,
+            ],  # (1,2)
+            [
+                0.0,
+                10.0,
+                10.0,
+                1.0,
+                1.0,
+                2.0,
+                2.0,
+                2.0,
+                2.0,
+                21.0,
+                22.0,
+                0.0,
+                0.0,
+            ],  # (2,2)
+        ]
+    )
+
+    cov_gauss = cov_from_one_covariance(one_cov, gaussian=True)
+
     npt.assert_allclose(
-        cov_from_one_covariance(tagged, gaussian=True),
-        [[0.0, 1.0], [10.0, 11.0]],
+        cov_gauss,
+        [[0.0, 1.0, 2.0], [1.0, 11.0, 12.0], [2.0, 12.0, 22.0]],
         rtol=1e-12,
     )
