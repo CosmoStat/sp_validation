@@ -131,20 +131,6 @@ def test_config_change_breaks_reference():
 
 
 @pytest.mark.skipif(not HAVE_GLASS, reason="GLASS not installed in this image")
-@pytest.mark.xfail(
-    reason=(
-        "glass_mock map path is incompatible with the installed glass/cosmology "
-        "API: cosmology.compat.camb is missing entirely in the image, and where "
-        "it exists cosmology.Cosmology.from_camb returns a CambCosmology lacking "
-        "comoving_distance, which glass.distance_grid / MultiPlaneConvergence "
-        "require. The map path was never exercised before GLASS was added to the "
-        "image. Fix = pin a compatible glass+cosmology pair (or adapt the API "
-        "calls) and verify in the fresh image; then drop this xfail. "
-        "See fiber shapepipe/sp_validation glass-cosmology-api-pin."
-    ),
-    strict=False,
-    raises=(AttributeError, ModuleNotFoundError),
-)
 def test_matter_maps_are_seed_deterministic():
     """Same config + seed → bit-identical matter/lensing maps.
 
