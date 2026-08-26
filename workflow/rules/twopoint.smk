@@ -35,6 +35,9 @@ rule xi_highres:
     spawned by SLURM/PMI on their own nodes, would land bare on the host.
     `container: None` plus an explicit `mpiexec -n N apptainer exec ...`
     per-rank is therefore required, not a leftover of the old convention.
+    Because this rule builds its own apptainer call, reaching the source-cache
+    copy of the script relies on our `--bind /home` rather than on Snakemake's
+    automatic mount.
     """
     container: None
     input:
