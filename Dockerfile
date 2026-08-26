@@ -22,7 +22,7 @@ ENV UV_PROJECT_ENVIRONMENT=/app/.venv
 # $HOME is bind-mounted under apptainer, so uv would otherwise discover the
 # host's managed CPythons -- including newer ones that satisfy requires-python
 # -- and build a venv against an interpreter carrying none of this stack.
-ENV UV_PYTHON=/usr/local/bin/python3.12 \
+ENV UV_PYTHON=/app/.venv/bin/python \
     UV_PYTHON_DOWNLOADS=never
 
 WORKDIR /sp_validation
