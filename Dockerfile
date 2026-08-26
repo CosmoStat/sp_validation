@@ -1,6 +1,8 @@
 # Development image with more bells and whistles
 FROM ghcr.io/cosmostat/shapepipe:im_sims
 
+# liblapack-dev: cosmosis's MultiNest links -llapack, and the base image ships
+# only the runtime liblapack.so.3 (no dev symlink).
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
     apt-get install -y --quiet \
@@ -10,7 +12,8 @@ RUN apt-get update -y --quiet --fix-missing && \
         pkg-config \
         htop \
         npm \
-        tmux
+        tmux \
+        liblapack-dev
 
 # The base shapepipe image provides a uv-managed venv at /app/.venv (exported as
 # VIRTUAL_ENV); install sp_validation's deps into that same venv rather than
@@ -38,10 +41,11 @@ COPY pyproject.toml uv.lock /sp_validation/
 
 # cosmosis builds MPI-enabled polychord/multinest only when MPIFC is set: its
 # setup.py exports MPIFC for conda builds only, and the sampler Makefiles gate on
-# `which $(MPIFC)`. Without this the install succeeds but omits libchord_mpi.so,
+# `which $(MPIFC)`. Absolute path, not a bare name: /opt/ompi/bin is not always on
+# PATH, and a miss silently omits libchord_mpi.so while the install still succeeds,
 # and `cosmosis --mpi` fails at load time -- which is how the pipeline runs, since
 # the --smp pool is broken upstream. Must precede the sync that builds cosmosis.
-ENV MPIFC=mpif90
+ENV MPIFC=/opt/ompi/bin/mpif90
 
 RUN uv sync --frozen --inexact --no-install-project \
     --extra test --extra glass --extra workflow

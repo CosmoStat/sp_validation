@@ -155,7 +155,7 @@ glass = [
 workflow = [
     "snakemake",
     # run_2pcf_highres.py drives the MPI convergence run; the container ships
-    # OpenMPI 4.1.4 (mpicc/mpif90 on PATH in /usr/bin) so mpi4py builds against it.
+    # OpenMPI under /opt/ompi so mpi4py builds against it.
     "mpi4py",
     # CosmoSIS drives the cosmo_inference sampling step. Sdist-only, so this is a
     # source build (~2 min) against the base image's gfortran/GSL/cfitsio/OpenMPI —
