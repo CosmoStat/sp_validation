@@ -11,27 +11,55 @@
 # (``container:`` on the rule or the module-level default in
 # workflow/Snakefile), never a rule's own ``apptainer exec`` shell call.
 # ``software-deployment-method: apptainer`` below turns that wrapping on;
-# ``apptainer-args`` carries the bind mounts every rule needs. The one
-# exception (``covariance_cosmocov``) is documented at its rule definition in
-# workflow/rules/.
+# ``apptainer-args`` carries the bind mounts every rule needs. Three rules are
+# documented exceptions and keep ``container: None`` -- they are enumerated in
+# workflow/README.md.
 #
 # ``snakemake`` itself is a thin host-side tool, pinned via ``uv tool
 # install`` (see workflow/README.md); run it on the host, never inside an
 # ``apptainer shell``.
+#
+# Off candide, use ``--profile workflow/profiles/default -j N`` instead: that
+# profile is the container model with none of the SLURM/machine layer.
+# Snakemake cannot compose profiles -- ``--profile`` takes exactly one directory
+# and there is no ``inherits:`` key -- so the machine-independent settings
+# (marked GENERIC below) are duplicated there verbatim. THE TWO ARE A PAIR:
+# change one, change the other. ``apptainer-args`` and ``apptainer-prefix`` are
+# NOT generic: each machine has its own disks and its own image cache.
 
 executor: slurm
 
-# Kept in sync with the ``app`` bash function's raw ``apptainer exec`` in the
-# top-level UNIONS CLAUDE.md -- update both together.
+# --- GENERIC: mirrored in workflow/profiles/default/config.yaml -------------
 software-deployment-method: apptainer
-apptainer-args: "--cleanenv --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data"
+
+# Rerun a job when its code / params / inputs change, not only on mtime.
+# Caveat: "code" watches rule bodies and ``script:`` files, not ``src/`` --
+# editing a module under src/ does not mark outputs stale on its own.
+rerun-triggers: ["mtime", "params", "input", "code"]
+
+# Give an appearing output file a moment on networked filesystems before
+# Snakemake calls a job failed for a missing output.
+latency-wait: 5
+# --- end GENERIC ------------------------------------------------------------
 
 # Shared image cache. The entry Snakefiles name a GHCR *tag*; Snakemake pulls it
 # here on first use (once, ~15 min, on the host running snakemake) and every
 # later run reuses the cached SIF. Shared rather than per-run-directory
 # (Snakemake's default is ``.snakemake/singularity``) so one pull serves every
-# workflow and every checkout.
+# workflow and every checkout. ``current.sif`` in this directory is the stable
+# name host-side callers use (workflow/README.md).
 apptainer-prefix: /n17data/cdaley/containers/snakemake-sif
+
+# candide's disks, plus the one machine-specific env var: the host OpenMPI libs
+# MPI rules need to find libmpi inside the container (only rules importing
+# mpi4py care; harmless for the rest). This was an ``os.environ[...]`` line in
+# workflow/Snakefile -- a machine path hard-coded into generic workflow code --
+# and belongs here. Kept in sync with the ``app`` bash function's raw
+# ``apptainer exec`` in the top-level UNIONS CLAUDE.md: update both together.
+apptainer-args: >-
+  --cleanenv
+  --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data
+  --env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib
 
 # Cluster policy applied to every job unless a rule overrides it. Excludes are
 # the flaky/no-internet candide nodes (n17 mount issues, n09 no internet, n36).
@@ -59,13 +87,8 @@ default-resources:
   cpus_per_task: 12
   slurm_extra: "'--exclude=n17,n09,n36'"
 
-# Give an appearing output file a moment on candide's automounted filesystems
-# before Snakemake calls a job failed for a missing output, and retry a job
-# once on transient node failure.
-latency-wait: 5
+# Retry a job once on transient node failure, and keep the SLURM logs of
+# successful jobs (candide debugging). (``latency-wait`` and ``rerun-triggers``
+# are in the GENERIC block above.)
 retries: 1
-
-# Keep the SLURM logs of successful jobs (candide debugging), and rerun a job
-# when its code / params / inputs change, not only on mtime.
 slurm-keep-successful-logs: true
-rerun-triggers: ["mtime", "params", "input", "code"]
