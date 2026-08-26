@@ -11,7 +11,6 @@ def get_cat_params(version):
 
 
 # covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
-# Additional wildcard constraints defined locally for pseudo-Cl rules (line 327)
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
 # Footprint mask power spectra (nside=4096, from comprehensive catalog with spatial cuts only)
@@ -240,11 +239,6 @@ rule generate_glass_mock_rhotau_samples:
         output_dir="results/glass_mock_rhotau_samples",
     threads: 1
     shell:
-        # A CLI script, not `script:`: it takes a single `--mock-ids` range and
-        # this rule wants one call per mock_id wildcard, so `script:` (which
-        # only sees this one job's input/output) would need the same argparse
-        # rewritten as snakemake.* access for no behavior change. Left as a
-        # plain shell call.
         """
         python {WORKFLOW_SCRIPTS}/generate_glass_mock_rhotau_samples.py \
             --cov-tau {input.cov_tau} \
@@ -255,28 +249,16 @@ rule generate_glass_mock_rhotau_samples:
 
 
 rule covariance_process:
-    """Post-process a raw CosmoCov matrix into the analysis-ready form.
-
-    NOTE (pre-existing, unrelated to containerization): the script this rule
-    calls, cosmo_inference/scripts/cosmocov_process.py, was deleted in the
-    cosmo_inference cleanup (#236) and was never restored. This rule -- on
-    the default path via fiducial_covariance_outputs() -- currently fails
-    with FileNotFoundError. Flagging here rather than silently working
-    around it; needs either restoring the script or rewriting this rule.
-    """
+    """Post-process a raw CosmoCov matrix into the analysis-ready form."""
     input:
         str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
     output:
         matrix=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed.txt"),
         gaussian=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_g.txt"),
         plot=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_plot.pdf")
-    params:
-        output_stub=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed")
     threads: 1
-    shell:
-        """
-        python {COSMO_INFERENCE}/scripts/cosmocov_process.py {input} {params.output_stub}
-        """
+    script:
+        "../scripts/cosmocov_process.py"
 
 
 def fiducial_covariance_outputs(mask_suffix=""):
