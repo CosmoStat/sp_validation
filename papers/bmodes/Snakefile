@@ -4,8 +4,6 @@
 configfile: "config/config.yaml"
 configfile: "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/cat_config.yaml"
 
-container: config.get("container", "/n17data/cdaley/containers/snakemake-sif/current.sif")
-
 envvars:
     "PYTHONUNBUFFERED",
 
@@ -26,6 +24,11 @@ import common
 
 common.configure(config)
 from common import *
+
+# The image for every rule -- the CI tag, pulled into the profile's
+# apptainer-prefix on first use (workflow/README.md). Override with
+# `--config container=/path/to/my.sif`.
+container: config.get("container", CONTAINER_URI)
 
 # Wildcard constraints — centralized in common.py, not in individual rule files
 wildcard_constraints:

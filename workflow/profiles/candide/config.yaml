@@ -11,9 +11,9 @@
 # (``container:`` on the rule or the module-level default in
 # workflow/Snakefile), never a rule's own ``apptainer exec`` shell call.
 # ``software-deployment-method: apptainer`` below turns that wrapping on;
-# ``apptainer-args`` carries the bind mounts every rule needs. Exceptions
-# (``xi_highres``, ``covariance_cosmocov``) are documented at their rule
-# definitions in workflow/rules/.
+# ``apptainer-args`` carries the bind mounts every rule needs. The one
+# exception (``covariance_cosmocov``) is documented at its rule definition in
+# workflow/rules/.
 #
 # ``snakemake`` itself is a thin host-side tool, pinned via ``uv tool
 # install`` (see workflow/README.md); run it on the host, never inside an
@@ -25,6 +25,13 @@ executor: slurm
 # top-level UNIONS CLAUDE.md -- update both together.
 software-deployment-method: apptainer
 apptainer-args: "--cleanenv --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data"
+
+# Shared image cache. The entry Snakefiles name a GHCR *tag*; Snakemake pulls it
+# here on first use (once, ~15 min, on the host running snakemake) and every
+# later run reuses the cached SIF. Shared rather than per-run-directory
+# (Snakemake's default is ``.snakemake/singularity``) so one pull serves every
+# workflow and every checkout.
+apptainer-prefix: /n17data/cdaley/containers/snakemake-sif
 
 # Cluster policy applied to every job unless a rule overrides it. Excludes are
 # the flaky/no-internet candide nodes (n17 mount issues, n09 no internet, n36).

@@ -40,7 +40,7 @@ def _sif_revision():
 
     Read the image actually mounted, which Apptainer names in
     ``APPTAINER_CONTAINER``, rather than the configured ``sif`` -- a run may
-    override it, and ``current.sif`` is a moving target either way.
+    override it, and a registry tag says nothing about which build was pulled.
     Chunked plain-text scan: no exec, no container start, no 1.5 GB in memory.
     """
     sif_path = os.environ.get("APPTAINER_CONTAINER")

@@ -14,8 +14,11 @@
 #     --out <output_dir> [--n-chunks 20] [--n-samples 2000] [--nproc 16]
 set -euo pipefail
 
-CONTAINER=/n17data/cdaley/containers/snakemake-sif/current.sif
-SRC=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra/src
+WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
+SRC=$WT/src
+# The image Snakemake pulled, resolved from the workflow's one declaration
+# of it (workflow/common.py CONTAINER_URI + the candide profile's prefix).
+CONTAINER=$($WT/workflow/scripts/container_path.py)
 SCRIPTS=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra/papers/bmodes/scripts
 BIND=/home,/scratch,/automnt,/n17data,/n23data1,/n09data
 

@@ -24,45 +24,58 @@ rule xi:
         "../scripts/run_2pcf.py"
 
 
-rule xi_highres:
-    """High-resolution xi for COSEBIS integration.
-
-    Exception to the profile-driven container model (see
-    workflow/profiles/candide/config.yaml): this is multi-node MPI, one
-    `apptainer exec` per rank. Snakemake's own container wrapping puts the
-    *whole* shell command -- `mpiexec` included -- inside a single container
-    instance, so only rank 0's node would run inside it; the other ranks,
-    spawned by SLURM/PMI on their own nodes, would land bare on the host.
-    `container: None` plus an explicit `mpiexec -n N apptainer exec ...`
-    per-rank is therefore required, not a leftover of the old convention.
-    Because this rule builds its own apptainer call, reaching the source-cache
-    copy of the script relies on our `--bind /home` rather than on Snakemake's
-    automatic mount.
-    """
-    container: None
-    input:
-        script=workflow.source_path("../scripts/run_2pcf_highres.py"),
-    output:
-        txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
-        xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-        xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
-    resources:
-        tasks=30,
-        cpus_per_task=12,
-        nodes=6,
-        mem_mb_per_cpu=2000,
-        runtime=2880,
-        slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
-        mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
-    shell:
-        # Same image path as the top-level `container:` in workflow/Snakefile;
-        # this rule cannot inherit it, see docstring.
-        "{resources.mpi} -n {resources.tasks} "
-        "apptainer exec "
-        "--bind /home,/n09data,/n17data,/n23data1,/softs "
-        "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
-        "/n17data/cdaley/containers/snakemake-sif/current.sif "
-        "python {input.script}"
+# PARKED: xi_highres (high-resolution xi for COSEBIS integration). Never
+# runnable as written -- the shell invokes run_2pcf_highres.py bare, but the
+# script has required --cat-config and --out arguments (true in every version
+# since it was introduced). Revive it with those arguments supplied. Keeping it
+# parked leaves covariance_cosmocov as the workflow's only container exception.
+#
+# The MPI reasoning below is hard-won and must survive the revival:
+#
+#   Exception to the profile-driven container model (see
+#   workflow/profiles/candide/config.yaml): this is multi-node MPI, one
+#   `apptainer exec` per rank. Snakemake's own container wrapping puts the
+#   *whole* shell command -- `mpiexec` included -- inside a single container
+#   instance, so only rank 0's node would run inside it; the other ranks,
+#   spawned by SLURM/PMI on their own nodes, would land bare on the host.
+#   `container: None` plus an explicit `mpiexec -n N apptainer exec ...`
+#   per-rank is therefore required, not a leftover of the old convention.
+#   Snakemake's slurm-jobstep plugin deliberately does NOT prepend `srun` to a
+#   job carrying an `mpi` resource, which is what lets the rule's own launcher
+#   run on the host, outside the container.
+#   Because this rule builds its own apptainer call, reaching the source-cache
+#   copy of the script relies on our `--bind /home` rather than on Snakemake's
+#   automatic mount -- and on a concrete image file, since `apptainer exec`
+#   takes no `docker://` URI. A revived rule must therefore derive that file
+#   from CONTAINER_URI (Snakemake pulls to `{apptainer-prefix}/{md5(uri)}.simg`;
+#   workflow/scripts/container_path.py does exactly this derivation) rather
+#   than hard-coding a second path that can drift.
+#
+# rule xi_highres:
+#     container: None
+#     params:
+#         image=<local SIF derived from CONTAINER_URI>,
+#     input:
+#         script=workflow.source_path("../scripts/run_2pcf_highres.py"),
+#     output:
+#         txt=str(COSMO_VAL / f"{FIDUCIAL['version']}_xi_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.txt"),
+#         xi_plus=str(COSMO_VAL / f"xi_plus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
+#         xi_minus=str(COSMO_VAL / f"xi_minus_{FIDUCIAL['version']}_minsep={FIDUCIAL['min_sep_int']}_maxsep={FIDUCIAL['max_sep_int']}_nbins=10000_npatch=1.fits"),
+#     resources:
+#         tasks=30,
+#         cpus_per_task=12,
+#         nodes=6,
+#         mem_mb_per_cpu=2000,
+#         runtime=2880,
+#         slurm_extra="'--exclude=n17,n09,n36 --partition=pscomp'",
+#         mpi="/softs/openmpi/5.0.5-slurm-CentOS8/bin/mpiexec",
+#     shell:
+#         "{resources.mpi} -n {resources.tasks} "
+#         "apptainer exec "
+#         "--bind /home,/n09data,/n17data,/n23data1,/softs "
+#         "--env LD_LIBRARY_PATH=/softs/openmpi/5.0.5-slurm-CentOS8/lib "
+#         "{params.image} "
+#         "python {input.script} --cat-config <...> --out <...>"
 
 
 rule rho_tau_stats:

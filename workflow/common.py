@@ -5,6 +5,14 @@ import os
 import re
 from pathlib import Path
 
+# The one image every entry point declares. A registry tag, not a file:
+# Snakemake pulls it into the profile's ``apptainer-prefix`` on first use and
+# reuses the cached copy thereafter (see workflow/README.md). Override anywhere
+# with ``--config container=/path/to/my.sif``. Host-side callers that need a
+# concrete file read this value via workflow/scripts/container_path.py.
+CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
+
+
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(

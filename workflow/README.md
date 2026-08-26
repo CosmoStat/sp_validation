@@ -56,10 +56,9 @@ Every rule runs inside the sp_validation container: the profile sets
 and Snakemake wraps each job's `shell:`/`script:` command in `apptainer exec`
 itself — no rule writes its own `apptainer exec` call. The image name comes
 from the `container:` directive in `workflow/Snakefile` (or a rule's own
-override, e.g. the image-sims `SIF`). Two rules are
-explicit, documented exceptions and keep `container: None` with an inline
-`apptainer exec`/host-toolchain call — `xi_highres` (multi-node MPI) and
-`covariance_cosmocov` (a host-compiled binary) — see their docstrings in
+override, e.g. the image-sims `SIF`). One rule is an explicit, documented
+exception and keeps `container: None` with an inline host-toolchain call —
+`covariance_cosmocov` (a host-compiled binary) — see its docstring in
 `workflow/rules/`. `OMP_NUM_THREADS` is not set by the profile either: the
 slurm executor's `--export=ALL` propagates the driver's env, not a profile
 flag, so a rule that needs it pinned sets it itself. Per-rule `mem_mb` /
@@ -121,63 +120,77 @@ confirm it resolves under `uv`'s tool directory (`uv tool dir`), not
 
 ### The container image
 
-Everything runs one image, reached by one path:
+Everything runs one image, named once as a registry tag:
 
 ```
-/n17data/cdaley/containers/snakemake-sif/current.sif
+docker://ghcr.io/cosmostat/sp_validation:develop
 ```
 
-That single string is what `workflow/Snakefile`, the paper Snakefiles, the
-image-sims `sif:` config key, the `xi_highres` MPI rule's own `apptainer exec`,
-and the `papers/bmodes/scripts/run_*.sh` drivers all use. Snakemake treats a
-local path as local: it never pulls, never consults a cache, and never touches
-the network during a run.
+That tag is what `workflow/Snakefile`, the paper Snakefiles and the image-sims
+`sif:` config key declare. Nobody writes a `.sif` path: Snakemake pulls the tag
+into the profile's `apptainer-prefix`
+(`/n17data/cdaley/containers/snakemake-sif`) on first use and reuses the cached
+file forever after. No Snakemake rule needs a file. Host-side callers that do —
+the `papers/bmodes/scripts/run_*.sh` drivers, and interactive `apptainer exec` —
+get it from `workflow/scripts/container_path.py`, which derives the path from
+the same tag (Snakemake names a pulled image `{prefix}/{md5(uri)}.simg`; the
+script just recomputes that).
+
+**The first pull is not free.** It happens on the host running `snakemake`,
+takes ~15 minutes for ~1.5 GB, and blocks the run — so do the first run of a
+new tag from a compute node, not the login node. Every later run finds the
+cached file and touches neither cache nor network.
 
 **Where the image comes from.** CI (`.github/workflows/deploy-image.yml`) builds
 it on every push, `FROM ghcr.io/cosmostat/shapepipe:im_sims` with `uv sync
 --frozen` against `uv.lock`, and publishes to
 `ghcr.io/cosmostat/sp_validation` tagged by branch — so `:develop` tracks the
-tip of `develop`. The package is public; no credentials are needed. Because
-`current.sif` is a file rather than a tag, **CI publishing a new image does not
-change what your jobs run.** Someone has to refresh it deliberately, which is
-the point.
+tip of `develop`. The package is public; no credentials are needed. A cached
+pull is a *snapshot* of the tag: CI publishing a new image does not change what
+your jobs run until someone refreshes.
 
-**Refreshing** — one person does it for everybody:
+**Refreshing** — one person does it for everybody. Delete the cached file and
+let the next run re-pull it, or pull deliberately:
 
 ```bash
 # From a compute node (~1.5 GB / ~15 min; never on the login node).
 salloc -p comp -c 4 --time=01:00:00 --no-shell     # note the job id
 export APPTAINER_CACHEDIR=/n17data/cdaley/containers/.apptainer-cache/cache
 export APPTAINER_TMPDIR=/n17data/cdaley/containers/.apptainer-cache/tmp
-srun --jobid=<id> bash -c 'cd /n17data/cdaley/containers/snakemake-sif && \
-  apptainer pull --force --name next.sif \
+SIF=$(workflow/scripts/container_path.py)          # prints the cached path
+srun --jobid=<id> bash -c "cd \$(dirname $SIF) && \
+  apptainer pull --force --name next.simg \
   docker://ghcr.io/cosmostat/sp_validation:develop && \
-  mv -f next.sif current.sif'
+  mv -f next.simg $SIF"
 scancel <id>
 ```
 
-Pull to `next.sif` and `mv` — never pull straight onto `current.sif`. `mv`
+Pull to `next.simg` and `mv` — never pull straight onto the cached name. `mv`
 within one directory is an atomic rename, so a job either gets the whole old
-image or the whole new one. Pulling in place would leave `current.sif` a
-half-written file for the ~15 minutes the pull takes, and any job starting in
-that window would fail. Jobs already running hold the old inode open and finish
-against it unharmed.
+image or the whole new one. Pulling in place would leave the file half-written
+for the ~15 minutes the pull takes, and any job starting in that window would
+fail. Jobs already running hold the old inode open and finish against it
+unharmed.
+
+`snakemake --cleanup-containers` deletes every `*.simg` in the prefix that the
+current DAG does not require. With the tag form the cached image *is* required,
+so it survives; anything left over from an older tag is what goes.
 
 To check what you have:
 
 ```bash
-apptainer inspect --labels /n17data/cdaley/containers/snakemake-sif/current.sif
+apptainer inspect --labels $(workflow/scripts/container_path.py)
 ```
 
 `org.opencontainers.image.revision` is the sp_validation commit the image was
 built from. The image-sims workflow records it in `m_bias_config.yaml` as
 `ghcr_revision`, so a result file says which image produced the number.
 
-**Interactive use** — the same image, the same path:
+**Interactive use** — the same image, resolved the same way:
 
 ```bash
 apptainer exec --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data \
-  /n17data/cdaley/containers/snakemake-sif/current.sif <command>
+  $(workflow/scripts/container_path.py) <command>
 ```
 
 This is what Cail's `app` shell function points at (the function lives in his

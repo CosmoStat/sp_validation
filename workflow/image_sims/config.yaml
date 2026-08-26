@@ -13,9 +13,10 @@ image_sims:
   # One image for the whole chain: the sp_validation image is built FROM the
   # ShapePipe image, so it carries both stacks. CI builds it from the uv lock --
   # an unlocked build drifts NumPy past numba's ceiling and the ngmix stage dies
-  # ("Numba needs NumPy 2.4 or less"). Same path every call site uses; refresh is
-  # deliberate (workflow/README.md). Override here to run your own image.
-  sif: /n17data/cdaley/containers/snakemake-sif/current.sif
+  # ("Numba needs NumPy 2.4 or less"). Same tag every call site uses; Snakemake
+  # pulls it into the profile's apptainer-prefix (workflow/README.md). Override
+  # here with a local path to run your own image.
+  sif: docker://ghcr.io/cosmostat/sp_validation:develop
 
   # --- repositories -----------------------------------------------------
   # Bound into the image; both repos' src go on PYTHONPATH so this branch's

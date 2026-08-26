@@ -41,6 +41,20 @@ def _reference_eigenvalues() -> np.ndarray:
     return np.linalg.eigh(a + a.T)[0]
 
 
+def test_smoke_snakefile_names_the_workflow_image():
+    """The test Snakefile's literal image must track workflow/common.py's."""
+    repo_root = _repo_root()
+    uri = re.search(
+        r'^CONTAINER_URI = "(.+)"$',
+        (repo_root / "workflow/common.py").read_text(),
+        re.MULTILINE,
+    ).group(1)
+    snakefile = (
+        repo_root / "src/sp_validation/tests/data/container_smoke/Snakefile"
+    ).read_text()
+    assert f'"{uri}"' in snakefile, uri
+
+
 @pytest.mark.slow
 @requires_cluster
 def test_container_smoke():

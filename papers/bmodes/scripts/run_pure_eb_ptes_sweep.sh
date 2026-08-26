@@ -19,8 +19,10 @@
 #     --out <output_dir> [--blind A] [--versions "v1 v2 ..."]
 set -euo pipefail
 
-CONTAINER=/n17data/cdaley/containers/snakemake-sif/current.sif
 WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
+# The image Snakemake pulled, resolved from the workflow's one declaration
+# of it (workflow/common.py CONTAINER_URI + the candide profile's prefix).
+CONTAINER=$($WT/workflow/scripts/container_path.py)
 SRC=$WT/src
 WSCRIPTS=$WT/workflow/scripts
 PSCRIPTS=$WT/papers/bmodes/scripts
