@@ -3,18 +3,22 @@
 Cheap sanity check for the profile-driven-container pivot -- same executor
 (slurm), same software-deployment-method (apptainer), same apptainer-args
 binds, same container image every real rule uses. No rule-level `container:`
-or `apptainer exec` anywhere here; Snakemake wraps the job entirely from the
-profile.  Three things it proves, each written to the output YAML:
+or `apptainer exec` anywhere here; Snakemake wraps the job itself.  Four things
+it proves, each written to the output YAML:
 
+  * the job really ran inside the image (``APPTAINER_CONTAINER``, set by
+    apptainer itself -- without it the rest could all pass on the bare host);
   * the editable ``sp_validation`` install resolves on the container's
     PYTHONPATH (import provenance: file + version, not just import success);
-  * the numeric stack works and honours threading env (numpy eigh on a small
-    fixed matrix, plus OMP_NUM_THREADS as seen inside the job);
+  * the numeric stack works (numpy eigh on a small fixed matrix). The
+    ``OMP_NUM_THREADS`` the job sees is recorded but NOT asserted: the profile
+    deliberately leaves it unset, and rules needing it pinned set it themselves
+    (see the image_sims rules' env prefix), so "unset" here is correct;
   * which commit of this checkout is running (git rev-parse from inside the
     container -- proves /home is bound and usable, not just readable).
 
-Run it directly with `snakemake ... container_smoke` before trusting the
-pivot on real compute.
+Driven by the co-located Snakefile; the assertions on the output YAML live in
+src/sp_validation/tests/test_container_smoke.py (marked ``slow``, cluster only).
 """
 
 import os
@@ -24,10 +28,13 @@ import subprocess
 import numpy as np
 import yaml
 
-# `snakemake` is injected as a module global by Snakemake's `script:` preamble
-# before this file runs; no import is needed (and `from snakemake.script
-# import snakemake` is IDE-hint-only -- snakemake.script has no such runtime
-# attribute and raises ImportError if actually executed).
+
+# --- the job is actually inside the image ---------------------------------
+# apptainer sets APPTAINER_CONTAINER (path of the running image) in every
+# process it starts, and it survives --cleanenv. Absent => ran on the bare host.
+container_info = {
+    "apptainer_container": os.environ.get("APPTAINER_CONTAINER", "unset"),
+}
 
 # --- editable install resolves inside the container ------------------------
 import sp_validation
@@ -50,7 +57,12 @@ numeric_info = {
 }
 
 # --- provenance: what commit is actually running in the container ---------
-repo_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# src/sp_validation/tests/data/container_smoke/ -> repo root, five levels up.
+# (This is the checkout the Snakefile came from, which is what we want to
+# report; the editable install may well resolve to a *different* checkout.)
+repo_dir = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), *([os.pardir] * 5))
+)
 try:
     commit = subprocess.run(
         ["git", "-C", repo_dir, "rev-parse", "HEAD"],
@@ -71,6 +83,7 @@ provenance = {
 with open(snakemake.output[0], "w") as f:
     yaml.safe_dump(
         {
+            "container": container_info,
             "sp_validation": sp_validation_info,
             "numeric": numeric_info,
             "provenance": provenance,
