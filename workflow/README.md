@@ -56,7 +56,7 @@ Every rule runs inside the sp_validation container: the profile sets
 and Snakemake wraps each job's `shell:`/`script:` command in `apptainer exec`
 itself — no rule writes its own `apptainer exec` call. The image name comes
 from the `container:` directive in `workflow/Snakefile` (or a rule's own
-override, e.g. the image-sims `SIF`/`SIF_PIPELINE` pair). Two rules are
+override, e.g. the image-sims `SIF`). Two rules are
 explicit, documented exceptions and keep `container: None` with an inline
 `apptainer exec`/host-toolchain call — `xi_highres` (multi-node MPI) and
 `covariance_cosmocov` (a host-compiled binary) — see their docstrings in
@@ -129,3 +129,10 @@ any rebuild:
   can push host tools — including a host-side `~/.local/bin/python` — ahead
   of the image's own `/usr/local/bin`, so a bare `python` in a rule's
   `shell:`/`script:` silently executes outside the container.
+
+### `snakemake` in `script:` files
+
+Every script run via a rule's `script:` directive uses a bare `snakemake`
+name (`snakemake.input[...]`, etc.) with no import — Snakemake injects it as
+a module global before the script runs. `from snakemake.script import
+snakemake` is IDE-hint-only and raises `ImportError` if actually executed.

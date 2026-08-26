@@ -28,10 +28,6 @@ if ipython is not None:
         "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.5.fits",
         "/home/cdaley/n17data/unions/pure_eb",
     )
-# else: `snakemake` is already the module global Snakemake's `script:`
-# preamble injected before this file began executing (`from snakemake.script
-# import snakemake` is IDE-hint-only and raises ImportError if actually
-# executed -- snakemake.script has no such runtime attribute).
 
 params = snakemake.params  # type: ignore
 

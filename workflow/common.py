@@ -5,17 +5,10 @@ import os
 import re
 from pathlib import Path
 
-# workflow/scripts/, from this file's own location. Plain Python `__file__`,
-# so it is correct no matter how a rule file that references it was reached --
-# standalone (`-s workflow/Snakefile`) or composed via `module:` from a paper
-# Snakefile (each paper Snakefile also derives its own path to workflow/ the
-# same way, from `workflow.basedir`, under the *different* name WORKFLOW_DIR
-# -- keep this one distinct so `from common import *` in a paper Snakefile
-# cannot shadow it). Use this, not a hardcoded absolute path, whenever a
-# `shell:` block needs to call a script under workflow/scripts/ directly
-# (`script:` is preferred and already resolves relative to its own rule file;
-# this constant is only for the few rules that cannot use `script:`, e.g.
-# because they wrap the call in `mpiexec`).
+# Absolute path to workflow/scripts/ for the few rules that must call a
+# script from `shell:` (e.g. wrapped in `mpiexec`): a composing paper
+# Snakefile runs with its own directory as the workdir, so a relative path
+# would miss.
 WORKFLOW_SCRIPTS = Path(__file__).resolve().parent / "scripts"
 
 # Output roots are env-overridable so a reproduction run can write into a

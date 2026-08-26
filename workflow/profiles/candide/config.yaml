@@ -1,88 +1,50 @@
 # Committed SLURM profile for the candide cluster (IAP).
 #
-# This is the "one run command" half of the workflow: drive any target with
+# Drive any target with
 #
 #     snakemake --profile workflow/profiles/candide \
 #         -s workflow/image_sims/Snakefile \
 #         --configfile <run config> <target>
 #
-# and Snakemake owns everything: scheduling (one SLURM job per branch x tile,
-# fanned out against the cluster, MPI-free) *and* the container -- every rule
-# runs through Snakemake's own container wrapping (``container:`` on the rule
-# or an inherited module-level default; see workflow/Snakefile), never a
-# rule's own ``apptainer exec`` shell call. This file is the single home for
-# that: ``software-deployment-method: apptainer`` turns the wrapping on,
-# ``apptainer-args`` carries the bind mounts every rule needs. Rules stay
-# plain ``shell:``/``script:`` commands with no container knowledge at all.
+# Snakemake owns scheduling (one SLURM job per branch x tile) and the
+# container: every rule runs through Snakemake's own container wrapping
+# (``container:`` on the rule or the module-level default in
+# workflow/Snakefile), never a rule's own ``apptainer exec`` shell call.
+# ``software-deployment-method: apptainer`` below turns that wrapping on;
+# ``apptainer-args`` carries the bind mounts every rule needs. Exceptions
+# (``xi_highres``, ``covariance_cosmocov``) are documented at their rule
+# definitions in workflow/rules/.
 #
-# The orchestrator itself (``snakemake``) is a thin host-side tool, pinned via
-# ``uv tool install`` (see workflow/README.md) -- it is never run from inside
-# an ``apptainer shell``. It spawns the apptainer wrapping per job; there is
-# exactly one container per job, never a nested one.
-#
-# Two explicit exceptions still set ``container: None`` and own an inline
-# ``apptainer exec``/host-toolchain call directly in their rule: ``xi_highres``
-# (multi-node MPI -- Snakemake's wrapping puts the whole shell command in one
-# container, which cannot spawn per-rank containers across nodes) and
-# ``covariance_cosmocov`` (calls a host-compiled Fortran/C binary via
-# environment-modules, not a Python entry point). Both are documented at their
-# rule definition in workflow/rules/.
-#
-# What is still deliberately NOT here:
-#
-#   * OMP_NUM_THREADS.  The slurm executor submits with ``--export=ALL``,
-#     which propagates the *driver's* ambient environment; a profile only sets
-#     CLI flags, never the driver's own env, so an ``OMP_NUM_THREADS`` set here
-#     would silently depend on the operator having exported it by hand. Rules
-#     that need it pinned set it themselves (``envvars:`` / ``params:``), which
-#     keeps it committed and independent of the launching shell.
-#
-#   * Per-rule resources (mem_mb, runtime).  Those live on each rule in the
-#     .smk; the ``default-resources`` below are only the floor for rules that
-#     set none.
+# ``snakemake`` itself is a thin host-side tool, pinned via ``uv tool
+# install`` (see workflow/README.md); run it on the host, never inside an
+# ``apptainer shell``.
 
 executor: slurm
 
-# Every rule runs inside the sp_validation container -- the top-level
-# ``container:`` in workflow/Snakefile / workflow/image_sims/Snakefile (or a
-# rule's own override, e.g. the image-sims SIF/SIF_PIPELINE pair) names the
-# image; this just turns Snakemake's wrapping on and supplies the binds. Kept
-# in sync with the ``app`` bash function's raw ``apptainer exec`` in the
+# Kept in sync with the ``app`` bash function's raw ``apptainer exec`` in the
 # top-level UNIONS CLAUDE.md -- update both together.
 software-deployment-method: apptainer
 apptainer-args: "--cleanenv --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data"
 
-# Cluster policy applied to every job unless a rule overrides it.  The excludes
-# are the flaky/no-internet candide nodes (n17 mount issues, n09 no internet,
-# n36); ``slurm_extra`` is passed verbatim onto the sbatch line by the executor
-# plugin, so the quoting is what sbatch must see.
+# Cluster policy applied to every job unless a rule overrides it. Excludes are
+# the flaky/no-internet candide nodes (n17 mount issues, n09 no internet, n36).
 #
-# Three candide-specific SLURM lessons are baked into the values below (learned
-# the hard way on the earlier hand-driven im-sims runs; see shapepipe's retired
-# image_sims_pipeline/Snakefile docstring):
-#
-#   * ``runtime`` MUST carry a unit (``60m``, ``6h``, ``2d``).  Snakemake's
-#     resource parser reads a *bare* number as SECONDS, so ``runtime: 60`` would
-#     silently give every job a 60-second wall clock and kill it on start.  The
-#     quoted-with-unit form here is deliberate; keep it that way, and prefer the
-#     same in any ``--default-resources`` passed on the command line.  (A bare
-#     integer in a *rule's* ``resources: runtime=720`` is fine -- snakemake
-#     reads rule-level numeric runtime as minutes -- the seconds trap is only
+#   * ``runtime`` MUST carry a unit (``60m``, ``6h``, ``2d``). Snakemake's
+#     resource parser reads a bare number as SECONDS, so ``runtime: 60`` would
+#     silently give every job a 60-second wall clock and kill it on start.
+#     (A bare integer in a rule's own ``resources: runtime=720`` is fine --
+#     rule-level numeric runtime is read as minutes; the seconds trap is only
 #     the CLI/default-resources parser.)
 #
 #   * ``cpus_per_task`` is pinned to 12 to CAP JOBS PER NODE, not because a job
-#     needs 12 cores (the chain is MPI-free and pins ``OMP_NUM_THREADS=1`` at
-#     the container).  candide's per-user process limit is ``ulimit -u 1200``
-#     *per node*, and apptainer crashes ("can't start new thread") beyond ~4
-#     concurrent jobs on a 48-core node.  Requesting 12 CPUs/job holds SLURM to
-#     ~4 jobs per 48-core node, under the ceiling.  Dropping this to 1 would let
-#     SLURM pack ~48 jobs onto a node and crash the compute-heavy im_pipeline
-#     stage (which inherits this default -- it sets mem/runtime but not cpus).
+#     needs 12 cores. candide's per-user process limit is ``ulimit -u 1200``
+#     per node, and apptainer crashes ("can't start new thread") beyond ~4
+#     concurrent jobs on a 48-core node; 12 CPUs/job holds SLURM to ~4 jobs per
+#     node.
 #
-#   * After launching a real fan-out, VERIFY the request actually landed:
-#     ``squeue -u $USER -o "%C %l"`` must show 12 (CPUs) and the wall clock you
-#     intended (e.g. 12:00:00 for im_pipeline).  A silently-misparsed runtime or
-#     cpus shows up here before it wastes a queue slot.
+#   * After launching a real fan-out, verify the request landed:
+#     ``squeue -u $USER -o "%C %l"`` should show 12 (CPUs) and the intended
+#     wall clock.
 default-resources:
   slurm_account: "cusers"
   slurm_partition: "comp,pscomp"

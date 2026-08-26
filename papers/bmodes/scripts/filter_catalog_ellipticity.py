@@ -18,10 +18,6 @@ sys.stderr = (
     sys.stderr if hasattr(sys, "ps1") else open(sys.stderr.fileno(), "w", buffering=1)
 )
 
-# `snakemake` is injected as a module global by Snakemake's `script:`
-# preamble before this file runs (`from snakemake.script import snakemake`
-# is IDE-hint-only and raises ImportError if actually executed --
-# snakemake.script has no such runtime attribute).
 
 input_path = snakemake.input["catalog"]
 output_fits = snakemake.output["catalog"]
