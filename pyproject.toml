@@ -155,8 +155,16 @@ glass = [
 workflow = [
     "snakemake",
     # run_2pcf_highres.py drives the MPI convergence run; the container ships
-    # OpenMPI (/opt/ompi) so mpi4py builds against it.
+    # OpenMPI 4.1.4 (mpicc/mpif90 on PATH in /usr/bin) so mpi4py builds against it.
     "mpi4py",
+    # CosmoSIS drives the cosmo_inference sampling step. Sdist-only, so this is a
+    # source build (~2 min) against the base image's gfortran/GSL/cfitsio/OpenMPI —
+    # no extra apt packages needed. Floor at 3.25 simply to stay current; there is
+    # no known-good older version to pin back to. Note the shared-memory pool is
+    # still broken upstream at 3.25.2 (bcast/gather/allreduce in
+    # runtime/process_pool.py return an unassigned `self.data`), so chains must run
+    # under MPI -- which is why the Dockerfile sets MPIFC before syncing this extra.
+    "cosmosis>=3.25",
     # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
     # published or resolvable (no public repo found) — left undeclared pending
     # its source. Same for `unions_wl` (scripts/check_footprint.py).

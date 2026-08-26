@@ -4,16 +4,17 @@ by Lisa Goh and Sacha Guerrini, CEA Paris-Saclay
 This folder contains the files neccessary to run the cosmological inference pipeline on the UNIONS galaxy catalogues. 
 
 ### Requirements
-To run the pipeline, one would need to have installed [CosmoSIS](https://cosmosis.readthedocs.io/en/latest/). To sample the PSF leakage parameters, the fork of [cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/) of Sacha Guerrini has to be used.
+[CosmoSIS](https://cosmosis.readthedocs.io/en/latest/) ships in the container via
+the `workflow` extra, built with MPI support. To sample the PSF leakage
+parameters, the fork of
+[cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/)
+of Sacha Guerrini has to be used; it is not packaged, so clone and build it
+yourself and point `COSMOSIS_DIR` in the pipeline templates at your checkout.
 
-Run CosmoSIS with `--mpi`, not `--smp`. The `--smp` process pool is fragile and
-barely maintained upstream: its `bcast`, `gather` and `allreduce` methods all
-return a `self.data` attribute that is never set, so a run can crash right after
-sampling finishes (upstream issue
-[cosmosis#170](https://github.com/cosmosis-developers/cosmosis/issues/170) — the
-`allreduce` crash was fixed in cosmosis 3.16.1, the rest is still open). Use
-cosmosis 3.16.1 or newer, and prefer `--mpi`, which is what the upstream
-maintainer recommends.
+Launch sampling under MPI (`mpiexec -n N cosmosis --mpi ...`), not `--smp`:
+CosmoSIS's shared-memory pool is unmaintained and still crashes after sampling
+completes (`Pool` has no attribute `data`, `runtime/process_pool.py`) as of
+3.25.2.
 
 ### To Run
 The inference pipeline is orchestrated through Snakemake. On the candide

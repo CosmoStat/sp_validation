@@ -113,6 +113,18 @@ wheels = [
 ]
 
 [[package]]
+name = "array-api-extra"
+version = "0.11.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "array-api-compat", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/94/40/e2e74294b894b115b05c052364fde283e3684e309c58c8f3e0463270051b/array_api_extra-0.11.1.tar.gz", hash = "sha256:360bc6faf858b1ef2ca0fb3cc86dbac0ed566fa1f78ae515cd234830c8b119f8", size = 102150, upload-time = "2026-08-12T11:29:24.981Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4f/ee/c0a6a4bb3c5d874c68f57c2471af931f5f4cf2f84fdcc86b8a7467eb3e66/array_api_extra-0.11.1-py3-none-any.whl", hash = "sha256:2da3eed8842ed14cdded9a2a82f11dcafae2aa2c0c1622a3b77e769f72331c64", size = 98046, upload-time = "2026-08-12T11:29:23.571Z" },
+]
+
+[[package]]
 name = "arrow"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -550,16 +562,47 @@ dependencies = [
 ]
 
 [[package]]
-name = "cosmology"
-version = "2022.10.9"
+name = "cosmology-api"
+version = "0.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/f4/801cab91dab5b2e8102ed54cc4e2bd257f319c9047db182fcaf53706df6a/cosmology_api-0.3.2.tar.gz", hash = "sha256:7ccdfdf20f91dfc2282aee059adf2530bea6e194a0f8d01487e15a7497cf4694", size = 17338, upload-time = "2025-05-15T13:29:52.355Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bf/8c/6cc73fafff9f4d75e77a9c3cf5b9c34aa42841cfc7da5c89737daa2c3bd7/cosmology_api-0.3.2-py3-none-any.whl", hash = "sha256:9391ef0b2616bbf4217fefdb94a72370766d59a2f0558b5ade224a92ea093a61", size = 18685, upload-time = "2025-05-15T13:29:50.833Z" },
+]
+
+[[package]]
+name = "cosmology-compat-camb"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", marker = "sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c9/38/04099bb2b6a626bd69a3f117afc60f2c47c08899e0730e0e48c898bf4745/cosmology-2022.10.9.tar.gz", hash = "sha256:0c2857c9bf1fdd09f1f11ab5765df0389a4101f3a900fa11251c3f37696f02d4", size = 8488, upload-time = "2022-10-10T10:18:16.229Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/2e/a637aae1677d02337be371c9a7b7e9d5051199bb58a2386781230adcee45/cosmology_compat_camb-0.2.0.tar.gz", hash = "sha256:e36fda04a78e16fc1a5c4aa22c30ec1bf64bbe0b092aa1b894ca746ce5e5551b", size = 4562, upload-time = "2025-05-08T10:31:43.226Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/2c/c80db37593ad593e3f6c60705fbdf690b33f22c89edd5507d2731346cd87/cosmology-2022.10.9-py3-none-any.whl", hash = "sha256:3903658c2474177a1a1c75771ae14458d93200c516f8fc6c3f4d776f3287b288", size = 9341, upload-time = "2022-10-10T10:18:14.928Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/42/1a657f9b3540f355f34af735d8643aae1480620689a72423fe69aeeb78e5/cosmology_compat_camb-0.2.0-py3-none-any.whl", hash = "sha256:eb6e74290bb6a6a60a47d1338fc233ba1697058ed7f01a01de1180dbee1bd75d", size = 3903, upload-time = "2025-05-08T10:31:41.997Z" },
 ]
+
+[[package]]
+name = "cosmosis"
+version = "3.25.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dulwich", marker = "sys_platform == 'linux'" },
+    { name = "dynesty", marker = "sys_platform == 'linux'" },
+    { name = "emcee", marker = "sys_platform == 'linux'" },
+    { name = "h5py", marker = "sys_platform == 'linux'" },
+    { name = "matplotlib", marker = "sys_platform == 'linux'" },
+    { name = "nautilus-sampler", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "py-bobyqa", marker = "sys_platform == 'linux'" },
+    { name = "pybind11", marker = "sys_platform == 'linux'" },
+    { name = "pyyaml", marker = "sys_platform == 'linux'" },
+    { name = "scikit-learn", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
+    { name = "threadpoolctl", marker = "sys_platform == 'linux'" },
+    { name = "zeus-mcmc", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/63/83898440e5486294cb17a7ddf01896af66dd153d7f3e77897ed120abd055/cosmosis-3.25.2.tar.gz", hash = "sha256:4a8333395b600a5e8339c637b947a982bac4c88a7b242e4b6de8274be03004a8", size = 416233, upload-time = "2026-03-09T12:01:08.269Z" }
 
 [[package]]
 name = "coverage"
@@ -853,6 +896,44 @@ wheels = [
 ]
 
 [[package]]
+name = "dulwich"
+version = "1.2.13"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "urllib3", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ab/7d/022515919b5ee3175a70a7e52049c4a2637008a4a49024ad15db1531bda9/dulwich-1.2.13.tar.gz", hash = "sha256:77f0d7012710da1ba0742a197fce215b0e1a05aeb9bc8a03ce94ccd2644317d8", size = 1361288, upload-time = "2026-08-24T12:38:30.179Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6d/42/2383b8eb8e910d18d4e37156d2e191bb5b3b202648636db266065611835b/dulwich-1.2.13-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:8816b7c1e5e527b9c8d8aa322b9b80cb1878c0b4990707ceffa12c2529eb6dc5", size = 1459316, upload-time = "2026-08-24T12:37:18.387Z" },
+    { url = "https://files.pythonhosted.org/packages/47/ee/d75a0249a21f22c03db2ab1a8ee9f727ca1fafc6bd7da86ddd0564a05b7b/dulwich-1.2.13-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:1c1ff65f48a81fce6fa78edffc289655556082543f34a4024a0eca5161f2fb85", size = 1490824, upload-time = "2026-08-24T12:37:20.045Z" },
+    { url = "https://files.pythonhosted.org/packages/65/7e/52324b023c728e7e0a3397d8388ef85b2980d9f436d34a4b0530f076f5ae/dulwich-1.2.13-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:7805fbcd07a542502e50f7bd63cb6a2ab1b04fa5803bf2ee163866e8c97c6f94", size = 1459564, upload-time = "2026-08-24T12:37:32.602Z" },
+    { url = "https://files.pythonhosted.org/packages/5c/2e/f321b0ffd3168d795aad5043bf17190ba8481e293cd09154f0cd3e155134/dulwich-1.2.13-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:d258d59a7af83147d5c888e5ab3a53f2d37ad4ae41728d70969e0bce1ac7ba83", size = 1490259, upload-time = "2026-08-24T12:37:34.311Z" },
+    { url = "https://files.pythonhosted.org/packages/47/0d/ab0e5dd1558b15a78fa2d75c03b5af44823b8e1297ffcfef4bb66f24f9d6/dulwich-1.2.13-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:b484a49c166c2e5b2deecdb964d4725a454cfcc87970746f2b2faac252d0bb72", size = 1461868, upload-time = "2026-08-24T12:37:46.208Z" },
+    { url = "https://files.pythonhosted.org/packages/45/75/d94f4317f09df37638c81ce90d0988154cb8d537504a9d4c0f5837cf320a/dulwich-1.2.13-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:c11ba8725d8808dee69e3aec1aceed3b716b16da3136c31499b271e0a79913c4", size = 1491986, upload-time = "2026-08-24T12:37:47.977Z" },
+    { url = "https://files.pythonhosted.org/packages/46/0f/10fadbbc7efbb103f747af24e690393e6f6c29d85acac5febb34e35cb6e7/dulwich-1.2.13-cp314-cp314t-manylinux_2_28_aarch64.whl", hash = "sha256:63c26d34f53fe972e64fa6a9f6d7b013fa616a8357893e648710799e2e238db7", size = 1458718, upload-time = "2026-08-24T12:37:56.561Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/0e/8b9157e4536e78ab80b2d10759408e026d5f2ea62fc1fe5a386b89f7b4c3/dulwich-1.2.13-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:f0a79903a43491804852333f4e85fd484bc5e35ecf4fc836409f8194e3f1fc0b", size = 1539867, upload-time = "2026-08-24T12:37:58.202Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/95/4a840bf858b3d83087de36f5f768ff20cc464f0495a37d7bd8fd97cf1ac1/dulwich-1.2.13-cp315-cp315-manylinux_2_28_aarch64.whl", hash = "sha256:c243c278cb3281c8f6876b3621f2396548041aa316d91f3c78aa2d7a22043ef9", size = 1462669, upload-time = "2026-08-24T12:38:09.971Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/de/e3d9e52ce2bf06c63eb360bd467008cdb030655ccf98100bfc72577dd926/dulwich-1.2.13-cp315-cp315-manylinux_2_28_x86_64.whl", hash = "sha256:33ac85b270d2410fa1fc962caeef14a63e04de46dd76c5080f558c5d9752fa04", size = 1540300, upload-time = "2026-08-24T12:38:11.568Z" },
+    { url = "https://files.pythonhosted.org/packages/82/52/9c7a9ff65cdd99237220f88018f3b4b2f4cb910d4341b9625c903796ca64/dulwich-1.2.13-cp315-cp315t-manylinux_2_28_aarch64.whl", hash = "sha256:c226635fe7dffdc8718b177a11b904a4bd5ff83dc9b5a443109458603f944489", size = 1460164, upload-time = "2026-08-24T12:38:20.434Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/6b/dbeece5fa1dd39416ba7b525e6ae8f9f96f34c1bc9de58f6a398d889cba4/dulwich-1.2.13-cp315-cp315t-manylinux_2_28_x86_64.whl", hash = "sha256:b832922190662896e057b8d84fd28d07d7c8eb9cbe2519348142bb909cd693b4", size = 1493098, upload-time = "2026-08-24T12:38:22.242Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/50/838d9c3da15f94b8f36c69e7abe3fea5294569a1dbda3812a07fba429f54/dulwich-1.2.13-py3-none-any.whl", hash = "sha256:edadd2f1019d879f80ab107a8587cb7f3b72d077b23facb8564700e7e3ce1758", size = 730094, upload-time = "2026-08-24T12:38:28.562Z" },
+]
+
+[[package]]
+name = "dynesty"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/75/db494edc8abfe2273b9cb08c87a2a1165c6ae90d76f746980ef07ec5303a/dynesty-3.1.0.tar.gz", hash = "sha256:851717431f04f749bca45e86704c28fecf9f3b10f85a2a69820b26e42cefab68", size = 35564761, upload-time = "2026-07-17T14:38:31.465Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/f9/41c72d0b5fb511fdf23cf62ed50da6c73d4497f03ed1cad04f214dc477c8/dynesty-3.1.0-py3-none-any.whl", hash = "sha256:4e5b77bb261abdcb98e3a538d7498a94d5882a848f0ea46924b404396ef036d5", size = 106027, upload-time = "2026-07-17T14:38:28.523Z" },
+]
+
+[[package]]
 name = "emcee"
 version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
@@ -1010,18 +1091,28 @@ wheels = [
 
 [[package]]
 name = "glass"
-version = "2025.1"
+version = "2026.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cosmology", marker = "sys_platform == 'linux'" },
+    { name = "array-api-compat", marker = "sys_platform == 'linux'" },
+    { name = "array-api-extra", marker = "sys_platform == 'linux'" },
     { name = "healpix", marker = "sys_platform == 'linux'" },
     { name = "healpy", marker = "sys_platform == 'linux'" },
-    { name = "numpy", marker = "sys_platform == 'linux'" },
     { name = "transformcl", marker = "sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/d6/26cd58e75834671259f26b9287a584d726e6023da35ddf7ca3b7f2c393fb/glass-2025.1.tar.gz", hash = "sha256:7b1aa2394e16010f7f1b4243f49e7e12d7a4dd28fcbf3e3f7cf25ce4905a8615", size = 48533, upload-time = "2025-02-21T18:43:48.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/c3/3b7d18cca8d0fa41dbb646ce16935804b380dcf766e7385799f44829b419/glass-2026.2.tar.gz", hash = "sha256:cf5ef6cb76b4738f8dc05ddfc18c359c558bb36e9cd09ca0115fa3ca3deb491f", size = 66236, upload-time = "2026-06-04T15:18:39.155Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/e7/3e89bc5147a3e84245c783098afffbbacbcdf5678ba1aacc2c9c035434da/glass-2025.1-py3-none-any.whl", hash = "sha256:d7919a7d19e05ab8da4e52dbfbcfb5bd1ed2b72e0cc3afde39ec94ced22883c5", size = 47185, upload-time = "2025-02-21T18:43:46.649Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/d1/55ea5e63e81db82806e92ba9f9c2b7277c0c2afe57bf8c1d3763e18005b2/glass-2026.2-py3-none-any.whl", hash = "sha256:0af0b5cd8708040925699c307076fb1c79bbb7e6cba4522764bcc21dd3bdadb8", size = 63746, upload-time = "2026-06-04T15:18:37.895Z" },
+]
+
+[package.optional-dependencies]
+examples = [
+    { name = "camb", marker = "sys_platform == 'linux'" },
+    { name = "cosmology-api", marker = "sys_platform == 'linux'" },
+    { name = "cosmology-compat-camb", marker = "sys_platform == 'linux'" },
+    { name = "glass-ext-camb", marker = "sys_platform == 'linux'" },
+    { name = "jupyter", marker = "sys_platform == 'linux'" },
+    { name = "matplotlib", marker = "sys_platform == 'linux'" },
 ]
 
 [[package]]
@@ -2268,6 +2359,30 @@ wheels = [
 ]
 
 [[package]]
+name = "narwhals"
+version = "2.25.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/7b/6248dada39781db1ab3ebf08943080df0796098515a87f6f8696d14ec744/narwhals-2.25.0.tar.gz", hash = "sha256:62c036c810662bf7820b7737077176313bc59350eeeefb808510f388c743e4b2", size = 677076, upload-time = "2026-08-20T18:10:15.454Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/dc/55481808fd70ef1567cf13540ffd4702af3f74b112e35427564b03f79c2d/narwhals-2.25.0-py3-none-any.whl", hash = "sha256:1f0f403e8c7e4463cde9bfe78b12fdd809e3ae3dda6d9b2f802934fb9c7a6a8f", size = 467373, upload-time = "2026-08-20T18:10:13.834Z" },
+]
+
+[[package]]
+name = "nautilus-sampler"
+version = "1.0.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "scikit-learn", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
+    { name = "threadpoolctl", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/2c/a50c1a550ba43d86a0b41cf6410986d478d8640139c8e963f4dde8a8bfc2/nautilus_sampler-1.0.6.tar.gz", hash = "sha256:4e90b6d97be742be2e255c35a79e5a388cee043b4d2ce970eec327ed34139b78", size = 43118, upload-time = "2025-12-29T14:08:25.629Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/47/54/372c42bcfe324b650946f6cfee0e5adbd55aafc25cab555460bf5d9e8d36/nautilus_sampler-1.0.6-py3-none-any.whl", hash = "sha256:de6f3b9d249d87f05a673e8597e56621037e84dc712a6c2d3c18ff3672735b9b", size = 35772, upload-time = "2025-12-29T14:08:24.603Z" },
+]
+
+[[package]]
 name = "nbclient"
 version = "0.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2756,6 +2871,21 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cd/05/0a34433a064256a578f1783a10da6df098ceaa4a57bbeaa96a6c0352786b/pure_eval-0.2.3.tar.gz", hash = "sha256:5f4e983f40564c576c7c8635ae88db5956bb2229d7e9237d03b3c0b0190eaf42", size = 19752, upload-time = "2024-07-21T12:58:21.801Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl", hash = "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0", size = 11842, upload-time = "2024-07-21T12:58:20.04Z" },
+]
+
+[[package]]
+name = "py-bobyqa"
+version = "1.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "pandas", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
+    { name = "setuptools", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6b/41/c4c74daf208ed27e14071e92efb7ea238ffdf77ee93a3a7777ff02d2b0e4/py_bobyqa-1.5.0.tar.gz", hash = "sha256:3c7719b68b28834ea6d538f54603f6a891263f7c21f1a673de79e3a5e0e7e413", size = 51486, upload-time = "2024-09-16T03:52:32.303Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/1e/0d44a4e3a291c009a357fbd1d61511d9306c2c4db9a7ceb6e8104d8d385f/Py_BOBYQA-1.5.0-py3-none-any.whl", hash = "sha256:457afc04d6f2c9f1814934854dc4e542c5e5982a0f80add4b211fcdb0b5811e3", size = 57978, upload-time = "2024-09-16T03:52:30.667Z" },
 ]
 
 [[package]]
@@ -3355,6 +3485,29 @@ wheels = [
 ]
 
 [[package]]
+name = "scikit-learn"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib", marker = "sys_platform == 'linux'" },
+    { name = "narwhals", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
+    { name = "threadpoolctl", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fa/6f/37092bdb25f712817231799fc5674d8e704066a8a70c1d2d40517e18b4ab/scikit_learn-1.9.0.tar.gz", hash = "sha256:8833266989d3a5110178a9fae30783675460724d0e1efb13b14901d2c660c557", size = 7750767, upload-time = "2026-06-02T11:54:32.706Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/ee/5adbc77656b71f9456a2f5a7a9fdb4bcf9207a6b962889f1c2f9323afa4e/scikit_learn-1.9.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5e50ed4da51974e86e940690e9a3d82e729b62b5a49f7c9bac534d515d39d86f", size = 8837603, upload-time = "2026-06-02T11:53:30.328Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/c2/63fdda36c56437eeb44aaf9493c8bcd62ce230ab1598924fc626ffbfa943/scikit_learn-1.9.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:056c92bb67ad4c28463c2f2653d9701449201e7e7a9e94e321be0f71c4fef2b8", size = 9132097, upload-time = "2026-06-02T11:53:33.456Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/39/ffe829a5b8ecb40a518724a997794657fdc354ada5e8fe8e64d998c0bac9/scikit_learn-1.9.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:38c3dcb9a1ffb85505ec53d54c7b4aea0cff70050425a7760c2af661ac85df05", size = 8789690, upload-time = "2026-06-02T11:53:47.461Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/88/8dab5de10c638c083772a6be83a3d8106ced492f74a928c8693638e5bb50/scikit_learn-1.9.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:da76d09304a4706db7cc1e3ebaa3b6b98a67365cc11d2996c4f1e58ba47df714", size = 9087723, upload-time = "2026-06-02T11:53:50.702Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/79/f4a0c4fe9711154cddabf913471153af79056382ddc612cfe5ee0ff4b72e/scikit_learn-1.9.0-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5162ad10a418c8a282dde04c9aa06965de3e9a65f33c1440c0ae69bb1a09d913", size = 8847671, upload-time = "2026-06-02T11:54:04.448Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/af/4d72d9e475ac83719160c662619e4bf7b95c19507cd582e7d0167a3c3dae/scikit_learn-1.9.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1fea2cc5677ab49d6f5bade978c866da44957b712d92e9635e8b4f723013c3cb", size = 9118104, upload-time = "2026-06-02T11:54:07.205Z" },
+    { url = "https://files.pythonhosted.org/packages/18/3c/e440e039bb82cd19004edaaad00acbde0fb9b461083c3ecf37941c557312/scikit_learn-1.9.0-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:147e9329ef0e39f75d4cffa02b2aa48d827832684926cd5210d9a2cb5c57246b", size = 8855050, upload-time = "2026-06-02T11:54:21.699Z" },
+    { url = "https://files.pythonhosted.org/packages/43/26/b341b8dab5998da6270a3a42c2152c578501354d36f944b5856757035ef8/scikit_learn-1.9.0-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5bad8f8b9950321b54c965fdcbac6c6c55e79e16646b49977bcf3668d3870a1a", size = 9097190, upload-time = "2026-06-02T11:54:24.454Z" },
+]
+
+[[package]]
 name = "scipy"
 version = "1.17.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3737,9 +3890,8 @@ docs = [
     { name = "sphinxcontrib-bibtex", marker = "sys_platform == 'linux'" },
 ]
 glass = [
-    { name = "cosmology", marker = "sys_platform == 'linux'" },
     { name = "fitsio", marker = "sys_platform == 'linux'" },
-    { name = "glass", marker = "sys_platform == 'linux'" },
+    { name = "glass", extra = ["examples"], marker = "sys_platform == 'linux'" },
     { name = "glass-ext-camb", marker = "sys_platform == 'linux'" },
 ]
 test = [
@@ -3748,6 +3900,7 @@ test = [
     { name = "ruff", marker = "sys_platform == 'linux'" },
 ]
 workflow = [
+    { name = "cosmosis", marker = "sys_platform == 'linux'" },
     { name = "mpi4py", marker = "sys_platform == 'linux'" },
     { name = "snakemake", marker = "sys_platform == 'linux'" },
 ]
@@ -3760,13 +3913,13 @@ requires-dist = [
     { name = "clmm" },
     { name = "colorama" },
     { name = "cosmo-numba", git = "https://github.com/aguinot/cosmo-numba.git?rev=main" },
-    { name = "cosmology", marker = "extra == 'glass'", specifier = "==2022.10.9" },
+    { name = "cosmosis", marker = "extra == 'workflow'", specifier = ">=3.25" },
     { name = "cryptography" },
     { name = "cs-util", git = "https://github.com/CosmoStat/cs_util.git?rev=develop" },
     { name = "emcee" },
     { name = "fitsio", marker = "extra == 'glass'" },
     { name = "getdist", git = "https://github.com/benabed/getdist.git?rev=113cd22a9a0d013b6f72fe734be81f260f3d3be5" },
-    { name = "glass", marker = "extra == 'glass'", specifier = "==2025.1" },
+    { name = "glass", extras = ["examples"], marker = "extra == 'glass'", specifier = "==2026.2" },
     { name = "glass-ext-camb", marker = "extra == 'glass'", specifier = "==2023.6" },
     { name = "h5py" },
     { name = "healpy" },
@@ -4419,6 +4572,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/93/8d/aeb164004f87543b06ef54f885d02c342c31ceb274e2bbec470a98927621/zarr-3.2.1.tar.gz", hash = "sha256:71565b738a0e7e8ed226f0516eba8c6bb53440ad7669a8c48ebb3534a161d035", size = 675161, upload-time = "2026-05-05T12:37:22.383Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/0a/469e2bd01be1490336e6c8707386845655d59261543315778a3ccc7e8019/zarr-3.2.1-py3-none-any.whl", hash = "sha256:f78cdd3d9687ad0e9f9cba2c5683b64f0c52589c19f685eeabe872e93cc0d2c7", size = 319617, upload-time = "2026-05-05T12:37:20.66Z" },
+]
+
+[[package]]
+name = "zeus-mcmc"
+version = "2.5.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
+    { name = "pytest", marker = "sys_platform == 'linux'" },
+    { name = "scikit-learn", marker = "sys_platform == 'linux'" },
+    { name = "scipy", marker = "sys_platform == 'linux'" },
+    { name = "seaborn", marker = "sys_platform == 'linux'" },
+    { name = "setuptools", marker = "sys_platform == 'linux'" },
+    { name = "tqdm", marker = "sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/15/c0/248a600ae0f3d1437612821f7c528c895b6a8408a052c352d4cac46dcf94/zeus-mcmc-2.5.4.tar.gz", hash = "sha256:594baa90de4ad4488c4db5ed6a0446f7103bc4b3de787f4d7d23c91c9aa88769", size = 35051, upload-time = "2023-01-12T04:14:20.688Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/48/cb/99ee8021fa305d65b1fb369fabf96ccc65c60282407390e5355bb9e62f9f/zeus_mcmc-2.5.4-py3-none-any.whl", hash = "sha256:a64a7dae15f413200c6d590a3edfc3b8bc63c6bea3acdf123c0397c8089e123f", size = 24122, upload-time = "2023-01-12T04:14:19.24Z" },
 ]
 
 [[package]]
