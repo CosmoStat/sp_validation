@@ -1,46 +1,18 @@
 """Image-simulation orchestration: raw SKiLLS sim images -> shear m/c bias.
 
-This rule set drives the image-simulation validation chain end to end and is
-the sp_validation-side half of the split described in
+The sp_validation-side half of the split described in
 ``UNIONS-WL/MultiBand_ImSim#1``: ShapePipe turns the simulated tiles into
-per-tile shape catalogues, then sp_validation merges, extracts, calibrates and
-finally measures the multiplicative/additive shear bias.
+per-tile shape catalogues (``pipeline``, ``merge``), then sp_validation
+extracts, calibrates and measures the multiplicative/additive shear bias
+(``manifest``, ``extract``, ``calibrate``, ``m_bias``).
 
-Two images, one prefix shape.  Architecturally one image could run every
-stage -- the sp_validation image is built ``FROM`` the ShapePipe image, so it
-carries both stacks -- but the *published* sp_validation image's environment
-is not yet trustworthy for the ShapePipe half: sp_validation has no lockfile
-and does not declare its numba-bearing dependency (``cosmo_numba``), so
-unpinned install layers can drift NumPy past numba's window (a 2026-07-11
-gate run hit exactly this: ``Numba needs NumPy 2.4 or less. Got NumPy 2.5``
-at the ngmix stage).  PYTHONPATH shadowing covers pure-Python *code*, never
-binary deps, so until sp_validation is uv-locked with its deps declared
-(spun off as its own task), each half runs in its own repo's image -- the
-same split the gate766 baseline ran:
-
-* ShapePipe stages -> ``pipeline`` (raw images -> per-tile cats) and ``merge``
-  (``create_final_cat`` -> ``final_cat_{sim}.hdf5``) run in ``sif_pipeline``
-  (the ShapePipe image).
-* sp_validation stages -> ``manifest``, ``extract`` (-> comprehensive cat),
-  ``calibrate`` (-> cut cat) and ``m_bias`` (-> ``m_bias_results.yaml``) run
-  in ``sif`` (the sp_validation image).
-
-Every compute rule declares its own ``container: SIF`` or
-``container: SIF_PIPELINE`` (a plain per-rule Snakemake directive -- no rule
-shells out to ``apptainer`` itself); Snakemake wraps the rule's ``shell:``
-command in the right image via the driving profile's
-``software-deployment-method: apptainer`` + ``apptainer-args`` (binds live
-there now, not in this file). Two images, because the images are not the
-workflow's top-level container. Everything is parameterised under
-``config["image_sims"]`` -- the two ``sif`` keys, repository roots, data roots,
-the PSF dictionary, the explicit ``tile_ids`` list and the sim/calibration
-knobs -- so a fresh user drives it from config alone, with no hard-coded clone
-layout.  Configuration is fail-fast: a schema check at load rejects an unknown
-key (typo) and a missing science key (see ``workflow/image_sims/config.yaml``
-for the operational/science split).  The ``PYTHONPATH`` override injects both
-repos' ``src`` so the *branch* source (ShapePipe's ``#766`` build;
-sp_validation's ``image_sims.py``, ``catalog.match_catalogs_radec``) wins over
-whatever is baked into the image.
+One image runs the whole chain: the sp_validation image is built ``FROM`` the
+ShapePipe image, so it carries both stacks.  Everything else is parameterised
+under ``config["image_sims"]`` -- repository roots, data roots, the PSF
+dictionary, the explicit ``tile_ids`` list and the sim/calibration knobs -- so
+a fresh user drives it from config alone.  Configuration is fail-fast: a schema
+check at load rejects an unknown key (typo) and a missing science key (see
+``workflow/image_sims/config.yaml`` for the operational/science split).
 
 The five simulations per grid are the reference ``1z2z`` (no input shear) plus
 the ``+/-`` shear pairs ``1p2z``/``1m2z`` (g1) and ``1z2p``/``1z2m`` (g2); the
@@ -48,24 +20,15 @@ m-bias estimator matches each to the reference by RA/Dec.
 """
 
 import os
-from pathlib import Path
 
 IMSIM = config["image_sims"]
 
 # --- fail-fast schema check ----------------------------------------------
-# One home for every fact: the run config carries the science knobs, the
-# workflow config.yaml carries the operational defaults, and *this* block is
-# where a typo or a missing knob dies -- at DAG parse, before any compute.
+# An unknown key under ``image_sims:`` is a hard error (typo protection); a
+# missing key is a hard error naming it.  Both fire at DAG parse, before compute.
 #
-# Every key must be declared below.  An unknown key under ``image_sims:`` is a
-# hard error (typo protection); a missing *science* key is a hard error naming
-# the key (no silent code default anywhere).  Operational keys default in the
-# workflow config.yaml and nowhere else: the .smk reads them as bare
-# ``IMSIM[key]`` (never ``.get`` with a second literal), so their value comes
-# from config.yaml alone -- the single home for an operational default.
-#
-# Science keys: required from the *run* config; no default in config.yaml (only
-# a commented template line) and no default in code.  These fix the estimator's
+# Science keys: required from the *run* config; no default here or in
+# config.yaml (only a commented template line).  These fix the estimator's
 # scientific behaviour, so they must be stated per run, never inherited.
 _SCIENCE_KEYS = {
     "w_cols",
@@ -75,14 +38,13 @@ _SCIENCE_KEYS = {
     "bootstrap_seed",
     "mask_config",
 }
-# Deprecated science keys: accepted (so a pre-``w_cols`` run config still parses
-# and the estimator's back-compat path runs) but not *required* -- our configs
-# state ``w_cols``.  Listed here only to keep them out of the unknown-key error.
+# Deprecated but still accepted, so a pre-``w_cols`` run config keeps parsing
+# into the estimator's back-compat path.
 _DEPRECATED_KEYS = {
     "w_col",
 }
-# Operational keys: default (visibly) in the workflow config.yaml; the .smk
-# reads them bare, so config.yaml is their one home.
+# Operational keys: default in the workflow config.yaml; the .smk reads them
+# bare (never ``.get`` with a literal), so config.yaml is their one home.
 _OPERATIONAL_KEYS = {
     "sims_type",
     "branches",
@@ -96,7 +58,6 @@ _OPERATIONAL_KEYS = {
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
     "sif",
-    "sif_pipeline",
     "shapepipe_repo",
     "sp_validation_repo",
     "grids_base",
@@ -130,16 +91,12 @@ if _missing_structural:
         f"{_missing_structural} -- set them in the run config"
     )
 
-# --- containers -----------------------------------------------------------
-# Two images (see module docstring): the ShapePipe image for the pipeline and
-# merge stages, the sp_validation image for everything downstream.  Collapse
-# back to one image once sp_validation's env is lock-managed.  Each compute
-# rule below carries its own ``container: SIF`` / ``container: SIF_PIPELINE``
-# directive; the bind mounts these images need are the driving profile's
-# ``apptainer-args`` (workflow/profiles/candide/config.yaml), not a value read
-# from this config -- there is no per-rule bind string left to own.
-SIF = IMSIM["sif"]  # sp_validation stages
-SIF_PIPELINE = IMSIM["sif_pipeline"]  # ShapePipe stages
+# --- container ------------------------------------------------------------
+# Every compute rule carries ``container: SIF`` rather than inheriting a
+# module-level default: these rules are also included from the top-level
+# workflow/Snakefile, whose module default is the cosmology image (no ShapePipe
+# stack).  Binds come from the driving profile's ``apptainer-args``.
+SIF = IMSIM["sif"]
 
 # --- repositories (bound into the image; branch code overrides) -----------
 SHAPEPIPE_REPO = IMSIM["shapepipe_repo"]
@@ -187,42 +144,25 @@ CALIBRATE = IMSIM["calibrate_script"]
 COMPUTE_M_BIAS = f"{SPV_REPO}/scripts/compute_m_bias_image_sims.py"
 
 # --- in-command env prefix -------------------------------------------------
-# One prefix *shape* for every stage, now expressed as plain shell
-# ``VAR=value`` / ``env -u`` syntax at the front of each rule's ``shell:``
-# string rather than as ``apptainer exec --env``/``-u`` flags -- Snakemake
-# wraps the whole shell string inside the container (see each rule's
-# ``container:``), so setting/unsetting the vars as the first shell tokens
-# lands them exactly where the ``--env``/``-u`` flags used to, with no
-# apptainer-specific mechanism required. Three things it does:
+# Snakemake wraps each rule's whole ``shell:`` string inside the container, so
+# these ``VAR=value`` tokens land inside it. Three settings:
 #
-#   * PYTHONPATH prepends BOTH repos' ``src`` (ShapePipe first, then
-#     sp_validation), so Python resolves the worktree build before
-#     ``/app``/``/sp_validation`` -- the local-testing counterpart of the
-#     git-ref deps, letting the branch code run without an image rebuild.  This
-#     covers the Python *packages* only: the bash entry points (run_job) and
-#     the ShapePipe/sp_validation *scripts* are still invoked at the repo paths
-#     resolved from config (RUN_JOB, CREATE_FINAL_CAT, EXTRACT_INFO, ...), not
-#     shadowed by PYTHONPATH.
+#   * PYTHONPATH prepends both repos' ``src`` so Python resolves the worktree
+#     build ahead of the copies baked into the image -- the branch's code runs
+#     without an image rebuild. Packages only: the bash and python entry points
+#     are invoked at the repo paths from config (RUN_JOB, CREATE_FINAL_CAT,
+#     EXTRACT_INFO, ...), not shadowed by PYTHONPATH.
 #   * PSF_DICT points the fake_psf module (PSF_DICT_PATH = $PSF_DICT, expanded
 #     via getexpanded) at this run's PSF dictionary.
-#   * The SLURM env vars are stripped (``env -u ...``) so that when the
-#     ShapePipe pipeline stage's OpenMPI initialises inside the image it does
-#     not try to attach to the host SLURM launcher (cf. apptainer_noslurm.sh).
-#     The strip is harmless for the pure-Python sp_validation stages, so one
-#     prefix serves all.
-#
-# ``OMP_NUM_THREADS=1`` rides the same prefix, and not the SLURM profile, for
-# the same reason as before: the chain is MPI-free (Snakemake fans out one job
-# per branch x tile; parallelism inside a job is ShapePipe's own
-# ``-N n_smp``), so the OpenMP/BLAS thread pool must be pinned to 1 to avoid
-# oversubscription, and the slurm executor's ``--export=ALL`` only propagates
-# the *driver's* ambient environment, not a value a profile could pin.  Setting
-# it here, inside the command every rule actually runs, keeps it committed and
-# independent of both the driver's env and which container wraps the job.
+#   * OMP_NUM_THREADS=1 rides here rather than in the SLURM profile: the chain
+#     is MPI-free (Snakemake fans out one job per branch x tile; in-job
+#     parallelism is ShapePipe's own ``-N n_smp``), so the OpenMP/BLAS pool must
+#     be pinned to 1 to avoid oversubscription, and a profile can only set CLI
+#     flags, never the driver env the slurm executor's ``--export=ALL``
+#     propagates.
 _ENV_PREFIX = (
     f"PYTHONPATH={SHAPEPIPE_REPO}/src:{SPV_REPO}/src "
     f"PSF_DICT={PSF_DICT} OMP_NUM_THREADS=1 "
-    "env -u SLURM_JOBID -u SLURM_JOB_ID -u SLURM_PROCID "
 )
 
 JOB_MASK = sum([1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048])
@@ -352,22 +292,17 @@ rule im_init:
 
 
 rule im_pipeline:
-    """Run ShapePipe on one simulated tile (ShapePipe stage).
+    """Run ShapePipe on one simulated tile.
 
     Delegates the module DAG to ShapePipe's own job runner; the sentinel log
-    marks tile completion for the merge step.  This is the compute-heavy,
-    MPI-bearing stage.
+    marks tile completion for the merge step.  The compute-heavy stage.
     """
     input:
-        # ``params.py`` is a *tracked* output of ``im_init``, so this one input
-        # supplies the im_init -> im_pipeline edge. The ``cfis`` symlink the
-        # shell reads (via {RUN_JOB}) is created by that same im_init shell block
-        # as an *untracked* side effect -- no rule declares it as an output
-        # (snakemake will not track a symlink/directory output). Declaring it an
-        # input here therefore asked the DAG for a file no rule produces: on a
-        # fresh grids_base it aborted the build with MissingInputException before
-        # any job ran. It is safe to drop -- cfis exists whenever params does,
-        # since im_init stages both together.
+        # params.py alone supplies the im_init -> im_pipeline edge.  The `cfis`
+        # symlink {RUN_JOB} also reads is an untracked side effect of the same
+        # im_init shell (snakemake will not track a symlink output), so it must
+        # not be declared here -- doing so asks the DAG for a file no rule
+        # produces and aborts on a fresh grids_base.
         params=f"{GRIDS_BASE}/{{sim}}/params.py",
     output:
         done=touch(f"{GRIDS_BASE}/{{sim}}/logs/pipeline_{{tile}}.done"),
@@ -379,7 +314,7 @@ rule im_pipeline:
         mem_mb=16000,
         runtime=720,
     container:
-        SIF_PIPELINE
+        SIF
     shell:
         "cd {params.run_dir} && "
         "{_ENV_PREFIX} bash {RUN_JOB} "
@@ -403,7 +338,7 @@ rule im_merge:
     params:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
     container:
-        SIF_PIPELINE
+        SIF
     shell:
         "cd {params.run_dir} && "
         "{_ENV_PREFIX} python {CREATE_FINAL_CAT} "
@@ -453,18 +388,8 @@ rule im_calibrate:
 
 
 rule im_mbias_config:
-    """Assemble ``m_bias_config.yaml`` -- the manifest's shear/branch facts,
-    this run's science knobs, and git/container provenance -- ahead of the
-    m-bias compute step.
-
-    Pure host-side introspection (``git -C``, a plain-text scan of the SIFs'
-    OCI labels, PyYAML) -- no sp_validation/ShapePipe import, so it stays a
-    ``run:`` block with no container.  Snakemake never containerizes ``run:``
-    regardless of a rule's ``container:`` directive, which is exactly why this
-    step is split out of the compute rule below rather than left as a
-    ``run:`` block that shells out to ``{EXEC}`` at the end: a ``run:`` rule
-    can't carry the container the *compute* actually needs, but a ``shell:``
-    rule can.
+    """Assemble ``m_bias_config.yaml`` for the m-bias step: the manifest's
+    shear/branch facts, this run's science knobs, and git/container provenance.
     """
     input:
         manifest=MANIFEST,
@@ -478,7 +403,6 @@ rule im_mbias_config:
         num=NUM,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
         sif=SIF,
-        sif_pipeline=SIF_PIPELINE,
         shapepipe_repo=SHAPEPIPE_REPO,
         sp_validation_repo=SPV_REPO,
         results_dir=f"{GRIDS_BASE}/results",
@@ -489,107 +413,17 @@ rule im_mbias_config:
         n_bootstrap=IMSIM["n_bootstrap"],
         pair_match=IMSIM["pair_match"],
         bootstrap_seed=IMSIM["bootstrap_seed"],
-    run:
-        import hashlib
-        import re
-        import subprocess
-
-        import yaml
-
-        with open(input.manifest) as fh:
-            manifest = yaml.safe_load(fh)
-
-        def _git(repo, *args):
-            """Read a git fact from ``repo``; ``None`` if it is not a checkout."""
-            try:
-                return subprocess.run(
-                    ["git", "-C", repo, *args],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                ).stdout.strip()
-            except (subprocess.CalledProcessError, FileNotFoundError):
-                return None
-
-        def _sif_revision(sif_path):
-            """GHCR revision baked into the SIF's OCI labels.
-
-            A plain-text scan of the image file (login-safe: no exec, no
-            container start), reading org.opencontainers.image.revision -- the
-            source commit GHCR built the image from.  ``None`` if absent.
-            """
-            try:
-                with open(sif_path, "rb") as fh:
-                    blob = fh.read()
-            except OSError:
-                return None
-            m = re.search(
-                rb'org\.opencontainers\.image\.revision"?[:=]"?([0-9a-f]{7,40})',
-                blob,
-            )
-            return m.group(1).decode() if m else None
-
-        # Manifest hash: sha256 of the exact bytes im_manifest wrote, so the
-        # result records which injected-shear facts it was computed against.
-        with open(input.manifest, "rb") as fh:
-            manifest_sha256 = hashlib.sha256(fh.read()).hexdigest()
-
-        provenance = {
-            "manifest_sha256": manifest_sha256,
-            "sp_validation": {
-                "branch": _git(params.sp_validation_repo, "rev-parse", "--abbrev-ref", "HEAD"),
-                "commit": _git(params.sp_validation_repo, "rev-parse", "HEAD"),
-            },
-            "shapepipe": {
-                "branch": _git(params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"),
-                "commit": _git(params.shapepipe_repo, "rev-parse", "HEAD"),
-            },
-            "containers": {
-                "sif": params.sif,
-                "ghcr_revision": _sif_revision(params.sif),
-                "sif_pipeline": params.sif_pipeline,
-                "ghcr_revision_pipeline": _sif_revision(params.sif_pipeline),
-            },
-        }
-
-        os.makedirs(params.results_dir, exist_ok=True)
-        # Emit *every* key the estimator requires -- pair_match and
-        # bootstrap_seed included.  Requiring a key without emitting it would
-        # be a KeyError at run time, so the generated config is the complete
-        # contract between rule and estimator.  ``provenance`` rides along as a
-        # top-level block: the compute script copies it verbatim into the output
-        # results yaml, so a result file is self-describing (which manifest,
-        # which repo commits, which container built the number).
-        mbias_cfg = {
-            "grids_dir": params.grids_base,
-            "num": params.num,
-            "catalog_name": params.cat_name,
-            # Injected shear: from the manifest, the single source of truth.
-            "shear_amplitude": manifest["shear_amplitude"],
-            "branches": list(manifest["branches"]),
-            "pairs": manifest["pairs"],
-            "match_radius_deg": params.match_radius_deg,
-            "w_cols": list(params.w_cols),
-            "pair_match": params.pair_match,
-            "n_bootstrap": params.n_bootstrap,
-            "bootstrap_seed": params.bootstrap_seed,
-            "results_dir": params.results_dir,
-            "output_path": params.results,
-            "provenance": provenance,
-        }
-        with open(output.cfg, "w") as fh:
-            yaml.safe_dump(mbias_cfg, fh)
+    container:
+        SIF
+    script:
+        "../scripts/im_mbias_config.py"
 
 
 rule im_mbias:
     """Multiplicative/additive shear bias from the calibrated grids.
 
-    Produces the workflow's headline artifact, ``m_bias_results.yaml``, by
-    running the estimator against the config ``im_mbias_config`` assembled
-    (manifest's shear/branch facts, science knobs, provenance) -- the one
-    sp_validation-stage compute call in the chain, so it is the one place a
-    real ``container:``/``shell:`` split (rather than a ``run:`` block's
-    trailing ``shell()``) is required to containerize it at all.
+    Produces the workflow's headline artifact, ``m_bias_results.yaml``, running
+    the estimator against the config ``im_mbias_config`` assembled.
     """
     input:
         cfg=f"{GRIDS_BASE}/results/m_bias_config.yaml",
