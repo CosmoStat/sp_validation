@@ -211,16 +211,20 @@ class PSFSystematicsMixin:
 
     def calculate_objectwise_leakage(self, tomography=False):
         # TODO: Upgrade for tomography
-
-        # TODO: remove and save the results of the scale-dependent leakage independently
-        if not hasattr(self.results[self.versions[0]], "alpha_leak_mean"):
-            self.calculate_scale_dependent_leakage()
+        # Get the tomographic bins
+        tomo_bins = self._get_tomo_bins_for_versions(
+            self.versions, tomography=tomography
+        )
 
         self.print_start("Object-wise leakage:")
         mix = True
         order = "lin"
+        if not hasattr(self, "leakage_coeff"):
+            self.leakage_coeff = {}
         for ver in self.versions:
             self.print_magenta(ver)
+
+            self.leakage_coeff.setdefault(ver, {})
 
             results_obj = self.results_objectwise[ver]
             results_obj.check_params()
@@ -230,50 +234,48 @@ class PSFSystematicsMixin:
             # Skip read_data() and copy catalogue from scale leakage instance instead
             # results_obj._dat = self.results[ver].dat_shear
 
-            out_base = results_obj.get_out_base(mix, order)
-            out_path = f"{out_base}.pkl"
-            if os.path.exists(out_path):
-                self.print_green(
-                    f"Skipping object-wise leakage, file {out_path} exists"
-                )
-                results_obj.par_best_fit = leakage.read_from_file(out_path)
-            else:
-                self.print_cyan("Computing object-wise leakage regression")
+            # Iterate on the tomographic bins for this version
+            for tomo_bin_id in tomo_bins[ver]["ids"]:
+                if tomo_bin_id == "all":
+                    selection = None
+                else:
+                    selection = self._get_galaxy_mask(ver, tomo_bin_id)
 
-            # Run
-            with results_obj.temporarily_read_data():
-                try:
-                    results_obj.PSF_leakage()
-                except KeyError as e:
-                    print(f"{e}\nExpected key is missing from catalog.")
-                    # remove the results object for this version
-                    self.results_objectwise.pop(ver)
+                suffix = f"tomo_bin_{tomo_bin_id}"
 
-        # Gather coefficients
-        leakage_coeff = {}
-        for ver in self.results_objectwise:
-            results = self.results[ver]
-            par_best_fit = self.results_objectwise[ver].par_best_fit
+                out_base = results_obj.get_out_base(mix, order, suffix=suffix)
+                out_path = f"{out_base}.pkl"
+                if os.path.exists(out_path):
+                    self.print_green(
+                        f"Skipping object-wise leakage, file {out_path} exists"
+                    )
+                    results_obj.par_best_fit = leakage.read_from_file(out_path)
+                else:
+                    self.print_cyan("Computing object-wise leakage regression")
 
-            # Object-wise leakage
-            a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
-            a22 = ufloat(par_best_fit["a22"].value, par_best_fit["a22"].stderr)
-            leakage_coeff[ver] = {
-                "a11": a11,
-                "a22": a22,
-                "aii_mean": 0.5 * (a11 + a22),
-                # Scale-dependent leakage: mean
-                "alpha_mean": ufloat(results.alpha_leak_mean, results.alpha_leak_std),
-                # Scale-dependent leakage: value at smallest scale
-                "alpha_1": ufloat(results.alpha_leak[0], results.sig_alpha_leak[0]),
-                # Scale-dependent leakage: value extrapolated to 0 using affine model
-                "alpha_0": ufloat(
-                    results.alpha_affine_best_fit["c"].value,
-                    results.alpha_affine_best_fit["c"].stderr,
-                ),
-            }
+                    # Run
+                    with results_obj.temporarily_read_data(selection=selection):
+                        try:
+                            results_obj.PSF_leakage(suffix=suffix)
 
-        self.leakage_coeff = leakage_coeff
+                            # Gather coefficients
+
+                        except KeyError as e:
+                            print(f"{e}\nExpected key is missing from catalog.")
+                            # remove the results object for this version
+                            self.results_objectwise.pop(ver)
+                            continue
+
+                par_best_fit = results_obj.par_best_fit
+
+                # Object-wise leakage
+                a11 = ufloat(par_best_fit["a11"].value, par_best_fit["a11"].stderr)
+                a22 = ufloat(par_best_fit["a22"].value, par_best_fit["a22"].stderr)
+                self.leakage_coeff[ver][f"tomo_bin_{tomo_bin_id}"] = {
+                    "a11": a11,
+                    "a22": a22,
+                    "aii_mean": 0.5 * (a11 + a22),
+                }
 
     # --- utility functions ---
     def _get_galaxy_mask(self, ver, tomo_bin_id):
