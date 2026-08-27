@@ -23,6 +23,17 @@ The same rules are also included in the main workflow under
 ``if "image_sims" in config``.
 """
 
+import os
+import sys
+
+# Shared helpers from the generic workflow one directory up -- resolve_container
+# in particular, so `sif: null` here falls back to the same image every other
+# entry point runs. Snakemake's `include:` shares Python globals, so
+# image_sims.smk sees this import.
+sys.path.insert(0, os.path.realpath(os.path.join(str(workflow.basedir), "..")))
+import common
+
+
 configfile: "workflow/image_sims/config.yaml"
 
 
