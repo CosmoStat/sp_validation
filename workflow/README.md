@@ -106,26 +106,10 @@ snakemake --profile workflow/profiles/candide --config checkout_pythonpath=false
 Either way the checkout has to sit under one of the profile's bind mounts to be
 visible inside the job.
 
-### Testing a branch's own image
-
-CI builds and pushes an image for **every** branch, tagged by the sanitized
-branch name (`/` → `-`; see `.github/workflows/deploy-image.yml`). To run a
-branch's image rather than `:develop`:
-
-```bash
-snakemake --profile workflow/profiles/candide \
-    --config container=docker://ghcr.io/cosmostat/sp_validation:my-branch <target>
-```
-
-`container` is a config key read by every entry Snakefile
-(`common.resolve_container`), so it overrides the default everywhere at once.
-Snakemake autopulls the tag, which costs ~15 minutes — do it from a compute node.
-To keep that image around instead, `spv-container pull --tag <uri>` puts it at
-your canonical path, where it becomes the default. Most of the time you need
-none of this:
-the checkout-PYTHONPATH default above already runs your branch's Python against
-the `:develop` dependency stack. Reach for the branch image when the *stack*
-changed (a new dependency, a lockfile bump), not when only `src/` did.
+Most of the time this default is all you need. Reach for a different *image*
+only when the dependency stack changed — a new package, a lockfile bump — not
+when only `src/` did; "Running an image other than your own" below has the
+override.
 
 ### Never write `/automnt/nXXdataN` in a path
 
@@ -210,7 +194,7 @@ accepts all three forms, a sandbox directory included. The tag itself is written
 down once, as
 `CONTAINER_URI` in `sp_validation/container.py`, which `workflow/common.py`
 re-exports; the image-sims `sif:` config key defaults to `null` and resolves the
-same way. Override any of it with `--config container=<uri or .sif>`, or point
+same way. Override any of it with `--config container=...` (below), or point
 somewhere else entirely with `SPV_CONTAINER`.
 
 At launch the workflow prints one advisory line if your image was built from a
@@ -261,16 +245,26 @@ checkout's `HEAD`, naming which layer (sandbox or SIF) it read. The image-sims w
 `m_bias_config.yaml` as `ghcr_revision`, so a result file says which image
 produced the number.
 
-**Running an image of your own** instead of the canonical one:
+#### Running an image other than your own
+
+`container` is a config key read by every entry Snakefile
+(`common.resolve_container`), so one flag overrides the default everywhere at
+once — a local file, or any CI tag:
 
 ```bash
 snakemake --profile workflow/profiles/candide --config container=/path/to/my.sif <target>
+snakemake --profile workflow/profiles/candide \
+    --config container=docker://ghcr.io/cosmostat/sp_validation:my-branch <target>
 ```
 
-For the image-sims workflow, set `image_sims: {sif: /path/to/my.sif}` in your run
-config. Your image has to sit under one of the profile's bind mounts to be
-visible. To run a *branch's* CI image rather than a local file, see "Testing a
-branch's own image" above.
+CI tags an image for **every** branch, by sanitized branch name (`/` → `-`), so
+the second form is how you test a branch's own stack. Snakemake autopulls a tag
+per run directory (~15 minutes — from a compute node); `spv-container pull --tag
+<uri>` instead puts it at your canonical path, where it becomes your default.
+
+For the image-sims workflow, set `image_sims: {sif: ...}` in your run config.
+Either way the image has to sit under one of the profile's bind mounts to be
+visible.
 
 One trap to know: the `script:` directive bind-mounts the host orchestrator's
 `snakemake` into the job and *appends* it to `sys.path`, so a `snakemake`

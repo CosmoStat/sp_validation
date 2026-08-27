@@ -14,10 +14,7 @@
 #     --out <output_dir> [--n-chunks 20] [--n-samples 2000] [--nproc 16]
 set -euo pipefail
 
-WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
-SRC=$WT/src
 . "$(dirname "${BASH_SOURCE[0]}")/container_env.sh"
-SCRIPTS=$WT/papers/bmodes/scripts
 
 VERSION=""; BLIND="A"; CATCONFIG=""; XIREP=""; XIINT=""; COVINT=""; OUT=""
 NCHUNKS=20; NSAMPLES=2000; NPROC="${SLURM_CPUS_PER_TASK:-16}"
@@ -52,11 +49,8 @@ mkdir -p "$OUT/chunks"
 echo "[pure_eb] $NCHUNKS chunks, $NSAMPLES samples, nproc=$NPROC, version=$VERSION blind=$BLIND"
 for i in $(seq 0 $((NCHUNKS-1))); do
   (
-    apptainer exec --bind "$BIND" --env PYTHONPATH="$SRC" \
-      --env OMP_NUM_THREADS=1 --env OPENBLAS_NUM_THREADS=1 --env MKL_NUM_THREADS=1 \
-      --env NUMBA_NUM_THREADS=1 --env NUMEXPR_NUM_THREADS=1 --env VECLIB_MAXIMUM_THREADS=1 \
-      "$CONTAINER" \
-      /usr/local/bin/python "$SCRIPTS/precompute_pure_eb_chunk.py" \
+    SPV_EXEC_EXTRA=$SINGLE_THREAD_ENV
+    spv_python "$PSCRIPTS/precompute_pure_eb_chunk.py" \
       --chunk-id "$i" --n-chunks "$NCHUNKS" --n-samples "$NSAMPLES" \
       --version "$VERSION" --blind "$BLIND" --cat-config "$CATCONFIG" \
       --xi-reporting "$XIREP" --xi-integration "$XIINT" --cov-integration "$COVINT" \
@@ -76,8 +70,7 @@ done
 [ "$missing" -eq 0 ] || { echo "[pure_eb] chunk failures — aborting gather" >&2; exit 1; }
 echo "[pure_eb] all $NCHUNKS chunks done; gathering"
 
-apptainer exec --bind "$BIND" --env PYTHONPATH="$SRC" "$CONTAINER" \
-  /usr/local/bin/python "$SCRIPTS/gather_pure_eb_chunks.py" \
+spv_python "$PSCRIPTS/gather_pure_eb_chunks.py" \
   --version "$VERSION" --blind "$BLIND" \
   --xi-reporting "$XIREP" --xi-integration "$XIINT" \
   --chunks-dir "$OUT/chunks" \

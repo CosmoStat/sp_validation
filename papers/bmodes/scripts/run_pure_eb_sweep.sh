@@ -19,11 +19,7 @@
 #     --out <output_dir> [--blind A] [--versions "v1 v2 ..."]
 set -euo pipefail
 
-WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
 . "$(dirname "${BASH_SOURCE[0]}")/container_env.sh"
-SRC=$WT/src
-WSCRIPTS=$WT/workflow/scripts
-PSCRIPTS=$WT/papers/bmodes/scripts
 
 CONFIG=""; CATCONFIG=""; XISWEEP=""; COVSWEEP=""; OUT=""; BLIND="A"; VERSIONS=""
 while [ $# -gt 0 ]; do
@@ -41,10 +37,7 @@ done
 
 mkdir -p "$OUT"
 
-if [ -z "$VERSIONS" ]; then
-  VERSIONS=$(apptainer exec --bind "$BIND" --env PYTHONPATH="$SRC" "$CONTAINER" \
-    /usr/local/bin/python "$PSCRIPTS/sweep_versions.py" --config "$CONFIG")
-fi
+VERSIONS=$(sweep_versions "$CONFIG")
 
 for ver in $VERSIONS; do
   xirep="$XISWEEP/${ver}_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.txt"
