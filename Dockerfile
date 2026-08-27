@@ -70,10 +70,13 @@ ARG CSL_REPO=https://github.com/sachaguer/cosmosis-standard-library.git
 ARG CSL_REF=b26fa7ff666ab4d607b2e32e36f799a53bfb1d9c
 ENV CSL_DIR=/opt/cosmosis-standard-library
 
-# `source cosmosis-configure` is CSL's documented way to build against a
-# pip-installed cosmosis: the script ships with the cosmosis package and exports
-# COSMOSIS_SRC_DIR, which every CSL Makefile includes its compiler config from.
-# bash, not sh, because that script is bash.
+# `python -m cosmosis.configure` emits the exports (COSMOSIS_SRC_DIR et al.)
+# every CSL Makefile includes its compiler config from. Evaluated directly
+# rather than through the `cosmosis-configure` wrapper: that wrapper's
+# am-I-sourced probe reads unset zsh/ksh variables, which `set -u` turns into
+# an error, and its `exit` then ends the sourcing shell with status 0 — make
+# never runs and the layer still "succeeds". The trailing `test -f` keeps any
+# such silent no-op loud.
 #
 # `make -C shear` rather than a bare `make`: the top-level target also descends
 # into likelihood/, which builds the Planck, WMAP and ACT likelihoods -- large,
@@ -88,8 +91,10 @@ RUN bash -c 'set -euo pipefail; \
     git clone --filter=blob:none "$CSL_REPO" "$CSL_DIR"; \
     cd "$CSL_DIR"; \
     git checkout --detach "$CSL_REF"; \
-    source cosmosis-configure; \
-    make -C shear'
+    cmds=$(python -m cosmosis.configure); \
+    eval "$cmds"; \
+    make -C shear; \
+    test -f shear/cl_to_xi_nicaea/nicaea_interface.so'
 
 # Install sp_validation itself (editable) into the same venv; deps are already
 # satisfied by the sync above.
