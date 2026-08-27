@@ -185,7 +185,7 @@ and a small CLI, `spv-container`, is what puts it there and tells you about it:
 
 ```bash
 spv-container pull          # fetch :develop to the canonical path (~1.5 GB / ~15 min)
-spv-container status        # is it there, which commit was it built from, is it current
+spv-container status        # what is here, which commit it was built from, how current
 spv-container exec <cmd>    # run something inside it, candide binds already applied
 ```
 
@@ -208,11 +208,13 @@ srun --jobid=<id> spv-container pull
 scancel <id>
 ```
 
-**How the workflow finds it.** `container:` resolves to your local `.sif` when
-that file exists, and to the registry tag when it does not (Snakemake accepts
-either, and autopulls a tag into `.snakemake/singularity` under the working
-directory — which works, but re-pulls once per run directory, so `spv-container
-pull` is the path to prefer). The tag itself is written down once, as
+**How the workflow finds it.** One resolution order, shared by the CLI and the
+workflow: your **sandbox** if you have built one (below), else your **`.sif`** if
+you have pulled one, else the **registry tag** — which Snakemake autopulls into
+`.snakemake/singularity` under the working directory. That works, but re-pulls
+once per run directory, so `spv-container pull` is the path to prefer. Snakemake
+accepts all three forms, a sandbox directory included. The tag itself is written
+down once, as
 `CONTAINER_URI` in `sp_validation/container.py`, which `workflow/common.py`
 re-exports; the image-sims `sif:` config key defaults to `null` and resolves the
 same way. Override any of it with `--config container=<uri or .sif>`, or point
@@ -223,6 +225,36 @@ commit behind your checkout. It never fails the run — an older image is normal
 fine, since the checkout's `src/` is what rules import (see above). It matters
 when the *dependency stack* moved: a new package, a lockfile bump.
 
+#### When you need to install something: the sandbox
+
+The pristine SIF is read-only, which is what you want almost always — it is
+exactly the published image, and two people running it run the same thing. But
+mid-analysis you sometimes need a package the image does not carry yet, and
+rebuilding through CI to find out whether it helps is too slow a loop.
+
+For that, unpack the image into a writable directory once:
+
+```bash
+spv-container sandbox                        # ~/.cache/sp_validation/sandbox/
+spv-container exec --writable pip install <pkg>
+```
+
+Writes into a sandbox persist. It is opt-in — nothing builds one for you — and
+once it exists **it takes precedence over the SIF everywhere, workflow jobs
+included**, so a package you install this way is available to your Snakemake runs
+without any further wiring. Jobs exec it read-only; only `--writable` writes.
+
+The cost is that what you are running is no longer fully described by a revision
+label. `spv-container status` says which layer is live and flags that, and the
+workflow prints one line at launch when a sandbox is in play — the divergence is
+visible, never silent. When you are done exploring, either fold the dependency
+into `pyproject.toml` (the real fix) or reset to a clean image:
+
+```bash
+spv-container pull                  # refresh the pristine SIF
+spv-container sandbox --force       # discard the sandbox, rebuild from it
+```
+
 **Where the image comes from.** CI (`.github/workflows/deploy-image.yml`) builds
 it on every push, `FROM ghcr.io/cosmostat/shapepipe:im_sims` with `uv sync
 --frozen` against `uv.lock`, and publishes to `ghcr.io/cosmostat/sp_validation`
@@ -232,7 +264,7 @@ publishing a new image changes nothing until you pull again.
 
 `spv-container status` reads `org.opencontainers.image.revision` — the
 sp_validation commit the image was built from — and places it against your
-checkout's `HEAD`. The image-sims workflow records the same label in
+checkout's `HEAD`, naming which layer (sandbox or SIF) it read. The image-sims workflow records the same label in
 `m_bias_config.yaml` as `ghcr_revision`, so a result file says which image
 produced the number.
 

@@ -11,9 +11,10 @@ from pathlib import Path
 REPO_SRC = Path(__file__).resolve().parent.parent / "src"
 
 # The container model lives in the package (``sp_validation/container.py``): the
-# registry tag, this user's canonical ``.sif`` path, and the ``spv-container``
-# CLI that fills it. Taken from *this checkout's* src/, so the workflow and the
-# CLI can never disagree about either.
+# registry tag, this user's canonical image paths, and the ``spv-container`` CLI
+# that fills them. Taken from *this checkout's* src/, so the workflow and the CLI
+# can never disagree -- in particular they share one resolution order, which is
+# what lets a package installed into a sandbox ride along into workflow jobs.
 #
 # Loaded by file path rather than as ``sp_validation.container``: snakemake runs
 # on the host, where sp_validation is usually not installed, and importing the
@@ -30,7 +31,9 @@ _container.__loader__.exec_module(_container)
 CONTAINER_URI = _container.CONTAINER_URI
 compare_revision = _container.compare_revision
 image_revision = _container.image_revision
+local_sandbox = _container.local_sandbox
 local_sif = _container.local_sif
+resolve_image = _container.resolve_image
 
 
 # Output roots are env-overridable so a reproduction run can write into a
@@ -115,35 +118,50 @@ def inject_checkout_pythonpath(workflow_config):
 def resolve_container(workflow_config):
     """Return the image every rule should run in.
 
-    Your own ``.sif`` if you have pulled one (``spv-container pull``), else the
-    registry tag -- which Snakemake autopulls into ``.snakemake/singularity``
-    under the working directory. Snakemake's ``container:`` accepts either form.
-    ``--config container=...`` overrides both and takes either a ``docker://``
-    tag (to test a branch's own CI image) or a path to a local ``.sif``.
+    The same order ``spv-container`` uses, so jobs run what interactive work
+    runs: your writable sandbox if you have built one, else your pristine
+    ``.sif`` if you have pulled one, else the registry tag -- which Snakemake
+    autopulls into ``.snakemake/singularity`` under the working directory.
+    Snakemake's ``container:`` accepts all three (a sandbox directory included).
+    ``--config container=...`` overrides everything and takes a ``docker://``
+    tag, a ``.sif`` path, or a sandbox directory.
     """
     override = workflow_config.get("container")
     if override:
         return str(override)
-    sif = local_sif()
-    return str(sif) if sif.exists() else CONTAINER_URI
+    return resolve_image()[0]
 
 
 def warn_if_image_stale():
-    """Print one line if this user's image predates the checkout.
+    """Print one advisory line about a local image that is not pristine or current.
 
-    Advisory only, and never fatal: an older image is usually fine, because the
-    checkout's ``src/`` is what rules import (inject_checkout_pythonpath). It
-    matters when the *dependency stack* moved -- a new package, a lockfile bump.
+    Never fatal. Two things worth saying at launch:
+
+    * a sandbox is in play, so what jobs run is not fully described by any
+      revision label -- somebody installed into it on purpose, and that is the
+      point, but it should not be a silent difference from a clean run;
+    * the image predates the checkout. Usually fine, because the checkout's
+      ``src/`` is what rules import (inject_checkout_pythonpath); it matters when
+      the *dependency stack* moved -- a new package, a lockfile bump.
+
     Silent when there is no local image, no apptainer, or no revision label.
     """
-    sif = local_sif()
-    if not sif.exists():
+    image, kind = resolve_image()
+    if kind == "tag":
         return
-    revision = image_revision(sif)
+    revision = image_revision(image)
+    if kind == "sandbox":
+        built = f"built from {revision[:12]}" if revision else "revision unknown"
+        print(
+            f"[container] running the writable sandbox at {image} ({built}). "
+            "Anything installed into it is part of this run; "
+            "`spv-container status` for detail.",
+            file=sys.stderr,
+        )
     if compare_revision(revision) == "behind":
         print(
-            f"[container] {sif.name} was built from {revision[:12]}, which is behind "
-            "this checkout. Fine unless the dependency stack moved; refresh with "
+            f"[container] image was built from {revision[:12]}, which is behind this "
+            "checkout. Fine unless the dependency stack moved; refresh with "
             "`spv-container pull`.",
             file=sys.stderr,
         )

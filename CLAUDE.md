@@ -84,9 +84,14 @@ every push, and each person keeps their own copy at
 
 ```bash
 spv-container pull            # fetch :develop there (do it from a compute node)
-spv-container status          # which commit it was built from, vs. your checkout
+spv-container status          # which layer is live, and how current it is
 spv-container exec <command>  # one-off run inside it
 ```
+
+Need a package the image lacks mid-analysis? Unpack a writable sandbox once with
+`spv-container sandbox`, then `spv-container exec --writable pip install <pkg>`.
+The sandbox then takes precedence over the SIF everywhere, workflow jobs
+included; `spv-container pull && spv-container sandbox --force` resets it clean.
 
 Every rule runs inside that image, wrapped by Snakemake itself (`--profile
 workflow/profiles/candide` on the cluster, `workflow/profiles/default -j N`

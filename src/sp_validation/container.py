@@ -1,15 +1,30 @@
 """Manage this user's local copy of the sp_validation container image.
 
-Everyone runs their own image file. There is no shared image directory and no
-symlink to keep honest: the canonical path is under your own cache
-(``~/.cache/sp_validation/sp_validation.sif``), you refresh it when you want to,
-and nobody else's refresh moves the ground under a running job.
+Everyone runs their own image. There is no shared image directory and no symlink
+to keep honest: the canonical paths are under your own cache, you refresh them
+when you want to, and nobody else's refresh moves the ground under a running job.
 
-Three subcommands, exposed as the ``spv-container`` console script::
+There are two layers, and you only need the second when you want it:
 
-    spv-container pull            # fetch the tag to the canonical path
-    spv-container status          # is it there, and which commit is it?
-    spv-container exec <cmd...>   # run something inside it
+* the **SIF** (``~/.cache/sp_validation/sp_validation.sif``) -- a pristine,
+  read-only copy of the published image. This is the default and the normal case.
+* an optional **sandbox** (``~/.cache/sp_validation/sandbox/``) -- the same image
+  unpacked into a writable directory, so ``pip install`` inside it sticks. This
+  is the escape hatch for exploratory work that needs a package the image does
+  not carry yet, and it is opt-in: nothing builds one for you.
+
+Subcommands, exposed as the ``spv-container`` console script::
+
+    spv-container pull                     # fetch the tag to the canonical path
+    spv-container status                   # what is here, and how current is it
+    spv-container sandbox                  # unpack the SIF into a writable dir
+    spv-container exec <cmd...>            # run something inside it
+    spv-container exec --writable <cmd...> # ... with writes that persist
+
+Everything resolves the same image in the same order -- **sandbox if it exists,
+else the SIF, else the registry tag** -- and that includes the Snakemake
+workflow, so a package you installed into your sandbox is there for your
+workflow jobs too.
 
 This module is deliberately **stdlib-only** (``argparse``/``subprocess``/
 ``pathlib``). It runs on the *host*, outside the container, where the science
@@ -32,13 +47,14 @@ from pathlib import Path
 # here, once.
 CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
 
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", "~/.cache")) / "sp_validation"
+
 # Where this user's image lives. Per-user by construction: one file, one owner,
 # no coordination. Override with ``SPV_CONTAINER`` (an absolute path).
-DEFAULT_SIF = (
-    Path(os.environ.get("XDG_CACHE_HOME", "~/.cache"))
-    / "sp_validation"
-    / "sp_validation.sif"
-)
+DEFAULT_SIF = CACHE_DIR / "sp_validation.sif"
+
+# The optional writable unpacking of that image. Override with ``SPV_SANDBOX``.
+DEFAULT_SANDBOX = CACHE_DIR / "sandbox"
 
 # Bind mounts for interactive `exec`. candide's disks; override wholesale with
 # ``SPV_APPTAINER_BINDS`` or per-call with ``--bind``.
@@ -50,6 +66,29 @@ def local_sif():
     override = os.environ.get("SPV_CONTAINER")
     path = Path(override) if override else DEFAULT_SIF
     return path.expanduser()
+
+
+def local_sandbox():
+    """Return this user's writable sandbox directory (may not exist)."""
+    override = os.environ.get("SPV_SANDBOX")
+    path = Path(override) if override else DEFAULT_SANDBOX
+    return path.expanduser()
+
+
+def resolve_image():
+    """Return ``(path_or_uri, kind)`` for the image everything should run.
+
+    The one resolution order, shared by the CLI and the workflow: the writable
+    sandbox if it exists, else the pristine SIF if it exists, else the registry
+    tag for Snakemake to pull. ``kind`` is ``"sandbox"``, ``"sif"`` or ``"tag"``.
+    """
+    sandbox = local_sandbox()
+    if sandbox.is_dir():
+        return str(sandbox), "sandbox"
+    sif = local_sif()
+    if sif.exists():
+        return str(sif), "sif"
+    return CONTAINER_URI, "tag"
 
 
 def image_labels(sif):
@@ -158,18 +197,105 @@ def cmd_pull(args):
     return 0
 
 
+def cmd_sandbox(args):
+    """Unpack the image into a writable directory -- the opt-in escape hatch."""
+    if shutil.which("apptainer") is None:
+        sys.exit("apptainer is not on PATH")
+    sandbox = local_sandbox()
+    if sandbox.exists() and not args.force:
+        sys.exit(
+            f"sandbox already exists at {sandbox}\n"
+            "pass --force to discard it and rebuild from a clean image"
+        )
+    source = args.source or (
+        str(local_sif()) if local_sif().exists() else CONTAINER_URI
+    )
+    sandbox.parent.mkdir(parents=True, exist_ok=True)
+    print(f"building sandbox from {source}\n     -> {sandbox}")
+    # Build beside the target and swap it in, as `pull` does -- and for a sharper
+    # reason here. A half-written .sif fails loudly, but a half-unpacked sandbox
+    # *directory* is still a directory, so resolve_image() would elect it as the
+    # live image and every job would silently run a broken tree.
+    #
+    # Building first also means a `--force` rebuild that fails (a typo in
+    # --source, a network blip) leaves the sandbox you already had untouched,
+    # rather than deleting a working environment on the way to not replacing it.
+    #
+    # `--fix-perms` so the tree can be deleted again later (apptainer warns about
+    # exactly this otherwise). No `--fakeroot`: an unprivileged build from an
+    # existing image works through user namespaces, which is what candide has.
+    staging = sandbox.with_name(f"{sandbox.name}.build.{os.getpid()}")
+    shutil.rmtree(staging, ignore_errors=True)
+    try:
+        subprocess.run(
+            ["apptainer", "build", "--sandbox", "--fix-perms", str(staging), source],
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        shutil.rmtree(staging, ignore_errors=True)
+        sys.exit(f"sandbox build failed ({exc.returncode}); {sandbox} is unchanged")
+    except (KeyboardInterrupt, OSError):
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+    if sandbox.exists():
+        print(f"replacing {sandbox}")
+        shutil.rmtree(sandbox, ignore_errors=True)
+        if sandbox.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+            sys.exit(f"could not remove {sandbox}; remove it by hand and retry")
+    os.replace(staging, sandbox)
+    print(
+        "\nthis sandbox now takes precedence over the SIF everywhere, including "
+        "workflow jobs.\ninstall into it with: spv-container exec --writable pip "
+        "install <pkg>\nreset to a clean image with: spv-container pull && "
+        "spv-container sandbox --force"
+    )
+    return 0
+
+
 def cmd_status(args):
-    """Report the image's presence, revision, and standing against the checkout."""
+    """Report which image layer is live, its revision, and how current it is."""
     sif = local_sif()
-    if not sif.exists():
-        print(f"no image at {sif}\nrun: spv-container pull")
+    sandbox = local_sandbox()
+    active, kind = resolve_image()
+
+    if sif.exists():
+        print(f"SIF:      {sif} ({sif.stat().st_size / 1e9:.1f} GB)")
+    else:
+        print(f"SIF:      absent ({sif})")
+    if sandbox.is_dir():
+        print(f"sandbox:  {sandbox} (writable; may carry local modifications)")
+    else:
+        print("sandbox:  none")
+
+    if kind == "tag":
+        print(f"\nactive:   {active} (registry tag -- nothing pulled locally)")
+        print("run: spv-container pull")
         return 1
-    size_gb = sif.stat().st_size / 1e9
-    print(f"image:    {sif} ({size_gb:.1f} GB)")
-    labels = image_labels(sif)
+
+    print(f"\nactive:   {active} ({kind})")
+    labels = image_labels(active)
     revision = labels.get("org.opencontainers.image.revision")
-    print(f"revision: {revision or 'unknown'}")
+    source = ""
+    if revision is None and kind == "sandbox" and sif.exists():
+        # Some sandbox trees do not carry the original labels through. The SIF
+        # beside it is the best remaining evidence of what it was built from --
+        # a guess, so it is labelled as one rather than printed as fact.
+        revision = image_revision(sif)
+        if revision:
+            source = " (inferred from the SIF beside it, not read from the sandbox)"
+    print(f"revision: {revision or 'unknown'}{source}")
     print(f"version:  {labels.get('org.opencontainers.image.version', 'unknown')}")
+    if kind == "sandbox":
+        # The revision is the image the sandbox was *built from*; anything
+        # installed into it since is invisible to any label. Say so rather than
+        # let the revision read as a full description of what is running.
+        print(
+            "          (the revision above is what the sandbox was built from; "
+            "anything\n           installed into it since is not reflected in "
+            "any label)"
+        )
     verdict = compare_revision(revision)
     explain = {
         "in-sync": "matches this checkout's HEAD",
@@ -183,16 +309,39 @@ def cmd_status(args):
 
 
 def cmd_exec(args):
-    """Run a command inside the canonical image -- the one-off testing path."""
+    """Run a command inside the image -- the one-off path for humans and agents."""
     if shutil.which("apptainer") is None:
         sys.exit("apptainer is not on PATH")
-    sif = local_sif()
-    if not sif.exists():
-        sys.exit(f"no image at {sif}; run: spv-container pull")
     if not args.command:
         sys.exit("nothing to run; pass a command after `exec`")
     binds = args.bind or os.environ.get("SPV_APPTAINER_BINDS", DEFAULT_BINDS)
-    cmd = ["apptainer", "exec", "--cleanenv", "--bind", binds, str(sif), *args.command]
+
+    if args.writable:
+        # Writes only persist into a sandbox; a SIF is a read-only filesystem, so
+        # `--writable` against one fails obscurely. Say what to do instead.
+        sandbox = local_sandbox()
+        if not sandbox.is_dir():
+            sys.exit(
+                f"--writable needs a sandbox, and there is none at {sandbox}\n"
+                "build one with: spv-container sandbox"
+            )
+        image, extra = str(sandbox), ["--writable"]
+    else:
+        image, kind = resolve_image()
+        if kind == "tag":
+            sys.exit(f"no local image; run: spv-container pull ({image})")
+        extra = []
+
+    cmd = [
+        "apptainer",
+        "exec",
+        *extra,
+        "--cleanenv",
+        "--bind",
+        binds,
+        image,
+        *args.command,
+    ]
     return subprocess.run(cmd).returncode
 
 
@@ -210,11 +359,32 @@ def build_parser():
     )
     p_pull.set_defaults(func=cmd_pull)
 
-    p_status = sub.add_parser("status", help="report the local image and its revision")
+    p_status = sub.add_parser(
+        "status", help="report which image layer is live and how current it is"
+    )
     p_status.set_defaults(func=cmd_status)
+
+    p_sandbox = sub.add_parser(
+        "sandbox", help="unpack the image into a writable directory (opt-in)"
+    )
+    p_sandbox.add_argument(
+        "--source",
+        help="image to unpack (default: the local SIF, or the registry tag)",
+    )
+    p_sandbox.add_argument(
+        "--force",
+        action="store_true",
+        help="discard an existing sandbox and rebuild from a clean image",
+    )
+    p_sandbox.set_defaults(func=cmd_sandbox)
 
     p_exec = sub.add_parser("exec", help="run a command inside the local image")
     p_exec.add_argument("--bind", help=f"bind mounts (default: {DEFAULT_BINDS})")
+    p_exec.add_argument(
+        "--writable",
+        action="store_true",
+        help="run against the sandbox so writes (e.g. pip install) persist",
+    )
     p_exec.add_argument("command", nargs=argparse.REMAINDER)
     p_exec.set_defaults(func=cmd_exec)
 

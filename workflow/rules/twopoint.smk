@@ -45,14 +45,14 @@ rule xi:
 #   Because this rule builds its own apptainer call, reaching the source-cache
 #   copy of the script relies on our `--bind /home` rather than on Snakemake's
 #   automatic mount -- and on a concrete image file, since `apptainer exec`
-#   takes no `docker://` URI. A revived rule should take that file from
-#   `common.local_sif()` (this user's own image, the one `spv-container pull`
-#   writes) rather than name a second image path that can drift.
+#   takes no `docker://` URI. A revived rule should take that path from
+#   `resolve_image()[0]` -- the same local image everything else resolves --
+#   rather than name a second image path that can drift.
 #
 # rule xi_highres:
 #     container: None
 #     params:
-#         image=str(local_sif()),
+#         image=resolve_image()[0],
 #     input:
 #         script=workflow.source_path("../scripts/run_2pcf_highres.py"),
 #     output:

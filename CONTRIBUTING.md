@@ -26,9 +26,16 @@ src/sp_validation/container.py` — pulls it to
 
 ```bash
 spv-container pull       # fetch :develop; ~1.5 GB, so do it from a compute node
-spv-container status     # which commit the image was built from
+spv-container status     # which layer is live, and how current it is
 spv-container exec bash  # an interactive shell inside it
 ```
+
+That image is read-only. When you need a package it does not carry yet, unpack a
+writable sandbox once with `spv-container sandbox` and install into it with
+`spv-container exec --writable pip install <pkg>`; the sandbox then takes
+precedence everywhere, workflow jobs included. Treat it as an exploration tool —
+the real fix is adding the dependency to `pyproject.toml` — and reset it with
+`spv-container pull && spv-container sandbox --force`.
 
 Analysis runs through Snakemake, which wraps every job in `apptainer exec`
 against that same image for you — see
