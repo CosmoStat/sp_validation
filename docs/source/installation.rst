@@ -2,27 +2,59 @@ Installation
 ============
 
 ``sp_validation`` is **not** distributed on PyPI.
-Install it from a pre-built container, or check out the source with ``uv`` when you need to edit it.
+It runs from a pre-built container, managed by the bundled ``spv-container`` CLI; check out the source with ``uv`` only when you need to edit the package itself.
 
-Container (recommended)
------------------------
+Container via ``spv-container`` (recommended)
+---------------------------------------------
 
-Every push to ``develop`` builds an image carrying the full scientific stack and pushes it to the `GitHub Container Registry (GHCR)
-<https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation>`_.
+Every push builds an image carrying the full scientific stack and pushes it to the `GitHub Container Registry (GHCR)
+<https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation>`_, tagged by branch — ``:develop`` tracks the integration branch.
 The image runs on most systems, including HPC clusters, with no further setup.
-
-`Apptainer <https://apptainer.org>`_ (formerly Singularity) is installed on most clusters and is the path we recommend:
+``spv-container`` installs your personal copy of it and manages it from then on:
 
 .. code-block:: bash
 
-   # Pull the image to a single .sif file.
+   git clone https://github.com/CosmoStat/sp_validation.git
+   cd sp_validation
+   ln -s "$PWD/src/sp_validation/container.py" ~/.local/bin/spv-container
+
+   spv-container pull                                    # fetch the image (~1.5 GB)
+   spv-container exec python -c "import sp_validation"   # confirm it works
+
+The symlink works because ``container.py`` is deliberately stdlib-only: it runs on the *host*, where the science stack is not installed.
+(Inside the container the same CLI is on ``PATH`` as a console script.)
+``pull`` requires `Apptainer <https://apptainer.org>`_ (formerly Singularity), which is installed on most clusters, and writes the image to one canonical per-user path, ``~/.cache/sp_validation/sp_validation.sif``.
+Each user owns their copy: you refresh it when you want to, and nobody else's refresh moves the ground under your running jobs.
+On a cluster, run the pull from a compute node — it moves ~1.5 GB.
+
+The subcommands:
+
+.. code-block:: bash
+
+   spv-container pull                     # fetch the published image to the canonical path
+   spv-container status                   # what is here, which commit built it, how current
+   spv-container exec <cmd...>            # run a command inside it (exec bash for a shell)
+   spv-container sandbox                  # unpack into a writable dir, for pip installs
+   spv-container exec --writable <cmd...> # ... with writes that persist
+
+``status`` compares the image's build commit against your checkout's ``HEAD``, so you always know whether a ``pull`` would refresh anything.
+The **sandbox** is the escape hatch for exploratory work that needs a package the image does not carry yet: once built, it takes precedence over the SIF everywhere — Snakemake workflow jobs included — until you reset with ``spv-container pull`` + ``spv-container sandbox --force``.
+
+Everything resolves the image in one order — sandbox if it exists, else your SIF, else the registry tag — and that includes the analysis workflow.
+How the workflow uses the image (Snakemake runs on the host; the profile puts each job in the container) is covered in ``workflow/README.md``.
+
+Other ways to run the image
+---------------------------
+
+The published image is a normal OCI image; ``spv-container`` is a convenience, not a gatekeeper.
+Run it directly with Apptainer:
+
+.. code-block:: bash
+
    apptainer pull sp_validation.sif docker://ghcr.io/cosmostat/sp_validation:develop
-
-   # Open a shell in the container, then confirm the install works.
    apptainer shell sp_validation.sif
-   python -c "import sp_validation"
 
-The image also runs under Docker:
+or with Docker:
 
 .. code-block:: bash
 

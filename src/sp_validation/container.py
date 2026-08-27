@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Manage this user's local copy of the sp_validation container image.
 
 Everyone runs their own image: the canonical paths are under your own cache, you

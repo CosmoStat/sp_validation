@@ -19,9 +19,10 @@ name (see
 `:develop` tracks the integration branch and your branch has an image of its
 own. Nothing is built by hand.
 
-You keep your own copy of the image. `spv-container` — a console script installed
-with the package, and runnable straight from a checkout as `python3
-src/sp_validation/container.py` — pulls it to
+You keep your own copy of the image. `spv-container` — stdlib-only, so it runs
+straight from a checkout: symlink it onto your PATH (`ln -s
+"$PWD/src/sp_validation/container.py" ~/.local/bin/spv-container`, the README's
+install step) or call it as `python3 src/sp_validation/container.py` — pulls it to
 `~/.cache/sp_validation/sp_validation.sif` and runs things inside it:
 
 ```bash

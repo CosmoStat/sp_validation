@@ -168,10 +168,11 @@ spv-container exec <cmd>    # run something inside it, candide binds already app
 
 It ships as a console script with the package, and — being stdlib-only, because
 it has to run on the *host* — also works straight from a checkout with nothing
-installed:
+installed: run `python3 src/sp_validation/container.py`, or put it on your PATH
+once (the README's install step):
 
 ```bash
-python3 src/sp_validation/container.py pull
+ln -s "$PWD/src/sp_validation/container.py" ~/.local/bin/spv-container
 ```
 
 **Do the pull from a compute node**, not the login node: it moves ~1.5 GB and
