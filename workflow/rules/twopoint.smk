@@ -27,8 +27,7 @@ rule xi:
 # PARKED: xi_highres (high-resolution xi for COSEBIS integration). Never
 # runnable as written -- the shell invokes run_2pcf_highres.py bare, but the
 # script has required --cat-config and --out arguments (true in every version
-# since it was introduced). Revive it with those arguments supplied. Keeping it
-# parked leaves covariance_cosmocov as the workflow's only container exception.
+# since it was introduced). Revive it with those arguments supplied.
 #
 # The MPI reasoning below is hard-won and must survive the revival:
 #
@@ -46,15 +45,14 @@ rule xi:
 #   Because this rule builds its own apptainer call, reaching the source-cache
 #   copy of the script relies on our `--bind /home` rather than on Snakemake's
 #   automatic mount -- and on a concrete image file, since `apptainer exec`
-#   takes no `docker://` URI. A revived rule must therefore derive that file
-#   from CONTAINER_URI (Snakemake pulls to `{apptainer-prefix}/{md5(uri)}.simg`;
-#   workflow/scripts/container_path.py does exactly this derivation) rather
-#   than hard-coding a second path that can drift.
+#   takes no `docker://` URI. A revived rule should take that file from
+#   `common.local_sif()` (this user's own image, the one `spv-container pull`
+#   writes) rather than name a second image path that can drift.
 #
 # rule xi_highres:
 #     container: None
 #     params:
-#         image=<local SIF derived from CONTAINER_URI>,
+#         image=str(local_sif()),
 #     input:
 #         script=workflow.source_path("../scripts/run_2pcf_highres.py"),
 #     output:

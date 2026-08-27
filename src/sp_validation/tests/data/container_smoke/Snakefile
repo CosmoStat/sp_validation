@@ -12,9 +12,9 @@
 # See container_smoke.py for what the job checks and why.
 
 
-# Literal rather than workflow/common.py's CONTAINER_URI: this Snakefile is
-# test data, deliberately standalone. test_container_smoke.py asserts the two
-# agree, so drift fails the test rather than the run.
+# Literal rather than the package's CONTAINER_URI: this Snakefile is test data,
+# deliberately standalone. test_container_smoke.py asserts the two agree, so
+# drift fails the test rather than the run.
 container: config.get("container", "docker://ghcr.io/cosmostat/sp_validation:develop")
 
 

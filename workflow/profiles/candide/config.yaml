@@ -11,21 +11,17 @@
 # (``container:`` on the rule or the module-level default in
 # workflow/Snakefile), never a rule's own ``apptainer exec`` shell call.
 # ``software-deployment-method: apptainer`` below turns that wrapping on;
-# ``apptainer-args`` carries the bind mounts every rule needs. Three rules are
-# documented exceptions and keep ``container: None`` -- they are enumerated in
-# workflow/README.md.
+# ``apptainer-args`` carries the bind mounts every rule needs. A few rules call
+# host toolchains and opt out with ``container: None``; each says why in its own
+# docstring.
 #
 # ``snakemake`` itself is a thin host-side tool, pinned via ``uv tool
 # install`` (see workflow/README.md); run it on the host, never inside an
 # ``apptainer shell``.
 #
-# Off candide, use ``--profile workflow/profiles/default -j N`` instead: that
-# profile is the container model with none of the SLURM/machine layer.
-# Snakemake cannot compose profiles -- ``--profile`` takes exactly one directory
-# and there is no ``inherits:`` key -- so the machine-independent settings
-# (marked GENERIC below) are duplicated there verbatim. THE TWO ARE A PAIR:
-# change one, change the other. ``apptainer-args`` and ``apptainer-prefix`` are
-# NOT generic: each machine has its own disks and its own image cache.
+# Snakemake cannot compose profiles, so the machine-independent settings (marked
+# GENERIC below) are duplicated in workflow/profiles/default/config.yaml, for
+# running off candide; change one, change the other.
 
 executor: slurm
 
@@ -42,20 +38,17 @@ rerun-triggers: ["mtime", "params", "input", "code"]
 latency-wait: 5
 # --- end GENERIC ------------------------------------------------------------
 
-# Shared image cache. The entry Snakefiles name a GHCR *tag*; Snakemake pulls it
-# here on first use (once, ~15 min, on the host running snakemake) and every
-# later run reuses the cached SIF. Shared rather than per-run-directory
-# (Snakemake's default is ``.snakemake/singularity``) so one pull serves every
-# workflow and every checkout. ``current.sif`` in this directory is the stable
-# name host-side callers use (workflow/README.md).
-apptainer-prefix: /n17data/cdaley/containers/snakemake-sif
-
+# No ``apptainer-prefix``: everyone runs their own image, at their own canonical
+# path, pulled with ``spv-container pull`` (workflow/README.md). The entry
+# Snakefiles resolve ``container:`` to that file when it exists, so there is
+# nothing for Snakemake to cache.
+#
 # candide's disks, plus the one machine-specific env var: the host OpenMPI libs
 # MPI rules need to find libmpi inside the container (only rules importing
 # mpi4py care; harmless for the rest). This was an ``os.environ[...]`` line in
 # workflow/Snakefile -- a machine path hard-coded into generic workflow code --
-# and belongs here. Kept in sync with the ``app`` bash function's raw
-# ``apptainer exec`` in the top-level UNIONS CLAUDE.md: update both together.
+# and belongs here. The bind list matches ``spv-container exec``'s default; keep
+# the two in step.
 apptainer-args: >-
   --cleanenv
   --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data

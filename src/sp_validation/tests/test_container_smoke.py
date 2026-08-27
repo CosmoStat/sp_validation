@@ -42,11 +42,11 @@ def _reference_eigenvalues() -> np.ndarray:
 
 
 def test_smoke_snakefile_names_the_workflow_image():
-    """The test Snakefile's literal image must track workflow/common.py's."""
+    """The test Snakefile's literal image must track the package's CONTAINER_URI."""
     repo_root = _repo_root()
     uri = re.search(
         r'^CONTAINER_URI = "(.+)"$',
-        (repo_root / "workflow/common.py").read_text(),
+        (repo_root / "src/sp_validation/container.py").read_text(),
         re.MULTILINE,
     ).group(1)
     snakefile = (

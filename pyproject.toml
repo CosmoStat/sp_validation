@@ -112,6 +112,13 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/CosmoStat/sp_validation"
 
+[project.scripts]
+# Host-side management of your own container image (sp_validation.container).
+# Stdlib-only by design -- it has to run on the host, outside the container --
+# so it also works straight from a checkout with nothing installed:
+# `python3 src/sp_validation/container.py status`.
+spv-container = "sp_validation.container:main"
+
 [tool.uv]
 # The reproducibility target is the Linux container; scope the lock to Linux
 # (mirrors shapepipe) so `uv lock` resolves the linux-centric stack (pymaster,

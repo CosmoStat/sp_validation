@@ -1,22 +1,36 @@
 """Shared helpers for the B-modes Snakemake workflow."""
 
+import importlib.util
 import json
 import os
 import re
+import sys
 from pathlib import Path
-
-# The one image every entry point declares, and the single source of truth for
-# it. A registry tag, not a file: Snakemake pulls it into the profile's
-# ``apptainer-prefix`` on first use and reuses the cached copy thereafter (see
-# workflow/README.md). Override anywhere with ``--config
-# container=docker://ghcr.io/cosmostat/sp_validation:<branch>`` (to run a
-# branch's own CI image) or a local ``.sif`` path. Host-side callers that need a
-# concrete file use ``{apptainer-prefix}/current.sif``, the symlink the refresh
-# recipe maintains onto whatever Snakemake last pulled.
-CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
 
 # This checkout's importable source tree: workflow/common.py -> <repo>/src.
 REPO_SRC = Path(__file__).resolve().parent.parent / "src"
+
+# The container model lives in the package (``sp_validation/container.py``): the
+# registry tag, this user's canonical ``.sif`` path, and the ``spv-container``
+# CLI that fills it. Taken from *this checkout's* src/, so the workflow and the
+# CLI can never disagree about either.
+#
+# Loaded by file path rather than as ``sp_validation.container``: snakemake runs
+# on the host, where sp_validation is usually not installed, and importing the
+# package would drag in ``__init__`` -> ``version`` -> a metadata warning on
+# every launch. The module itself is stdlib-only, so this costs nothing.
+_container = importlib.util.module_from_spec(
+    importlib.util.spec_from_file_location(
+        "_spv_container", REPO_SRC / "sp_validation" / "container.py"
+    )
+)
+sys.modules["_spv_container"] = _container
+_container.__loader__.exec_module(_container)
+
+CONTAINER_URI = _container.CONTAINER_URI
+compare_revision = _container.compare_revision
+image_revision = _container.image_revision
+local_sif = _container.local_sif
 
 
 # Output roots are env-overridable so a reproduction run can write into a
@@ -98,10 +112,48 @@ def inject_checkout_pythonpath(workflow_config):
     os.environ["APPTAINERENV_PYTHONPATH"] = ":".join(parts)
 
 
+def resolve_container(workflow_config):
+    """Return the image every rule should run in.
+
+    Your own ``.sif`` if you have pulled one (``spv-container pull``), else the
+    registry tag -- which Snakemake autopulls into ``.snakemake/singularity``
+    under the working directory. Snakemake's ``container:`` accepts either form.
+    ``--config container=...`` overrides both and takes either a ``docker://``
+    tag (to test a branch's own CI image) or a path to a local ``.sif``.
+    """
+    override = workflow_config.get("container")
+    if override:
+        return str(override)
+    sif = local_sif()
+    return str(sif) if sif.exists() else CONTAINER_URI
+
+
+def warn_if_image_stale():
+    """Print one line if this user's image predates the checkout.
+
+    Advisory only, and never fatal: an older image is usually fine, because the
+    checkout's ``src/`` is what rules import (inject_checkout_pythonpath). It
+    matters when the *dependency stack* moved -- a new package, a lockfile bump.
+    Silent when there is no local image, no apptainer, or no revision label.
+    """
+    sif = local_sif()
+    if not sif.exists():
+        return
+    revision = image_revision(sif)
+    if compare_revision(revision) == "behind":
+        print(
+            f"[container] {sif.name} was built from {revision[:12]}, which is behind "
+            "this checkout. Fine unless the dependency stack moved; refresh with "
+            "`spv-container pull`.",
+            file=sys.stderr,
+        )
+
+
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
     inject_checkout_pythonpath(workflow_config)
+    warn_if_image_stale()
     CATALOG_CONFIG = workflow_config
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (
