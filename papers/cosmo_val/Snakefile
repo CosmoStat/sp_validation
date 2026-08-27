@@ -31,7 +31,7 @@ common.configure(config)
 from common import *
 
 # The one image every rule runs in; see common.resolve_container.
-container: common.resolve_container(config)
+container: common.resolve_container(config.get("container"))
 
 # Wildcard constraints — centralized in common.py, not in individual rule files
 wildcard_constraints:

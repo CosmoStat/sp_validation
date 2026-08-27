@@ -27,14 +27,10 @@
 set -euo pipefail
 
 WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
-# This user's own image, resolved as `spv-container` resolves it.
-CONTAINER=${SPV_CONTAINER:-$HOME/.cache/sp_validation/sp_validation.sif}
-[ -d "$HOME/.cache/sp_validation/sandbox" ] && [ -z "${SPV_CONTAINER:-}" ] && \
-  CONTAINER=$HOME/.cache/sp_validation/sandbox
+. "$(dirname "${BASH_SOURCE[0]}")/container_env.sh"
 SRC=$WT/src
 WSCRIPTS=$WT/workflow/scripts
 PSCRIPTS=$WT/papers/bmodes/scripts
-BIND=/home,/scratch,/automnt,/n17data,/n23data1,/n09data
 
 CONFIG=""; CATCONFIG=""; PLANCK18=""; MASKBASE=""; OUT=""; BLIND="A"; VERSIONS=""
 MINSEP=0.5; MAXSEP=300.0; NBINS=1000

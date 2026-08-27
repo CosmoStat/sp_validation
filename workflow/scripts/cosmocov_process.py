@@ -3,6 +3,9 @@
 CosmoCov writes one row per (i, j) element with the Gaussian term in column 8
 and the non-Gaussian term in column 9; this rebuilds the symmetric matrices,
 checks positive-definiteness, and plots the correlation matrix.
+
+Run through Snakemake's ``script:`` directive, which injects ``snakemake`` as a
+module global before this file executes.
 """
 
 import sys
@@ -55,35 +58,16 @@ def plot_correlation(cov, ndata, plot_path):
     plt.close(fig)
 
 
-def main(covfile, matrix_path, gaussian_path, plot_path):
-    cov_g, cov_ng, ndata = get_cov(covfile)
-    print(f"Dimension of cov: {ndata}x{ndata}")
+cov_g, cov_ng, ndata = get_cov(snakemake.input[0])  # noqa: F821
+print(f"Dimension of cov: {ndata}x{ndata}")
 
-    cov = cov_g + cov_ng
+cov = cov_g + cov_ng
 
-    eigenvalues = np.linalg.eigvalsh(cov)
-    print(f"min+max eigenvalues cov: {eigenvalues.min():e}, {eigenvalues.max():e}")
-    if eigenvalues.min() <= 0.0:
-        sys.exit("non-positive eigenvalue encountered! Covariance invalid!")
+eigenvalues = np.linalg.eigvalsh(cov)
+print(f"min+max eigenvalues cov: {eigenvalues.min():e}, {eigenvalues.max():e}")
+if eigenvalues.min() <= 0.0:
+    sys.exit("non-positive eigenvalue encountered! Covariance invalid!")
 
-    np.savetxt(matrix_path, cov)
-    np.savetxt(gaussian_path, cov_g)
-    plot_correlation(cov, ndata, plot_path)
-
-
-if __name__ == "__main__":
-    try:
-        snakemake  # noqa: F821 - injected by snakemake at runtime
-    except NameError:
-        if len(sys.argv) != 3:
-            print("Usage: python cosmocov_process.py <input_file> <output_stub>")
-            sys.exit(1)
-        stub = sys.argv[2]
-        main(sys.argv[1], f"{stub}.txt", f"{stub}_g.txt", f"{stub}_plot.pdf")
-    else:
-        main(
-            snakemake.input[0],  # noqa: F821
-            snakemake.output.matrix,  # noqa: F821
-            snakemake.output.gaussian,  # noqa: F821
-            snakemake.output.plot,  # noqa: F821
-        )
+np.savetxt(snakemake.output.matrix, cov)  # noqa: F821
+np.savetxt(snakemake.output.gaussian, cov_g)  # noqa: F821
+plot_correlation(cov, ndata, snakemake.output.plot)  # noqa: F821

@@ -41,9 +41,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-# The image every entry point names, written down here once (``workflow/
-# common.py`` re-exports it). CI pushes one tag per branch, sanitized, so
-# ``:develop`` tracks the integration branch.
+# The image every entry point names, written down here once. CI pushes one tag
+# per branch, sanitized, so ``:develop`` tracks the integration branch.
 CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
 
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", "~/.cache")) / "sp_validation"
@@ -123,6 +122,12 @@ def image_revision(sif):
     return image_labels(sif).get("org.opencontainers.image.revision")
 
 
+def _require_apptainer():
+    """Exit unless ``apptainer`` is on PATH."""
+    if shutil.which("apptainer") is None:
+        sys.exit("apptainer is not on PATH")
+
+
 def _git(*args, cwd=None):
     """Run a git command, returning stripped stdout or ``None`` on any failure."""
     try:
@@ -151,25 +156,16 @@ def compare_revision(revision, repo=None):
         return "in-sync"
     if _git("cat-file", "-e", f"{revision}^{{commit}}", cwd=repo) is None:
         return "unknown"
-    ancestor = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", revision, head],
-        capture_output=True,
-        cwd=repo,
-    )
-    if ancestor.returncode == 0:
+    if _git("merge-base", "--is-ancestor", revision, head, cwd=repo) is not None:
         return "behind"
-    reverse = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", head, revision],
-        capture_output=True,
-        cwd=repo,
-    )
-    return "ahead" if reverse.returncode == 0 else "diverged"
+    if _git("merge-base", "--is-ancestor", head, revision, cwd=repo) is not None:
+        return "ahead"
+    return "diverged"
 
 
 def cmd_pull(args):
     """Pull ``--tag`` to the canonical path, atomically."""
-    if shutil.which("apptainer") is None:
-        sys.exit("apptainer is not on PATH")
+    _require_apptainer()
     sif = local_sif()
     sif.parent.mkdir(parents=True, exist_ok=True)
     # Pull to a sibling temp name and rename: an atomic rename within one
@@ -197,8 +193,7 @@ def cmd_pull(args):
 
 def cmd_sandbox(args):
     """Unpack the image into a writable directory -- the opt-in escape hatch."""
-    if shutil.which("apptainer") is None:
-        sys.exit("apptainer is not on PATH")
+    _require_apptainer()
     sandbox = local_sandbox()
     if sandbox.exists() and not args.force:
         sys.exit(
@@ -305,8 +300,7 @@ def cmd_status(args):
 
 def cmd_exec(args):
     """Run a command inside the image -- the one-off path for humans and agents."""
-    if shutil.which("apptainer") is None:
-        sys.exit("apptainer is not on PATH")
+    _require_apptainer()
     if not args.command:
         sys.exit("nothing to run; pass a command after `exec`")
     binds = args.bind or os.environ.get("SPV_APPTAINER_BINDS", DEFAULT_BINDS)

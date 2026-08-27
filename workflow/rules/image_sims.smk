@@ -97,7 +97,7 @@ if _missing_structural:
 # workflow/Snakefile, whose module default is the cosmology image (no ShapePipe
 # stack).  Binds come from the driving profile's ``apptainer-args``.  A null
 # ``sif`` resolves to the workflow's one image (see workflow/image_sims/config.yaml).
-SIF = common.resolve_container({"container": IMSIM["sif"]})
+SIF = common.resolve_container(IMSIM["sif"])
 
 # --- repositories (bound into the image; branch code overrides) -----------
 SHAPEPIPE_REPO = IMSIM["shapepipe_repo"]

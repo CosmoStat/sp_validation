@@ -26,11 +26,8 @@ _container = importlib.util.module_from_spec(
 sys.modules["_spv_container"] = _container
 _container.__loader__.exec_module(_container)
 
-CONTAINER_URI = _container.CONTAINER_URI
 compare_revision = _container.compare_revision
 image_revision = _container.image_revision
-local_sandbox = _container.local_sandbox
-local_sif = _container.local_sif
 resolve_image = _container.resolve_image
 
 
@@ -110,15 +107,14 @@ def inject_checkout_pythonpath(workflow_config):
     os.environ["APPTAINERENV_PYTHONPATH"] = ":".join(parts)
 
 
-def resolve_container(workflow_config):
+def resolve_container(override=None):
     """Return the image every rule should run in.
 
-    ``--config container=...`` wins if set (a ``docker://`` tag, a ``.sif`` path
-    or a sandbox directory -- Snakemake's ``container:`` accepts all three);
-    otherwise ``resolve_image()``, so jobs run what interactive
-    ``spv-container`` work runs.
+    ``override`` wins if set (a ``docker://`` tag, a ``.sif`` path or a sandbox
+    directory -- Snakemake's ``container:`` accepts all three); otherwise
+    ``resolve_image()``, so jobs run what interactive ``spv-container`` work
+    runs.
     """
-    override = workflow_config.get("container")
     if override:
         return str(override)
     return resolve_image()[0]
