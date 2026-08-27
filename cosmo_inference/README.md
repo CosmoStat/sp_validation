@@ -4,12 +4,23 @@ by Lisa Goh and Sacha Guerrini, CEA Paris-Saclay
 This folder contains the files neccessary to run the cosmological inference pipeline on the UNIONS galaxy catalogues. 
 
 ### Requirements
-[CosmoSIS](https://cosmosis.readthedocs.io/en/latest/) ships in the container via
-the `workflow` extra, built with MPI support. To sample the PSF leakage
-parameters, the fork of
-[cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/)
-of Sacha Guerrini has to be used; it is not packaged, so clone and build it
-yourself and point `COSMOSIS_DIR` in the pipeline templates at your checkout.
+Everything the pipeline needs ships in the container: nothing to install, and no
+paths to edit before a run.
+
+[CosmoSIS](https://cosmosis.readthedocs.io/en/latest/) comes in via the
+`workflow` extra, built with MPI support. The CosmoSIS Standard Library — the
+tree of modules the `.ini` pipelines name — is built into the image at
+`/opt/cosmosis-standard-library`, with `CSL_DIR` pointing there; that is what
+`COSMOSIS_DIR` in the templates resolves to. Outside the container, export
+`CSL_DIR` at a build of your own and the same templates work unchanged.
+
+CSL is pinned to **Sacha Guerrini's fork**
+([sachaguer/cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/))
+at `b26fa7ff`, not to upstream: the UNIONS pipelines depend on four commits that
+exist only there — tau statistics, `sample_S8`, and two z-dependent
+linear-alignment modules. The fork is 4 commits ahead of
+`cosmosis-developers/cosmosis-standard-library` and 373 behind it; carrying those
+four forward onto current upstream is future work.
 
 Launch sampling under MPI (`mpiexec -n N cosmosis --mpi ...`), not `--smp`:
 CosmoSIS's shared-memory pool is unmaintained and still crashes after sampling

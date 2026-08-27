@@ -2,7 +2,9 @@
 FROM ghcr.io/cosmostat/shapepipe:im_sims
 
 # liblapack-dev: cosmosis's MultiNest links -llapack, and the base image ships
-# only the runtime liblapack.so.3 (no dev symlink).
+# only the runtime liblapack.so.3 (no dev symlink). The gsl/cfitsio/fftw3 dev
+# packages are what the CosmoSIS Standard Library's C sources compile against
+# (they are the headers CSL's own CI installs); git is for cloning it.
 RUN apt-get update -y --quiet --fix-missing && \
     apt-get dist-upgrade -y --quiet --fix-missing && \
     apt-get install -y --quiet \
@@ -10,10 +12,14 @@ RUN apt-get update -y --quiet --fix-missing && \
         automake \
         libtool \
         pkg-config \
+        git \
         htop \
         npm \
         tmux \
-        liblapack-dev
+        liblapack-dev \
+        libgsl-dev \
+        libcfitsio-dev \
+        libfftw3-dev
 
 # The base shapepipe image provides a uv-managed venv at /app/.venv (exported as
 # VIRTUAL_ENV); install sp_validation's deps into that same venv rather than
@@ -49,6 +55,41 @@ ENV MPIFC=/opt/ompi/bin/mpif90
 
 RUN uv sync --frozen --inexact --no-install-project \
     --extra test --extra glass --extra workflow
+
+# The CosmoSIS Standard Library: the module files (camb interface, projection,
+# 2pt likelihood, ...) the cosmo_inference pipelines name. The `workflow` extra
+# above installs cosmosis itself; CSL is a separate tree of modules that is not
+# on PyPI and has to be built against that install, so it is cloned and compiled
+# here rather than left to each user (which is what the .ini templates used to
+# assume, hard-coding one person's home directory).
+#
+# Pinned to Sacha Guerrini's fork, which carries the four commits the UNIONS
+# pipelines depend on: tau-stats, sample_S8, and two z-dependent linear-alignment
+# modules. See cosmo_inference/README.md for the standing of that fork.
+ARG CSL_REPO=https://github.com/sachaguer/cosmosis-standard-library.git
+ARG CSL_REF=b26fa7ff666ab4d607b2e32e36f799a53bfb1d9c
+ENV CSL_DIR=/opt/cosmosis-standard-library
+
+# `source cosmosis-configure` is CSL's documented way to build against a
+# pip-installed cosmosis: the script ships with the cosmosis package and exports
+# COSMOSIS_SRC_DIR, which every CSL Makefile includes its compiler config from.
+# bash, not sh, because that script is bash.
+#
+# `make -C shear` rather than a bare `make`: the top-level target also descends
+# into likelihood/, which builds the Planck, WMAP and ACT likelihoods -- large,
+# data-dependent, and unused by any UNIONS pipeline. Everything our .ini
+# templates reference is either pure Python (consistency, sample_S8, camb,
+# load_nz_fits, photoz_bias, linear_alignment, add_intrinsic, shear_m_bias,
+# xi_sys, 2pt_like -- no Makefile in those trees at all) or lives under shear/:
+# `limber`, which project_2d.py links, and `cl_to_xi_nicaea`, whose
+# nicaea_interface.so the 2pt_shear stage loads.
+RUN bash -c 'set -euo pipefail; \
+    export PATH=/app/.venv/bin:$PATH; \
+    git clone --filter=blob:none "$CSL_REPO" "$CSL_DIR"; \
+    cd "$CSL_DIR"; \
+    git checkout --detach "$CSL_REF"; \
+    source cosmosis-configure; \
+    make -C shear'
 
 # Install sp_validation itself (editable) into the same venv; deps are already
 # satisfied by the sync above.
