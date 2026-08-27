@@ -622,15 +622,13 @@ class TestCosmologyValidation:
         # mirrors the bmodes workflow's broad-and-fine integration grid; every
         # reporting bin is well-defined (no edge NaNs). nbins_int~80 here would
         # NaN the edge bins -- confirmed -- which is the finiteness teeth.
-        # calculate_pure_eb returns one results dict per tomographic bin pair;
-        # the non-tomographic run has the single "all x all" key.
         results = cv.calculate_pure_eb(
             version,
             npatch=npatch,
             min_sep_int=1.0,
             max_sep_int=300.0,
             nbins_int=600,
-        )["tomo_bin_all_tomo_bin_all"]
+        )
 
         # Reference mode vectors from the seeded synthetic catalog + Schneider
         # transform. Deterministic (full-sample treecorr, no RNG); regenerate by

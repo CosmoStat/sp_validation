@@ -79,10 +79,7 @@ class PureEBMixin:
         Returns
         -------
         dict
-            One entry per tomographic bin pair, keyed
-            ``"tomo_bin_{b1}_tomo_bin_{b2}"`` (non-tomographic runs have the
-            single key ``"tomo_bin_all_tomo_bin_all"``). Each value is a
-            dictionary containing the following keys:
+            A dictionary containing the following keys:
 
             - "xip_E": Pure E-mode correlation function for xi+.
             - "xim_E": Pure E-mode correlation function for xi-.

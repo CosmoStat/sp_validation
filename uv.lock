@@ -113,18 +113,6 @@ wheels = [
 ]
 
 [[package]]
-name = "array-api-extra"
-version = "0.11.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "array-api-compat", marker = "sys_platform == 'linux'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/94/40/e2e74294b894b115b05c052364fde283e3684e309c58c8f3e0463270051b/array_api_extra-0.11.1.tar.gz", hash = "sha256:360bc6faf858b1ef2ca0fb3cc86dbac0ed566fa1f78ae515cd234830c8b119f8", size = 102150, upload-time = "2026-08-12T11:29:24.981Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/ee/c0a6a4bb3c5d874c68f57c2471af931f5f4cf2f84fdcc86b8a7467eb3e66/array_api_extra-0.11.1-py3-none-any.whl", hash = "sha256:2da3eed8842ed14cdded9a2a82f11dcafae2aa2c0c1622a3b77e769f72331c64", size = 98046, upload-time = "2026-08-12T11:29:23.571Z" },
-]
-
-[[package]]
 name = "arrow"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -562,24 +550,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "cosmology-api"
-version = "0.3.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f0/f4/801cab91dab5b2e8102ed54cc4e2bd257f319c9047db182fcaf53706df6a/cosmology_api-0.3.2.tar.gz", hash = "sha256:7ccdfdf20f91dfc2282aee059adf2530bea6e194a0f8d01487e15a7497cf4694", size = 17338, upload-time = "2025-05-15T13:29:52.355Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/8c/6cc73fafff9f4d75e77a9c3cf5b9c34aa42841cfc7da5c89737daa2c3bd7/cosmology_api-0.3.2-py3-none-any.whl", hash = "sha256:9391ef0b2616bbf4217fefdb94a72370766d59a2f0558b5ade224a92ea093a61", size = 18685, upload-time = "2025-05-15T13:29:50.833Z" },
-]
-
-[[package]]
-name = "cosmology-compat-camb"
-version = "0.2.0"
+name = "cosmology"
+version = "2022.10.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", marker = "sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/2e/a637aae1677d02337be371c9a7b7e9d5051199bb58a2386781230adcee45/cosmology_compat_camb-0.2.0.tar.gz", hash = "sha256:e36fda04a78e16fc1a5c4aa22c30ec1bf64bbe0b092aa1b894ca746ce5e5551b", size = 4562, upload-time = "2025-05-08T10:31:43.226Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c9/38/04099bb2b6a626bd69a3f117afc60f2c47c08899e0730e0e48c898bf4745/cosmology-2022.10.9.tar.gz", hash = "sha256:0c2857c9bf1fdd09f1f11ab5765df0389a4101f3a900fa11251c3f37696f02d4", size = 8488, upload-time = "2022-10-10T10:18:16.229Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/42/1a657f9b3540f355f34af735d8643aae1480620689a72423fe69aeeb78e5/cosmology_compat_camb-0.2.0-py3-none-any.whl", hash = "sha256:eb6e74290bb6a6a60a47d1338fc233ba1697058ed7f01a01de1180dbee1bd75d", size = 3903, upload-time = "2025-05-08T10:31:41.997Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/2c/c80db37593ad593e3f6c60705fbdf690b33f22c89edd5507d2731346cd87/cosmology-2022.10.9-py3-none-any.whl", hash = "sha256:3903658c2474177a1a1c75771ae14458d93200c516f8fc6c3f4d776f3287b288", size = 9341, upload-time = "2022-10-10T10:18:14.928Z" },
 ]
 
 [[package]]
@@ -1091,28 +1070,18 @@ wheels = [
 
 [[package]]
 name = "glass"
-version = "2026.2"
+version = "2025.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "array-api-compat", marker = "sys_platform == 'linux'" },
-    { name = "array-api-extra", marker = "sys_platform == 'linux'" },
+    { name = "cosmology", marker = "sys_platform == 'linux'" },
     { name = "healpix", marker = "sys_platform == 'linux'" },
     { name = "healpy", marker = "sys_platform == 'linux'" },
+    { name = "numpy", marker = "sys_platform == 'linux'" },
     { name = "transformcl", marker = "sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c1/c3/3b7d18cca8d0fa41dbb646ce16935804b380dcf766e7385799f44829b419/glass-2026.2.tar.gz", hash = "sha256:cf5ef6cb76b4738f8dc05ddfc18c359c558bb36e9cd09ca0115fa3ca3deb491f", size = 66236, upload-time = "2026-06-04T15:18:39.155Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/d6/26cd58e75834671259f26b9287a584d726e6023da35ddf7ca3b7f2c393fb/glass-2025.1.tar.gz", hash = "sha256:7b1aa2394e16010f7f1b4243f49e7e12d7a4dd28fcbf3e3f7cf25ce4905a8615", size = 48533, upload-time = "2025-02-21T18:43:48.046Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/d1/55ea5e63e81db82806e92ba9f9c2b7277c0c2afe57bf8c1d3763e18005b2/glass-2026.2-py3-none-any.whl", hash = "sha256:0af0b5cd8708040925699c307076fb1c79bbb7e6cba4522764bcc21dd3bdadb8", size = 63746, upload-time = "2026-06-04T15:18:37.895Z" },
-]
-
-[package.optional-dependencies]
-examples = [
-    { name = "camb", marker = "sys_platform == 'linux'" },
-    { name = "cosmology-api", marker = "sys_platform == 'linux'" },
-    { name = "cosmology-compat-camb", marker = "sys_platform == 'linux'" },
-    { name = "glass-ext-camb", marker = "sys_platform == 'linux'" },
-    { name = "jupyter", marker = "sys_platform == 'linux'" },
-    { name = "matplotlib", marker = "sys_platform == 'linux'" },
+    { url = "https://files.pythonhosted.org/packages/e4/e7/3e89bc5147a3e84245c783098afffbbacbcdf5678ba1aacc2c9c035434da/glass-2025.1-py3-none-any.whl", hash = "sha256:d7919a7d19e05ab8da4e52dbfbcfb5bd1ed2b72e0cc3afde39ec94ced22883c5", size = 47185, upload-time = "2025-02-21T18:43:46.649Z" },
 ]
 
 [[package]]
@@ -3890,8 +3859,9 @@ docs = [
     { name = "sphinxcontrib-bibtex", marker = "sys_platform == 'linux'" },
 ]
 glass = [
+    { name = "cosmology", marker = "sys_platform == 'linux'" },
     { name = "fitsio", marker = "sys_platform == 'linux'" },
-    { name = "glass", extra = ["examples"], marker = "sys_platform == 'linux'" },
+    { name = "glass", marker = "sys_platform == 'linux'" },
     { name = "glass-ext-camb", marker = "sys_platform == 'linux'" },
 ]
 test = [
@@ -3913,13 +3883,14 @@ requires-dist = [
     { name = "clmm" },
     { name = "colorama" },
     { name = "cosmo-numba", git = "https://github.com/aguinot/cosmo-numba.git?rev=main" },
+    { name = "cosmology", marker = "extra == 'glass'", specifier = "==2022.10.9" },
     { name = "cosmosis", marker = "extra == 'workflow'", specifier = ">=3.25" },
     { name = "cryptography" },
     { name = "cs-util", git = "https://github.com/CosmoStat/cs_util.git?rev=develop" },
     { name = "emcee" },
     { name = "fitsio", marker = "extra == 'glass'" },
     { name = "getdist", git = "https://github.com/benabed/getdist.git?rev=113cd22a9a0d013b6f72fe734be81f260f3d3be5" },
-    { name = "glass", extras = ["examples"], marker = "extra == 'glass'", specifier = "==2026.2" },
+    { name = "glass", marker = "extra == 'glass'", specifier = "==2025.1" },
     { name = "glass-ext-camb", marker = "extra == 'glass'", specifier = "==2023.6" },
     { name = "h5py" },
     { name = "healpy" },

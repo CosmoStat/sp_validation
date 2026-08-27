@@ -141,8 +141,8 @@ docs = [
     "sphinxawesome-theme>=5.3,!=6.0.3"
 ]
 # GLASS mock generation (sp_validation.glass_mock). Kept optional: the core
-# library and its import guard resolve without GLASS, and the production
-# container does not yet ship it. Pinned set (verified 2026-06-13, fiber
+# library and its import guard resolve without GLASS (the production container
+# ships it via the ``glass`` extra). Pinned set (verified 2026-06-13, fiber
 # glass-cosmology-api-pin): glass 2025.1 is the unique version with the flat API
 # the map path uses AND the legacy ``cosmo.dc``/``xm``/``ef`` interface that
 # ``cosmology`` 2022.10.9 (its newest release) provides — newer glass calls
