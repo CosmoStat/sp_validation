@@ -93,6 +93,7 @@ RUN bash -c 'set -eo pipefail; \
     git checkout --detach "$CSL_REF"; \
     cmds=$(python -m cosmosis.configure); \
     eval "$cmds"; \
+    export GSL_INC=/usr/include GSL_LIB=/usr/lib/x86_64-linux-gnu; \
     make -C shear; \
     test -f shear/cl_to_xi_nicaea/nicaea_interface.so'
 
