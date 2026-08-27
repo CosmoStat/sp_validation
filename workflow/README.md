@@ -64,7 +64,6 @@ A few rules shell out to a host toolchain (CosmoCov, ImageMagick) and keep
 `OMP_NUM_THREADS` is not set by the profile either: the slurm executor's
 `--export=ALL` propagates the driver's env, not a profile flag, so a rule that
 needs it pinned sets it itself. Per-rule `mem_mb` / `runtime` stay on the rules.
-See the profile's own comments for the full rationale.
 
 ### Off candide — the default profile
 
@@ -85,17 +84,14 @@ of it: expect to edit the default profile's `--bind` list for your machine.
 ### Which `sp_validation` a rule imports: the launched checkout
 
 The image is the frozen *dependency stack*; the `sp_validation` that runs is
-the one in the checkout you launched from. `common.configure()` prepends that
-checkout's `src/` to `APPTAINERENV_PYTHONPATH`, which Apptainer forwards into
-each job as `PYTHONPATH` (surviving the profile's `--cleanenv`). Any value you
-exported yourself is preserved behind it.
+the one in the checkout you launched from — `common.configure()` puts that
+checkout's `src/` on each job's `PYTHONPATH`
+(`common.inject_checkout_pythonpath` has the mechanics).
 
 This is the default because the alternative is incoherent: Snakemake's
 `script:` directive already runs the checkout's *script files*, so without it a
 rule executes new script code against an old `import sp_validation` — the two
-halves of one commit, split. The image-sims chain has always worked this way
-(`_ENV_PREFIX` in `workflow/rules/image_sims.smk`); the rest of the workflow now
-matches it.
+halves of one commit, split.
 
 **Caveat:** `rerun-triggers: code` watches rule bodies and `script:` files, not
 `src/`. Editing a module under `src/` does not by itself mark outputs stale —
@@ -157,13 +153,10 @@ wrapping from the profile (see above), so the container is where the science
 code runs, not where the orchestrator runs — one container per job, never a
 nested one.
 
-Driving Snakemake from inside a container shell used to be the recommended
-path, and is why an old `~/.local/bin/snakemake` (or any host-side `pip
-install --user snakemake`) is worth checking for: Apptainer passes your `PATH`
-and mounts your `$HOME` by default, so a leftover host install can silently
-shadow the one `uv tool install` just set up. Run `which snakemake` and
-confirm it resolves under `uv`'s tool directory (`uv tool dir`), not
-`~/.local/bin`.
+Check for a stray `~/.local/bin/snakemake` (any host-side `pip install --user
+snakemake` leaves one): Apptainer passes your `PATH` and mounts your `$HOME` by
+default, so it can silently shadow the one `uv tool install` set up. `which
+snakemake` should resolve under `uv tool dir`, not `~/.local/bin`.
 
 ### The container image — one per person
 
@@ -279,12 +272,11 @@ config. Your image has to sit under one of the profile's bind mounts to be
 visible. To run a *branch's* CI image rather than a local file, see "Testing a
 branch's own image" above.
 
-One invariant survives from the old hand-built sandbox and still applies: the
-`script:` directive bind-mounts the host orchestrator's `snakemake` into the job
-and *appends* it to `sys.path`, so a `snakemake` importable inside the image
-wins the lookup. If `script:` rules start failing with `ModuleNotFoundError: No
-module named 'snakemake.iocontainers'` or similar, an in-image snakemake older
-than the host's is the first thing to check.
+One trap to know: the `script:` directive bind-mounts the host orchestrator's
+`snakemake` into the job and *appends* it to `sys.path`, so a `snakemake`
+importable inside the image wins the lookup. If `script:` rules start failing
+with `ModuleNotFoundError: No module named 'snakemake.iocontainers'` or similar,
+an in-image snakemake older than the host's is the first thing to check.
 
 ### `snakemake` in `script:` files
 

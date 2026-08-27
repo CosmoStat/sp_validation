@@ -30,9 +30,7 @@ import common
 common.configure(config)
 from common import *
 
-# The image for every rule: this user's own .sif if they have pulled one with
-# `spv-container pull`, else the CI tag for Snakemake to autopull. Override with
-# `--config container=<uri or .sif>`. See common.resolve_container.
+# The one image every rule runs in; see common.resolve_container.
 container: common.resolve_container(config)
 
 # Wildcard constraints — centralized in common.py, not in individual rule files

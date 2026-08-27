@@ -1,19 +1,16 @@
 """Rule container_smoke: exercise the containerized-SLURM path end to end.
 
-Cheap sanity check for the profile-driven-container pivot -- same executor
+Cheap sanity check of the profile-driven container path -- same executor
 (slurm), same software-deployment-method (apptainer), same apptainer-args
-binds, same container image every real rule uses. No rule-level `container:`
-or `apptainer exec` anywhere here; Snakemake wraps the job itself.  Four things
-it proves, each written to the output YAML:
+binds, same container image every real rule uses.  Four things it proves, each
+written to the output YAML:
 
   * the job really ran inside the image (``APPTAINER_CONTAINER``, set by
     apptainer itself -- without it the rest could all pass on the bare host);
   * the editable ``sp_validation`` install resolves on the container's
     PYTHONPATH (import provenance: file + version, not just import success);
-  * the numeric stack works (numpy eigh on a small fixed matrix). The
-    ``OMP_NUM_THREADS`` the job sees is recorded but NOT asserted: the profile
-    deliberately leaves it unset, and rules needing it pinned set it themselves
-    (see the image_sims rules' env prefix), so "unset" here is correct;
+  * the numeric stack works (numpy eigh on a small fixed matrix).
+    ``OMP_NUM_THREADS`` is recorded but not asserted -- see the assertions;
   * which commit of this checkout is running (git rev-parse from inside the
     container -- proves /home is bound and usable, not just readable).
 
@@ -30,8 +27,6 @@ import yaml
 
 
 # --- the job is actually inside the image ---------------------------------
-# apptainer sets APPTAINER_CONTAINER (path of the running image) in every
-# process it starts, and it survives --cleanenv. Absent => ran on the bare host.
 container_info = {
     "apptainer_container": os.environ.get("APPTAINER_CONTAINER", "unset"),
 }

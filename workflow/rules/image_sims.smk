@@ -95,12 +95,8 @@ if _missing_structural:
 # Every compute rule carries ``container: SIF`` rather than inheriting a
 # module-level default: these rules are also included from the top-level
 # workflow/Snakefile, whose module default is the cosmology image (no ShapePipe
-# stack).  Binds come from the driving profile's ``apptainer-args``.
-#
-# ``sif: null`` (the config default) means "the workflow's one image", resolved
-# the same way every other entry point resolves it: this user's own .sif if they
-# have pulled one, else the registry tag.  Set ``image_sims: {sif: ...}`` in a
-# run config to name a different image or a branch tag.
+# stack).  Binds come from the driving profile's ``apptainer-args``.  A null
+# ``sif`` resolves to the workflow's one image (see workflow/image_sims/config.yaml).
 SIF = common.resolve_container({"container": IMSIM["sif"]})
 
 # --- repositories (bound into the image; branch code overrides) -----------

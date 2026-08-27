@@ -6,22 +6,8 @@
 #         -s workflow/image_sims/Snakefile \
 #         --configfile <run config> <target>
 #
-# Snakemake owns scheduling (one SLURM job per branch x tile) and the
-# container: every rule runs through Snakemake's own container wrapping
-# (``container:`` on the rule or the module-level default in
-# workflow/Snakefile), never a rule's own ``apptainer exec`` shell call.
-# ``software-deployment-method: apptainer`` below turns that wrapping on;
-# ``apptainer-args`` carries the bind mounts every rule needs. A few rules call
-# host toolchains and opt out with ``container: None``; each says why in its own
-# docstring.
-#
-# ``snakemake`` itself is a thin host-side tool, pinned via ``uv tool
-# install`` (see workflow/README.md); run it on the host, never inside an
-# ``apptainer shell``.
-#
-# Snakemake cannot compose profiles, so the machine-independent settings (marked
-# GENERIC below) are duplicated in workflow/profiles/default/config.yaml, for
-# running off candide; change one, change the other.
+# Snakemake owns scheduling and the container wrapping; run it host-side, never
+# inside an ``apptainer shell``. workflow/README.md is the full story.
 
 executor: slurm
 
@@ -38,17 +24,13 @@ rerun-triggers: ["mtime", "params", "input", "code"]
 latency-wait: 5
 # --- end GENERIC ------------------------------------------------------------
 
-# No ``apptainer-prefix``: everyone runs their own image, at their own canonical
-# path, pulled with ``spv-container pull`` (workflow/README.md). The entry
-# Snakefiles resolve ``container:`` to that file when it exists, so there is
-# nothing for Snakemake to cache.
+# No ``apptainer-prefix``: the entry Snakefiles resolve ``container:`` to this
+# user's own image path, so there is nothing for Snakemake to cache.
 #
 # candide's disks, plus the one machine-specific env var: the host OpenMPI libs
 # MPI rules need to find libmpi inside the container (only rules importing
-# mpi4py care; harmless for the rest). This was an ``os.environ[...]`` line in
-# workflow/Snakefile -- a machine path hard-coded into generic workflow code --
-# and belongs here. The bind list matches ``spv-container exec``'s default; keep
-# the two in step.
+# mpi4py care; harmless for the rest). The bind list matches ``spv-container
+# exec``'s default; keep the two in step.
 apptainer-args: >-
   --cleanenv
   --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data
@@ -81,7 +63,6 @@ default-resources:
   slurm_extra: "'--exclude=n17,n09,n36'"
 
 # Retry a job once on transient node failure, and keep the SLURM logs of
-# successful jobs (candide debugging). (``latency-wait`` and ``rerun-triggers``
-# are in the GENERIC block above.)
+# successful jobs (candide debugging).
 retries: 1
 slurm-keep-successful-logs: true

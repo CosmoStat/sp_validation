@@ -109,10 +109,9 @@ def test_container_smoke():
         report["numeric"]["eigenvalues"], _reference_eigenvalues(), rtol=1e-10, atol=1e-12
     )
 
-    # numeric.omp_num_threads is recorded for observability but deliberately NOT
-    # asserted: the profile leaves OMP_NUM_THREADS unset by design, and rules
-    # that need it pinned set it themselves (image_sims' env prefix), so "unset"
-    # here is the correct state rather than a gap.
+    # numeric.omp_num_threads is recorded but deliberately NOT asserted: the
+    # profile leaves OMP_NUM_THREADS unset by design, and rules that need it
+    # pinned set it themselves, so "unset" here is correct rather than a gap.
 
     # git worked inside the container, so /home is bound and usable.
     assert re.fullmatch(r"[0-9a-f]{40}", report["provenance"]["commit"]), report["provenance"]

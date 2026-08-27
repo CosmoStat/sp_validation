@@ -14,9 +14,8 @@ envvars:
 import os
 import sys
 
-# Machine-specific env (the host OpenMPI libs MPI rules need inside the
-# container) is not set here: it belongs to the machine, so it rides the
-# candide profile's `apptainer-args --env`. See workflow/profiles/.
+# Machine-specific env belongs to the machine, so it rides the profile's
+# `apptainer-args --env`, not this file. See workflow/profiles/.
 #
 # Shared helpers live in common.py next to this Snakefile. Snakemake's `module`
 # imports rules, not Python globals, so helpers travel by plain Python import;
@@ -25,16 +24,12 @@ import sys
 sys.path.insert(0, os.path.realpath(str(workflow.basedir)))
 import common
 
-# configure() also prepends this checkout's src/ to the container's PYTHONPATH
-# (common.inject_checkout_pythonpath), so the launched tree's sp_validation --
-# not the image's baked copy -- is what rules import. `--config
-# checkout_pythonpath=false` opts out.
+# configure() also puts this checkout's src/ on the container's PYTHONPATH --
+# see common.inject_checkout_pythonpath.
 common.configure(config)
 from common import *
 
-# The one image every rule runs in: this user's own .sif if they have pulled one
-# with `spv-container pull`, else the CI tag for Snakemake to autopull. Override
-# with `--config container=<uri or .sif>`. See common.resolve_container.
+# The one image every rule runs in; see common.resolve_container.
 container: common.resolve_container(config)
 
 # Wildcard constraints — centralized in common.py, not in individual rule files

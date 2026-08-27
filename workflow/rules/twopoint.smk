@@ -24,30 +24,27 @@ rule xi:
         "../scripts/run_2pcf.py"
 
 
-# PARKED: xi_highres (high-resolution xi for COSEBIS integration). Never
-# runnable as written -- the shell invokes run_2pcf_highres.py bare, but the
-# script has required --cat-config and --out arguments (true in every version
-# since it was introduced). Revive it with those arguments supplied.
+# PARKED: xi_highres (high-resolution xi for COSEBIS integration). Not runnable
+# as written -- the shell invokes run_2pcf_highres.py bare, but the script has
+# required --cat-config and --out arguments. Revive it with those supplied.
 #
 # The MPI reasoning below is hard-won and must survive the revival:
 #
-#   Exception to the profile-driven container model (see
-#   workflow/profiles/candide/config.yaml): this is multi-node MPI, one
+#   Exception to the profile-driven container model: this is multi-node MPI, one
 #   `apptainer exec` per rank. Snakemake's own container wrapping puts the
 #   *whole* shell command -- `mpiexec` included -- inside a single container
 #   instance, so only rank 0's node would run inside it; the other ranks,
 #   spawned by SLURM/PMI on their own nodes, would land bare on the host.
 #   `container: None` plus an explicit `mpiexec -n N apptainer exec ...`
-#   per-rank is therefore required, not a leftover of the old convention.
+#   per-rank is therefore required.
 #   Snakemake's slurm-jobstep plugin deliberately does NOT prepend `srun` to a
 #   job carrying an `mpi` resource, which is what lets the rule's own launcher
 #   run on the host, outside the container.
 #   Because this rule builds its own apptainer call, reaching the source-cache
 #   copy of the script relies on our `--bind /home` rather than on Snakemake's
 #   automatic mount -- and on a concrete image file, since `apptainer exec`
-#   takes no `docker://` URI. A revived rule should take that path from
-#   `resolve_image()[0]` -- the same local image everything else resolves --
-#   rather than name a second image path that can drift.
+#   takes no `docker://` URI. Take that path from `resolve_image()[0]` rather
+#   than naming a second image path that can drift.
 #
 # rule xi_highres:
 #     container: None

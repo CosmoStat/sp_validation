@@ -88,16 +88,14 @@ spv-container status          # which layer is live, and how current it is
 spv-container exec <command>  # one-off run inside it
 ```
 
-Need a package the image lacks mid-analysis? Unpack a writable sandbox once with
-`spv-container sandbox`, then `spv-container exec --writable pip install <pkg>`.
-The sandbox then takes precedence over the SIF everywhere, workflow jobs
-included; `spv-container pull && spv-container sandbox --force` resets it clean.
+Need a package the image lacks mid-analysis? `spv-container sandbox`, then
+`spv-container exec --writable pip install <pkg>`; the sandbox then takes
+precedence over the SIF everywhere, workflow jobs included.
 
 Every rule runs inside that image, wrapped by Snakemake itself (`--profile
 workflow/profiles/candide` on the cluster, `workflow/profiles/default -j N`
 elsewhere). The `sp_validation` a rule imports comes from the *launched
-checkout*, not the image: `common.configure()` puts its `src/` on the
-container's `PYTHONPATH`.
+checkout*, not the image.
 
 `workflow/README.md` is the full story — profiles, image resolution, refresh.
 

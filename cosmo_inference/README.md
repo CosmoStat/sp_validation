@@ -10,8 +10,9 @@ paths to edit before a run.
 [CosmoSIS](https://cosmosis.readthedocs.io/en/latest/) comes in via the
 `workflow` extra, built with MPI support. The CosmoSIS Standard Library — the
 tree of modules the `.ini` pipelines name — is built into the image at
-`/opt/cosmosis-standard-library`, with `CSL_DIR` pointing there; that is what
-`COSMOSIS_DIR` in the templates resolves to. Outside the container, export
+`/opt/cosmosis-standard-library`, with `CSL_DIR` pointing there. CosmoSIS reads
+environment variables into an `.ini`'s `[DEFAULT]` section, so the templates'
+`COSMOSIS_DIR = %(CSL_DIR)s` resolves to it. Outside the container, export
 `CSL_DIR` at a build of your own and the same templates work unchanged.
 
 CSL is pinned to **Sacha Guerrini's fork**

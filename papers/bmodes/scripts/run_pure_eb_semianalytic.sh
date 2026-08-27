@@ -16,8 +16,7 @@ set -euo pipefail
 
 WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
 SRC=$WT/src
-# This user's own image, resolved the way `spv-container` resolves it: the
-# writable sandbox if one exists, else the pristine SIF (see workflow/README.md).
+# This user's own image, resolved as `spv-container` resolves it.
 CONTAINER=${SPV_CONTAINER:-$HOME/.cache/sp_validation/sp_validation.sif}
 [ -d "$HOME/.cache/sp_validation/sandbox" ] && [ -z "${SPV_CONTAINER:-}" ] && \
   CONTAINER=$HOME/.cache/sp_validation/sandbox

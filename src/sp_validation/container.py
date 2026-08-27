@@ -1,8 +1,8 @@
 """Manage this user's local copy of the sp_validation container image.
 
-Everyone runs their own image. There is no shared image directory and no symlink
-to keep honest: the canonical paths are under your own cache, you refresh them
-when you want to, and nobody else's refresh moves the ground under a running job.
+Everyone runs their own image: the canonical paths are under your own cache, you
+refresh them when you want to, and nobody else's refresh moves the ground under
+a running job.
 
 There are two layers, and you only need the second when you want it:
 
@@ -41,10 +41,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-# The image every entry point names. CI builds and pushes one per branch, tagged
-# by the sanitized branch name, so ``:develop`` tracks the integration branch.
-# ``workflow/common.py`` re-exports this as ``CONTAINER_URI``; it is written down
-# here, once.
+# The image every entry point names, written down here once (``workflow/
+# common.py`` re-exports it). CI pushes one tag per branch, sanitized, so
+# ``:develop`` tracks the integration branch.
 CONTAINER_URI = "docker://ghcr.io/cosmostat/sp_validation:develop"
 
 CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", "~/.cache")) / "sp_validation"
@@ -173,11 +172,10 @@ def cmd_pull(args):
         sys.exit("apptainer is not on PATH")
     sif = local_sif()
     sif.parent.mkdir(parents=True, exist_ok=True)
-    # Pull to a sibling temp name and rename. `mv` within one directory is an
-    # atomic rename, so a job either gets the whole old image or the whole new
-    # one; pulling in place would leave the file half-written for the ~15
-    # minutes the pull takes, and anything starting in that window would fail.
-    # Jobs already running hold the old inode open and finish against it.
+    # Pull to a sibling temp name and rename: an atomic rename within one
+    # directory, so a job gets either the whole old image or the whole new one.
+    # Pulling in place would leave the file half-written for the ~15 minutes the
+    # pull takes. Jobs already running hold the old inode open and finish on it.
     tmp = sif.with_name(sif.name + f".pull.{os.getpid()}")
     print(f"pulling {args.tag}\n     -> {sif}")
     try:
@@ -288,9 +286,6 @@ def cmd_status(args):
     print(f"revision: {revision or 'unknown'}{source}")
     print(f"version:  {labels.get('org.opencontainers.image.version', 'unknown')}")
     if kind == "sandbox":
-        # The revision is the image the sandbox was *built from*; anything
-        # installed into it since is invisible to any label. Say so rather than
-        # let the revision read as a full description of what is running.
         print(
             "          (the revision above is what the sandbox was built from; "
             "anything\n           installed into it since is not reflected in "
@@ -317,8 +312,8 @@ def cmd_exec(args):
     binds = args.bind or os.environ.get("SPV_APPTAINER_BINDS", DEFAULT_BINDS)
 
     if args.writable:
-        # Writes only persist into a sandbox; a SIF is a read-only filesystem, so
-        # `--writable` against one fails obscurely. Say what to do instead.
+        # A SIF is a read-only filesystem, so `--writable` against one fails
+        # obscurely; only a sandbox takes writes.
         sandbox = local_sandbox()
         if not sandbox.is_dir():
             sys.exit(

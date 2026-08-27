@@ -10,11 +10,9 @@ from pathlib import Path
 # This checkout's importable source tree: workflow/common.py -> <repo>/src.
 REPO_SRC = Path(__file__).resolve().parent.parent / "src"
 
-# The container model lives in the package (``sp_validation/container.py``): the
-# registry tag, this user's canonical image paths, and the ``spv-container`` CLI
-# that fills them. Taken from *this checkout's* src/, so the workflow and the CLI
-# can never disagree -- in particular they share one resolution order, which is
-# what lets a package installed into a sandbox ride along into workflow jobs.
+# The container model lives in the package (``sp_validation/container.py``).
+# Taken from *this checkout's* src/, so the workflow and the ``spv-container``
+# CLI can never disagree about which image to run.
 #
 # Loaded by file path rather than as ``sp_validation.container``: snakemake runs
 # on the host, where sp_validation is usually not installed, and importing the
@@ -88,8 +86,7 @@ def inject_checkout_pythonpath(workflow_config):
     files, so without this a rule executes new script code against an old
     ``import sp_validation`` -- the two halves of one commit, split. Prepending
     ``REPO_SRC`` closes that: the image stays the frozen dependency stack, the
-    checkout supplies sp_validation. This mirrors what the image-sims chain has
-    always done for both repos (``_ENV_PREFIX`` in rules/image_sims.smk).
+    checkout supplies sp_validation.
 
     Apptainer forwards ``APPTAINERENV_``-prefixed host variables into the job as
     their unprefixed names, surviving the profile's ``--cleanenv``; setting it
@@ -97,9 +94,7 @@ def inject_checkout_pythonpath(workflow_config):
     already exported is preserved behind ours.
 
     Opt out with ``--config checkout_pythonpath=false`` to reproduce a run from
-    the image alone. Note the caveat: ``rerun-triggers: code`` watches rule and
-    script files, not ``src/``, so editing a module under ``src/`` does not by
-    itself mark outputs stale -- force with ``-F``/``--forcerun``.
+    the image alone.
     """
     flag = workflow_config.get("checkout_pythonpath", True)
     # `--config key=false` can arrive as the *string* "false" depending on how
@@ -118,13 +113,10 @@ def inject_checkout_pythonpath(workflow_config):
 def resolve_container(workflow_config):
     """Return the image every rule should run in.
 
-    The same order ``spv-container`` uses, so jobs run what interactive work
-    runs: your writable sandbox if you have built one, else your pristine
-    ``.sif`` if you have pulled one, else the registry tag -- which Snakemake
-    autopulls into ``.snakemake/singularity`` under the working directory.
-    Snakemake's ``container:`` accepts all three (a sandbox directory included).
-    ``--config container=...`` overrides everything and takes a ``docker://``
-    tag, a ``.sif`` path, or a sandbox directory.
+    ``--config container=...`` wins if set (a ``docker://`` tag, a ``.sif`` path
+    or a sandbox directory -- Snakemake's ``container:`` accepts all three);
+    otherwise ``resolve_image()``, so jobs run what interactive
+    ``spv-container`` work runs.
     """
     override = workflow_config.get("container")
     if override:
@@ -138,11 +130,11 @@ def warn_if_image_stale():
     Never fatal. Two things worth saying at launch:
 
     * a sandbox is in play, so what jobs run is not fully described by any
-      revision label -- somebody installed into it on purpose, and that is the
-      point, but it should not be a silent difference from a clean run;
+      revision label -- deliberate, but it should not be a silent difference
+      from a clean run;
     * the image predates the checkout. Usually fine, because the checkout's
-      ``src/`` is what rules import (inject_checkout_pythonpath); it matters when
-      the *dependency stack* moved -- a new package, a lockfile bump.
+      ``src/`` is what rules import; it matters when the *dependency stack*
+      moved -- a new package, a lockfile bump.
 
     Silent when there is no local image, no apptainer, or no revision label.
     """
