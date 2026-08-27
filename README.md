@@ -69,15 +69,17 @@ The easiest way to install sp_validation is via a container. Docker images are a
 We recommend running the image with **Apptainer** (formerly Singularity) which is installed on most HPC clusters. To simply run the image, use the following command:
 
 ```bash
-# build writeable "sandbox" container in the current directory
-# ./sp_validation will be a directory that functions like a vm
-apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:develop
+# pull the image to a single .sif file
+apptainer pull sp_validation.sif docker://ghcr.io/cosmostat/sp_validation:develop
 
 # open a shell in the container
-apptainer shell --writable sp_validation 
+apptainer shell sp_validation.sif
 # and confirm that the installation was successful
 python -c "import sp_validation"
 ```
+
+CI tags an image by branch, so `:develop` tracks the integration branch and any
+branch can be pulled by its (sanitized) name.
 
 You can also run the image with **Docker**:
 
@@ -90,7 +92,9 @@ We do not currently build images for Apple Silicon/arm64; however the amd64 imag
 This shell is for interactive development and debugging. To run the analysis
 workflow (`workflow/`), do not enter this shell — see
 [`workflow/README.md`](workflow/README.md): Snakemake runs on the host, and
-the profile puts each job in the container itself.
+the profile puts each job in the container itself. The workflow expects the
+image at one canonical per-user path, which the bundled `spv-container` CLI
+manages (`spv-container pull` / `status` / `exec`).
 
 
 

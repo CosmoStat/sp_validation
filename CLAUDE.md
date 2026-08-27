@@ -78,10 +78,23 @@ Main configuration in `scripts/calibration/params.py` with parameters:
 - pyccl for cosmological calculations
 
 ## Container Usage
-Recommended installation via Apptainer/Docker:
+Nothing is hand-built. CI publishes `ghcr.io/cosmostat/sp_validation:<branch>` on
+every push, and each person keeps their own copy at
+`~/.cache/sp_validation/sp_validation.sif`, managed by the `spv-container` CLI:
+
 ```bash
-apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:develop
+spv-container pull            # fetch :develop there (do it from a compute node)
+spv-container status          # which commit it was built from, vs. your checkout
+spv-container exec <command>  # one-off run inside it
 ```
+
+Every rule runs inside that image, wrapped by Snakemake itself (`--profile
+workflow/profiles/candide` on the cluster, `workflow/profiles/default -j N`
+elsewhere). The `sp_validation` a rule imports comes from the *launched
+checkout*, not the image: `common.configure()` puts its `src/` on the
+container's `PYTHONPATH`.
+
+`workflow/README.md` is the full story — profiles, image resolution, refresh.
 
 ## Notebook Configuration
 - The CosmologyValidation class must be initialized in cosmo_val

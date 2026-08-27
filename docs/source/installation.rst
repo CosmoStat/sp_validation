@@ -15,12 +15,11 @@ The image runs on most systems, including HPC clusters, with no further setup.
 
 .. code-block:: bash
 
-   # Build a writeable "sandbox" container in the current directory.
-   # ./sp_validation is a directory that behaves like a small VM.
-   apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:develop
+   # Pull the image to a single .sif file.
+   apptainer pull sp_validation.sif docker://ghcr.io/cosmostat/sp_validation:develop
 
    # Open a shell in the container, then confirm the install works.
-   apptainer shell --writable sp_validation
+   apptainer shell sp_validation.sif
    python -c "import sp_validation"
 
 The image also runs under Docker:
