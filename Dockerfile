@@ -86,7 +86,7 @@ ENV CSL_DIR=/opt/cosmosis-standard-library
 # xi_sys, 2pt_like -- no Makefile in those trees at all) or lives under shear/:
 # `limber`, which project_2d.py links, and `cl_to_xi_nicaea`, whose
 # nicaea_interface.so the 2pt_shear stage loads.
-RUN bash -c 'set -euo pipefail; \
+RUN bash -c 'set -eo pipefail; \
     export PATH=/app/.venv/bin:$PATH; \
     git clone --filter=blob:none "$CSL_REPO" "$CSL_DIR"; \
     cd "$CSL_DIR"; \
