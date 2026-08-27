@@ -146,11 +146,9 @@ EOF
 rule covariance_cosmocov:
     """Run the host-compiled CosmoCov binary.
 
-    The workflow's only exception to the profile-driven container model (see
-    workflow/profiles/candide/config.yaml): CosmoCov is a host-compiled
-    Fortran/C binary loaded through environment-modules (`module load gcc
-    intelpython openmpi`), not a Python entry point the container ships.
-    `container: None` is required here, not a leftover of the old convention.
+    `container: None` on purpose: CosmoCov is a host-compiled Fortran/C binary
+    loaded through environment-modules (`module load gcc intelpython openmpi`),
+    not a Python entry point the container ships.
     """
     input:
         rules.covariance_ini.output,
