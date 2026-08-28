@@ -11,10 +11,8 @@ import sys
 
 import numpy as np
 from astropy.io import fits
-
-from cs_util import logging
-from cs_util import cat
 from cs_util import args as cs_args
+from cs_util import cat, logging
 
 
 class MergePsfCat:
@@ -136,7 +134,6 @@ class MergePsfCat:
 
         dat_all = {}
         for idx, patch in enumerate(patches):
-
             if verbose:
                 print(f"  {patch}")
 

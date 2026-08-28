@@ -9,19 +9,69 @@
 
 """
 
-from collections import Counter
-
-import healpy as hp
 import healsparse as hsp
 import matplotlib.pylab as plt
+import matplotlib.scale as mscale
+import matplotlib.ticker as ticker
+import matplotlib.transforms as mtransforms
 import numpy as np
-import skyproj
-from astropy import units as u
-from astropy.coordinates import SkyCoord
 from cs_util import plots
 from lenspack.geometry.projections.gnom import radec2xy
 
-from sp_validation.plot_style import *
+# Imported for its import-time side effect: sets matplotlib rcParams (plot style).
+import sp_validation.plot_style  # noqa: F401
+from sp_validation.masks import Mask
+
+
+class SquareRootScale(mscale.ScaleBase):
+    """
+    ScaleBase class for generating square root scale.
+
+    Usage example: axis.set_yscale('squareroot')
+
+    """
+
+    name = "squareroot"
+
+    def __init__(self, axis, **kwargs):
+        mscale.ScaleBase.__init__(self, axis, **kwargs)
+
+    def set_default_locators_and_formatters(self, axis):
+        axis.set_major_locator(ticker.AutoLocator())
+        axis.set_major_formatter(ticker.ScalarFormatter())
+        axis.set_minor_locator(ticker.NullLocator())
+        axis.set_minor_formatter(ticker.NullFormatter())
+
+    def limit_range_for_scale(self, vmin, vmax, minpos):
+        return max(0.0, vmin), vmax
+
+    class SquareRootTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform_non_affine(self, a):
+            return np.array(a) ** 0.5
+
+        def inverted(self):
+            return SquareRootScale.InvertedSquareRootTransform()
+
+    class InvertedSquareRootTransform(mtransforms.Transform):
+        input_dims = 1
+        output_dims = 1
+        is_separable = True
+
+        def transform(self, a):
+            return np.array(a) ** 2
+
+        def inverted(self):
+            return SquareRootScale.SquareRootTransform()
+
+    def get_transform(self):
+        return self.SquareRootTransform()
+
+
+mscale.register_scale(SquareRootScale)
 
 
 def plot_spatial_density(
@@ -218,7 +268,6 @@ def plot_map(
     if clusters:
         x_cluster = (clusters["x"] + mean_x - min_x) / (max_x - min_x) * Nx
         y_cluster = (clusters["y"] + mean_y - min_y) / (max_y - min_y) * Ny
-        dy = 0.02
         plt.plot(
             x_cluster,
             y_cluster,
@@ -240,70 +289,6 @@ def plot_map(
     plt.title(title)
 
     plots.savefig(out_path)
-
-    return vlim
-
-
-def plot_map_stacked(kappa, title, radius, output_path, vlim=None):
-    """Plot Map Stacked.
-
-    Plot stacked convergence map.
-
-    Parameters
-    ----------
-    kappa : image
-        map values
-    title : string
-        plot title
-    output_path : string
-        figure output file path
-
-    vlim : array(2) of float, optional, default=None
-        map limits; min and max of kappa if not given
-
-    Returns
-    -------
-    array(2) of float
-        map limits
-
-    """
-    plots.figure(figsize=(10, 10))
-
-    # plot image
-    plt.imshow(kappa)
-
-    # set colorbar
-    if not vlim:
-        vlim = plt.gci().get_clim()
-    else:
-        plt.gci().set_clim(vlim)
-    plt.colorbar()
-
-    npix = kappa.shape[0]
-
-    # mark center
-    plt.plot(npix / 2 - 1, npix / 2 - 1, "+")
-
-    # axes ticks
-    n_ticks = 4
-    loc = np.arange(0, npix + npix / n_ticks, step=npix / n_ticks)
-    lab = np.round(
-        np.arange(
-            -radius,
-            radius + radius * 2 / n_ticks,
-            step=radius * 2 / n_ticks,
-        ),
-        1,
-    )
-    plt.xticks(loc, labels=lab)
-    plt.yticks(loc, labels=lab)
-
-    plt.xlabel(r"separation $R$ [Mpc]")
-    plt.ylabel(r"separation $R$ [Mpc]")
-
-    plt.title(title)
-
-    plots.savefig(output_path)
 
     return vlim
 
@@ -350,10 +335,9 @@ def plot_binned(
     len_shape = len(quantities[key].shape)
 
     fig_size = 2 * len_shape
-    fig = plt.figure(figsize=(fig_size, fig_size))
+    plt.figure(figsize=(fig_size, fig_size))
 
     if len_shape == 2:
-
         ax = plt.subplot2grid((1, 1), (0, 0))
         plot_binned_one(
             ax,
@@ -390,285 +374,13 @@ def plot_binned(
                     bin_edges_y,
                     vmin=my_vmin,
                     vmax=my_vmax,
-                    title=f"${title_base}_{{{idx+1}{jdx+1}}}$",
+                    title=f"${title_base}_{{{idx + 1}{jdx + 1}}}$",
                     xlabel=xlabel,
                     ylabel=ylabel,
                 )
 
     plt.tight_layout()
     plots.savefig(f"{key}_binned.png")
-
-
-class FootprintPlotter:
-    """Class to create footprint plots.
-
-    Parameters
-    -----------
-    nside_coverage: int, optional
-        basic resolution of map; default is 32
-    nside_map:
-        fine resolution for plotting; default is 2048
-
-    """
-
-    # Dictionary storing region parameters
-    _regions = {
-        "NGC": {"ra_0": 180, "extend": [120, 270, 20, 70], "vmax": 60},
-        "SGC": {"ra_0": 15, "extend": [-20, 45, 20, 45], "vmax": 60},
-        "fullsky": {"ra_0": 150, "extend": [0, 360, -90, 90], "vmax": 60},
-    }
-
-    def __init__(self, nside_coverage=32, nside_map=2048):
-
-        self._nside_coverage = nside_coverage
-        self._nside_map = nside_map
-
-    def create_hsp_map(self, ra, dec):
-        """Create Hsp Map.
-
-        Create healsparse map.
-
-        Parameters
-        ----------
-        ra : numpy.ndarray
-            right ascension values
-        dec : numpy.ndarray
-            declination values
-
-        Returns
-        -------
-        hsp.HealSparseMap
-            map
-
-        """
-        # Create empty map
-        hsp_map = hsp.HealSparseMap.make_empty(
-            self._nside_coverage, self._nside_map, dtype=np.float32, sentinel=np.nan
-        )
-
-        # Get pixel list corresponding to coordinates
-        hpix = hp.ang2pix(self._nside_map, ra, dec, nest=True, lonlat=True)
-
-        # Get count of objects per pixel
-        pixel_counts = Counter(hpix)
-
-        # List of unique pixels
-        unique_hpix = np.array(list(pixel_counts.keys()))
-
-        # Number of objects
-        values = np.array(list(pixel_counts.values()), dtype=np.float32)
-
-        # Create maps with numbers per pixel
-        hsp_map[unique_hpix] = values
-
-        return hsp_map
-
-    def plot_area(
-        self,
-        hsp_map,
-        ra_0=0,
-        extend=[120, 270, 29, 70],
-        vmax=60,
-        projection=None,
-        outpath=None,
-        title=None,
-        colorbar=True,
-        colorbar_label="Coverage depth",
-    ):
-        """Plot Area.
-
-        Plot catalogue in an area on the sky.
-
-        Parameters
-        ----------
-        hsp_map : hsp_HealSparseMap
-            input map
-        ra_0 : float, optional
-            anchor point in R.A.; default is 0
-        extend : list, optional
-            sky region, extend=[ra_low, ra_high, dec_low, dec_high];
-            default is [120, 270, 29, 70]
-        vmax : float, optional
-            maximum pixel value to plot with color; default is 60
-        projection : skyproj.McBrydeSkyproj
-            if ``None`` (default), a new plot is created
-        outpath : str, optional
-            output path, default is ``None``
-        title : str, optional
-            print title if not ``None`` (default)
-        colorbar : bool, optional
-            add colorbar; default is ``True``
-        colorbar_label : str, optional
-            colorbar label; default is "Coverage depth"
-
-        Returns
-        --------
-        skyproj.McBrydeSkyproj
-            projection instance
-        plt.axes.Axes
-            axes instance
-
-        Raises
-        ------
-        ValueError
-            if no object found in region
-
-        """
-        if not projection:
-
-            # Create new figure and axes
-            fig, ax = plt.subplots(figsize=(10, 10))
-
-            # Create new projection
-            projection = skyproj.McBrydeSkyproj(
-                ax=ax, lon_0=ra_0, extent=extend, autorescale=True, vmax=vmax
-            )
-        else:
-            ax = None
-
-        im = None
-        try:
-            im, lon_raster, lat_raster, values_raster = projection.draw_hspmap(
-                hsp_map, lon_range=extend[0:2], lat_range=extend[2:]
-            )
-        except ValueError:
-            msg = "No object found in region to draw"
-            print(f"{msg}, continuing...")
-            # raise ValueError(msg)
-
-        projection.draw_milky_way(width=25, linewidth=1.5, color="black", linestyle="-")
-
-        # Add colorbar if requested and image was drawn
-        if colorbar and im is not None:
-            plt.colorbar(im, ax=ax if ax else projection.ax, label=colorbar_label)
-
-        if title:
-            plt.title(title, pad=5)
-
-        if outpath:
-            plt.savefig(outpath)
-
-        return projection, ax
-
-    def plot_region(self, hsp_map, region, projection=None, outpath=None, title=None, colorbar=True, colorbar_label="Coverage depth"):
-        """Plot Region.
-
-        Plot catalogue in a predefined region on the sky.
-
-        Parameters
-        ----------
-        hsp_map : hsp_HealSparseMap
-            input map
-        region : dict
-            region dictionary with keys 'ra_0', 'extend', 'vmax'
-        projection : skyproj.McBrydeSkyproj, optional
-            if ``None`` (default), a new plot is created
-        outpath : str, optional
-            output path, default is ``None``
-        title : str, optional
-            print title if not ``None`` (default)
-        colorbar : bool, optional
-            add colorbar; default is ``True``
-        colorbar_label : str, optional
-            colorbar label; default is "Coverage depth"
-
-        Returns
-        --------
-        skyproj.McBrydeSkyproj
-            projection instance
-        plt.axes.Axes
-            axes instance
-
-        """
-        return self.plot_area(
-            hsp_map,
-            region["ra_0"],
-            region["extend"],
-            region["vmax"],
-            projection=projection,
-            outpath=outpath,
-            title=title,
-            colorbar=colorbar,
-            colorbar_label=colorbar_label,
-        )
-
-    def plot_all_regions(self, hsp_map, outbase=None):
-
-        for region in self._regions:
-            if outbase:
-                outpath = f"{outbase}_{region}.png"
-            else:
-                outpath = None
-            self.plot_region(hsp_map, self._regions[region], outpath=outpath)
-
-    @classmethod
-    def hp_pixel_centers(cls, nside, nest=False):
-
-        # Get number of pixels for given nside
-        npix = hp.nside2npix(nside)
-
-        # Get pixel indices
-        pix_indices = np.arange(npix)
-
-        # Get coordinates of pixel centers
-        ra, dec = hp.pix2ang(nside, pix_indices, nest=nest, lonlat=True)
-
-        return ra, dec, npix
-
-    @classmethod
-    def plot_footprint_as_hp(cls, hsp_map, nside, outpath=None, title=None):
-
-        ra, dec, npix = cls.hp_pixel_centers(nside)
-
-        # Create an empty HEALPix map
-        m = np.full(npix, np.nan)
-
-        fig, ax = plt.subplots(figsize=(10, 10))
-
-        # Plot the HEALPix grid
-        hp.mollview(m, title=title, coord="C", notext=True, rot=(180, 0, 0))
-
-        # Define the Galactic Plane: l = [0, 360], b = 0°
-        for l0, ls in zip((-5, 0, 5), (":", "-", ":")):
-            l_values = np.linspace(0, 360, 500)  # 500 points along the plane
-            b_values = np.zeros_like(l_values)  # Galactic latitude is 0 (the plane)
-
-            # Convert (l, b) to (λ, β) - Ecliptic coordinates
-            coords = SkyCoord(
-                l=l_values * u.degree, b=b_values * u.degree, frame="galactic"
-            )
-            ecl_coords = coords.transform_to(
-                "barycentrictrueecliptic"
-            )  # Ecliptic frame
-
-            # Extract Ecliptic longitude (λ) and latitude (β)
-            lambda_ecl = ecl_coords.lon.deg  # Ecliptic longitude
-            beta_ecl = ecl_coords.lat.deg  # Ecliptic latitude
-
-            # Convert to HEALPix projection coordinates (colatitude, longitude)
-            theta = np.radians(90 - beta_ecl)  # HEALPix uses colatitude
-            phi = np.radians(lambda_ecl)  # HEALPix uses longitude
-
-            # Create a healpy Mollweide projection in Ecliptic coordinates
-            hp.projplot(
-                theta, phi, linestyle=ls, color="black", linewidth=1
-            )  # Plot the outline
-
-        # Apply mask
-        mask_values = hsp_map.get_values_pos(ra, dec, valid_mask=True, lonlat=True)
-
-        ok = np.where(mask_values == False)[0]
-        # nok = np.where(mask_values == False)[0]
-
-        hp.projscatter(ra[ok], dec[ok], lonlat=True, color="green", s=1, marker=".")
-        # hp.projscatter(ra[nok], dec[nok], lonlat=True, color="red", s=1, marker=".")
-
-        plt.tight_layout()
-
-        if outpath:
-            plt.savefig(outpath)
-
-        plt.show()
 
 
 def hsp_map_logical_or(maps, verbose=False):
@@ -712,84 +424,90 @@ def hsp_map_logical_or(maps, verbose=False):
     return map_comb
 
 
-def plot_area_mask(ra, dec, zoom, mask=None):                                    
-    """Plot Area Mask.                                                           
-                                                                                 
-    Create sky plot of objects.                                                  
-                                                                                 
-    Parameters                                                                   
-    ----------                                                                   
-    ra : list                                                                    
-        R.A. coordinates                                                         
-    dec : list                                                                   
-        Dec. coordinates                                                         
-    zoom : TBD                                                                   
-    mask: TBD, optional                                                          
-                                                                                 
-    """                                                                          
-    if mask is None:                                                             
-        mask == np.ones_like(ra)                                                 
-                                                                                 
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30,15))                  
-    axes[0].hexbin(ra[mask], dec[mask], gridsize=100)                            
-    axes[1].hexbin(ra[mask & zoom], dec[mask & zoom], gridsize=200)              
-    for idx in (0, 1):                                                           
-        axes[idx].set_xlabel("R.A. [deg]")                                       
+def plot_area_mask(ra, dec, zoom, mask=None):
+    """Plot Area Mask.
+
+    Create sky plot of objects.
+
+    Parameters
+    ----------
+    ra : list
+        R.A. coordinates
+    dec : list
+        Dec. coordinates
+    zoom : TBD
+    mask: TBD, optional
+
+    """
+    if mask is None:
+        mask == np.ones_like(ra)
+
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(30, 15))
+    axes[0].hexbin(ra[mask], dec[mask], gridsize=100)
+    axes[1].hexbin(ra[mask & zoom], dec[mask & zoom], gridsize=200)
+    for idx in (0, 1):
+        axes[idx].set_xlabel("R.A. [deg]")
         axes[idx].set_ylabel("Dec [deg]")
 
 
-def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):                            
-    """Sky Plots.                                                                
-                                                                                 
-    Plot sky regions with different masks.                                       
-                                                                                 
-    Parameters                                                                   
-    ----------                                                                   
-    masks : list                                                                 
-        masks to be applied                                                      
-    labels : dict                                                                
-        labels for masks                                                         
-    zoom_ra : list                                                               
-        min and max R.A. for zoom-in plot                                        
-    zoom_dec : list                                                              
-        min and max Dec. for zoom-in plot                                        
-                                                                                 
-    """                                                                          
-    ra = dat["RA"][:]                                                            
-    dec = dat["Dec"][:]                                                          
-                                                                                 
-    zoom_ra = (room_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])                
-    zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])           
-    zoom = zoom_ra & zoom_dec                                                    
-                                                                                 
-    # No mask                                                                    
-    plot_area_mask(ra, dec, zoom)                                                
-                                                                                 
-    # SExtractor and SP flags                                                    
-    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask 
-    plot_area_mask(ra, dec, zoom, mask=m_flags)                                  
-                                                                                 
-    # Overlap regions                                                            
-    m_over = masks[labels["overlap"]]._mask & m_flags                            
-    plot_area_mask(ra, dec, zoom, mask=m_over)                                   
-                                                                                 
-    # Coverage mask                                                              
-    m_point = masks[labels["npoint3"]]._mask & m_over                            
-    plot_area_mask(ra, dec, zoom, mask=m_point)                                  
-                                                                                 
-    # Maximask                                                                   
-    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point                      
-    plot_area_mask(ra, dec, zoom, mask=m_maxi)                                   
-                                                                                 
-    m_comb = mask_combined._mask                                                 
-    plot_area_mask(ra, dec, zoom, mask=m_comb)                                   
-                                                                                 
-    m_man = m_maxi & masks[labels["8_Manual"]]._mask                             
-    plot_area_mask(ra, dec, zoom, mask=m_man)                                    
-                                                                                 
-    m_halos = (                                                                  
-        m_maxi                                                                   
-        & masks[labels['1_Faint_star_halos']]._mask                              
-        & masks[labels['2_Bright_star_halos']]._mask                             
-    )                                                                            
-    plot_area_mask(ra, dec, zoom, mask=m_halos) 
+def sky_plots(dat, masks, labels, zoom_ra, zoom_dec):
+    """Sky Plots.
+
+    Plot sky regions with different masks.
+
+    Parameters
+    ----------
+    masks : list
+        masks to be applied
+    labels : dict
+        labels for masks
+    zoom_ra : list
+        min and max R.A. for zoom-in plot
+    zoom_dec : list
+        min and max Dec. for zoom-in plot
+
+    """
+    ra = dat["RA"][:]
+    dec = dat["Dec"][:]
+
+    zoom_ra = (zoom_ra[0] < dat["RA"]) & (dat["RA"] < zoom_ra[1])
+    zoom_dec = (zoom_dec[0] < dat["Dec"]) & (dat["Dec"] < zoom_dec[1])
+    zoom = zoom_ra & zoom_dec
+
+    # No mask
+    plot_area_mask(ra, dec, zoom)
+
+    # SExtractor and SP flags
+    m_flags = masks[labels["FLAGS"]]._mask & masks[labels["IMAFLAGS_ISO"]]._mask
+    plot_area_mask(ra, dec, zoom, mask=m_flags)
+
+    # Overlap regions
+    m_over = masks[labels["overlap"]]._mask & m_flags
+    plot_area_mask(ra, dec, zoom, mask=m_over)
+
+    # Coverage mask
+    m_point = masks[labels["npoint3"]]._mask & m_over
+    plot_area_mask(ra, dec, zoom, mask=m_point)
+
+    # Maximask
+    m_maxi = masks[labels["1024_Maximask"]]._mask & m_point
+    plot_area_mask(ra, dec, zoom, mask=m_maxi)
+
+    # Combined mask over all supplied masks (was passed in by the caller before
+    # this routine was extracted into a function; rebuilt here from ``masks``).
+    # ``masks`` is the list returned by ``get_masks_from_config`` (``labels``
+    # maps name -> integer index into it), so ``from_list`` consumes it directly
+    # -- exactly as the caller does (``Mask.from_list(masks, label="combined")``).
+    mask_combined = Mask.from_list(masks, label="combined")
+    m_comb = mask_combined._mask
+    plot_area_mask(ra, dec, zoom, mask=m_comb)
+
+    m_man = m_maxi & masks[labels["8_Manual"]]._mask
+    plot_area_mask(ra, dec, zoom, mask=m_man)
+
+    m_halos = (
+        m_maxi
+        & masks[labels["1_Faint_star_halos"]]._mask
+        & masks[labels["2_Bright_star_halos"]]._mask
+    )
+    plot_area_mask(ra, dec, zoom, mask=m_halos)

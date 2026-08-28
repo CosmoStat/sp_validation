@@ -1,0 +1,518 @@
+version: "0.0.10"
+name: "Paper IV — harmonic-space cosmic shear (Guerrini et al.)"
+tags: [unions, cosmic-shear, harmonic, inference]
+
+authors:
+  - "Cail Daley"
+
+narrative:
+  summary: |
+    Harmonic-space (pseudo-Cℓ) 2D cosmic shear for UNIONS-3500: the shear power
+    spectrum measured with a [catalogue-based pseudo-Cℓ estimator](#decisions.estimator)
+    and used to infer S₈. The headline is [S₈ = 0.891⁺⁰·⁰⁵⁷₋₀.₀₈₄](#findings.s8) —
+    higher than, but consistent with, the [config-space Paper III value](#findings.config_consistency_indep).
+    The project stops at the inference data products: the Cℓ data vector, the
+    iNKA+OneCovariance covariance, and the cosmological constraints.
+  findings: |
+    Fiducial [S₈ = 0.891⁺⁰·⁰⁵⁷₋₀.₀₈₄](#findings.s8),
+    [Ω_m = 0.225⁺⁰·¹⁵³₋₀.₀₇₇](#findings.omega_m),
+    [σ₈ = 0.960⁺⁰·²²³₋₀.₂₅₇](#findings.sigma8); good fit
+    ([χ² = 8.1, PTE 0.76](#findings.gof_chi2) vs GLASS). Consistent with
+    [Planck at 0.79σ](#findings.planck_consistency) and with the
+    [config-space value at 0.60σ](#findings.config_consistency_indep) (independent
+    errors) — but [2.18σ](#findings.config_consistency_corr) once the shared
+    sample correlation is included, and with [other WL surveys at 0.87–1.51σ](#findings.wl_consistency).
+    B-mode nulls: [EB PTE 0.95](#findings.eb_pte) and [BB PTE 0.132](#findings.bb_pte)
+    (iNKA, all scales), rising under [scale cuts](#findings.bb_pte_cuts) and
+    tightening under a [10000-Gaussian-sim covariance](#findings.bb_pte_gauss_sims).
+    The [iNKA-vs-OneCovariance covariance differs by ~20–25%](#findings.covariance_diff).
+  methods: |
+    Pseudo-Cℓ ([estimator](#decisions.estimator), [catalogue-based](#decisions.cell_method))
+    in [32 sqrt-spaced bandpowers](#decisions.binning), [scale cut 300 < ℓ < 1600](#decisions.scalecut)
+    via a [k-contribution criterion](#decisions.scalecut_method). Covariance is
+    [iNKA Gaussian + OneCovariance non-Gaussian](#decisions.covariance_method)
+    with an [analytic noise-bias term](#decisions.noise_bias). Modelling:
+    [HMCode2020](#decisions.nl_model) with a [marginalised T_AGN baryon
+    parameter](#decisions.baryon), [NLA IA](#decisions.ia_model) with a
+    [Gaussian A_IA prior](#decisions.ia_prior), [Δz](#decisions.dz_prior) and
+    [m-bias](#decisions.m_prior) nuisances, [leakage-corrected ellipticities](#decisions.leakage),
+    [Polychord sampling](#decisions.sampler), and a [MAP-via-KDE point
+    estimate](#decisions.point_estimate). Analysis [blinded](#decisions.blinding).
+  inputs: |
+    Consumes the shared [shear_catalog](#inputs.shear_catalog), [nz](#inputs.nz),
+    [glass_mocks](#inputs.glass_mocks), and external [Planck 2018](#inputs.external_planck).
+  outputs: |
+    The [cl_data_vector](#outputs.cl_data_vector), the
+    [covariance](#outputs.covariance), and the
+    [cosmo_constraints](#outputs.cosmo_constraints).
+
+inputs:
+  - id: shear_catalog
+    from: ../shear_catalog
+  - id: nz
+    from: ../nz
+  - id: glass_mocks
+    from: ../glass_mocks
+  - id: external_planck
+    type: data
+    label: "Planck 2018 (external comparison)"
+    source: "external/planck2018/"
+    description: >-
+      Planck 2018 cosmology — both the fiducial cosmology used to generate the
+      covariance and the external S₈ comparison (0.79σ consistency).
+
+decisions:
+  catalog_version:
+    from: ../catalog_version
+  shear_calibration:
+    from: ../shear_calibration
+  leakage_correction:
+    from: ../leakage_correction
+  fiducial_cosmology:
+    from: ../fiducial_cosmology
+  blinding:
+    from: ../blinding
+
+  estimator:
+    label: "Power-spectrum estimator"
+    tags: [stats]
+    rationale: >-
+      Pseudo-Cℓ formalism (MASTER) via NaMaster for the shear power spectrum;
+      the configuration-space companion is Paper III's ξ±.
+    default: pseudo_cl_namaster
+    options:
+      pseudo_cl_namaster:
+        label: "Pseudo-Cℓ (NaMaster)"
+
+  cell_method:
+    label: "Field/map construction"
+    tags: [numerics]
+    rationale: >-
+      Catalogue-based estimator (Wolz et al. 2025) rather than pixelised maps:
+      avoids pixel-window / aliasing bias at small scales and Poisson-noise
+      instabilities in low-density mask regions.
+    default: catalog_based_wolz25
+    options:
+      catalog_based_wolz25:
+        label: "Catalogue-based (Wolz+25, fiducial)"
+        insights: [catalog_cl_ref]
+      pixelised_map:
+        label: "Pixelised HealPix map (DES/HSC-style)"
+        description: "Alternative; susceptible to pixel-window and Poisson bias."
+
+  binning:
+    label: "Bandpower binning"
+    tags: [numerics]
+    rationale: >-
+      Equal-weight binning with 32 square-root-spaced bins over ℓ ∈ [8, 2048],
+      following the DES Doux et al. 2022 strategy.
+    default: sqrt_32_8_2048
+    options:
+      sqrt_32_8_2048:
+        label: "32 sqrt-spaced bins, 8–2048 (fiducial)"
+
+  scalecut:
+    label: "Multipole scale cut"
+    tags: [scale-cuts]
+    rationale: >-
+      Conservative ℓ ∈ [300, 1600] (k_max ≈ 2.6 h/Mpc), removing the largest
+      and smallest scales where a B-mode signal is present.
+    default: ell_300_1600
+    options:
+      ell_300_1600:
+        label: "300 < ℓ < 1600 (fiducial)"
+      ell_full:
+        label: "Full range (8 ≤ ℓ ≤ 2048)"
+
+  scalecut_method:
+    label: "Scale-cut derivation (k-contribution)"
+    tags: [scale-cuts]
+    rationale: >-
+      α = 0.95 (k above k_{>α}(ℓ) contributes at most 5% of the signal),
+      following Doux et al. 2021; tested k_max ∈ {1,3,5} h/Mpc (k_max = 3 maps
+      to ℓ_max = 1800).
+    default: alpha_0p95
+    options:
+      alpha_0p95:
+        label: "α = 0.95 k-contribution (fiducial)"
+
+  covariance_method:
+    label: "Covariance method (iNKA + OneCovariance)"
+    tags: [stats]
+    rationale: >-
+      Gaussian term from NaMaster iNKA; non-Gaussian (connected four-point +
+      super-sample) from OneCovariance. The iNKA and OneCovariance estimates
+      differ by ~25% (largely from number-density variation); OneCovariance
+      shifts S₈ by +0.02σ. Validated against 350 GLASS mocks.
+    default: inka_plus_onecov
+    options:
+      inka_plus_onecov:
+        label: "iNKA Gaussian + OneCovariance non-Gaussian (fiducial)"
+        insights: [cosmocov_ref]
+      onecov_only:
+        label: "OneCovariance only"
+        description: "S₈ shifts by +0.02σ."
+      glass_cov:
+        label: "GLASS-derived covariance"
+        description: "Validation variant."
+
+  noise_bias:
+    label: "Noise-bias subtraction"
+    tags: [numerics]
+    rationale: >-
+      Analytic binned noise pseudo-power spectrum (Nicola et al. 2021),
+      Ñ_L = Ω_pix ⟨Σ w² (e₁²+e₂²)/2⟩, equivalent to projecting random-rotated
+      shapes onto the HealPix map (Nside=1024); accounts for number-density
+      variation on the sky.
+    default: nicola21_analytic
+    options:
+      nicola21_analytic:
+        label: "Nicola+21 analytic (fiducial)"
+      random_rotation:
+        label: "Random-rotation map projection"
+        description: "Equivalent numerical estimate."
+
+  nl_model:
+    label: "Non-linear power-spectrum model"
+    tags: [physics]
+    rationale: >-
+      HMCode2020 with a single feedback parameter T_AGN. Halofit and
+      HMCode-no-baryons run as robustness checks (S₈ shifts −0.41σ and −0.20σ).
+    default: hmcode2020
+    options:
+      hmcode2020:
+        label: "HMCode2020 (T_AGN feedback, fiducial)"
+      halofit:
+        label: "Halofit (Takahashi 2012)"
+        description: "S₈ shifts −0.41σ."
+      hmcode_no_baryons:
+        label: "HMCode2020, no baryons"
+        description: "S₈ shifts −0.20σ."
+
+  baryon:
+    label: "Baryonic-feedback marginalisation"
+    tags: [physics]
+    rationale: >-
+      Marginalise log T_AGN with a uniform hydro-informed prior
+      (T_AGN ~ 10^7.6–10^8 K; range U(7.3, 8.0) is config-derived). Weakly
+      constrained (posterior 7.627⁺⁰·²⁶³₋₀.₁₈₇).
+    default: marginalise_tagn
+    options:
+      marginalise_tagn:
+        label: "Marginalise log T_AGN, uniform prior (fiducial)"
+
+  ia_model:
+    label: "Intrinsic-alignment model"
+    tags: [physics]
+    rationale: >-
+      NLA with η_IA = 0 (redshift-independent, non-tomographic); a strong
+      conservative A_IA prior is required to break the IA–shear degeneracy.
+    default: nla_eta0
+    options:
+      nla_eta0:
+        label: "NLA, η_IA = 0 (fiducial)"
+
+  ia_prior:
+    label: "A_IA prior"
+    tags: [physics]
+    rationale: >-
+      Gaussian A_IA prior from a direct red+blue IA measurement: A_IA = 0.83 ±
+      0.39 in the live text. (Config and a commented-out table use width 0.7 —
+      a known text-vs-config discrepancy.) Posterior follows the prior
+      (1.011⁺⁰·⁶⁵⁵₋₀.₆₉₄; unconstrained).
+    default: gauss_0p39
+    options:
+      gauss_0p39:
+        label: "A_IA ~ N(0.83, 0.39) (live text, fiducial)"
+      gauss_0p7:
+        label: "A_IA ~ N(0.83, 0.7) (config / commented table)"
+        description: "Config-derived width; not the live-text value."
+
+  dz_prior:
+    label: "Redshift-shift Δz prior"
+    tags: [calibration]
+    rationale: >-
+      Additive shift n(z) → n(z + Δz). Corrected mean Δz = −0.003 (from MICE2
+      mocks), width ±0.018. A pre-unblinding bug used −0.030; the fix shifted
+      S₈ lower by ~0.03.
+    default: gauss_dz
+    options:
+      gauss_dz:
+        label: "Δz ~ N(−0.003, 0.018) (fiducial)"
+      preunblinding_dz:
+        label: "Pre-unblinding Δz = −0.030 (bug)"
+        description: "Superseded; still present in config."
+
+  m_prior:
+    label: "Multiplicative shear bias m"
+    tags: [calibration]
+    rationale: >-
+      Residual multiplicative bias m added as a nuisance, rescaling Cℓ →
+      (1+m)² Cℓ. Calibrated from image simulations (Paper V); the numeric
+      N(−0.057, 0.014) is config-derived.
+    default: gauss_m
+    options:
+      gauss_m:
+        label: "m ~ N(−0.057, 0.014) (config, fiducial)"
+
+  leakage:
+    label: "PSF-leakage treatment"
+    tags: [calibration]
+    rationale: >-
+      PSF-leakage-corrected ellipticities (Li/KiDS-Legacy method). With/without
+      leakage agree at +0.02σ; the residual C_ℓ^sys stays below 5% on almost
+      all scales and is neglected.
+    default: corrected
+    options:
+      corrected:
+        label: "Leakage-corrected (fiducial)"
+      uncorrected:
+        label: "No leakage correction"
+        description: "+0.02σ shift."
+
+  sampler:
+    label: "Sampler / likelihood"
+    tags: [stats]
+    rationale: >-
+      Gaussian likelihood with fixed covariance; theory from CosmoSIS;
+      parameter estimation with the Polychord nested sampler. Sampled set
+      {ω_c, ω_b, H0, n_s, S8} with KiDS-Legacy Y3 Hybrid priors. (Live-point
+      count is config-derived.)
+    default: polychord
+    options:
+      polychord:
+        label: "Polychord, CosmoSIS theory (fiducial)"
+
+  point_estimate:
+    label: "Point-estimate statistic"
+    tags: [stats]
+    rationale: >-
+      MAP via KDE on the marginalised posterior — 2D for S₈ and Ω_m, 1D for
+      the rest. Chosen because the 2D-marginalised KDE best recovers the input
+      cosmology in the GLASS validation test.
+    default: map_kde
+    options:
+      map_kde:
+        label: "MAP via KDE (2D for S₈/Ω_m, 1D others)"
+
+prior_insights:
+  catalog_cl_ref:
+    id: catalog_cl_ref
+    label: "Catalogue-based pseudo-Cℓ (Wolz+25)"
+    claim: >-
+      A catalogue-based pseudo-Cℓ estimator represents the mask via source
+      positions, avoiding pixel-window, aliasing, and Poisson-noise bias.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.1088/1475-7516/2025/01/028"
+        quote:
+          exact: "Catalog-based pseudo-Cls"
+
+  cosmocov_ref:
+    id: cosmocov_ref
+    label: "Non-Gaussian covariance (OneCovariance)"
+    claim: >-
+      OneCovariance provides the connected four-point and super-sample
+      non-Gaussian covariance terms for cosmic-shear power spectra.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.1051/0004-6361/202452592"
+        quote:
+          exact: "OneCovariance"
+
+  glass_mocks_ref:
+    id: glass_mocks_ref
+    label: "GLASS mocks (Tessore+23)"
+    claim: >-
+      350 GLASS lognormal mocks reproduce the survey footprint, number density,
+      shape noise, and n(z) for covariance validation and the goodness-of-fit.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.21105/astro.2302.01942"
+        quote:
+          exact: "GLASS: Generator for Large Scale Structure"
+
+outputs:
+  - id: cl_data_vector
+    type: data
+    label: "Shear Cℓ data vector (EE/EB/BB bandpowers)"
+    inputs: [shear_catalog, nz]
+    decisions: [catalog_version, leakage, estimator, cell_method, binning,
+                noise_bias, blinding]
+    recipe:
+      command: >-
+        python -m sp_validation.harmonic.measure_cl
+        --catalog {inputs.shear_catalog} --nz {inputs.nz}
+        --catalog-version {decisions.catalog_version}
+        --leakage {decisions.leakage}
+        --estimator {decisions.estimator}
+        --field {decisions.cell_method}
+        --binning {decisions.binning}
+        --noise-bias {decisions.noise_bias}
+        --blind {decisions.blinding}
+        --out {output}
+
+  - id: covariance
+    type: data
+    label: "Cℓ covariance (iNKA + OneCovariance)"
+    inputs: [nz, glass_mocks]
+    decisions: [covariance_method, fiducial_cosmology]
+    recipe:
+      command: >-
+        python -m sp_validation.harmonic.covariance
+        --nz {inputs.nz} --mocks {inputs.glass_mocks}
+        --covariance {decisions.covariance_method}
+        --cosmology {decisions.fiducial_cosmology}
+        --out {output}
+
+  - id: cosmo_constraints
+    type: table
+    label: "Cosmological constraints (S₈, Ω_m, σ₈)"
+    inputs: [cl_data_vector, covariance, nz, external_planck]
+    decisions: [scalecut, scalecut_method, nl_model, baryon, ia_model, ia_prior,
+                dz_prior, m_prior, sampler, point_estimate]
+    recipe:
+      command: >-
+        python -m sp_validation.harmonic.infer
+        --data {inputs.cl_data_vector} --cov {inputs.covariance} --nz {inputs.nz}
+        --planck {inputs.external_planck}
+        --scalecut {decisions.scalecut}
+        --scalecut-method {decisions.scalecut_method}
+        --nl-model {decisions.nl_model}
+        --baryon {decisions.baryon}
+        --ia-model {decisions.ia_model}
+        --ia-prior {decisions.ia_prior}
+        --dz-prior {decisions.dz_prior}
+        --m-bias {decisions.m_prior}
+        --sampler {decisions.sampler}
+        --point-estimate {decisions.point_estimate}
+        --out {output}
+
+findings:
+  s8:
+    id: s8
+    claim: "Fiducial S₈ = 0.891⁺⁰·⁰⁵⁷₋₀.₀₈₄ (MAP via getdist 2D-marginalised KDE)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+        quote: { exact: "0.891^{+0.057}_{-0.084}" }
+
+  omega_m:
+    id: omega_m
+    claim: "Fiducial Ω_m = 0.225⁺⁰·¹⁵³₋₀.₀₇₇."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  sigma8:
+    id: sigma8
+    claim: "Fiducial σ₈ = 0.960⁺⁰·²²³₋₀.₂₅₇."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  gof_chi2:
+    id: gof_chi2
+    claim: "Good fit: χ² = 8.1 (table 8.06, N_data 17), PTE 0.76 vs GLASS mocks."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  planck_consistency:
+    id: planck_consistency
+    claim: "Consistent with Planck 2018 at the 0.79σ level."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  wl_consistency:
+    id: wl_consistency
+    claim: "Consistent at 0.87–1.51σ with DES Y3, HSC Y3, and KiDS-Legacy."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  config_consistency_indep:
+    id: config_consistency_indep
+    claim: "S₈ consistent with the config-space (Paper III) value at 0.60σ assuming independent errors."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  config_consistency_corr:
+    id: config_consistency_corr
+    claim: >-
+      Accounting for the shared sample, the ΔS₈ = 0.06 difference has p = 1.5e-2
+      (2.18σ); uncertain given the low simulation budget.
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  eb_pte:
+    id: eb_pte
+    claim: "EB power spectrum: χ² = 20 for 32 dof, PTE = 0.95 (iNKA cov, all scales)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cl_data_vector
+
+  bb_pte:
+    id: bb_pte
+    claim: "BB power spectrum: χ² = 41 for 32 dof, PTE = 0.132 (iNKA, all scales); marginally passes 0.05."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cl_data_vector
+
+  bb_pte_cuts:
+    id: bb_pte_cuts
+    claim: "Removing the 3 smallest-scale points raises BB PTE to 0.271; also removing ℓ<300 gives 0.336."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cl_data_vector
+
+  bb_pte_gauss_sims:
+    id: bb_pte_gauss_sims
+    claim: "With 10000-Gaussian-sim covariance: all-scales BB PTE 0.013, EB 0.82; after cuts BB 0.17, EB 0.40."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cl_data_vector
+
+  covariance_diff:
+    id: covariance_diff
+    claim: >-
+      Non-Gaussian terms add ~10% off-diagonal correlation for 100 ≲ ℓ ≲ 900
+      (~5% diagonal at ℓ=300); iNKA vs OneCovariance differ by ~20–25%.
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: covariance

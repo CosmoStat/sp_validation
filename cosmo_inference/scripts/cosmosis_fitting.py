@@ -3,8 +3,8 @@
 """Prepare CosmoSIS inputs from UNIONS validation outputs.
 
 The script lives in ``cosmo_inference/scripts``. By default it reads templates
-from ``cosmo_inference/cosmosis_config`` and writes data products beneath
-``cosmo_inference/data`` and ``cosmo_inference/cosmosis_config``. Override
+from ``cosmo_inference/cosmosis_config/templates`` and writes data products beneath
+``cosmo_inference/data`` and ``cosmo_inference/cosmosis_config/output``. Override
 ``--template-dir`` or ``--output-root`` to use alternative locations.
 """
 
@@ -55,11 +55,11 @@ def nz_to_fits(filename):
     line = np.loadtxt(filename, max_rows=1)
     nbins = len(line) - 1
 
-    z_low = np.loadtxt(filename, usecols=0)
-    nstep = z_low[1] - z_low[0]
+    z_mid = np.loadtxt(filename, usecols=0)
+    nstep = z_mid[1] - z_mid[0]
 
-    z_mid = z_low + nstep / 2
-    z_high = np.append(z_low[1:], z_low[-1] + nstep)
+    z_low = z_mid - nstep / 2
+    z_high = z_mid + nstep / 2
 
     col1 = fits.Column(name="Z_LOW", format="D", array=z_low)
     col2 = fits.Column(name="Z_MID", format="D", array=z_mid)
@@ -183,7 +183,9 @@ def cov_cl_to_fits(cov_file, cov_hdu="COVAR_FULL"):
     elif cov_file.endswith(".npy"):
         cov_data = np.load(cov_file)
     else:
-        raise NotImplementedError(f"Unsupported pseudo-Cl covariance format: {cov_file}")
+        raise NotImplementedError(
+            f"Unsupported pseudo-Cl covariance format: {cov_file}"
+        )
 
     if cov_data.shape[0] != cov_data.shape[1]:
         raise ValueError("Pseudo-Cl covariance matrix must be square")
@@ -246,7 +248,9 @@ def rho_to_fits(filename, theta=None):
     return rho_stat_hdu
 
 
-def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
+def covdat_to_fits(
+    filename_cov_xi, filename_cov_tau=None, filename_cov_cl=None, cov_hdu=None
+):
     """
     Convert CosmoCov covariance matrix to FITS format.
 
@@ -267,6 +271,23 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
     else:
         covmat = covmat_xi
 
+    if filename_cov_cl is not None:
+        if filename_cov_cl.endswith(".fits"):
+            with fits.open(filename_cov_cl) as hdul:
+                cov_data = np.asarray(hdul[cov_hdu].data, dtype=np.float64)
+        elif filename_cov_cl.endswith(".npy"):
+            cov_data = np.load(filename_cov_cl)
+        else:
+            raise NotImplementedError(
+                f"Unsupported pseudo-Cl covariance format: {filename_cov_cl}"
+            )
+        covmat = np.block(
+            [
+                [covmat, np.zeros((len(covmat), len(cov_data)))],
+                [np.zeros((len(cov_data), len(covmat))), cov_data],
+            ]
+        )
+
     if len(covmat) != len(covmat[0]):
         raise RuntimeError("Covariance matrix is not square")
 
@@ -282,12 +303,21 @@ def covdat_to_fits(filename_cov_xi, filename_cov_tau=None):
     }
 
     if filename_cov_tau:
-        cov_dict.update({
-            "NAME_2": "TAU_0_PLUS",
-            "STRT_2": len(covmat_xi),
-            "NAME_3": "TAU_2_PLUS",
-            "STRT_3": len(covmat_xi) + int(len(covmat_tau) / 2),
-        })
+        cov_dict.update(
+            {
+                "NAME_2": "TAU_0_PLUS",
+                "STRT_2": len(covmat_xi),
+                "NAME_3": "TAU_2_PLUS",
+                "STRT_3": len(covmat_xi) + int(len(covmat_tau) / 2),
+            }
+        )
+
+    filename_cov_cl and cov_dict.update(
+        {
+            "NAME_4": "CELL_EE",
+            "STRT_4": len(covmat_xi) + (len(covmat_tau) if filename_cov_tau else 0),
+        }
+    )
 
     for key, value in cov_dict.items():
         cov_hdu.header[key] = value
@@ -346,7 +376,10 @@ def _generate_ini_file(
 ):
     """Generate a CosmoSIS INI configuration file from template with modifications."""
     template_path = Path(args.template_dir) / template_base
-    output_path = Path(args.output_config_dir) / f"cosmosis_pipeline_{args.config_name_base}{suffix}.ini"
+    output_path = (
+        Path(args.output_config_dir)
+        / f"cosmosis_pipeline_{args.config_name_base}{suffix}.ini"
+    )
 
     with open(template_path, "r") as f:
         config_content = f.read()
@@ -366,8 +399,8 @@ def _generate_ini_file(
     modifications.append((r"^\[output\]", output_section))
 
     pipeline_section = (
-        f"[pipeline]\nvalues = cosmosis_config/{values_file}\npriors = "
-        f"cosmosis_config/{priors_file}"
+        f"[pipeline]\nvalues = cosmosis_config/templates/{values_file}\npriors = "
+        f"cosmosis_config/templates/{priors_file}"
     )
     modifications.append((r"^\[pipeline\]", pipeline_section))
 
@@ -388,7 +421,7 @@ def _generate_ini_file(
             "\ndata_sets=CELL_EE"
         )
 
-    covmat_line = "covmat_name=COVMAT_CELL" if is_harmonic else "covmat_name=COVMAT"
+    covmat_line = "covmat_name=COVMAT"
 
     modifications.append((r"^\[2pt_like\]", like_section))
     modifications.append((r"^covmat_name=.*", covmat_line))
@@ -434,14 +467,15 @@ def generate_cosmosis_config(args):
 
     os.makedirs(args.output_config_dir, exist_ok=True)
 
-    _generate_ini_file(
-        args,
-        template_base_realspace,
-        priors_file,
-        values_file,
-        suffix="",
-        is_harmonic=False,
-    )
+    if args.xi:
+        _generate_ini_file(
+            args,
+            template_base_realspace,
+            priors_file,
+            values_file,
+            suffix="",
+            is_harmonic=False,
+        )
 
     if args.cl_file:
         template_base_harmonic = "cosmosis_pipeline_A_ia_cell.ini"
@@ -480,15 +514,15 @@ Example for SP_v1.4.6_leak_corr (real data):
     --data-dir "/n09data/guerrini/output_chains/SP_v1.4.6_leak_corr_A_minsep=1.0_maxsep=250.0_nbins=20_npatch=1" \\
     --nz-file "/n17data/sguerrini/UNIONS/WL/nz/v1.4.6/nz_SP_v1.4.6_A.txt" \\
     --output-root "/home/guerrini/sp_validation/cosmo_inference" \\
-    --xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/xi_plus_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-         "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/xi_minus_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/xi_plus_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+         "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/xi_minus_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
     --cov-xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance/covariance_SP_v1.4.6_leak_corr_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked/covariance_SP_v1.4.6_leak_corr_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked_processed.txt" \\
     --use-rho-tau \\
-    --rho-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-    --tau-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/tau_stats_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
-    --cov-tau "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy" \\
-    --cl-file "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_SP_v1.4.6_leak_corr.fits" \\
-    --cov-cl "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6_leak_corr.fits"
+    --rho-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --tau-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/tau_stats_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --cov-tau "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_leak_corr_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy" \\
+    --cl-file "/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_SP_v1.4.6_leak_corr.fits" \\
+    --cov-cl "/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6_leak_corr.fits"
 
 Example for glass mock v0 (mock data):
   python /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/scripts/cosmosis_fitting.py \\
@@ -501,11 +535,11 @@ Example for glass mock v0 (mock data):
     --xi "/n09data/guerrini/glass_mock_v1.4.6/results/xi_glass_mock_00001_4096_nbins=20.fits" \\
     --cov-xi "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked/covariance_SP_v1.4.6_A_ng_minsep=1.0_maxsep=250.0_nbins=20_masked_processed.txt" \\
     --use-rho-tau \\
-    --rho-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
+    --rho-stats "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/rho_stats_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1.fits" \\
     --tau-stats "/n17data/cdaley/unions/pure_eb/results/glass_mock_rhotau_samples/00001/tau_stats_sampled.fits" \\
-    --cov-tau "/n17data/cdaley/unions/pure_eb/code/sp_validation/notebooks/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy" \\
+    --cov-tau "/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val/output/rho_tau_stats/cov_tau_SP_v1.4.6_minsep=1.0_maxsep=250.0_nbins=20_npatch=1_th.npy" \\
     --cl-file "/n09data/guerrini/glass_mock_v1.4.6/results/cl_glass_mock_00001_4096.npy" \\
-    --cov-cl "/home/guerrini/sp_validation/notebooks/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6.fits"
+    --cov-cl "/home/guerrini/sp_validation/cosmo_val/output/pseudo_cl_cov_g_ng_iNKA_SP_v1.4.6.fits"
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -520,11 +554,11 @@ Example for glass mock v0 (mock data):
     parser.add_argument(
         "--xi",
         nargs="+",
-        required=True,
+        required=False,
         help="Xi files: 1 (mock FITS) or 2 (data: xi_plus.fits, xi_minus.fits)",
     )
     parser.add_argument(
-        "--cov-xi", type=str, required=True, help="Xi covariance matrix file"
+        "--cov-xi", type=str, required=False, help="Xi covariance matrix file"
     )
     parser.add_argument(
         "--use-rho-tau",
@@ -561,9 +595,7 @@ Example for glass mock v0 (mock data):
         required=False,
         help="Path to pseudo-C_ell covariance matrix (required if --cl-file)",
     )
-    parser.add_argument(
-        "--mock", action="store_true", help="Mock data mode"
-    )
+    parser.add_argument("--mock", action="store_true", help="Mock data mode")
     parser.add_argument(
         "--output-root",
         type=str,
@@ -585,7 +617,7 @@ Example for glass mock v0 (mock data):
     parser.add_argument(
         "--template-dir",
         type=str,
-        default=str(cosmo_inference_root / "cosmosis_config"),
+        default=str(cosmo_inference_root / "cosmosis_config" / "templates"),
         help=(
             "Directory containing CosmoSIS template INI files (defaults to the "
             "cosmosis_config folder next to this script)."
@@ -604,7 +636,7 @@ if __name__ == "__main__":
         template_dir_path = Path(args.template_dir).expanduser().resolve()
         output_basename_path = Path(output_basename)
         data_dir_root = output_root_path / "data" / output_basename_path
-        config_dir_root = output_root_path / "cosmosis_config"
+        config_dir_root = output_root_path / "cosmosis_config" / "output"
         data_dir_root.mkdir(parents=True, exist_ok=True)
         config_dir_root.mkdir(parents=True, exist_ok=True)
         out_file_path = data_dir_root / f"cosmosis_{args.cosmosis_root}.fits"
@@ -626,8 +658,10 @@ if __name__ == "__main__":
         print(f"output_root: {args.output_root}")
         print(f"output_basename: {args.output_basename}")
         print(f"out_file: {out_file_path}")
-        print(f"xi files: {args.xi}")
-        print(f"cov_xi: {args.cov_xi}")
+        if args.xi:
+            print(f"xi files: {args.xi}")
+        if args.cov_xi:
+            print(f"cov_xi: {args.cov_xi}")
         print(f"use_rho_tau: {args.use_rho_tau}")
         if args.use_rho_tau:
             print(f"rho_stats: {args.rho_stats}")
@@ -640,6 +674,12 @@ if __name__ == "__main__":
         print("=" * 60)
         print()
 
+        if args.xi and not args.cov_xi:
+            raise ValueError("--cov-xi is required when --xi files are provided")
+        if args.cov_xi and not args.xi:
+            raise ValueError("--xi files are required when --cov-xi is provided")
+        if args.use_rho_tau and not args.xi:
+            raise ValueError("--xi files are required when --use-rho-tau is set")
         if args.use_rho_tau and not all([args.rho_stats, args.tau_stats, args.cov_tau]):
             raise ValueError(
                 "--use-rho-tau requires: --rho-stats, --tau-stats, --cov-tau"
@@ -650,22 +690,28 @@ if __name__ == "__main__":
             raise ValueError("--cl-file is required when --cov-cl is provided")
 
         os.makedirs(args.data_dir, exist_ok=True)
-        print("Loading xi correlation functions...")
-        if args.mock:
-            # Mock mode expects a single combined FITS file
-            xip_hdu, xim_hdu = parse_combined_xi_fits(args.xi[0])
-        else:
-            # Data mode expects two TreeCorr files (xi_plus, xi_minus)
-            if len(args.xi) != 2:
-                raise ValueError(f"Data mode requires exactly 2 xi files, got {len(args.xi)}")
-            xip_hdu, xim_hdu = treecorr_to_fits(args.xi[0], args.xi[1])
+        cov_hdu = None
+        xip_hdu = None
+        xim_hdu = None
+        if args.xi:
+            print("Loading xi correlation functions...")
+            if args.mock:
+                # Mock mode expects a single combined FITS file
+                xip_hdu, xim_hdu = parse_combined_xi_fits(args.xi[0])
+            else:
+                # Data mode expects two TreeCorr files (xi_plus, xi_minus)
+                if len(args.xi) != 2:
+                    raise ValueError(
+                        f"Data mode requires exactly 2 xi files, got {len(args.xi)}"
+                    )
+                xip_hdu, xim_hdu = treecorr_to_fits(args.xi[0], args.xi[1])
 
-        xi_theta = xip_hdu.data["ANG"]
-        print(f"Loaded xi: {len(xip_hdu.data)} bins")
+            xi_theta = xip_hdu.data["ANG"]
+            print(f"Loaded xi: {len(xip_hdu.data)} bins")
 
-        print("Loading covariance matrix...")
-        cov_hdu = covdat_to_fits(args.cov_xi, filename_cov_tau=None)
-        print(f"Loaded covariance: shape {cov_hdu.data.shape}")
+            print("Loading covariance matrix...")
+            cov_hdu = covdat_to_fits(args.cov_xi, filename_cov_tau=None)
+            print(f"Loaded covariance: shape {cov_hdu.data.shape}")
 
         print("Loading n(z)...")
         nz_hdu = nz_to_fits(args.nz_file)
@@ -699,19 +745,34 @@ if __name__ == "__main__":
             tau_0_p_hdu, tau_2_p_hdu = tau_to_fits(args.tau_stats, theta=xi_theta)
             print("Loaded rho/tau statistics")
 
-            cov_hdu = covdat_to_fits(args.cov_xi, filename_cov_tau=args.cov_tau)
+            if args.cl_file:
+                cov_hdu = covdat_to_fits(
+                    args.cov_xi,
+                    filename_cov_tau=args.cov_tau,
+                    filename_cov_cl=args.cov_cl,
+                    cov_hdu="COVAR_FULL",
+                )
+            else:
+                cov_hdu = covdat_to_fits(args.cov_xi, filename_cov_tau=args.cov_tau)
+            print("Loaded combined covariance with tau")
 
         pri_hdr = fits.Header()
         pri_hdu = fits.PrimaryHDU(header=pri_hdr)
 
         print("Assembling FITS file...")
-        hdu_list = [pri_hdu, cov_hdu]
+        hdu_list = [pri_hdu, nz_hdu]
+        if cov_hdu is not None:
+            hdu_list.append(cov_hdu)
+        else:
+            cov_cl_hdu.header["EXTNAME"] = (
+                "COVMAT"  # If no xi use covmat for the extname of the cl cov
+            )
         if cov_cl_hdu is not None:
             hdu_list.append(cov_cl_hdu)
-        hdu_list.extend([nz_hdu, xip_hdu, xim_hdu])
-
+        if args.xi:
+            hdu_list.extend([xip_hdu, xim_hdu])
         if args.cl_file:
-            hdu_list.extend([cl_ee_hdu, cl_bb_hdu])
+            hdu_list.extend([cl_ee_hdu])
 
         if args.use_rho_tau:
             hdu_list.extend([tau_0_p_hdu, tau_2_p_hdu, rho_hdu])

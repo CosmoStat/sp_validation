@@ -1,3 +1,5 @@
+# Running shear validation
+
 ## Extract shear information
 
 (<= SP v1.4.1: Formerly known as shapepipe validation.)
@@ -8,7 +10,7 @@ including the sheared values for metacalibration.
 ### Set up
 
 All inputs and settings are contained in the python configuration script
-`notebooks/params.py`, that needs to be edited accordingly.
+`scripts/calibration/params.py`, that needs to be edited accordingly.
 The main parameters are:
 - `name`: field or patch name, can be any string. E.g. `P3` for patch 3. 
 - `data_dir`: input directory for data. Set to `.` for validation run in
@@ -31,4 +33,4 @@ the required input files to where the validation is to be run.
 
 ### Run
 
-Run the jupyter notebook `extract_information.ipynb` or python script `extract_information.py`. 
+Run the python script `scripts/calibration/extract_info.py`.

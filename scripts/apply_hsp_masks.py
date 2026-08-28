@@ -2,7 +2,7 @@
 
 import sys
 
-from sp_validation import run_joint_cat as sp_joint
+from sp_validation import catalog_builders as sp_joint
 
 
 def main(argv=None):

@@ -1,0 +1,468 @@
+version: "0.0.10"
+name: "Paper III — configuration-space cosmic shear (Goh et al.)"
+tags: [unions, cosmic-shear, config-space, inference]
+
+authors:
+  - "Cail Daley"
+
+narrative:
+  summary: |
+    2D (single-bin) configuration-space cosmic shear for UNIONS-3500: the
+    two-point correlation functions ξ±(θ) measured with [TreeCorr](#decisions.statistic),
+    fit jointly with the τ-statistics PSF systematics, to infer S₈. The
+    headline result is [S₈ = 0.831⁺⁰·⁰⁶⁷₋₀.₀₇₈](#findings.s8_fid). The project
+    stops at the inference data products: the ξ± data vector, the
+    [CosmoCov covariance](#decisions.covariance_method), and the cosmological
+    constraints (no chain modelling beyond the constraint outputs).
+  findings: |
+    Fiducial [S₈ = 0.831⁺⁰·⁰⁶⁷₋₀.₀₇₈](#findings.s8_fid),
+    [Ω_m = 0.265⁺⁰·¹³⁰₋₀.₀₇₅](#findings.om_fid),
+    [σ₈ = 0.782⁺⁰·²⁰⁶₋₀.₁₄₄](#findings.sigma8_fid). The fit has
+    [χ² = 75.33 / 54](#findings.chi2_total) (PTE driven low by the τ statistics).
+    Adding [Planck](#findings.s8_planck) gives 0.855, and [Planck+BAO](#findings.s8_planck_bao)
+    0.849. The result is [0.6σ below the harmonic-space](#findings.s8_harmonic_consistency)
+    Paper IV value. Per-statistic, [ξ± alone fits well (PTE 0.39)](#findings.pte_xipm)
+    while the [τ statistics drive the low total (PTE 5.9e-3)](#findings.pte_tau).
+    The [fiducial B-mode PTEs are internally inconsistent in the source](#findings.bmode_pte_fiducial)
+    (prose vs table). The fiducial cuts drive the [n_eff change](#findings.neff_change),
+    and the [direct IA measurement](#findings.ia_amplitude) sets the A_IA prior.
+  methods: |
+    A single-bin ξ±(θ) 2PCF ([statistic](#decisions.statistic)) on a 20-bin
+    log θ grid, [scale cut 12–83 arcmin](#decisions.scale_cuts), jointly fit
+    with τ₀,₂ over the full range — 54 data points. Covariance from
+    [CosmoCov, masked](#decisions.covariance_method). Modelling:
+    [HMCode2020 non-linear power](#decisions.nl_model), [NLA intrinsic
+    alignment](#decisions.ia_model) with a doubled-width A_IA prior,
+    [PSF α/β leakage at inference](#decisions.psf_leakage),
+    [Δz](#decisions.dz_prior) and [m-bias](#decisions.mbias) nuisances,
+    [KiDS-Legacy priors on the sampled parameters](#decisions.sampled_params_prior),
+    [Polychord sampling](#decisions.sampler), and a [2D-marginalised-mode point
+    estimate](#decisions.bestfit_stat). Pipeline validated on
+    [341 GLASS mocks](#decisions.pipeline_validation); analysis [blinded](#decisions.blinding).
+  inputs: |
+    Consumes the shared [shear_catalog](#inputs.shear_catalog), [nz](#inputs.nz),
+    [glass_mocks](#inputs.glass_mocks), plus [tau_stats](#inputs.tau_stats),
+    external [Planck plik_lite](#inputs.external_cmb) and [DESI DR2 BAO](#inputs.external_bao).
+  outputs: |
+    The [xi_data_vector](#outputs.xi_data_vector), the
+    [covariance](#outputs.covariance), and the
+    [cosmo_constraints](#outputs.cosmo_constraints).
+
+inputs:
+  - id: shear_catalog
+    from: ../shear_catalog
+  - id: nz
+    from: ../nz
+  - id: glass_mocks
+    from: ../glass_mocks
+  - id: tau_stats
+    type: data
+    label: "τ₀,₂(θ) PSF systematics statistics + covariance"
+    source: "/n17data/UNIONS/WL/tau/"
+    description: >-
+      τ₀,+(θ) and τ₂,+(θ) PSF systematics statistics (only the '+' term),
+      with semi-analytical covariance C_τ (Guerrini et al. 2025). Jointly fit
+      with ξ± to marginalise PSF leakage; ξ-τ cross-covariance neglected.
+  - id: external_cmb
+    type: data
+    label: "Planck 2018 plik_lite CMB likelihood"
+    source: "external/planck_plik_lite/"
+    description: >-
+      Planck 2018 TT (2 ≤ ℓ ≤ 2508), TE/EE (2 ≤ ℓ ≤ 1996) via plik_lite,
+      marginalised over A_lens; no lensing power spectrum. Used only for the
+      external-combination constraints.
+  - id: external_bao
+    type: data
+    label: "DESI DR2 BAO"
+    source: "external/desi_dr2_bao/"
+    description: >-
+      DESI DR2 transverse/comoving BAO distances (D_M, D_H) over 0.1 < z < 3
+      across BGS, LRG, ELG, QSO, Lyα. ΛCDM only.
+
+decisions:
+  catalog_version:
+    from: ../catalog_version
+  shear_calibration:
+    from: ../shear_calibration
+  leakage_correction:
+    from: ../leakage_correction
+  fiducial_cosmology:
+    from: ../fiducial_cosmology
+  blinding:
+    from: ../blinding
+
+  statistic:
+    label: "Two-point statistic"
+    tags: [stats]
+    rationale: >-
+      2D cosmic shear with a single tomographic bin using the ξ±(θ) 2PCF; the
+      r-band-only sample lacks the colour information needed for tomography.
+    default: xi_pm_2pcf
+    options:
+      xi_pm_2pcf:
+        label: "ξ±(θ) two-point correlation function (single bin)"
+
+  scale_cuts:
+    label: "ξ± scale cuts"
+    tags: [scale-cuts]
+    rationale: >-
+      Fiducial θ ∈ [12,83] arcmin for both ξ±; τ statistics fit over the full
+      range. 54 data points total (7 each ξ±, 20 each τ₀,₂). [5,83] and [12,83]
+      pass the COSEBI B-mode null test; [9,83] does not.
+    default: arcmin_12_83
+    options:
+      arcmin_12_83:
+        label: "12–83 arcmin (fiducial)"
+      arcmin_5_83:
+        label: "5–83 arcmin (small-scale extension)"
+        description: "Passes B-mode null; gives higher S₈ = 0.886 and worse fit (χ²_red 1.34)."
+      arcmin_9_83:
+        label: "9–83 arcmin"
+        description: "Fails COSEBI B-mode null test."
+
+  covariance_method:
+    label: "Covariance matrix (CosmoCov, masked vs unmasked)"
+    tags: [stats]
+    rationale: >-
+      CosmoCov covariance of ξ± with the OneCovariance Table 1 input cosmology.
+      Masked is fiducial; unmasked presented to quantify the impact. ξ-τ
+      cross-correlation neglected.
+    default: cosmocov_masked
+    options:
+      cosmocov_masked:
+        label: "CosmoCov masked (fiducial)"
+        insights: [cosmocov_ref]
+      cosmocov_unmasked:
+        label: "CosmoCov unmasked"
+        description: "S₈ = 0.822⁺⁰·⁰⁷²₋₀.₀₇₀."
+
+  nl_model:
+    label: "Non-linear power-spectrum model"
+    tags: [physics]
+    rationale: >-
+      HMCode2020 (halo model + baryonic feedback), ~2.5% accurate for
+      k ≤ 10 h/Mpc. Halofit and HMCode-no-baryons run as robustness checks.
+    default: hmcode2020
+    options:
+      hmcode2020:
+        label: "HMCode2020 (baryons, fiducial)"
+      halofit:
+        label: "Halofit"
+        description: "S₈ = 0.800⁺⁰·⁰⁶⁸₋₀.₀₇₄."
+      hmcode_no_baryons:
+        label: "HMCode2020, no baryons"
+        description: "S₈ = 0.813⁺⁰·⁰⁷²₋₀.₀₆₈."
+
+  ia_model:
+    label: "Intrinsic-alignment model and A_IA prior"
+    tags: [physics]
+    rationale: >-
+      NLA model. A direct red+blue IA measurement gives A_IA = 0.83 ± 0.39;
+      the prior width is doubled to ±0.78 for conservatism. TATT higher-order
+      terms ignored.
+    default: nla_gauss_0p78
+    options:
+      nla_gauss_0p78:
+        label: "NLA, A_IA ~ N(0.83, 0.78) (fiducial)"
+      nla_flat:
+        label: "NLA, flat A_IA prior"
+        description: "S₈ = 0.895⁺⁰·¹⁷²₋₀.₁₃₃, A_IA = 2.61."
+      no_ia:
+        label: "No IA (A_IA = 0)"
+        description: "S₈ = 0.770⁺⁰·⁰²⁹₋₀.₀₅₉; largest shift (−0.71σ)."
+
+  psf_leakage:
+    label: "PSF-leakage modelling at inference"
+    tags: [calibration]
+    rationale: >-
+      Sample PSF systematics parameters α, β at inference (η = 0 fixed), with
+      Gaussian priors fiducially (flat as a check).
+    default: gauss_alpha_beta
+    options:
+      gauss_alpha_beta:
+        label: "Gaussian α/β priors (fiducial)"
+      flat_alpha_beta:
+        label: "Flat α/β priors"
+        description: "S₈ = 0.825⁺⁰·⁰⁷¹₋₀.₀₇₅."
+      no_xi_sys:
+        label: "No ξ^sys term"
+        description: "S₈ = 0.824⁺⁰·⁰⁶³₋₀.₀₆₈."
+
+  dz_prior:
+    label: "Redshift-shift Δz prior"
+    tags: [calibration]
+    rationale: >-
+      Δz = −0.003 with total uncertainty ±0.018. A bug in the Δz estimation
+      was found post-unblinding and the analysis rerun.
+    default: gauss_dz
+    options:
+      gauss_dz:
+        label: "Δz ~ N(−0.003, 0.018) (fiducial)"
+      flat_dz:
+        label: "Flat Δz prior"
+        description: "Δz = −0.045⁺⁰·⁰⁷⁷₋₀.₀₃₆; ~3× larger error bars."
+
+  mbias:
+    label: "Multiplicative shear bias m"
+    tags: [calibration]
+    rationale: >-
+      Cumulative m = −0.057 ± 0.0047 from image sims; uncertainty conservatively
+      tripled to m = −0.057 ± 0.014.
+    default: gauss_m
+    options:
+      gauss_m:
+        label: "m ~ N(−0.057, 0.014) (fiducial)"
+      no_m:
+        label: "No m bias"
+        description: "S₈ = 0.809⁺⁰·⁰⁵⁰₋₀.₀₇₉."
+
+  sampled_params_prior:
+    label: "Sampled cosmological parameters and priors"
+    tags: [stats]
+    rationale: >-
+      Sample {ω_c, ω_b, H0, n_s, S8} with KiDS-Legacy (Table 2) prior ranges.
+      BBN prior on ω_b for the WL-only run; with CMB, drop BBN and sample
+      τ_reio. τ_reio fixed at 0.0544 otherwise; Σm_ν = 0.06 eV.
+    default: kids_legacy_priors
+    options:
+      kids_legacy_priors:
+        label: "KiDS-Legacy Table-2 priors (fiducial)"
+
+  sampler:
+    label: "Nested sampler"
+    tags: [stats]
+    rationale: "Polychord baseline; Nautilus as a consistency check."
+    default: polychord
+    options:
+      polychord:
+        label: "Polychord (baseline)"
+      nautilus:
+        label: "Nautilus"
+        description: "S₈ = 0.826⁺⁰·⁰⁶⁸₋₀.₀₆₉."
+
+  bestfit_stat:
+    label: "Point-estimate statistic"
+    tags: [stats]
+    rationale: >-
+      Report the 2D marginalised mode for S₈ and Ω_m (most sensitive to
+      projection effects); 1D marginalised mode (MAP) for others; also quote a
+      getdist-KDE-smoothed weighted mean of S₈.
+    default: marg_mode_2d
+    options:
+      marg_mode_2d:
+        label: "2D marginalised mode (S₈, Ω_m); 1D MAP others"
+
+  pipeline_validation:
+    label: "Pipeline validation on GLASS mocks"
+    tags: [validation]
+    rationale: >-
+      Validate on 341 GLASS mocks with the data mask, n_eff, σ_e, and a Planck
+      2018 fiducial cosmology, drawing one blinded n(z) at random. Mean S₈
+      differs by < 0.5σ between mock and data analyses; effective dof = 51.9.
+    default: glass_341
+    options:
+      glass_341:
+        label: "341 GLASS mocks"
+        insights: [glass_mocks_ref]
+
+prior_insights:
+  cosmocov_ref:
+    id: cosmocov_ref
+    label: "CosmoCov (OneCovariance fiducial)"
+    claim: >-
+      OneCovariance / CosmoCov provides the semi-analytical covariance for
+      cosmic-shear two-point functions; Table 1 specifies the fiducial input
+      cosmology.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.1051/0004-6361/202452592"
+        quote:
+          exact: "OneCovariance"
+
+  glass_mocks_ref:
+    id: glass_mocks_ref
+    label: "GLASS mocks (Tessore+23)"
+    claim: >-
+      GLASS generates lognormal large-scale-structure realisations used to
+      validate the inference pipeline.
+    created_at: "2026-06-13T00:00:00"
+    derived: false
+    evidence:
+      - id: e1
+        doi: "10.21105/astro.2302.01942"
+        quote:
+          exact: "GLASS: Generator for Large Scale Structure"
+
+outputs:
+  - id: xi_data_vector
+    type: data
+    label: "ξ±(θ) + τ₀,₂ data vector (54 points)"
+    inputs: [shear_catalog, nz, tau_stats]
+    decisions: [catalog_version, leakage_correction, statistic, scale_cuts, blinding]
+    recipe:
+      command: >-
+        python -m sp_validation.cosmo_inference.measure_xi
+        --catalog {inputs.shear_catalog} --nz {inputs.nz} --tau {inputs.tau_stats}
+        --catalog-version {decisions.catalog_version}
+        --leakage {decisions.leakage_correction}
+        --statistic {decisions.statistic}
+        --scale-cuts {decisions.scale_cuts}
+        --blind {decisions.blinding}
+        --out {output}
+
+  - id: covariance
+    type: data
+    label: "ξ± covariance (CosmoCov)"
+    inputs: [nz]
+    decisions: [covariance_method, fiducial_cosmology]
+    recipe:
+      command: >-
+        python -m sp_validation.cosmo_inference.covariance
+        --nz {inputs.nz}
+        --covariance {decisions.covariance_method}
+        --cosmology {decisions.fiducial_cosmology}
+        --out {output}
+
+  - id: cosmo_constraints
+    type: table
+    label: "Cosmological constraints (S₈, Ω_m, σ₈; ± external data)"
+    inputs: [xi_data_vector, covariance, nz, glass_mocks, external_cmb, external_bao]
+    decisions: [nl_model, ia_model, psf_leakage, dz_prior, mbias,
+                sampled_params_prior, sampler, bestfit_stat, pipeline_validation]
+    recipe:
+      command: >-
+        python -m sp_validation.cosmo_inference.infer
+        --data {inputs.xi_data_vector} --cov {inputs.covariance} --nz {inputs.nz}
+        --mocks {inputs.glass_mocks}
+        --cmb {inputs.external_cmb} --bao {inputs.external_bao}
+        --nl-model {decisions.nl_model}
+        --ia-model {decisions.ia_model}
+        --psf-leakage {decisions.psf_leakage}
+        --dz-prior {decisions.dz_prior}
+        --m-bias {decisions.mbias}
+        --params {decisions.sampled_params_prior}
+        --sampler {decisions.sampler}
+        --point-estimate {decisions.bestfit_stat}
+        --validation {decisions.pipeline_validation}
+        --out {output}
+
+findings:
+  s8_fid:
+    id: s8_fid
+    claim: "Fiducial S₈ = 0.831⁺⁰·⁰⁶⁷₋₀.₀₇₈ (2D marginalised mode 0.829)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+        quote: { exact: "0.831^{+0.067}_{-0.078}" }
+
+  om_fid:
+    id: om_fid
+    claim: "Fiducial Ω_m = 0.265⁺⁰·¹³⁰₋₀.₀₇₅."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  sigma8_fid:
+    id: sigma8_fid
+    claim: "Fiducial σ₈ = 0.782⁺⁰·²⁰⁶₋₀.₁₄₄."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  chi2_total:
+    id: chi2_total
+    claim: >-
+      Fiducial fit χ² = 75.33 (effective dof 51.9); PTE driven low by the τ₀,₂
+      fit. Prose quotes PTE 0.0147; results table quotes total PTE 0.0291 for
+      75.33/54 — an internal prose-vs-table discrepancy.
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    notes: "Source carries two inconsistent total-PTE values; quote with caveat."
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  pte_xipm:
+    id: pte_xipm
+    claim: "ξ± alone fits well: PTE = 0.39 (χ² 9.50/14; ξ+ 0.745, ξ− 0.627)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  pte_tau:
+    id: pte_tau
+    claim: "τ₀,₂ fit PTE = 5.9e-3 (χ² 65.77/40); drives the low total PTE."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  s8_harmonic_consistency:
+    id: s8_harmonic_consistency
+    claim: "Config-space S₈ is ~0.6σ lower than the harmonic-space (Paper IV) value, assuming independent errors."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  s8_planck:
+    id: s8_planck
+    claim: "UNIONS-3500 + Planck CMB gives S₈ = 0.855⁺⁰·⁰²⁰₋₀.₀₁₇ (+0.33σ vs WL-only)."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  s8_planck_bao:
+    id: s8_planck_bao
+    claim: "UNIONS-3500 + Planck CMB + DESI DR2 BAO gives S₈ = 0.849⁺⁰·⁰¹⁵₋₀.₀₁₇."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  bmode_pte_fiducial:
+    id: bmode_pte_fiducial
+    claim: >-
+      Fiducial (v1.4.6) B-mode PTEs are internally inconsistent in the source:
+      prose macros give COSEBIs n≤6 = 0.78 / ξ_tot = 0.18; the results table
+      gives COSEBIs n≤6 = 0.80 / ξ_tot = 0.57. Directional conclusion (fiducial
+      cut passes) holds under both.
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    notes: "Prose-vs-table discrepancy; quote with caveat."
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints
+
+  neff_change:
+    id: neff_change
+    claim: "The fiducial cuts remove ~25% of galaxies, reducing n_eff from 6.48 to 4.96 arcmin⁻² and σ_e from 0.28 to 0.27."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: xi_data_vector
+
+  ia_amplitude:
+    id: ia_amplitude
+    claim: "Direct IA measurement gives A_IA,r = 2.75 ± 0.49 (red), A_IA,b = 0.21 ± 0.37 (blue); combined with f_r=0.245, f_b=0.745 gives the A_IA = 0.83 ± 0.39 prior."
+    created_at: "2026-06-13T00:00:00"
+    derived: true
+    evidence:
+      - id: e1
+        artifact: cosmo_constraints

@@ -1,0 +1,54 @@
+# Generic B-modes analysis workflow — the shared compute base.
+#
+# Compose from a paper Snakefile via:
+#     module analysis:
+#         snakefile: "../../workflow/Snakefile"
+#         config: config
+#     use rule * from analysis
+# or run standalone with --configfile pointing at a paper config
+# (e.g. papers/bmodes/config/config.yaml).
+
+container: "/n17data/cdaley/containers/containers"
+
+envvars:
+    "PYTHONUNBUFFERED",
+
+import os
+import sys
+
+# Host OpenMPI libs for MPI rules inside the container.
+# Apptainer passes APPTAINERENV_* vars into the container as their unprefixed names.
+# Only affects rules that import mpi4py; safe for all other rules.
+os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8/lib"
+
+# Shared helpers live in common.py next to this Snakefile. Snakemake's `module`
+# imports rules, not Python globals, so helpers travel by plain Python import;
+# when composed, the paper Snakefile has already imported common and this hits
+# the module cache.
+sys.path.insert(0, os.path.realpath(str(workflow.basedir)))
+import common
+
+common.configure(config)
+from common import *
+
+# Wildcard constraints — centralized in common.py, not in individual rule files
+wildcard_constraints:
+    **WILDCARD_CONSTRAINTS
+
+# Compute rules (infrastructure — raw outputs, no evidence.json)
+include: "rules/twopoint.smk"
+include: "rules/covariance.smk"
+include: "rules/inference.smk"
+include: "rules/masks.smk"
+include: "rules/glass_mock.smk"
+
+# CosmologyValidation diagnostic suite (cosmo_val.py), decomposed rule-by-rule.
+# Only active when the config carries a `cosmo_val` block (papers/cosmo_val);
+# guarded so paper configs without it (e.g. bmodes) don't trip on the lookups.
+if "cosmo_val" in config:
+    include: "rules/cosmo_val.smk"
+
+# Image-simulation m/c-bias chain (image_sims.smk). Active only when the config
+# carries an `image_sims` block; standalone runs use workflow/image_sims/Snakefile.
+if "image_sims" in config:
+    include: "rules/image_sims.smk"
