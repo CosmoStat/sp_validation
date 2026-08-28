@@ -30,16 +30,14 @@ import h5py
 import numpy as np
 import tqdm
 from astropy.io import fits
-
 from cs_util import args as cs_args
 from cs_util import logging
 
-
 FITS_HDU = 1
 EMPTY_VALUE = -199
-COPY_CHUNK = 2_000_000   # rows per chunk when copying input → output
-SCAN_CHUNK = 5_000_000   # rows per chunk when scanning TILE_ID
-MAX_CONSEC_FAILS = 10    # abort if this many tiles in a row fail
+COPY_CHUNK = 2_000_000  # rows per chunk when copying input → output
+SCAN_CHUNK = 5_000_000  # rows per chunk when scanning TILE_ID
+MAX_CONSEC_FAILS = 10  # abort if this many tiles in a row fail
 
 REQUESTED_KEYS = [
     "Z_B",
@@ -164,6 +162,7 @@ def params_default():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def detect_dataset_name(hf):
     """Return the first dataset name in an HDF5 file.
@@ -305,6 +304,7 @@ def write_tile_to_hdf5(dset, hdf5_indices, fits_data, valid_keys):
 # Phase 1: create output file
 # ---------------------------------------------------------------------------
 
+
 def create_output_file(input_path, output_path, dataset_name, verbose=False):
     """Create output HDF5 by copying input and appending empty PhotoPipe fields.
 
@@ -369,6 +369,7 @@ def create_output_file(input_path, output_path, dataset_name, verbose=False):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main(argv=None):
     """Main.
@@ -479,7 +480,7 @@ def main(argv=None):
         unique_tiles = sorted(tile_index_map.keys())
         n_tiles = len(unique_tiles)
 
-        valid_keys = None   # determined from first available FITS tile
+        valid_keys = None  # determined from first available FITS tile
         n_skipped_missing = 0
         n_skipped_done = 0
         n_skipped_size = 0

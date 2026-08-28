@@ -10,8 +10,8 @@ from tqdm import tqdm
 
 HDF5_FILE = "unions_shapepipe_comprehensive_struc_ugriz_2024_v1.6.c.DR6.hdf5"
 EMPTY_VALUE = -199
-CHUNK_SIZE = 5_000_000   # rows per chunk
-REPORT_EVERY = 10        # print running fractions every N chunks
+CHUNK_SIZE = 5_000_000  # rows per chunk
+REPORT_EVERY = 10  # print running fractions every N chunks
 
 FIELDS = [
     "Z_B",
@@ -54,14 +54,16 @@ with h5py.File(HDF5_FILE, "r") as f:
             # Periodic running-fraction report
             if (chunk_idx + 1) % REPORT_EVERY == 0 or (chunk_idx + 1) == n_chunks:
                 rows_done = end
-                tqdm.write(f"\n  --- after {rows_done:,} rows ({100*rows_done/n_total:.1f}%) ---")
+                tqdm.write(
+                    f"\n  --- after {rows_done:,} rows ({100 * rows_done / n_total:.1f}%) ---"
+                )
                 tqdm.write(f"  {'Field':<22} {'Filled %':>9}")
                 for field in FIELDS:
                     pct = 100.0 * counts[field] / rows_done
                     tqdm.write(f"  {field:<22} {pct:>8.2f}%")
 
 # Final summary
-print(f"\n{'='*56}")
+print(f"\n{'=' * 56}")
 print(f"FINAL SUMMARY  (total rows: {n_total:,})")
 print(f"{'Field':<22} {'Filled':>12} {'Empty':>12} {'Filled %':>10}")
 print("-" * 60)

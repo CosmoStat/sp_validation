@@ -1,2 +1,3 @@
-Would reformat: src/sp_validation/tests/test_masks.py
-1 file would be reformatted, 225 files already formatted
+Would reformat: scripts/check_filled_fields.py
+Would reformat: scripts/fill_photoz_bands.py
+2 files would be reformatted, 231 files already formatted
