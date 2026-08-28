@@ -15,7 +15,7 @@ if ipython is not None:
     ipython.run_line_magic("load_ext", "autoreload")
     ipython.run_line_magic("autoreload", "2")
 
-
+import sys
 from astropy.cosmology import Planck18  # noqa: E402, F401
 
 from sp_validation.cosmo_val import CosmologyValidation  # noqa: E402
@@ -30,7 +30,10 @@ FIDUCIAL_SCALE_CUT = (10, 250)
 
 # %%
 # Specify version
-versions = ["SP_v1.3.6", "SP_v1.3.6_leak_corr"]
+versions = [
+    "SP_v1.3.6.3", "SP_v1.3.6.3_leak_corr",
+    "SP_v1.4.6.3", "SP_v1.4.6.3_leak_corr",
+]
 
 # Get the cosmology
 planck = Planck18
@@ -69,7 +72,7 @@ cosmo_params = {
 
 cv = CosmologyValidation(
     versions=versions,
-    npatch=1,
+    npatch=100,
     theta_min=1.0,
     theta_max=250.0,
     nbins=20,
@@ -82,11 +85,16 @@ cv = CosmologyValidation(
     path_onecovariance="/home/guerrini/OneCovariance/",
     cosmo_params=cosmo_params,
 )
+cv.treecorr_config["num_threads"] = 24
 
 
 # %%
 # cv.calculate_pseudo_cl_g_ng_cov()
 # cv.calculate_pseudo_cl_g_ng_cov(gaussian_part="OneCovariance")
+
+# %%
+cv.plot_2pcf()
+sys.exit()
 
 # %%
 cv.plot_footprints()

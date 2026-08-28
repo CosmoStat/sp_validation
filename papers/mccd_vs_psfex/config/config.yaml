@@ -1,5 +1,6 @@
 versions: [
   "SP_v1.3.6", "SP_v1.3.6_leak_corr",
+  "SP_v1.3.6.3", "SP_v1.3.6.3_leak_corr",
   "SP_v1.4.6.3", "SP_v1.4.6.3_leak_corr",
 ]
 # IV weight variants removed — one-off test (see fiber v1-4-11-2-iv-weights-harmonic-b-2a2ed88b)

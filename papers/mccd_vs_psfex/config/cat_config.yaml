@@ -135,7 +135,7 @@ SP_v1.3.6:
     n_e: 6.128201234871523
     n_psf: 0.752316232272063
     sigma_e: 0.379587601488189
-  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.4.6_nside_8192.fits
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.3.6_nside_8192.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
     PSF_size: HSM_T_PSF
@@ -152,6 +152,56 @@ SP_v1.3.6:
   shear:
     R: 1.0
     path: v1.3.6/unions_shapepipe_cut_struc_2022_v1.3.6.fits
+    redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
+    w_col: w_des
+    e1_col: e1
+    e1_col_corrected: e1_leak_corrected
+    e1_PSF_col: e1_PSF
+    e2_col: e2
+    e2_col_corrected: e2_leak_corrected
+    e2_PSF_col: e2_PSF
+  star:
+    ra_col: RA
+    dec_col: Dec
+    e1_col: e1
+    e2_col: e2
+    path: unions_shapepipe_star_2022_v1.0.3.fits
+nz:
+  subdir: /n17data/mkilbing/astro/data/CFIS/v1.0/nz
+  dndz:
+    blind: A
+    path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz
+paths:
+  output: ./output
+SP_v1.3.6.3:
+  subdir: /n17data/UNIONS/WL/v1.3.x
+  pipeline: SP
+  colour: red
+  getdist_colour: 0.0, 0.5, 1.0
+  ls: dashed
+  marker: h
+  cov_th:
+    A: 2405.3892055695346
+    n_e: 6.128201234871523
+    n_psf: 0.752316232272063
+    sigma_e: 0.379587601488189
+  mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_v1.3.6_nside_8192.fits
+  psf:
+    PSF_flag: HSM_FLAG_PSF
+    PSF_size: HSM_T_PSF
+    star_flag: HSM_FLAG_STAR
+    star_size: HSM_T_STAR
+    hdu: 1
+    path: unions_shapepipe_psf_2022_v1.3.a.fits
+    ra_col: RA
+    dec_col: Dec
+    e1_PSF_col: HSM_G1_PSF
+    e1_star_col: HSM_G1_STAR
+    e2_PSF_col: HSM_G2_PSF
+    e2_star_col: HSM_G2_STAR
+  shear:
+    R: 1.0
+    path: v1.3.6.3/unions_shapepipe_cut_struc_2022_v1.3.6.3.fits
     redshift_path: /n17data/mkilbing/astro/data/CFIS/v1.0/nz/dndz_SP_A.txt
     w_col: w_des
     e1_col: e1
