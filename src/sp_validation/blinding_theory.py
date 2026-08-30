@@ -6,20 +6,8 @@
     configuration (:class:`TheoryConfig`) and two independent routes to the
     tomographic shear two-point prediction.
 
-    **Division of responsibility** (per the UNIONS layering: ``cs_util`` is
-    the cosmology *library* — generic machinery; ``sp_validation`` holds
-    *configuration* and *survey-specific implementations*). This module lives
-    in the blinding namespace because :class:`TheoryConfig` is configuration
-    and the master-layout theory backends in :mod:`sp_validation.blinding`
-    (reporting ξ±, integration ξ±, pseudo-Cℓ) are survey-specific. The **generic**
-    theory machinery below — the CCL-native ξ± path (:func:`xi_ccl`,
-    :func:`cl_ee`), the independent CAMB P(k)→``Pk2D`` path (:func:`xi_camb`),
-    and the σ8/A_s rescale (:func:`camb_As_for_sigma8`) — lives here **for
-    now** but is destined for ``cs_util.cosmo`` (tracked in cs_util#80): it is
-    cosmology-library code, not blinding-specific. There is deliberately **no**
-    ``sp_validation/cosmology.py`` — ``develop`` removed the local cosmology
-    module (#223) and moved cosmology to ``cs_util.cosmo``; this module does
-    not resurrect it.
+    The generic cosmology machinery here is destined for ``cs_util.cosmo``
+    (cs_util#80).
 
     Two independent routes to the shear two-point prediction:
 
@@ -54,6 +42,32 @@ import numpy as np
 NEFF = 3.046
 T_CMB = 2.7255
 
+# Matter-power redshift grid shared by `make_camb_params` and `xi_camb`, so the
+# CAMB run and the Pk2D built from it sample the same redshifts.
+PK_ZMAX = 3.0
+PK_NZ = 48
+
+
+def coerce_fields(cls, overrides):
+    """Validate ``overrides`` against ``cls``'s fields, coercing floats.
+
+    Unknown keys raise. Every ``float``-declared field goes through
+    :func:`float`, so a YAML/CLI ``w0: -1`` (int) yields the same value — and
+    the same config digest — as the float default ``-1.0``. Digest stability
+    depends on this, so it is one helper rather than three copies.
+    """
+    by_name = {f.name: f for f in dataclasses.fields(cls)}
+    unknown = set(overrides) - set(by_name)
+    if unknown:
+        raise ValueError(
+            f"unknown {cls.__name__} fields {sorted(unknown)}; "
+            f"valid fields are {sorted(by_name)}"
+        )
+    return {
+        name: (float(v) if by_name[name].type in (float, "float") else v)
+        for name, v in overrides.items()
+    }
+
 
 # --------------------------------------------------------------------------- #
 # Configuration surface — the ONE place fiducial cosmology + model choices live
@@ -73,17 +87,9 @@ class TheoryConfig:
     converted to CCL's native ``sigma8``/``Omega_c`` by :meth:`sigma8` /
     :meth:`omega_c`.
 
-    **Nonlinear-model tokens (load-bearing).** The HMCode2020+feedback recipe
-    is named by a token in each stack's API: CCL takes
-    ``extra_parameters['camb']['halofit_version']``, CAMB takes
-    ``NonLinearModel.set_params(halofit_version=…)``. :class:`TheoryConfig`
-    carries **two** tokens (``ccl_halofit_version``, ``camb_halofit_version``)
-    denoting one recipe, and each stack is fed its own — a single shared
-    string invites a silent stack disagreement the moment the two APIs name
-    the recipe differently (``mead2020`` vs ``mead2020_feedback`` differ by
-    several % at k ≳ 1/Mpc). Today both stacks accept the same string for the
-    feedback recipe, so the two defaults coincide; the cross-check test pins
-    the CCL token against the inference config independently.
+    One nonlinear recipe is named by two tokens (``ccl_halofit_version``,
+    ``camb_halofit_version``) because CCL and CAMB could name it differently;
+    each stack is fed its own so a rename cannot silently split the recipe.
     """
 
     # Cosmological parameters (blind axes S8, Omega_m + the rest).
@@ -99,19 +105,13 @@ class TheoryConfig:
     # Neutrino mass split: normal hierarchy (CosmoSIS `neutrino_hierarchy=normal`).
     mass_split: str = "normal"
 
-    # Boltzmann/transfer-function backend for the CCL path (#280). The default
-    # `boltzmann_camb` makes CCL call CAMB for the linear P(k), so blinding
-    # theory and the CosmoSIS+CAMB inference stack share one power-spectrum
-    # path. The halofit route follows the choice (see `ccl_cosmology`): only
-    # under `boltzmann_camb` can the nonlinear P(k) run through CAMB's HMCode
-    # (`matter_power_spectrum="camb"` + the tokens below); any other backend
-    # falls back to CCL's own halofit — consistent, but a different recipe,
-    # so a non-default backend is a deliberate cross-check tool, not a
-    # production setting.
+    # Boltzmann backend for the CCL path (#280). `boltzmann_camb` shares one
+    # power-spectrum path with the CosmoSIS+CAMB inference stack; any other
+    # backend falls back to CCL's own halofit (see `ccl_cosmology`), a
+    # deliberate cross-check tool rather than a production setting.
     transfer_function: str = "boltzmann_camb"
 
-    # One nonlinear recipe (CAMB HMCode2020 + baryonic feedback), two
-    # stack-specific tokens — see the class docstring.
+    # CAMB HMCode2020 + baryonic feedback — see the class docstring.
     ccl_halofit_version: str = "mead2020_feedback"
     camb_halofit_version: str = "mead2020_feedback"
     hmcode_logT_AGN: float = 7.5  # values_ia.ini logT_AGN central
@@ -170,24 +170,8 @@ class TheoryConfig:
 
     @classmethod
     def from_overrides(cls, overrides):
-        """Build from a mapping of field overrides (fail loud on unknown keys).
-
-        Numeric overrides are coerced to ``float`` per the field's declared
-        type, so a YAML/CLI ``w0: -1`` (int) yields the same value — and the
-        same :meth:`config_digest` — as the float default ``-1.0``.
-        """
-        by_name = {f.name: f for f in dataclasses.fields(cls)}
-        unknown = set(overrides) - set(by_name)
-        if unknown:
-            raise ValueError(
-                f"unknown TheoryConfig fields {sorted(unknown)}; "
-                f"valid fields are {sorted(by_name)}"
-            )
-        coerced = {
-            name: (float(v) if by_name[name].type in (float, "float") else v)
-            for name, v in overrides.items()
-        }
-        return cls(**coerced)
+        """Build from a mapping of field overrides (fail loud on unknown keys)."""
+        return cls(**coerce_fields(cls, overrides))
 
 
 # --------------------------------------------------------------------------- #
@@ -203,17 +187,11 @@ def ccl_cosmology(params, config):
     """A ``pyccl.Cosmology`` at ``params`` with ``config``'s nonlinear recipe.
 
     ``params`` is a plain CCL-native mapping (:meth:`TheoryConfig.ccl_params`,
-    possibly with keys overlaid by the hidden draw); ``config`` supplies only
-    the non-sampled recipe tokens (``transfer_function``,
-    ``ccl_halofit_version``, ``hmcode_logT_AGN``). The Boltzmann backend is
-    ``config.transfer_function`` (#280); the halofit route stays consistent
-    with that choice: under ``boltzmann_camb`` the nonlinear P(k) runs
-    through CAMB's HMCode2020 (``matter_power_spectrum="camb"`` + the CAMB
-    tokens), while any other backend has no CAMB run to hand tokens to, so it
-    takes CCL's own halofit (``matter_power_spectrum="halofit"``). Either
-    way, the same recipe sits on both sides of any theory difference.
-    Cosmology objects are cached per parameter point (CCL memoises its P(k)
-    on the object, so the cache saves repeated Boltzmann runs across blocks).
+    possibly with keys overlaid by the hidden draw); ``config`` supplies the
+    non-sampled recipe tokens. Under ``boltzmann_camb`` the nonlinear P(k)
+    runs through CAMB's HMCode2020; any other backend has no CAMB run to hand
+    tokens to and takes CCL's own halofit. Cached per parameter point: CCL
+    memoises P(k) on the object, so the cache saves repeated Boltzmann runs.
     """
     import pyccl as ccl
 
@@ -258,6 +236,14 @@ def xi_ell_grid():
     )
 
 
+# Tracers are rebuilt for every pair of every block at both cosmologies of a
+# blind, and each build runs CCL's lensing-kernel integral over the bin's n(z).
+# Cached for the same reason as `_COSMO_CACHE`, and keyed on `id(cosmo)`
+# because that cache pins every cosmology for the process lifetime, so an id
+# can never be recycled onto a different object.
+_TRACER_CACHE = {}
+
+
 def _tracer(cosmo, z, nz, config):
     """A ``WeakLensingTracer`` for one bin's n(z), NLA from ``config``.
 
@@ -265,15 +251,28 @@ def _tracer(cosmo, z, nz, config):
     A nonzero ``ia_bias`` enters as the NLA amplitude
     ``A(z) = ia_bias · ((1+z)/(1+z_piv))^alphaz``.
     """
+    z = np.asarray(z)
+    nz = np.asarray(nz)
+    key = (
+        id(cosmo),
+        z.tobytes(),
+        nz.tobytes(),
+        config.ia_bias,
+        config.ia_z_piv,
+        config.ia_alphaz,
+    )
+    if key not in _TRACER_CACHE:
+        _TRACER_CACHE[key] = _build_tracer(cosmo, z, nz, config)
+    return _TRACER_CACHE[key]
+
+
+def _build_tracer(cosmo, z, nz, config):
     import pyccl as ccl
 
-    z = np.asarray(z)
     if config.ia_bias == 0.0:
-        return ccl.WeakLensingTracer(cosmo, dndz=(z, np.asarray(nz)))
+        return ccl.WeakLensingTracer(cosmo, dndz=(z, nz))
     a_ia = config.ia_bias * ((1 + z) / (1 + config.ia_z_piv)) ** config.ia_alphaz
-    return ccl.WeakLensingTracer(
-        cosmo, dndz=(z, np.asarray(nz)), ia_bias=(z, a_ia), use_A_ia=True
-    )
+    return ccl.WeakLensingTracer(cosmo, dndz=(z, nz), ia_bias=(z, a_ia), use_A_ia=True)
 
 
 def cl_ee(params, config, nz_i, nz_j, ell):
@@ -318,7 +317,7 @@ def xi_ccl(params, config, nz_i, nz_j, theta_arcmin, ell=None):
 # --------------------------------------------------------------------------- #
 # Independent-CAMB path: A_s reconciliation + P(k) → Pk2D → CCL projection
 # --------------------------------------------------------------------------- #
-def make_camb_params(config, As, *, nonlinear, zmax=3.0, n_z=48, kmax=20.0):
+def make_camb_params(config, As, *, nonlinear, zmax=PK_ZMAX, n_z=PK_NZ, kmax=20.0):
     """A ``CAMBparams`` at ``config``'s background with amplitude ``As``.
 
     Every :class:`TheoryConfig` field CCL sees is fed to CAMB from the same
@@ -380,14 +379,11 @@ def xi_camb(config, nz, theta_arcmin, *, n_ell=300, ell_max=60000, kmax=20.0, n_
     """Independent-CAMB ξ± for one bin (Path B): CAMB P(k) → Pk2D → CCL.
 
     A direct pycamb run produces the HMCode2020 nonlinear ``P(k, z)`` at a
-    σ8-matched ``A_s`` (:func:`camb_As_for_sigma8`), extracted through
-    ``get_matter_power_interpolator(hubble_units=False, k_hunit=False)`` so
-    it comes out in CCL's native units (k in 1/Mpc, P in Mpc³) — **no**
-    ``·h`` / ``/h³`` conversion is applied (applying one would double-count
-    an h³ amplitude error). Both ``Pk2D`` axes are arranged ascending
-    (log-k ascending; scale factor ascending, i.e. CAMB's z-ascending grid
-    reversed). Projection is CCL's own Limber + FFTLog with a bare tracer
-    (IA off — this path exists for the cross-check).
+    σ8-matched ``A_s`` (:func:`camb_As_for_sigma8`), wrapped in a ``Pk2D`` and
+    projected by CCL's Limber + FFTLog with a bare tracer (IA off — this path
+    exists for the cross-check). ``hubble_units=False, k_hunit=False`` already
+    returns CCL's native units (k in 1/Mpc, P in Mpc³), so applying an
+    ``·h``/``/h³`` conversion here would double-count an h³ amplitude error.
 
     Returns
     -------
@@ -405,7 +401,7 @@ def xi_camb(config, nz, theta_arcmin, *, n_ell=300, ell_max=60000, kmax=20.0, n_
         nonlinear=True, hubble_units=False, k_hunit=False
     )
     k = np.geomspace(1e-4, kmax * config.h, n_k)  # 1/Mpc
-    z = np.linspace(0.0, 3.0, 48)
+    z = np.linspace(0.0, PK_ZMAX, PK_NZ)  # the grid make_camb_params computed
     pk = interp.P(z, k)  # (n_z, n_k), Mpc^3
     a = 1.0 / (1.0 + z)
     order = np.argsort(a)  # Pk2D wants ascending scale factor

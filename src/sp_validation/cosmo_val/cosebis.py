@@ -165,13 +165,7 @@ class CosebisMixin:
         return results[key], tuple(key)
 
     def cosebis_to_sacc_part(
-        self,
-        version,
-        out_path,
-        results,
-        fiducial_scale_cut=None,
-        en_override=None,
-        commitment_path=None,
+        self, version, out_path, results, fiducial_scale_cut=None, en_override=None
     ):
         """Write the COSEBIs SACC part at the fiducial scale cut.
 
@@ -181,8 +175,8 @@ class CosebisMixin:
         in mode space, so the non-fiducial cuts stay in the ``.npz`` sidecar.
 
         ``en_override`` replaces ``result["En"]`` with En derived from the
-        integration ξ± part; Bn and the covariance stay from ``result``.
-        ``commitment_path`` stamps the part concealed under that version's blind.
+        integration ξ± part; Bn and the covariance stay from ``result``. The part
+        is born blinded, so it is stamped under the version's blind.
         """
         result, scale_cut = self._fiducial_cosebis_result(results, fiducial_scale_cut)
         if en_override is not None:
@@ -193,7 +187,9 @@ class CosebisMixin:
             result,
             scale_cut,
         )
-        sacc_io.save(s, out_path, type=self.run_type, commitment=commitment_path)
+        sacc_io.save(
+            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
+        )
 
     def plot_cosebis(
         self,

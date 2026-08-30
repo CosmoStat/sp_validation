@@ -25,7 +25,7 @@ from .sacc_writers import rho_tau_to_sacc
 
 
 class PSFSystematicsMixin:
-    def calculate_rho_tau_stats(self, commitment_path=None):
+    def calculate_rho_tau_stats(self):
         """Measure ρ/τ statistics per version and write each version's SACC part."""
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
@@ -45,12 +45,7 @@ class PSFSystematicsMixin:
                 npatch=self.npatch,
             )
             self.rho_tau_to_sacc_part(
-                ver,
-                out_dir,
-                base,
-                rho_stat_handler,
-                tau_stat_handler,
-                commitment_path=commitment_path,
+                ver, out_dir, base, rho_stat_handler, tau_stat_handler
             )
         self.print_done("Rho stats finished")
 
@@ -58,20 +53,13 @@ class PSFSystematicsMixin:
         self._tau_stat_handler = tau_stat_handler
 
     def rho_tau_to_sacc_part(
-        self,
-        version,
-        out_dir,
-        base,
-        rho_stat_handler,
-        tau_stat_handler,
-        commitment_path=None,
+        self, version, out_dir, base, rho_stat_handler, tau_stat_handler
     ):
         """Write the ρ/τ SACC part for one version.
 
-        ρ/τ is a PSF diagnostic carrying no cosmological vector, so it is never
-        blinded; ``commitment_path`` stamps the part concealed under the
-        version's blind, values untouched (see :func:`sacc_io.save`), so a data
-        run's assembly admits it. A mock run passes ``None``.
+        ρ/τ carries no cosmological vector and is never blinded; on a data run
+        it is stamped concealed pass-through (values untouched) so the
+        assembly's load gate admits it.
 
         ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
         ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
@@ -94,7 +82,9 @@ class PSFSystematicsMixin:
             tau_cov_th=tau_cov_th,
         )
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
-        sacc_io.save(s, out_path, type=self.run_type, commitment=commitment_path)
+        sacc_io.save(
+            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
+        )
 
     @property
     def rho_stat_handler(self):

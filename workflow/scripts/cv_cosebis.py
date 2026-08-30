@@ -38,9 +38,6 @@ integ = sacc_io.load(snakemake.input["xi_integration"])
 theta, xip, xim = sacc_io.get_xi(integ, (0, 0), grid="integration")
 en_part, _ = cosebis_from_xi(theta, xip, xim, p["nmodes"], scale_cut=fiducial_scale_cut)
 
-# Blinded at birth on a data run: commitment.json is bound only there.
-commitment_path = snakemake.input.get("commitment")
-
 # Born-as-SACC COSEBIs part at the fiducial scale cut.
 cv.cosebis_to_sacc_part(
     version,
@@ -48,7 +45,6 @@ cv.cosebis_to_sacc_part(
     cv._cosebis_results[version],
     fiducial_scale_cut=fiducial_scale_cut,
     en_override=en_part,
-    commitment_path=commitment_path,
 )
 
 # Sync the npz's En with the part-derived values; Bn / cov / PTE untouched.

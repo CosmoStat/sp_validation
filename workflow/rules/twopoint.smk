@@ -72,8 +72,7 @@ rule xi:
         catalog=get_shear_catalog,
     output:
         txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        # Blindable part: temp() on a data run so only its blinded sibling
-        # persists (blind_part escrows the true vector first). See common.maybe_temp.
+        # Blindable part: temp() on a data run so only its blinded sibling persists.
         sacc=maybe_temp(str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc")),
     threads: 24
     params:
@@ -84,9 +83,7 @@ rule xi:
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
         grid=lambda w: xi_grid_of(w),
-        # Stamped as the part's SACC `type` — custody state at assembly
-        # (see blinding.assert_consistent_blind).
-        type=run_type(),
+        type=run_type(),  # the part's SACC `type` — custody state at assembly
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.
@@ -116,8 +113,8 @@ rule run_cosmo_val:
 
 
 rule rho_tau_stats:
-    # ρ/τ has no blindable input; it binds only the commitment, to stamp its
-    # part concealed pass-through (see common.commitment_input).
+    # ρ/τ has no blindable input; it binds the commitment only to stamp its part
+    # concealed pass-through.
     input:
         unpack(lambda w: commitment_input(w.version)),
     output:
@@ -134,6 +131,7 @@ rule rho_tau_stats:
         nbins="{nbins}",
         npatch="{npatch}",
         type=run_type(),
+        blind_root=blind_root(),
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -151,13 +149,9 @@ wildcard_constraints:
 rule pseudo_cl:
     """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        # This generic rule produces every pseudo-Cℓ variant — the analysis part
-        # (blind=A, powspace, nbins=32) folded into {version}.sacc, plus the fine
-        # (COSEBIS) and glass-mock variants. Only the analysis part is a terminal
-        # blindable, and a data run blinds it via a requested _blinded sibling
-        # (blind_part reads this plaintext); the fine/mock variants are B-mode /
-        # validation intermediates left untouched here. The output is therefore
-        # not temp()'d — see the PR note on residual unblinded pseudo-Cℓ.
+        # One rule for every pseudo-Cℓ variant, only one of which (the analysis
+        # part) is blindable — so this output cannot be temp()'d and a data run
+        # blinds it through a requested _blinded sibling instead.
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
         blind="[ABC]",

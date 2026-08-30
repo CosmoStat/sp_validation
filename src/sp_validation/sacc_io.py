@@ -1552,38 +1552,18 @@ def covariance_blocks(cov_list, selectors, *, gaussian=True):
 
 
 # --------------------------------------------------------------------------- #
-# Terminal assembly (PR-6 blinding) — gather() and its blind-custody call site.
+# Terminal assembly — gather() and its blind-custody call site.
 # --------------------------------------------------------------------------- #
 def gather(parts, metadata=None, assemble=None):
     """Assemble standalone part SACCs into the one-file ``{version}.sacc``.
 
-    Each part is an intermediate product as it came off its producing rule
-    (reporting ξ±, integration ξ±, pseudo-Cℓ, ρ/τ, …). Gather is **the** terminal
-    seam: every path that combines parts into the one-file product goes
-    through here, because this is where the one thing an assembler cannot know
-    about is enforced — **blind custody.**
-
-    **Blind custody.**
+    The terminal seam: every path that combines parts into the one-file
+    product goes through here, because this is where the one thing an
+    assembler cannot know about is enforced — blind custody.
     :func:`sp_validation.blinding.assert_consistent_blind` runs before the
-    assembly — it fails closed unless every blindable part carries the
-    identical ``blind_commitment``/``blind_config_digest``/``blind_draw_scheme``
-    (or, when nothing is blinded, every blindable part is declared
-    ``type='mock'``). Its returned shared stamp is written onto the assembled
-    file so the one-file product carries the blind it was built from; the
-    blinded parts already carry those keys, so the assembly preserves them and
-    this stamp is a consistent (idempotent) re-affirmation.
-
-    **The assembly itself is the caller's.** Two exist and both are real:
-    :func:`merge` (the default) does the first-wins tracer union, in-order
-    point concatenation with all tags, and a covariance built from whatever the
-    parts carry — the right thing when parts are already covariance-bearing.
-    :func:`sp_validation.cosmo_val.sacc_writers.assemble_analysis_sacc` rebuilds
-    from the parts' own tracers/metadata and *requires* one covariance block per
-    part —
-    the right thing for the production terminal, where the ξ± and pseudo-Cℓ
-    parts are born cov-less and have their blocks injected first. Passing the
-    assembler in, rather than duplicating the custody wrapper around each one,
-    is what keeps the guard un-bypassable.
+    assembly and its returned shared stamp is written onto the result. The
+    assembler is passed *in* rather than wrapping this guard, which is what
+    keeps the guard un-bypassable.
 
     Parameters
     ----------

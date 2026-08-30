@@ -340,11 +340,8 @@ rule cv_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
-# On a data run the COSEBIs / pure-E/B parts re-derive their E-mode vector from
-# the *blinded* integration ξ± (COSEBIs) or blinded reporting + integration ξ±
-# (pure-E/B). blindable_part returns the plaintext part on a mock run and the
-# blinded part on a data run, so the ξ± inputs bind unconditionally for every
-# version; see common.commitment_input for the commitment.
+# On a data run these re-derive their E-mode vector from the *blinded* ξ± parts,
+# so they are born blinded; the commitment binds only there.
 def cv_cosebis_inputs(w):
     return {
         "xi": cv_xi_txt(w.version),
@@ -469,15 +466,9 @@ def cv_assemble_inputs(version):
     pseudo_cl (+ its cov) is included only when the config toggles the
     harmonic-space BB into the analysis.
     """
-    # blindable_part binds the raw-signal parts (reporting ξ±, analysis pseudo-Cℓ)
-    # to their blinded siblings on a data run and to the plaintext on a mock run.
-    # COSEBIs and pure-E/B are born blinded (their writers derive them from the
-    # blinded integration ξ± and stamp concealed=True), so they bind by their own
-    # name in both cases; ρ/τ is a diagnostic carrying no cosmological vector but
-    # is stamped concealed pass-through so the fail-closed load gate admits it on
-    # a data run. The integration-grid ξ± itself is blinded at birth (the same
-    # `xi` rule on the integration binning) but is NOT gathered into the terminal file — it persists as its
-    # own per-part intermediate (see #247 ruling), consumed by COSEBIs/pure-E/B.
+    # blindable_part binds the raw-signal parts to their blinded siblings on a
+    # data run. COSEBIs, pure-E/B and ρ/τ are stamped concealed by their own
+    # writers, so they bind by name either way.
     parts = dict(
         xi_reporting=blindable_part(cv_xi_sacc(version, "reporting")),
         cosebis=cv_cosebis_sacc(version),

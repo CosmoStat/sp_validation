@@ -134,9 +134,7 @@ class PureEBMixin:
 
         return results
 
-    def pure_eb_to_sacc_part(
-        self, version, out_path, results, eb_override=None, commitment_path=None
-    ):
+    def pure_eb_to_sacc_part(self, version, out_path, results, eb_override=None):
         """Write the pure-E/B SACC part (six ``PURE_KEYS`` blocks + covariance).
 
         ``results`` is the dict ``calculate_pure_eb`` returned: the six pure-mode
@@ -146,7 +144,7 @@ class PureEBMixin:
 
         ``eb_override`` replaces the six arrays with ones derived from the
         reporting + integration ξ± parts; the covariance stays from ``results``.
-        ``commitment_path`` stamps the part concealed under that version's blind.
+        The part is born blinded, so it is stamped under the version's blind.
         """
         theta = results["gg"].meanr
         source = eb_override if eb_override is not None else results
@@ -158,7 +156,9 @@ class PureEBMixin:
             eb,
             covariance=results["cov"],
         )
-        sacc_io.save(s, out_path, type=self.run_type, commitment=commitment_path)
+        sacc_io.save(
+            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
+        )
 
     def plot_pure_eb(
         self,

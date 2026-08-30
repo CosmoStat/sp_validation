@@ -10,7 +10,7 @@ analysis file with a ``BlockDiagonalCovariance`` over the per-part blocks in
 canonical order.
 
 The integration-grid ξ± part is an intermediate consumed by COSEBIs and
-pure-E/B; it is blinded at birth on data runs but does not join ``{version}.sacc``.
+pure-E/B; it is blinded at birth but does not join ``{version}.sacc``.
 
 Everything here is single-bin today (``bins=(0, 0)``); the interface is
 tomography-native so a future round supplies real bin pairs unchanged.

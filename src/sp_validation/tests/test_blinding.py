@@ -1,22 +1,14 @@
 """Tests for :mod:`sp_validation.blinding` — per-part Smokescreen blinding.
 
 Acceptance criteria AC1–AC9 of the blinding PRD, plus fast unit coverage of
-the config/custody surface. Fast tests (no CCL import — the envelope
-calibration, digest, commitment, fork-draw determinism, blind-init custody,
-the merge alignment against a monkeypatched concealing factor, and the
-assembly hash assertion) run in the default suite; the theory tests (fork +
-CCL) are marked ``slow``; the derived-statistics tests additionally
-``importorskip`` ``cosmo_numba``.
+the config/custody surface. The theory tests (fork + CCL) are marked ``slow``;
+the derived-statistics tests additionally ``importorskip`` ``cosmo_numba``.
 
 All fixtures are synthetic and deterministic. Each blindable intermediate is
-its own standalone part SACC (reporting ξ±, integration ξ±, pseudo-Cℓ), as in the
-per-part-at-birth architecture; derived statistics (COSEBIs, pure-E/B) are
-never stored in parts — they are computed downstream from the (blinded) integration
-ξ± through the pipeline seams ``b_modes.cosebis_from_xi`` /
-``b_modes.pure_eb_from_xi``, exactly as the pipeline does. The blinding path
-hands the fork no data vector at all (``smokescreen.concealing_factor`` is a
-pure theory difference), so fixture ξ± values are smooth synthetic templates —
-no theory fill is needed to blind.
+its own standalone part SACC, as in the per-part-at-birth architecture;
+derived statistics are computed downstream from the blinded integration ξ±
+through the pipeline's own seams. The fork is handed no data vector at all, so
+fixture ξ± values need only be smooth synthetic templates.
 """
 
 import json

@@ -40,17 +40,8 @@ tr, xpr, xmr = sacc_io.get_xi(rep, (0, 0), grid="reporting")
 ti, xpi, xmi = sacc_io.get_xi(integ, (0, 0), grid="integration")
 modes = pure_eb_from_xi(tr, xpr, xmr, ti, xpi, xmi, tmin, tmax)
 
-# Blinded at birth on a data run: commitment.json is bound only there.
-commitment_path = snakemake.input.get("commitment")
-
 # Born-as-SACC pure-E/B part; the six blocks come from the consumed parts.
-cv.pure_eb_to_sacc_part(
-    version,
-    snakemake.output["sacc"],
-    results,
-    eb_override=modes,
-    commitment_path=commitment_path,
-)
+cv.pure_eb_to_sacc_part(version, snakemake.output["sacc"], results, eb_override=modes)
 
 # Sync the npz's pure modes with the part-derived values; theta / cov / PTE untouched.
 npz_path = snakemake.output["npz"]

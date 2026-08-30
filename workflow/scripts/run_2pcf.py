@@ -57,8 +57,7 @@ def run_2pcf(
     expects. ``sacc_out`` is the exact destination for the ξ± SACC part
     (the Snakemake-declared output); it defaults to the binning-named part under
     the resolved output directory for the CLI path. ``run_type``
-    (``"data"`` or ``"mock"``) is stamped as the part's SACC ``type`` — custody
-    state at assembly (see ``blinding.assert_consistent_blind``).
+    (``"data"`` or ``"mock"``) is stamped as the part's SACC ``type``.
 
     Returns
     -------
@@ -124,8 +123,7 @@ def _from_snakemake(smk):
         # Write the SACC part exactly where the rule declares it (the .txt
         # byproduct still lands under the resolved output dir via _output_path).
         sacc_out=smk.output["sacc"],
-        # Custody state stamped as the part's SACC `type` (blinding).
-        run_type=p.get("type", "data"),
+        run_type=p["type"],
     )
 
 

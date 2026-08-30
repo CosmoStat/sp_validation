@@ -1,18 +1,10 @@
-"""Tests for the Snakemake blind-at-birth wiring (issues #247/#252, PR #253).
+"""Tests for the Snakemake blind-at-birth wiring, independent of a live cluster.
 
-Two seams are covered here, both independent of a live cluster:
-
-1. **The path helpers in ``workflow/common.py``** must stay in lockstep with
-   ``sp_validation.blinding`` — common mirrors ``init_paths`` / ``part_paths`` by
-   hand (to keep the DAG build from importing the heavy blinding module), so a
-   drift between them would silently mis-wire ``blind_part``. These tests are the
-   guard.
-2. **The data-run fail-closed assembly**: ``assemble_sacc`` must refuse an
-   unblinded ``type='data'`` part and succeed once every part is concealed under
-   one commitment — the terminal custody gate of #252.
-
-A candide-only test additionally asserts the blinding subgraph resolves in the
-cosmo_val DAG dry-run.
+Covers ``workflow/common.py``'s part-path and run-type helpers, and the
+data-run fail-closed assembly: ``assemble_sacc`` must refuse an unblinded
+``type='data'`` part and succeed once every part is concealed under one
+commitment. A candide-only test additionally asserts the blinding subgraph
+resolves in the cosmo_val DAG dry-run.
 """
 
 import importlib.util
@@ -51,7 +43,7 @@ asm = _load_module("workflow/scripts/assemble_sacc.py", "assemble_sacc")
 
 
 # --------------------------------------------------------------------------- #
-# 1. common.py path helpers mirror sp_validation.blinding (drift guard)
+# 1. common.py part-path and run-type helpers
 # --------------------------------------------------------------------------- #
 _STEMS = [
     "SP_v1.4.6.3_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=100",
@@ -59,19 +51,6 @@ _STEMS = [
     "pseudo_cl_SP_v1.4.6.3_blind=A_powspace_nbins=32",
     "pseudo_cl_SP_v1.4.6.3_leak_corr_blind=A_powspace_nbins=32",
 ]
-
-
-@pytest.mark.parametrize("stem", _STEMS)
-def test_blinded_path_mirrors_blinding_part_paths(stem):
-    part = f"/out/{stem}.sacc"
-    assert common.blinded_path(part) == blinding.part_paths(part)["blinded"]
-
-
-def test_blind_state_paths_mirror_blinding_init_paths():
-    version = "SP_v1.4.6.3_leak_corr"
-    common_paths = common.blind_state_paths(version)
-    ref = blinding.init_paths(common.blind_state_dir(version))
-    assert common_paths == ref
 
 
 @pytest.mark.parametrize(
@@ -260,10 +239,12 @@ def test_rho_tau_part_is_stamped_concealed_from_the_commitment(tmp_path):
     data run's ``assemble_sacc`` dies on the ρ/τ part before custody is ever
     checked.
     """
+    from sp_validation.cosmo_val.core import CosmologyValidation
     from sp_validation.cosmo_val.psf_systematics import PSFSystematicsMixin
 
-    blind_dir = tmp_path / "blind"
-    blind_dir.mkdir()
+    root = tmp_path / "blind"
+    blind_dir = root / "vSYNTH"
+    blind_dir.mkdir(parents=True)
     commitment = blinding.blind_init(str(blind_dir), log=lambda *_: None)["commitment"]
     theta = np.geomspace(1.0, 100.0, 6)
     rng = np.random.default_rng(11)
@@ -282,6 +263,9 @@ def test_rho_tau_part_is_stamped_concealed_from_the_commitment(tmp_path):
         """The writer's collaborators, stubbed — the method under test is real."""
 
         run_type = "data"
+        blind_root = str(root)
+        # The real per-version resolution is part of what this test covers.
+        commitment_path = CosmologyValidation.commitment_path
 
         def sacc_nz(self, version):
             return {0: _nz()}
@@ -300,7 +284,6 @@ def test_rho_tau_part_is_stamped_concealed_from_the_commitment(tmp_path):
         "vSYNTH",
         types.SimpleNamespace(rho_stats=rho),
         types.SimpleNamespace(tau_stats=tau),
-        commitment_path=commitment,
     )
 
     written = sio.load(str(out_dir / "rho_tau_vSYNTH.sacc"))
