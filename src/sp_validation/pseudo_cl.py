@@ -280,32 +280,3 @@ def get_pseudo_cls_catalog(
     cl_all = wsp.decouple_cell(cl_coupled)
 
     return ell_eff, cl_all, wsp
-
-
-# NaMaster spin-2 × spin-2 spectrum order: EE, EB, BE, BB.
-_NMT_EE = 0
-
-
-def bandpower_window_from_workspace(wsp):
-    """Extract the bandpower window matrix ``W`` for a spin-2×spin-2 workspace.
-
-    NaMaster's ``get_bandpower_windows()`` returns a four-index array
-    ``(n_cl_out, n_bpw, n_cl_in, n_ell)`` describing how each output bandpower
-    is built from the input multipoles across the EE/EB/BE/BB spectra. SACC's
-    ``BandpowerWindow`` model (one window per bandpower, shared across the
-    stored spectra) needs the per-spectrum *decoupling* window, i.e. the
-    diagonal EE←EE block (equal to BB←BB and EB←EB, verified identical).
-
-    Returns
-    -------
-    window_ells : np.ndarray
-        Multipoles the window spans, ``arange(n_ell)`` — the ``ell`` axis of
-        ``compute_coupled_cell``.
-    window_weights : np.ndarray
-        ``W`` of shape ``(n_ell, n_bpw)`` — one column per bandpower, the layout
-        :func:`sp_validation.sacc_io.add_pseudo_cl` expects.
-    """
-    bpw = wsp.get_bandpower_windows()  # (n_cl_out, n_bpw, n_cl_in, n_ell)
-    diagonal = bpw[_NMT_EE, :, _NMT_EE, :]  # (n_bpw, n_ell)
-    window_ells = np.arange(diagonal.shape[1], dtype=float)
-    return window_ells, diagonal.T
