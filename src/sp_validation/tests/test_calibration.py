@@ -296,8 +296,8 @@ def test_metacal_R_matrix_recovers_injected_response():
     re-runs with slope 5.0 and confirms R11 tracks it (5.0 != 2.0), so a
     change that decouples R from the input numbers fails.
 
-    NOTE: the estimator prints an 'FHP/MK hack' line and an unweighted /
-    weighted response line; these are expected stdout, not errors.
+    NOTE: the estimator prints an unweighted / weighted response line; this
+    is expected stdout, not an error.
     """
     data, n = _build_ngmix_catalog(slope_11=2.0, slope_22=3.0, step=0.01)
     mask = np.ones(n, dtype=bool)
