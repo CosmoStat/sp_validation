@@ -14,7 +14,9 @@ rule xi:
         # rule to share one wildcard set, and it keeps the reporting .sacc name
         # self-describing so requesting it binds the xi job unambiguously.
         txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        xi_reporting=str(COSMO_VAL / "{version}_xi_reporting_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
+        # Blindable part: temp() on a data run so only its blinded sibling
+        # persists (blind_part escrows the true vector first). See common.maybe_temp.
+        xi_reporting=maybe_temp(str(COSMO_VAL / "{version}_xi_reporting_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc")),
     threads: 24
     params:
         ver="{version}",
@@ -22,6 +24,9 @@ rule xi:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        # Stamped as the part's SACC `type` — custody state at assembly
+        # (see blinding.assert_consistent_blind).
+        type=run_type(),
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -69,7 +74,9 @@ rule xi_highres:
         # [0.08, 300] at 1000 bins) so the single part serves both consumers:
         # pure-E/B needs it to strictly contain its reporting grid down to 0.08;
         # COSEBIs scale-cuts on the same part. Decoupled from covariance.smk.
-        xi_integration=str(COSMO_VAL / "{version}_xi_integration.sacc"),
+        # Blindable part: temp() on a data run so blind_part produces the _blinded
+        # sibling the COSEBIs/pure-E/B consumers bind (see rule xi / common.maybe_temp).
+        xi_integration=maybe_temp(str(COSMO_VAL / "{version}_xi_integration.sacc")),
     params:
         version="{version}",
         cat_config=CAT_CONFIG,
@@ -78,6 +85,7 @@ rule xi_highres:
         nbins=_INTEGRATION["nbins"],
         out=str(COSMO_VAL),
         scripts=WORKFLOW_SCRIPTS,
+        run_type=run_type(),
     threads: 24
     resources:
         mem_mb=40000,
@@ -86,7 +94,8 @@ rule xi_highres:
         "python {params.scripts}/run_2pcf_highres.py "
         "--version {params.version} --cat-config {params.cat_config} "
         "--min-sep {params.min_sep} --max-sep {params.max_sep} "
-        "--nbins {params.nbins} --npatch 1 --out {params.out}"
+        "--nbins {params.nbins} --npatch 1 --out {params.out} "
+        "--run-type {params.run_type}"
 
 
 rule run_cosmo_val:
@@ -108,6 +117,10 @@ rule run_cosmo_val:
 
 
 rule rho_tau_stats:
+    # ρ/τ has no blindable input; it binds only the commitment, to stamp its
+    # part concealed pass-through (see common.commitment_input).
+    input:
+        unpack(lambda w: commitment_input(w.version)),
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
@@ -123,6 +136,7 @@ rule rho_tau_stats:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
+        type=run_type(),
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -145,6 +159,13 @@ rule pseudo_cl:
     concealed=True stamp is a separate axis on the SACC file.
     """
     output:
+        # This generic rule produces every pseudo-Cℓ variant — the analysis part
+        # (blind=A, powspace, nbins=32) folded into {version}.sacc, plus the fine
+        # (COSEBIS) and glass-mock variants. Only the analysis part is a terminal
+        # blindable, and a data run blinds it via a requested _blinded sibling
+        # (blind_part reads this plaintext); the fine/mock variants are B-mode /
+        # validation intermediates left untouched here. The output is therefore
+        # not temp()'d — see the PR note on residual unblinded pseudo-Cℓ.
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
         blind="[ABC]",  # glass-mock variant, not Smokescreen blinding

@@ -942,7 +942,7 @@ def update_statistic(s, sub):
         s.data[idx[0]].value = point.value
 
 
-def save(s, path, *, type):
+def save(s, path, *, type, commitment=None):
     """Write ``s`` to ``path`` (FITS), overwriting any existing file.
 
     Parameters
@@ -955,6 +955,12 @@ def save(s, path, *, type):
         the pipeline computing the data vector — knows whether its input
         catalogue is a mock; there is deliberately no default. ``load``
         refuses ``type='data'`` files that are not blinded.
+    commitment : str, optional
+        Path to the version's ``commitment.json``. When given, the file is
+        stamped concealed under that blind
+        (:func:`sp_validation.blinding.stamp_concealed_passthrough`, values
+        untouched) before writing — the seam every born-blinded or
+        blind-irrelevant part uses to clear the fail-closed load gate.
     """
     if type not in ("data", "mock"):
         raise ValueError(f"type must be 'data' or 'mock'; got {type!r}")
@@ -964,6 +970,10 @@ def save(s, path, *, type):
             f"refusing to re-stamp as {type!r}"
         )
     s.metadata["type"] = type
+    if commitment is not None:
+        from . import blinding
+
+        blinding.stamp_concealed_passthrough(s, commitment)
     s.save_fits(path, overwrite=True)
 
 
@@ -1539,3 +1549,61 @@ def covariance_blocks(cov_list, selectors, *, gaussian=True):
     return [
         (selectors, cov_from_one_covariance(np.asarray(cov_list), gaussian=gaussian))
     ]
+
+
+# --------------------------------------------------------------------------- #
+# Terminal assembly (PR-6 blinding) — gather() and its blind-custody call site.
+# --------------------------------------------------------------------------- #
+def gather(parts, metadata=None, assemble=None):
+    """Assemble standalone part SACCs into the one-file ``{version}.sacc``.
+
+    Each part is an intermediate product as it came off its producing rule
+    (reporting ξ±, integration ξ±, pseudo-Cℓ, ρ/τ, …). Gather is **the** terminal
+    seam: every path that combines parts into the one-file product goes
+    through here, because this is where the one thing an assembler cannot know
+    about is enforced — **blind custody.**
+
+    **Blind custody.**
+    :func:`sp_validation.blinding.assert_consistent_blind` runs before the
+    assembly — it fails closed unless every blindable part carries the
+    identical ``blind_commitment``/``blind_config_digest``/``blind_draw_scheme``
+    (or, when nothing is blinded, every blindable part is declared
+    ``type='mock'``). Its returned shared stamp is written onto the assembled
+    file so the one-file product carries the blind it was built from; the
+    blinded parts already carry those keys, so the assembly preserves them and
+    this stamp is a consistent (idempotent) re-affirmation.
+
+    **The assembly itself is the caller's.** Two exist and both are real:
+    :func:`merge` (the default) does the first-wins tracer union, in-order
+    point concatenation with all tags, and a covariance built from whatever the
+    parts carry — the right thing when parts are already covariance-bearing.
+    :func:`sp_validation.cosmo_val.sacc_writers.assemble_analysis_sacc` rebuilds
+    from a given n(z) + metadata and *requires* one covariance block per part —
+    the right thing for the production terminal, where the ξ± and pseudo-Cℓ
+    parts are born cov-less and have their blocks injected first. Passing the
+    assembler in, rather than duplicating the custody wrapper around each one,
+    is what keeps the guard un-bypassable.
+
+    Parameters
+    ----------
+    parts : sequence of sacc.Sacc
+        The part SACCs, in the assembly (covariance) order.
+    metadata : dict, optional
+        Extra key/value pairs to store on the assembled file's metadata.
+    assemble : callable, optional
+        ``assemble(parts) -> sacc.Sacc``. Defaults to :func:`merge`. Bind any
+        further arguments (n(z), metadata) into the callable.
+
+    Returns
+    -------
+    sacc.Sacc
+        The assembled file.
+    """
+    from . import blinding
+
+    parts = list(parts)
+    stamp = blinding.assert_consistent_blind(parts)
+    s = (assemble or merge)(parts)
+    for key, value in {**(metadata or {}), **(stamp or {})}.items():
+        s.metadata[key] = value
+    return s

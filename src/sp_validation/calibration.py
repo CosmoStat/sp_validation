@@ -789,14 +789,6 @@ class metacal:
                 f"Unsupported shape prefix '{self._prefix}'; only 'NGMIX' is supported"
             )
 
-        print("FHP/MK hack using p1 PSF for ns in cuts")
-        indices = np.where(mask)[0]
-        col_1p = f"{self._prefix}_T_PSF_RECONV_1P"
-        new_psf = data[col_1p][indices]
-
-        # Overwriting incorrect no-shear PSF size to the one from 1p
-        ns["Tpsf"] = new_psf
-
         self.m1 = m1
         self.p1 = p1
         self.m2 = m2

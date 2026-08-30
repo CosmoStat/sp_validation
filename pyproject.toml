@@ -101,12 +101,10 @@ dependencies = [
     # getdist feature-branch below, which is an external fork we pin for repro.)
     "shear_psf_leakage @ git+https://github.com/CosmoStat/shear_psf_leakage.git@develop",
     "skyproj",
-    # UNIONS-WL fork of DESC Smokescreen, pinned by SHA on the fork's
-    # packaging branch: it declares pyccl and imports its theory backends
-    # lazily, so the install closure is CCL-only. Provisional pin — swapped to the
-    # fork's release tag once the fork packaging PRs merge. Git pin only;
-    # nothing is published to PyPI.
-    "smokescreen @ git+https://github.com/UNIONS-WL/Smokescreen@588a6b9b26560bd5ba3dd5ba342f3c40152644f9",
+    # UNIONS-WL fork of DESC Smokescreen. Tracks the fork's main; uv.lock
+    # freezes the exact commit, so updates land via
+    # `uv lock --upgrade-package smokescreen`. Git only; not on PyPI.
+    "smokescreen @ git+https://github.com/UNIONS-WL/Smokescreen@main",
     "statsmodels",
     "treecorr>=5.0",
     "tqdm",

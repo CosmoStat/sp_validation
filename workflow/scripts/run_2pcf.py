@@ -39,6 +39,7 @@ def run_2pcf(
     cat_config,
     output_dir,
     sacc_out=None,
+    run_type="data",
 ):
     """Measure ξ±(θ) for ``ver`` and write its reporting SACC part.
 
@@ -49,7 +50,9 @@ def run_2pcf(
     ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
     expects. ``sacc_out`` is the exact destination for the reporting ξ± SACC part
     (the Snakemake-declared output); it defaults to ``{ver}_xi_reporting.sacc``
-    under the resolved output directory for the CLI path.
+    under the resolved output directory for the CLI path. ``run_type``
+    (``"data"`` or ``"mock"``) is stamped as the part's SACC ``type`` — custody
+    state at assembly (see ``blinding.assert_consistent_blind``).
 
     Returns
     -------
@@ -85,7 +88,7 @@ def run_2pcf(
     out_path = sacc_out or os.path.join(
         output_dir or cv.cc["paths"]["output"], f"{ver}_xi_reporting.sacc"
     )
-    sacc_io.save(s, out_path, type="data")
+    sacc_io.save(s, out_path, type=run_type)
     print(f"Wrote reporting ξ± SACC part: {out_path}")
     return gg
 
@@ -107,6 +110,7 @@ def _from_snakemake(smk):
         # Write the SACC part exactly where the rule declares it (the .txt
         # byproduct still lands under the resolved output dir via _output_path).
         sacc_out=smk.output["xi_reporting"],
+        run_type=p.get("type", "data"),
     )
 
 
@@ -133,6 +137,12 @@ def _from_cli(argv=None):
         "--cat-config", required=True, help="Absolute path to cat_config.yaml"
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
+    ap.add_argument(
+        "--run-type",
+        default="data",
+        choices=("data", "mock"),
+        help="Campaign run type stamped as the part's SACC `type`",
+    )
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
@@ -142,6 +152,7 @@ def _from_cli(argv=None):
         npatch=a.npatch,
         cat_config=a.cat_config,
         output_dir=a.out,
+        run_type=a.run_type,
     )
 
 

@@ -7,9 +7,13 @@ the same assembly runs from explicit flags (the lightcone/ASTRA path).
 Each per-statistic ``*.sacc`` *part* (written born-as-SACC by the mixins and the
 run_2pcf / generate_pseudo_cl scripts) holds one statistic. The assembler loads
 them in canonical order — ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ — and
-calls :func:`sacc_writers.assemble_analysis_sacc`, which rebuilds one Sacc with a
-single ``BlockDiagonalCovariance`` (point-insertion order = block order,
-validated by ``sacc_io.assemble_covariance``).
+hands them to :func:`sacc_io.gather` along with
+:func:`sacc_writers.assemble_analysis_sacc` as the assembly, which rebuilds one
+Sacc with a single ``BlockDiagonalCovariance`` (point-insertion order = block
+order, validated by ``sacc_io.assemble_covariance``). Going through ``gather``
+rather than calling the assembler directly is what puts this path behind the
+blind-custody gate (``blinding.assert_consistent_blind``) — there is one
+terminal seam, not one per assembler.
 
 Covariance sourcing (the part-by-part decision)
 -----------------------------------------------
@@ -176,7 +180,17 @@ def assemble_sacc(
         )
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
-    s = assemble_analysis_sacc(nz, metadata, parts)
+    # Assembly-time custody assertion (#252) runs inside sacc_io.gather, the one
+    # terminal seam: every blindable part (ξ± / pseudo-Cℓ EE) must share one
+    # blind commitment + config digest + draw scheme, or assembly fails closed —
+    # mixed blinded/plaintext parts and divergent-seed parts both raise. ρ/τ and
+    # covariance-only parts are exempt. Gather also stamps the shared blind onto
+    # the assembled file, so the union reads as concealed in its own right.
+    # The production assembly (n(z) + per-part covariance blocks) is passed in;
+    # gather's own default merge() is for parts that already carry covariance.
+    s = sacc_io.gather(
+        parts, assemble=lambda ordered: assemble_analysis_sacc(nz, metadata, ordered)
+    )
     # Assembly preserves its parts' provenance: every part was written by
     # sacc_io.save and therefore carries the type=data|mock stamp in its
     # metadata (copied into the assembled file above).

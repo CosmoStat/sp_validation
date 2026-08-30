@@ -25,7 +25,8 @@ from .sacc_writers import rho_tau_to_sacc
 
 
 class PSFSystematicsMixin:
-    def calculate_rho_tau_stats(self):
+    def calculate_rho_tau_stats(self, commitment_path=None):
+        """Measure ρ/τ statistics per version and write each version's SACC part."""
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -44,7 +45,12 @@ class PSFSystematicsMixin:
                 npatch=self.npatch,
             )
             self.rho_tau_to_sacc_part(
-                ver, out_dir, base, rho_stat_handler, tau_stat_handler
+                ver,
+                out_dir,
+                base,
+                rho_stat_handler,
+                tau_stat_handler,
+                commitment_path=commitment_path,
             )
         self.print_done("Rho stats finished")
 
@@ -52,9 +58,20 @@ class PSFSystematicsMixin:
         self._tau_stat_handler = tau_stat_handler
 
     def rho_tau_to_sacc_part(
-        self, version, out_dir, base, rho_stat_handler, tau_stat_handler
+        self,
+        version,
+        out_dir,
+        base,
+        rho_stat_handler,
+        tau_stat_handler,
+        commitment_path=None,
     ):
         """Write the ρ/τ SACC part for one version.
+
+        ρ/τ is a PSF diagnostic carrying no cosmological vector, so it is never
+        blinded; ``commitment_path`` stamps the part concealed under the
+        version's blind, values untouched (see :func:`sacc_io.save`), so a data
+        run's assembly admits it. A mock run passes ``None``.
 
         ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
         ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` — a
@@ -80,7 +97,7 @@ class PSFSystematicsMixin:
             tau_cov_th=tau_cov_th,
         )
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
-        sacc_io.save(s, out_path, type="data")
+        sacc_io.save(s, out_path, type=self.run_type, commitment=commitment_path)
 
     @property
     def rho_stat_handler(self):

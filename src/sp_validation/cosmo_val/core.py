@@ -98,6 +98,11 @@ class CosmologyValidation(
         noise debiasing, making those realizations reproducible run-to-run.
     cosmo_params : dict, optional
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
+    run_type : {'data', 'mock'}, default 'data'
+        The campaign's run type, stamped as the SACC ``type`` of every part this
+        object writes. Custody state, not decoration: a mock campaign must be
+        built with ``run_type='mock'`` for its parts to assemble at all (see
+        ``blinding.assert_consistent_blind``).
 
     Attributes
     ----------
@@ -224,7 +229,7 @@ class CosmologyValidation(
         path_onecovariance=None,
         cosmo_params=None,
         blind=None,
-        sacc_type="data",
+        run_type="data",
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -254,10 +259,7 @@ class CosmologyValidation(
         self.nside_mask = nside_mask
         self.path_onecovariance = path_onecovariance
         self.blind = blind
-        # SACC provenance stamped by every part-writer via sacc_io.save(type=…):
-        # 'data' for real catalogues (load-gated until blinded), 'mock' for
-        # simulations (freely inspectable). PRD #241 §4.
-        self.sacc_type = sacc_type
+        self.run_type = run_type
 
         assert self.cell_method in ["map", "catalog"], (
             "cell_method must be 'map' or 'catalog'"

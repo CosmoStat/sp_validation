@@ -368,12 +368,32 @@ rule cv_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
+# On a data run the COSEBIs / pure-E/B parts re-derive their E-mode vector from
+# the *blinded* integration ξ± (COSEBIs) or blinded reporting + integration ξ±
+# (pure-E/B). blindable_part returns the plaintext part on a mock run and the
+# blinded part on a data run, so the ξ± inputs bind unconditionally for every
+# version; see common.commitment_input for the commitment.
+def cv_cosebis_inputs(w):
+    return {
+        "xi": cv_xi_txt(w.version),
+        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        **commitment_input(w.version),
+    }
+
+
+def cv_pure_eb_inputs(w):
+    return {
+        "xi": cv_xi_txt(w.version),
+        "xi_reporting": blindable_part(cv_xi_reporting_sacc(w.version)),
+        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        **commitment_input(w.version),
+    }
+
+
 rule cv_pure_eb:
     """Pure E/B-mode decomposition for one version (config-space)."""
     input:
-        xi=lambda w: cv_xi_txt(w.version),
-        xi_reporting=lambda w: cv_xi_reporting_sacc(w.version),
-        xi_integration=lambda w: cv_xi_integration_sacc(w.version),
+        unpack(cv_pure_eb_inputs),
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
@@ -396,8 +416,7 @@ rule cv_pure_eb:
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
     input:
-        xi=lambda w: cv_xi_txt(w.version),
-        xi_integration=lambda w: cv_xi_integration_sacc(w.version),
+        unpack(cv_cosebis_inputs),
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
@@ -488,14 +507,23 @@ def cv_assemble_inputs(version):
     fiducial harmonic tag). pseudo_cl (+ its cov) is included only when the
     config toggles the harmonic-space BB into the analysis.
     """
+    # blindable_part binds the raw-signal parts (reporting ξ±, analysis pseudo-Cℓ)
+    # to their blinded siblings on a data run and to the plaintext on a mock run.
+    # COSEBIs and pure-E/B are born blinded (their writers derive them from the
+    # blinded integration ξ± and stamp concealed=True), so they bind by their own
+    # name in both cases; ρ/τ is a diagnostic carrying no cosmological vector but
+    # is stamped concealed pass-through so the fail-closed load gate admits it on
+    # a data run. The integration-grid ξ± itself is blinded at birth (see rule
+    # xi_highres) but is NOT gathered into the terminal file — it persists as its
+    # own per-part intermediate (see #247 ruling), consumed by COSEBIs/pure-E/B.
     parts = dict(
-        xi_reporting=cv_xi_reporting_sacc(version),
+        xi_reporting=blindable_part(cv_xi_reporting_sacc(version)),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
     )
     if CV.get("include_pseudo_cl", False):
-        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
+        parts["pseudo_cl"] = blindable_part(cv_pseudo_cl_analysis_sacc(version))
         parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
     return parts
 
