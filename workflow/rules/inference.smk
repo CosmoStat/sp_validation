@@ -19,6 +19,7 @@ COSMO_INFERENCE_RUNDIR = str(COSMO_INFERENCE)
 # External chain/mock locations are deployment-specific, so they live in config.
 INFERENCE = config["inference"]
 GLASS_MOCK_DATA_DIR = INFERENCE["glass_mock_data_dir"]    # precomputed mock xi/Cl products
+CHAINS_DIR = INFERENCE["chains_dir"]  # CosmoSIS chain output root (real data)
 GLASS_MOCK_CHAINS_DIR = INFERENCE["glass_mock_chains_dir"]  # mock chain output root
 
 PSEUDO_CL_DIR = COSMO_VAL  # producer (twopoint.smk) writes pseudo_cl* here
