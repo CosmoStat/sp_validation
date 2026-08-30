@@ -58,8 +58,9 @@ cosmo_val:
         kmax: 20
         kmax_extrapolate: 500
 
-  # Integration-grid ξ± (the shared fine grid measured once per version by rule
-  # xi_highres as {version}_xi_integration.sacc). Both estimators consume this one
+  # Integration-grid ξ± (the shared fine grid measured once per version by the
+  # binning-agnostic `xi` rule, which resolves this binning to grid='integration'
+  # and attaches a DiagonalCovariance). Both estimators consume this one
   # part: pure-E/B uses the full range (it must strictly contain the reporting
   # grid [1, 250]); COSEBIs scale-cuts it up to 0.9. Owned here, not inside either
   # consumer's block. Decoupled from covariance.smk's own FIDUCIAL grid.

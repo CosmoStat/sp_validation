@@ -38,7 +38,9 @@ from sweep_versions import nonfiducial_versions  # noqa: E402
 
 GRIDS = {
     "reporting": dict(min_sep=1.0, max_sep=250.0, nbins=20, npatch=1),
-    "integration": dict(min_sep=0.5, max_sep=300.0, nbins=1000, npatch=1),
+    "integration": dict(
+        min_sep=0.5, max_sep=300.0, nbins=1000, npatch=1, covariance="diagonal"
+    ),
 }
 
 
@@ -73,14 +75,14 @@ def _from_cli(argv=None):
     for ver in versions:
         for grid in a.grids:
             # The sweep consumes only the .txt dump (cosebis_version_comparison
-            # reconstructs it by binning). run_2pcf is born-as-SACC, so give its
-            # reporting part a grid-qualified name — the default {ver}_xi_reporting.sacc
-            # carries no binning, so the two grids per version would collide.
+            # reconstructs it by binning). run_2pcf is born-as-SACC; its default
+            # part name carries the binning, so the two grids per version land
+            # in distinct files without an explicit sacc_out.
             run_2pcf(
                 ver=ver,
                 cat_config=a.cat_config,
                 output_dir=a.out,
-                sacc_out=os.path.join(a.out, f"{ver}_xi_reporting_{grid}.sacc"),
+                grid=grid,
                 **GRIDS[grid],
             )
 

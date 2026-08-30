@@ -10,8 +10,8 @@ from pathlib import Path
 # Snakefile, and so resolves to the generic workflow dir of the running checkout
 # regardless of which paper composes it — unlike workflow.basedir, which under
 # `module` composition reflects the composing paper). Rules that shell out to a
-# script directly (the MPI xi_highres run can't go through Snakemake's `script:`
-# directive) interpolate this instead of a hardcoded pure_eb/ compat-symlink
+# script directly (rather than through Snakemake's `script:` directive)
+# interpolate this instead of a hardcoded pure_eb/ compat-symlink
 # path. /automnt/n17data is the automount of the container-bound /n17data.
 WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
 
