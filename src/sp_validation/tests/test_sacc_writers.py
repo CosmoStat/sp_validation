@@ -262,7 +262,7 @@ def _make_parts(nz):
 def test_assemble_analysis_sacc_block_diagonal_covariance(tmp_path):
     nz = {0: _nz()}
     parts = _make_parts(nz)
-    s = sw.assemble_analysis_sacc(nz, META, parts)
+    s = sw.assemble_analysis_sacc(parts)
     assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
     # every point covered; blocks placed and cross-blocks zero
@@ -302,7 +302,7 @@ def test_assemble_analysis_sacc_requires_covariance():
         )
     )  # no covariance
     with pytest.raises(ValueError, match="own covariance block"):
-        sw.assemble_analysis_sacc(nz, META, parts)
+        sw.assemble_analysis_sacc(parts)
 
 
 def test_assemble_from_reloaded_parts(tmp_path):
@@ -313,6 +313,6 @@ def test_assemble_from_reloaded_parts(tmp_path):
     for i, part in enumerate(parts):
         sio.save(part, str(tmp_path / f"part{i}.sacc"), type="mock")
         reloaded.append(sio.load(str(tmp_path / f"part{i}.sacc")))
-    s = sw.assemble_analysis_sacc(nz, META, reloaded)
+    s = sw.assemble_analysis_sacc(reloaded)
     assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))

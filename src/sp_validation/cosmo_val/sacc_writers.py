@@ -4,26 +4,20 @@ A thin, pure layer between the ``cosmo_val`` mixins (which compute statistics as
 TreeCorr / NaMaster / b_modes arrays) and :mod:`sp_validation.sacc_io` (which
 knows the file layout). Each ``*_to_sacc`` function turns one already-computed
 statistic into a single-statistic SACC — a *part* — carrying that statistic's
-own covariance as its one covariance block. The Snakemake DAG writes one part
-per rule; :func:`assemble_analysis_sacc` then loads the parts and rebuilds the
-single ``{version}.sacc`` analysis file with a ``BlockDiagonalCovariance``
-assembled from the per-part blocks in canonical order (per the SACC layout
-contract, via the validated :func:`sp_validation.sacc_io.assemble_covariance` —
-*not* ``sacc.concatenate_data_sets``, whose unvalidated block-diagonal the
-contract rules out).
+own covariance as its one block. The Snakemake DAG writes one part per rule;
+:func:`assemble_analysis_sacc` then rebuilds the single ``{version}.sacc``
+analysis file with a ``BlockDiagonalCovariance`` over the per-part blocks in
+canonical order.
 
-The integration-grid ``{version}_xi_integration.sacc`` is an intermediate
-per-part file (:func:`xi_to_sacc` with ``grid="integration"`` and a
-``DiagonalCovariance`` from TreeCorr ``varxip``/``varxim``); COSEBIs and pure-E/B
-consume it. It is blinded at birth on data runs (per PR #253) but does not join
-the terminal ``{version}.sacc`` — Snakemake provenance covers its traceability
-(see #247 ruling).
+The integration-grid ξ± part is an intermediate consumed by COSEBIs and
+pure-E/B; it is blinded at birth but does not join ``{version}.sacc``.
 
 Everything here is single-bin today (``bins=(0, 0)``); the interface is
 tomography-native so a future round supplies real bin pairs unchanged.
 """
 
 import numpy as np
+import sacc
 
 from .. import sacc_io as sio
 from ..pseudo_cl import bandpower_window_from_workspace
@@ -132,22 +126,13 @@ def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
     """One ρ/τ part: ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage.
 
     ``rho_stats`` / ``tau_stats`` are the ``shear_psf_leakage`` handler tables
-    (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, ``rho_{k}_m``, … and
-    the τ analogue). Both diagnostics stay out of the blind and only τ enters
-    inference, so the covariance is a block-diagonal placeholder except for the
-    τ-plus theory block:
-
-    - ρ (all 6·nbin points): diagonal from ``varrho`` — a diagnostic placeholder,
-      not consumed by inference.
-    - τ (6·nbin points, per-k ``[τ+; τ−]``): the ``CovTauTh`` theory covariance
-      ``tau_cov_th`` scattered into the τ-plus rows/columns. ``CovTauTh.build_cov``
-      returns a ``(3·nbin, 3·nbin)`` k-major matrix over ``{τ0, τ2, τ5}`` with the
-      plus/minus contributions folded into one component per k (verified against
-      the write-side); it therefore aligns to our τ-plus points ``{τ0+, τ2+, τ5+}``
-      in k-major order, and today's CosmoSIS chain (``covdat_to_fits``) consumes
-      exactly this flavor for τ. The τ-minus points carry only a ``vartau``
-      diagonal (no theory covariance for them exists). ``tau_cov_th=None`` falls
-      back to a fully diagonal τ block (a flagged placeholder, not the design).
+    (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, … and the τ analogue).
+    ρ carries a ``varrho`` diagonal (a diagnostic, not consumed by inference);
+    τ carries a ``vartau`` diagonal with ``tau_cov_th`` scattered into the τ-plus
+    rows/columns. ``CovTauTh.build_cov`` returns a ``(3·nbin, 3·nbin)`` k-major
+    matrix over ``{τ0, τ2, τ5}`` with plus/minus folded into one component per k,
+    so it aligns to the τ-plus points in k-major order; the τ-minus points have
+    no theory covariance. ``tau_cov_th=None`` leaves the τ block fully diagonal.
     """
     s = sio.new_sacc(nz, metadata)
     theta_rho = np.asarray(rho_stats["theta"])
@@ -183,8 +168,7 @@ def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
         ]
     )
     if tau_cov_th is None:
-        # Fully diagonal placeholder — a DiagonalCovariance (compact, honest) for
-        # the standalone diagnostic file; assemble reads it back via .dense.
+        # Compact DiagonalCovariance; assembly reads it back via .dense.
         s.add_covariance(np.concatenate([rho_var, tau_var]))
         return s
     tau_cov_th = np.asarray(tau_cov_th)
@@ -218,21 +202,20 @@ def _copy_data_points(dst, src):
         dst.add_data_point(dp.data_type, dp.tracers, dp.value, **dp.tags)
 
 
-def assemble_analysis_sacc(nz, metadata, parts):
+def assemble_analysis_sacc(parts):
     """Rebuild the single ``{version}.sacc`` analysis file from parts.
 
     Each part is a single-statistic Sacc (from a ``*_to_sacc`` writer, loaded
-    from disk) carrying its own covariance = its block. This re-adds every
-    part's data points into one Sacc in the order the parts are given — which
-    must be the canonical order (ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ, τ)
-    — and assembles a single ``BlockDiagonalCovariance`` from the per-part covariance
-    blocks. Point insertion order and block order therefore agree by
-    construction, which ``sacc_io.assemble_covariance`` validates (contiguous,
-    tiling, square) and raises on if they don't.
+    from disk) carrying its own covariance = its block. Tracers and metadata are
+    seeded from ``parts[0]`` (every part describes the same catalogue version).
+    Data points are re-added in the order the parts are given, which must be the
+    canonical order (ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ), and the
+    per-part blocks become one ``BlockDiagonalCovariance``. Insertion order and
+    block order therefore agree by construction — validated by
+    :func:`sp_validation.sacc_io.assemble_covariance`.
 
     Parameters
     ----------
-    nz, metadata : see :func:`sp_validation.sacc_io.new_sacc`.
     parts : sequence of sacc.Sacc
         Single-statistic parts, each with a covariance, in canonical order.
 
@@ -241,7 +224,9 @@ def assemble_analysis_sacc(nz, metadata, parts):
     sacc.Sacc
         The analysis Sacc with a ``BlockDiagonalCovariance`` covering every point.
     """
-    s = sio.new_sacc(nz, metadata)
+    s = sacc.Sacc()
+    s.tracers.update(parts[0].tracers)
+    s.metadata.update(parts[0].metadata)
     blocks = []
     cursor = 0
     for part in parts:

@@ -80,9 +80,8 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
-    # sp_validation.sacc_io (assembled on this branch) uses concatenate_data_sets
-    # and BlockDiagonalCovariance, both from sacc's 2.x rewrite; the lock already
-    # resolves to 2.4, this just makes the floor honest.
+    # sacc_io uses BlockDiagonalCovariance, from sacc's 2.x rewrite; the lock
+    # already resolves to 2.4, this just makes the floor honest.
     "sacc>=2.4,<3",
     # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
     # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to
@@ -156,8 +155,8 @@ glass = [
 # Snakemake workflow and cross-validation runners are available.
 workflow = [
     "snakemake",
-    # run_2pcf_highres.py drives the MPI convergence run; the container ships
-    # OpenMPI (/opt/ompi) so mpi4py builds against it.
+    # Optional MPI runners (the container ships OpenMPI at /opt/ompi, so mpi4py
+    # builds against it).
     "mpi4py",
     # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
     # published or resolvable (no public repo found) — left undeclared pending

@@ -37,9 +37,8 @@ wildcard_constraints:
 
 # Compute rules (infrastructure — raw outputs, no evidence.json)
 include: "rules/twopoint.smk"
-# Smokescreen blind-at-birth custody (blind_init / blind_part). Generic over the
-# blindable parts twopoint.smk produces; dormant unless a data run requests a
-# blinded part. Included before covariance/cosmo_val so their consumers resolve.
+# Smokescreen blind-at-birth custody, generic over the blindable parts
+# twopoint.smk produces. Included before its consumers in covariance/cosmo_val.
 include: "rules/blinding.smk"
 include: "rules/covariance.smk"
 include: "rules/inference.smk"

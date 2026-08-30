@@ -44,20 +44,14 @@ cv = CosmologyValidation(
     theta_max=float(params["max_sep"]),
     nbins=int(params["nbins"]),
     npatch=int(params["npatch"]),
-    run_type=params.get("type", "data"),
+    run_type=params["type"],
+    blind_root=params["blind_root"],
 )
 
-# On a data run the rule binds the version's commitment.json, which stamps the
-# emitted ρ/τ part concealed pass-through — values untouched (ρ/τ carries no
-# cosmological vector) but clearing the fail-closed load gate at assembly. A mock
-# run binds no commitment and the part stays plaintext, stamped type='mock'.
-commitment_path = snakemake.input.get("commitment")  # type: ignore
+cv.calculate_rho_tau_stats()
 
-cv.calculate_rho_tau_stats(commitment_path=commitment_path)
-
-# Confirm CosmologyValidation produced the requested outputs. calculate_rho_tau_stats
-# writes the rho/tau FITS *and* the born-as-SACC rho_tau part (via
-# rho_tau_to_sacc_part); the part feeds the assemble_sacc rule.
+# Confirm CosmologyValidation produced the requested outputs: the rho/tau FITS
+# and the born-as-SACC rho_tau part the assemble_sacc rule consumes.
 outputs = snakemake.output  # type: ignore
 for label in ("rho_stats", "tau_stats", "rho_tau"):
     target = Path(outputs[label])

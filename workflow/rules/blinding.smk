@@ -1,39 +1,29 @@
-# Smokescreen blind-at-birth custody rules (issues #247/#252, PR #253).
+# Smokescreen blind-at-birth custody rules (sp_validation.blinding).
 #
-# Two rules realise the three-verb custody surface of sp_validation.blinding on
-# the DAG. They only enter the graph on a `data` run, and only when a consumer
-# binds to a *_blinded part through common.blindable_part — a `mock` run never
-# requests a blinded file, so blind_part and blind_init stay dormant.
-#
-#   blind_init  (once per catalogue version) draws the seed, publishes
-#               commitment.json + the encrypted seed bundle.
-#   blind_part  (once per blindable part, at birth) conceals the part, escrows
-#               the true vector beside the blinded output, and lets Snakemake
-#               remove the plaintext (temp()) once it is the sole consumer.
-#
-# The terminal assemble_sacc rule (cosmo_val.smk) asserts the shared commitment
-# across parts — the assembly-time custody check of #252.
+# Dormant unless a consumer binds a *_blinded part through common.blindable_part,
+# which only a `data` run does. The terminal assemble_sacc rule (cosmo_val.smk)
+# asserts the shared blind across parts.
 
-# The three blindable stems: reporting ξ± (rule xi), integration ξ± (xi_highres),
-# and the analysis pseudo-Cℓ (pseudo_cl). None contains "_blinded", so the
-# generic blind_part rule can never blind its own output twice. The version
-# pattern is the shared one from common.WILDCARD_CONSTRAINTS.
-_V = WILDCARD_CONSTRAINTS["version"]
-BLINDABLE_STEM = (
-    rf"(?:{_V}_xi_reporting_minsep=[0-9.]+_maxsep=[0-9.]+_nbins=\d+_npatch=\d+"
-    rf"|{_V}_xi_integration"
-    rf"|pseudo_cl_{_V}_blind=[ABC]_[a-z]+_nbins=\d+)"
+import re
+
+# The blindable stems, derived from the same name-builders the producing rules
+# use so part names have one authority: the binning-named ξ± parts (rule xi, one
+# per named grid) and the analysis pseudo-Cℓ. None contains "_blinded", so the
+# generic blind_part rule can never blind its own output twice.
+_VERSION_SLOT = "0VERSION0"  # regex-inert placeholder, substituted after escaping
+BLINDABLE_STEM = "(?:{})".format(
+    "|".join(
+        re.escape(stem)
+        for stem in (
+            [f"{_VERSION_SLOT}_xi_{xi_binning(grid)}" for grid in XI_GRIDS]
+            + [f"pseudo_cl_{_VERSION_SLOT}_{pseudo_cl_tag(config)}"]
+        )
+    ).replace(_VERSION_SLOT, WILDCARD_CONSTRAINTS["version"])
 )
 
 
 rule blind_init:
-    """Fix the blind for one catalogue version (blind-init).
-
-    Draws an OS-entropy seed, writes the repo-committable commitment.json
-    (seed commitment + config digest + the installed fork's draw scheme) and the
-    Fernet-encrypted seed bundle. Runs once per version and refuses to overwrite
-    existing state — a blind is a one-shot custody event.
-    """
+    """Draw the seed and publish the commitment + encrypted bundle for a version."""
     output:
         commitment=str(COSMO_VAL / "blind" / "{version}" / "commitment.json"),
         bundle=str(COSMO_VAL / "blind" / "{version}" / "blind_seed.encrpt"),
@@ -42,19 +32,13 @@ rule blind_init:
         blind_dir=lambda w: blind_state_dir(w.version),
     resources:
         runtime=5,
-    script:
-        "../scripts/blind_init.py"
+    shell:
+        "python {REPO_SCRIPTS}/blind_data_vector.py"
+        " blind-init {params.blind_dir}"
 
 
 rule blind_part:
-    """Blind one intermediate part SACC at birth (blind-part).
-
-    Conceals the plaintext part through its matching theory backend, escrows the
-    true vector into a per-part encrypted bundle beside the blinded output, and
-    leaves the plaintext for Snakemake to remove (it is a temp() output of the
-    producing rule, and this is its only consumer on a data run). Generic over
-    the three blindable stems.
-    """
+    """Conceal one part, escrowing its true vector beside the blinded output."""
     input:
         part=str(COSMO_VAL / "{stem}.sacc"),
         commitment=lambda w: blind_state_paths(version_of(w.stem))["commitment"],
@@ -70,5 +54,8 @@ rule blind_part:
         blind_dir=lambda w: blind_state_dir(version_of(w.stem)),
     resources:
         runtime=10,
-    script:
-        "../scripts/blind_part.py"
+    # --keep-input: the plaintext part is the producing rule's temp() output, so
+    # Snakemake removes it once this, its only consumer, finishes.
+    shell:
+        "python {REPO_SCRIPTS}/blind_data_vector.py"
+        " blind-part {input.part} --blind-dir {params.blind_dir} --keep-input"

@@ -14,6 +14,7 @@ from ..b_modes import (
     _get_pte_from_scale_cut,
     find_conservative_scale_cut_key,
 )
+from ..blinding_paths import init_paths
 from ..statistics import chi2_and_pte
 from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
@@ -103,6 +104,11 @@ class CosmologyValidation(
         object writes. Custody state, not decoration: a mock campaign must be
         built with ``run_type='mock'`` for its parts to assemble at all (see
         ``blinding.assert_consistent_blind``).
+    blind_root : str, optional
+        Directory holding one ``blind_init`` state directory per catalogue
+        version. Given, the part writers stamp born-blinded and blind-irrelevant
+        parts under the version's blind (see :meth:`commitment_path`); ``None``
+        (mock runs) leaves them plaintext.
 
     Attributes
     ----------
@@ -230,6 +236,7 @@ class CosmologyValidation(
         cosmo_params=None,
         blind=None,
         run_type="data",
+        blind_root=None,
     ):
         self.rho_tau_method = rho_tau_method
         self.cov_estimate_method = cov_estimate_method
@@ -260,6 +267,7 @@ class CosmologyValidation(
         self.path_onecovariance = path_onecovariance
         self.blind = blind
         self.run_type = run_type
+        self.blind_root = blind_root
 
         assert self.cell_method in ["map", "catalog"], (
             "cell_method must be 'map' or 'catalog'"
@@ -494,6 +502,17 @@ class CosmologyValidation(
         if not hasattr(self, "_results_objectwise"):
             self._results_objectwise = self.init_results(objectwise=True)
         return self._results_objectwise
+
+    def commitment_path(self, version):
+        """The version's ``commitment.json``, or ``None`` when not blinding.
+
+        Resolved per version rather than held as one path, because a single
+        ``CosmologyValidation`` can span several catalogue versions and each
+        has its own blind.
+        """
+        if self.blind_root is None:
+            return None
+        return init_paths(os.path.join(self.blind_root, version))["commitment"]
 
     def basename(self, version, treecorr_config=None, npatch=None):
         cfg = treecorr_config or self.treecorr_config

@@ -258,20 +258,12 @@ def calculate_pure_eb_correlation(
 def cosebis_from_xi(theta, xip, xim, nmodes, scale_cut=None):
     """COSEBIs (Eₙ, Bₙ) from ξ± arrays through the pipeline kernel (values only).
 
-    The values-only seam of :func:`calculate_cosebis`, for callers holding
-    ξ± arrays rather than a TreeCorr ``GGCorrelation`` — e.g. deriving COSEBIs
-    from an integration-ξ± SACC part. Calls the same ``cosmo_numba`` kernel
-    (``COSEBIS.cosebis_from_xipm``) directly on the values; the covariance/χ²
-    machinery stays with :func:`calculate_cosebis`.
+    The values-only seam of :func:`calculate_cosebis`, for callers holding ξ±
+    arrays rather than a TreeCorr ``GGCorrelation``; the covariance/χ² machinery
+    stays with :func:`calculate_cosebis`.
 
-    ``scale_cut`` follows the :func:`sacc_io.add_cosebis` writer contract:
-    ``(theta_min, theta_max)`` are min/max of the *retained* bin centres
-    after the pipeline's ``scale_cut_to_bins``. The cut is contiguous in an
-    ascending grid, so selecting ``theta_min ≤ θ ≤ theta_max`` inclusively
-    reproduces exactly the retained set, and the kernel is built on that
-    set's min/max support and fed only the retained ξ± — bit-matching
-    :func:`calculate_cosebis`'s ``theta_cut``/``xip_cut``/``xim_cut`` path.
-    Identical inputs ⇒ identical numbers.
+    ``scale_cut`` follows the :func:`sacc_io.add_cosebis` contract: ``(theta_min,
+    theta_max)`` are min/max of the *retained bin centres*, selected inclusively.
     """
     from cosmo_numba.B_modes.cosebis import COSEBIS
 
@@ -294,18 +286,13 @@ def pure_eb_from_xi(
 ):
     """Pure-E/B correlation functions from ξ± arrays through the pipeline kernel.
 
-    The values-only seam of :func:`calculate_pure_eb_correlation`, for
-    callers holding ξ± arrays rather than TreeCorr correlations — e.g.
-    deriving pure-E/B from SACC parts. Calls the same ``cosmo_numba`` kernel
-    (``get_pure_EB_modes``) directly on the values.
-    The reporting grid must be a strict sub-range of the integration grid;
+    The values-only seam of :func:`calculate_pure_eb_correlation`, for callers
+    holding ξ± arrays rather than TreeCorr correlations.
+
     ``tmin``/``tmax`` are the reporting correlation's TreeCorr *bin edges*
-    (``gg.left_edges[0]`` / ``gg.right_edges[-1]``) — the pipeline's
-    convention, carried on SACC files by ``sacc_io.add_pure_eb``. A
-    reporting point coinciding with the integration boundary is degenerate
-    (no interior support) and comes back NaN, exactly as
-    :func:`calculate_pure_eb_correlation` returns it — never a spurious
-    finite value.
+    (``gg.left_edges[0]`` / ``gg.right_edges[-1]``). The reporting grid must be a
+    strict sub-range of the integration grid: a reporting point on the
+    integration boundary has no interior support and comes back NaN.
 
     Returns
     -------

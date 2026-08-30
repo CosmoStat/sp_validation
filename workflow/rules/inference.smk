@@ -18,7 +18,6 @@ COSMO_INFERENCE_RUNDIR = str(COSMO_INFERENCE)
 
 # External chain/mock locations are deployment-specific, so they live in config.
 INFERENCE = config["inference"]
-CHAINS_DIR = INFERENCE["chains_dir"]            # CosmoSIS chain output root (real data)
 GLASS_MOCK_DATA_DIR = INFERENCE["glass_mock_data_dir"]    # precomputed mock xi/Cl products
 GLASS_MOCK_CHAINS_DIR = INFERENCE["glass_mock_chains_dir"]  # mock chain output root
 
@@ -36,24 +35,14 @@ GLASS_MOCK_CONFIG_PATTERN = str(
     / f"cosmosis_config/cosmosis_pipeline_glass_mocks_{GLASS_MOCK_VERSION}_glass_mock_{{mock_id}}.ini"
 )
 
-# Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk) stamps
-# into the filename. These are NOT inference_prep wildcards, so the consumer
-# reads them from config to reconstruct the exact name the producer emits
-# (canonical: blind=A, powspace, nbins=32 — see twopoint.smk pseudo_cl_all).
-HARMONIC_FIDUCIAL = config["harmonic"]["fiducial"]
-PSEUDO_CL_TAG = (
-    f"blind={HARMONIC_FIDUCIAL['blind']}"
-    f"_{HARMONIC_FIDUCIAL['binning']}"
-    f"_nbins={HARMONIC_FIDUCIAL['nbins']}"
-)
+PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def pseudo_cl_assets(version):
-    """Return pseudo-Cl and covariance paths for the requested catalog version.
+    """Pseudo-Cl and covariance paths for a catalog version.
 
-    The producer (twopoint.smk rules pseudo_cl / pseudo_cl_cov) writes
-    wildcard-tagged names; the consumer reconstructs them from the fiducial
-    harmonic-binning config so the requested path matches byte-for-byte.
+    The producer (twopoint.smk) writes wildcard-tagged names; the consumer
+    reconstructs them from the fiducial harmonic-binning config.
     """
     cl_path = PSEUDO_CL_DIR / f"pseudo_cl_{version}_{PSEUDO_CL_TAG}.fits"
     cov_path = PSEUDO_CL_DIR / f"pseudo_cl_cov_{version}_{PSEUDO_CL_TAG}.fits"
@@ -226,7 +215,5 @@ rule inference_prep_glass_mock:
         """
 
 localrules:
-    inference_prep,
     inference_prep_glass_mock,
-    inference_fiducial,
     inference_glass_mocks,

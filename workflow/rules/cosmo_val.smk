@@ -52,13 +52,7 @@ def cv_xi_txt(version):
     Mirrors the out_fname f-string in cosmo_val.calculate_2pcf:
     {ver}_xi_minsep=..._maxsep=..._nbins=..._npatch=...txt
     """
-    return str(
-        COSMO_VAL
-        / (
-            f"{version}_xi_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_npatch={CV['npatch']}.txt"
-        )
-    )
+    return str(COSMO_VAL / f"{version}_xi_{xi_binning('reporting')}.txt")
 
 
 def cv_rho_stats(version):
@@ -107,28 +101,17 @@ def cv_cosebis_npz(version):
 def cv_pseudo_cl_sacc(version):
     """Untagged pseudo-Cl SACC part cv_pseudo_cl writes (B-mode diagnostic).
 
-    This is the harmonic-space BB diagnostic cv_summarize_bmodes reads. The
-    *analysis* file's pseudo-Cl part is the tagged, blinded inference product
-    instead (see cv_pseudo_cl_analysis_sacc) so {version}.sacc stays byte-
-    comparable against today's cosmosis_fitting.py assembly (PR-3's converter).
+    The analysis file carries the tagged inference product instead (see
+    cv_pseudo_cl_analysis_sacc).
     """
     return str(COSMO_VAL / f"pseudo_cl_{version}.sacc")
 
 
-# Fiducial harmonic-binning tag the pseudo-Cl producer (twopoint.smk rules
-# pseudo_cl / pseudo_cl_cov) stamps into the analysis-grade filename. Mirrors
-# inference.smk's PSEUDO_CL_TAG so the analysis file carries the same pseudo-Cl
-# the inference pipeline consumes (canonical: blind=A, powspace, nbins=32).
-_HARMONIC_FIDUCIAL = config["harmonic"]["fiducial"]
-_PSEUDO_CL_TAG = (
-    f"blind={_HARMONIC_FIDUCIAL['blind']}"
-    f"_{_HARMONIC_FIDUCIAL['binning']}"
-    f"_nbins={_HARMONIC_FIDUCIAL['nbins']}"
-)
+_PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def cv_pseudo_cl_analysis_sacc(version):
-    """Tagged, blinded pseudo-Cl SACC part the analysis file carries."""
+    """Tagged pseudo-Cl SACC part the analysis file carries."""
     return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
 
 
@@ -154,29 +137,18 @@ def cv_rho_tau_sacc(version):
     )
 
 
-def cv_xi_reporting_sacc(version):
-    """Reporting ξ± SACC part the xi rule (run_2pcf.py) writes for a version.
+def cv_xi_sacc(version, grid):
+    """ξ± SACC part the `xi` rule writes for a version on a named grid.
 
-    Carries the reporting-binning suffix so requesting it binds the xi job's
-    wildcards (the rule's txt + reporting .sacc outputs share one wildcard set).
+    Named by its binning (xi_binning, twopoint.smk), which is what binds the xi
+    job's wildcards; the rule resolves the grid label from that binning.
+
+    grid='reporting' is the analysis part (its covariance is injected at
+    assembly); grid='integration' is the fine-grid part COSEBIs and pure-E/B
+    consume. The integration part stays standalone — it is not folded into the
+    terminal {version}.sacc.
     """
-    return str(
-        COSMO_VAL
-        / (
-            f"{version}_xi_reporting_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_npatch={CV['npatch']}.sacc"
-        )
-    )
-
-
-def cv_xi_integration_sacc(version):
-    """Integration-grid ξ± SACC part the xi_highres rule writes, per version.
-
-    Intermediate per-statistic part (grid='integration', its own DiagonalCovariance
-    from TreeCorr varxip/varxim). NOT folded into the terminal {version}.sacc (see
-    #247 ruling) — COSEBIs and pure-E/B consume it directly.
-    """
-    return str(COSMO_VAL / f"{version}_xi_integration.sacc")
+    return str(COSMO_VAL / f"{version}_xi_{xi_binning(grid)}.sacc")
 
 
 def cv_analysis_sacc(version):
@@ -368,15 +340,12 @@ rule cv_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
-# On a data run the COSEBIs / pure-E/B parts re-derive their E-mode vector from
-# the *blinded* integration ξ± (COSEBIs) or blinded reporting + integration ξ±
-# (pure-E/B). blindable_part returns the plaintext part on a mock run and the
-# blinded part on a data run, so the ξ± inputs bind unconditionally for every
-# version; see common.commitment_input for the commitment.
+# On a data run these re-derive their E-mode vector from the *blinded* ξ± parts,
+# so they are born blinded; the commitment binds only there.
 def cv_cosebis_inputs(w):
     return {
         "xi": cv_xi_txt(w.version),
-        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        "xi_integration": blindable_part(cv_xi_sacc(w.version, "integration")),
         **commitment_input(w.version),
     }
 
@@ -384,8 +353,8 @@ def cv_cosebis_inputs(w):
 def cv_pure_eb_inputs(w):
     return {
         "xi": cv_xi_txt(w.version),
-        "xi_reporting": blindable_part(cv_xi_reporting_sacc(w.version)),
-        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        "xi_reporting": blindable_part(cv_xi_sacc(w.version, "reporting")),
+        "xi_integration": blindable_part(cv_xi_sacc(w.version, "integration")),
         **commitment_input(w.version),
     }
 
@@ -414,7 +383,11 @@ rule cv_pure_eb:
 
 
 rule cv_cosebis:
-    """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
+    """COSEBIs E/B decomposition for one version (config-space, fine binning).
+
+    Mixed provenance by design: En derives from the (blindable) integration ξ±
+    part, while Bn and the jackknife covariance need the patched raw measurement.
+    """
     input:
         unpack(cv_cosebis_inputs),
     output:
@@ -474,50 +447,30 @@ rule cv_summarize_bmodes:
 # ---------------------------------------------------------------------------
 # Terminal analysis file: assemble the per-statistic SACC parts into {version}.sacc
 # ---------------------------------------------------------------------------
-# The five born-as-SACC parts (xi_reporting, pseudo_cl, cosebis, pure_eb, rho_tau)
-# are each written by their own rule carrying its own covariance block, except
-# ξ± reporting and pseudo-Cℓ which are born cov-less by design. assemble_sacc.py
-# loads the parts in canonical order and rebuilds one {version}.sacc with a
-# single BlockDiagonalCovariance (point-insertion order = block order).
+# assemble_sacc.py loads the five parts in canonical order (xi_reporting,
+# pseudo_cl, cosebis, pure_eb, rho_tau) and rebuilds one {version}.sacc with a
+# single BlockDiagonalCovariance. The integration-grid ξ± is deliberately not
+# gathered: it stays an intermediate consumed by COSEBIs/pure-E/B.
 #
-# The integration-grid ξ± (grid='integration') is deliberately NOT gathered here:
-# it persists as its own per-part intermediate {version}_xi_integration.sacc,
-# consumed by COSEBIs/pure-E/B, with Snakemake provenance covering traceability
-# (see #247 ruling). The terminal file carries the analysis vector only.
-#
-# The pseudo-Cℓ part is the TAGGED, blinded inference product (blind=A, powspace,
-# nbins=32) — the same pseudo-Cℓ today's cosmosis_fitting.py consumes — so the
-# analysis file stays byte-comparable against it (PR-3's converter). Its real
-# NaMaster covariance is injected here from the matching pseudo_cl_cov FITS
-# (COVAR_EE_EE/BB_BB/EB_EB → block-diagonal, dropping cross-spectra, matching the
-# B-mode PTE's use of COVAR_BB_BB). The ξ± reporting block is the one piece not yet
-# sourced from its real covariance: the CosmoCov theory .txt is blind/gaussian/
-# mask-keyed and lives deep in the inference tree, so wiring it couples cosmo_val
-# to the whole inference covariance DAG — that sourcing is PR-3's converter
-# territory. Until then a documented diagonal placeholder keeps the ξ block (and
-# so the BlockDiagonalCovariance) structurally valid; it is a flagged stand-in, never a
-# science covariance, and plugs out via --xi-cov the moment PR 3 lands.
+# The pseudo-Cℓ part is the tagged inference product, and its NaMaster covariance
+# is injected here from the matching pseudo_cl_cov FITS. The ξ± reporting block
+# has no real covariance wired yet — the CosmoCov theory .txt is blind/gaussian/
+# mask-keyed and lives deep in the inference tree, so sourcing it couples
+# cosmo_val to the whole inference covariance DAG; it plugs in via --xi-cov.
 
 
 def cv_assemble_inputs(version):
     """The per-statistic SACC parts + covariance inputs assemble_sacc consumes.
 
-    Each part's filename carries enough to bind its producing rule's wildcards
-    (the reporting ξ± and ρ/τ parts their reporting binning; the pseudo-Cℓ part its
-    fiducial harmonic tag). pseudo_cl (+ its cov) is included only when the
-    config toggles the harmonic-space BB into the analysis.
+    Each part's filename carries enough to bind its producing rule's wildcards.
+    pseudo_cl (+ its cov) is included only when the config toggles the
+    harmonic-space BB into the analysis.
     """
-    # blindable_part binds the raw-signal parts (reporting ξ±, analysis pseudo-Cℓ)
-    # to their blinded siblings on a data run and to the plaintext on a mock run.
-    # COSEBIs and pure-E/B are born blinded (their writers derive them from the
-    # blinded integration ξ± and stamp concealed=True), so they bind by their own
-    # name in both cases; ρ/τ is a diagnostic carrying no cosmological vector but
-    # is stamped concealed pass-through so the fail-closed load gate admits it on
-    # a data run. The integration-grid ξ± itself is blinded at birth (see rule
-    # xi_highres) but is NOT gathered into the terminal file — it persists as its
-    # own per-part intermediate (see #247 ruling), consumed by COSEBIs/pure-E/B.
+    # blindable_part binds the raw-signal parts to their blinded siblings on a
+    # data run. COSEBIs, pure-E/B and ρ/τ are stamped concealed by their own
+    # writers, so they bind by name either way.
     parts = dict(
-        xi_reporting=blindable_part(cv_xi_reporting_sacc(version)),
+        xi_reporting=blindable_part(cv_xi_sacc(version, "reporting")),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
@@ -536,26 +489,18 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
-        # Run type (data|mock) gates unblinded loading in assemble_sacc.py: a
-        # 'data' run fails closed on unblinded parts, a 'mock' run loads freely.
-        # Production runs on real catalogues, so the default is 'data'. PR #253's
-        # blind-at-birth conceals each data part, letting the 'data' run assemble.
+        # Run type gates unblinded loading: a 'data' run fails closed on
+        # unblinded parts, a 'mock' run loads freely.
         type=CV.get("type", "data"),
-        # Statistics this rule wired (same toggles as cv_assemble_inputs). The
-        # script validates part_paths against this so a typo'd input keyword
-        # can't silently drop a statistic from the terminal file.
+        # Statistics this rule wired; the script validates part_paths against it
+        # so a typo'd input keyword can't silently drop one.
         expected=lambda w: [
             k for k in cv_assemble_inputs(w.version) if k != "pseudo_cl_cov"
         ],
-        # ξ± reporting has no real covariance wired yet (its CosmoCov theory block is
-        # PR-3's converter territory, plugging in via --xi-cov). By DEFAULT this
-        # is fatal: assemble_sacc.py raises rather than ship {version}.sacc — the
-        # terminal science file — with a var=1.0 placeholder as its LEADING
-        # covariance block (~20 orders off the real ξ± variance → silent
-        # catastrophic χ²/PTE for any consumer). Only an explicit config opt-in
-        # (cosmo_val.allow_placeholder_cov: true — dry-run / test configs) attaches
-        # the flagged diagonal placeholder. The pseudo-Cℓ block is real (from the
-        # pseudo_cl_cov input); COSEBIs / pure-E/B / ρ/τ carry their own.
+        # Without a real ξ± covariance, assembly raises by default rather than
+        # ship {version}.sacc with a var=1.0 leading block — ~20 orders off the
+        # real variance, i.e. silently catastrophic χ²/PTE for any consumer. The
+        # opt-in is for dry-run and test configs only.
         placeholder_var=(1.0 if CV.get("allow_placeholder_cov", False) else None),
     resources:
         mem_mb=8000,

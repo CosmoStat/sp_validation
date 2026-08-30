@@ -1,11 +1,9 @@
 """Smoke tests for workflow CLI seams — cheap guards against signature rot.
 
-A CLI script that calls a workflow function with a removed/renamed kwarg
-TypeErrors only at invocation time (the compute is cluster-only, so it is never
-exercised by the fast suite). These tests bind the exact call each seam makes
-against the current signature via ``inspect.signature(...).bind(...)`` — no
-compute, no data — so a drifted kwarg (e.g. run_xi_sweep's dropped save_fits)
-fails here instead of on the cluster.
+The compute these scripts drive is cluster-only, so a removed or renamed kwarg
+would only TypeError at invocation. Each test binds the exact call one seam
+makes against the current signature (``inspect.signature(...).bind(...)``) — no
+compute, no data — so the drift fails here instead of on the cluster.
 """
 
 import importlib.util
@@ -30,25 +28,19 @@ def _load(path, name):
 
 
 def test_run_xi_sweep_run_2pcf_call_binds():
-    """The kwargs run_xi_sweep passes to run_2pcf must bind to its signature.
-
-    Mirrors the call in papers/bmodes/scripts/run_xi_sweep.py — if run_2pcf drops
-    or renames a parameter (save_fits was removed by the SACC migration), the
-    bind raises TypeError here rather than on every cluster invocation.
-    """
+    """The kwargs run_xi_sweep passes to run_2pcf must bind to its signature."""
     root = _repo_root()
     run_2pcf_mod = _load(root / "workflow/scripts/run_2pcf.py", "run_2pcf_seam")
     sig = inspect.signature(run_2pcf_mod.run_2pcf)
-    # Exactly the keyword set run_xi_sweep._from_cli passes (grid params spread
-    # from GRIDS: min_sep/max_sep/nbins/npatch).
+    # Exactly the keyword set run_xi_sweep._from_cli passes.
     sig.bind(
         ver="V",
         cat_config="/cfg.yaml",
         output_dir="/out",
-        sacc_out="/out/V_xi_reporting_reporting.sacc",
-        min_sep=1.0,
-        max_sep=250.0,
-        nbins=20,
+        grid="integration",
+        min_sep=0.5,
+        max_sep=300.0,
+        nbins=1000,
         npatch=1,
     )
     # And the removed kwarg must NOT bind (guards against a silent re-add).

@@ -134,23 +134,17 @@ class PureEBMixin:
 
         return results
 
-    def pure_eb_to_sacc_part(
-        self, version, out_path, results, eb_override=None, commitment_path=None
-    ):
+    def pure_eb_to_sacc_part(self, version, out_path, results, eb_override=None):
         """Write the pure-E/B SACC part (six ``PURE_KEYS`` blocks + covariance).
 
         ``results`` is the dict ``calculate_pure_eb`` returned: the six pure-mode
         arrays under ``sacc_io.PURE_KEYS``, the ``"cov"`` block (in ``PURE_KEYS``
         order), and the reporting-grid TreeCorr object ``"gg"`` whose ``meanr``
-        is the shared ``theta``.
+        is the shared ``theta``. The covariance must cover every stored point.
 
-        ``eb_override`` is the consume-the-part plumbing: the six pure-mode arrays
-        (a mapping keyed by ``sacc_io.PURE_KEYS``) written in place of ``results``'
-        — re-derived from the reporting + integration ξ± SACC parts (the covariance
-        stays blind-invariant from the raw estimator ``results``).
-        ``commitment_path`` stamps the part concealed under that version's blind
-        (see :func:`sacc_io.save`). With both ``None`` (mock runs) the behaviour
-        is unchanged.
+        ``eb_override`` replaces the six arrays with ones derived from the
+        reporting + integration ξ± parts; the covariance stays from ``results``.
+        The part is born blinded, so it is stamped under the version's blind.
         """
         theta = results["gg"].meanr
         source = eb_override if eb_override is not None else results
@@ -162,7 +156,9 @@ class PureEBMixin:
             eb,
             covariance=results["cov"],
         )
-        sacc_io.save(s, out_path, type=self.run_type, commitment=commitment_path)
+        sacc_io.save(
+            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
+        )
 
     def plot_pure_eb(
         self,

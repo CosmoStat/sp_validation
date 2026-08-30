@@ -7,15 +7,19 @@ from pathlib import Path
 
 from snakemake.io import temp
 
-# Absolute path to the generic workflow's scripts, anchored on this module's own
-# location (common.py lives in workflow/, is `from common import *`'d into every
-# Snakefile, and so resolves to the generic workflow dir of the running checkout
-# regardless of which paper composes it — unlike workflow.basedir, which under
-# `module` composition reflects the composing paper). Rules that shell out to a
-# script directly (the MPI xi_highres run can't go through Snakemake's `script:`
-# directive) interpolate this instead of a hardcoded pure_eb/ compat-symlink
-# path. /automnt/n17data is the automount of the container-bound /n17data.
+# Dependency-free by design: the DAG build gets the blinding file-name
+# conventions without importing numpy + smokescreen.
+from sp_validation.blinding_paths import init_paths, part_paths
+
+# Absolute path to the generic workflow's scripts, for rules that shell out to a
+# script directly rather than through Snakemake's `script:` directive. Anchored
+# on this module's own location, not workflow.basedir — under `module`
+# composition basedir reflects the composing paper, not the running checkout.
 WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
+# The repo's top-level scripts/ (user-facing CLIs), anchored the same way.
+REPO_SCRIPTS = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "scripts"
+)
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
@@ -30,12 +34,9 @@ COSMO_INFERENCE = Path(
     )
 )
 CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
-# NB: "blind" here is the glass-mock multi-catalogue A/B/C variant convention
-# (three mock realisations), NOT Smokescreen blinding. The name predates the
-# blind-at-birth work and is kept because it is baked into on-disk filenames we
-# do not own (e.g. sguerrini's nz_{version}_{A|B|C}.txt) and into the covariance
-# / inference path builders below. Smokescreen concealment is a separate axis
-# (the concealed=True SACC stamp), tracked by issues #241/#247.
+# "blind" is the glass-mock A/B/C realisation convention, NOT Smokescreen
+# blinding (a separate axis: the concealed=True SACC stamp). The name is baked
+# into on-disk filenames we do not own (e.g. nz_{version}_{A|B|C}.txt).
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -50,7 +51,6 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
-    # glass-mock A/B/C variant, not Smokescreen blinding — see BLINDS above.
     "blind": r"[ABC]",
     "nbins": r"\d+",
     # Constrained so a producer's ξ± output pattern cannot greedily absorb the
@@ -185,22 +185,37 @@ def covariance_path(
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
+def base_version(version):
+    """Strip the derived-catalogue suffixes to the base catalogue version.
+
+    The `_leak_corr` / `_ecut{N}` variants share their parent's n(z) and
+    `cov_th` survey parameters, so lookups keyed on either must strip both.
+    """
+    return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
+
+
 def build_redshift_path(version, blind):
     """Construct n(z) filepath for given catalog version and blind."""
-    base_version = re.sub(r"_leak_corr$", "", version)
-    base_version = re.sub(r"_ecut\d+", "", base_version)
-    if "v1.4.11" in base_version:
-        base_version = "SP_v1.4.6"
-    version_dir = base_version.replace("SP_", "")
-    return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
-    )
+    base = base_version(version)
+    if "v1.4.11" in base:
+        base = "SP_v1.4.6"
+    version_dir = base.replace("SP_", "")
+    return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base}_{blind}.txt"
+
+
+def pseudo_cl_tag(config):
+    """Fiducial harmonic-binning tag the pseudo-Cl producers stamp into filenames.
+
+    Single definition shared by the producer (twopoint.smk) and the consumers
+    (cosmo_val.smk, inference.smk), which reconstruct the name from config.
+    """
+    fiducial = config["harmonic"]["fiducial"]
+    return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
 def get_shear_catalog(wildcards):
     """Resolve shear catalog path from config for a given version."""
-    base_version = wildcards.version.replace("_leak_corr", "")
-    cat_config = CATALOG_CONFIG[base_version]
+    cat_config = CATALOG_CONFIG[wildcards.version.replace("_leak_corr", "")]
     shear_path = cat_config["shear"]["path"]
     if shear_path.startswith("/"):
         return shear_path
@@ -209,21 +224,13 @@ def get_shear_catalog(wildcards):
 
 
 # ---------------------------------------------------------------------------
-# Smokescreen blind-at-birth custody (issues #247/#252, PR #253)
+# Smokescreen blind-at-birth custody
 # ---------------------------------------------------------------------------
 # Distinct from the glass-mock A/B/C `blind` wildcard above: this is Smokescreen
-# concealment (the concealed=True SACC stamp). Blinding is per part, at birth.
-# The three blindable parts (reporting ξ±, integration ξ±, pseudo-Cℓ) are each
-# concealed the moment they are computed, so only blinded parts persist on disk.
-# A `data` run binds every ξ-derived consumer (the terminal assemble, and the
-# born-blinded COSEBIs / pure-E/B) to the *_blinded parts, which pulls the
-# blind_part → blind_init subgraph into the DAG. A `mock` run bypasses blinding
-# entirely and binds to the plaintext parts, so the subgraph never appears.
-# RUN_TYPE is the single switch that flips which files exist.
-#
-# The path helpers below MIRROR sp_validation.blinding.init_paths / part_paths
-# by hand rather than importing blinding (which pulls in numpy + smokescreen) at
-# DAG-build time. test_blinding_wiring asserts the two stay in lockstep.
+# concealment (see sp_validation.blinding). RUN_TYPE is the single switch: a
+# `data` run binds every ξ-derived consumer to the *_blinded parts, pulling the
+# blind_part → blind_init subgraph into the DAG; a `mock` run binds the
+# plaintext parts and the subgraph never appears.
 
 
 def run_type():
@@ -243,22 +250,23 @@ def is_data_run():
     return run_type() == "data"
 
 
+def blind_root():
+    """Root holding one blind-init directory per version, or None on mock runs.
+
+    What `CosmologyValidation(blind_root=...)` takes, so its part writers can
+    resolve each version's commitment.json themselves.
+    """
+    return str(COSMO_VAL / "blind") if is_data_run() else None
+
+
 def blind_state_dir(version):
     """Per-version blind-init custody directory (commitment + encrypted seed)."""
     return str(COSMO_VAL / "blind" / version)
 
 
 def blind_state_paths(version):
-    """The fixed custody-state files blind_init writes for a version.
-
-    Mirrors sp_validation.blinding.init_paths(blind_state_dir(version)).
-    """
-    d = blind_state_dir(version)
-    return {
-        "commitment": os.path.join(d, "commitment.json"),
-        "bundle": os.path.join(d, "blind_seed.encrpt"),
-        "key": os.path.join(d, "blind_seed.key"),
-    }
+    """The fixed custody-state files blind_init writes for a version."""
+    return init_paths(blind_state_dir(version))
 
 
 def commitment_input(version):
@@ -266,8 +274,7 @@ def commitment_input(version):
 
     A part writer stamps its output concealed from that file (sacc_io.save's
     `commitment=`), which is what lets a born-blinded or blind-irrelevant part
-    clear the fail-closed load gate the terminal assembly opens every part
-    through. A mock run binds nothing and the part stays plaintext.
+    clear the fail-closed load gate at assembly.
     """
     if not is_data_run():
         return {}
@@ -275,20 +282,14 @@ def commitment_input(version):
 
 
 def blinded_path(part_path):
-    """The *_blinded sibling blind_part writes beside a plaintext part.
-
-    Mirrors sp_validation.blinding.part_paths(part_path)["blinded"].
-    """
-    stem, ext = os.path.splitext(str(part_path))
-    return f"{stem}_blinded{ext or '.fits'}"
+    """The *_blinded sibling blind_part writes beside a plaintext part."""
+    return part_paths(part_path)["blinded"]
 
 
 def version_of(stem):
-    """Extract the catalogue version embedded in a blindable part's stem.
+    """Catalogue version embedded in a blindable part's stem.
 
-    Every blindable stem carries the version (as {version}_xi_… or
-    pseudo_cl_{version}_…); blind_part needs it to locate the version's blind
-    state. Matches the shared `version` wildcard pattern.
+    blind_part needs it to locate the version's blind state.
     """
     m = re.search(WILDCARD_CONSTRAINTS["version"], stem)
     if m is None:
@@ -300,18 +301,16 @@ def blindable_part(part_path):
     """On-disk path a run persists for one blindable part.
 
     Data run -> the blinded sibling (binding it pulls blind_part + blind_init
-    into the DAG); mock run -> the plaintext part (blinding bypassed).
+    into the DAG); mock run -> the plaintext part.
     """
     return blinded_path(part_path) if is_data_run() else str(part_path)
 
 
 def maybe_temp(part_path):
-    """Wrap a producer's blindable plaintext part temp() on data runs.
+    """temp() a producer's blindable plaintext part on data runs.
 
-    On a data run the plaintext part's only consumer is blind_part, which
-    escrows the true vector before Snakemake removes the temp file — so no
-    plaintext blindable part persists. On a mock run the part is the real
-    product downstream binds to, so it is left persistent.
+    Its only consumer there is blind_part, which escrows the true vector before
+    Snakemake removes the file, so no plaintext blindable part persists.
     """
     return temp(str(part_path)) if is_data_run() else str(part_path)
 
@@ -374,9 +373,10 @@ def cv_init_params(config, version_list=None):
         nrandom_cell=cv["nrandom_cell"],
         cell_method=cv["cell_method"],
         nside_mask=cv["nside_mask"],
-        # Stamped as the SACC `type` of every part the cv writes; RUN_TYPE reads
-        # from this same key (see configure()).
-        run_type=cv.get("type", "data"),
+        # Custody state the cv's part writers need: the SACC `type` they stamp,
+        # and the blind whose commitment born-blinded parts are stamped under.
+        run_type=run_type(),
+        blind_root=blind_root(),
     )
     if cv.get("path_onecovariance"):
         params["path_onecovariance"] = cv["path_onecovariance"]

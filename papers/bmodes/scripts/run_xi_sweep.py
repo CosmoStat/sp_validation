@@ -72,15 +72,13 @@ def _from_cli(argv=None):
     versions = a.versions or nonfiducial_versions(config)
     for ver in versions:
         for grid in a.grids:
-            # The sweep consumes only the .txt dump (cosebis_version_comparison
-            # reconstructs it by binning). run_2pcf is born-as-SACC, so give its
-            # reporting part a grid-qualified name — the default {ver}_xi_reporting.sacc
-            # carries no binning, so the two grids per version would collide.
+            # The sweep consumes only the .txt dump; the SACC part's default
+            # name carries the binning, so the two grids land in distinct files.
             run_2pcf(
                 ver=ver,
                 cat_config=a.cat_config,
                 output_dir=a.out,
-                sacc_out=os.path.join(a.out, f"{ver}_xi_reporting_{grid}.sacc"),
+                grid=grid,
                 **GRIDS[grid],
             )
 

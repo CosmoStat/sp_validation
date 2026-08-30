@@ -1,22 +1,79 @@
 # Two-point data-vector rules: xi, rho/tau, and pseudo-Cl products.
-# WORKFLOW_SCRIPTS (from common.py) is the generic workflow's scripts dir,
-# resolved from the running checkout — used by the raw-shell MPI xi_highres rule.
+
+# ---------------------------------------------------------------------------
+# ξ± angular grids
+# ---------------------------------------------------------------------------
+# A grid is a binning: (min_sep, max_sep, nbins, npatch). `reporting` is the
+# analysis grid; `integration` is the fine grid COSEBIs and pure-E/B integrate
+# over. Both are measured by the single `xi` rule below, whose files are named
+# by binning, so the grid label is resolved from the wildcards rather than
+# duplicated into a second rule. Workflows carrying no cosmo_val block (e.g.
+# papers/bmodes) fall back to their fiducial grids.
+def _xi_grids():
+    cv = config.get("cosmo_val", {})
+    reporting = (
+        {
+            "min_sep": cv["theta_min"],
+            "max_sep": cv["theta_max"],
+            "nbins": cv["nbins"],
+            "npatch": cv["npatch"],
+        }
+        if cv
+        else {k: FIDUCIAL[k] for k in ("min_sep", "max_sep", "nbins", "npatch")}
+    )
+    integration = dict(
+        cv.get("integration")
+        or {
+            "min_sep": FIDUCIAL["min_sep_int"],
+            "max_sep": FIDUCIAL["max_sep_int"],
+            "nbins": FIDUCIAL["nbins_int"],
+        }
+    )
+    integration.setdefault("npatch", 1)
+    return {"reporting": reporting, "integration": integration}
+
+
+XI_GRIDS = _xi_grids()
+XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")
+
+
+def xi_binning(grid):
+    """The `minsep=..._maxsep=..._nbins=..._npatch=...` tag of a named grid."""
+    g = XI_GRIDS[grid]
+    return (
+        f"minsep={g['min_sep']}_maxsep={g['max_sep']}"
+        f"_nbins={g['nbins']}_npatch={g['npatch']}"
+    )
+
+
+def xi_grid_of(wildcards):
+    """Grid label for the binning a job was requested with.
+
+    Compared numerically, so a "300" wildcard matches a 300.0 config value.
+    Binnings matching no named grid (e.g. papers/bmodes' nbins=10000
+    convergence check) are measured as plain reporting-style measurements.
+    """
+    key = tuple(float(getattr(wildcards, k)) for k in XI_KEYS)
+    for name, g in XI_GRIDS.items():
+        if tuple(float(g[k]) for k in XI_KEYS) == key:
+            return name
+    return "reporting"
 
 
 rule xi:
+    """TreeCorr ξ±(θ) for one version on one angular grid.
+
+    Binning-agnostic: the reporting and integration measurements are the same
+    job with different wildcards. The raw TreeCorr .txt byproduct and the
+    born-as-SACC part are both named by that binning, so a request for either
+    binds unambiguously; the grid label comes from XI_GRIDS.
+    """
     input:
         catalog=get_shear_catalog,
     output:
-        # Raw TreeCorr .txt byproduct (read back by covariance + skip-if-exists)
-        # and the born-as-SACC reporting ξ± part (no covariance until the
-        # assemble_sacc rule injects the CosmoCov block). Both outputs carry the
-        # same reporting-binning wildcards — Snakemake requires every output of a
-        # rule to share one wildcard set, and it keeps the reporting .sacc name
-        # self-describing so requesting it binds the xi job unambiguously.
         txt=str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.txt"),
-        # Blindable part: temp() on a data run so only its blinded sibling
-        # persists (blind_part escrows the true vector first). See common.maybe_temp.
-        xi_reporting=maybe_temp(str(COSMO_VAL / "{version}_xi_reporting_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc")),
+        # Blindable part: temp() on a data run so only its blinded sibling persists.
+        sacc=maybe_temp(str(COSMO_VAL / "{version}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc")),
     threads: 24
     params:
         ver="{version}",
@@ -24,78 +81,17 @@ rule xi:
         max_sep="{max_sep}",
         nbins="{nbins}",
         npatch="{npatch}",
-        # Stamped as the part's SACC `type` — custody state at assembly
-        # (see blinding.assert_consistent_blind).
-        type=run_type(),
+        cat_config=CAT_CONFIG,
+        grid=lambda w: xi_grid_of(w),
+        type=run_type(),  # the part's SACC `type` — custody state at assembly
     resources:
-        mem_mb=30000,
+        # The fine integration grid needs more memory and wall time than the
+        # ~20-bin reporting one; scale on nbins rather than splitting the rule.
+        mem_mb=lambda w: 40000 if int(w.nbins) > 100 else 30000,
         disk_mb=20000,
-        runtime=360,
+        runtime=lambda w: 600 if int(w.nbins) > 100 else 360,
     script:
         "../scripts/run_2pcf.py"
-
-
-# Integration-grid ξ± measured by xi_highres. The cosmo_val paper owns a dedicated
-# cosmo_val.integration block ([0.08, 300] @ 1000 bins); other workflows sharing
-# this file (e.g. papers/bmodes, whose config carries no cosmo_val section) fall
-# back to their fiducial integration grid. Evaluated at parse time, so the lookup
-# must not assume the cosmo_val key exists.
-_INTEGRATION = config.get("cosmo_val", {}).get("integration") or {
-    "min_sep": FIDUCIAL["min_sep_int"],
-    "max_sep": FIDUCIAL["max_sep_int"],
-    "nbins": FIDUCIAL["nbins_int"],
-}
-
-
-rule xi_highres:
-    """High-resolution integration-grid xi for COSEBIs + pure-E/B, per version.
-
-    Intermediate born-as-SACC part: {version}_xi_integration.sacc (a
-    DiagonalCovariance from TreeCorr varxip/varxim). COSEBIs and pure-E/B consume
-    it; it stays a standalone per-part file and does not join the terminal
-    {version}.sacc (see #247 ruling). The raw .txt dump is kept as a convergence
-    byproduct.
-
-    In-container single-process TreeCorr: at the config-driven nbins_int=1000 grid
-    this is a normal single-node job (the global container: in the Snakefile makes
-    a plain shell: run in-container). run_2pcf_highres.py runs its single-process
-    path when not launched under mpiexec. The historical 10k-bin bare-host MPI path
-    is removed as unnecessary.
-    """
-    input:
-        catalog=get_shear_catalog,
-    output:
-        # Only the uniquely-named SACC part is tracked. The raw TreeCorr .txt dump
-        # run_2pcf_highres.py writes ({version}_xi_minsep=..._nbins=..._npatch=1.txt)
-        # is left UNDECLARED: it is a convergence byproduct nothing in the DAG
-        # consumes (cv_xi_txt is the reporting grid), and declaring it would collide
-        # with rule xi's wildcard txt output (same filename pattern) — an
-        # AmbiguousRuleException. Shared integration grid (cosmo_val.integration:
-        # [0.08, 300] at 1000 bins) so the single part serves both consumers:
-        # pure-E/B needs it to strictly contain its reporting grid down to 0.08;
-        # COSEBIs scale-cuts on the same part. Decoupled from covariance.smk.
-        # Blindable part: temp() on a data run so blind_part produces the _blinded
-        # sibling the COSEBIs/pure-E/B consumers bind (see rule xi / common.maybe_temp).
-        xi_integration=maybe_temp(str(COSMO_VAL / "{version}_xi_integration.sacc")),
-    params:
-        version="{version}",
-        cat_config=CAT_CONFIG,
-        min_sep=_INTEGRATION["min_sep"],
-        max_sep=_INTEGRATION["max_sep"],
-        nbins=_INTEGRATION["nbins"],
-        out=str(COSMO_VAL),
-        scripts=WORKFLOW_SCRIPTS,
-        run_type=run_type(),
-    threads: 24
-    resources:
-        mem_mb=40000,
-        runtime=600,
-    shell:
-        "python {params.scripts}/run_2pcf_highres.py "
-        "--version {params.version} --cat-config {params.cat_config} "
-        "--min-sep {params.min_sep} --max-sep {params.max_sep} "
-        "--nbins {params.nbins} --npatch 1 --out {params.out} "
-        "--run-type {params.run_type}"
 
 
 rule run_cosmo_val:
@@ -117,17 +113,15 @@ rule run_cosmo_val:
 
 
 rule rho_tau_stats:
-    # ρ/τ has no blindable input; it binds only the commitment, to stamp its
-    # part concealed pass-through (see common.commitment_input).
+    # ρ/τ has no blindable input; it binds the commitment only to stamp its part
+    # concealed pass-through.
     input:
         unpack(lambda w: commitment_input(w.version)),
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        # Born-as-SACC ρ/τ part (ρ_0…ρ_5 autos + τ_0/τ_2/τ_5 leakage, carrying
-        # its own covariance block) that the assemble_sacc rule consumes;
-        # calculate_rho_tau_stats writes it alongside the FITS via
-        # rho_tau_to_sacc_part.
+        # Born-as-SACC ρ/τ part the assemble_sacc rule consumes, written
+        # alongside the FITS by calculate_rho_tau_stats.
         rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
@@ -137,6 +131,7 @@ rule rho_tau_stats:
         nbins="{nbins}",
         npatch="{npatch}",
         type=run_type(),
+        blind_root=blind_root(),
     resources:
         mem_mb=30000,
         disk_mb=20000,
@@ -152,23 +147,14 @@ wildcard_constraints:
 
 
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector (born as SACC) with configurable binning.
-
-    NB: the ``blind`` wildcard is the glass-mock A/B/C variant (three mock
-    catalogues), NOT Smokescreen blinding — see common.py BLINDS. The Smokescreen
-    concealed=True stamp is a separate axis on the SACC file.
-    """
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
-        # This generic rule produces every pseudo-Cℓ variant — the analysis part
-        # (blind=A, powspace, nbins=32) folded into {version}.sacc, plus the fine
-        # (COSEBIS) and glass-mock variants. Only the analysis part is a terminal
-        # blindable, and a data run blinds it via a requested _blinded sibling
-        # (blind_part reads this plaintext); the fine/mock variants are B-mode /
-        # validation intermediates left untouched here. The output is therefore
-        # not temp()'d — see the PR note on residual unblinded pseudo-Cℓ.
+        # One rule for every pseudo-Cℓ variant, only one of which (the analysis
+        # part) is blindable — so this output cannot be temp()'d and a data run
+        # blinds it through a requested _blinded sibling instead.
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
-        blind="[ABC]",  # glass-mock variant, not Smokescreen blinding
+        blind="[ABC]",
     params:
         version="{version}",
         blind="{blind}",
@@ -188,15 +174,11 @@ rule pseudo_cl:
 
 
 rule pseudo_cl_cov:
-    """Generate pseudo-Cl covariance with configurable binning.
-
-    NB: ``blind`` is the glass-mock A/B/C variant, not Smokescreen blinding
-    (see common.py BLINDS).
-    """
+    """Generate pseudo-Cl covariance with configurable binning."""
     output:
         pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
     wildcard_constraints:
-        blind="[ABC]",  # glass-mock variant, not Smokescreen blinding
+        blind="[ABC]",
     params:
         version="{version}",
         blind="{blind}",

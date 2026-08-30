@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # CosmoCov covariance chain (lc-native, container:none recipe).
 #
-# Faithful port of covariance_ini -> covariance_cosmocov (x3 blocks) ->
-# covariance_cat -> covariance_process. The CosmoCov C++ binary runs on the
-# bare host (module load gcc/intelpython/openmpi, as in the original
-# container:None rule); the .ini generation and cosmocov_process step run inside
-# the sp_validation apptainer container. The 3 shear-shear blocks (++,--,+-) are
-# independent and run in parallel.
+# covariance_ini -> covariance_cosmocov (x3 blocks) -> covariance_cat ->
+# covariance_process. The CosmoCov C++ binary runs on the bare host (module load
+# gcc/intelpython/openmpi); the .ini generation and cosmocov_process steps run
+# inside the sp_validation apptainer container. The 3 shear-shear blocks
+# (++,--,+-) are independent and run in parallel.
 #
 # Usage:
 #   run_cosmocov_chain.sh --version SP_v1.4.6.3_leak_corr --blind A \
@@ -14,13 +13,19 @@
 #     --planck18-json <cosmology_snapshot>/planck18.json \
 #     --cat-config <cat_config.yaml> --mask-cls <mask_cls...norm.txt> \
 #     --out <output_dir>
+#
+# The checkout is this script's own (workflow/scripts/../..). Deployment paths
+# come from the environment, with the current candide values as defaults:
+#   SPV_CONTAINER  apptainer image        (default /n17data/cdaley/containers/containers/)
+#   SPV_BIND       apptainer --bind list
+#   COSMOCOV       CosmoCov `cov` binary  (also settable with --cosmocov)
 set -euo pipefail
 
-CONTAINER=/n17data/cdaley/containers/containers/
-WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
+WT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC=$WT/src
-BIND=/home,/scratch,/automnt,/n17data,/n23data1,/n09data
-COSMOCOV=/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov
+CONTAINER=${SPV_CONTAINER:-/n17data/cdaley/containers/containers/}
+BIND=${SPV_BIND:-/home,/scratch,/automnt,/n17data,/n23data1,/n09data}
+COSMOCOV=${COSMOCOV:-/n23data1/n06data/lgoh/scratch/UNIONS/CosmoCov/covs/cov}
 
 VERSION=""; BLIND="A"; MINSEP=""; MAXSEP=""; NBINS=""; GAUSSIAN=""
 PLANCK18=""; CATCONFIG=""; MASKCLS=""; OUT=""
@@ -42,12 +47,10 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p "$OUT"
-# Absolutize OUT before any `cd` below: the CosmoCov binary writes its block
-# files into cwd, so we cd into OUT (line ~61); every other OUT-relative path
-# ($INI, block logs, covariance.txt, cosmocov_process output) must therefore be
-# absolute or it re-resolves against the new cwd and double-nests. lc templates
-# {output} as a project-relative path, so this makes the recipe robust to both
-# relative (lc) and absolute (direct-run) --out.
+# Absolutize OUT before the `cd "$OUT"` below (the CosmoCov binary writes its
+# blocks into cwd): every other OUT-relative path would otherwise re-resolve
+# against the new cwd and double-nest. lc templates {output} as a
+# project-relative path, so both relative and absolute --out must work.
 OUT="$(cd "$OUT" && pwd)"
 INI="$OUT/covariance.ini"
 
@@ -66,13 +69,13 @@ module unload intelpython 2>/dev/null || true; module load intelpython/3-2024.1.
 module load openmpi
 
 cd "$OUT"
-# BLOCK_PAIRS = [("++","1"), ("--","2"), ("+-","3")] — one CosmoCov invocation per block
+# One CosmoCov invocation per block; see common.py BLOCK_PAIRS.
 for idx in 1 2 3; do
   ( "$COSMOCOV" "$idx" "$INI" > "$OUT/cosmocov_block_${idx}.log" 2>&1 ) &
 done
 wait
 
-# Concatenate blocks in BLOCK_PAIRS order (++, --, +-) — as covariance_cat does
+# Concatenate blocks in BLOCK_PAIRS order (++, --, +-), as covariance_cat does.
 CAT="$OUT/covariance.txt"
 : > "$CAT"
 for pm_idx in "++:1" "--:2" "+-:3"; do
