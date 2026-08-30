@@ -488,7 +488,7 @@ def _concealed(s):
     return bool(s.metadata.get("concealed"))
 
 
-def blind_sacc(part, seed, config=None, label="A", log=print):
+def blind_sacc(part, seed, config=None, label="smokescreen", log=print):
     """Return a blinded copy of a part SACC (covariance and tags untouched).
 
     Per blindable block present (a standalone part carries exactly one —
@@ -744,7 +744,7 @@ def part_paths(part_path):
     }
 
 
-def blind_init(blind_dir, config=None, label="A", log=print):
+def blind_init(blind_dir, config=None, label="smokescreen", log=print):
     """Fix the blind for one catalogue version: seed, commitment, seed bundle.
 
     Runs once per catalogue version:
