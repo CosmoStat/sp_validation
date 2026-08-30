@@ -1578,7 +1578,8 @@ def gather(parts, metadata=None, assemble=None):
     point concatenation with all tags, and a covariance built from whatever the
     parts carry — the right thing when parts are already covariance-bearing.
     :func:`sp_validation.cosmo_val.sacc_writers.assemble_analysis_sacc` rebuilds
-    from a given n(z) + metadata and *requires* one covariance block per part —
+    from the parts' own tracers/metadata and *requires* one covariance block per
+    part —
     the right thing for the production terminal, where the ξ± and pseudo-Cℓ
     parts are born cov-less and have their blocks injected first. Passing the
     assembler in, rather than duplicating the custody wrapper around each one,

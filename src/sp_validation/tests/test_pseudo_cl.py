@@ -514,10 +514,7 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
 
     The catalog method has no random noise debiasing, so it is reproducible to
-    the same ~2e-12 catalog-path float noise. calculate_pseudo_cl_catalog is
-    born-as-SACC: it writes a pseudo-Cl part (EE/BB/EB + shared bandpower
-    window) via pseudo_cl_to_sacc_part; we pin the round-tripped spectra read
-    back through sacc_io.get_pseudo_cl.
+    the same ~2e-12 catalog-path float noise; we pin the round-tripped spectra.
     """
     ver = cv._test_version
     cv._pseudo_cls = {ver: {}}
@@ -525,12 +522,9 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     cv.calculate_pseudo_cl_catalog(ver, out_path)
 
     assert os.path.exists(out_path)
-    # The born-as-SACC part is unblinded type='data'; reading it back for the
-    # round-trip assertion is a pre-blind consumer.
     s = sacc_io.load(out_path, allow_unblinded=True)
     ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
-    # A shared BandpowerWindow rides the part per the SACC layout contract.
-    assert window is not None
+    assert window is not None  # the shared BandpowerWindow rides the part
 
     npt.assert_allclose(
         ell,
@@ -598,15 +592,8 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
 
 
 def test_calculate_pseudo_cl_out_path_born_at_declared_name(cv):
-    """calculate_pseudo_cl(out_path=...) writes to the given path, not the
-    untagged native name — the anti-collision seam.
-
-    The tagged producer (rule pseudo_cl, blind=A) and the untagged diagnostic
-    (rule cv_pseudo_cl, blind=None) both call calculate_pseudo_cl; if the tagged
-    one wrote the native pseudo_cl_{ver}.sacc and renamed, its skip-if-exists
-    could silently adopt — and the rename delete — the diagnostic's differently-
-    blinded file. Born-at-declared-name makes the two paths provably disjoint.
-    """
+    """calculate_pseudo_cl(out_path=...) writes to the given path, never the
+    untagged native name — so the tagged and diagnostic rules stay disjoint."""
     ver = cv._test_version
     cv._pseudo_cls = {}
     tagged = cv._output_path(f"pseudo_cl_{ver}_blind=A_powspace_nbins=32.sacc")

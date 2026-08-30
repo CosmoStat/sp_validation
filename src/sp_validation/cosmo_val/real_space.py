@@ -46,11 +46,8 @@ class RealSpaceMixin:
             - If a patch file for the given configuration does not exist, it is
               created during the process.
             - The ``.txt`` TreeCorr dump is the only raw byproduct written here
-              (read back by the covariance machinery and the skip-if-exists). The
-              analysis ξ± data product is born as SACC in ``run_2pcf.py`` (one
-              binning-agnostic driver for both the reporting and the fine
-              integration grid), which calls ``xi_to_sacc``; there is no
-              DES-style ξ FITS writer anymore.
+              (read back by the covariance machinery and the skip-if-exists); the
+              ξ± data product is born as SACC in ``run_2pcf.py``.
         """
 
         self.print_magenta(f"Computing {ver} ξ±")
@@ -99,11 +96,10 @@ class RealSpaceMixin:
 
             # Process the catalog & write the correlation functions
             gg.process(cat_gal)
-            # Patch results + the jackknife covariance only make sense (and are
-            # only affordable) for npatch > 1: at npatch=1 var_method is "shot",
-            # so the "covariance" is just the varxip/varxim already written as
-            # per-bin columns, while the dense (2*nbins)^2 block would dominate
-            # the file on the fine integration grid (nbins ~ 1000).
+            # Patch results and the jackknife covariance need npatch > 1: at
+            # npatch=1 var_method is "shot", so the covariance adds nothing over
+            # the varxip/varxim columns while the dense (2*nbins)^2 block would
+            # dominate the file on the fine integration grid (nbins ~ 1000).
             write_cov = int(npatch) > 1
             gg.write(out_fname, write_patch_results=write_cov, write_cov=write_cov)
 
