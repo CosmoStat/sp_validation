@@ -40,16 +40,17 @@ def test_run_xi_sweep_run_2pcf_call_binds():
     run_2pcf_mod = _load(root / "workflow/scripts/run_2pcf.py", "run_2pcf_seam")
     sig = inspect.signature(run_2pcf_mod.run_2pcf)
     # Exactly the keyword set run_xi_sweep._from_cli passes (grid params spread
-    # from GRIDS: min_sep/max_sep/nbins/npatch).
+    # from GRIDS: min_sep/max_sep/nbins/npatch, plus covariance on the fine grid).
     sig.bind(
         ver="V",
         cat_config="/cfg.yaml",
         output_dir="/out",
-        sacc_out="/out/V_xi_reporting_reporting.sacc",
-        min_sep=1.0,
-        max_sep=250.0,
-        nbins=20,
+        grid="integration",
+        min_sep=0.5,
+        max_sep=300.0,
+        nbins=1000,
         npatch=1,
+        covariance="diagonal",
     )
     # And the removed kwarg must NOT bind (guards against a silent re-add).
     with pytest.raises(TypeError):

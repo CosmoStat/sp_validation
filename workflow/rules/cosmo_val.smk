@@ -52,13 +52,7 @@ def cv_xi_txt(version):
     Mirrors the out_fname f-string in cosmo_val.calculate_2pcf:
     {ver}_xi_minsep=..._maxsep=..._nbins=..._npatch=...txt
     """
-    return str(
-        COSMO_VAL
-        / (
-            f"{version}_xi_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_npatch={CV['npatch']}.txt"
-        )
-    )
+    return str(COSMO_VAL / f"{version}_xi_{xi_binning('reporting')}.txt")
 
 
 def cv_rho_stats(version):
@@ -154,29 +148,20 @@ def cv_rho_tau_sacc(version):
     )
 
 
-def cv_xi_reporting_sacc(version):
-    """Reporting ξ± SACC part the xi rule (run_2pcf.py) writes for a version.
+def cv_xi_sacc(version, grid):
+    """ξ± SACC part the `xi` rule writes for a version on a named grid.
 
-    Carries the reporting-binning suffix so requesting it binds the xi job's
-    wildcards (the rule's txt + reporting .sacc outputs share one wildcard set).
+    Named by its binning (xi_binning, twopoint.smk), which is what binds the xi
+    job's wildcards; the grid label and the covariance treatment are resolved
+    from that binning by the rule.
+
+    grid='reporting' is the analysis part (no covariance block until assembly
+    injects the CosmoCov one); grid='integration' is the fine-grid part COSEBIs
+    and pure-E/B consume, carrying its own DiagonalCovariance from TreeCorr
+    varxip/varxim. The integration part is intermediate: it stays standalone and
+    is NOT folded into the terminal {version}.sacc (see #247 ruling).
     """
-    return str(
-        COSMO_VAL
-        / (
-            f"{version}_xi_reporting_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_npatch={CV['npatch']}.sacc"
-        )
-    )
-
-
-def cv_xi_integration_sacc(version):
-    """Integration-grid ξ± SACC part the xi_highres rule writes, per version.
-
-    Intermediate per-statistic part (grid='integration', its own DiagonalCovariance
-    from TreeCorr varxip/varxim). NOT folded into the terminal {version}.sacc (see
-    #247 ruling) — COSEBIs and pure-E/B consume it directly.
-    """
-    return str(COSMO_VAL / f"{version}_xi_integration.sacc")
+    return str(COSMO_VAL / f"{version}_xi_{xi_binning(grid)}.sacc")
 
 
 def cv_analysis_sacc(version):
@@ -376,7 +361,7 @@ rule cv_pseudo_cl:
 def cv_cosebis_inputs(w):
     return {
         "xi": cv_xi_txt(w.version),
-        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        "xi_integration": blindable_part(cv_xi_sacc(w.version, "integration")),
         **commitment_input(w.version),
     }
 
@@ -384,8 +369,8 @@ def cv_cosebis_inputs(w):
 def cv_pure_eb_inputs(w):
     return {
         "xi": cv_xi_txt(w.version),
-        "xi_reporting": blindable_part(cv_xi_reporting_sacc(w.version)),
-        "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        "xi_reporting": blindable_part(cv_xi_sacc(w.version, "reporting")),
+        "xi_integration": blindable_part(cv_xi_sacc(w.version, "integration")),
         **commitment_input(w.version),
     }
 
@@ -481,7 +466,7 @@ rule cv_summarize_bmodes:
 # single BlockDiagonalCovariance (point-insertion order = block order).
 #
 # The integration-grid ξ± (grid='integration') is deliberately NOT gathered here:
-# it persists as its own per-part intermediate {version}_xi_integration.sacc,
+# it persists as its own per-part intermediate (the integration-binning part),
 # consumed by COSEBIs/pure-E/B, with Snakemake provenance covering traceability
 # (see #247 ruling). The terminal file carries the analysis vector only.
 #
@@ -513,11 +498,11 @@ def cv_assemble_inputs(version):
     # blinded integration ξ± and stamp concealed=True), so they bind by their own
     # name in both cases; ρ/τ is a diagnostic carrying no cosmological vector but
     # is stamped concealed pass-through so the fail-closed load gate admits it on
-    # a data run. The integration-grid ξ± itself is blinded at birth (see rule
-    # xi_highres) but is NOT gathered into the terminal file — it persists as its
+    # a data run. The integration-grid ξ± itself is blinded at birth (the same
+    # `xi` rule on the integration binning) but is NOT gathered into the terminal file — it persists as its
     # own per-part intermediate (see #247 ruling), consumed by COSEBIs/pure-E/B.
     parts = dict(
-        xi_reporting=blindable_part(cv_xi_reporting_sacc(version)),
+        xi_reporting=blindable_part(cv_xi_sacc(version, "reporting")),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),

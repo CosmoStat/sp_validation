@@ -12,7 +12,7 @@ contract, via the validated :func:`sp_validation.sacc_io.assemble_covariance` �
 *not* ``sacc.concatenate_data_sets``, whose unvalidated block-diagonal the
 contract rules out).
 
-The integration-grid ``{version}_xi_integration.sacc`` is an intermediate
+The integration-grid ξ± part (named by its fine binning) is an intermediate
 per-part file (:func:`xi_to_sacc` with ``grid="integration"`` and a
 ``DiagonalCovariance`` from TreeCorr ``varxip``/``varxim``); COSEBIs and pure-E/B
 consume it. It is blinded at birth on data runs (per PR #253) but does not join

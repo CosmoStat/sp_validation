@@ -155,8 +155,8 @@ glass = [
 # Snakemake workflow and cross-validation runners are available.
 workflow = [
     "snakemake",
-    # run_2pcf_highres.py drives the MPI convergence run; the container ships
-    # OpenMPI (/opt/ompi) so mpi4py builds against it.
+    # Optional MPI runners (the container ships OpenMPI at /opt/ompi, so mpi4py
+    # builds against it).
     "mpi4py",
     # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
     # published or resolvable (no public repo found) — left undeclared pending

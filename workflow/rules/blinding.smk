@@ -14,14 +14,14 @@
 # The terminal assemble_sacc rule (cosmo_val.smk) asserts the shared commitment
 # across parts — the assembly-time custody check of #252.
 
-# The three blindable stems: reporting ξ± (rule xi), integration ξ± (xi_highres),
-# and the analysis pseudo-Cℓ (pseudo_cl). None contains "_blinded", so the
-# generic blind_part rule can never blind its own output twice. The version
-# pattern is the shared one from common.WILDCARD_CONSTRAINTS.
+# The blindable stems: the binning-named ξ± parts (rule xi — one rule, both the
+# reporting and the integration grid, told apart only by their binning tag) and
+# the analysis pseudo-Cℓ (pseudo_cl). None contains "_blinded", so the generic
+# blind_part rule can never blind its own output twice. The version pattern is
+# the shared one from common.WILDCARD_CONSTRAINTS.
 _V = WILDCARD_CONSTRAINTS["version"]
 BLINDABLE_STEM = (
-    rf"(?:{_V}_xi_reporting_minsep=[0-9.]+_maxsep=[0-9.]+_nbins=\d+_npatch=\d+"
-    rf"|{_V}_xi_integration"
+    rf"(?:{_V}_xi_minsep=[0-9.]+_maxsep=[0-9.]+_nbins=\d+_npatch=\d+"
     rf"|pseudo_cl_{_V}_blind=[ABC]_[a-z]+_nbins=\d+)"
 )
 

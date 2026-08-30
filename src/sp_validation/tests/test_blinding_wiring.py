@@ -54,8 +54,8 @@ asm = _load_module("workflow/scripts/assemble_sacc.py", "assemble_sacc")
 # 1. common.py path helpers mirror sp_validation.blinding (drift guard)
 # --------------------------------------------------------------------------- #
 _STEMS = [
-    "SP_v1.4.6.3_xi_reporting_minsep=1.0_maxsep=250.0_nbins=20_npatch=100",
-    "SP_v1.4.6.3_leak_corr_xi_integration",
+    "SP_v1.4.6.3_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=100",
+    "SP_v1.4.6.3_leak_corr_xi_minsep=0.08_maxsep=300_nbins=1000_npatch=1",
     "pseudo_cl_SP_v1.4.6.3_blind=A_powspace_nbins=32",
     "pseudo_cl_SP_v1.4.6.3_leak_corr_blind=A_powspace_nbins=32",
 ]
@@ -93,7 +93,7 @@ def test_version_of_raises_without_version():
 
 
 def test_blindable_part_switches_on_run_type(monkeypatch):
-    part = "/out/SP_v1.4.6.3_xi_integration.sacc"
+    part = "/out/SP_v1.4.6.3_xi_minsep=0.08_maxsep=300_nbins=1000_npatch=1.sacc"
     monkeypatch.setattr(common, "RUN_TYPE", "data")
     assert common.blindable_part(part) == common.blinded_path(part)
     monkeypatch.setattr(common, "RUN_TYPE", "mock")
@@ -237,8 +237,7 @@ def test_mock_assemble_succeeds_without_a_blind(tmp_path):
     reachable from real producers, not only from test fixtures.
 
     Every part writer stamps the campaign's run type (CosmologyValidation's
-    ``run_type``, ``run_2pcf``'s ``run_type=``, ``run_2pcf_highres``'s
-    ``--run-type``), so a ``mock`` campaign's parts declare themselves mocks and
+    ``run_type``, ``run_2pcf``'s ``run_type=`` / ``--run-type``), so a ``mock`` campaign's parts declare themselves mocks and
     ``assert_consistent_blind`` lets them through unconcealed. The same parts
     stamped ``type='data'`` fail closed — that is
     ``test_data_assemble_fails_closed_on_unblinded_part``.
@@ -373,8 +372,6 @@ def test_blinding_subgraph_in_cosmo_val_dry_run():
     # COSEBIs / pure-E/B consumers now bind the blinded integration part (via
     # blindable_part) to re-derive their concealed E-modes, so blind_part enters
     # the subgraph for it too.
-    assert (
-        "_xi_reporting_minsep=1.0_maxsep=250.0_nbins=20_npatch=100_blinded.sacc" in out
-    )
-    assert "_xi_integration_blinded.sacc" in out
+    assert "_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=100_blinded.sacc" in out
+    assert "_xi_minsep=0.08_maxsep=300_nbins=1000_npatch=1_blinded.sacc" in out
     assert "_blind=A_powspace_nbins=32_blinded.sacc" in out
