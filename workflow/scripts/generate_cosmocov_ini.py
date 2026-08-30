@@ -1,12 +1,9 @@
 """Generate a CosmoCov ``.ini`` for one (version, blind, grid, flavour, mask).
 
-CLI refactor of the former ``rule covariance_ini`` heredoc. Cosmology is read
-from the frozen ``planck18.json`` snapshot (the cosmology_snapshot lc output —
-source of truth is cs_util.cosmo.PLANCK18); survey (area, n_eff,
-sigma_e) from the catalog config's per-version ``cov_th``; n(z) via the same
-path convention as workflow/common.build_redshift_path; the footprint mask
-power spectrum is passed explicitly (empty string for the unmasked variant).
-The emitted ``.ini`` is byte-compatible with the paper's covariance_ini rule.
+Cosmology comes from the frozen ``planck18.json`` snapshot, survey parameters
+(area, n_eff, sigma_e) from the catalog config's per-version ``cov_th``, and
+n(z) from ``workflow/common.build_redshift_path``. The footprint mask power
+spectrum is passed explicitly (empty string for the unmasked variant).
 
     python generate_cosmocov_ini.py \
         --version SP_v1.4.6.3_leak_corr --blind A \
@@ -18,23 +15,27 @@ The emitted ``.ini`` is byte-compatible with the paper's covariance_ini rule.
 """
 
 import argparse
+import importlib.util
 import json
 import os
-import re
+import sys
 
 import yaml
 
 
-def build_redshift_path(version, blind):
-    """Replicate workflow/common.build_redshift_path."""
-    base_version = re.sub(r"_leak_corr$", "", version)
-    base_version = re.sub(r"_ecut\d+", "", base_version)
-    if "v1.4.11" in base_version:
-        base_version = "SP_v1.4.6"
-    version_dir = base_version.replace("SP_", "")
-    return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
+def _load_workflow_common():
+    """Load ``workflow/common.py`` (this script also runs outside Snakemake)."""
+    path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "common.py"
     )
+    spec = importlib.util.spec_from_file_location("workflow_common", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+common = _load_workflow_common()
 
 
 INI_TEMPLATE = """\
@@ -116,8 +117,7 @@ def main(argv=None):
     with open(a.cat_config) as f:
         cat_config = yaml.safe_load(f)
 
-    base_version = a.version.replace("_leak_corr", "")
-    cov_th = cat_config[base_version]["cov_th"]
+    cov_th = cat_config[common.base_version(a.version)]["cov_th"]
 
     ng_value = "1" if a.gaussian == "ng" else "0"
 
@@ -131,7 +131,7 @@ def main(argv=None):
         area=cov_th["A"],
         sigma_e=cov_th["sigma_e"],
         n_e=cov_th["n_e"],
-        nz=build_redshift_path(a.version, a.blind),
+        nz=common.build_redshift_path(a.version, a.blind),
         mask=a.mask_cls,
         min_sep=a.min_sep,
         max_sep=a.max_sep,

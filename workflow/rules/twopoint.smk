@@ -3,19 +3,12 @@
 # ---------------------------------------------------------------------------
 # ξ± angular grids
 # ---------------------------------------------------------------------------
-# A grid IS a binning: (min_sep, max_sep, nbins, npatch) plus how the
-# born-as-SACC part carries its covariance. The reporting grid is the analysis
-# one (its ξ covariance is injected at assembly from CosmoCov, so the part is
-# written bare); the integration grid is the fine grid COSEBIs and pure-E/B
-# integrate over, whose only covariance estimate is TreeCorr's shot-noise
-# varxip/varxim — attached as a DiagonalCovariance.
-#
-# Both grids are measured by the single `xi` rule below: files are named by
-# binning, so the grid label and the covariance mode are *resolved* from the
-# wildcards rather than duplicated into a second rule. Workflows that carry no
-# cosmo_val block (e.g. papers/bmodes) fall back to their fiducial grids; a
-# binning matching no named grid is measured as a plain reporting-style
-# measurement (no covariance).
+# A grid is a binning: (min_sep, max_sep, nbins, npatch). `reporting` is the
+# analysis grid; `integration` is the fine grid COSEBIs and pure-E/B integrate
+# over. Both are measured by the single `xi` rule below, whose files are named
+# by binning, so the grid label is resolved from the wildcards rather than
+# duplicated into a second rule. Workflows carrying no cosmo_val block (e.g.
+# papers/bmodes) fall back to their fiducial grids.
 def _xi_grids():
     cv = config.get("cosmo_val", {})
     reporting = (
@@ -37,14 +30,11 @@ def _xi_grids():
         }
     )
     integration.setdefault("npatch", 1)
-    return {
-        "reporting": {**reporting, "covariance": "none"},
-        "integration": {**integration, "covariance": "diagonal"},
-    }
+    return {"reporting": reporting, "integration": integration}
 
 
 XI_GRIDS = _xi_grids()
-XI_DEFAULT_GRID = ("reporting", "none")
+XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")
 
 
 def xi_binning(grid):
@@ -57,22 +47,26 @@ def xi_binning(grid):
 
 
 def xi_grid_of(wildcards):
-    """(grid label, covariance mode) for the binning a job was requested with."""
-    key = (wildcards.min_sep, wildcards.max_sep, wildcards.nbins, wildcards.npatch)
+    """Grid label for the binning a job was requested with.
+
+    Compared numerically, so a "300" wildcard matches a 300.0 config value.
+    Binnings matching no named grid (e.g. papers/bmodes' nbins=10000
+    convergence check) are measured as plain reporting-style measurements.
+    """
+    key = tuple(float(getattr(wildcards, k)) for k in XI_KEYS)
     for name, g in XI_GRIDS.items():
-        if tuple(str(g[k]) for k in ("min_sep", "max_sep", "nbins", "npatch")) == key:
-            return name, g["covariance"]
-    return XI_DEFAULT_GRID
+        if tuple(float(g[k]) for k in XI_KEYS) == key:
+            return name
+    return "reporting"
 
 
 rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid.
 
     Binning-agnostic: the reporting and integration measurements are the same
-    job with different wildcards. The raw TreeCorr .txt byproduct (read back by
-    the covariance machinery and by the skip-if-exists) and the born-as-SACC
-    part are named by that binning, so a request for either binds unambiguously
-    — and the grid label + covariance treatment come from XI_GRIDS.
+    job with different wildcards. The raw TreeCorr .txt byproduct and the
+    born-as-SACC part are both named by that binning, so a request for either
+    binds unambiguously; the grid label comes from XI_GRIDS.
     """
     input:
         catalog=get_shear_catalog,
@@ -87,8 +81,7 @@ rule xi:
         nbins="{nbins}",
         npatch="{npatch}",
         cat_config=CAT_CONFIG,
-        grid=lambda w: xi_grid_of(w)[0],
-        covariance=lambda w: xi_grid_of(w)[1],
+        grid=lambda w: xi_grid_of(w),
     resources:
         # The fine integration grid needs more memory and wall time than the
         # ~20-bin reporting one; scale on nbins rather than splitting the rule.
@@ -121,10 +114,8 @@ rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        # Born-as-SACC ρ/τ part (ρ_0…ρ_5 autos + τ_0/τ_2/τ_5 leakage, carrying
-        # its own covariance block) that the assemble_sacc rule consumes;
-        # calculate_rho_tau_stats writes it alongside the FITS via
-        # rho_tau_to_sacc_part.
+        # Born-as-SACC ρ/τ part the assemble_sacc rule consumes, written
+        # alongside the FITS by calculate_rho_tau_stats.
         rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:
@@ -148,16 +139,11 @@ wildcard_constraints:
 
 
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector (born as SACC) with configurable binning.
-
-    NB: the ``blind`` wildcard is the glass-mock A/B/C variant (three mock
-    catalogues), NOT Smokescreen blinding — see common.py BLINDS. The Smokescreen
-    concealed=True stamp is a separate axis on the SACC file.
-    """
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
     output:
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
-        blind="[ABC]",  # glass-mock variant, not Smokescreen blinding
+        blind="[ABC]",
     params:
         version="{version}",
         blind="{blind}",
@@ -177,15 +163,11 @@ rule pseudo_cl:
 
 
 rule pseudo_cl_cov:
-    """Generate pseudo-Cl covariance with configurable binning.
-
-    NB: ``blind`` is the glass-mock A/B/C variant, not Smokescreen blinding
-    (see common.py BLINDS).
-    """
+    """Generate pseudo-Cl covariance with configurable binning."""
     output:
         pseudo_cl_cov=str(COSMO_VAL / "pseudo_cl_cov_{version}_blind={blind}_{binning}_nbins={nbins}.fits"),
     wildcard_constraints:
-        blind="[ABC]",  # glass-mock variant, not Smokescreen blinding
+        blind="[ABC]",
     params:
         version="{version}",
         blind="{blind}",

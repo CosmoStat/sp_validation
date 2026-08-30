@@ -1,40 +1,20 @@
 """Assemble the terminal ``{version}.sacc`` analysis file from per-statistic parts.
 
-Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
-object supplies the parts + covariance inputs; as a standalone CLI (argparse)
-the same assembly runs from explicit flags (the lightcone/ASTRA path).
+Dual-mode: under Snakemake (``script:``) the injected ``snakemake`` object
+supplies the inputs; as a standalone CLI the same assembly runs from flags.
 
-Each per-statistic ``*.sacc`` *part* (written born-as-SACC by the mixins and the
-run_2pcf / generate_pseudo_cl scripts) holds one statistic. The assembler loads
-them in canonical order — ξ± reporting, pseudo-Cℓ, COSEBIs, pure-E/B, ρ/τ — and
-calls :func:`sacc_writers.assemble_analysis_sacc`, which rebuilds one Sacc with a
-single ``BlockDiagonalCovariance`` (point-insertion order = block order,
-validated by ``sacc_io.assemble_covariance``).
+Each part is a single-statistic SACC written by the cosmo_val mixins, run_2pcf
+or generate_pseudo_cl. Parts load in canonical order (ξ± reporting, pseudo-Cℓ,
+COSEBIs, pure-E/B, ρ/τ) and are rebuilt into one Sacc with a single
+``BlockDiagonalCovariance``.
 
-Covariance sourcing (the part-by-part decision)
------------------------------------------------
-``assemble_analysis_sacc`` REQUIRES every part to carry its own covariance block.
-The COSEBIs, pure-E/B and ρ/τ parts already do (their writers attach it). The
-ξ± reporting and pseudo-Cℓ parts are born cov-less by design; this script injects
-their blocks before assembly:
-
-* **ξ± reporting** — the CosmoCov theory covariance ``.txt`` (``--xi-cov``). For the
-  single-bin round it is already ``[ξ+; ξ−]``-ordered (CosmoCov / covdat_to_fits:
-  ``STRT_0=0`` XI_PLUS, ``STRT_1=len/2`` XI_MINUS), which is exactly the SACC
-  ξ insertion order, so ``np.loadtxt`` → ``add_covariance`` needs no permutation.
-* **pseudo-Cℓ** — the NaMaster iNKA / OneCovariance covariance FITS
-  (``--pseudo-cl-cov`` + ``--pseudo-cl-cov-hdu``). The FITS carries the 16
-  EE/EB/BE/BB cross-blocks (each ``nbp × nbp``); SACC stores EE, BB, EB (in that
-  order), so we assemble the block-diagonal ``[EE_EE; BB_BB; EB_EB]``. The
-  cross-spectrum blocks (EE↔BB, …) are dropped — matching how the B-mode PTE
-  today reads only ``COVAR_BB_BB``. **TODO(PR-cov):** carry the full dense
-  EE/BB/EB cross-covariance once the analysis needs cross-spectrum correlations.
-
-When a cov input is absent the assembly cannot proceed on a real product; pass
-``--allow-placeholder`` to attach a documented diagonal placeholder
-(``placeholder_var`` on every point of the cov-less parts) so the DAG dry-run and
-the fast test can still produce a structurally-valid ``BlockDiagonalCovariance``. The
-placeholder is a flagged stand-in, never a science covariance.
+Every part must carry a covariance block. COSEBIs, pure-E/B and ρ/τ are born
+with one; ξ± reporting and pseudo-Cℓ are not, so their blocks are injected here
+from the CosmoCov ``.txt`` (``--xi-cov``) and the NaMaster covariance FITS
+(``--pseudo-cl-cov``). The pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are
+dropped — matching what the B-mode PTE reads today. ``--allow-placeholder VAR``
+attaches a flagged diagonal stand-in instead, so a dry run or the fast test can
+still build a structurally valid covariance.
 """
 
 import argparse
@@ -44,54 +24,44 @@ import numpy as np
 from sp_validation import sacc_io
 from sp_validation.cosmo_val.sacc_writers import assemble_analysis_sacc
 
-# NaMaster iNKA covariance FITS: per-spectrum HDU names. SACC insertion order is
-# EE, BB, EB, so the block-diagonal is assembled in that order.
-_CL_HDU = {"EE": "COVAR_EE_EE", "BB": "COVAR_BB_BB", "EB": "COVAR_EB_EB"}
-_CL_ORDER = ("EE", "BB", "EB")
+# NaMaster iNKA covariance FITS: per-spectrum HDU names, in SACC insertion order.
+_CL_HDUS = ("COVAR_EE_EE", "COVAR_BB_BB", "COVAR_EB_EB")
 
-# Canonical part order — the order assemble_analysis_sacc inserts points in, which
-# must match the covariance block order. Missing parts are simply skipped.
+# Canonical part order — the order points are inserted in, which must match the
+# covariance block order. Missing parts are simply skipped.
 CANONICAL = ("xi_reporting", "pseudo_cl", "cosebis", "pure_eb", "rho_tau")
 
 
-def _pseudo_cl_cov_block(cov_fits, hdu):
-    """Block-diagonal ``[EE_EE; BB_BB; EB_EB]`` from the NaMaster iNKA cov FITS.
-
-    ``hdu`` selects the file flavor: for the per-spectrum iNKA file we read the
-    three named diagonal HDUs; for a single dense HDU (OneCovariance / g+ng
-    ``COVAR_FULL``) that already spans EE/BB/EB we return it as-is.
-    """
+def _pseudo_cl_cov_block(cov_fits):
+    """Block-diagonal ``[EE; BB; EB]`` from the NaMaster iNKA covariance FITS."""
     from astropy.io import fits
 
     with fits.open(cov_fits) as hdul:
-        names = {h.name for h in hdul}
-        if all(_CL_HDU[s] in names for s in _CL_ORDER):
-            blocks = [np.asarray(hdul[_CL_HDU[s]].data, float) for s in _CL_ORDER]
-            n = blocks[0].shape[0]
-            full = np.zeros((3 * n, 3 * n))
-            for i, block in enumerate(blocks):
-                full[i * n : (i + 1) * n, i * n : (i + 1) * n] = block
-            return full
-        return np.asarray(hdul[hdu].data, float)
+        missing = [name for name in _CL_HDUS if name not in {h.name for h in hdul}]
+        if missing:
+            raise ValueError(f"{cov_fits} lacks the pseudo-Cℓ cov HDUs {missing}")
+        blocks = [np.asarray(hdul[name].data, float) for name in _CL_HDUS]
+    n = blocks[0].shape[0]
+    full = np.zeros((3 * n, 3 * n))
+    for i, block in enumerate(blocks):
+        full[i * n : (i + 1) * n, i * n : (i + 1) * n] = block
+    return full
 
 
-def _attach_cov(part, name, xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholder_var):
-    """Ensure ``part`` carries a covariance, injecting the xi/pseudo-Cℓ block.
+def _attach_cov(part, name, xi_cov, pseudo_cl_cov, placeholder_var):
+    """Ensure ``part`` (mutated in place) carries a covariance block.
 
-    ``part`` is mutated in place. cosebis/pure_eb/rho_tau parts already carry
-    their covariance and pass straight through. Raises loudly if a required xi /
-    pseudo-Cℓ block is missing and no placeholder was requested.
+    Raises if a required ξ± / pseudo-Cℓ block is missing and no placeholder was
+    requested.
     """
     if part.covariance is not None:
         return part
-    if name == "xi_reporting":
-        if xi_cov is not None:
-            part.add_covariance(np.loadtxt(xi_cov))
-            return part
-    elif name == "pseudo_cl":
-        if pseudo_cl_cov is not None:
-            part.add_covariance(_pseudo_cl_cov_block(pseudo_cl_cov, pseudo_cl_cov_hdu))
-            return part
+    if name == "xi_reporting" and xi_cov is not None:
+        part.add_covariance(np.loadtxt(xi_cov))
+        return part
+    if name == "pseudo_cl" and pseudo_cl_cov is not None:
+        part.add_covariance(_pseudo_cl_cov_block(pseudo_cl_cov))
+        return part
     if placeholder_var is None:
         raise ValueError(
             f"the {name!r} part carries no covariance and no covariance input was "
@@ -110,7 +80,6 @@ def assemble_sacc(
     expected=None,
     xi_cov=None,
     pseudo_cl_cov=None,
-    pseudo_cl_cov_hdu="COVAR_FULL",
     placeholder_var=None,
     allow_unblinded=False,
 ):
@@ -119,24 +88,17 @@ def assemble_sacc(
     Parameters
     ----------
     version : str
-        Catalogue version (stored in the assembled file's metadata).
+        Catalogue version, for error messages.
     part_paths : dict
-        ``{statistic: path}`` with statistic in :data:`CANONICAL`. Only the
-        present statistics are assembled; order is forced to canonical.
-    out_path : str
-        Destination ``{version}.sacc``.
+        ``{statistic: path}`` with statistic in :data:`CANONICAL`. Only present
+        statistics are assembled; order is forced to canonical.
     expected : sequence of str, optional
-        Statistics that MUST be present in ``part_paths`` (from the caller's
-        config toggles). Raises loudly if any is missing or has no path — so a
-        typo'd input keyword (``cosebi`` for ``cosebis``) can't silently drop a
-        statistic from the terminal file. Names not in :data:`CANONICAL` are
-        rejected too (catches a typo in the expected list itself).
-    xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholder_var
+        Statistics that must be present, from the caller's config toggles. A
+        typo'd input keyword would otherwise silently drop a statistic.
+    xi_cov, pseudo_cl_cov, placeholder_var
         Covariance sourcing — see the module docstring.
     allow_unblinded : bool, optional
-        Passed to :func:`sacc_io.load` for every part. Default ``False`` fails
-        closed on unblinded real data; the caller sets it ``True`` only for mock
-        runs. See the load loop for the PR #253 blind-at-birth seam.
+        Passed to :func:`sacc_io.load` for every part; ``True`` only for mocks.
     """
     if expected is not None:
         unknown = [name for name in expected if name not in CANONICAL]
@@ -153,44 +115,18 @@ def assemble_sacc(
                 "silently dropped from the terminal analysis file"
             )
     parts = []
-    nz = metadata = None
     for name in CANONICAL:
         path = part_paths.get(name)
         if path is None:
             continue
-        # Fail closed on real data by default: a data-type part loads only when
-        # it already carries the concealed=True blinding stamp. allow_unblinded
-        # is set True only for mock runs (see the caller). This is the seam for
-        # PR #253's blind-at-birth: once each part is concealed at write time, a
-        # data run assembles with allow_unblinded=False untouched.
         part = sacc_io.load(path, allow_unblinded=allow_unblinded)
-        if nz is None:
-            # The nz tracers + metadata are identical across parts (same version);
-            # take them from the first loaded part for the assembled file.
-            nz = {i: sacc_io.get_nz(part, i) for i in range(_n_source_bins(part))}
-            metadata = dict(part.metadata)
-        parts.append(
-            _attach_cov(
-                part, name, xi_cov, pseudo_cl_cov, pseudo_cl_cov_hdu, placeholder_var
-            )
-        )
+        parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov, placeholder_var))
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
-    s = assemble_analysis_sacc(nz, metadata, parts)
-    # Assembly preserves its parts' provenance: every part was written by
-    # sacc_io.save and therefore carries the type=data|mock stamp in its
-    # metadata (copied into the assembled file above).
-    sacc_io.save(s, out_path, type=metadata["type"])
+    s = assemble_analysis_sacc(parts)
+    sacc_io.save(s, out_path, type=s.metadata["type"])
     print(f"Assembled {len(parts)} parts -> {out_path}")
     return s
-
-
-def _n_source_bins(part):
-    """Count the ``source_{i}`` NZ tracers on a part (single-bin round -> 1)."""
-    i = 0
-    while sacc_io.source_name(i) in part.tracers:
-        i += 1
-    return i
 
 
 def _from_snakemake(smk):
@@ -201,23 +137,15 @@ def _from_snakemake(smk):
         for name in CANONICAL
         if hasattr(inp, name) and getattr(inp, name)
     }
-    # The rule declares which statistics it wired (from its config toggles); a
-    # typo in an input keyword drops the part from part_paths above, so validate
-    # against this expected list rather than trusting the hasattr filter.
-    expected = list(p["expected"])
-    # Fail closed on real data: only a mock run may read unblinded parts. The
-    # run type comes from config (default 'data' — the production catalogues).
-    run_type = p.get("type", "data")
     assemble_sacc(
         version=p["version"],
         part_paths=part_paths,
         out_path=str(smk.output[0]),
-        expected=expected,
+        expected=list(p["expected"]),
         xi_cov=getattr(inp, "xi_cov", None),
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
-        pseudo_cl_cov_hdu=p.get("pseudo_cl_cov_hdu", "COVAR_FULL"),
         placeholder_var=p.get("placeholder_var", None),
-        allow_unblinded=(run_type == "mock"),
+        allow_unblinded=(p.get("type", "data") == "mock"),
     )
 
 
@@ -240,14 +168,7 @@ def _from_cli(argv=None):
         )
     ap.add_argument("--xi-cov", default=None, help="CosmoCov ξ covariance .txt")
     ap.add_argument(
-        "--pseudo-cl-cov",
-        default=None,
-        help="NaMaster/OneCovariance pseudo-Cℓ cov FITS",
-    )
-    ap.add_argument(
-        "--pseudo-cl-cov-hdu",
-        default="COVAR_FULL",
-        help="HDU name for a single dense pseudo-Cℓ cov (EE/BB/EB-spanning)",
+        "--pseudo-cl-cov", default=None, help="NaMaster pseudo-Cℓ covariance FITS"
     )
     ap.add_argument(
         "--allow-placeholder",
@@ -264,7 +185,6 @@ def _from_cli(argv=None):
         out_path=a.out,
         xi_cov=a.xi_cov,
         pseudo_cl_cov=a.pseudo_cl_cov,
-        pseudo_cl_cov_hdu=a.pseudo_cl_cov_hdu,
         placeholder_var=a.allow_placeholder,
         allow_unblinded=(a.type == "mock"),
     )

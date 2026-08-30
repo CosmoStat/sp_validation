@@ -465,15 +465,10 @@ class PseudoClMixin:
         the ``ELL``/``EE``/``EB``/``BB`` arrays the plotting and B-mode-summary
         consumers read by column name.
 
-        ``out_path`` is the exact destination the part is *born at* — the
-        Snakemake-declared output. It must resolve per version; single-version
-        rules (the tagged blinded producer) pass their tagged output directly.
-        When ``None`` (multi-version diagnostic / the ``pseudo_cls`` property)
-        each part defaults to the untagged native ``pseudo_cl_{ver}.sacc``.
+        ``out_path`` is the exact destination the part is born at (one version
+        only); ``None`` defaults each part to ``pseudo_cl_{ver}.sacc``.
         Skip-if-exists keys on this final path, so no two rules ever share an
-        undeclared native basename (a tagged product born at its native name and
-        then renamed would let one rule's skip-if-exists silently adopt — and
-        the rename delete — another rule's declared, differently-blinded file).
+        undeclared native basename.
         """
         self.print_start("Computing pseudo-Cl's")
 
@@ -514,10 +509,8 @@ class PseudoClMixin:
     @staticmethod
     def _load_pseudo_cl_sacc(out_path):
         """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict consumers use."""
-        # Pipeline-internal readback of a part this producer just wrote: the
-        # born-as-SACC parts are unblinded real-data measurements (blinding is a
-        # downstream Smokescreen step), so the fail-closed load must be told this
-        # is a legitimate pre-blind consumer.
+        # Readback of a part this producer just wrote — a legitimate pre-blind
+        # consumer, so the fail-closed load is opted out of.
         s = sacc_io.load(out_path, allow_unblinded=True)
         ell, ee, bb, eb, _window = sacc_io.get_pseudo_cl(s, SACC_BIN)
         return {"ELL": ell, "EE": ee, "EB": eb, "BB": bb}

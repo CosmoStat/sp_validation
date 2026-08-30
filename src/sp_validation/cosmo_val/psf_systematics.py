@@ -57,12 +57,9 @@ class PSFSystematicsMixin:
         """Write the ρ/τ SACC part for one version.
 
         ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
-        ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` — a
-        ``(3·nbin, 3·nbin)`` plus-folded k-major block over ``{τ0, τ2, τ5}`` — is
-        passed as ``tau_cov_th`` when it exists (the τ-plus inference block); its
-        absence falls back to a diagonal placeholder for the whole part (loudly:
-        the τ inference block is then only a variance diagonal, not the theory
-        covariance). ρ always carries a diagnostic ``varrho`` diagonal.
+        ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
+        ``tau_cov_th`` when it exists; without it the τ block falls back —
+        loudly — to a variance diagonal.
         """
         tau_cov_path = os.path.join(out_dir, f"cov_tau_{base}_th.npy")
         tau_cov_th = np.load(tau_cov_path) if os.path.exists(tau_cov_path) else None

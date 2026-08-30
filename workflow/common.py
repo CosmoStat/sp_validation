@@ -5,14 +5,10 @@ import os
 import re
 from pathlib import Path
 
-# Absolute path to the generic workflow's scripts, anchored on this module's own
-# location (common.py lives in workflow/, is `from common import *`'d into every
-# Snakefile, and so resolves to the generic workflow dir of the running checkout
-# regardless of which paper composes it — unlike workflow.basedir, which under
-# `module` composition reflects the composing paper). Rules that shell out to a
-# script directly (rather than through Snakemake's `script:` directive)
-# interpolate this instead of a hardcoded pure_eb/ compat-symlink
-# path. /automnt/n17data is the automount of the container-bound /n17data.
+# Absolute path to the generic workflow's scripts, for rules that shell out to a
+# script directly rather than through Snakemake's `script:` directive. Anchored
+# on this module's own location, not workflow.basedir — under `module`
+# composition basedir reflects the composing paper, not the running checkout.
 WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
 
 # Output roots are env-overridable so a reproduction run can write into a
@@ -28,12 +24,9 @@ COSMO_INFERENCE = Path(
     )
 )
 CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
-# NB: "blind" here is the glass-mock multi-catalogue A/B/C variant convention
-# (three mock realisations), NOT Smokescreen blinding. The name predates the
-# blind-at-birth work and is kept because it is baked into on-disk filenames we
-# do not own (e.g. sguerrini's nz_{version}_{A|B|C}.txt) and into the covariance
-# / inference path builders below. Smokescreen concealment is a separate axis
-# (the concealed=True SACC stamp), tracked by issues #241/#247.
+# "blind" is the glass-mock A/B/C realisation convention, NOT Smokescreen
+# blinding (a separate axis: the concealed=True SACC stamp). The name is baked
+# into on-disk filenames we do not own (e.g. nz_{version}_{A|B|C}.txt).
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -48,7 +41,6 @@ COSMOLOGY_PARAMS = "results/cosmology/planck18.json"
 # silent failures. Apply with: wildcard_constraints: **WILDCARD_CONSTRAINTS
 WILDCARD_CONSTRAINTS = {
     "version": r"SP_v[\d.]+(_w_iv)?(_ecut\d+)?(_leak_corr)?",
-    # glass-mock A/B/C variant, not Smokescreen blinding — see BLINDS above.
     "blind": r"[ABC]",
     "nbins": r"\d+",
     "min_sep": r"[0-9.]+",
@@ -173,22 +165,37 @@ def covariance_path(
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
+def base_version(version):
+    """Strip the derived-catalogue suffixes to the base catalogue version.
+
+    The `_leak_corr` / `_ecut{N}` variants share their parent's n(z) and
+    `cov_th` survey parameters, so lookups keyed on either must strip both.
+    """
+    return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
+
+
 def build_redshift_path(version, blind):
     """Construct n(z) filepath for given catalog version and blind."""
-    base_version = re.sub(r"_leak_corr$", "", version)
-    base_version = re.sub(r"_ecut\d+", "", base_version)
-    if "v1.4.11" in base_version:
-        base_version = "SP_v1.4.6"
-    version_dir = base_version.replace("SP_", "")
-    return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
-    )
+    base = base_version(version)
+    if "v1.4.11" in base:
+        base = "SP_v1.4.6"
+    version_dir = base.replace("SP_", "")
+    return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base}_{blind}.txt"
+
+
+def pseudo_cl_tag(config):
+    """Fiducial harmonic-binning tag the pseudo-Cl producers stamp into filenames.
+
+    Single definition shared by the producer (twopoint.smk) and the consumers
+    (cosmo_val.smk, inference.smk), which reconstruct the name from config.
+    """
+    fiducial = config["harmonic"]["fiducial"]
+    return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
 def get_shear_catalog(wildcards):
     """Resolve shear catalog path from config for a given version."""
-    base_version = wildcards.version.replace("_leak_corr", "")
-    cat_config = CATALOG_CONFIG[base_version]
+    cat_config = CATALOG_CONFIG[wildcards.version.replace("_leak_corr", "")]
     shear_path = cat_config["shear"]["path"]
     if shear_path.startswith("/"):
         return shear_path

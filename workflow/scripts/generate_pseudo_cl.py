@@ -4,12 +4,10 @@ Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
 object supplies the parameters and the native product is renamed to the tagged
 output filename the rule declares; as a standalone CLI (argparse) the same
 compute runs from explicit flags and the primitive's native
-``pseudo_cl_{ver}.sacc`` is left in place under ``--out`` (no rename — each
-lc/ASTRA recipe gets its own output directory, so the untagged native name is
-unambiguous and the primitives' skip-if-exists never collides across nbins
-runs). The C_ell data vector is born as SACC (EE/BB/EB with a shared bandpower
-window) — see ``sp_validation.cosmo_val.sacc_writers.pseudo_cl_to_sacc``. The
-CLI form is what the lightcone/ASTRA recipe calls, so the measurement is driven
+``pseudo_cl_{ver}.sacc`` is left in place under ``--out`` (each lc/ASTRA recipe
+gets its own output directory, so the untagged name is unambiguous). The C_ell
+data vector is born as SACC (EE/BB/EB with a shared bandpower window). The CLI
+form is what the lightcone/ASTRA recipe calls, so the measurement is driven
 directly (no nested Snakemake) with lc handling orchestration:
 
     python generate_pseudo_cl.py \
@@ -52,9 +50,8 @@ def generate_pseudo_cl(
     version : str
         Catalog version (e.g., "SP_v1.4.6_leak_corr")
     out_path : str
-        Exact destination the SACC part is *born at* — its final (possibly
-        tagged) name. No native-basename + rename step, so this producer's
-        skip-if-exists never collides with the untagged cv_pseudo_cl diagnostic.
+        Exact destination the SACC part is born at — its final (possibly tagged)
+        name. Skip-if-exists keys on it, so no two rules share a basename.
     cat_config : str
         Path to catalog configuration YAML
     nside : int
@@ -136,16 +133,11 @@ def generate_pseudo_cl(
 
     cv = CosmologyValidation(**cv_kwargs)
 
-    # Calculate pseudo-Cls only (no covariance). The data vector is born as a
-    # SACC part directly at out_path (its final, possibly-tagged name) — no
-    # shared native basename, no rename, so this producer's skip-if-exists never
-    # collides with the untagged cv_pseudo_cl diagnostic (which would otherwise
-    # let one rule adopt + delete the other's differently-blinded file).
+    # Pseudo-Cls only (no covariance), born directly at the final out_path.
     cv.calculate_pseudo_cl(out_path=out_path)
 
     if os.path.exists(out_path):
-        # Pipeline-internal readback of the unblinded data part just written
-        # (blinding is a downstream Smokescreen step).
+        # Readback of the part just written — a legitimate pre-blind consumer.
         s = sacc_io.load(out_path, allow_unblinded=True)
         ell = sacc_io.get_pseudo_cl(s, (0, 0))[0]
         print(f"Generated pseudo-Cl with {len(ell)} ell bins")
@@ -220,9 +212,8 @@ def _from_cli(argv=None):
         with open(a.cosmo_json) as f:
             cosmo_params = json.load(f)
 
-    # lc/ASTRA path: --out is a per-recipe directory; the untagged native name
-    # is unambiguous there (each recipe gets its own tree, so no cross-nbins or
-    # cross-blind collision).
+    # lc/ASTRA path: --out is a per-recipe directory, so the untagged name is
+    # unambiguous there.
     out_path = os.path.join(a.out, f"pseudo_cl_{a.ver}.sacc")
     generate_pseudo_cl(
         version=a.ver,
