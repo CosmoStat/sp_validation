@@ -370,29 +370,24 @@ rule cv_pseudo_cl:
 
 # On a data run the COSEBIs / pure-E/B parts re-derive their E-mode vector from
 # the *blinded* integration ξ± (COSEBIs) or blinded reporting + integration ξ±
-# (pure-E/B), and stamp the derived part concealed from the version's
-# commitment.json. blindable_part returns the plaintext part on a mock run and
-# the blinded part on a data run, so the ξ± inputs bind unconditionally for every
-# version; only the commitment is gated on is_data_run().
+# (pure-E/B). blindable_part returns the plaintext part on a mock run and the
+# blinded part on a data run, so the ξ± inputs bind unconditionally for every
+# version; see common.commitment_input for the commitment.
 def cv_cosebis_inputs(w):
-    inputs = {
+    return {
         "xi": cv_xi_txt(w.version),
         "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        **commitment_input(w.version),
     }
-    if is_data_run():
-        inputs["commitment"] = blind_state_paths(w.version)["commitment"]
-    return inputs
 
 
 def cv_pure_eb_inputs(w):
-    inputs = {
+    return {
         "xi": cv_xi_txt(w.version),
         "xi_reporting": blindable_part(cv_xi_reporting_sacc(w.version)),
         "xi_integration": blindable_part(cv_xi_integration_sacc(w.version)),
+        **commitment_input(w.version),
     }
-    if is_data_run():
-        inputs["commitment"] = blind_state_paths(w.version)["commitment"]
-    return inputs
 
 
 rule cv_pure_eb:

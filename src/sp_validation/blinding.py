@@ -46,9 +46,8 @@
     and the installed fork's ``DRAW_SCHEME`` as a repo-committable
     ``commitment.json``, and encrypts the seed into a Fernet bundle
     (``smokescreen.encryption``) — the plaintext seed is never written. The
-    three together, not the seed alone, are what reproduces a blind: seed and
-    config fix *which* shift, the draw scheme fixes *how* the seed becomes that
-    shift.
+    three together, not the seed alone, are what reproduces a blind (see
+    :func:`draw_scheme`).
 
     Each :func:`blind_part` call reads that fixed state, conceals one part,
     escrows the part's true vector into its own encrypted bundle beside the
@@ -61,14 +60,10 @@
     ``blind_draw_scheme``. :func:`unblind_part` verifies all three against the
     commitment *before* subtracting anything, then restores the true part.
 
-    Custody has no back door, including for its own history: a blind fixed
-    before the draw scheme was bound into ``commitment.json`` carries no
-    scheme record, and :func:`_assert_draw_scheme` refuses it ahead of every
-    seed read, so neither :func:`blind_part` nor :func:`unblind_part` will run
-    on it. Such a blind is recoverable only by hand, by decrypting its per-part
-    escrow bundles (:func:`_read_encrypted_json`) and reading ``true_mean``
-    back out. No such blind exists — the scheme has been bound since before
-    the first real blind — and the CLI deliberately offers no override.
+    Custody has no back door, including for its own history: a blind carrying no
+    scheme record is refused by :func:`_assert_draw_scheme` ahead of every seed
+    read, with no CLI override — none exists, the scheme having been bound
+    before the first real blind.
 """
 
 import dataclasses
@@ -228,7 +223,8 @@ def _assert_draw_scheme(recorded, what):
 
     ``what`` names the surface the scheme was read from, for the message.
     A missing record (``None``) is a failure, not a pass: a blind whose scheme
-    is unknown cannot be shown to be reproducible by this install.
+    is unknown cannot be shown to be reproducible by this install (see
+    :func:`draw_scheme`).
     """
     installed = draw_scheme()
     if recorded is None:
@@ -570,7 +566,7 @@ def unblind_sacc(blinded, seed, config=None, log=print):
     return part
 
 
-def _stamp_provenance(s, commitment, label, config_digest, scheme=None):
+def _stamp_provenance(s, commitment, label, config_digest):
     """Stamp the blind's public provenance; strip any leaked seed.
 
     ``blind_commitment`` (sha256 of the seed) ties the file to its blind
@@ -582,17 +578,16 @@ def _stamp_provenance(s, commitment, label, config_digest, scheme=None):
     raw seed upstream Smokescreen's writer would stamp — is popped
     defensively: the seed must never ride a kept file.
 
-    ``scheme`` defaults to the installed fork's, which is the right answer
-    whenever this call is stamping a blind that was just computed. Callers
-    propagating an existing blind's provenance pass that blind's recorded
-    scheme instead.
+    The stamped scheme is always the installed fork's: every caller has already
+    checked the blind's recorded scheme against it (:func:`_assert_draw_scheme`),
+    so the two agree by the time this runs.
     """
     s.metadata.pop("seed_smokescreen", None)
     s.metadata["concealed"] = True
     s.metadata["blind"] = label
     s.metadata["blind_commitment"] = commitment
     s.metadata["blind_config_digest"] = config_digest
-    s.metadata["blind_draw_scheme"] = draw_scheme() if scheme is None else int(scheme)
+    s.metadata["blind_draw_scheme"] = draw_scheme()
 
 
 def stamp_concealed_passthrough(s, commitment_path):
@@ -628,7 +623,6 @@ def stamp_concealed_passthrough(s, commitment_path):
         commitment["seed_commitment"],
         commitment["label"],
         commitment["config_digest"],
-        scheme=commitment["draw_scheme"],
     )
     return s
 
@@ -808,12 +802,11 @@ def blind_init(blind_dir, config=None, label="A", log=print):
 def _read_seed(blind_dir, config):
     """Decrypt the seed bundle and verify it against the commitment.
 
-    The seed commitment, the config digest, and the committed draw scheme are all
-    checked before the seed is handed to any caller — a tampered bundle, a
-    drifted config or a Smokescreen that draws differently from the one that
-    fixed this blind all fail loud here, whether the caller is about to blind
-    or to unblind. The scheme check is what stops a re-blind of a later part
-    from landing a different hidden cosmology than the earlier parts got.
+    The seed commitment, the config digest, and the committed draw scheme (see
+    :func:`draw_scheme`) are all checked before the seed is handed to any caller
+    — a tampered bundle, a drifted config or a Smokescreen that draws
+    differently from the one that fixed this blind all fail loud here, whether
+    the caller is about to blind or to unblind.
 
     Returns
     -------

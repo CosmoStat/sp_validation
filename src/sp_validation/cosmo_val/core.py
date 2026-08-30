@@ -100,11 +100,9 @@ class CosmologyValidation(
         Cosmological parameters to pass to get_cosmo(). If None, uses Planck 2018.
     run_type : {'data', 'mock'}, default 'data'
         The campaign's run type, stamped as the SACC ``type`` of every part this
-        object writes. Custody state, not decoration:
-        ``blinding.assert_consistent_blind`` admits an unconcealed blindable part
-        into a terminal assembly only when it declares itself a mock, so a mock
-        campaign must be built with ``run_type='mock'`` for its parts to
-        assemble at all.
+        object writes. Custody state, not decoration: a mock campaign must be
+        built with ``run_type='mock'`` for its parts to assemble at all (see
+        ``blinding.assert_consistent_blind``).
 
     Attributes
     ----------

@@ -185,10 +185,8 @@ class CosebisMixin:
         to the part in place of ``result["En"]`` — re-derived from the integration
         ξ± SACC part at the fiducial scale cut (Bn and the covariance stay from the
         raw estimator ``result``). ``commitment_path`` stamps the part concealed
-        under that version's blind (via
-        :func:`blinding.stamp_concealed_passthrough`) before save, so a data run's
-        part clears the fail-closed load gate. With both ``None`` (mock runs) the
-        behaviour is unchanged.
+        under that version's blind (see :func:`sacc_io.save`). With both ``None``
+        (mock runs) the behaviour is unchanged.
         """
         result, scale_cut = self._fiducial_cosebis_result(results, fiducial_scale_cut)
         if en_override is not None:
@@ -199,11 +197,7 @@ class CosebisMixin:
             result,
             scale_cut,
         )
-        if commitment_path is not None:
-            from ..blinding import stamp_concealed_passthrough
-
-            stamp_concealed_passthrough(s, commitment_path)
-        sacc_io.save(s, out_path, type=self.run_type)
+        sacc_io.save(s, out_path, type=self.run_type, commitment=commitment_path)
 
     def plot_cosebis(
         self,

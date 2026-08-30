@@ -92,8 +92,7 @@ NPATCH = None
 OUTPUT_DIR = None
 PATCH_FILE = None
 # Campaign run type, stamped as the part's SACC `type`. Custody state, not
-# decoration: a plaintext blindable part may only enter an assembly when it
-# declares itself a mock (blinding.assert_consistent_blind).
+# decoration (see blinding.assert_consistent_blind).
 RUN_TYPE = "data"
 
 

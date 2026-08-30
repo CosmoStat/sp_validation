@@ -19,13 +19,9 @@ versions: [
 # CosmologyValidation suite parameters (cosmo_val.py)
 # ---------------------------------------------------------------------------
 cosmo_val:
-  # Campaign run type: "data" or "mock". One switch, two effects. It gates
-  # Smokescreen blind-at-birth (a data run blinds the three blindable parts and
-  # binds every ξ-derived consumer to the blinded siblings; a mock run bypasses
-  # blinding), and it is stamped as the SACC `type` of every part written. The
-  # two are the same decision: an unconcealed blindable part only enters the
-  # terminal assembly when it declares itself a mock, so a mock campaign must
-  # say so here for its parts to assemble at all.
+  # Campaign run type: "data" or "mock". One switch: it gates Smokescreen
+  # blind-at-birth and is stamped as the SACC `type` of every part written
+  # (custody state at assembly — see blinding.assert_consistent_blind).
   type: data
 
   # CosmologyValidation constructor

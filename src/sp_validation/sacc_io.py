@@ -924,7 +924,7 @@ def update_statistic(s, sub):
         s.data[idx[0]].value = point.value
 
 
-def save(s, path, *, type):
+def save(s, path, *, type, commitment=None):
     """Write ``s`` to ``path`` (FITS), overwriting any existing file.
 
     Parameters
@@ -937,6 +937,12 @@ def save(s, path, *, type):
         the pipeline computing the data vector — knows whether its input
         catalogue is a mock; there is deliberately no default. ``load``
         refuses ``type='data'`` files that are not blinded.
+    commitment : str, optional
+        Path to the version's ``commitment.json``. When given, the file is
+        stamped concealed under that blind
+        (:func:`sp_validation.blinding.stamp_concealed_passthrough`, values
+        untouched) before writing — the seam every born-blinded or
+        blind-irrelevant part uses to clear the fail-closed load gate.
     """
     if type not in ("data", "mock"):
         raise ValueError(f"type must be 'data' or 'mock'; got {type!r}")
@@ -946,6 +952,10 @@ def save(s, path, *, type):
             f"refusing to re-stamp as {type!r}"
         )
     s.metadata["type"] = type
+    if commitment is not None:
+        from . import blinding
+
+        blinding.stamp_concealed_passthrough(s, commitment)
     s.save_fits(path, overwrite=True)
 
 

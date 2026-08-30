@@ -230,8 +230,7 @@ def run_type():
     """The campaign's run type, ``"data"`` or ``"mock"``.
 
     Every part writer stamps this as the SACC ``type`` metadata, which is what
-    ``blinding.assert_consistent_blind`` reads at assembly: a plaintext
-    blindable part may only assemble when it declares itself a mock. A function
+    ``blinding.assert_consistent_blind`` reads at assembly. A function
     rather than the ``RUN_TYPE`` global because ``from common import *`` binds
     names before ``configure()`` runs, so only a call reads the configured
     value.
@@ -241,7 +240,7 @@ def run_type():
 
 def is_data_run():
     """True when blinding is active (production data runs); False for mocks."""
-    return RUN_TYPE == "data"
+    return run_type() == "data"
 
 
 def blind_state_dir(version):
@@ -260,6 +259,19 @@ def blind_state_paths(version):
         "bundle": os.path.join(d, "blind_seed.encrpt"),
         "key": os.path.join(d, "blind_seed.key"),
     }
+
+
+def commitment_input(version):
+    """Input mapping binding a version's commitment.json, on data runs only.
+
+    A part writer stamps its output concealed from that file (sacc_io.save's
+    `commitment=`), which is what lets a born-blinded or blind-irrelevant part
+    clear the fail-closed load gate the terminal assembly opens every part
+    through. A mock run binds nothing and the part stays plaintext.
+    """
+    if not is_data_run():
+        return {}
+    return {"commitment": blind_state_paths(version)["commitment"]}
 
 
 def blinded_path(part_path):

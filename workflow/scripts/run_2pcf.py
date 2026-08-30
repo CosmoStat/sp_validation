@@ -51,9 +51,8 @@ def run_2pcf(
     expects. ``sacc_out`` is the exact destination for the reporting ξ± SACC part
     (the Snakemake-declared output); it defaults to ``{ver}_xi_reporting.sacc``
     under the resolved output directory for the CLI path. ``run_type``
-    (``"data"`` or ``"mock"``) is stamped as the part's SACC ``type``: a
-    plaintext blindable part may only enter an assembly when it declares itself
-    a mock, so a mock campaign must say so here.
+    (``"data"`` or ``"mock"``) is stamped as the part's SACC ``type`` — custody
+    state at assembly (see ``blinding.assert_consistent_blind``).
 
     Returns
     -------

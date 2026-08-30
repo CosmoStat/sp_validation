@@ -9,9 +9,8 @@ Per-part data-vector blinding with :mod:`sp_validation.blinding`
 (never printed, never written in plaintext), publishes a repo-committable
 ``commitment.json`` (the seed commitment + the config digest + the installed
 Smokescreen fork's draw scheme), and encrypts the seed into a Fernet bundle.
-Those three, not the seed alone, are what reproduces a blind: seed and config
-fix *which* shift, the draw scheme fixes *how* the seed becomes that shift.
-``blind-part`` blinds one intermediate part SACC (reporting ξ±, integration ξ±,
+Those three, not the seed alone, are what reproduces a blind (see
+``blinding.draw_scheme``). ``blind-part`` blinds one intermediate part SACC (reporting ξ±, integration ξ±,
 or pseudo-Cℓ) under that fixed state, escrows the true vector into a per-part
 encrypted bundle beside the blinded output, and deletes the plaintext part.
 ``unblind`` verifies all three commitments and restores a true part
@@ -113,8 +112,7 @@ def _verify(args):
     only that the file's three custody stamps agree with the commitment, and
     that the recorded draw scheme is the one this install implements. That last
     check makes the result environment-dependent by design: a machine carrying a
-    different Smokescreen reports a problem even when file and commitment agree
-    perfectly, because that machine could not unblind the file.
+    different Smokescreen could not unblind the file, so it reports a problem.
 
     Loads with ``allow_unblinded=True``: the whole job here is to report on a
     file's custody state, including the state where the file is not concealed at
@@ -131,30 +129,19 @@ def _verify(args):
         problems.append("blind_commitment does not match the committed seed commitment")
     if s.metadata.get("blind_config_digest") != commitment["config_digest"]:
         problems.append("blind_config_digest does not match the committed digest")
-    # The draw scheme is checked three ways: file ↔ commitment, and both against
-    # the installed fork. A scheme mismatch is the one blinding failure with no
-    # numerical symptom — the unblind would subtract a different shift than was
-    # added and every other check here would still pass.
-    installed = blinding.draw_scheme()
+    # The draw scheme is checked two ways: file ↔ commitment, and the file's
+    # against the installed fork (see blinding.draw_scheme).
     file_scheme = s.metadata.get("blind_draw_scheme")
     committed = commitment.get("draw_scheme")
-    if file_scheme is None or committed is None:
+    if file_scheme != committed:
         problems.append(
-            "no draw-scheme record on the file and/or in the commitment — "
-            "this blind predates draw-scheme binding and cannot be verified "
-            "reproducible"
+            f"blind_draw_scheme {file_scheme!r} does not match the committed "
+            f"draw_scheme {committed!r}"
         )
-    elif int(file_scheme) != int(committed):
-        problems.append(
-            f"blind_draw_scheme {int(file_scheme)} does not match the committed "
-            f"draw_scheme {int(committed)}"
-        )
-    elif int(file_scheme) != installed:
-        problems.append(
-            f"blind was drawn under Smokescreen DRAW_SCHEME={int(file_scheme)} "
-            f"but the installed fork implements DRAW_SCHEME={installed} — this "
-            "install cannot reproduce the shift"
-        )
+    try:
+        blinding._assert_draw_scheme(file_scheme, "the blinded file")
+    except ValueError as exc:
+        problems.append(str(exc))
     if "seed_smokescreen" in s.metadata:
         problems.append("PLAINTEXT SEED LEAKED into file metadata (seed_smokescreen)")
     if problems:

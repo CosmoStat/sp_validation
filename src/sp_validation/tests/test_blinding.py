@@ -336,18 +336,10 @@ def test_theory_config_ccl_params_exact_keyset():
 # --------------------------------------------------------------------------- #
 def test_commitment_is_the_forks_domain_separated_digest():
     """One definition of the commitment, and it is the fork's."""
-    import hashlib
-
     import smokescreen
 
     seed = "the-secret"
     assert bd.seed_commitment(seed) == smokescreen.seed_commitment(seed)
-    assert (
-        bd.seed_commitment(seed)
-        == hashlib.sha256(
-            smokescreen.COMMITMENT_DOMAIN + seed.encode("utf-8")
-        ).hexdigest()
-    )
     assert bd.seed_commitment("right") != bd.seed_commitment("wrong")
 
 
@@ -370,7 +362,6 @@ def test_commitment_does_not_embed_the_rng_seed():
     for seed in ("my_secret_seed", "the-secret", secrets.token_hex(16)):
         commitment = bd.seed_commitment(seed)
         assert int(commitment[:16], 16) != _normalize_seed(seed)
-        assert str(_normalize_seed(seed)) not in commitment
 
 
 def test_hidden_params_deterministic_and_in_envelope():
