@@ -2,7 +2,7 @@
 
 This module is a thin subclass of CosmoSIS's ``SaccClLikelihood`` (from the
 CosmoSIS Standard Library, ``likelihood/sacc/sacc_like.py``) that fixes two
-upstream defects so the native SACC likelihood matches the PR-3 converter →
+upstream defects so the native SACC likelihood matches the converter →
 ``2pt_like`` path bit for bit on our real-space ξ± analysis file. It exists as a
 CosmoSIS *module file* (``setup``/``execute``/``cleanup`` at module scope), loaded
 via ``file = .../sacc_like_unions.py`` in an ini, and is NOT imported by
@@ -18,7 +18,7 @@ single-bin analysis file), and both are fixed here by overriding ``build_data``:
    ``sacc_likelihoods/twopoint.py`` (L74-90 at CSL commit 4fd2f1c) builds a
    ``SpectrumInterp`` over ``block[section, "theta"]`` — theory θ in *radians*
    (CosmoSIS convention) — and evaluates it at each data point's raw ``theta``
-   tag, which our SACC files (and firecrown) store in *arcmin*. ``2pt_like.py``
+   tag, which our SACC files store in *arcmin*. ``2pt_like.py``
    (L179-183) converts its real-space data to radians for exactly this reason;
    ``sacc_like`` never does, so the spline is evaluated ~3437× outside its grid,
    ``SpectrumInterp`` returns 0 there, and χ² silently collapses to dᵀC⁻¹d. The

@@ -9,10 +9,9 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-# 3.12 floor: Smokescreen 1.5.6 (and firecrown v1.15) require it, as does
-# cosmo-numba (a hard dependency below); the container base (shapepipe:develop)
-# is already python:3.12-slim-bookworm, so this aligns pyproject with the
-# actual runtime and keeps `uv lock` resolvable.
+# 3.12 floor: cosmo-numba (a hard dependency below) requires >=3.12, and the
+# production container is Python 3.12 (shapepipe base image). Keeping the floor
+# in sync with the container is what makes `uv lock` resolvable.
 requires-python = ">=3.12"
 classifiers = [
     "License :: OSI Approved :: MIT License",
@@ -162,39 +161,13 @@ workflow = [
     # published or resolvable (no public repo found) — left undeclared pending
     # its source. Same for `unions_wl` (scripts/check_footprint.py).
 ]
-# Data-vector blinding (PRD #241 §3-§5): Smokescreen applies the Muir et al.
-# shift d → d + t(hidden) − t(fid), with firecrown + CCL as the theory engine
-# (only compute_theory_vector is used; sampling stays with CosmoSIS). The blind
-# must be exactly recomputable from the seed at unblinding time, so the whole
-# theory stack is pinned exactly, as a set. Smokescreen 1.5.6 + firecrown v1.15
-# both set the python floor (>=3.12).
-#
-# firecrown is not on PyPI and declares conda-forge-only / unused sampler
-# connectors as hard deps, so installing this extra requires the dependency
-# override file: `uv pip install --overrides uv-overrides.txt -e '.[blinding]'`
-# (see uv-overrides.txt; the Dockerfile does this for the container).
-# After installing this extra, run `python scripts/patch_firecrown.py` — it
-# makes pip-installed firecrown importable without NumCosmo (conda-forge-only);
-# see that script's docstring for the full story.
-blinding = [
-    "firecrown @ git+https://github.com/LSSTDESC/firecrown.git@v1.15.1",
-    "smokescreen==1.5.6",
-    "pyccl==3.3.4",
-    # firecrown 1.15.1 subclasses npt.NDArray (DataVector); numpy 2.5 turned
-    # npt.NDArray into a non-subclassable typing alias, breaking firecrown at
-    # import. firecrown's own env caps numpy<2.4; 2.4.3 is verified against
-    # the full compiled stack (pyccl/camb/treecorr/healpy/pymaster) + the
-    # sp_validation fast suite.
-    "numpy>=2.2,<2.5",
-]
-# Native SACC inference likelihood (PR 7, sp_validation.sacc_like_unions). The
-# shim subclasses CosmoSIS's SaccClLikelihood; this pins the engine. Both engine
-# module files are pure-python (no CAMB / compiled CSL), so the equality tests
-# (tests/test_sacc_like.py) run with just this extra + a CosmoSIS Standard
-# Library checkout, located via the CSL_DIR env var:
+# Native SACC inference likelihood (sp_validation.sacc_like_unions), which
+# subclasses CosmoSIS's SaccClLikelihood. The engine modules it needs are pure
+# python, so tests/test_sacc_like.py runs with just this extra plus a CosmoSIS
+# Standard Library checkout pointed at by CSL_DIR:
 #   git clone --depth 1 https://github.com/joezuntz/cosmosis-standard-library CSL
 #   CSL_DIR=/path/to/CSL  pytest ... test_sacc_like.py
-# Inert in CI (its Dockerfile installs only [test,glass,blinding]).
+# Not installed by the container image, so inert in CI.
 cosmosis = ["cosmosis>=3.25"]
 develop = ["sp_validation[test,docs]"]
 

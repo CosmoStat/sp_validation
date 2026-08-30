@@ -89,25 +89,13 @@ We do not currently build images for Apple Silicon/arm64; however the amd64 imag
 
 ## Local Installation
 
-Requires Python ≥ 3.12 (the floor is set by the blinding stack; the container
-already runs 3.12). With [uv](https://docs.astral.sh/uv/):
+Requires Python ≥ 3.12 (the container runs 3.12). With
+[uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv venv --python 3.12
 uv pip install -e '.[test]'
 ```
-
-To also install the data-vector blinding stack (Smokescreen + firecrown, PRD
-[#241](https://github.com/CosmoStat/sp_validation/issues/241)), pass the
-dependency-override file — firecrown is not pip-resolvable without it (see
-`uv-overrides.txt` for why):
-
-```bash
-uv pip install --overrides uv-overrides.txt -e '.[test,blinding]'
-python scripts/patch_firecrown.py  # make pip-installed firecrown importable without NumCosmo
-```
-
-
 
 ## Flow chart
 

@@ -98,9 +98,9 @@ def generate_inference_config(template_path, out_path, substitutions):
 def _substitutions(scratch, cosmosis_dir, *, fits_file=None, sacc_file=None):
     """Assemble the DEFAULT substitution dict, resolving SP_VALIDATION_MODULES.
 
-    ``fits_file`` (2pt_like path) and ``sacc_file`` (sacc_like path) are mutually
-    the data-file placeholder for their template; whichever the template
-    references is filled, the other left absent.
+    ``fits_file`` (2pt_like path) and ``sacc_file`` (sacc_like path) are the
+    data-file placeholders of their respective templates; whichever the template
+    references is filled, the other is left absent.
     """
     return {
         "SCRATCH": scratch,

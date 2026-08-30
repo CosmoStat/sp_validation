@@ -33,28 +33,7 @@ COPY pyproject.toml uv.lock /sp_validation/
 RUN uv sync --frozen --inexact --no-install-project \
     --extra test --extra glass --extra workflow
 
-# Full source in place before the blinding-extra install below: it is an
-# editable install of the project itself and needs uv-overrides.txt and
-# scripts/patch_firecrown.py from the tree.
+# Install sp_validation itself (editable) into the same venv; deps are already
+# satisfied by the sync above.
 COPY . /sp_validation
-
-# The [blinding] extra (SACC/Smokescreen blinding stack: firecrown + smokescreen)
-# is not in uv.lock — firecrown is not on PyPI and declares conda-forge-only /
-# unused sampler connectors as hard deps, so it needs the override file (see
-# uv-overrides.txt for the full story). Installed as a separate pass on top of
-# the locked sync.
-RUN uv pip install --no-cache-dir --overrides uv-overrides.txt -e '.[blinding]'
-
-# Same uv gotcha as the cs_util upgrade above (astral-sh/uv #8410): if the base
-# image / locked sync already carries a numpy that violates the [blinding]
-# extra's `numpy<2.5` cap (firecrown 1.15.1 breaks on numpy 2.5 at import), the
-# editable install won't move it. Request the bound explicitly so the image is
-# deterministic either way; numpy 2.4.x is ABI-compatible with the compiled
-# stack (verified: pyccl/camb/treecorr/healpy/pymaster + fast suite).
-RUN uv pip install --no-cache-dir 'numpy>=2.2,<2.5'
-
-# firecrown is distributed for conda-forge (where NumCosmo always exists) and
-# hits NumCosmo at import time in a pip env, on paths unrelated to our use.
-# This patches the installed tree (surgical, pinned-version-checked, loud on
-# mismatch) and verifies `import firecrown.likelihood; import smokescreen`.
-RUN python scripts/patch_firecrown.py
+RUN uv pip install --no-deps -e .

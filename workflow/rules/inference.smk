@@ -4,8 +4,8 @@
 # lazily at DAG time, since that file is included after this one).
 #
 # Two paths live here:
-#   * Real-data inference_prep — LIVE (PR 7): consumes the assembled {version}.sacc
-#     and emits the converter 2pt-FITS + both engine inis (2pt_like, sacc_like).
+#   * Real-data inference_prep — live: consumes the assembled {version}.sacc and
+#     emits the converter 2pt-FITS + both engine inis (2pt_like, sacc_like).
 #   * glass-mock rules — still cosmosis_fitting.py-based (their SACC migration is
 #     out of scope); the pseudo-Cl file-name plumbing they depend on stays below.
 
@@ -50,7 +50,7 @@ def pseudo_cl_assets(version):
     return str(cl_path), str(cov_path)
 
 # ---------------------------------------------------------------------------
-# Real-data inference prep — LIVE (native SACC, PR 7). Consumes the assembled
+# Real-data inference prep (native SACC). Consumes the assembled
 # analysis {version}.sacc (cosmo_val.smk's assemble_sacc rule) and emits the two
 # file-prep products the A_ia (IA-only, ξ±) fiducial pipeline needs:
 #   (a) the converter 2pt-FITS (sacc_to_twopoint_fits) + a generated 2pt_like ini
@@ -62,7 +62,7 @@ def pseudo_cl_assets(version):
 # CosmoSIS sampling still runs via pipeline.sh against these products.
 #
 # The glass-mock rules below stay cosmosis_fitting.py-based; their SACC migration
-# is out of scope for PR 7.
+# is tracked separately.
 # ---------------------------------------------------------------------------
 # Generated per-version configs land in the (env-overridable) output root.
 INFERENCE_CONFIG_OUT = COSMO_INFERENCE_PROD / "cosmosis_config"

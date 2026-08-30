@@ -1,13 +1,12 @@
 """Equality tests: the sp_validation SACC-likelihood shim vs CosmoSIS ``2pt_like``.
 
-PR 7 adopts CosmoSIS's native ``SaccClLikelihood`` for the ξ± inference path,
-through the shim :mod:`sp_validation.sacc_like_unions` (which fixes the upstream
+The ξ± inference path uses CosmoSIS's native ``SaccClLikelihood`` through the
+shim :mod:`sp_validation.sacc_like_unions` (which fixes the upstream
 arcmin→rad gap and adds an ordering guard). The contract is *in-process module
 equality*: run the shimmed ``sacc_like`` on the analysis SACC and CosmoSIS's
-``2pt_like`` on the PR-3 converter's 2pt-FITS against an identical synthetic
+``2pt_like`` on the converter's 2pt-FITS against an identical synthetic
 theory DataBlock, and require the same χ², log-likelihood, theory vector and
-post-cut point count. The prototype (``sacc-like-probe/probe_equality.py``)
-observed *exact* equality (Δχ²=0, Δtheory=0), so the equality tests assert
+post-cut point count. Equality is exact (Δχ²=0, Δtheory=0), so the tests assert
 ``array_equal`` / rtol=1e-12.
 
 Environment
@@ -21,8 +20,8 @@ or missing. Recipe::
     git clone --depth 1 https://github.com/joezuntz/cosmosis-standard-library CSL
     CSL_DIR=/path/to/CSL  pytest ... test_sacc_like.py
 
-The pyproject ``cosmosis`` extra pins ``cosmosis>=3.25`` for the engine itself
-(inert in CI, whose Dockerfile installs only ``[test,glass,blinding]``).
+The pyproject ``cosmosis`` extra pins ``cosmosis>=3.25`` for the engine itself;
+the CI image does not install it, so this module is inert there.
 """
 
 import importlib.util

@@ -90,7 +90,7 @@ def test_cosmo_val_workflow_assemble_dry_runs():
 
 @requires_candide_data
 def test_cosmo_val_inference_prep_dry_runs():
-    """The revived (PR-7) inference_prep DAG resolves end to end from the SACC.
+    """The inference_prep DAG resolves end to end from the assembled SACC.
 
     inference_fiducial must pull inference_prep, which consumes the assembled
     {version}.sacc and emits the converter 2pt-FITS plus BOTH generated pipeline
@@ -105,8 +105,8 @@ def test_cosmo_val_inference_prep_dry_runs():
     assert "rule inference_fiducial:" in out, out
     # inference_prep consumes the assembled analysis SACC (not per-sign xi FITS).
     assert f"{version}.sacc" in out, out
-    # ...and both ini TEMPLATES, bound as inputs so a template edit regenerates the
-    # configs (Finding 2 — a template as params gave no DAG edge).
+    # ...and both ini templates, bound as inputs so a template edit regenerates
+    # the configs (as params they would give no DAG edge).
     assert "cosmosis_pipeline_A_ia.ini" in out, out
     assert "cosmosis_pipeline_A_ia_sacc.ini" in out, out
     # It emits the converter FITS + both engine inis.
