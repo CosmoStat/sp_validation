@@ -86,11 +86,7 @@ def _xi_reporting_path(version):
 
 
 def _xi_integration_path(version):
-    """Path to fine-binned 2PCF integration file.
-
-    The integration grid is unpatched (npatch=1, matching XI_GRIDS): it supplies
-    values only, never a jackknife covariance.
-    """
+    """Path to fine-binned 2PCF integration file. Unpatched: values only, no covariance."""
     return (
         f"{COSMO_VAL_OUTPUT}/{version}_xi_minsep={FIDUCIAL['min_sep_int']}"
         f"_maxsep={FIDUCIAL['max_sep_int']}_nbins={FIDUCIAL['nbins_int']}_npatch=1.txt"

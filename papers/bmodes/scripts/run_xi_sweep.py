@@ -72,8 +72,6 @@ def _from_cli(argv=None):
     versions = a.versions or nonfiducial_versions(config)
     for ver in versions:
         for grid in a.grids:
-            # The sweep consumes only the .txt dump; the SACC part's default
-            # name carries the binning, so the two grids land in distinct files.
             run_2pcf(
                 ver=ver,
                 cat_config=a.cat_config,

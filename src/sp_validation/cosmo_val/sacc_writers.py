@@ -4,10 +4,8 @@ A thin, pure layer between the ``cosmo_val`` mixins (which compute statistics as
 TreeCorr / NaMaster / b_modes arrays) and :mod:`sp_validation.sacc_io` (which
 knows the file layout). Each ``*_to_sacc`` function turns one already-computed
 statistic into a single-statistic SACC — a *part* — carrying that statistic's
-own covariance as its one block. The Snakemake DAG writes one part per rule;
-:func:`assemble_analysis_sacc` then rebuilds the single ``{version}.sacc``
-analysis file with a ``BlockDiagonalCovariance`` over the per-part blocks in
-canonical order.
+own covariance as its one block. :func:`assemble_analysis_sacc` rebuilds the
+single ``{version}.sacc`` analysis file from these parts.
 
 The integration-grid ξ± part is an intermediate consumed by COSEBIs and
 pure-E/B; it is blinded at birth but does not join ``{version}.sacc``.
@@ -29,7 +27,7 @@ TAU_K = (0, 2, 5)  # τ_0, τ_2, τ_5
 # NaMaster spin-2 × spin-2 decoupled-spectrum row order (EE, EB, BE, BB).
 _NMT_EE, _NMT_EB, _NMT_BB = 0, 1, 3
 
-BIN = (0, 0)  # single-bin default until the round goes tomographic
+BIN = (0, 0)
 
 
 def xi_to_sacc(
@@ -47,9 +45,8 @@ def xi_to_sacc(
 ):
     """One ξ± part (``bins=(0, 0)``) on the reporting or integration grid.
 
-    ``variances`` (the concatenated ``[varxip; varxim]``) attaches a
-    ``DiagonalCovariance`` — used for the integration-grid part, where npatch=1
-    leaves TreeCorr shot-noise variance as the only covariance estimate.
+    ``variances`` is the concatenated ``[varxip; varxim]``; when given, attaches
+    a ``DiagonalCovariance``.
     """
     s = sio.new_sacc(nz, metadata)
     sio.add_xi(
@@ -97,10 +94,7 @@ def cosebis_to_sacc(nz, metadata, result, scale_cut):
 
     ``result`` is a single scale-cut result dict from
     ``b_modes.calculate_cosebis`` — ``{"En", "Bn", "cov", ...}`` — where ``cov``
-    is the ``[En; Bn]``-ordered COSEBIs covariance. Non-fiducial scale cuts are
-    a diagnostic (the PTE scan) and stay in the sidecar ``.npz``; only the
-    fiducial cut is a data product, because the analysis covariance must cover
-    every stored point and the cuts overlap in mode space.
+    is the ``[En; Bn]``-ordered COSEBIs covariance.
     """
     s = sio.new_sacc(nz, metadata)
     sio.add_cosebis(s, BIN, result["En"], scale_cut, Bn=result["Bn"])
@@ -127,12 +121,10 @@ def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
 
     ``rho_stats`` / ``tau_stats`` are the ``shear_psf_leakage`` handler tables
     (columns ``theta``, ``rho_{k}_p``, ``varrho_{k}_p``, … and the τ analogue).
-    ρ carries a ``varrho`` diagonal (a diagnostic, not consumed by inference);
-    τ carries a ``vartau`` diagonal with ``tau_cov_th`` scattered into the τ-plus
-    rows/columns. ``CovTauTh.build_cov`` returns a ``(3·nbin, 3·nbin)`` k-major
-    matrix over ``{τ0, τ2, τ5}`` with plus/minus folded into one component per k,
-    so it aligns to the τ-plus points in k-major order; the τ-minus points have
-    no theory covariance. ``tau_cov_th=None`` leaves the τ block fully diagonal.
+    ρ carries a ``varrho`` diagonal; τ carries a ``vartau`` diagonal, with
+    ``tau_cov_th`` — a ``(3·nbin, 3·nbin)`` k-major matrix over the τ-plus points
+    only — scattered into the τ-plus rows/columns when given. ``tau_cov_th=None``
+    leaves the τ block fully diagonal.
     """
     s = sio.new_sacc(nz, metadata)
     theta_rho = np.asarray(rho_stats["theta"])
@@ -168,7 +160,6 @@ def rho_tau_to_sacc(nz, metadata, rho_stats, tau_stats, tau_cov_th=None):
         ]
     )
     if tau_cov_th is None:
-        # Compact DiagonalCovariance; assembly reads it back via .dense.
         s.add_covariance(np.concatenate([rho_var, tau_var]))
         return s
     tau_cov_th = np.asarray(tau_cov_th)

@@ -11,13 +11,11 @@ from snakemake.io import temp
 # conventions without importing numpy + smokescreen.
 from sp_validation.blinding_paths import init_paths, part_paths
 
-# The running checkout, for rules that shell out to a repo script directly
-# rather than through Snakemake's `script:` directive. Anchored on this module's
-# own location, not workflow.basedir — under `module` composition basedir
-# reflects the composing paper, not the running checkout.
+# The running checkout, for rules that shell out to a script directly rather
+# than through Snakemake's `script:` directive. Anchored on this module's own
+# location, not workflow.basedir — under `module` composition basedir reflects
+# the composing paper, not the running checkout.
 REPO_ROOT = Path(os.path.realpath(__file__)).parents[1]
-# The generic workflow's scripts, and the repo's top-level scripts/ (user-facing
-# CLIs).
 WORKFLOW_SCRIPTS = str(REPO_ROOT / "workflow" / "scripts")
 REPO_SCRIPTS = str(REPO_ROOT / "scripts")
 
@@ -204,11 +202,7 @@ def build_redshift_path(version, blind):
 
 
 def pseudo_cl_tag(config):
-    """Fiducial harmonic-binning tag the pseudo-Cl producers stamp into filenames.
-
-    Single definition shared by the producer (twopoint.smk) and the consumers
-    (cosmo_val.smk, inference.smk), which reconstruct the name from config.
-    """
+    """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames."""
     return f"blind={config['harmonic']['fiducial']['blind']}_{pseudo_cl_binning_tag(config)}"
 
 

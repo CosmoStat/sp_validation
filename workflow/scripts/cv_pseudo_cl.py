@@ -1,9 +1,7 @@
 """Rule cv_pseudo_cl: harmonic-space pseudo-Cl B-mode spectra.
 
-plot_pseudo_cl triggers calculate_pseudo_cl, which writes the born-as-SACC
-pseudo_cl_{version}.sacc part for every version (EE/BB/EB with the shared
-bandpower window) and the cell_ee.png figure. The per-version SACC parts are
-the declared outputs, read by cv_summarize_bmodes.
+plot_pseudo_cl triggers calculate_pseudo_cl, which writes one SACC part per
+version (EE/BB/EB with the shared bandpower window) and the cell_ee.png figure.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, verify_outputs

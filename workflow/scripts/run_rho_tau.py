@@ -51,7 +51,7 @@ cv = CosmologyValidation(
 cv.calculate_rho_tau_stats()
 
 # Confirm CosmologyValidation produced the requested outputs: the rho/tau FITS
-# and the born-as-SACC rho_tau part the assemble_sacc rule consumes.
+# and the born-as-SACC rho_tau part.
 outputs = snakemake.output  # type: ignore
 for label in ("rho_stats", "tau_stats", "rho_tau"):
     target = Path(outputs[label])

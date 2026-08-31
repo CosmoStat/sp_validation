@@ -319,11 +319,7 @@ def test_assemble_from_reloaded_parts(tmp_path):
 
 
 def test_cosebis_part_overrides_en_and_bn(tmp_path):
-    """En/Bn overrides reach the part; the covariance stays from ``results``.
-
-    Pins the cv_cosebis provenance split: values come from the (blindable)
-    integration ξ± part, the jackknife covariance from the raw patched run.
-    """
+    """En/Bn overrides reach the part; the covariance stays from ``results``."""
     from sp_validation.cosmo_val.cosebis import CosebisMixin
 
     raw = {
@@ -335,8 +331,7 @@ def test_cosebis_part_overrides_en_and_bn(tmp_path):
     en_part, bn_part = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
 
     class _Stub(CosebisMixin):
-        # run_type / commitment_path are what the blinded-part writer reads;
-        # a mock part with no commitment keeps this test off the custody gate.
+        # A mock part with no commitment keeps this off the custody gate.
         run_type = "mock"
         sacc_nz = staticmethod(lambda version: {0: _nz()})
         sacc_metadata = staticmethod(lambda version: META)
