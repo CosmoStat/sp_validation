@@ -11,6 +11,12 @@ from pathlib import Path
 # composition basedir reflects the composing paper, not the running checkout.
 WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
 
+# The running checkout, for rules that shell out to a repo script directly
+# rather than through Snakemake's `script:` directive. Anchored on this module's
+# own location, not workflow.basedir — under `module` composition basedir
+# reflects the composing paper, not the running checkout.
+REPO_ROOT = Path(os.path.realpath(__file__)).parents[1]
+
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(
