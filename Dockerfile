@@ -86,11 +86,16 @@ ENV CSL_DIR=/opt/cosmosis-standard-library
 # xi_sys, 2pt_like -- no Makefile in those trees at all) or lives under shear/:
 # `limber`, which project_2d.py links, and `cl_to_xi_nicaea`, whose
 # nicaea_interface.so the 2pt_shear stage loads.
+# The fork predates upstream's scipy>=1.15 fix (scipy.special.lpn removed;
+# legendre.py is imported by every real-space likelihood via spec_tools), so
+# upstream a8a941d5 is applied as a patch until the fork absorbs it (#316).
+COPY docker-patches/csl-scipy-lpn.patch /tmp/csl-scipy-lpn.patch
 RUN bash -c 'set -eo pipefail; \
     export PATH=/app/.venv/bin:$PATH; \
     git clone --filter=blob:none "$CSL_REPO" "$CSL_DIR"; \
     cd "$CSL_DIR"; \
     git checkout --detach "$CSL_REF"; \
+    git apply /tmp/csl-scipy-lpn.patch; \
     cmds=$(python -m cosmosis.configure); \
     eval "$cmds"; \
     export GSL_INC=/usr/include GSL_LIB=/usr/lib/x86_64-linux-gnu; \

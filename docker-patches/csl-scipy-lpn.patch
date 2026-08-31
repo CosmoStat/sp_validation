@@ -1,0 +1,31 @@
+From d0dfe8ce6707b8d074d89cd6a2c3f57df900a85a Mon Sep 17 00:00:00 2001
+From: Joe Zuntz <joezuntz@googlemail.com>
+Date: Tue, 13 Jan 2026 13:19:17 +0000
+Subject: [PATCH] another go at lpn
+
+---
+ shear/cl_to_xi_fullsky/legendre.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/shear/cl_to_xi_fullsky/legendre.py b/shear/cl_to_xi_fullsky/legendre.py
+index 0788af20..d411504c 100644
+--- a/shear/cl_to_xi_fullsky/legendre.py
++++ b/shear/cl_to_xi_fullsky/legendre.py
+@@ -1,7 +1,13 @@
+ from __future__ import print_function
+ from builtins import range
+ import numpy as np
+-from scipy.special import lpn
++try:
++    from scipy.special import lpn
++except ImportError:
++    from scipy.special import legendre_p_all
++    def lpn(n, z):
++        return legendre_p_all(n, z, diff_n=1)
++
+ 
+ PI=np.pi
+ 
+-- 
+2.43.7
+
