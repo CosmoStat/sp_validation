@@ -35,6 +35,11 @@
 
 executor: slurm
 
+# Snakemake >= 9 requires an explicit job cap even with the slurm executor
+# (9.16.3 errors out without one); carrying it here keeps the run command
+# free of ``-j`` as the Snakefile docstring promises.
+jobs: 100
+
 # Cluster policy applied to every job unless a rule overrides it.  The excludes
 # are the flaky/no-internet candide nodes (n17 mount issues, n09 no internet,
 # n36); ``slurm_extra`` is passed verbatim onto the sbatch line by the executor

@@ -86,6 +86,7 @@ _OPERATIONAL_KEYS = {
     "branches",
     "shape",
     "config_dir",
+    "pipeline_config_dir",
     "psf_model",
     "n_smp",
     "extract_script",
@@ -168,6 +169,13 @@ MASK_CONFIG = IMSIM["mask_config"]  # e.g. config/calibration/mask_v1.X.9_im_sim
 PARAMS_TEMPLATE = f"{SPV_REPO}/workflow/image_sims/params_im_sim.py"
 # ShapePipe cfis_image_sims config dir (per-tile/exposure configs + final_cat.param).
 CONFIG_DIR = IMSIM["config_dir"]
+# ShapePipe config dir the *pipeline* stage's run_job uses (its ``-c`` override,
+# the tree that owns the ngmix ini and thus METACAL_PSF).  Empty (the default)
+# means "let run_job self-compute {shapepipe_repo}/example/cfis_image_sims" --
+# byte-for-byte the historical behaviour, so an unset key reproduces prior runs
+# exactly.  Set it (e.g. per A/B arm) to point the ShapePipe stage at a config
+# tree carrying a different ngmix ini without touching the shared worktree.
+PIPELINE_CONFIG_DIR = IMSIM["pipeline_config_dir"]
 
 # ShapePipe scripts live in the ShapePipe repo (also baked into its image).
 CREATE_FINAL_CAT = f"{SHAPEPIPE_REPO}/scripts/python/create_final_cat.py"
@@ -372,6 +380,10 @@ rule im_pipeline:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
         psf=IMSIM["psf_model"],
         n_smp=IMSIM["n_smp"],
+        # ``-c DIR`` only when pipeline_config_dir is set; empty -> run_job
+        # self-computes its default, so the flag (and its output) is absent for
+        # a bit-exact reproduction of a run that predates this key.
+        config_flag=f"-c {PIPELINE_CONFIG_DIR}" if PIPELINE_CONFIG_DIR else "",
     resources:
         mem_mb=16000,
         runtime=720,
@@ -379,7 +391,7 @@ rule im_pipeline:
         "cd {params.run_dir} && "
         "{EXEC_PIPELINE} bash {RUN_JOB} "
         "-e {wildcards.tile} -t image_sims -j {JOB_MASK} "
-        "-p {params.psf} -N {params.n_smp}"
+        "-p {params.psf} -N {params.n_smp} {params.config_flag}"
 
 
 rule im_merge:
