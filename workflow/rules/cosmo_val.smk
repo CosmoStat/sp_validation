@@ -479,25 +479,23 @@ rule cv_summarize_bmodes:
             [cv_pseudo_cl_sacc(v) for v in CV_VERSIONS]
             if CV.get("include_pseudo_cl", False) else []
         ),
+        pseudo_cl_cov=(
+            [cv_pseudo_cl_cov(v) for v in CV_VERSIONS]
+            if CV.get("include_pseudo_cl", False) else []
+        ),
     output:
         summary_json=str(COSMO_VAL / "bmode_summary.json"),
     params:
+        versions=CV_VERSIONS,
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        pure_eb_min_sep_int=CV["integration"]["min_sep"],
-        pure_eb_max_sep_int=CV["integration"]["max_sep"],
-        pure_eb_nbins_int=CV["integration"]["nbins"],
-        cosebis_min_sep_int=CV["cosebis"]["min_sep_int"],
-        cosebis_max_sep_int=CV["cosebis"]["max_sep_int"],
-        cosebis_nbins_int=CV["cosebis"]["nbins_int"],
-        cosebis_npatch=CV["cosebis"]["npatch"],
-        cosebis_nmodes=CV["cosebis"]["nmodes"],
-        cosebis_scale_cuts=CV["cosebis"]["scale_cuts"],
+        min_sep=CV["theta_min"],
+        max_sep=CV["theta_max"],
+        nbins=CV["nbins"],
         include_pseudo_cl=CV.get("include_pseudo_cl", False),
-        **cv_params(),
-    threads: 24
+        rundir=CV_RUNDIR,
     resources:
-        mem_mb=48000,
-        runtime=600,
+        mem_mb=8000,
+        runtime=20,
     script:
         "../scripts/cv_summarize_bmodes.py"
 
