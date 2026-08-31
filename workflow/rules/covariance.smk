@@ -253,7 +253,7 @@ rule covariance_process:
     threads: 1
     shell:
         """
-        python /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/scripts/cosmocov_process.py {input} {params.output_stub}
+        python {REPO_ROOT}/cosmo_inference/scripts/cosmocov_process.py {input} {params.output_stub}
         """
 
 
