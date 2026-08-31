@@ -579,18 +579,18 @@ class CosmologyValidation(
             # Pure E/B PTEs from stored results
             if ver in self._pure_eb_results:
                 res = self._pure_eb_results[ver]
-                gg = res["gg"]
+                edges = (res["left_edges"], res["right_edges"])
                 try:
                     for stat in ("xip_B", "xim_B", "combined"):
                         row[stat] = _get_pte_from_scale_cut(
-                            res["pte_matrices"][stat], gg, fiducial_scale_cut
+                            res["pte_matrices"][stat], edges, fiducial_scale_cut
                         )
                 except (KeyError, RuntimeError):
                     pass
                 cov_methods.add(
                     "semi-analytic"
                     if "eb_samples" in res
-                    else f"jackknife ({gg.npatch1} patches)"
+                    else f"jackknife ({res['n_eff']} patches)"
                 )
 
             # COSEBIs PTE from stored results

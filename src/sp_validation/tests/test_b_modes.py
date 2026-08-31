@@ -50,6 +50,7 @@ def _eb_inputs():
 
     nbins=4, npatch=50 so the Hartlap factor (n_eff - nbins_eff - 2)/(n_eff-1)
     is well-defined and strictly positive for every scale-cut combination.
+    n_eff is the jackknife patch count, as it is for a jackknife covariance.
     The covariance is built SPD via A @ A.T + I; the B-mode vectors are O(1)
     so the chi-squared (and hence PTE) lands in a meaningful range rather than
     being saturated at 1.0.
@@ -60,8 +61,13 @@ def _eb_inputs():
     cov = A @ A.T + np.eye(6 * nbins)
     xip_B = rng.standard_normal(nbins)
     xim_B = rng.standard_normal(nbins)
-    gg = types.SimpleNamespace(nbins=nbins, npatch1=npatch)
-    return {"gg": gg, "cov": cov, "xip_B": xip_B, "xim_B": xim_B}, nbins
+    return {
+        "theta": np.geomspace(1.0, 100.0, nbins),
+        "n_eff": npatch,
+        "cov": cov,
+        "xip_B": xip_B,
+        "xim_B": xim_B,
+    }, nbins
 
 
 # ---------------------------------------------------------------------------
@@ -229,8 +235,8 @@ def test_calculate_eb_statistics_pte_matrices():
     """Pin representative PTE-matrix entries from the full 2D E/B analysis.
 
     Inputs are fixed (seed 12345, nbins=4, npatch=50, SPD cov = A@A.T + I,
-    O(1) B-mode vectors). With cov_path_int=None the Hartlap correction uses
-    n_eff = npatch = 50. For each of xip_B, xim_B and combined we pin the
+    O(1) B-mode vectors). The Hartlap correction uses n_eff = 50, the patch
+    count behind a jackknife covariance. For each of xip_B, xim_B and combined we pin the
     full-range entry [0, nbins-1] (start=0, stop=nbins) and an interior entry
     [0, 2] (start=0, stop=3). These chi2->sf PTE values are deterministic
     functions of the seeded input.
@@ -240,7 +246,7 @@ def test_calculate_eb_statistics_pte_matrices():
     arithmetic shifts them past tolerance.
     """
     results, nbins = _eb_inputs()
-    out = b_modes.calculate_eb_statistics(results, cov_path_int=None)
+    out = b_modes.calculate_eb_statistics(results)
     pm = out["pte_matrices"]
 
     # Full-range entries [0, nbins-1].
@@ -271,13 +277,13 @@ def test_calculate_eb_statistics_has_teeth():
     combined 0.99999 -> 0.0031.
     """
     results, nbins = _eb_inputs()
-    out = b_modes.calculate_eb_statistics(results, cov_path_int=None)
+    out = b_modes.calculate_eb_statistics(results)
     pm = out["pte_matrices"]
 
     loud, _ = _eb_inputs()
     loud["xip_B"] = loud["xip_B"] * 10.0
     loud["xim_B"] = loud["xim_B"] * 10.0
-    out_loud = b_modes.calculate_eb_statistics(loud, cov_path_int=None)
+    out_loud = b_modes.calculate_eb_statistics(loud)
     pm_loud = out_loud["pte_matrices"]
 
     for key in ("xip_B", "xim_B", "combined"):

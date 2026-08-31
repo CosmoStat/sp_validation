@@ -22,15 +22,6 @@ import numpy as np
 from sp_validation.b_modes import calculate_eb_statistics
 
 
-class FakeGG:
-    """Minimal GGCorrelation-like object for calculate_eb_statistics."""
-
-    def __init__(self, nbins, npatch):
-        self.nbins = nbins
-        self.npatch1 = npatch
-        self.npatch2 = npatch
-
-
 def calculate_ptes(
     version,
     blind,
@@ -43,10 +34,11 @@ def calculate_ptes(
     dataset = np.load(pure_eb_data)
 
     theta = dataset["theta"]
-    nbins = len(theta)
 
     results = {
-        "gg": FakeGG(nbins, int(npatch)),
+        "theta": theta,
+        # The MC draws are the realisations behind this covariance.
+        "n_eff": int(n_samples),
         "xip_E": dataset["xip_E"],
         "xim_E": dataset["xim_E"],
         "xip_B": dataset["xip_B"],
@@ -57,11 +49,7 @@ def calculate_ptes(
     }
 
     print(f"Calculating PTE matrices for {version}...")
-    results = calculate_eb_statistics(
-        results,
-        cov_path_int=cov_integration,
-        n_samples=int(n_samples),
-    )
+    results = calculate_eb_statistics(results)
 
     pte_matrices = results["pte_matrices"]
     output_data = {

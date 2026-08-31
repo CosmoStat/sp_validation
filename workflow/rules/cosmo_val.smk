@@ -67,7 +67,8 @@ def cv_tau_stats(version):
     )
 
 
-def cv_pure_eb_npz(version):
+def _pure_eb_stub(version):
+    """Shared stem of the pure-E/B diagnostic products (npz + figures)."""
     eb = CV["integration"]
     return str(
         COSMO_VAL
@@ -75,16 +76,51 @@ def cv_pure_eb_npz(version):
             f"{version}_eb_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
             f"_nbins={CV['nbins']}_minsepint={eb['min_sep']}"
             f"_maxsepint={eb['max_sep']}_nbinsint={eb['nbins']}"
-            f"_npatch={CV['npatch']}_varmethod=jackknife_data.npz"
+            f"_npatch={CV['npatch']}_varmethod=semi-analytic"
         )
+    )
+
+
+def cv_pure_eb_npz(version):
+    """Pure-E/B data vectors + covariance .npz."""
+    return _pure_eb_stub(version) + "_data.npz"
+
+
+def cv_pure_eb_figures(version):
+    """The pure-E/B companion figures, by output key."""
+    stub = _pure_eb_stub(version)
+    return {
+        "figure_integration_vs_reporting": f"{stub}_integration_vs_reporting.png",
+        "figure_xis": f"{stub}_xis.png",
+        "figure_ptes": f"{stub}_ptes.png",
+        "figure_covariance": f"{stub}_covariance.png",
+    }
+
+
+def cv_xi_cov_integration(version):
+    """CosmoCov gaussian ξ± covariance on the integration grid.
+
+    The covariance model the pure-E/B Monte Carlo draws from; gaussian because
+    the draws only need the scatter a Gaussian field would give.
+    """
+    integ = CV["integration"]
+    return covariance_path(
+        version,
+        FIDUCIAL["blind"],
+        gaussian="g",
+        min_sep=integ["min_sep"],
+        max_sep=integ["max_sep"],
+        nbins=integ["nbins"],
+        mask_suffix=DEFAULT_MASK_SUFFIX,
     )
 
 
 def _cosebis_stub(version):
     """Shared stem of the COSEBIs diagnostic products (npz + figures).
 
-    Also the stem ``plot_cosebis`` builds for its own byproducts, so the two
-    write one set of files rather than two competing schemas.
+    varmethod names where the covariance came from, and these products are the
+    propagated one — which also keeps them clear of the paths plot_cosebis
+    builds for its own byproducts, so nothing overwrites a declared output.
     """
     cb = CV["cosebis"]
     fsc = CV["fiducial_scale_cut"]
@@ -93,7 +129,7 @@ def _cosebis_stub(version):
         / (
             f"{version}_cosebis_minsep={cb['min_sep_int']}"
             f"_maxsep={cb['max_sep_int']}_nbins={cb['nbins_int']}"
-            f"_npatch={cb['npatch']}_varmethod=jackknife_nmodes={cb['nmodes']}"
+            f"_npatch={cb['npatch']}_varmethod=propagated_nmodes={cb['nmodes']}"
             f"_scalecut={fsc[0]}-{fsc[1]}"
         )
     )
@@ -357,21 +393,27 @@ rule cv_pseudo_cl:
 # ---------------------------------------------------------------------------
 
 rule cv_pure_eb:
-    """Pure E/B-mode decomposition for one version (config-space)."""
+    """Pure E/B-mode decomposition for one version, from its ξ± parts.
+
+    The modes come from the two parts; the covariance is Monte Carlo from the
+    integration-grid covariance model, so no patched estimator run is involved.
+    """
     input:
-        xi=lambda w: cv_xi_txt(w.version),
         xi_reporting=lambda w: cv_xi_sacc(w.version, "reporting"),
         xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
+        cov_integration=lambda w: cv_xi_cov_integration(w.version),
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
+        **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
-        min_sep_int=CV["integration"]["min_sep"],
-        max_sep_int=CV["integration"]["max_sep"],
-        nbins_int=CV["integration"]["nbins"],
+        min_sep=CV["theta_min"],
+        max_sep=CV["theta_max"],
+        nbins=CV["nbins"],
+        n_samples=CV.get("n_mc_samples", 1000),
+        cosmo_params=CV["cosmo_params"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        cv_init=lambda w: cv_init_params(config, version_list=[w.version]),
         rundir=CV_RUNDIR,
     threads: 24
     resources:
