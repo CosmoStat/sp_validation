@@ -17,10 +17,8 @@ environment variables into an `.ini`'s `[DEFAULT]` section, so the templates'
 
 CSL is pinned to the **UNIONS-WL org fork**
 ([UNIONS-WL/cosmosis-standard-library](https://github.com/UNIONS-WL/cosmosis-standard-library/))
-at `b26fa7ff`, not to upstream: the UNIONS pipelines depend on four commits that
-exist only there — tau statistics, `sample_S8`, and two z-dependent
-linear-alignment modules. Merging the fork up to current upstream is
-[UNIONS-WL/cosmosis-standard-library#2](https://github.com/UNIONS-WL/cosmosis-standard-library/pull/2).
+at `b7b1552a`, the fork's main branch: Sacha's four UNIONS commits are
+reapplied on current upstream, including the scipy `lpn` fix.
 
 Launch sampling under MPI (`mpiexec -n N cosmosis --mpi ...`), not `--smp`:
 CosmoSIS's shared-memory pool is unmaintained and still crashes after sampling

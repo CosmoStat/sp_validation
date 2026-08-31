@@ -63,11 +63,10 @@ RUN uv sync --frozen --inexact --no-install-project \
 # here rather than left to each user (which is what the .ini templates used to
 # assume, hard-coding one person's home directory).
 #
-# Pinned to the UNIONS-WL org fork, which carries the four commits the UNIONS
-# pipelines depend on: tau-stats, sample_S8, and two z-dependent linear-alignment
-# modules. See cosmo_inference/README.md for the standing of that fork.
+# CSL_REF pins UNIONS-WL fork main: Sacha's four UNIONS commits reapplied
+# on current upstream, including the scipy lpn fix.
 ARG CSL_REPO=https://github.com/UNIONS-WL/cosmosis-standard-library.git
-ARG CSL_REF=b26fa7ff666ab4d607b2e32e36f799a53bfb1d9c
+ARG CSL_REF=b7b1552a02ad9c39c9bb1e68e3f17213a8f740e1
 ENV CSL_DIR=/opt/cosmosis-standard-library
 
 # `python -m cosmosis.configure` emits the exports (COSMOSIS_SRC_DIR et al.)
@@ -86,16 +85,11 @@ ENV CSL_DIR=/opt/cosmosis-standard-library
 # xi_sys, 2pt_like -- no Makefile in those trees at all) or lives under shear/:
 # `limber`, which project_2d.py links, and `cl_to_xi_nicaea`, whose
 # nicaea_interface.so the 2pt_shear stage loads.
-# The fork predates upstream's scipy>=1.15 fix (scipy.special.lpn removed), so
-# upstream a8a941d5 rides as a patch until UNIONS-WL/cosmosis-standard-library#2
-# merges the fork up to upstream.
-COPY docker-patches/csl-scipy-lpn.patch /tmp/csl-scipy-lpn.patch
 RUN bash -c 'set -eo pipefail; \
     export PATH=/app/.venv/bin:$PATH; \
     git clone --filter=blob:none "$CSL_REPO" "$CSL_DIR"; \
     cd "$CSL_DIR"; \
     git checkout --detach "$CSL_REF"; \
-    git apply /tmp/csl-scipy-lpn.patch; \
     cmds=$(python -m cosmosis.configure); \
     eval "$cmds"; \
     export GSL_INC=/usr/include GSL_LIB=/usr/lib/x86_64-linux-gnu; \
