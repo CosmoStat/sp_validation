@@ -6,11 +6,11 @@ supplies the inputs; as a standalone CLI the same assembly runs from flags.
 Each part is a single-statistic SACC; they load in CANONICAL order and are
 rebuilt into one Sacc with a single ``BlockDiagonalCovariance``.
 
-Every part must carry a covariance block. ξ± reporting and pseudo-Cℓ are born
-without one, so theirs are injected here from the CosmoCov ``.txt``
-(``--xi-cov``) and the NaMaster covariance FITS (``--pseudo-cl-cov``); the
-pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are dropped, matching what the
-B-mode PTE reads today.
+Every part must carry a covariance block. ξ± reporting and pseudo-Cℓ take
+theirs from the analytic inputs — the CosmoCov ``.txt`` (``--xi-cov``) and the
+NaMaster covariance FITS (``--pseudo-cl-cov``) — which replace any estimate the
+part was born with; the pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are dropped,
+matching what the B-mode PTE reads today.
 """
 
 import argparse
@@ -44,23 +44,46 @@ def _pseudo_cl_cov_block(cov_fits):
     return full
 
 
-def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
-    """Ensure ``part`` (mutated in place) carries a covariance block.
+# The statistics whose analysis covariance is external, and the input each one
+# takes it from. A part of one of these types may be born with an estimate of
+# its own — the ξ± reporting part carries the jackknife it was measured with —
+# but the analysis file takes the external one, always.
+_INJECTED = {"xi_reporting": "xi_cov", "pseudo_cl": "pseudo_cl_cov"}
 
-    Raises if a required ξ± / pseudo-Cℓ block was not supplied.
+
+def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
+    """Give ``part`` (mutated in place) the covariance the analysis file uses.
+
+    For the two statistics with an external covariance the supplied block
+    replaces whatever the part was born with, loudly; every other part keeps
+    its own. Raises if the block a part needs was not supplied.
     """
-    if part.covariance is not None:
+    if name not in _INJECTED:
+        if part.covariance is None:
+            raise ValueError(
+                f"the {name!r} part carries no covariance and none is injected "
+                "for it; its writer must attach one"
+            )
         return part
-    if name == "xi_reporting" and xi_cov is not None:
-        part.add_covariance(np.loadtxt(xi_cov))
-        return part
-    if name == "pseudo_cl" and pseudo_cl_cov is not None:
-        part.add_covariance(_pseudo_cl_cov_block(pseudo_cl_cov))
-        return part
-    raise ValueError(
-        f"the {name!r} part carries no covariance and no covariance input was "
-        "given (--xi-cov / --pseudo-cl-cov); supply the block"
+
+    supplied = xi_cov if name == "xi_reporting" else pseudo_cl_cov
+    if supplied is None:
+        raise ValueError(
+            f"the {name!r} part takes its analysis covariance from "
+            f"--{_INJECTED[name].replace('_', '-')}, which was not supplied"
+        )
+    block = (
+        np.loadtxt(supplied)
+        if name == "xi_reporting"
+        else _pseudo_cl_cov_block(supplied)
     )
+    if part.covariance is not None:
+        print(
+            f"{name}: replacing the part's own covariance with {supplied} "
+            "(the analysis covariance)"
+        )
+    part.add_covariance(block, overwrite=True)
+    return part
 
 
 def assemble_sacc(

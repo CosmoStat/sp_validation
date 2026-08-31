@@ -66,6 +66,19 @@ def _xi_cov_txt(tmp_path, n=12, seed=21):
     return str(path), cov
 
 
+def _pseudo_cl_cov_fits(tmp_path, n=3):
+    """A NaMaster covariance FITS: one HDU per spectrum. Returns (path, blocks)."""
+    from astropy.io import fits
+
+    blocks = {"EE": _spd(n, 31), "BB": _spd(n, 32), "EB": _spd(n, 33)}
+    path = tmp_path / "pseudo_cl_cov.fits"
+    fits.HDUList(
+        [fits.PrimaryHDU()]
+        + [fits.ImageHDU(block, name=f"COVAR_{k}_{k}") for k, block in blocks.items()]
+    ).writeto(str(path))
+    return str(path), blocks
+
+
 def _write_parts(tmp_path, *, with_pseudo_cl=True, cov_less=("xi_reporting",)):
     """Write per-statistic parts to disk; return the ``{name: path}`` mapping.
 
@@ -154,8 +167,11 @@ def test_assemble_sacc_canonical_order(tmp_path):
     (ξ±, pseudo-Cℓ, COSEBIs, pure-E/B, ρ, τ)."""
     paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
     cov_path, xi_cov = _xi_cov_txt(tmp_path)
+    cl_cov_path, _blocks = _pseudo_cl_cov_fits(tmp_path)
     out = tmp_path / "vSYNTH.sacc"
-    s = asm.assemble_sacc("vSYNTH", paths, str(out), xi_cov=cov_path)
+    s = asm.assemble_sacc(
+        "vSYNTH", paths, str(out), xi_cov=cov_path, pseudo_cl_cov=cl_cov_path
+    )
     assert out.exists()
     assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
@@ -183,13 +199,23 @@ def test_assemble_sacc_canonical_order(tmp_path):
     assert np.allclose(dense[np.ix_(xi_idx, co_idx)], 0.0)
 
 
-def test_assemble_sacc_injects_real_xi_covariance(tmp_path):
-    """A CosmoCov ξ covariance .txt is loaded into the cov-less ξ± block."""
-    paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
+def test_injected_xi_covariance_replaces_the_parts_own(tmp_path):
+    """The analytic ξ± covariance wins over the estimate the part was born with.
+
+    The reporting part carries the jackknife it was measured with — useful as a
+    diagnostic, but the analysis file takes the CosmoCov block.
+    """
+    paths = _write_parts(tmp_path, cov_less=())  # ξ± born with its own jackknife
     cov_path, xi_cov = _xi_cov_txt(tmp_path)
+    cl_cov_path, _blocks = _pseudo_cl_cov_fits(tmp_path)
+
+    born = sio.load(paths["xi_reporting"], allow_unblinded=True).covariance.dense
+    assert not np.allclose(born, xi_cov)  # the two are distinguishable
 
     out = tmp_path / "vSYNTH.sacc"
-    s = asm.assemble_sacc("vSYNTH", paths, str(out), xi_cov=cov_path)
+    s = asm.assemble_sacc(
+        "vSYNTH", paths, str(out), xi_cov=cov_path, pseudo_cl_cov=cl_cov_path
+    )
     tr = ("source_0", "source_0")
     xi_idx = np.concatenate([s.indices(sio.XI_PLUS, tr), s.indices(sio.XI_MINUS, tr)])
     assert np.allclose(s.covariance.dense[np.ix_(xi_idx, xi_idx)], xi_cov)
@@ -198,25 +224,15 @@ def test_assemble_sacc_injects_real_xi_covariance(tmp_path):
 def test_assemble_sacc_injects_pseudo_cl_covariance(tmp_path):
     """The NaMaster cov FITS (COVAR_EE_EE/BB_BB/EB_EB) → block-diagonal pseudo-Cℓ
     block, beside the injected CosmoCov ξ± block (the live default)."""
-    from astropy.io import fits
-
     paths = _write_parts(tmp_path, cov_less=("xi_reporting", "pseudo_cl"))
     cov_path, xi_cov = _xi_cov_txt(tmp_path)
     # pseudo-Cℓ part is 3 ell × {EE, BB, EB} = 9 points; per-spectrum 3×3 blocks.
-    ee, bb, eb = _spd(3, 31), _spd(3, 32), _spd(3, 33)
-    cov_fits = tmp_path / "pseudo_cl_cov.fits"
-    fits.HDUList(
-        [
-            fits.PrimaryHDU(),
-            fits.ImageHDU(ee, name="COVAR_EE_EE"),
-            fits.ImageHDU(bb, name="COVAR_BB_BB"),
-            fits.ImageHDU(eb, name="COVAR_EB_EB"),
-        ]
-    ).writeto(str(cov_fits))
+    cov_fits, blocks = _pseudo_cl_cov_fits(tmp_path)
+    ee, bb, eb = blocks["EE"], blocks["BB"], blocks["EB"]
 
     out = tmp_path / "vSYNTH.sacc"
     s = asm.assemble_sacc(
-        "vSYNTH", paths, str(out), xi_cov=cov_path, pseudo_cl_cov=str(cov_fits)
+        "vSYNTH", paths, str(out), xi_cov=cov_path, pseudo_cl_cov=cov_fits
     )
     tr = ("source_0", "source_0")
     cl_idx = np.concatenate(
@@ -232,11 +248,11 @@ def test_assemble_sacc_injects_pseudo_cl_covariance(tmp_path):
     assert np.allclose(dense[np.ix_(xi_idx, cl_idx)], 0.0)
 
 
-def test_assemble_sacc_missing_cov_raises(tmp_path):
-    """A cov-less part with no injected block fails loudly."""
-    paths = _write_parts(tmp_path, cov_less=("xi_reporting",))
+def test_missing_injected_covariance_raises(tmp_path):
+    """A statistic whose covariance is external cannot fall back to its own."""
+    paths = _write_parts(tmp_path, cov_less=())  # every part born with a block
     out = tmp_path / "vSYNTH.sacc"
-    with pytest.raises(ValueError, match="carries no covariance"):
+    with pytest.raises(ValueError, match="takes its analysis covariance from"):
         asm.assemble_sacc("vSYNTH", paths, str(out))
 
 

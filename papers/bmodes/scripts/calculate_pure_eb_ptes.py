@@ -4,14 +4,13 @@ CLI refactor of the former Snakemake ``script:`` rule. Reads the gathered
 pure-E/B ``semianalytic.npz`` (data vectors + MC covariance), evaluates the
 ξ_+^B / ξ_-^B / joint ξ_tot^B χ² PTE matrices over the scale-cut grid via
 ``sp_validation.b_modes.calculate_eb_statistics`` (Hartlap-corrected inverse
-MC covariance), and writes the PTE matrices to
+MC covariance, debiased by the draw count), and writes the PTE matrices to
 ``{out}/{version}_{blind}_pure_eb_ptes.npz``.
 
     python calculate_pure_eb_ptes.py \
         --version SP_v1.4.6.3_leak_corr --blind A \
         --pure-eb-data <..._pure_eb_semianalytic.npz> \
-        --cov-integration <cov ..._processed.txt> \
-        --npatch 1 --n-samples 2000 --out <output_dir>
+        --n-samples 2000 --out <output_dir>
 """
 
 import argparse
@@ -26,8 +25,6 @@ def calculate_ptes(
     version,
     blind,
     pure_eb_data,
-    cov_integration,
-    npatch,
     n_samples,
     output_dir,
 ):
@@ -71,12 +68,6 @@ def _from_cli(argv=None):
     ap.add_argument("--version", required=True)
     ap.add_argument("--blind", default="A")
     ap.add_argument("--pure-eb-data", required=True, help="Gathered semianalytic .npz")
-    ap.add_argument(
-        "--cov-integration",
-        default=None,
-        help="Integration-grid covariance _processed.txt (optional)",
-    )
-    ap.add_argument("--npatch", type=int, default=1)
     ap.add_argument("--n-samples", type=int, default=2000)
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     a = ap.parse_args(argv)
@@ -84,8 +75,6 @@ def _from_cli(argv=None):
         version=a.version,
         blind=a.blind,
         pure_eb_data=a.pure_eb_data,
-        cov_integration=a.cov_integration,
-        npatch=a.npatch,
         n_samples=a.n_samples,
         output_dir=a.out,
     )
