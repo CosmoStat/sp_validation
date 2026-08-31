@@ -25,7 +25,6 @@ import subprocess
 import numpy as np
 import yaml
 
-
 # --- the job is actually inside the image ---------------------------------
 container_info = {
     "apptainer_container": os.environ.get("APPTAINER_CONTAINER", "unset"),

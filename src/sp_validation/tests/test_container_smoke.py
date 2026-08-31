@@ -101,12 +101,17 @@ def test_container_smoke():
     # points at the shared /n17data working tree, while the Snakefile under test
     # is read from wherever the test runs.
     module_file = Path(report["sp_validation"]["file"])
-    assert module_file.parts[-3:] == ("src", "sp_validation", "__init__.py"), module_file
+    assert module_file.parts[-3:] == ("src", "sp_validation", "__init__.py"), (
+        module_file
+    )
     assert "site-packages" not in module_file.parts, module_file
 
     # The numeric stack agrees with the same computation run here.
     np.testing.assert_allclose(
-        report["numeric"]["eigenvalues"], _reference_eigenvalues(), rtol=1e-10, atol=1e-12
+        report["numeric"]["eigenvalues"],
+        _reference_eigenvalues(),
+        rtol=1e-10,
+        atol=1e-12,
     )
 
     # numeric.omp_num_threads is recorded but deliberately NOT asserted: the
@@ -114,6 +119,8 @@ def test_container_smoke():
     # pinned set it themselves, so "unset" here is correct rather than a gap.
 
     # git worked inside the container, so /home is bound and usable.
-    assert re.fullmatch(r"[0-9a-f]{40}", report["provenance"]["commit"]), report["provenance"]
+    assert re.fullmatch(r"[0-9a-f]{40}", report["provenance"]["commit"]), report[
+        "provenance"
+    ]
 
     shutil.rmtree(tmp_path)  # keep only on failure, for post-mortem

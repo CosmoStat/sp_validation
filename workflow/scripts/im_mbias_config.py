@@ -91,9 +91,7 @@ mbias_cfg = {
             "commit": _git(params.sp_validation_repo, "rev-parse", "HEAD"),
         },
         "shapepipe": {
-            "branch": _git(
-                params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"
-            ),
+            "branch": _git(params.shapepipe_repo, "rev-parse", "--abbrev-ref", "HEAD"),
             "commit": _git(params.shapepipe_repo, "rev-parse", "HEAD"),
         },
         "container": {
