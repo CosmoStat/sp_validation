@@ -384,7 +384,9 @@ def cv_pseudo_cl_figures():
 rule cv_plot_pseudo_cl:
     """The EE/EB/BB pseudo-Cl figures, from the analysis parts."""
     input:
-        pseudo_cl=[cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS],
+        pseudo_cl=[
+            blindable_part(cv_pseudo_cl_analysis_sacc(v)) for v in CV_VERSIONS
+        ],
         pseudo_cl_cov=[cv_pseudo_cl_cov(v) for v in CV_VERSIONS],
     output:
         **cv_pseudo_cl_figures(),
@@ -489,7 +491,7 @@ rule cv_summarize_bmodes:
         pure_eb=[cv_pure_eb_npz(v) for v in CV_VERSIONS],
         cosebis=[cv_cosebis_npz(v) for v in CV_VERSIONS],
         pseudo_cl=(
-            [cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS]
+            [blindable_part(cv_pseudo_cl_analysis_sacc(v)) for v in CV_VERSIONS]
             if CV.get("include_pseudo_cl", False) else []
         ),
         pseudo_cl_cov=(
