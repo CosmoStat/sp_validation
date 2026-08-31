@@ -12,9 +12,8 @@ Every part must carry a covariance block. COSEBIs, pure-E/B and ρ/τ are born
 with one; ξ± reporting and pseudo-Cℓ are not, so their blocks are injected here
 from the CosmoCov ``.txt`` (``--xi-cov``) and the NaMaster covariance FITS
 (``--pseudo-cl-cov``). The pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are
-dropped — matching what the B-mode PTE reads today. ``--allow-placeholder VAR``
-attaches a flagged diagonal stand-in instead, so a dry run or the fast test can
-still build a structurally valid covariance.
+dropped — matching what the B-mode PTE reads today. Both are DAG inputs of the
+assemble rule, so a missing one is a missing input, never a stand-in.
 """
 
 import argparse
@@ -48,11 +47,10 @@ def _pseudo_cl_cov_block(cov_fits):
     return full
 
 
-def _attach_cov(part, name, xi_cov, pseudo_cl_cov, placeholder_var):
+def _attach_cov(part, name, xi_cov, pseudo_cl_cov):
     """Ensure ``part`` (mutated in place) carries a covariance block.
 
-    Raises if a required ξ± / pseudo-Cℓ block is missing and no placeholder was
-    requested.
+    Raises if a required ξ± / pseudo-Cℓ block was not supplied.
     """
     if part.covariance is not None:
         return part
@@ -62,14 +60,10 @@ def _attach_cov(part, name, xi_cov, pseudo_cl_cov, placeholder_var):
     if name == "pseudo_cl" and pseudo_cl_cov is not None:
         part.add_covariance(_pseudo_cl_cov_block(pseudo_cl_cov))
         return part
-    if placeholder_var is None:
-        raise ValueError(
-            f"the {name!r} part carries no covariance and no covariance input was "
-            f"given (--xi-cov / --pseudo-cl-cov). Supply the block, or pass "
-            "--allow-placeholder to attach a documented diagonal placeholder."
-        )
-    part.add_covariance(np.full(len(part.mean), float(placeholder_var)))
-    return part
+    raise ValueError(
+        f"the {name!r} part carries no covariance and no covariance input was "
+        "given (--xi-cov / --pseudo-cl-cov); supply the block"
+    )
 
 
 def assemble_sacc(
@@ -80,7 +74,6 @@ def assemble_sacc(
     expected=None,
     xi_cov=None,
     pseudo_cl_cov=None,
-    placeholder_var=None,
     allow_unblinded=False,
 ):
     """Assemble ``{version}.sacc`` from the per-statistic ``part_paths`` mapping.
@@ -95,7 +88,7 @@ def assemble_sacc(
     expected : sequence of str, optional
         Statistics that must be present, from the caller's config toggles. A
         typo'd input keyword would otherwise silently drop a statistic.
-    xi_cov, pseudo_cl_cov, placeholder_var
+    xi_cov, pseudo_cl_cov
         Covariance sourcing — see the module docstring.
     allow_unblinded : bool, optional
         Passed to :func:`sacc_io.load` for every part; ``True`` only for mocks.
@@ -120,7 +113,7 @@ def assemble_sacc(
         if path is None:
             continue
         part = sacc_io.load(path, allow_unblinded=allow_unblinded)
-        parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov, placeholder_var))
+        parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov))
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
     # Through sacc_io.gather, the one terminal seam: it fails closed unless every
@@ -146,7 +139,6 @@ def _from_snakemake(smk):
         expected=list(p["expected"]),
         xi_cov=getattr(inp, "xi_cov", None),
         pseudo_cl_cov=getattr(inp, "pseudo_cl_cov", None),
-        placeholder_var=p.get("placeholder_var", None),
         allow_unblinded=(p.get("type", "data") == "mock"),
     )
 
@@ -172,13 +164,6 @@ def _from_cli(argv=None):
     ap.add_argument(
         "--pseudo-cl-cov", default=None, help="NaMaster pseudo-Cℓ covariance FITS"
     )
-    ap.add_argument(
-        "--allow-placeholder",
-        type=float,
-        default=None,
-        metavar="VAR",
-        help="Attach a diagonal placeholder (variance VAR) to cov-less parts",
-    )
     a = ap.parse_args(argv)
     part_paths = {name: getattr(a, name) for name in CANONICAL if getattr(a, name)}
     assemble_sacc(
@@ -187,7 +172,6 @@ def _from_cli(argv=None):
         out_path=a.out,
         xi_cov=a.xi_cov,
         pseudo_cl_cov=a.pseudo_cl_cov,
-        placeholder_var=a.allow_placeholder,
         allow_unblinded=(a.type == "mock"),
     )
 
