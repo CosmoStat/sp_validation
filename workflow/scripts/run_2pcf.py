@@ -16,9 +16,9 @@ The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
 ``CosmologyValidation.calculate_2pcf`` writes the ``.txt`` dump (a raw
 byproduct); the ξ± data product is born as SACC here, a *part* named by its
-binning and tagged with its ``--grid``. The reporting part carries no
-covariance; the integration part carries a ``DiagonalCovariance`` from
-TreeCorr ``varxip``/``varxim``, the only estimate available at npatch=1.
+binning and tagged with its ``--grid``. The part carries the covariance its
+grid configures (``--cov``): the dense jackknife estimate from the patches, the
+TreeCorr ``varxip``/``varxim`` diagonal, or none.
 
 ``output_dir`` is passed explicitly (rather than via the ``COSMO_VAL`` env hook)
 so lc can point each run at its own ``{output}`` tree.
@@ -45,6 +45,7 @@ def run_2pcf(
     sacc_out=None,
     grid="reporting",
     run_type="data",
+    cov="none",
 ):
     """Measure ξ±(θ) for ``ver`` and write its born-as-SACC part.
 
@@ -55,8 +56,10 @@ def run_2pcf(
     ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
     expects. ``sacc_out`` is the exact destination for the SACC part (the
     Snakemake-declared output); it defaults to a binning-derived name under
-    the resolved output directory for the CLI path. ``run_type`` (``"data"`` or
-    ``"mock"``) is stamped as the part's SACC ``type``.
+    the resolved output directory for the CLI path. ``cov`` is the grid's
+    covariance mode — ``"jackknife"`` (needs ``npatch`` > 1), ``"diagonal"`` or
+    ``"none"``. ``run_type`` (``"data"`` or ``"mock"``) is stamped as the part's
+    SACC ``type``.
 
     Returns
     -------
@@ -78,6 +81,9 @@ def run_2pcf(
         nbins=nbins,
     )
 
+    if cov == "jackknife" and int(npatch) < 2:
+        raise ValueError(f"cov='jackknife' needs patches; got npatch={npatch}")
+
     # Born-as-SACC ξ± part. theta = meanr; theta_nom = rnom.
     s = xi_to_sacc(
         cv.sacc_nz(ver),
@@ -89,8 +95,9 @@ def run_2pcf(
         theta_nom=gg.rnom,
         npairs=gg.npairs,
         weight=gg.weight,
+        covariance=gg.cov if cov == "jackknife" else None,
         variances=(
-            np.concatenate([gg.varxip, gg.varxim]) if grid == "integration" else None
+            np.concatenate([gg.varxip, gg.varxim]) if cov == "diagonal" else None
         ),
     )
     out_path = sacc_out or os.path.join(
@@ -117,6 +124,7 @@ def _from_snakemake(smk):
         cat_config=p.get("cat_config", "./cat_config.yaml"),
         output_dir=p.get("output_dir", None),
         grid=p.get("grid", "reporting"),
+        cov=p.get("cov", "none"),
         # The SACC part goes exactly where the rule declares it; the .txt
         # byproduct still lands under the resolved output dir.
         sacc_out=smk.output["sacc"],
@@ -148,11 +156,13 @@ def _from_cli(argv=None):
     )
     ap.add_argument("--out", required=True, help="Output directory (lc {output})")
     ap.add_argument(
-        "--grid",
-        default="reporting",
-        choices=["reporting", "integration"],
-        help="SACC grid tag; 'integration' also attaches the varxip/varxim "
-        "DiagonalCovariance",
+        "--grid", default="reporting", help="SACC grid tag for the measured points"
+    )
+    ap.add_argument(
+        "--cov",
+        default="none",
+        choices=["jackknife", "diagonal", "none"],
+        help="Covariance the part carries",
     )
     ap.add_argument(
         "--run-type",
@@ -171,6 +181,7 @@ def _from_cli(argv=None):
         output_dir=a.out,
         grid=a.grid,
         run_type=a.run_type,
+        cov=a.cov,
     )
 
 

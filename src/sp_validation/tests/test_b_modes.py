@@ -285,3 +285,110 @@ def test_calculate_eb_statistics_has_teeth():
         loud_pte = pm_loud[key][0, nbins - 1]
         assert loud_pte < quiet_pte
         assert loud_pte < 0.05  # louder B-modes are clearly rejected
+
+
+# ---------------------------------------------------------------------------
+# 6. Grid edges and the COSEBIs covariance seam
+# ---------------------------------------------------------------------------
+
+
+def test_log_bin_edges_matches_the_grid_stub():
+    """Edges reconstructed from a binning are the ones TreeCorr would report.
+
+    A part stores bin centres only, so a consumer rebuilds the edges from the
+    binning it was measured on; the two must agree bin for bin.
+    """
+    left, right = b_modes.log_bin_edges(1.0, 100.0, _NBINS_GRID)
+    gg = _grid_gg()
+    npt.assert_allclose(left, gg.left_edges)
+    npt.assert_allclose(right, gg.right_edges)
+    # ...and they index scale cuts identically.
+    assert b_modes.bins_from_edges(left, right, 2.0, 50.0) == (2, 8)
+
+
+def test_cosebis_scan_propagates_the_supplied_covariance(monkeypatch):
+    """The COSEBIs covariance is the ξ± covariance through the same kernel.
+
+    The kernel is stubbed, so what is pinned is the seam: which ξ± covariance
+    sub-block is handed to the transform (the scale cut's, in [ξ+; ξ−] order)
+    and that Hartlap uses the supplied npatch.
+    """
+    nbins, nmodes = _NBINS_GRID, 3
+    theta = np.geomspace(1.2, 90.0, nbins)
+    cov_xipm = np.diag(np.arange(1.0, 2 * nbins + 1))
+    seen = {}
+
+    class _StubCOSEBIS:
+        def __init__(self, **kwargs):
+            seen["init"] = kwargs
+
+        def cosebis_from_xipm(self, theta_cut, xip_cut, xim_cut, parallel=True):
+            seen["n_theta"] = len(theta_cut)
+            return np.ones(nmodes), np.full(nmodes, 2.0)
+
+        def cosebis_covariance_from_xipm_covariance(self, theta_cut, cov_cut):
+            seen["cov_cut"] = cov_cut
+            return np.eye(2 * nmodes)
+
+    module = types.ModuleType("cosmo_numba.B_modes.cosebis")
+    module.COSEBIS = _StubCOSEBIS
+    monkeypatch.setitem(
+        __import__("sys").modules, "cosmo_numba.B_modes.cosebis", module
+    )
+
+    left, right = b_modes.log_bin_edges(1.0, 100.0, nbins)
+    results = b_modes.cosebis_scan_from_xi(
+        theta,
+        np.arange(nbins) * 1e-5,
+        np.arange(nbins) * 2e-5,
+        cov_xipm,
+        left,
+        right,
+        nmodes=nmodes,
+        scale_cuts=[(2.0, 50.0)],
+        npatch=100,
+    )
+
+    (result,) = results.values()
+    # The cut is bins 2..8, so the covariance sub-block is those rows/cols in
+    # both the ξ+ and the ξ− half.
+    inds = np.concatenate([np.arange(2, 8), np.arange(2, 8) + nbins])
+    npt.assert_array_equal(seen["cov_cut"], cov_xipm[np.ix_(inds, inds)])
+    assert seen["n_theta"] == 6
+    npt.assert_allclose(result["hartlap_factor"], (100 - 2 * nmodes - 2) / 99)
+    # χ² carries the Hartlap factor: modes are 1, cov is the identity.
+    npt.assert_allclose(result["chi2_E"], nmodes * result["hartlap_factor"])
+
+
+def test_cosebis_scan_theory_covariance_skips_hartlap(monkeypatch):
+    """A theory covariance has no realisations to debias, so Hartlap is 1."""
+    nbins, nmodes = _NBINS_GRID, 2
+
+    class _StubCOSEBIS:
+        def __init__(self, **kwargs):
+            pass
+
+        def cosebis_from_xipm(self, theta_cut, xip_cut, xim_cut, parallel=True):
+            return np.ones(nmodes), np.ones(nmodes)
+
+        def cosebis_covariance_from_xipm_covariance(self, theta_cut, cov_cut):
+            return np.eye(2 * nmodes)
+
+    module = types.ModuleType("cosmo_numba.B_modes.cosebis")
+    module.COSEBIS = _StubCOSEBIS
+    monkeypatch.setitem(
+        __import__("sys").modules, "cosmo_numba.B_modes.cosebis", module
+    )
+
+    left, right = b_modes.log_bin_edges(1.0, 100.0, nbins)
+    (result,) = b_modes.cosebis_scan_from_xi(
+        np.geomspace(1.2, 90.0, nbins),
+        np.zeros(nbins),
+        np.zeros(nbins),
+        np.eye(2 * nbins),
+        left,
+        right,
+        nmodes=nmodes,
+        npatch=None,
+    ).values()
+    assert result["hartlap_factor"] == 1

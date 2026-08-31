@@ -318,38 +318,34 @@ def test_assemble_from_reloaded_parts(tmp_path):
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
 
 
-def test_cosebis_part_overrides_en_and_bn(tmp_path):
-    """En/Bn overrides reach the part; the covariance stays from ``results``."""
-    from sp_validation.cosmo_val.cosebis import CosebisMixin
-
-    raw = {
-        "En": np.zeros(10),
-        "Bn": np.zeros(10),
-        "cov": _spd(20, 11),
-        "scale_cut": (1.0, 100.0),
-    }
-    en_part, bn_part = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
-
-    class _Stub(CosebisMixin):
-        # A mock part with no commitment keeps this off the custody gate.
-        run_type = "mock"
-        sacc_nz = staticmethod(lambda version: {0: _nz()})
-        sacc_metadata = staticmethod(lambda version: META)
-        commitment_path = staticmethod(lambda version: None)
-
-    out = tmp_path / "part.sacc"
-    _Stub().cosebis_to_sacc_part(
-        "vSYNTH",
-        str(out),
-        raw,
-        en_override=en_part,
-        bn_override=bn_part,
+def test_xi_part_carries_a_dense_covariance(tmp_path):
+    """A grid measured with patches puts its jackknife block in the part."""
+    theta = _theta()
+    cov = _spd(2 * len(theta), 41)
+    s = sw.xi_to_sacc(
+        {0: _nz()},
+        META,
+        theta,
+        np.arange(6) * 1e-5,
+        np.arange(6) * 2e-5,
+        grid="cosebis",
+        covariance=cov,
     )
-    s = sio.load(str(out), allow_unblinded=True)
-    n, E, B = sio.get_cosebis(s, (0, 0))
-    assert np.array_equal(n, np.arange(1, 11))
-    assert np.array_equal(E, en_part) and np.array_equal(B, bn_part)
-    assert np.array_equal(s.covariance.dense, raw["cov"])
-    # the caller's results dict is not mutated
-    assert np.array_equal(raw["En"], np.zeros(10))
-    assert np.array_equal(raw["Bn"], np.zeros(10))
+    s2 = _roundtrip(s, tmp_path, "xi_cov")
+    assert np.allclose(s2.covariance.dense, cov)
+
+
+def test_xi_part_rejects_two_covariances():
+    """Dense block and variances are alternatives, not a merge."""
+    theta = _theta()
+    with pytest.raises(ValueError, match="not both"):
+        sw.xi_to_sacc(
+            {0: _nz()},
+            META,
+            theta,
+            np.zeros(6),
+            np.zeros(6),
+            grid="reporting",
+            covariance=_spd(12, 42),
+            variances=np.ones(12),
+        )

@@ -42,11 +42,13 @@ def xi_to_sacc(
     npairs=None,
     weight=None,
     variances=None,
+    covariance=None,
 ):
-    """One ξ± part (``bins=(0, 0)``) on the reporting or integration grid.
+    """One ξ± part (``bins=(0, 0)``) on a named angular grid.
 
-    ``variances`` is the concatenated ``[varxip; varxim]``; when given, attaches
-    a ``DiagonalCovariance``.
+    The grid's covariance comes in one of two shapes: ``covariance``, the dense
+    ``[ξ+; ξ−]``-ordered block (a jackknife estimate), or ``variances``, the
+    concatenated ``[varxip; varxim]`` diagonal. At most one may be given.
     """
     s = sio.new_sacc(nz, metadata)
     sio.add_xi(
@@ -60,7 +62,11 @@ def xi_to_sacc(
         npairs=npairs,
         weight=weight,
     )
-    if variances is not None:
+    if covariance is not None and variances is not None:
+        raise ValueError("give xi_to_sacc a dense covariance or variances, not both")
+    if covariance is not None:
+        s.add_covariance(np.asarray(covariance))
+    elif variances is not None:
         sio.add_diagonal_covariance(s, np.asarray(variances))
     return s
 

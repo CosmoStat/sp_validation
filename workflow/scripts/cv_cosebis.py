@@ -1,55 +1,84 @@
 """Rule cv_cosebis: COSEBIs E/B decomposition for one version.
 
-plot_cosebis calls calculate_cosebis over the fine integration binning and
-evaluates the configured scale cuts. Writes the SACC part at the fiducial cut,
-plus the multi-cut .npz sidecar (the diagnostic PTE scan) and figures.
+A consumer of the ξ± part alone — values, covariance, PTEs and figures all
+derive from it, so nothing here touches a catalogue. The part's ξ± covariance
+goes through the same linear kernel as the modes to give the COSEBIs
+covariance; its ``npatch`` metadata sets the Hartlap debiasing.
+
+On a data run the part it reads is the blinded one, so these COSEBIs are born
+blinded and the output is stamped under the same commitment.
 """
 
-import numpy as np
-from cv_runner import _unbuffer_streams, make_cv, verify_outputs
+from cv_runner import _unbuffer_streams, verify_outputs
 from snakemake.script import snakemake
 
+from sp_validation import sacc_io
+from sp_validation.b_modes import (
+    cosebis_scan_from_xi,
+    find_conservative_scale_cut_key,
+    log_bin_edges,
+    plot_cosebis_covariance_matrix,
+    plot_cosebis_modes,
+    plot_cosebis_scale_cut_heatmap,
+    save_cosebis_results,
+)
+from sp_validation.cosmo_val.sacc_writers import cosebis_to_sacc
+
 _unbuffer_streams()
-cv = make_cv(snakemake)
 p = snakemake.params
 version = p["version"]
 fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
-cv.plot_cosebis(
-    version=version,
-    min_sep_int=p["min_sep_int"],
-    max_sep_int=p["max_sep_int"],
-    nbins_int=p["nbins_int"],
-    npatch=p["npatch"],
+
+part = sacc_io.load(snakemake.input["xi"])
+theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="cosebis")
+edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
+
+results = cosebis_scan_from_xi(
+    theta,
+    xip,
+    xim,
+    part.covariance.dense,
+    *edges,
     nmodes=p["nmodes"],
     scale_cuts=[tuple(sc) for sc in p["scale_cuts"]],
-    fiducial_scale_cut=fiducial_scale_cut,
+    npatch=part.metadata["npatch"],
 )
 
-# Re-derive En and Bn from the integration ξ± part via the same kernel; only the
-# jackknife covariance stays from the raw patched measurement.
-from sp_validation import sacc_io
-from sp_validation.b_modes import cosebis_from_xi
+fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
+fiducial = results[fiducial_key]
 
-integ = sacc_io.load(snakemake.input["xi_integration"])
-theta, xip, xim = sacc_io.get_xi(integ, (0, 0), grid="integration")
-en_part, bn_part = cosebis_from_xi(
-    theta, xip, xim, p["nmodes"], scale_cut=fiducial_scale_cut
-)
-
-cv.cosebis_to_sacc_part(
+plot_cosebis_modes(
+    fiducial,
     version,
-    snakemake.output["sacc"],
-    cv._cosebis_results[version],
+    snakemake.output["figure_modes"],
     fiducial_scale_cut=fiducial_scale_cut,
-    en_override=en_part,
-    bn_override=bn_part,
+)
+plot_cosebis_covariance_matrix(
+    fiducial, version, "jackknife", snakemake.output["figure_covariance"]
+)
+plot_cosebis_scale_cut_heatmap(
+    results,
+    edges,
+    version,
+    snakemake.output["figure_scalecut_ptes"],
+    fiducial_scale_cut=fiducial_scale_cut,
 )
 
-# Sync the npz's En/Bn with the part-derived values; cov / PTE untouched.
-npz_path = snakemake.output["npz"]
-data = dict(np.load(npz_path, allow_pickle=True))
-data["En"] = np.asarray(en_part)
-data["Bn"] = np.asarray(bn_part)
-np.savez(npz_path, **data)
+save_cosebis_results(results, snakemake.output["npz"], fiducial_scale_cut)
+
+# The part inherits the ξ± part's provenance; `type` and the blind stamp are
+# re-applied on save, from the run type and the version's commitment.
+metadata = {
+    k: v
+    for k, v in part.metadata.items()
+    if k not in ("type", "concealed", "blind_commitment", "blind_config_digest")
+}
+s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, metadata, fiducial, fiducial_key)
+sacc_io.save(
+    s,
+    snakemake.output["sacc"],
+    type=p["type"],
+    commitment=snakemake.input.get("commitment", None),
+)
 
 verify_outputs(snakemake)
