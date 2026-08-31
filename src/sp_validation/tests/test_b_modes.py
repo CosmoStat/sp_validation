@@ -398,3 +398,37 @@ def test_cosebis_scan_theory_covariance_skips_hartlap(monkeypatch):
         npatch=None,
     ).values()
     assert result["hartlap_factor"] == 1
+
+
+def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
+    """The .npz keys cv_summarize_bmodes reads are the ones the writer emits.
+
+    The two live in different rules, so the contract between them — the PTE
+    matrices under ``pte_matrices_{stat}`` and the realisation count under
+    ``n_eff`` — is pinned here rather than discovered on a cluster run.
+    """
+    results, nbins = _eb_inputs()
+    results.update(
+        {key: np.zeros(nbins) for key in b_modes._EB_KEYS if key not in results}
+    )
+    results = b_modes.calculate_eb_statistics(results)
+
+    out = tmp_path / "pure_eb_data.npz"
+    b_modes.save_pure_eb_results(results, str(out))
+    saved = np.load(out)
+
+    for stat in ("xip_B", "xim_B", "combined"):
+        assert f"pte_matrices_{stat}" in saved
+        assert saved[f"pte_matrices_{stat}"].shape == (nbins, nbins)
+    assert saved["n_eff"] == results["n_eff"]
+    npt.assert_allclose(saved["theta"], results["theta"])
+    for key in b_modes._EB_KEYS:
+        assert key in saved
+
+    # The summary reads the fiducial cut out of those matrices through the same
+    # helper the plots use, so a valid cut must resolve to a finite PTE.
+    edges = b_modes.log_bin_edges(1.0, 100.0, nbins)
+    pte = b_modes._get_pte_from_scale_cut(
+        saved["pte_matrices_xip_B"], edges, (1.0, 100.0)
+    )
+    assert np.isfinite(pte)

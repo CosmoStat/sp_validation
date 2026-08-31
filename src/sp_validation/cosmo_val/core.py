@@ -24,8 +24,42 @@ from .psf_systematics import PSFSystematicsMixin
 from .pure_eb import PureEBMixin
 from .real_space import RealSpaceMixin
 
-
 # %%
+BMODE_COLUMNS = {
+    "xip_B": r"xi+B",
+    "xim_B": r"xi-B",
+    "combined": "Combined",
+    "COSEBIS": "COSEBIS",
+    "C_l_BB": "C_l^BB",
+}
+
+
+def print_bmode_summary(summary, fiducial_scale_cut, cov_methods=()):
+    """Print the B-mode PTE table for ``{version: {statistic: pte}}``.
+
+    Statistics absent from a row print as ``--``.
+    """
+    sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
+    sep = "\u2500" * 70
+    header = f"{'Version':<28s}" + "".join(
+        f"{label:>10s}" for label in BMODE_COLUMNS.values()
+    )
+
+    print(f"\nB-mode summary {sc_label}")
+    print(sep)
+    print(header)
+    print(sep)
+    for ver, row in summary.items():
+        cells = "".join(
+            f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}" for s in BMODE_COLUMNS
+        )
+        print(f"{ver:<28s}{cells}")
+    print(sep)
+    if cov_methods:
+        print(f"Covariance: {', '.join(sorted(cov_methods))}")
+    print()
+
+
 class CosmologyValidation(
     CosebisMixin,
     PureEBMixin,
@@ -644,37 +678,5 @@ class CosmologyValidation(
 
             summary[ver] = row
 
-        # Print summary table
-        col_labels = {
-            "xip_B": r"xi+B",
-            "xim_B": r"xi-B",
-            "combined": "Combined",
-            "COSEBIS": "COSEBIS",
-            "C_l_BB": "C_l^BB",
-        }
-        stats_order = list(col_labels)
-
-        sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
-        sep = "\u2500" * 70
-        header = f"{'Version':<28s}" + "".join(
-            f"{label:>10s}" for label in col_labels.values()
-        )
-
-        print(f"\nB-mode summary {sc_label}")
-        print(sep)
-        print(header)
-        print(sep)
-
-        for ver in versions:
-            row = summary[ver]
-            cells = "".join(
-                f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}" for s in stats_order
-            )
-            print(f"{ver:<28s}{cells}")
-
-        print(sep)
-        if cov_methods:
-            print(f"Covariance: {', '.join(sorted(cov_methods))}")
-        print()
-
+        print_bmode_summary(summary, fiducial_scale_cut, cov_methods)
         return summary
