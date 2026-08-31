@@ -82,7 +82,7 @@ def test_cosmo_val_workflow_assemble_dry_runs():
     # covariance (not the untagged cv_pseudo_cl diagnostic), plus every part.
     out = result.stdout
     assert "rule assemble_sacc:" in out, out
-    assert f"pseudo_cl_{version}_blind=A_powspace_nbins=32.sacc" in out, out
+    assert f"pseudo_cl_analysis_{version}_blind=A_powspace_nbins=32.sacc" in out, out
     assert f"pseudo_cl_cov_{version}_blind=A_powspace_nbins=32.fits" in out, out
     for part in ("_xi_minsep=", "_cosebis.sacc", "_pure_eb.sacc", "rho_tau_"):
         assert part in out, f"missing {part} part in assemble DAG:\n{out}"

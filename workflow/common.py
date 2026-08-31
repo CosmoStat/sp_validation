@@ -213,6 +213,18 @@ def pseudo_cl_tag(config):
     return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
+def pseudo_cl_analysis_stem(config, version):
+    """Stem of the analysis pseudo-Cℓ part for a version.
+
+    Its own name (and its own producing rule, twopoint.smk), distinct from the
+    generic `pseudo_cl` variants the bmodes and mock workflows request: only
+    this part is blindable, so only it can be temp()'d on a data run. Single
+    definition shared by the producer, the assembler (cosmo_val.smk) and the
+    blindable-stem regex (blinding.smk).
+    """
+    return f"pseudo_cl_analysis_{version}_{pseudo_cl_tag(config)}"
+
+
 def get_shear_catalog(wildcards):
     """Resolve shear catalog path from config for a given version."""
     cat_config = CATALOG_CONFIG[wildcards.version.replace("_leak_corr", "")]

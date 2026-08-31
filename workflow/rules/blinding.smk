@@ -16,7 +16,7 @@ BLINDABLE_STEM = "(?:{})".format(
         re.escape(stem)
         for stem in (
             [f"{_VERSION_SLOT}_xi_{xi_binning(grid)}" for grid in XI_GRIDS]
-            + [f"pseudo_cl_{_VERSION_SLOT}_{pseudo_cl_tag(config)}"]
+            + [pseudo_cl_analysis_stem(config, _VERSION_SLOT)]
         )
     ).replace(_VERSION_SLOT, WILDCARD_CONSTRAINTS["version"])
 )

@@ -146,25 +146,57 @@ wildcard_constraints:
     binning="linear|logspace|powspace",
 
 
+HARMONIC_FIDUCIAL = config["harmonic"]["fiducial"]
+PSEUDO_CL_PARAMS = dict(
+    cat_config=CAT_CONFIG,
+    nside=1024,
+    npatch=1,
+    cosmo_params=PLANCK18,
+    power=0.5,
+)
+
+
 rule pseudo_cl:
-    """Generate pseudo-Cl data vector (born as SACC) with configurable binning."""
+    """Generate pseudo-Cl data vector (born as SACC) with configurable binning.
+
+    The diagnostic variants (bmodes claims, mocks, the fine COSEBIs binning);
+    the analysis part has its own rule below.
+    """
     output:
-        # One rule for every pseudo-Cℓ variant, only one of which (the analysis
-        # part) is blindable — so this output cannot be temp()'d and a data run
-        # blinds it through a requested _blinded sibling instead.
         pseudo_cl=str(COSMO_VAL / "pseudo_cl_{version}_blind={blind}_{binning}_nbins={nbins}.sacc"),
     wildcard_constraints:
         blind="[ABC]",
     params:
         version="{version}",
         blind="{blind}",
-        cat_config=CAT_CONFIG,
-        nside=1024,
-        npatch=1,
-        cosmo_params=PLANCK18,
         binning="{binning}",
         nbins=lambda w: int(w.nbins),
-        power=0.5,
+        **PSEUDO_CL_PARAMS,
+    resources:
+        mem_mb=32000,
+        runtime=120,
+    threads: 12
+    script:
+        "../scripts/generate_pseudo_cl.py"
+
+
+rule pseudo_cl_analysis:
+    """The analysis pseudo-Cℓ part, at the fiducial harmonic binning.
+
+    Split from the generic `pseudo_cl` rule because this variant alone is
+    blindable: on a data run the plaintext part is temp(), consumed only by
+    blind_part, so only the blinded sibling persists.
+    """
+    output:
+        pseudo_cl=maybe_temp(
+            str(COSMO_VAL / f"{pseudo_cl_analysis_stem(config, '{version}')}.sacc")
+        ),
+    params:
+        version="{version}",
+        blind=HARMONIC_FIDUCIAL["blind"],
+        binning=HARMONIC_FIDUCIAL["binning"],
+        nbins=int(HARMONIC_FIDUCIAL["nbins"]),
+        **PSEUDO_CL_PARAMS,
     resources:
         mem_mb=32000,
         runtime=120,
