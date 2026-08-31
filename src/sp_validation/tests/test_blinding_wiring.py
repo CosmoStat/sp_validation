@@ -48,7 +48,7 @@ asm = _load_module("workflow/scripts/assemble_sacc.py", "assemble_sacc")
 # --------------------------------------------------------------------------- #
 _STEMS = [
     "SP_v1.4.6.3_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=100",
-    "SP_v1.4.6.3_leak_corr_xi_minsep=0.08_maxsep=300_nbins=1000_npatch=1",
+    "SP_v1.4.6.3_leak_corr_xi_minsep=0.08_maxsep=300.0_nbins=1000_npatch=1",
     "pseudo_cl_analysis_SP_v1.4.6.3_powspace_nbins=32",
     "pseudo_cl_analysis_SP_v1.4.6.3_leak_corr_powspace_nbins=32",
 ]
@@ -97,6 +97,18 @@ def _nz():
 def _spd(n, seed):
     a = np.random.default_rng(seed).normal(size=(n, n))
     return a @ a.T + n * np.eye(n)
+
+
+def _xi_cov(tmp_path, n_theta=6):
+    """The analytic ξ± covariance assembly injects, as a CosmoCov-format .txt.
+
+    Custody is what these tests are about, and the injected covariance carries
+    none of it — it is a theory product — so any SPD block of the right size
+    stands in.
+    """
+    path = tmp_path / "xi_cov_processed.txt"
+    np.savetxt(str(path), _spd(2 * n_theta, 77))
+    return str(path)
 
 
 def _data_parts(tmp_path, *, conceal, one_plaintext=False, run_type="data"):
@@ -155,7 +167,12 @@ def test_data_assemble_fails_closed_on_unblinded_part(tmp_path):
     """A data run refuses to assemble an unconcealed real part (fail closed)."""
     paths = _data_parts(tmp_path, conceal=False)
     with pytest.raises(ValueError, match="refusing to load an unblinded"):
-        asm.assemble_sacc("vSYNTH", paths, str(tmp_path / "vSYNTH.sacc"))
+        asm.assemble_sacc(
+            "vSYNTH",
+            paths,
+            str(tmp_path / "vSYNTH.sacc"),
+            xi_cov=_xi_cov(tmp_path),
+        )
 
 
 def test_data_assemble_passes_on_blinded_parts(tmp_path):
@@ -163,7 +180,7 @@ def test_data_assemble_passes_on_blinded_parts(tmp_path):
     and stamps the shared commitment on the terminal file."""
     paths = _data_parts(tmp_path, conceal=True)
     out = tmp_path / "vSYNTH.sacc"
-    s = asm.assemble_sacc("vSYNTH", paths, str(out))
+    s = asm.assemble_sacc("vSYNTH", paths, str(out), xi_cov=_xi_cov(tmp_path))
     assert s.metadata["concealed"] is True
     assert s.metadata["blind_commitment"] == _COMMIT
     assert s.metadata["blind_config_digest"] == _DIGEST
@@ -177,7 +194,12 @@ def test_data_assemble_refuses_blinded_plaintext_mix(tmp_path):
     # The plaintext ξ± reporting part fails the load gate first (data + not
     # concealed), so the mix can never even reach assembly.
     with pytest.raises(ValueError, match="refusing to load an unblinded"):
-        asm.assemble_sacc("vSYNTH", paths, str(tmp_path / "vSYNTH.sacc"))
+        asm.assemble_sacc(
+            "vSYNTH",
+            paths,
+            str(tmp_path / "vSYNTH.sacc"),
+            xi_cov=_xi_cov(tmp_path),
+        )
 
 
 def test_data_assemble_runs_behind_the_custody_guard(tmp_path, monkeypatch):
@@ -195,14 +217,19 @@ def test_data_assemble_runs_behind_the_custody_guard(tmp_path, monkeypatch):
     paths = _data_parts(tmp_path, conceal=True)
     monkeypatch.setattr(blinding, "draw_scheme", lambda: 99)
     with pytest.raises(ValueError, match="DRAW_SCHEME"):
-        asm.assemble_sacc("vSYNTH", paths, str(tmp_path / "vSYNTH.sacc"))
+        asm.assemble_sacc(
+            "vSYNTH",
+            paths,
+            str(tmp_path / "vSYNTH.sacc"),
+            xi_cov=_xi_cov(tmp_path),
+        )
 
 
 def test_data_assemble_stamps_the_draw_scheme_on_the_terminal_file(tmp_path):
     """The assembled file carries the blind's draw scheme, like its parts."""
     paths = _data_parts(tmp_path, conceal=True)
     out = tmp_path / "vSYNTH.sacc"
-    asm.assemble_sacc("vSYNTH", paths, str(out))
+    asm.assemble_sacc("vSYNTH", paths, str(out), xi_cov=_xi_cov(tmp_path))
     assert sio.load(str(out)).metadata["blind_draw_scheme"] == blinding.draw_scheme()
 
 
@@ -218,7 +245,7 @@ def test_mock_assemble_succeeds_without_a_blind(tmp_path):
     """
     paths = _data_parts(tmp_path, conceal=False, run_type="mock")
     out = tmp_path / "vSYNTH.sacc"
-    s = asm.assemble_sacc("vSYNTH", paths, str(out))
+    s = asm.assemble_sacc("vSYNTH", paths, str(out), xi_cov=_xi_cov(tmp_path))
     assert "concealed" not in s.metadata
     # No escape hatch: a mock part is not gated by the fail-closed loader.
     assert sio.load(str(out)).metadata["type"] == "mock"
@@ -351,7 +378,8 @@ def test_blinding_subgraph_in_cosmo_val_dry_run():
     # blindable_part) to re-derive their concealed E-modes, so blind_part enters
     # the subgraph for it too.
     assert "_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=100_blinded.sacc" in out
-    assert "_xi_minsep=0.08_maxsep=300_nbins=1000_npatch=1_blinded.sacc" in out
+    # maxsep=300.0, not 300: the grid table canonicalises before it names files.
+    assert "_xi_minsep=0.08_maxsep=300.0_nbins=1000_npatch=1_blinded.sacc" in out
     assert "pseudo_cl_analysis_SP_v1.4.6.3_powspace_nbins=32_blinded.sacc" in out
     # Every blindable plaintext part is temp() on a data run, the analysis
     # pseudo-Cℓ included (its own rule exists so it can be).

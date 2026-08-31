@@ -31,6 +31,45 @@ from .sacc_writers import BIN as SACC_BIN
 from .sacc_writers import pseudo_cl_to_sacc
 
 
+def plot_pseudo_cl_spectrum(datasets, spectrum, output_path):
+    """Two-panel ℓC_ℓ / C_ℓ figure for one spectrum across catalogue versions.
+
+    ``datasets`` maps a version to ``{"ell", "cl", "cov", "style"}``, where
+    ``style`` carries the ``marker`` and ``colour`` the version is drawn with.
+    """
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
+    minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
+
+    for panel, scaled in ((ax[0], True), (ax[1], False)):
+        for version, data in datasets.items():
+            ell, cl = np.asarray(data["ell"]), np.asarray(data["cl"])
+            err = np.sqrt(np.diag(np.asarray(data["cov"])))
+            style = data.get("style", {})
+            panel.errorbar(
+                ell,
+                ell * cl if scaled else cl,
+                yerr=ell * err if scaled else err,
+                fmt=style.get("marker", "."),
+                color=style.get("colour"),
+                label=f"{version} {spectrum}",
+                capsize=2 if scaled else None,
+            )
+        panel.set_ylabel(r"$\ell C_\ell$" if scaled else r"$C_\ell$")
+        panel.set_xlim(ell.min() - 10, ell.max() + 100)
+        panel.set_xscale("squareroot")
+        panel.set_xticks(np.array([100, 400, 900, 1600]))
+        panel.minorticks_on()
+        panel.tick_params(axis="x", which="minor", length=2, width=0.8)
+        panel.xaxis.set_ticks(minor_ticks, minor=True)
+
+    ax[1].set_xlabel(r"$\ell$")
+    ax[1].set_yscale("log")
+    plt.suptitle(f"Pseudo-Cl {spectrum} (Gaussian covariance)")
+    plt.legend()
+    plt.savefig(output_path)
+    plt.close(fig)
+
+
 class PseudoClMixin:
     @property
     def pseudo_cls(self):
@@ -694,201 +733,33 @@ class PseudoClMixin:
         sacc_io.save(s, out_path, type=self.run_type)
 
     def plot_pseudo_cl(self):
-        """
-        Plot pseudo-Cl's for given catalogs.
-        """
+        """Plot the EE/EB/BB pseudo-Cl spectra for every version."""
         self.print_cyan("Plotting pseudo-Cl's")
 
-        # Plotting EE
-        out_path = self._output_path("cell_ee.png")
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
-                capsize=2,
+        for spectrum in ("EE", "EB", "BB"):
+            datasets = {
+                ver: {
+                    "ell": self.pseudo_cls[ver]["pseudo_cl"]["ELL"],
+                    "cl": self.pseudo_cls[ver]["pseudo_cl"][spectrum],
+                    "cov": self.pseudo_cls[ver]["cov"][
+                        f"COVAR_{spectrum}_{spectrum}"
+                    ].data,
+                    "style": {
+                        "marker": self.cc[ver]["marker"],
+                        "colour": self.cc[ver]["colour"],
+                    },
+                }
+                for ver in self.versions
+            }
+            plot_pseudo_cl_spectrum(
+                datasets, spectrum, self._output_path(f"cell_{spectrum.lower()}.png")
             )
 
-        ax[0].set_ylabel(r"$\ell C_\ell$")
-
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EE_EE"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EE"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EE",
-                color=self.cc[ver]["colour"],
-            )
-
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl EE (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Plotting EB
-        out_path = self._output_path("cell_eb.png")
-
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
-
-        ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel(r"$\ell C_\ell$")
-
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_EB_EB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["EB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " EB",
-                color=self.cc[ver]["colour"],
-            )
-
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl EB (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Plotting BB
-        out_path = self._output_path("cell_bb.png")
-
-        fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(8, 8))
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[0].errorbar(
-                ell,
-                ell * self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=ell * np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-                capsize=2,
-            )
-
-        ax[0].axhline(0, color="black", linestyle="--")
-        ax[0].set_ylabel(r"$\ell C_\ell$")
-
-        ax[0].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[0].set_xscale("squareroot")
-        ax[0].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[0].minorticks_on()
-        ax[0].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[0].xaxis.set_ticks(minor_ticks, minor=True)
-
-        for ver in self.versions:
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            cov = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
-            ax[1].errorbar(
-                ell,
-                self.pseudo_cls[ver]["pseudo_cl"]["BB"],
-                yerr=np.sqrt(np.diag(cov)),
-                fmt=self.cc[ver]["marker"],
-                label=ver + " BB",
-                color=self.cc[ver]["colour"],
-            )
-
-        ax[1].set_xlabel(r"$\ell$")
-        ax[1].set_ylabel(r"$C_\ell$")
-
-        ax[1].set_xlim(ell.min() - 10, ell.max() + 100)
-        ax[1].set_xscale("squareroot")
-        ax[1].set_yscale("log")
-        ax[1].set_xticks(np.array([100, 400, 900, 1600]))
-        ax[1].minorticks_on()
-        ax[1].tick_params(axis="x", which="minor", length=2, width=0.8)
-        minor_ticks = [i * 10 for i in range(1, 10)] + [i * 100 for i in range(1, 21)]
-        ax[1].xaxis.set_ticks(minor_ticks, minor=True)
-
-        plt.suptitle("Pseudo-Cl BB (Gaussian covariance)")
-        plt.legend()
-        plt.savefig(out_path)
-
-        # Print C_l^BB PTE for each version and save BB data
-        print("\nC_l^BB PTE summary:")
         for ver in self.versions:
             cl_bb = self.pseudo_cls[ver]["pseudo_cl"]["BB"]
             cov_bb = self.pseudo_cls[ver]["cov"]["COVAR_BB_BB"].data
             chi2_bb, _, pte_bb = chi2_and_pte(cl_bb, cov_bb)
-            chi2_bb = float(chi2_bb)
             print(
                 f"  {ver}: C_l^BB PTE = {pte_bb:.4f} "
-                f"(chi2/dof = {chi2_bb:.1f}/{len(cl_bb)})"
+                f"(chi2/dof = {float(chi2_bb):.1f}/{len(cl_bb)})"
             )
-
-            # Save BB data + covariance to .npz
-            ell = self.pseudo_cls[ver]["pseudo_cl"]["ELL"]
-            bb_out = self._output_path(f"{ver}_cell_bb_data.npz")
-            np.savez(
-                bb_out,
-                ell=ell,
-                cl_bb=cl_bb,
-                cov_bb=cov_bb,
-                chi2_bb=np.array(chi2_bb),
-                pte_bb=np.array(pte_bb),
-            )
-            print(f"  Saved BB data to {bb_out}")
