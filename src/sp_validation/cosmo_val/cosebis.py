@@ -165,7 +165,13 @@ class CosebisMixin:
         return results[key], tuple(key)
 
     def cosebis_to_sacc_part(
-        self, version, out_path, results, fiducial_scale_cut=None, en_override=None
+        self,
+        version,
+        out_path,
+        results,
+        fiducial_scale_cut=None,
+        en_override=None,
+        bn_override=None,
     ):
         """Write the COSEBIs SACC part at the fiducial scale cut.
 
@@ -174,13 +180,19 @@ class CosebisMixin:
         part: the covariance must cover every stored point and the cuts overlap
         in mode space, so the non-fiducial cuts stay in the ``.npz`` sidecar.
 
-        ``en_override`` replaces ``result["En"]`` with En derived from the
-        integration ξ± part; Bn and the covariance stay from ``result``. The part
-        is born blinded, so it is stamped under the version's blind.
+``en_override``/``bn_override`` replace ``result["En"]``/``result["Bn"]``
+        with values derived from the integration ξ± part; the covariance stays
+        from ``result`` (patches exist only in the raw patched measurement). The
+        part is born blinded, so it is stamped under the version's blind.
         """
         result, scale_cut = self._fiducial_cosebis_result(results, fiducial_scale_cut)
-        if en_override is not None:
-            result = {**result, "En": np.asarray(en_override)}
+        overrides = {
+            key: np.asarray(value)
+            for key, value in (("En", en_override), ("Bn", bn_override))
+            if value is not None
+        }
+        if overrides:
+            result = {**result, **overrides}
         s = cosebis_to_sacc(
             self.sacc_nz(version),
             self.sacc_metadata(version),

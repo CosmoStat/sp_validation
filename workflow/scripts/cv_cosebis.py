@@ -30,13 +30,16 @@ cv.plot_cosebis(
     fiducial_scale_cut=fiducial_scale_cut,
 )
 
-# Re-derive En from the integration ξ± part via the same kernel; Bn and cov stay raw.
+# Re-derive En and Bn from the integration ξ± part via the same kernel; only the
+# jackknife covariance stays from the raw patched measurement.
 from sp_validation import sacc_io
 from sp_validation.b_modes import cosebis_from_xi
 
 integ = sacc_io.load(snakemake.input["xi_integration"])
 theta, xip, xim = sacc_io.get_xi(integ, (0, 0), grid="integration")
-en_part, _ = cosebis_from_xi(theta, xip, xim, p["nmodes"], scale_cut=fiducial_scale_cut)
+en_part, bn_part = cosebis_from_xi(
+    theta, xip, xim, p["nmodes"], scale_cut=fiducial_scale_cut
+)
 
 # Born-as-SACC COSEBIs part at the fiducial scale cut.
 cv.cosebis_to_sacc_part(
@@ -45,12 +48,14 @@ cv.cosebis_to_sacc_part(
     cv._cosebis_results[version],
     fiducial_scale_cut=fiducial_scale_cut,
     en_override=en_part,
+    bn_override=bn_part,
 )
 
-# Sync the npz's En with the part-derived values; Bn / cov / PTE untouched.
+# Sync the npz's En/Bn with the part-derived values; cov / PTE untouched.
 npz_path = snakemake.output["npz"]
 data = dict(np.load(npz_path, allow_pickle=True))
 data["En"] = np.asarray(en_part)
+data["Bn"] = np.asarray(bn_part)
 np.savez(npz_path, **data)
 
 verify_outputs(snakemake)
