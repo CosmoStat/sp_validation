@@ -198,3 +198,11 @@ scratch/*/*.ipynb
 
 # Snakemake run state
 .snakemake/
+
+# CI lint-gate scratch output (lint.yml writes these in the run tree; never commit)
+check.txt
+format.txt
+report.md
+check2.txt
+format2.txt
+residual.md
