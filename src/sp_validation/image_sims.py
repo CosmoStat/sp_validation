@@ -152,11 +152,15 @@ class ImageSimMBias:
         grids_dir = self.cfg["grids_dir"]
         num = self.cfg["num"]
         cat_name = self.cfg.get("catalog_name", "shape_catalog_cut_ngmix.fits")
+        # Grid sims live in ``{branch}_grid_{num}``; other families (e.g.
+        # blended) in ``{branch}_{num}``.
+        sims_type = self.cfg.get("sims_type", "grid")
+        suffix = f"_grid_{num}" if sims_type == "grid" else f"_{num}"
         # ``sim_names`` (incl. the unsheared reference) comes from the config's
         # branch map. The +g/-g pool estimator pairs the sheared sims directly;
         # the reference is loaded for completeness and null-test diagnostics.
         for name in self.sim_names:
-            path = f"{grids_dir}/{name}_grid_{num}/{cat_name}"
+            path = f"{grids_dir}/{name}{suffix}/{cat_name}"
             if verbose:
                 print(f"  Loading {path}")
             self.cats[name] = _load_cat(path, self.w_cols)

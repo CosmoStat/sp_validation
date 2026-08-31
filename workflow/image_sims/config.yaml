@@ -51,6 +51,12 @@ image_sims:
   # --- simulation grid --------------------------------------------------
   sims_type: grid        # 'grid' -> *_grid_{num}; anything else -> *_{num}  [operational]
   num: 1
+  # Optional: pull exposures from a different realization than tiles (tiles
+  # from `{branch}_{num}`, exposures from `{branch}_{exp_num}`; unset ->
+  # exposures follow `num`).  Non-grid sims only.  Fabian's blended production
+  # split: tiles from _1, exposures from _5 (the clean all-real exposure set;
+  # _1.._4 carry signal-free grid-sims SP_exp cross-links).
+  # exp_num: 5
   # Branches this run requests: the unsheared reference plus the four +/-
   # sheared branches.  Injected shear is NOT set here -- it is parsed from each
   # branch's basic_info.txt by im_manifest.  [operational]
@@ -63,6 +69,11 @@ image_sims:
   # ShapePipe cfis configs (final_cat.param etc.); default is
   # {shapepipe_repo}/example/cfis_image_sims once #766 lands.  [operational]
   config_dir: /n17data/cdaley/unions/scratch-wf/imsims-run/grids/_cfis_image_sims
+  # ShapePipe config tree for the pipeline stage (run_job's -c override); owns
+  # the ngmix ini and hence METACAL_PSF.  Empty -> run_job's default,
+  # {shapepipe_repo}/example/cfis_image_sims.  Point it at a per-arm copy to
+  # A/B the metacal PSF without editing the worktree.  [operational]
+  pipeline_config_dir: ""
   psf_model: psfex       # [operational]
   n_smp: -1              # [operational]
   # Extract/calibrate scripts run from the sp_validation repo checkout (branch

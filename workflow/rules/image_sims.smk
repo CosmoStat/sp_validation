@@ -86,10 +86,15 @@ _OPERATIONAL_KEYS = {
     "branches",
     "shape",
     "config_dir",
+    "pipeline_config_dir",
     "psf_model",
     "n_smp",
     "extract_script",
     "calibrate_script",
+}
+# Optional keys: recognized but not required; defaults applied in code below.
+_OPTIONAL_KEYS = {
+    "exp_num",
 }
 # Structural keys: paths/identifiers the run must supply (no sensible default).
 _STRUCTURAL_KEYS = {
@@ -104,7 +109,11 @@ _STRUCTURAL_KEYS = {
     "tile_ids",
 }
 _ALLOWED_KEYS = (
-    _SCIENCE_KEYS | _DEPRECATED_KEYS | _OPERATIONAL_KEYS | _STRUCTURAL_KEYS
+    _SCIENCE_KEYS
+    | _DEPRECATED_KEYS
+    | _OPERATIONAL_KEYS
+    | _OPTIONAL_KEYS
+    | _STRUCTURAL_KEYS
 )
 
 _unknown = set(IMSIM) - _ALLOWED_KEYS
@@ -155,6 +164,15 @@ SIMS_TYPE = IMSIM["sims_type"]
 _SUFFIX = f"_{SIMS_TYPE}_{NUM}" if SIMS_TYPE == "grid" else f"_{NUM}"
 SIM_BASES = list(IMSIM["branches"])
 SIMS = [f"{base}{_SUFFIX}" for base in SIM_BASES]
+# Optional ``exp_num`` pulls exposures from a different realization than tiles:
+# tiles stay on ``{branch}_{num}``, exposures come from ``{branch}_{exp_num}``.
+# Non-grid sims only (grid names embed sims_type); see config.yaml for the
+# blended use case.
+EXP_NUM = IMSIM.get("exp_num", NUM)
+if SIMS_TYPE == "grid":
+    SIM_EXP_BASE = {sim: sim for sim in SIMS}
+else:
+    SIM_EXP_BASE = {f"{base}{_SUFFIX}": f"{base}_{EXP_NUM}" for base in SIM_BASES}
 MANIFEST = f"{GRIDS_BASE}/manifest.yaml"
 BUILD_MANIFEST = f"{SPV_REPO}/workflow/scripts/im_build_manifest.py"
 
@@ -168,6 +186,10 @@ MASK_CONFIG = IMSIM["mask_config"]  # e.g. config/calibration/mask_v1.X.9_im_sim
 PARAMS_TEMPLATE = f"{SPV_REPO}/workflow/image_sims/params_im_sim.py"
 # ShapePipe cfis_image_sims config dir (per-tile/exposure configs + final_cat.param).
 CONFIG_DIR = IMSIM["config_dir"]
+# ShapePipe config dir for the pipeline stage's run_job (``-c`` override; owns
+# the ngmix ini and thus METACAL_PSF).  Empty -> run_job's default.  See
+# config.yaml.
+PIPELINE_CONFIG_DIR = IMSIM["pipeline_config_dir"]
 
 # ShapePipe scripts live in the ShapePipe repo (also baked into its image).
 CREATE_FINAL_CAT = f"{SHAPEPIPE_REPO}/scripts/python/create_final_cat.py"
@@ -335,7 +357,8 @@ rule im_init:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
         cfis=lambda wc: f"{GRIDS_BASE}/{wc.sim}/cfis",
         sim_tiles=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_tiles",
-        sim_exp=lambda wc: f"{INPUT_SIMS_BASE}/{wc.sim}/images/SP_exp",
+        # SIM_EXP_BASE maps the tile sim to its exposure-source sim (see above).
+        sim_exp=lambda wc: f"{INPUT_SIMS_BASE}/{SIM_EXP_BASE[wc.sim]}/images/SP_exp",
     shell:
         # cfis / input_tiles / input_exp are stable read-only symlinks (used by
         # get_images, merge, extract); created here but not tracked as outputs,
@@ -372,14 +395,17 @@ rule im_pipeline:
         run_dir=lambda wc: f"{GRIDS_BASE}/{wc.sim}",
         psf=IMSIM["psf_model"],
         n_smp=IMSIM["n_smp"],
+        config_flag=f"-c {PIPELINE_CONFIG_DIR}" if PIPELINE_CONFIG_DIR else "",
     resources:
-        mem_mb=16000,
+        # measured: job uses ~1 core (eff 0.9); post-#843 MaxRSS ~72MB accounting / 2.3GB live-peak; 2cpu/4GB packs ~512 jobs on the usable partition
+        mem_mb=4000,
+        cpus_per_task=2,
         runtime=720,
     shell:
         "cd {params.run_dir} && "
         "{EXEC_PIPELINE} bash {RUN_JOB} "
         "-e {wildcards.tile} -t image_sims -j {JOB_MASK} "
-        "-p {params.psf} -N {params.n_smp}"
+        "-p {params.psf} -N {params.n_smp} {params.config_flag}"
 
 
 rule im_merge:
@@ -458,10 +484,14 @@ rule im_mbias:
         ),
     output:
         results=f"{GRIDS_BASE}/results/m_bias_results.yaml",
+    resources:
+        # Blended catalogues are ~5x grid size; the snakemake 1000M default OOMs.
+        mem_mb=8000,
     params:
         cfg=f"{GRIDS_BASE}/results/m_bias_config.yaml",
         grids_base=GRIDS_BASE,
         num=NUM,
+        sims_type=SIMS_TYPE,
         cat_name=f"shape_catalog_cut_{SHAPE}.fits",
         sif=SIF,
         sif_pipeline=SIF_PIPELINE,
@@ -547,6 +577,7 @@ rule im_mbias:
         mbias_cfg = {
             "grids_dir": params.grids_base,
             "num": params.num,
+            "sims_type": params.sims_type,
             "catalog_name": params.cat_name,
             # Injected shear: from the manifest, the single source of truth.
             "shear_amplitude": manifest["shear_amplitude"],
