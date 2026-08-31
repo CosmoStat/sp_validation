@@ -136,7 +136,9 @@ def assemble_sacc(
         parts.append(_attach_cov(part, name, xi_cov, pseudo_cl_cov))
     if not parts:
         raise ValueError(f"no parts found for {version}: {part_paths}")
-    s = assemble_analysis_sacc(parts)
+    # Through sacc_io.gather, the one terminal seam: it fails closed unless every
+    # blindable part shares one blind, and stamps that blind on the result.
+    s = sacc_io.gather(parts, assemble=assemble_analysis_sacc)
     sacc_io.save(s, out_path, type=s.metadata["type"])
     print(f"Assembled {len(parts)} parts -> {out_path}")
     return s

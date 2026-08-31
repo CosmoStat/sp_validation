@@ -7,6 +7,9 @@ drawn from the CosmoCov integration-grid ξ± covariance around a theory mean, s
 it depends on the covariance model and the grids rather than on the measured
 vector. A jackknife of the transformed modes would need per-patch realisations,
 which are never persisted.
+
+On a data run the parts it reads are the blinded ones, so these modes are born
+blinded and the output is stamped under the same commitment.
 """
 
 import numpy as np
@@ -100,8 +103,13 @@ plot_eb_covariance_matrix(
 
 save_pure_eb_results(results, snakemake.output["npz"])
 
-# The part inherits the ξ± part's provenance; `type` is re-stamped on save.
-metadata = {k: v for k, v in reporting.metadata.items() if k != "type"}
+# The part inherits the ξ± part's provenance; `type` and the blind stamp are
+# re-applied on save, from the run type and the version's commitment.
+metadata = {
+    k: v
+    for k, v in reporting.metadata.items()
+    if k not in ("type", "concealed", "blind_commitment", "blind_config_digest")
+}
 s = pure_eb_to_sacc(
     {0: (z, nz)},
     metadata,
@@ -109,6 +117,11 @@ s = pure_eb_to_sacc(
     {key: results[key] for key in sacc_io.PURE_KEYS},
     covariance=cov,
 )
-sacc_io.save(s, snakemake.output["sacc"], type="data")
+sacc_io.save(
+    s,
+    snakemake.output["sacc"],
+    type=p["type"],
+    commitment=snakemake.input.get("commitment", None),
+)
 
 verify_outputs(snakemake)

@@ -4,6 +4,9 @@ A consumer of the ξ± part alone — values, covariance, PTEs and figures all
 derive from it, so nothing here touches a catalogue. The part's ξ± covariance
 goes through the same linear kernel as the modes to give the COSEBIs
 covariance; its ``npatch`` metadata sets the Hartlap debiasing.
+
+On a data run the part it reads is the blinded one, so these COSEBIs are born
+blinded and the output is stamped under the same commitment.
 """
 
 from cv_runner import _unbuffer_streams, verify_outputs
@@ -63,9 +66,19 @@ plot_cosebis_scale_cut_heatmap(
 
 save_cosebis_results(results, snakemake.output["npz"], fiducial_scale_cut)
 
-# The part inherits the ξ± part's provenance; `type` is re-stamped on save.
-metadata = {k: v for k, v in part.metadata.items() if k != "type"}
+# The part inherits the ξ± part's provenance; `type` and the blind stamp are
+# re-applied on save, from the run type and the version's commitment.
+metadata = {
+    k: v
+    for k, v in part.metadata.items()
+    if k not in ("type", "concealed", "blind_commitment", "blind_config_digest")
+}
 s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, metadata, fiducial, fiducial_key)
-sacc_io.save(s, snakemake.output["sacc"], type="data")
+sacc_io.save(
+    s,
+    snakemake.output["sacc"],
+    type=p["type"],
+    commitment=snakemake.input.get("commitment", None),
+)
 
 verify_outputs(snakemake)

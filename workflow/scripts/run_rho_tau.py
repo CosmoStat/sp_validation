@@ -44,6 +44,8 @@ cv = CosmologyValidation(
     theta_max=float(params["max_sep"]),
     nbins=int(params["nbins"]),
     npatch=int(params["npatch"]),
+    run_type=params["type"],
+    blind_root=params["blind_root"],
 )
 
 cv.calculate_rho_tau_stats()

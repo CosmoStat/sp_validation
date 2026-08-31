@@ -19,6 +19,11 @@ versions: [
 # CosmologyValidation suite parameters (cosmo_val.py)
 # ---------------------------------------------------------------------------
 cosmo_val:
+  # Campaign run type: "data" or "mock". One switch: it gates Smokescreen
+  # blind-at-birth and is stamped as the SACC `type` of every part written
+  # (custody state at assembly — see blinding.assert_consistent_blind).
+  type: data
+
   # CosmologyValidation constructor
   npatch: 100
   theta_min: 1.0

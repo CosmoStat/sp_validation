@@ -44,9 +44,10 @@ def run_2pcf(
     output_dir,
     sacc_out=None,
     grid="reporting",
+    run_type="data",
     cov="none",
 ):
-    """Measure ξ±(θ) for ``ver`` and write its reporting SACC part.
+    """Measure ξ±(θ) for ``ver`` and write its born-as-SACC part.
 
     Parameters mirror the TreeCorr reporting/integration grids: ``min_sep`` /
     ``max_sep`` in arcmin, ``nbins`` logarithmic bins, ``npatch`` spatial
@@ -55,7 +56,10 @@ def run_2pcf(
     ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
     expects. ``sacc_out`` is the exact destination for the SACC part (the
     Snakemake-declared output); it defaults to a binning-derived name under
-    the resolved output directory for the CLI path.
+    the resolved output directory for the CLI path. ``cov`` is the grid's
+    covariance mode — ``"jackknife"`` (needs ``npatch`` > 1), ``"diagonal"`` or
+    ``"none"``. ``run_type`` (``"data"`` or ``"mock"``) is stamped as the part's
+    SACC ``type``.
 
     Returns
     -------
@@ -100,7 +104,7 @@ def run_2pcf(
         output_dir or cv.cc["paths"]["output"],
         f"{ver}_xi_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc",
     )
-    sacc_io.save(s, out_path, type="data")
+    sacc_io.save(s, out_path, type=run_type)
     print(f"Wrote {grid} ξ± SACC part: {out_path}")
     return gg
 
@@ -124,6 +128,7 @@ def _from_snakemake(smk):
         # The SACC part goes exactly where the rule declares it; the .txt
         # byproduct still lands under the resolved output dir.
         sacc_out=smk.output["sacc"],
+        run_type=p["type"],
     )
 
 
@@ -159,6 +164,12 @@ def _from_cli(argv=None):
         choices=["jackknife", "diagonal", "none"],
         help="Covariance the part carries",
     )
+    ap.add_argument(
+        "--run-type",
+        default="data",
+        choices=("data", "mock"),
+        help="Campaign run type stamped as the part's SACC `type`",
+    )
     a = ap.parse_args(argv)
     run_2pcf(
         ver=a.ver,
@@ -169,6 +180,7 @@ def _from_cli(argv=None):
         cat_config=a.cat_config,
         output_dir=a.out,
         grid=a.grid,
+        run_type=a.run_type,
         cov=a.cov,
     )
 

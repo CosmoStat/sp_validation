@@ -26,6 +26,7 @@ from .sacc_writers import rho_tau_to_sacc
 
 class PSFSystematicsMixin:
     def calculate_rho_tau_stats(self):
+        """Measure ρ/τ statistics per version and write each version's SACC part."""
         out_dir = f"{self.cc['paths']['output']}/rho_tau_stats"
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
@@ -56,6 +57,10 @@ class PSFSystematicsMixin:
     ):
         """Write the ρ/τ SACC part for one version.
 
+        ρ/τ carries no cosmological vector and is never blinded; on a data run
+        it is stamped concealed pass-through (values untouched) so the
+        assembly's load gate admits it.
+
         ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
         ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
         ``tau_cov_th`` when it exists; without it the τ block falls back —
@@ -77,7 +82,9 @@ class PSFSystematicsMixin:
             tau_cov_th=tau_cov_th,
         )
         out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
-        sacc_io.save(s, out_path, type="data")
+        sacc_io.save(
+            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
+        )
 
     @property
     def rho_stat_handler(self):

@@ -7,6 +7,9 @@ statistic into a single-statistic SACC — a *part* — carrying that statistic'
 own covariance as its one block. :func:`assemble_analysis_sacc` rebuilds the
 single ``{version}.sacc`` analysis file from these parts.
 
+The integration-grid ξ± part is an intermediate consumed by COSEBIs and
+pure-E/B; it is blinded at birth but does not join ``{version}.sacc``.
+
 Everything here is single-bin today (``bins=(0, 0)``); the interface is
 tomography-native so a future round supplies real bin pairs unchanged.
 """

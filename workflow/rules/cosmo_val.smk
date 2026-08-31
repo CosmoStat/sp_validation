@@ -158,8 +158,8 @@ _PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def cv_pseudo_cl_analysis_sacc(version):
-    """Tagged pseudo-Cl SACC part: the harmonic block of the analysis file."""
-    return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
+    """Analysis pseudo-Cl SACC part: the harmonic block of the analysis file."""
+    return str(COSMO_VAL / f"{pseudo_cl_analysis_stem(config, version)}.sacc")
 
 
 def cv_pseudo_cl_cov(version):
@@ -384,7 +384,9 @@ def cv_pseudo_cl_figures():
 rule cv_plot_pseudo_cl:
     """The EE/EB/BB pseudo-Cl figures, from the analysis parts."""
     input:
-        pseudo_cl=[cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS],
+        pseudo_cl=[
+            blindable_part(cv_pseudo_cl_analysis_sacc(v)) for v in CV_VERSIONS
+        ],
         pseudo_cl_cov=[cv_pseudo_cl_cov(v) for v in CV_VERSIONS],
     output:
         **cv_pseudo_cl_figures(),
@@ -405,6 +407,24 @@ rule cv_plot_pseudo_cl:
 # Pure E/B modes and COSEBIs (per version), then the B-mode summary
 # ---------------------------------------------------------------------------
 
+# On a data run these re-derive their E-mode vector from the *blinded* ξ± parts,
+# so they are born blinded; the commitment binds only there.
+def cv_cosebis_inputs(w):
+    return {
+        "xi": blindable_part(cv_xi_sacc(w.version, "cosebis")),
+        **commitment_input(w.version),
+    }
+
+
+def cv_pure_eb_inputs(w):
+    return {
+        "xi_reporting": blindable_part(cv_xi_sacc(w.version, "reporting")),
+        "xi_integration": blindable_part(cv_xi_sacc(w.version, "integration")),
+        "cov_integration": cv_xi_cov_integration(w.version),
+        **commitment_input(w.version),
+    }
+
+
 rule cv_pure_eb:
     """Pure E/B-mode decomposition for one version, from its ξ± parts.
 
@@ -412,15 +432,14 @@ rule cv_pure_eb:
     integration-grid covariance model, so no patched estimator run is involved.
     """
     input:
-        xi_reporting=lambda w: cv_xi_sacc(w.version, "reporting"),
-        xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
-        cov_integration=lambda w: cv_xi_cov_integration(w.version),
+        unpack(cv_pure_eb_inputs),
     output:
         npz=cv_pure_eb_npz("{version}"),
         sacc=cv_pure_eb_sacc("{version}"),
         **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
+        type=CV.get("type", "data"),
         min_sep=CV["theta_min"],
         max_sep=CV["theta_max"],
         nbins=CV["nbins"],
@@ -443,13 +462,14 @@ rule cv_cosebis:
     is the part's ξ± covariance through the same kernel as the modes.
     """
     input:
-        xi=lambda w: cv_xi_sacc(w.version, "cosebis"),
+        unpack(cv_cosebis_inputs),
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
         **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
+        type=CV.get("type", "data"),
         min_sep=CV["cosebis"]["min_sep_int"],
         max_sep=CV["cosebis"]["max_sep_int"],
         nbins=CV["cosebis"]["nbins_int"],
@@ -471,7 +491,7 @@ rule cv_summarize_bmodes:
         pure_eb=[cv_pure_eb_npz(v) for v in CV_VERSIONS],
         cosebis=[cv_cosebis_npz(v) for v in CV_VERSIONS],
         pseudo_cl=(
-            [cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS]
+            [blindable_part(cv_pseudo_cl_analysis_sacc(v)) for v in CV_VERSIONS]
             if CV.get("include_pseudo_cl", False) else []
         ),
         pseudo_cl_cov=(
@@ -509,15 +529,18 @@ def cv_assemble_inputs(version):
 
     Each part's filename carries enough to bind its producing rule's wildcards.
     """
+    # blindable_part binds the raw-signal parts to their blinded siblings on a
+    # data run. COSEBIs, pure-E/B and ρ/τ are stamped concealed by their own
+    # writers, so they bind by name either way.
     parts = dict(
-        xi_reporting=cv_xi_sacc(version, "reporting"),
+        xi_reporting=blindable_part(cv_xi_sacc(version, "reporting")),
         xi_cov=cv_xi_cov(version),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
     )
     if CV.get("include_pseudo_cl", False):
-        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
+        parts["pseudo_cl"] = blindable_part(cv_pseudo_cl_analysis_sacc(version))
         parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
     return parts
 
