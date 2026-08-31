@@ -140,11 +140,10 @@ class PureEBMixin:
         ``results`` is the dict ``calculate_pure_eb`` returned: the six pure-mode
         arrays under ``sacc_io.PURE_KEYS``, the ``"cov"`` block (in ``PURE_KEYS``
         order), and the reporting-grid TreeCorr object ``"gg"`` whose ``meanr``
-        is the shared ``theta``. The covariance must cover every stored point.
+        is the shared ``theta``.
 
-        ``eb_override`` replaces the six arrays with ones derived from the
-        reporting + integration ξ± parts; the covariance stays from ``results``.
-        The part is born blinded, so it is stamped under the version's blind.
+        ``eb_override`` replaces the six arrays; the covariance stays from
+        ``results``. The part is stamped under the version's blind.
         """
         theta = results["gg"].meanr
         source = eb_override if eb_override is not None else results

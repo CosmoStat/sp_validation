@@ -259,11 +259,10 @@ def cosebis_from_xi(theta, xip, xim, nmodes, scale_cut=None):
     """COSEBIs (Eₙ, Bₙ) from ξ± arrays through the pipeline kernel (values only).
 
     The values-only seam of :func:`calculate_cosebis`, for callers holding ξ±
-    arrays rather than a TreeCorr ``GGCorrelation``; the covariance/χ² machinery
-    stays with :func:`calculate_cosebis`.
+    arrays rather than a TreeCorr ``GGCorrelation``.
 
-    ``scale_cut`` follows the :func:`sacc_io.add_cosebis` contract: ``(theta_min,
-    theta_max)`` are min/max of the *retained bin centres*, selected inclusively.
+    ``scale_cut`` is ``(theta_min, theta_max)``, the min/max of the retained bin
+    centres, selected inclusively.
     """
     from cosmo_numba.B_modes.cosebis import COSEBIS
 

@@ -45,9 +45,7 @@ class RealSpaceMixin:
               calculation is skipped, and the results are loaded from the file.
             - If a patch file for the given configuration does not exist, it is
               created during the process.
-            - The ``.txt`` TreeCorr dump is the only raw byproduct written here
-              (read back by the covariance machinery and the skip-if-exists); the
-              ξ± data product is born as SACC in ``run_2pcf.py``.
+            - The ``.txt`` TreeCorr dump is the only raw byproduct written here.
         """
 
         self.print_magenta(f"Computing {ver} ξ±")

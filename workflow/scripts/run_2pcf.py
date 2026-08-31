@@ -16,10 +16,9 @@ The measurement is binning-agnostic: the reporting and the fine integration
 grids are the same compute with different ``--min-sep/--max-sep/--nbins``.
 ``CosmologyValidation.calculate_2pcf`` writes the ``.txt`` dump (a raw
 byproduct); the ξ± data product is born as SACC here, a *part* named by its
-binning and tagged with its ``--grid``. The reporting part carries no covariance
-(its block is supplied at assembly from CosmoCov); the integration part carries
-a ``DiagonalCovariance`` from TreeCorr ``varxip``/``varxim``, the only estimate
-available at npatch=1, which is what COSEBIs and pure-E/B consume.
+binning and tagged with its ``--grid``. The reporting part carries no
+covariance; the integration part carries a ``DiagonalCovariance`` from
+TreeCorr ``varxip``/``varxim``, the only estimate available at npatch=1.
 
 ``output_dir`` is passed explicitly (rather than via the ``COSMO_VAL`` env hook)
 so lc can point each run at its own ``{output}`` tree.
@@ -54,10 +53,10 @@ def run_2pcf(
     patches (1 for the paper fiducial). ``cat_config`` is an absolute path to
     the catalog configuration; ``output_dir`` overrides
     ``cat_config['paths']['output']`` so the ``.txt`` byproduct lands where lc
-    expects. ``sacc_out`` is the exact destination for the ξ± SACC part
-    (the Snakemake-declared output); it defaults to the binning-named part under
-    the resolved output directory for the CLI path. ``run_type``
-    (``"data"`` or ``"mock"``) is stamped as the part's SACC ``type``.
+    expects. ``sacc_out`` is the exact destination for the SACC part (the
+    Snakemake-declared output); it defaults to a binning-derived name under
+    the resolved output directory for the CLI path. ``run_type`` (``"data"`` or
+    ``"mock"``) is stamped as the part's SACC ``type``.
 
     Returns
     -------
@@ -117,11 +116,9 @@ def _from_snakemake(smk):
         # class defaults (./cat_config.yaml, COSMO_VAL env) otherwise.
         cat_config=p.get("cat_config", "./cat_config.yaml"),
         output_dir=p.get("output_dir", None),
-        # Grid label is resolved by the rule from the binning wildcards
-        # (workflow/rules/twopoint.smk XI_GRIDS).
         grid=p.get("grid", "reporting"),
-        # Write the SACC part exactly where the rule declares it (the .txt
-        # byproduct still lands under the resolved output dir via _output_path).
+        # The SACC part goes exactly where the rule declares it; the .txt
+        # byproduct still lands under the resolved output dir.
         sacc_out=smk.output["sacc"],
         run_type=p["type"],
     )

@@ -399,9 +399,7 @@ class CosmologyValidation(
     def sacc_nz(self, version):
         """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
 
-        The tomography-native writer interface (``sacc_writers``) takes an nz
-        dict keyed by 0-based source bin; the round is single-bin, so the whole
-        survey n(z) is bin 0. ``get_redshift`` returns ``(z, nz)``.
+        The round is single-bin, so the whole survey n(z) is bin 0.
         """
         return {0: tuple(self.get_redshift(version))}
 

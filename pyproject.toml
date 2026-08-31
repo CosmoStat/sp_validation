@@ -79,8 +79,7 @@ dependencies = [
     "pymaster",
     "regions",
     "reproject",
-    # sacc_io uses BlockDiagonalCovariance, from sacc's 2.x rewrite; the lock
-    # already resolves to 2.4, this just makes the floor honest.
+    # Floor matches the resolved lock; needs sacc's 2.x rewrite (BlockDiagonalCovariance).
     "sacc>=2.4,<3",
     # scipy 1.18 ported FITPACK from Fortran to C, changing the return shape of
     # RectBivariateSpline(scalar, scalar, grid=False) from 0-d `array(x)` to

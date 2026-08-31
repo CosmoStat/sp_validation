@@ -1,14 +1,11 @@
 """Generate pseudo-Cls (data vector only, no covariance).
 
 Dual-mode. Under Snakemake (``script:`` directive) the injected ``snakemake``
-object supplies the parameters and the native product is renamed to the tagged
-output filename the rule declares; as a standalone CLI (argparse) the same
-compute runs from explicit flags and the primitive's native
-``pseudo_cl_{ver}.sacc`` is left in place under ``--out`` (each lc/ASTRA recipe
-gets its own output directory, so the untagged name is unambiguous). The C_ell
-data vector is born as SACC (EE/BB/EB with a shared bandpower window). The CLI
-form is what the lightcone/ASTRA recipe calls, so the measurement is driven
-directly (no nested Snakemake) with lc handling orchestration:
+object supplies the parameters; as a standalone CLI (argparse) the same compute
+runs from explicit flags. Either way the part is born at its final path, as
+SACC (EE/BB/EB with a shared bandpower window). The CLI form is what the
+lightcone/ASTRA recipe calls, driving the measurement directly (no nested
+Snakemake) with lc handling orchestration:
 
     python generate_pseudo_cl.py \
         --ver SP_v1.4.6.3_leak_corr \
@@ -147,7 +144,6 @@ def generate_pseudo_cl(
 
 def _from_snakemake(smk):
     p = smk.params
-    # Born directly at the rule's declared (tagged) output — no rename step.
     generate_pseudo_cl(
         version=p["version"],
         out_path=smk.output.pseudo_cl,

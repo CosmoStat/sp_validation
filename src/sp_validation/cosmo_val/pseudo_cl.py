@@ -458,17 +458,8 @@ class PseudoClMixin:
         """
         Compute the pseudo-Cl of given catalogs.
 
-        Each version's spectra are born as a SACC part via
-        :func:`sacc_writers.pseudo_cl_to_sacc` — EE/BB/EB carrying the shared
-        NaMaster bandpower window, with this instance's (blinded) n(z) stamped
-        in. The in-memory ``self._pseudo_cls[ver]`` ``"pseudo_cl"`` entry keeps
-        the ``ELL``/``EE``/``EB``/``BB`` arrays the plotting and B-mode-summary
-        consumers read by column name.
-
         ``out_path`` is the exact destination the part is born at (one version
         only); ``None`` defaults each part to ``pseudo_cl_{ver}.sacc``.
-        Skip-if-exists keys on this final path, so no two rules ever share an
-        undeclared native basename.
         """
         self.print_start("Computing pseudo-Cl's")
 
@@ -508,7 +499,7 @@ class PseudoClMixin:
 
     @staticmethod
     def _load_pseudo_cl_sacc(out_path):
-        """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict consumers use."""
+        """Read a pseudo-Cl SACC part into the ELL/EE/EB/BB dict."""
         # Readback of a part this producer just wrote — a legitimate pre-blind
         # consumer, so the fail-closed load is opted out of.
         s = sacc_io.load(out_path, allow_unblinded=True)
@@ -691,8 +682,7 @@ class PseudoClMixin:
 
         ``cl_all`` is NaMaster's decoupled ``(4, nbp)`` array (EE, EB, BE, BB);
         the writer takes the shared bandpower window from ``wsp``. No covariance
-        is attached here — the analysis file's pseudo-Cl block is supplied at
-        assembly (``assemble_sacc``) from the NaMaster / OneCovariance product.
+        is attached here.
         """
         s = pseudo_cl_to_sacc(
             self.sacc_nz(version),

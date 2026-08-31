@@ -1,13 +1,8 @@
 """Rule cv_cosebis: COSEBIs E/B decomposition for one version.
 
-Compute + plot rule (per version). plot_cosebis calls calculate_cosebis over a
-fine integration binning (the 2000-bin TreeCorr is the dominant cost) and
-evaluates the configured scale cuts. Writes the {version}_eb_..._data.npz
-COSEBIs data product plus figures, and the per-version COSEBIs PTE that
-cv_summarize_bmodes collects. It also writes the born-as-SACC COSEBIs part
-({version}_cosebis.sacc, the fiducial scale cut's {En,Bn,cov}) that the
-assemble_sacc rule consumes — the multi-cut .npz sidecar stays the diagnostic
-PTE scan.
+plot_cosebis calls calculate_cosebis over the fine integration binning and
+evaluates the configured scale cuts. Writes the SACC part at the fiducial cut,
+plus the multi-cut .npz sidecar (the diagnostic PTE scan) and figures.
 """
 
 import numpy as np
@@ -41,7 +36,6 @@ en_part, bn_part = cosebis_from_xi(
     theta, xip, xim, p["nmodes"], scale_cut=fiducial_scale_cut
 )
 
-# Born-as-SACC COSEBIs part at the fiducial scale cut.
 cv.cosebis_to_sacc_part(
     version,
     snakemake.output["sacc"],

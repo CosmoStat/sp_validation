@@ -89,8 +89,7 @@ We do not currently build images for Apple Silicon/arm64; however the amd64 imag
 
 ## Local Installation
 
-Requires Python ≥ 3.12 (the container runs 3.12). With
-[uv](https://docs.astral.sh/uv/):
+Requires Python ≥ 3.12. With [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv venv --python 3.12
