@@ -30,15 +30,14 @@ import h5py
 import numpy as np
 import tqdm
 from astropy.io import fits
-
 from cs_util import args as cs_args
 from cs_util import logging
 
-
 FITS_HDU = 1
 EMPTY_VALUE = -199
-COPY_CHUNK = 2_000_000   # rows per chunk when copying input → output
-SCAN_CHUNK = 5_000_000   # rows per chunk when scanning TILE_ID
+COPY_CHUNK = 2_000_000  # rows per chunk when copying input → output
+SCAN_CHUNK = 5_000_000  # rows per chunk when scanning TILE_ID
+MAX_CONSEC_FAILS = 10  # abort if this many tiles in a row fail
 
 REQUESTED_KEYS = [
     "Z_B",
@@ -48,16 +47,77 @@ REQUESTED_KEYS = [
     "Z_ML",
     "MAG_GAAP_u",
     "MAGERR_GAAP_u",
+    "MAG_GAAP_0p7_u",
+    "MAGERR_GAAP_0p7_u",
+    "MAG_GAAP_1p0_u",
+    "MAGERR_GAAP_1p0_u",
+    "FLAG_GAAP_u",
+    "MAG_LIM_u",
+    "FLUX_GAAP_u",
+    "FLUXERR_GAAP_u",
+    "EXTINCTION_u",
     "MAG_GAAP_g",
     "MAGERR_GAAP_g",
+    "MAG_GAAP_0p7_g",
+    "MAGERR_GAAP_0p7_g",
+    "MAG_GAAP_1p0_g",
+    "MAGERR_GAAP_1p0_g",
+    "FLAG_GAAP_g",
+    "MAG_LIM_g",
+    "FLUX_GAAP_g",
+    "FLUXERR_GAAP_g",
+    "EXTINCTION_g",
     "MAG_GAAP_r",
     "MAGERR_GAAP_r",
+    "MAG_GAAP_0p7_r",
+    "MAGERR_GAAP_0p7_r",
+    "MAG_GAAP_1p0_r",
+    "MAGERR_GAAP_1p0_r",
+    "FLAG_GAAP_r",
+    "MAG_LIM_r",
+    "FLUX_GAAP_r",
+    "FLUXERR_GAAP_r",
+    "EXTINCTION_r",
     "MAG_GAAP_i",
     "MAGERR_GAAP_i",
+    "MAG_GAAP_0p7_i",
+    "MAGERR_GAAP_0p7_i",
+    "MAG_GAAP_1p0_i",
+    "MAGERR_GAAP_1p0_i",
+    "FLAG_GAAP_i",
+    "MAG_LIM_i",
+    "FLUX_GAAP_i",
+    "FLUXERR_GAAP_i",
+    "EXTINCTION_i",
     "MAG_GAAP_z",
     "MAGERR_GAAP_z",
+    "MAG_GAAP_0p7_z",
+    "MAGERR_GAAP_0p7_z",
+    "MAG_GAAP_1p0_z",
+    "MAGERR_GAAP_1p0_z",
+    "FLAG_GAAP_z",
+    "MAG_LIM_z",
+    "FLUX_GAAP_z",
+    "FLUXERR_GAAP_z",
+    "EXTINCTION_z",
     "MAG_GAAP_z2",
     "MAGERR_GAAP_z2",
+    "MAG_GAAP_0p7_z2",
+    "MAGERR_GAAP_0p7_z2",
+    "MAG_GAAP_1p0_z2",
+    "MAGERR_GAAP_1p0_z2",
+    "FLAG_GAAP_z2",
+    "MAG_LIM_z2",
+    "FLUX_GAAP_z2",
+    "FLUXERR_GAAP_z2",
+    "EXTINCTION_z2",
+    "EXTINCTION",
+    "ODDS",
+    "CHI_SQUARED_BPZ",
+    "M_0",
+    "BPZ_FILT",
+    "BPZ_NONDETFILT",
+    "BPZ_FLAGFILT",
 ]
 
 
@@ -76,7 +136,7 @@ def params_default():
     params = {
         "input": "unions_shapepipe_comprehensive_struc_2024_v1.5.c.hdf5",
         "output": "unions_shapepipe_comprehensive_struc_ugriz_2024_v1.5.c.hdf5",
-        "fits_dir": "UNIONS5000",
+        "fits_dir": "UNIONS_DR6",
         "checkpoint": "fill_photoz_bands_checkpoint.json",
         "verbose": False,
     }
@@ -103,6 +163,7 @@ def params_default():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def detect_dataset_name(hf):
     """Return the first dataset name in an HDF5 file.
@@ -244,6 +305,7 @@ def write_tile_to_hdf5(dset, hdf5_indices, fits_data, valid_keys):
 # Phase 1: create output file
 # ---------------------------------------------------------------------------
 
+
 def create_output_file(input_path, output_path, dataset_name, verbose=False):
     """Create output HDF5 by copying input and appending empty PhotoPipe fields.
 
@@ -308,6 +370,7 @@ def create_output_file(input_path, output_path, dataset_name, verbose=False):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main(argv=None):
     """Main.
@@ -418,16 +481,29 @@ def main(argv=None):
         unique_tiles = sorted(tile_index_map.keys())
         n_tiles = len(unique_tiles)
 
-        valid_keys = None   # determined from first available FITS tile
+        valid_keys = None  # determined from first available FITS tile
         n_skipped_missing = 0
         n_skipped_done = 0
         n_skipped_size = 0
+        n_errors = 0
+        n_consec_fails = 0
         n_processed = 0
 
         print(f"\n  Processing {n_tiles} tiles ({len(done_tiles)} already done)...\n")
         pbar = tqdm.tqdm(unique_tiles, total=n_tiles, unit="tile")
 
         for tile_id in pbar:
+            if n_consec_fails >= MAX_CONSEC_FAILS:
+                checkpoint["done_tiles"] = list(done_tiles)
+                with open(params["checkpoint"], "w") as cf:
+                    json.dump(checkpoint, cf)
+                print(
+                    f"\nERROR: {n_consec_fails} tiles failed in a row, "
+                    "likely a systematic problem; aborting.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
             tile_str = tile_id.decode() if isinstance(tile_id, bytes) else tile_id
 
             if tile_str in done_tiles:
@@ -467,6 +543,7 @@ def main(argv=None):
                             f"{n_fits} — size mismatch, skipping."
                         )
                         n_skipped_size += 1
+                        n_consec_fails += 1
                         pbar.set_postfix(
                             {"done": n_processed, "size_err": n_skipped_size}
                         )
@@ -476,9 +553,12 @@ def main(argv=None):
 
             except Exception as e:
                 warnings.warn(f"Tile {tile_str}: error ({e}), skipping.")
+                n_errors += 1
+                n_consec_fails += 1
                 continue
 
             n_processed += 1
+            n_consec_fails = 0
             done_tiles.add(tile_str)
 
             if n_processed % 50 == 0:
@@ -499,6 +579,12 @@ def main(argv=None):
     print(f"  Tiles skipped (done)  : {n_skipped_done}")
     print(f"  FITS files missing    : {n_skipped_missing}")
     print(f"  Size mismatches       : {n_skipped_size}")
+    print(f"  Tiles failed (error)  : {n_errors}")
+    if n_processed == 0 and (n_errors > 0 or n_skipped_size > 0):
+        print(
+            "WARNING: no tiles were filled; all available tiles failed.",
+            file=sys.stderr,
+        )
 
     return 0
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """Read matrix entries from FITS header and print in tex or pdf format."""
 
-from astropy.io import fits
-import numpy as np
+import os
 import subprocess
 import tempfile
-import os
 
+import numpy as np
+from astropy.io import fits
 from cs_util.args import parse_options
 
 
@@ -44,7 +44,7 @@ def format_scientific_latex(value, prec, exp_thresh=3):
     mantissa = value / 10**exp
 
     # Format mantissa with specified precision
-    mantissa_str = f"{mantissa:.{prec-1}f}"
+    mantissa_str = f"{mantissa:.{prec - 1}f}"
 
     return f"{mantissa_str} \\times 10^{{{exp}}}"
 
@@ -60,7 +60,7 @@ def get_matrix_from_header(header, prefix):
             key = f"{prefix}{i}{j}"
             if key not in header:
                 raise KeyError(f"Key '{key}' not found in FITS header")
-            matrix[i-1, j-1] = header[key]
+            matrix[i - 1, j - 1] = header[key]
     return matrix
 
 
@@ -68,7 +68,9 @@ def matrix_to_tex(matrix, prec, exp_thresh):
     """Convert matrix to LaTeX format."""
     rows = []
     for i in range(2):
-        row_vals = [format_scientific_latex(matrix[i, j], prec, exp_thresh) for j in range(2)]
+        row_vals = [
+            format_scientific_latex(matrix[i, j], prec, exp_thresh) for j in range(2)
+        ]
         rows.append(" & ".join(row_vals))
 
     tex = r"\begin{pmatrix}" + "\n"
@@ -79,12 +81,16 @@ def matrix_to_tex(matrix, prec, exp_thresh):
 
 def generate_pdf(tex_content, output_path):
     """Generate PDF from LaTeX content."""
-    full_tex = r"""\documentclass[preview,border=2pt]{article}
+    full_tex = (
+        r"""\documentclass[preview,border=2pt]{article}
 \usepackage{amsmath}
 \begin{document}
-$""" + tex_content + r"""$
+$"""
+        + tex_content
+        + r"""$
 \end{document}
 """
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tex_file = os.path.join(tmpdir, "matrix.tex")
@@ -93,9 +99,15 @@ $""" + tex_content + r"""$
 
         # Run pdflatex
         result = subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", "-output-directory", tmpdir, tex_file],
+            [
+                "pdflatex",
+                "-interaction=nonstopmode",
+                "-output-directory",
+                tmpdir,
+                tex_file,
+            ],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         if result.returncode != 0:
@@ -104,6 +116,7 @@ $""" + tex_content + r"""$
         pdf_file = os.path.join(tmpdir, "matrix.pdf")
         if output_path:
             import shutil
+
             shutil.copy(pdf_file, output_path)
             print(f"PDF written to {output_path}")
         else:
@@ -178,12 +191,16 @@ def main():
         output_path = f"{options['output']}.{options['format']}"
 
     if options["format"] == "tex":
-        full_tex = r"""\documentclass[preview,border=2pt]{article}
+        full_tex = (
+            r"""\documentclass[preview,border=2pt]{article}
 \usepackage{amsmath}
 \begin{document}
-$""" + tex_content + r"""$
+$"""
+            + tex_content
+            + r"""$
 \end{document}
 """
+        )
         print(full_tex)
         if output_path:
             with open(output_path, "w") as f:

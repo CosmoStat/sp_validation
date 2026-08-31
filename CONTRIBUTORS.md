@@ -1,16 +1,15 @@
 # Contributors
 
-## Core Authors
+## Authors
 - Martin Kilbinger
 - Cail Daley
 - Sacha Guerrini
 
 ## Contributors
-- Emma AyÃoberry
-- Lucie Beaumont
+- Emma Ayçoberry
+- Lucie Baumont
 - Clara Bonini
-- Sam Farrens
+- Samuel Farrens
 - Lisa Goh
 - Axel Guinot
 - Fabian Hervas Peters
--

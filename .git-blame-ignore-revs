@@ -1,0 +1,10 @@
+# Commits to skip when assigning blame — mechanical, repo-wide reformats that
+# touch many lines without changing behaviour. Listing them here keeps
+# `git blame` pointing at the commit that actually wrote each line.
+#
+# Enable locally with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# (GitHub's blame view honours this file automatically.)
+
+# style(ruff): repo-wide ruff format pass (mechanical, no semantic change)
+34740e11893fb90766d2139ebbb9d10b8b5d4091

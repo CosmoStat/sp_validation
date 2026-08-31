@@ -2,72 +2,13 @@ import os
 import time
 from pathlib import Path
 
-import matplotlib.scale as mscale
-import matplotlib.ticker as ticker
-import matplotlib.transforms as mtransforms
 import numpy as np
 from shear_psf_leakage.rho_tau_cov import CovTauTh
 from shear_psf_leakage.rho_tau_stat import RhoStat, TauStat
 
-
-class SquareRootScale(mscale.ScaleBase):
-    """
-    ScaleBase class for generating square root scale.
-
-    Usage example: axis.set_yscale('squareroot')
-
-    """
-
-    name = "squareroot"
-
-    def __init__(self, axis, **kwargs):
-        mscale.ScaleBase.__init__(self, axis, **kwargs)
-
-    def set_default_locators_and_formatters(self, axis):
-        axis.set_major_locator(ticker.AutoLocator())
-        axis.set_major_formatter(ticker.ScalarFormatter())
-        axis.set_minor_locator(ticker.NullLocator())
-        axis.set_minor_formatter(ticker.NullFormatter())
-
-    def limit_range_for_scale(self, vmin, vmax, minpos):
-        return max(0.0, vmin), vmax
-
-    class SquareRootTransform(mtransforms.Transform):
-        input_dims = 1
-        output_dims = 1
-        is_separable = True
-
-        def transform_non_affine(self, a):
-            return np.array(a) ** 0.5
-
-        def inverted(self):
-            return SquareRootScale.InvertedSquareRootTransform()
-
-    class InvertedSquareRootTransform(mtransforms.Transform):
-        input_dims = 1
-        output_dims = 1
-        is_separable = True
-
-        def transform(self, a):
-            return np.array(a) ** 2
-
-        def inverted(self):
-            return SquareRootScale.SquareRootTransform()
-
-    def get_transform(self):
-        return self.SquareRootTransform()
-
-
-mscale.register_scale(SquareRootScale)
-
-not_square_size = [
-    "DES",
-    "SP_v1.3_LFmask_8k",
-    "SP_v1.3_LFmask_8k_no_alpha",
-    "SP_v1.3_LFmask_8k_li_2024",
-    "SP_v1.3_LFmask_8k_SN8",
-    "SP_v1.3_LFmask_8k_F2",
-]
+# SquareRootScale now lives in sp_validation.plots; re-exported here so that
+# `from sp_validation.rho_tau import SquareRootScale` keeps working.
+from sp_validation.plots import SquareRootScale  # noqa: F401
 
 
 def _extract_xip(correlations):
@@ -99,7 +40,6 @@ def get_params_rho_tau(cat, survey="other"):
     params["e2_star_col"] = cat["psf"]["e2_star_col"]
     params["PSF_size"] = cat["psf"]["PSF_size"]
     params["star_size"] = cat["psf"]["star_size"]
-    params["square_size"] = survey not in not_square_size
     if survey != "DES":
         params["PSF_flag"] = cat["psf"]["PSF_flag"]
         params["star_flag"] = cat["psf"]["star_flag"]
@@ -211,11 +151,7 @@ def get_rho_tau(
     outdir_path = Path(outdir)
     rho_path = outdir_path / f"rho_stats_{base}.fits"
     catalog_id = f"{base}_jk" if cov_rho else base
-    cov_rho_path = (
-        outdir_path / f"cov_rho_{catalog_id}.npy"
-        if cov_rho
-        else None
-    )
+    cov_rho_path = outdir_path / f"cov_rho_{catalog_id}.npy" if cov_rho else None
 
     rho_stat_handler = RhoStat(
         output=outdir, treecorr_config=treecorr_config, verbose=True
@@ -229,12 +165,10 @@ def get_rho_tau(
         rho_stat_handler.catalogs.set_params(params, outdir)
 
         mask = version != "DES"
-        square_size = params["square_size"]
 
         rho_stat_handler.build_cat_to_compute_rho(
             config[version]["psf"]["path"],
             catalog_id=catalog_id,
-            square_size=square_size,
             mask=mask,
             hdu=(
                 config[version]["psf"]["hdu"]
@@ -268,12 +202,9 @@ def get_rho_tau(
         print(f"Skipping tau statistics computation, file {tau_path} already exists.")
         tau_stat_handler.load_tau_stats(tau_path.name)
     else:
-
         tau_stat_handler.catalogs.set_params(params, outdir)
 
         mask = version != "DES"
-
-        square_size = params["square_size"]
 
         # Build the different catalogs if necessary
         if f"psf_{version}" not in tau_stat_handler.catalogs.catalogs_dict.keys():
@@ -281,7 +212,6 @@ def get_rho_tau(
                 config[version]["psf"]["path"],
                 cat_type="psf",
                 catalog_id=version,
-                square_size=square_size,
                 mask=mask,
                 hdu=(
                     config[version]["psf"]["hdu"]
@@ -295,7 +225,6 @@ def get_rho_tau(
             config[version]["shear"]["path"],
             cat_type="gal",
             catalog_id=version,
-            square_size=square_size,
             mask=mask,
         )
 
@@ -333,9 +262,7 @@ def get_theory_cov(
     target_cov = Path(outdir) / f"cov_tau_{base}_th.npy"
 
     if target_cov.exists():
-        print(
-            f"Skipping covariance computation, file {target_cov} already exists."
-        )
+        print(f"Skipping covariance computation, file {target_cov} already exists.")
         return
 
     print("Computing the covariance matrix for the version: ", version)
@@ -383,9 +310,7 @@ def get_jackknife_cov(
     tau_cov_path = Path(outdir) / f"cov_tau_{base}_jk.npy"
 
     if tau_cov_path.exists():
-        print(
-            f"Skipping covariance computation, file {tau_cov_path} already exists."
-        )
+        print(f"Skipping covariance computation, file {tau_cov_path} already exists.")
         rho_stat_handler = RhoStat(
             output=outdir, treecorr_config=treecorr_config, verbose=False
         )
@@ -413,8 +338,6 @@ def get_jackknife_cov(
 
     rho_stat_handler.catalogs.set_params(params, outdir)
 
-    square_size = params["square_size"]
-
     tau_stat_handler = TauStat(
         catalogs=rho_stat_handler.catalogs,
         output=outdir,
@@ -425,20 +348,16 @@ def get_jackknife_cov(
     tau_stat_handler.catalogs.set_params(params, outdir)
 
     for i in range(ncov):
-
         tau_chunk = outdir + f"/cov_tau_{version}{i}.npy"
         rho_chunk = outdir + f"/cov_rho_{version}{i}.npy"
         if not (os.path.exists(tau_chunk) and os.path.exists(rho_chunk)):
-            print(
-                f"Computing rho-statistics for {version} (patch {i+1}/{ncov})"
-            )
+            print(f"Computing rho-statistics for {version} (patch {i + 1}/{ncov})")
 
             if f"psf_{version}{i}" not in rho_stat_handler.catalogs.catalogs_dict:
                 # Build catalogues
                 rho_stat_handler.build_cat_to_compute_rho(
                     config[version]["psf"]["path"],
                     catalog_id=version + str(i),
-                    square_size=square_size,
                     mask=False,
                     hdu=config[version]["psf"]["hdu"],
                 )
@@ -452,14 +371,11 @@ def get_jackknife_cov(
                     config[version]["shear"]["path"],
                     cat_type="gal",
                     catalog_id=version + str(i),
-                    square_size=square_size,
                     mask=False,
                 )
 
             else:
-                print(
-                    f"Computing the patch centers for patch {i+1}/{ncov}"
-                )
+                print(f"Computing the patch centers for patch {i + 1}/{ncov}")
 
                 npatch = rho_stat_handler.catalogs._params["patch_number"]
                 field = rho_stat_handler.catalogs.catalogs_dict[
@@ -467,7 +383,7 @@ def get_jackknife_cov(
                 ].getNField(max_top=int.bit_length(npatch) - 1, coords="spherical")
                 patch, centers = field.run_kmeans(npatch)
 
-                #Update the patch centers of the catalogs
+                # Update the patch centers of the catalogs
                 for key, cat in rho_stat_handler.catalogs.catalogs_dict.items():
                     cat._centers = centers
                     field = cat.getNField(
@@ -493,17 +409,17 @@ def get_jackknife_cov(
                 var_method="jackknife",
             )
 
-            #Update the keys in the dictionaries
+            # Update the keys in the dictionaries
             rho_dict = rho_stat_handler.catalogs.catalogs_dict
             tau_dict = tau_stat_handler.catalogs.catalogs_dict
-            rho_dict[f"psf_{version}{i+1}"] = rho_dict.pop(f"psf_{version}{i}")
-            rho_dict[f"psf_error_{version}{i+1}"] = rho_dict.pop(
+            rho_dict[f"psf_{version}{i + 1}"] = rho_dict.pop(f"psf_{version}{i}")
+            rho_dict[f"psf_error_{version}{i + 1}"] = rho_dict.pop(
                 f"psf_error_{version}{i}"
             )
-            rho_dict[f"psf_size_error_{version}{i+1}"] = rho_dict.pop(
+            rho_dict[f"psf_size_error_{version}{i + 1}"] = rho_dict.pop(
                 f"psf_size_error_{version}{i}"
             )
-            tau_dict[f"gal_{version}{i+1}"] = tau_dict.pop(f"gal_{version}{i}")
+            tau_dict[f"gal_{version}{i + 1}"] = tau_dict.pop(f"gal_{version}{i}")
 
     cov_tau_loc = np.zeros_like(np.load(outdir + f"/cov_tau_{version}0.npy"))
     cov_rho_loc = np.zeros_like(np.load(outdir + f"/cov_rho_{version}0.npy"))

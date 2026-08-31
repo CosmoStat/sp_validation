@@ -31,13 +31,13 @@ def make_out_dirs(output_dir, plot_dir, plot_subdirs, verbose=False):
     for d in (output_dir, plot_dir):
         if not os.path.isdir(d):
             if verbose:
-                print('Creating dir {}'.format(d))
+                print("Creating dir {}".format(d))
             os.mkdir(d)
     for sd in plot_subdirs:
-        dsd = '{}/{}'.format(plot_dir, sd)
+        dsd = "{}/{}".format(plot_dir, sd)
         if not os.path.isdir(dsd):
             if verbose:
-                print('Creating dir {}'.format(dsd))
+                print("Creating dir {}".format(dsd))
             os.mkdir(dsd)
 
 
@@ -53,7 +53,7 @@ def open_stats_file(directory, file_name):
     file_name : string
         file name
     """
-    stats_file = open('{}/{}'.format(directory, file_name), 'w')
+    stats_file = open("{}/{}".format(directory, file_name), "w")
 
     return stats_file
 
@@ -73,7 +73,7 @@ def print_stats(msg, stats_file, verbose=False):
         print message to stdout if True
     """
     stats_file.write(msg)
-    stats_file.write('\n')
+    stats_file.write("\n")
     stats_file.flush()
 
     if verbose:
@@ -102,18 +102,17 @@ def print_ratio(msg, numerator, denominator, stats_file, verbose=False):
         ratio = 0
 
     print_stats(
-        f'{msg} = {numerator}/{denominator}'
-        + f' = {ratio:.1f}%',
-        stats_file, verbose=verbose
+        f"{msg} = {numerator}/{denominator}" + f" = {ratio:.1f}%",
+        stats_file,
+        verbose=verbose,
     )
 
 
 def write_binned_quantity(quantity, key, bin_edges, extra_key="quantity"):
-    
+
     shape = quantity.shape
-    len_shape = len(shape)
     nx, ny = shape[:2]
-    
+
     filename = f"{key}_binned.npz"
 
     combined = {**bin_edges, extra_key: quantity}
