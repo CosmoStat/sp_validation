@@ -11,21 +11,15 @@ from snakemake.io import temp
 # conventions without importing numpy + smokescreen.
 from sp_validation.blinding_paths import init_paths, part_paths
 
-# Absolute path to the generic workflow's scripts, for rules that shell out to a
-# script directly rather than through Snakemake's `script:` directive. Anchored
-# on this module's own location, not workflow.basedir — under `module`
-# composition basedir reflects the composing paper, not the running checkout.
-WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
-# The repo's top-level scripts/ (user-facing CLIs), anchored the same way.
-REPO_SCRIPTS = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "scripts"
-)
-
 # The running checkout, for rules that shell out to a repo script directly
 # rather than through Snakemake's `script:` directive. Anchored on this module's
 # own location, not workflow.basedir — under `module` composition basedir
 # reflects the composing paper, not the running checkout.
 REPO_ROOT = Path(os.path.realpath(__file__)).parents[1]
+# The generic workflow's scripts, and the repo's top-level scripts/ (user-facing
+# CLIs).
+WORKFLOW_SCRIPTS = str(REPO_ROOT / "workflow" / "scripts")
+REPO_SCRIPTS = str(REPO_ROOT / "scripts")
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
