@@ -316,3 +316,42 @@ def test_assemble_from_reloaded_parts(tmp_path):
     s = sw.assemble_analysis_sacc(reloaded)
     assert type(s.covariance).__name__ == "BlockDiagonalCovariance"
     assert s.covariance.dense.shape == (len(s.mean), len(s.mean))
+
+
+def test_cosebis_part_overrides_en_and_bn(tmp_path):
+    """En/Bn overrides reach the part; the covariance stays from ``results``.
+
+    Pins the cv_cosebis provenance split: values come from the (blindable)
+    integration ξ± part, the jackknife covariance from the raw patched run.
+    """
+    from sp_validation.cosmo_val.cosebis import CosebisMixin
+
+    raw = {
+        "En": np.zeros(10),
+        "Bn": np.zeros(10),
+        "cov": _spd(20, 11),
+        "scale_cut": (1.0, 100.0),
+    }
+    en_part, bn_part = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
+
+    class _Stub(CosebisMixin):
+        sacc_nz = staticmethod(lambda version: {0: _nz()})
+        sacc_metadata = staticmethod(lambda version: META)
+
+    out = tmp_path / "part.sacc"
+    _Stub().cosebis_to_sacc_part(
+        "vSYNTH",
+        str(out),
+        raw,
+        en_override=en_part,
+        bn_override=bn_part,
+    )
+    # written with type="data", so reading it back needs the unblinded escape
+    s = sio.load(str(out), allow_unblinded=True)
+    n, E, B = sio.get_cosebis(s, (0, 0))
+    assert np.array_equal(n, np.arange(1, 11))
+    assert np.array_equal(E, en_part) and np.array_equal(B, bn_part)
+    assert np.array_equal(s.covariance.dense, raw["cov"])
+    # the caller's results dict is not mutated
+    assert np.array_equal(raw["En"], np.zeros(10))
+    assert np.array_equal(raw["Bn"], np.zeros(10))

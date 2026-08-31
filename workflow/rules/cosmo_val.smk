@@ -368,8 +368,9 @@ rule cv_pure_eb:
 rule cv_cosebis:
     """COSEBIs E/B decomposition for one version (config-space, fine binning).
 
-    Mixed provenance by design: En derives from the (blindable) integration ξ±
-    part, while Bn and the jackknife covariance need the patched raw measurement.
+    Mixed provenance by design: En and Bn derive from the (blindable)
+    integration ξ± part, while the jackknife covariance needs the patched raw
+    measurement (patches exist only there).
     """
     input:
         xi=lambda w: cv_xi_txt(w.version),
