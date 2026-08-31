@@ -180,7 +180,7 @@ class CosebisMixin:
         part: the covariance must cover every stored point and the cuts overlap
         in mode space, so the non-fiducial cuts stay in the ``.npz`` sidecar.
 
-``en_override``/``bn_override`` replace ``result["En"]``/``result["Bn"]``
+        ``en_override``/``bn_override`` replace ``result["En"]``/``result["Bn"]``
         with values derived from the integration ξ± part; the covariance stays
         from ``result`` (patches exist only in the raw patched measurement). The
         part is born blinded, so it is stamped under the version's blind.

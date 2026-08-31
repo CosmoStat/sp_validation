@@ -10,6 +10,7 @@ resolves in the cosmo_val DAG dry-run.
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import types
@@ -48,8 +49,8 @@ asm = _load_module("workflow/scripts/assemble_sacc.py", "assemble_sacc")
 _STEMS = [
     "SP_v1.4.6.3_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=100",
     "SP_v1.4.6.3_leak_corr_xi_minsep=0.08_maxsep=300_nbins=1000_npatch=1",
-    "pseudo_cl_SP_v1.4.6.3_blind=A_powspace_nbins=32",
-    "pseudo_cl_SP_v1.4.6.3_leak_corr_blind=A_powspace_nbins=32",
+    "pseudo_cl_analysis_SP_v1.4.6.3_powspace_nbins=32",
+    "pseudo_cl_analysis_SP_v1.4.6.3_leak_corr_powspace_nbins=32",
 ]
 
 
@@ -357,4 +358,10 @@ def test_blinding_subgraph_in_cosmo_val_dry_run():
     # the subgraph for it too.
     assert "_xi_minsep=1.0_maxsep=250.0_nbins=20_npatch=100_blinded.sacc" in out
     assert "_xi_minsep=0.08_maxsep=300_nbins=1000_npatch=1_blinded.sacc" in out
-    assert "_blind=A_powspace_nbins=32_blinded.sacc" in out
+    assert "pseudo_cl_analysis_SP_v1.4.6.3_powspace_nbins=32_blinded.sacc" in out
+    # Every blindable plaintext part is temp() on a data run, the analysis
+    # pseudo-Cℓ included (its own rule exists so it can be).
+    assert "Would remove temporary output" in out, out
+    assert re.search(
+        r"Would remove temporary output \S*pseudo_cl_analysis_\S+\.sacc", out
+    ), out

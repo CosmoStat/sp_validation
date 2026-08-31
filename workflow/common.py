@@ -209,8 +209,28 @@ def pseudo_cl_tag(config):
     Single definition shared by the producer (twopoint.smk) and the consumers
     (cosmo_val.smk, inference.smk), which reconstruct the name from config.
     """
+    return f"blind={config['harmonic']['fiducial']['blind']}_{pseudo_cl_binning_tag(config)}"
+
+
+def pseudo_cl_binning_tag(config):
+    """The `{binning}_nbins={n}` half of the tag — the binning alone."""
     fiducial = config["harmonic"]["fiducial"]
-    return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
+    return f"{fiducial['binning']}_nbins={fiducial['nbins']}"
+
+
+def pseudo_cl_analysis_stem(config, version):
+    """Stem of the analysis pseudo-Cℓ part for a version.
+
+    Its own name (and its own producing rule, twopoint.smk), distinct from the
+    generic `pseudo_cl` variants the bmodes and mock workflows request: only
+    this part is blindable, so only it can be temp()'d on a data run. Single
+    definition shared by the producer, the assembler (cosmo_val.smk) and the
+    blindable-stem regex (blinding.smk).
+
+    Carries the binning but no `blind=` field: the A/B/C blind is the legacy
+    n(z) vocabulary (#312), not this part's concealment.
+    """
+    return f"pseudo_cl_analysis_{version}_{pseudo_cl_binning_tag(config)}"
 
 
 def get_shear_catalog(wildcards):

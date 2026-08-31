@@ -101,7 +101,7 @@ def cv_cosebis_npz(version):
 def cv_pseudo_cl_sacc(version):
     """Untagged pseudo-Cl SACC part cv_pseudo_cl writes (B-mode diagnostic).
 
-    The analysis file carries the tagged inference product instead (see
+    The analysis file carries the analysis part instead (see
     cv_pseudo_cl_analysis_sacc).
     """
     return str(COSMO_VAL / f"pseudo_cl_{version}.sacc")
@@ -111,8 +111,12 @@ _PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def cv_pseudo_cl_analysis_sacc(version):
-    """Tagged pseudo-Cl SACC part the analysis file carries."""
-    return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
+    """Analysis pseudo-Cl SACC part the analysis file carries.
+
+    Written by the dedicated `pseudo_cl_analysis` rule (twopoint.smk), the only
+    blindable pseudo-Cℓ variant.
+    """
+    return str(COSMO_VAL / f"{pseudo_cl_analysis_stem(config, version)}.sacc")
 
 
 def cv_pseudo_cl_cov(version):
