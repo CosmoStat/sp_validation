@@ -172,10 +172,8 @@ workflow = [
     # runtime/process_pool.py return an unassigned `self.data`), so chains must run
     # under MPI -- which is why the Dockerfile sets MPIFC before syncing this extra.
     "cosmosis>=3.25",
-    # CSL's structure/projection/project_2d.py (in every pipeline template)
-    # imports fastpt unconditionally; without it the module fails at load time
-    # (caught by test_csl_modules.py).
-    "fast-pt>=3.2,<4",  # 4.0 restructured (fastpt.P_extend moved); CSL expects 3.x
+    # CSL's project_2d.py imports fastpt (3.x API; 4.0 restructured it).
+    "fast-pt>=3.2,<4",
     # NOTE: workflow/scripts/cv_*.py also import `cv_runner`, which is not
     # published or resolvable (no public repo found) — left undeclared pending
     # its source. Same for `unions_wl` (scripts/check_footprint.py).

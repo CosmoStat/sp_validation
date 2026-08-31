@@ -15,13 +15,12 @@ environment variables into an `.ini`'s `[DEFAULT]` section, so the templates'
 `COSMOSIS_DIR = %(CSL_DIR)s` resolves to it. Outside the container, export
 `CSL_DIR` at a build of your own and the same templates work unchanged.
 
-CSL is pinned to **Sacha Guerrini's fork**
-([sachaguer/cosmosis-standard-library](https://github.com/sachaguer/cosmosis-standard-library/))
+CSL is pinned to the **UNIONS-WL org fork**
+([UNIONS-WL/cosmosis-standard-library](https://github.com/UNIONS-WL/cosmosis-standard-library/))
 at `b26fa7ff`, not to upstream: the UNIONS pipelines depend on four commits that
 exist only there — tau statistics, `sample_S8`, and two z-dependent
-linear-alignment modules. The fork is 4 commits ahead of
-`cosmosis-developers/cosmosis-standard-library` and 373 behind it; carrying those
-four forward onto current upstream is future work.
+linear-alignment modules. Merging the fork up to current upstream is
+[UNIONS-WL/cosmosis-standard-library#2](https://github.com/UNIONS-WL/cosmosis-standard-library/pull/2).
 
 Launch sampling under MPI (`mpiexec -n N cosmosis --mpi ...`), not `--smp`:
 CosmoSIS's shared-memory pool is unmaintained and still crashes after sampling
