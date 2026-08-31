@@ -335,8 +335,12 @@ def test_cosebis_part_overrides_en_and_bn(tmp_path):
     en_part, bn_part = np.arange(1, 11) * 1e-6, np.arange(1, 11) * 1e-7
 
     class _Stub(CosebisMixin):
+        # run_type / commitment_path are what the blinded-part writer reads;
+        # a mock part with no commitment keeps this test off the custody gate.
+        run_type = "mock"
         sacc_nz = staticmethod(lambda version: {0: _nz()})
         sacc_metadata = staticmethod(lambda version: META)
+        commitment_path = staticmethod(lambda version: None)
 
     out = tmp_path / "part.sacc"
     _Stub().cosebis_to_sacc_part(
@@ -346,7 +350,6 @@ def test_cosebis_part_overrides_en_and_bn(tmp_path):
         en_override=en_part,
         bn_override=bn_part,
     )
-    # written with type="data", so reading it back needs the unblinded escape
     s = sio.load(str(out), allow_unblinded=True)
     n, E, B = sio.get_cosebis(s, (0, 0))
     assert np.array_equal(n, np.arange(1, 11))
