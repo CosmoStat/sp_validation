@@ -124,6 +124,25 @@ def cv_pseudo_cl_cov(version):
     return str(COSMO_VAL / f"pseudo_cl_cov_{version}_{_PSEUDO_CL_TAG}.fits")
 
 
+def cv_xi_cov(version):
+    """CosmoCov-processed ξ± covariance for the reporting grid.
+
+    The real analysis covariance for the ξ± block, produced by
+    covariance_process (covariance.smk) on the same binning the reporting grid
+    measures, so requesting it builds it. OneCovariance replaces CosmoCov
+    upstream of this path (#256) in the same format.
+    """
+    return covariance_path(
+        version,
+        FIDUCIAL["blind"],
+        gaussian="ng",
+        min_sep=CV["theta_min"],
+        max_sep=CV["theta_max"],
+        nbins=CV["nbins"],
+        mask_suffix=DEFAULT_MASK_SUFFIX,
+    )
+
+
 def cv_cosebis_sacc(version):
     """COSEBIs SACC part (fiducial scale cut) the cv_cosebis rule writes."""
     return str(COSMO_VAL / f"{version}_cosebis.sacc")
@@ -476,6 +495,7 @@ def cv_assemble_inputs(version):
     # writers, so they bind by name either way.
     parts = dict(
         xi_reporting=blindable_part(cv_xi_sacc(version, "reporting")),
+        xi_cov=cv_xi_cov(version),
         cosebis=cv_cosebis_sacc(version),
         pure_eb=cv_pure_eb_sacc(version),
         rho_tau=cv_rho_tau_sacc(version),
@@ -500,13 +520,10 @@ rule assemble_sacc:
         # Statistics this rule wired; the script validates part_paths against it
         # so a typo'd input keyword can't silently drop one.
         expected=lambda w: [
-            k for k in cv_assemble_inputs(w.version) if k != "pseudo_cl_cov"
+            k
+            for k in cv_assemble_inputs(w.version)
+            if k not in ("xi_cov", "pseudo_cl_cov")
         ],
-        # Without a real ξ± covariance, assembly raises by default rather than
-        # ship {version}.sacc with a var=1.0 leading block — ~20 orders off the
-        # real variance, i.e. silently catastrophic χ²/PTE for any consumer. The
-        # opt-in is for dry-run and test configs only.
-        placeholder_var=(1.0 if CV.get("allow_placeholder_cov", False) else None),
     resources:
         mem_mb=8000,
         runtime=20,
