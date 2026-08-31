@@ -1,3 +1,1 @@
-Would reformat: src/sp_validation/tests/test_container_smoke.py
-Would reformat: workflow/scripts/im_mbias_config.py
-2 files would be reformatted, 234 files already formatted
+236 files already formatted
