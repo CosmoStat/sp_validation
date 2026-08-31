@@ -31,7 +31,7 @@ container_info = {
 }
 
 # --- editable install resolves inside the container ------------------------
-import sp_validation
+import sp_validation  # noqa: E402
 
 sp_validation_info = {
     "version": getattr(sp_validation, "__version__", "unknown"),
