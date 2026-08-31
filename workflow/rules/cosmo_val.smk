@@ -80,22 +80,38 @@ def cv_pure_eb_npz(version):
     )
 
 
-def cv_cosebis_npz(version):
+def _cosebis_stub(version):
+    """Shared stem of the COSEBIs diagnostic products (npz + figures).
+
+    Also the stem ``plot_cosebis`` builds for its own byproducts, so the two
+    write one set of files rather than two competing schemas.
+    """
     cb = CV["cosebis"]
     fsc = CV["fiducial_scale_cut"]
-    # Mirror calculate/plot_cosebis out_stub (cosmo_val.py): a distinct schema
-    # from pure_eb — _cosebis_ prefix, integration nbins, plus _nmodes= and
-    # _scalecut= segments. Must match save_cosebis_results exactly or
-    # verify_outputs raises and cv_summarize_bmodes deadlocks on this input.
     return str(
         COSMO_VAL
         / (
             f"{version}_cosebis_minsep={cb['min_sep_int']}"
             f"_maxsep={cb['max_sep_int']}_nbins={cb['nbins_int']}"
             f"_npatch={cb['npatch']}_varmethod=jackknife_nmodes={cb['nmodes']}"
-            f"_scalecut={fsc[0]}-{fsc[1]}_data.npz"
+            f"_scalecut={fsc[0]}-{fsc[1]}"
         )
     )
+
+
+def cv_cosebis_npz(version):
+    """COSEBIs multi-cut diagnostic .npz (the PTE scan)."""
+    return _cosebis_stub(version) + "_data.npz"
+
+
+def cv_cosebis_figures(version):
+    """The COSEBIs companion figures, by output key."""
+    stub = _cosebis_stub(version)
+    return {
+        "figure_modes": f"{stub}_cosebis.png",
+        "figure_covariance": f"{stub}_covariance.png",
+        "figure_scalecut_ptes": f"{stub}_scalecut_ptes.png",
+    }
 
 
 def cv_pseudo_cl_sacc(version):
@@ -366,23 +382,25 @@ rule cv_pure_eb:
 
 
 rule cv_cosebis:
-    """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
+    """COSEBIs E/B decomposition for one version, from its ξ± part.
+
+    Values, covariance and PTEs all come from the part: the COSEBIs covariance
+    is the part's ξ± covariance through the same kernel as the modes.
+    """
     input:
-        xi=lambda w: cv_xi_txt(w.version),
-        xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
+        xi=lambda w: cv_xi_sacc(w.version, "cosebis"),
     output:
         npz=cv_cosebis_npz("{version}"),
         sacc=cv_cosebis_sacc("{version}"),
+        **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
-        min_sep_int=CV["cosebis"]["min_sep_int"],
-        max_sep_int=CV["cosebis"]["max_sep_int"],
-        nbins_int=CV["cosebis"]["nbins_int"],
-        npatch=CV["cosebis"]["npatch"],
+        min_sep=CV["cosebis"]["min_sep_int"],
+        max_sep=CV["cosebis"]["max_sep_int"],
+        nbins=CV["cosebis"]["nbins_int"],
         nmodes=CV["cosebis"]["nmodes"],
         scale_cuts=CV["cosebis"]["scale_cuts"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        cv_init=lambda w: cv_init_params(config, version_list=[w.version]),
         rundir=CV_RUNDIR,
     threads: 24
     resources:
