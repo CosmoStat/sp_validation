@@ -169,6 +169,7 @@ def cv(tmp_path):
         power=0.5,
         n_ell_bins=N_ELL_BINS,
         pol_factor=True,
+        run_type="mock",
     )
     cv._test_version = version
     return cv

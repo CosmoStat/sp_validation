@@ -96,18 +96,6 @@ uv venv --python 3.12
 uv pip install -e '.[test]'
 ```
 
-To also install the data-vector blinding stack (Smokescreen + firecrown, PRD
-[#241](https://github.com/CosmoStat/sp_validation/issues/241)), pass the
-dependency-override file — firecrown is not pip-resolvable without it (see
-`uv-overrides.txt` for why):
-
-```bash
-uv pip install --overrides uv-overrides.txt -e '.[test,blinding]'
-python scripts/patch_firecrown.py  # make pip-installed firecrown importable without NumCosmo
-```
-
-
-
 ## Flow chart
 
 The following flow chart illustrates the steps required to go from ShapePipe output products

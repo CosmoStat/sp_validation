@@ -121,11 +121,14 @@ harmonic:
     binning: powspace
     nbins: 32
 
-# Cosmological inference data-product locations (dormant subsystem).
+# Cosmological inference data-product locations + tooling.
 inference:
   chains_dir: "/n09data/guerrini/output_chains"
   glass_mock_data_dir: "/n09data/guerrini/glass_mock_v1.4.6/results"
   glass_mock_chains_dir: "/n09data/guerrini/glass_mock_chains"
+  # CosmoSIS Standard Library checkout — fills COSMOSIS_DIR in the generated
+  # pipeline inis (the module `file =` paths and the sacc_like shim's csl_dir).
+  csl_dir: "/n23data1/n06data/lgoh/scratch/cosmosis-standard-library_lisa"
 
 cosebis:
   theta_min: 1.0
