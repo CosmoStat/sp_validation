@@ -3,74 +3,19 @@
 # ---------------------------------------------------------------------------
 # ξ± angular grids
 # ---------------------------------------------------------------------------
-# A grid is a binning plus how its covariance is estimated: (min_sep, max_sep,
-# nbins, npatch, cov). `reporting` is the analysis grid, `integration` the fine
-# one the B-mode integrals run over, `cosebis` the fine patched grid COSEBIs
-# propagates its covariance from. cov is "jackknife" (dense, from the patches),
-# "diagonal" (TreeCorr varxip/varxim) or "none". Workflows carrying no cosmo_val
-# block (e.g. papers/bmodes) fall back to their fiducial grids.
-def _xi_grids():
-    cv = config.get("cosmo_val", {})
-    reporting = (
-        {
-            "min_sep": cv["theta_min"],
-            "max_sep": cv["theta_max"],
-            "nbins": cv["nbins"],
-            "npatch": cv["npatch"],
-        }
-        if cv
-        else {k: FIDUCIAL[k] for k in ("min_sep", "max_sep", "nbins", "npatch")}
-    )
-    integration = dict(
-        cv.get("integration")
-        or {
-            "min_sep": FIDUCIAL["min_sep_int"],
-            "max_sep": FIDUCIAL["max_sep_int"],
-            "nbins": FIDUCIAL["nbins_int"],
-        }
-    )
-    integration.setdefault("npatch", 1)
-    grids = {"reporting": reporting, "integration": integration}
-    cb = cv.get("cosebis")
-    if cb:
-        grids["cosebis"] = {
-            "min_sep": cb["min_sep_int"],
-            "max_sep": cb["max_sep_int"],
-            "nbins": cb["nbins_int"],
-            "npatch": cb["npatch"],
-        }
-    for grid in grids.values():
-        # A jackknife estimate needs patches; at npatch=1 TreeCorr's var_method
-        # is "shot" and the diagonal is all it can offer.
-        grid.setdefault("cov", "jackknife" if int(grid["npatch"]) > 1 else "none")
-    return grids
-
-
-XI_GRIDS = _xi_grids()
-XI_KEYS = ("min_sep", "max_sep", "nbins", "npatch")  # the binning; `cov` is not part of the name
+# The table itself lives in common.py, where it can be built from a plain config
+# dict and tested; these are the workflow's bindings to it.
+XI_GRIDS = xi_grids(config, FIDUCIAL)
 
 
 def xi_binning(grid):
     """The `minsep=..._maxsep=..._nbins=..._npatch=...` tag of a named grid."""
-    g = XI_GRIDS[grid]
-    return (
-        f"minsep={g['min_sep']}_maxsep={g['max_sep']}"
-        f"_nbins={g['nbins']}_npatch={g['npatch']}"
-    )
+    return grid_binning(XI_GRIDS[grid])
 
 
 def xi_grid_of(wildcards):
-    """Grid label for the binning a job was requested with.
-
-    Compared numerically, so a "300" wildcard matches a 300.0 config value.
-    Binnings matching no named grid (e.g. papers/bmodes' nbins=10000
-    convergence check) are measured as plain reporting-style measurements.
-    """
-    key = tuple(float(getattr(wildcards, k)) for k in XI_KEYS)
-    for name, g in XI_GRIDS.items():
-        if tuple(float(g[k]) for k in XI_KEYS) == key:
-            return name
-    return "reporting"
+    """Grid label for the binning a job was requested with."""
+    return grid_of(XI_GRIDS, {key: getattr(wildcards, key) for key in XI_KEYS})
 
 
 rule xi:

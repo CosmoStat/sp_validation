@@ -231,31 +231,6 @@ def calculate_pure_eb_correlation(
     return results
 
 
-def cosebis_from_xi(theta, xip, xim, nmodes, scale_cut=None):
-    """COSEBIs (Eₙ, Bₙ) from ξ± arrays through the pipeline kernel (values only).
-
-    The values-only seam of :func:`calculate_cosebis`, for callers holding ξ±
-    arrays rather than a TreeCorr ``GGCorrelation``.
-
-    ``scale_cut`` is ``(theta_min, theta_max)``, the min/max of the retained bin
-    centres, selected inclusively.
-    """
-    from cosmo_numba.B_modes.cosebis import COSEBIS
-
-    theta, xip, xim = (np.asarray(a) for a in (theta, xip, xim))
-    tmin, tmax = scale_cut if scale_cut is not None else (theta.min(), theta.max())
-    cut = (theta >= tmin) & (theta <= tmax)
-    theta_cut, xip_cut, xim_cut = theta[cut], xip[cut], xim[cut]
-    cosebis = COSEBIS(
-        theta_min=np.min(theta_cut),
-        theta_max=np.max(theta_cut),
-        N_max=nmodes,
-        precision=120,
-    )
-    En, Bn = cosebis.cosebis_from_xipm(theta_cut, xip_cut, xim_cut, parallel=True)
-    return np.asarray(En), np.asarray(Bn)
-
-
 def pure_eb_from_xi(
     theta_report, xip_report, xim_report, theta_int, xip_int, xim_int, tmin, tmax
 ):

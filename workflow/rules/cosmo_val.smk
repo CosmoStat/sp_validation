@@ -3,29 +3,33 @@
 # The original cosmo_val/run_cosmo_val.py was one linear driver that built a
 # single in-memory `cv` (CosmologyValidation) and called ~13 cv.<method>()
 # diagnostics in sequence, linked only by lazy properties on that object. Here
-# each diagnostic is a rule, and the rules are linked by the *real* data
-# products each method writes under COSMO_VAL (= cosmo_val/output):
+# each diagnostic is a rule, and the rules are linked by the SACC parts and
+# products they write under COSMO_VAL (= cosmo_val/output):
 #
-#   rho/tau FITS  ──┬─→ rho/tau plots
-#                   ├─→ rho_tau_fits (PSF-error MCMC)
-#                   └─────────────────────────────┐
-#   additive bias ──→ xi (2pcf) ──┬─→ 2pcf plot   │
-#                                 ├─→ ratio_xi_sys_xi ←┘ (also needs xi_psf_sys)
-#                                 ├─→ pure_eb (npz) ─┐
-#                                 └─→ cosebis (npz) ─┤
-#   pseudo_cl FITS ──────────────────────────────────┼─→ summarize_bmodes
-#                                                     ┘
+#   catalogue ──→ xi (one job per grid: reporting, integration, cosebis)
+#                   │
+#                   ├─ reporting part ──┬─→ pure_eb (part, npz, figures)
+#                   ├─ integration part ┘        │
+#                   ├─ cosebis part ─────→ cosebis (part, npz, figures)
+#                   └─ reporting .txt ──→ 2pcf plot, ratio_xi_sys_xi
+#   catalogue ──→ pseudo_cl (part) ──┬─→ pseudo-Cl figures
+#   CosmoCov ──→ covariance ─────────┤
+#   rho/tau (part + FITS) ───────────┼─→ summarize_bmodes (reads the products)
+#                                    └─→ assemble_sacc ──→ {version}.sacc
 #
-# Granularity decision: methods that write durable data products
-# (calculate_rho_tau_stats, calculate_2pcf, calculate_pseudo_cl, plot_pure_eb,
-# plot_cosebis) own a compute rule keyed on those files. Methods that only
-# emit figures, or whose figure paths derive from internal handler state
-# (rho/tau plots, rho_tau_fits, objectwise leakage, 2pcf overlay), declare a
-# sentinel under COSMO_VAL/snakemake_sentinels so they stay DAG-trackable.
-# Lazy cv state that the original code never persists (c1/c2, xi_psf_sys) is
-# either materialized to a small JSON (additive bias) or recomputed in the one
-# rule that needs it (xi_psf_sys in ratio_xi_sys_xi) — recompute is cheap next
-# to the science it depends on. See workflow/scripts/cv_runner.py.
+# The B-mode rules are ingests: pure_eb, cosebis, the pseudo-Cl figures and the
+# summary all work from the parts and the covariance inputs, never from a
+# catalogue, so a blinded part keeps everything downstream blinded. The
+# analytic covariances (CosmoCov ξ±, NaMaster pseudo-Cℓ) are what assembly puts
+# in the terminal file, replacing the estimates a part was born with.
+#
+# Methods that only emit figures, or whose figure paths derive from internal
+# handler state (rho/tau plots, rho_tau_fits, objectwise leakage, 2pcf
+# overlay), declare a sentinel under COSMO_VAL/snakemake_sentinels so they stay
+# DAG-trackable. Lazy cv state the original code never persists (c1/c2,
+# xi_psf_sys) is either materialized to a small JSON (additive bias) or
+# recomputed in the one rule that needs it — recompute is cheap next to the
+# science it depends on. See workflow/scripts/cv_runner.py.
 
 CV = config["cosmo_val"]
 CV_VERSIONS = config["versions"]
@@ -148,11 +152,6 @@ def cv_cosebis_figures(version):
         "figure_covariance": f"{stub}_covariance.png",
         "figure_scalecut_ptes": f"{stub}_scalecut_ptes.png",
     }
-
-
-def cv_pseudo_cl_sacc(version):
-    """Untagged pseudo-Cl SACC part: the B-mode diagnostic, not a data product."""
-    return str(COSMO_VAL / f"pseudo_cl_{version}.sacc")
 
 
 _PSEUDO_CL_TAG = pseudo_cl_tag(config)
@@ -374,18 +373,32 @@ rule cv_ratio_xi_sys_xi:
 # Harmonic-space pseudo-Cl
 # ---------------------------------------------------------------------------
 
-rule cv_pseudo_cl:
-    """Pseudo-Cl E/B spectra for all versions (NaMaster), born as SACC parts."""
+def cv_pseudo_cl_figures():
+    """The pseudo-Cl figures, by output key (one per spectrum, all versions)."""
+    return {
+        f"figure_{name}": str(COSMO_VAL / f"cell_{name}.png")
+        for name in ("ee", "eb", "bb")
+    }
+
+
+rule cv_plot_pseudo_cl:
+    """The EE/EB/BB pseudo-Cl figures, from the analysis parts."""
+    input:
+        pseudo_cl=[cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS],
+        pseudo_cl_cov=[cv_pseudo_cl_cov(v) for v in CV_VERSIONS],
     output:
-        pseudo_cl=[cv_pseudo_cl_sacc(v) for v in CV_VERSIONS],
+        **cv_pseudo_cl_figures(),
     params:
-        **cv_params(),
-    threads: 12
+        versions=CV_VERSIONS,
+        # Style is per catalogue, so the derived variants take their parent's.
+        markers=[CATALOG_CONFIG[base_version(v)]["marker"] for v in CV_VERSIONS],
+        colours=[CATALOG_CONFIG[base_version(v)]["colour"] for v in CV_VERSIONS],
+        rundir=CV_RUNDIR,
     resources:
-        mem_mb=32000,
-        runtime=180,
+        mem_mb=8000,
+        runtime=20,
     script:
-        "../scripts/cv_pseudo_cl.py"
+        "../scripts/cv_plot_pseudo_cl.py"
 
 
 # ---------------------------------------------------------------------------
@@ -476,7 +489,7 @@ rule cv_summarize_bmodes:
         pure_eb=[cv_pure_eb_npz(v) for v in CV_VERSIONS],
         cosebis=[cv_cosebis_npz(v) for v in CV_VERSIONS],
         pseudo_cl=(
-            [cv_pseudo_cl_sacc(v) for v in CV_VERSIONS]
+            [cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS]
             if CV.get("include_pseudo_cl", False) else []
         ),
         pseudo_cl_cov=(
@@ -580,5 +593,6 @@ rule cosmo_val_all:
         str(COSMO_VAL / "ratio_xi_sys_xi.png"),
         # B-modes
         str(COSMO_VAL / "bmode_summary.json"),
+        list(cv_pseudo_cl_figures().values()) if CV.get("include_pseudo_cl", False) else [],
         # Terminal analysis file: the assembled {version}.sacc per version
         [cv_analysis_sacc(v) for v in CV_VERSIONS],
