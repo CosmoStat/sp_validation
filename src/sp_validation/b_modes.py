@@ -74,21 +74,32 @@ def scale_cut_to_bins(gg, min_scale=None, max_scale=None):
     stop_bin : int
         Last included bin index + 1 (for slicing notation)
     """
-    nbins = len(gg.meanr)
+    return bins_from_edges(gg.left_edges, gg.right_edges, min_scale, max_scale)
 
-    if min_scale is not None:
-        # Conservative: exclude bins whose left edge is below min_scale
-        start_bin = np.searchsorted(gg.left_edges, min_scale, side="left")
-    else:
-        start_bin = 0
 
-    if max_scale is not None:
-        # Conservative: exclude bins whose right edge is above max_scale
-        stop_bin = np.searchsorted(gg.right_edges, max_scale, side="right")
-    else:
-        stop_bin = nbins
-
+def bins_from_edges(left_edges, right_edges, min_scale=None, max_scale=None):
+    """:func:`scale_cut_to_bins` on bare bin edges."""
+    start_bin = (
+        np.searchsorted(left_edges, min_scale, side="left")
+        if min_scale is not None
+        else 0
+    )
+    stop_bin = (
+        np.searchsorted(right_edges, max_scale, side="right")
+        if max_scale is not None
+        else len(right_edges)
+    )
     return start_bin, stop_bin
+
+
+def log_bin_edges(min_sep, max_sep, nbins):
+    """TreeCorr ``Log`` bin edges — the grid a binning defines.
+
+    SACC ξ± parts store bin centres, not edges, so a consumer working from a
+    part reconstructs the edges from the binning it was measured on.
+    """
+    edges = np.geomspace(float(min_sep), float(max_sep), int(nbins) + 1)
+    return edges[:-1], edges[1:]
 
 
 def correlation_from_covariance(covariance):
@@ -338,23 +349,52 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
         Each results dictionary contains 'En', 'Bn', 'cov', 'chi2_E', 'chi2_B',
         'pte_B', 'scale_cut', and 'mask' entries.
     """
+    cov_xipm = np.loadtxt(cov_path) if cov_path is not None else gg.cov
+    return cosebis_scan_from_xi(
+        gg.meanr,
+        gg.xip,
+        gg.xim,
+        cov_xipm,
+        gg.left_edges,
+        gg.right_edges,
+        nmodes=nmodes,
+        scale_cuts=scale_cuts,
+        # A theory covariance has no jackknife realisations to debias.
+        npatch=None if cov_path is not None else gg.npatch1,
+    )
+
+
+def cosebis_scan_from_xi(
+    theta,
+    xip,
+    xim,
+    cov_xipm,
+    left_edges,
+    right_edges,
+    *,
+    nmodes=10,
+    scale_cuts=None,
+    npatch=None,
+):
+    """COSEBIs over a set of scale cuts, from ξ± arrays and their covariance.
+
+    The values-and-covariance seam of :func:`calculate_cosebis`, for callers
+    holding a ξ± data vector rather than a TreeCorr ``GGCorrelation``. The
+    COSEBIs covariance is the ξ± covariance carried through the same linear
+    kernel as the modes, so no estimator re-run is involved. ``npatch`` is the
+    jackknife realisation count behind ``cov_xipm``, which sets the Hartlap
+    debiasing; leave it ``None`` for a theory covariance, which needs none.
+
+    Returns the ``{scale_cut: result}`` mapping :func:`calculate_cosebis` returns.
+    """
     from cosmo_numba.B_modes.cosebis import COSEBIS
 
-    # Default to full range if no scale cuts provided
+    theta, xip, xim = (np.asarray(a) for a in (theta, xip, xim))
+    cov_xipm = np.asarray(cov_xipm)
     if scale_cuts is None:
-        scale_cuts = [(gg.left_edges[0], gg.right_edges[-1])]
-
-    # Pre-compute values that don't change across scale cuts
-    nbins = len(gg.meanr)
-
-    # Load covariance matrix and calculate Hartlap factor once
-    if cov_path is not None:
-        print(f"Loading theoretical covariance from {cov_path}")
-        cov_xipm = np.loadtxt(cov_path)
-        hartlap_factor = 1  # Not defined for analytic covariances
-    else:
-        cov_xipm = gg.cov
-        hartlap_factor = (gg.npatch1 - 2 * nmodes - 2) / (gg.npatch1 - 1)
+        scale_cuts = [(left_edges[0], right_edges[-1])]
+    nbins = len(theta)
+    hartlap_factor = 1 if npatch is None else (npatch - 2 * nmodes - 2) / (npatch - 1)
 
     all_results = {}
 
@@ -362,11 +402,12 @@ def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
     for scale_cut in tqdm.tqdm(scale_cuts, desc="COSEBIs scale cuts"):
         min_theta, max_theta = scale_cut
 
-        # Apply scale cuts using scale_cut_to_bins for consistency
-        start_bin, stop_bin = scale_cut_to_bins(gg, min_theta, max_theta)
+        start_bin, stop_bin = bins_from_edges(
+            left_edges, right_edges, min_theta, max_theta
+        )
         inds = np.arange(start_bin, stop_bin)
 
-        theta_cut, xip_cut, xim_cut = [arr[inds] for arr in [gg.meanr, gg.xip, gg.xim]]
+        theta_cut, xip_cut, xim_cut = [arr[inds] for arr in [theta, xip, xim]]
 
         # Calculate COSEBIs E/B modes using actual theta range (per Axel's recommendation)
         # Use precision=120 (vs default 80) to avoid sympy root convergence failures
@@ -819,7 +860,7 @@ def plot_pure_eb_correlations(
 
 
 def plot_cosebis_scale_cut_heatmap(
-    cosebis_results, gg, version, output_path, fiducial_scale_cut=None
+    cosebis_results, edges, version, output_path, fiducial_scale_cut=None
 ):
     """
     Create 2D heatmaps showing how COSEBIs statistics vary across different scale cuts.
@@ -828,8 +869,8 @@ def plot_cosebis_scale_cut_heatmap(
     ----------
     cosebis_results : dict
         Dictionary with scale cut tuples as keys, containing 'chi2_E' and 'pte_B' values
-    gg : treecorr.GGCorrelation
-        Correlation function object for bin edges
+    edges : tuple of numpy.ndarray
+        ``(left_edges, right_edges)`` of the grid the scale cuts index
     version : str
         Version string for main title
     output_path : str
@@ -837,7 +878,8 @@ def plot_cosebis_scale_cut_heatmap(
     fiducial_scale_cut : tuple, optional
         (min_scale, max_scale) for cross-hatching
     """
-    nbins = gg.nbins
+    left_edges, right_edges = edges
+    nbins = len(left_edges)
 
     # Initialize matrices
     snrs = [np.sqrt(result["chi2_E"]) for result in cosebis_results.values()]
@@ -853,9 +895,9 @@ def plot_cosebis_scale_cut_heatmap(
         pte_matrix[row, column] = pte
 
     # Fill matrices from COSEBIs results
-    for i in range(len(gg.left_edges)):
-        for j in range(i, len(gg.right_edges)):
-            scale_cut = (gg.left_edges[i], gg.right_edges[j])
+    for i in range(len(left_edges)):
+        for j in range(i, len(right_edges)):
+            scale_cut = (left_edges[i], right_edges[j])
             result = cosebis_results.get(scale_cut)
 
             if result is not None:
@@ -916,7 +958,9 @@ def plot_cosebis_scale_cut_heatmap(
     # Add fiducial scale cut cross-hatching if provided
     if fiducial_scale_cut is not None:
         min_scale, max_scale = fiducial_scale_cut
-        start_bin, stop_bin = scale_cut_to_bins(gg, min_scale, max_scale)
+        start_bin, stop_bin = bins_from_edges(
+            left_edges, right_edges, min_scale, max_scale
+        )
 
         if stop_bin > start_bin and start_bin < nbins and stop_bin > 0:
             # Add cross-hatching at the fiducial scale cut matrix element
@@ -943,10 +987,10 @@ def plot_cosebis_scale_cut_heatmap(
     # Set angular scale ticks
     tick_indices = np.arange(0, nbins)
     x_tick_labels = [
-        f"{gg.left_edges[i]:.1f}" for i in tick_indices if i < len(gg.left_edges)
+        f"{left_edges[i]:.1f}" for i in tick_indices if i < len(left_edges)
     ]
     y_tick_labels = [
-        f"{gg.right_edges[i]:.1f}" for i in tick_indices if i < len(gg.right_edges)
+        f"{right_edges[i]:.1f}" for i in tick_indices if i < len(right_edges)
     ]
     x_tick_positions = tick_indices + 0.5
     y_tick_positions = tick_indices + 0.5

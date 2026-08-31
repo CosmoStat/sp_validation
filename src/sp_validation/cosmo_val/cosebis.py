@@ -7,7 +7,6 @@ Mixin providing COSEBIs calculation and plotting for the
 
 import numpy as np
 
-from .. import sacc_io
 from ..b_modes import (
     calculate_cosebis,
     find_conservative_scale_cut_key,
@@ -16,7 +15,6 @@ from ..b_modes import (
     plot_cosebis_scale_cut_heatmap,
     save_cosebis_results,
 )
-from .sacc_writers import cosebis_to_sacc
 
 
 class CosebisMixin:
@@ -141,64 +139,6 @@ class CosebisMixin:
             results = next(iter(results.values()))
 
         return results
-
-    @staticmethod
-    def _fiducial_cosebis_result(results, fiducial_scale_cut):
-        """Select the fiducial scale cut's result dict + its ``(min, max)`` cut.
-
-        ``results`` is a single result dict (full range) or a multi-cut mapping
-        keyed by ``(theta_min, theta_max)`` tuples; picks via
-        ``find_conservative_scale_cut_key`` when ``fiducial_scale_cut`` is given,
-        else the widest cut.
-        """
-        multi_cut = isinstance(results, dict) and all(
-            isinstance(k, tuple) for k in results
-        )
-        if not multi_cut:
-            return results, tuple(results["scale_cut"])
-        key = (
-            find_conservative_scale_cut_key(results, fiducial_scale_cut)
-            if fiducial_scale_cut is not None
-            else max(results, key=lambda x: x[1] - x[0])
-        )
-        return results[key], tuple(key)
-
-    def cosebis_to_sacc_part(
-        self,
-        version,
-        out_path,
-        results,
-        fiducial_scale_cut=None,
-        en_override=None,
-        bn_override=None,
-    ):
-        """Write the COSEBIs SACC part at the fiducial scale cut.
-
-        ``results`` is what ``calculate_cosebis`` returned (single dict or
-        multi-cut mapping); only the fiducial cut's ``{En, Bn, cov}`` becomes
-        the part.
-
-        ``en_override``/``bn_override`` replace ``result["En"]``/``result["Bn"]``;
-        the covariance stays from ``result`` (patches exist only in the raw
-        patched measurement). The part is stamped under the version's blind.
-        """
-        result, scale_cut = self._fiducial_cosebis_result(results, fiducial_scale_cut)
-        overrides = {
-            key: np.asarray(value)
-            for key, value in (("En", en_override), ("Bn", bn_override))
-            if value is not None
-        }
-        if overrides:
-            result = {**result, **overrides}
-        s = cosebis_to_sacc(
-            self.sacc_nz(version),
-            self.sacc_metadata(version),
-            result,
-            scale_cut,
-        )
-        sacc_io.save(
-            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
-        )
 
     def plot_cosebis(
         self,
@@ -331,7 +271,7 @@ class CosebisMixin:
 
             plot_cosebis_scale_cut_heatmap(
                 results,
-                gg_temp,
+                (gg_temp.left_edges, gg_temp.right_edges),
                 version,
                 out_stub + "_scalecut_ptes.png",
                 fiducial_scale_cut=fiducial_scale_cut,
