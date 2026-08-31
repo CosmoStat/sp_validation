@@ -58,9 +58,7 @@ cosmo_val:
         kmax: 20
         kmax_extrapolate: 500
 
-  # Integration-grid ξ±: the shared fine grid both B-mode estimators consume.
-  # Pure-E/B uses the full range, which must strictly contain the reporting grid
-  # [1, 250]; COSEBIs scale-cuts it up to 0.9.
+  # The fine ξ± grid the B-mode integrals run over.
   integration:
     min_sep: 0.08
     max_sep: 300

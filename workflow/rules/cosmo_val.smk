@@ -99,11 +99,7 @@ def cv_cosebis_npz(version):
 
 
 def cv_pseudo_cl_sacc(version):
-    """Untagged pseudo-Cl SACC part cv_pseudo_cl writes (B-mode diagnostic).
-
-    The analysis file carries the tagged inference product instead (see
-    cv_pseudo_cl_analysis_sacc).
-    """
+    """Untagged pseudo-Cl SACC part: the B-mode diagnostic, not a data product."""
     return str(COSMO_VAL / f"pseudo_cl_{version}.sacc")
 
 
@@ -111,7 +107,7 @@ _PSEUDO_CL_TAG = pseudo_cl_tag(config)
 
 
 def cv_pseudo_cl_analysis_sacc(version):
-    """Tagged pseudo-Cl SACC part the analysis file carries."""
+    """Tagged pseudo-Cl SACC part: the harmonic block of the analysis file."""
     return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
 
 
@@ -121,13 +117,7 @@ def cv_pseudo_cl_cov(version):
 
 
 def cv_xi_cov(version):
-    """CosmoCov-processed ξ± covariance for the reporting grid.
-
-    The real analysis covariance for the ξ± block, produced by
-    covariance_process (covariance.smk) on the same binning the reporting grid
-    measures, so requesting it builds it. OneCovariance replaces CosmoCov
-    upstream of this path (#256) in the same format.
-    """
+    """CosmoCov-processed ξ± covariance, on the reporting grid's own binning."""
     return covariance_path(
         version,
         FIDUCIAL["blind"],
@@ -140,33 +130,24 @@ def cv_xi_cov(version):
 
 
 def cv_cosebis_sacc(version):
-    """COSEBIs SACC part (fiducial scale cut) the cv_cosebis rule writes."""
+    """COSEBIs SACC part, at the fiducial scale cut."""
     return str(COSMO_VAL / f"{version}_cosebis.sacc")
 
 
 def cv_pure_eb_sacc(version):
-    """Pure-E/B SACC part the cv_pure_eb rule writes."""
+    """Pure-E/B SACC part."""
     return str(COSMO_VAL / f"{version}_pure_eb.sacc")
 
 
 def cv_rho_tau_sacc(version):
-    """ρ/τ SACC part calculate_rho_tau_stats writes (rho_tau_{base}.sacc)."""
+    """ρ/τ SACC part."""
     return str(
         COSMO_VAL / "rho_tau_stats" / f"rho_tau_{cv_basename(version, CV_FIDUCIAL)}.sacc"
     )
 
 
 def cv_xi_sacc(version, grid):
-    """ξ± SACC part the `xi` rule writes for a version on a named grid.
-
-    Named by its binning (xi_binning, twopoint.smk), which is what binds the xi
-    job's wildcards; the rule resolves the grid label from that binning.
-
-    grid='reporting' is the analysis part (its covariance is injected at
-    assembly); grid='integration' is the fine-grid part COSEBIs and pure-E/B
-    consume. The integration part stays standalone — it is not folded into the
-    terminal {version}.sacc.
-    """
+    """ξ± SACC part for a version on a named grid, named by that grid's binning."""
     return str(COSMO_VAL / f"{version}_xi_{xi_binning(grid)}.sacc")
 
 
@@ -385,12 +366,7 @@ rule cv_pure_eb:
 
 
 rule cv_cosebis:
-    """COSEBIs E/B decomposition for one version (config-space, fine binning).
-
-    Mixed provenance by design: En and Bn derive from the (blindable)
-    integration ξ± part, while the jackknife covariance needs the patched raw
-    measurement (patches exist only there).
-    """
+    """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
     input:
         xi=lambda w: cv_xi_txt(w.version),
         xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
@@ -451,24 +427,16 @@ rule cv_summarize_bmodes:
 # ---------------------------------------------------------------------------
 # Terminal analysis file: assemble the per-statistic SACC parts into {version}.sacc
 # ---------------------------------------------------------------------------
-# assemble_sacc.py loads the five parts in canonical order (xi_reporting,
-# pseudo_cl, cosebis, pure_eb, rho_tau) and rebuilds one {version}.sacc with a
-# single BlockDiagonalCovariance. The integration-grid ξ± is deliberately not
-# gathered: it stays an intermediate consumed by COSEBIs/pure-E/B.
-#
-# The pseudo-Cℓ part is the tagged inference product, and its NaMaster covariance
-# is injected here from the matching pseudo_cl_cov FITS. The ξ± reporting block
-# has no real covariance wired yet — the CosmoCov theory .txt is blind/gaussian/
-# mask-keyed and lives deep in the inference tree, so sourcing it couples
-# cosmo_val to the whole inference covariance DAG; it plugs in via --xi-cov.
+# The terminal file carries the analysis vector only. The integration-grid ξ± is
+# deliberately not gathered: it stays a per-part intermediate. The two blocks
+# born without a covariance (ξ± reporting, pseudo-Cℓ) get theirs injected from
+# the covariance inputs below.
 
 
 def cv_assemble_inputs(version):
     """The per-statistic SACC parts + covariance inputs assemble_sacc consumes.
 
     Each part's filename carries enough to bind its producing rule's wildcards.
-    pseudo_cl (+ its cov) is included only when the config toggles the
-    harmonic-space BB into the analysis.
     """
     parts = dict(
         xi_reporting=cv_xi_sacc(version, "reporting"),
@@ -491,11 +459,9 @@ rule assemble_sacc:
         sacc=cv_analysis_sacc("{version}"),
     params:
         version="{version}",
-        # Run type gates unblinded loading: a 'data' run fails closed on
-        # unblinded parts, a 'mock' run loads freely.
         type=CV.get("type", "data"),
-        # Statistics this rule wired; the script validates part_paths against it
-        # so a typo'd input keyword can't silently drop one.
+        # The statistics this rule wired, so a typo'd input keyword cannot
+        # silently drop one.
         expected=lambda w: [
             k
             for k in cv_assemble_inputs(w.version)

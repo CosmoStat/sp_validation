@@ -3,17 +3,14 @@
 Dual-mode: under Snakemake (``script:``) the injected ``snakemake`` object
 supplies the inputs; as a standalone CLI the same assembly runs from flags.
 
-Each part is a single-statistic SACC written by the cosmo_val mixins, run_2pcf
-or generate_pseudo_cl. Parts load in canonical order (ξ± reporting, pseudo-Cℓ,
-COSEBIs, pure-E/B, ρ/τ) and are rebuilt into one Sacc with a single
-``BlockDiagonalCovariance``.
+Each part is a single-statistic SACC; they load in CANONICAL order and are
+rebuilt into one Sacc with a single ``BlockDiagonalCovariance``.
 
-Every part must carry a covariance block. COSEBIs, pure-E/B and ρ/τ are born
-with one; ξ± reporting and pseudo-Cℓ are not, so their blocks are injected here
-from the CosmoCov ``.txt`` (``--xi-cov``) and the NaMaster covariance FITS
-(``--pseudo-cl-cov``). The pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are
-dropped — matching what the B-mode PTE reads today. Both are DAG inputs of the
-assemble rule, so a missing one is a missing input, never a stand-in.
+Every part must carry a covariance block. ξ± reporting and pseudo-Cℓ are born
+without one, so theirs are injected here from the CosmoCov ``.txt``
+(``--xi-cov``) and the NaMaster covariance FITS (``--pseudo-cl-cov``); the
+pseudo-Cℓ cross-spectrum blocks (EE↔BB, …) are dropped, matching what the
+B-mode PTE reads today.
 """
 
 import argparse

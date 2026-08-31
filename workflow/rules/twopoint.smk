@@ -4,11 +4,9 @@
 # ξ± angular grids
 # ---------------------------------------------------------------------------
 # A grid is a binning: (min_sep, max_sep, nbins, npatch). `reporting` is the
-# analysis grid; `integration` is the fine grid COSEBIs and pure-E/B integrate
-# over. Both are measured by the single `xi` rule below, whose files are named
-# by binning, so the grid label is resolved from the wildcards rather than
-# duplicated into a second rule. Workflows carrying no cosmo_val block (e.g.
-# papers/bmodes) fall back to their fiducial grids.
+# analysis grid, `integration` the fine one the B-mode integrals run over.
+# Workflows carrying no cosmo_val block (e.g. papers/bmodes) fall back to their
+# fiducial grids.
 def _xi_grids():
     cv = config.get("cosmo_val", {})
     reporting = (
@@ -63,10 +61,8 @@ def xi_grid_of(wildcards):
 rule xi:
     """TreeCorr ξ±(θ) for one version on one angular grid.
 
-    Binning-agnostic: the reporting and integration measurements are the same
-    job with different wildcards. The raw TreeCorr .txt byproduct and the
-    born-as-SACC part are both named by that binning, so a request for either
-    binds unambiguously; the grid label comes from XI_GRIDS.
+    One rule for every grid: outputs are named by their binning, so a request
+    binds the wildcards and `xi_grid_of` resolves the grid label from them.
     """
     input:
         catalog=get_shear_catalog,
@@ -114,8 +110,7 @@ rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
         tau_stats=str(COSMO_VAL / "rho_tau_stats/tau_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
-        # Born-as-SACC ρ/τ part the assemble_sacc rule consumes, written
-        # alongside the FITS by calculate_rho_tau_stats.
+        # Born-as-SACC ρ/τ part, written alongside the FITS.
         rho_tau=str(COSMO_VAL / "rho_tau_stats/rho_tau_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.sacc"),
     threads: 48
     params:

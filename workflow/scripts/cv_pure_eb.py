@@ -1,12 +1,8 @@
 """Rule cv_pure_eb: pure E/B-mode decomposition for one version.
 
-Compute + plot rule (per version). plot_pure_eb calls calculate_pure_eb, which
-runs two TreeCorr correlations (reporting + integration binning); the reporting
-binning reuses the cv_2pcf data vector via calculate_2pcf's skip-if-exists
-path. Writes the {version}_eb_..._data.npz data product plus companion figures,
-and the per-version E/B PTEs that cv_summarize_bmodes collects. It also writes
-the born-as-SACC pure-E/B part ({version}_pure_eb.sacc, the six PURE_KEYS blocks
-+ covariance) that the assemble_sacc rule consumes.
+plot_pure_eb calls calculate_pure_eb, which runs two TreeCorr correlations
+(reporting + integration binning). Writes the SACC part, the .npz data product
+and the companion figures.
 """
 
 import numpy as np
@@ -40,7 +36,6 @@ tr, xpr, xmr = sacc_io.get_xi(rep, (0, 0), grid="reporting")
 ti, xpi, xmi = sacc_io.get_xi(integ, (0, 0), grid="integration")
 modes = pure_eb_from_xi(tr, xpr, xmr, ti, xpi, xmi, tmin, tmax)
 
-# Born-as-SACC pure-E/B part; the six blocks come from the consumed parts.
 cv.pure_eb_to_sacc_part(version, snakemake.output["sacc"], results, eb_override=modes)
 
 # Sync the npz's pure modes with the part-derived values; theta / cov / PTE untouched.

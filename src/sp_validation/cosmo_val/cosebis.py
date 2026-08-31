@@ -146,11 +146,10 @@ class CosebisMixin:
     def _fiducial_cosebis_result(results, fiducial_scale_cut):
         """Select the fiducial scale cut's result dict + its ``(min, max)`` cut.
 
-        ``calculate_cosebis`` returns either a single result dict (full range) or
-        a multi-cut mapping keyed by ``(theta_min, theta_max)`` tuples. Only the
-        fiducial cut is a SACC data product: pick it via
-        ``find_conservative_scale_cut_key`` when a fiducial cut is given, else the
-        widest cut — mirroring ``plot_cosebis``.
+        ``results`` is a single result dict (full range) or a multi-cut mapping
+        keyed by ``(theta_min, theta_max)`` tuples; picks via
+        ``find_conservative_scale_cut_key`` when ``fiducial_scale_cut`` is given,
+        else the widest cut.
         """
         multi_cut = isinstance(results, dict) and all(
             isinstance(k, tuple) for k in results
@@ -176,13 +175,12 @@ class CosebisMixin:
         """Write the COSEBIs SACC part at the fiducial scale cut.
 
         ``results`` is what ``calculate_cosebis`` returned (single dict or
-        multi-cut mapping). Only the fiducial cut's ``{En, Bn, cov}`` becomes the
-        part: the covariance must cover every stored point and the cuts overlap
-        in mode space, so the non-fiducial cuts stay in the ``.npz`` sidecar.
+        multi-cut mapping); only the fiducial cut's ``{En, Bn, cov}`` becomes
+        the part.
 
-        ``en_override``/``bn_override`` replace ``result["En"]``/``result["Bn"]``
-        with values derived from the integration ξ± part; the covariance stays
-        from ``result`` (patches exist only in the raw patched measurement).
+        ``en_override``/``bn_override`` replace ``result["En"]``/``result["Bn"]``;
+        the covariance stays from ``result`` (patches exist only in the raw
+        patched measurement).
         """
         result, scale_cut = self._fiducial_cosebis_result(results, fiducial_scale_cut)
         overrides = {

@@ -5,17 +5,12 @@ import os
 import re
 from pathlib import Path
 
-# Absolute path to the generic workflow's scripts, for rules that shell out to a
-# script directly rather than through Snakemake's `script:` directive. Anchored
-# on this module's own location, not workflow.basedir — under `module`
-# composition basedir reflects the composing paper, not the running checkout.
-WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
-
-# The running checkout, for rules that shell out to a repo script directly
-# rather than through Snakemake's `script:` directive. Anchored on this module's
-# own location, not workflow.basedir — under `module` composition basedir
-# reflects the composing paper, not the running checkout.
+# The running checkout, for rules that shell out to a script directly rather
+# than through Snakemake's `script:` directive. Anchored on this module's own
+# location, not workflow.basedir — under `module` composition basedir reflects
+# the composing paper, not the running checkout.
 REPO_ROOT = Path(os.path.realpath(__file__)).parents[1]
+WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
@@ -190,11 +185,7 @@ def build_redshift_path(version, blind):
 
 
 def pseudo_cl_tag(config):
-    """Fiducial harmonic-binning tag the pseudo-Cl producers stamp into filenames.
-
-    Single definition shared by the producer (twopoint.smk) and the consumers
-    (cosmo_val.smk, inference.smk), which reconstruct the name from config.
-    """
+    """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames."""
     fiducial = config["harmonic"]["fiducial"]
     return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
 
