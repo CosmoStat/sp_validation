@@ -7,7 +7,6 @@ correlation functions (xi+/xi- pure-mode decomposition) for catalog versions.
 
 import numpy as np
 
-from .. import sacc_io
 from ..b_modes import (
     calculate_eb_statistics,
     calculate_pure_eb_correlation,
@@ -17,7 +16,6 @@ from ..b_modes import (
     plot_pure_eb_correlations,
     save_pure_eb_results,
 )
-from .sacc_writers import pure_eb_to_sacc
 
 
 class PureEBMixin:
@@ -133,31 +131,6 @@ class PureEBMixin:
         )
 
         return results
-
-    def pure_eb_to_sacc_part(self, version, out_path, results, eb_override=None):
-        """Write the pure-E/B SACC part (six ``PURE_KEYS`` blocks + covariance).
-
-        ``results`` is the dict ``calculate_pure_eb`` returned: the six pure-mode
-        arrays under ``sacc_io.PURE_KEYS``, the ``"cov"`` block (in ``PURE_KEYS``
-        order), and the reporting-grid TreeCorr object ``"gg"`` whose ``meanr``
-        is the shared ``theta``.
-
-        ``eb_override`` replaces the six arrays; the covariance stays from
-        ``results``. The part is stamped under the version's blind.
-        """
-        theta = results["gg"].meanr
-        source = eb_override if eb_override is not None else results
-        eb = {key: source[key] for key in sacc_io.PURE_KEYS}
-        s = pure_eb_to_sacc(
-            self.sacc_nz(version),
-            self.sacc_metadata(version),
-            theta,
-            eb,
-            covariance=results["cov"],
-        )
-        sacc_io.save(
-            s, out_path, type=self.run_type, commitment=self.commitment_path(version)
-        )
 
     def plot_pure_eb(
         self,
@@ -296,19 +269,13 @@ class PureEBMixin:
             )
 
             # Calculate E/B statistics for all bin combinations
-            version_results = calculate_eb_statistics(
-                version_results,
-                cov_path_int=cov_path_int,
-                n_samples=n_samples,
-                **kwargs,
-            )
-
-            # Generate all plots using specialized plotting functions
-            gg, gg_int = version_results["gg"], version_results["gg_int"]
+            version_results = calculate_eb_statistics(version_results, **kwargs)
 
             # Integration vs Reporting comparison plot
             plot_integration_vs_reporting(
-                gg, gg_int, out_stub + "_integration_vs_reporting.png", version
+                version_results,
+                out_stub + "_integration_vs_reporting.png",
+                version,
             )
 
             # E/B/Ambiguous correlation functions plot

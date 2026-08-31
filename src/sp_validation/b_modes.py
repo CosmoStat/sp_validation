@@ -175,75 +175,40 @@ def calculate_pure_eb_correlation(
             parallel=True,
         )
 
-    # Initialize results dictionary with basic E/B mode data
-    results = {"gg": gg, "gg_int": gg_int}
+    # The results dict is self-describing: the grids it was measured on travel
+    # with the modes, so every consumer downstream works from values alone.
+    results = {
+        "theta": gg.meanr,
+        "left_edges": gg.left_edges,
+        "right_edges": gg.right_edges,
+        "xip": gg.xip,
+        "xim": gg.xim,
+        "var_xip": gg.varxip,
+        "var_xim": gg.varxim,
+        "theta_int": gg_int.meanr,
+        "xip_int": gg_int.xip,
+        "xim_int": gg_int.xim,
+        "n_eff": n_samples if cov_path_int is not None else gg.npatch1,
+    }
     results.update(dict(zip(_EB_KEYS, pure_EB([gg, gg_int]))))
 
     if cov_path_int is not None:
-        # Use semi-analytical covariance propagation
-        print("Computing semi-analytical covariance for pure E/B modes")
-        if z_dist is None:
-            raise ValueError("z_dist must be provided for semi-analytical covariance")
-        if cosmo_cov is None:
+        if z_dist is None or cosmo_cov is None:
             raise ValueError(
-                "cosmo_cov must be provided for semi-analytical covariance"
+                "semi-analytical covariance needs both z_dist and cosmo_cov"
             )
-
-        # Load covariance matrix
-        cov_int = np.loadtxt(cov_path_int)
-
-        # Set up integration binning and pre-compute binning matrix
-        nbins_int, theta_int = len(gg_int.meanr), gg_int.meanr
-        reporting_bin_edges = np.concatenate([gg.left_edges, [gg.right_edges[-1]]])
-        bin_indices = np.digitize(theta_int, reporting_bin_edges) - 1
-
-        valid_mask = (bin_indices >= 0) & (bin_indices < len(gg.meanr))
-        row_indices, col_indices = (bin_indices[valid_mask], np.where(valid_mask)[0])
-
-        binning_matrix = sparse.csr_matrix(
-            (np.ones(len(row_indices)), (row_indices, col_indices)),
-            shape=(len(gg.meanr), nbins_int),
+        cov, eb_samples = pure_eb_covariance_mc(
+            theta=gg.meanr,
+            left_edges=gg.left_edges,
+            right_edges=gg.right_edges,
+            theta_int=gg_int.meanr,
+            cov_int=np.loadtxt(cov_path_int),
+            z=z_dist[:, 0],
+            nz=z_dist[:, 1],
+            cosmo=cosmo_cov,
+            n_samples=n_samples,
         )
-        row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
-        binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
-
-        # Generate theoretical xi+/xi- predictions and sample
-        mean_int = np.concatenate(
-            get_theo_xi(
-                theta=theta_int,
-                z=z_dist[:, 0],
-                nz=z_dist[:, 1],
-                backend="ccl",
-                cosmo=cosmo_cov,
-            )
-        )
-
-        samples_int = np.random.multivariate_normal(mean_int, cov_int, size=n_samples)
-        samples_int_xip = samples_int[:, :nbins_int]
-        samples_int_xim = samples_int[:, nbins_int:]
-        samples_rep_xip = (binning_matrix @ samples_int_xip.T).T
-        samples_rep_xim = (binning_matrix @ samples_int_xim.T).T
-
-        transformed_samples = [
-            np.concatenate(
-                get_pure_EB_modes(
-                    theta=gg.meanr,
-                    theta_int=gg_int.meanr,
-                    xip=samples_rep_xip[i],
-                    xim=samples_rep_xim[i],
-                    xip_int=samples_int_xip[i],
-                    xim_int=samples_int_xim[i],
-                    tmin=min_sep,
-                    tmax=max_sep,
-                    parallel=True,
-                )
-            )
-            for i in tqdm.tqdm(range(n_samples), desc="MC samples")
-        ]
-
-        # Store semi-analytical covariance results
-        eb_samples = np.array(transformed_samples)
-        results.update({"cov": np.cov(eb_samples.T), "eb_samples": eb_samples})
+        results.update({"cov": cov, "eb_samples": eb_samples})
     else:
         # Use existing treecorr covariance estimation
         results["cov"] = treecorr.estimate_multi_cov(
@@ -323,6 +288,78 @@ def pure_eb_from_xi(
         parallel=True,
     )
     return dict(zip(_EB_KEYS, (np.asarray(m) for m in modes)))
+
+
+def pure_eb_covariance_mc(
+    *,
+    theta,
+    left_edges,
+    right_edges,
+    theta_int,
+    cov_int,
+    z,
+    nz,
+    cosmo,
+    n_samples=1000,
+):
+    """Pure-E/B covariance by Monte Carlo through the same kernel as the modes.
+
+    ξ± draws come from ``cov_int``, a ξ± covariance on the integration grid,
+    around the theory mean for ``(z, nz)`` under ``cosmo``; each draw is binned
+    down to the reporting grid and pushed through ``get_pure_EB_modes``. The
+    covariance of the transformed draws is the result, so it depends on the
+    covariance model and the grids, never on the measured data vector.
+
+    Returns ``(cov, eb_samples)`` — the covariance in ``_EB_KEYS`` order and
+    the draws behind it.
+    """
+    from cosmo_numba.B_modes.schneider2022 import get_pure_EB_modes
+
+    theta, theta_int = np.asarray(theta), np.asarray(theta_int)
+    nbins_int = len(theta_int)
+
+    # Each reporting bin averages the integration bins that fall inside it.
+    reporting_bin_edges = np.concatenate([left_edges, [right_edges[-1]]])
+    bin_indices = np.digitize(theta_int, reporting_bin_edges) - 1
+    valid_mask = (bin_indices >= 0) & (bin_indices < len(theta))
+    row_indices, col_indices = (bin_indices[valid_mask], np.where(valid_mask)[0])
+    binning_matrix = sparse.csr_matrix(
+        (np.ones(len(row_indices)), (row_indices, col_indices)),
+        shape=(len(theta), nbins_int),
+    )
+    row_sums = np.array(binning_matrix.sum(axis=1)).flatten()
+    binning_matrix = sparse.diags(1 / row_sums) @ binning_matrix
+
+    mean_int = np.concatenate(
+        get_theo_xi(theta=theta_int, z=z, nz=nz, backend="ccl", cosmo=cosmo)
+    )
+    samples_int = np.random.multivariate_normal(mean_int, cov_int, size=n_samples)
+    samples_int_xip, samples_int_xim = (
+        samples_int[:, :nbins_int],
+        samples_int[:, nbins_int:],
+    )
+    samples_rep_xip = (binning_matrix @ samples_int_xip.T).T
+    samples_rep_xim = (binning_matrix @ samples_int_xim.T).T
+
+    eb_samples = np.array(
+        [
+            np.concatenate(
+                get_pure_EB_modes(
+                    theta=theta,
+                    theta_int=theta_int,
+                    xip=samples_rep_xip[i],
+                    xim=samples_rep_xim[i],
+                    xip_int=samples_int_xip[i],
+                    xim_int=samples_int_xim[i],
+                    tmin=left_edges[0],
+                    tmax=right_edges[-1],
+                    parallel=True,
+                )
+            )
+            for i in tqdm.tqdm(range(n_samples), desc="MC samples")
+        ]
+    )
+    return np.cov(eb_samples.T), eb_samples
 
 
 def calculate_cosebis(gg, nmodes=10, scale_cuts=None, cov_path=None):
@@ -454,11 +491,7 @@ def cosebis_scan_from_xi(
     return all_results
 
 
-def calculate_eb_statistics(
-    results,
-    cov_path_int=None,
-    n_samples=1000,
-):
+def calculate_eb_statistics(results):
     """
     Calculate E/B mode statistics using 2D PTE analysis for all scale cut combinations.
 
@@ -469,23 +502,17 @@ def calculate_eb_statistics(
     Parameters
     ----------
     results : dict
-        Dictionary containing pure E/B mode results from calculate_pure_eb_correlation
-    cov_path_int : str, optional
-        Path to integration covariance matrix for semi-analytical calculation
-    n_samples : int, optional
-        Number of Monte Carlo samples used for semi-analytical covariance
-    min_bins : int, optional
-        Minimum number of bins required for valid PTE calculation
+        Pure E/B results: the six mode arrays, the ``cov`` block, the reporting
+        ``theta``, and ``n_eff`` — the realisation count behind the covariance
+        (jackknife patches or MC draws), which sets the Hartlap debiasing
 
     Returns
     -------
     dict
         Updated results dictionary with PTE matrices and statistics
     """
-    gg = results["gg"]
-    nbins = gg.nbins
-    npatch = gg.npatch1
-    n_eff = n_samples if cov_path_int is not None else npatch
+    nbins = len(results["theta"])
+    n_eff = results["n_eff"]
 
     # Extract covariance blocks and standard deviations
     cov = results["cov"]
@@ -549,16 +576,16 @@ def calculate_eb_statistics(
     return results
 
 
-def plot_integration_vs_reporting(gg, gg_int, output_path, version):
+def plot_integration_vs_reporting(results, output_path, version):
     """
     Plot integration vs reporting scale comparison.
 
     Parameters
     ----------
-    gg : treecorr.GGCorrelation
-        Reporting scale correlation function
-    gg_int : treecorr.GGCorrelation
-        Integration scale correlation function
+    results : dict
+        Pure E/B results carrying both grids (``theta``/``xip``/``xim`` and the
+        ``theta_int``/``xip_int``/``xim_int`` counterparts), plus the reporting
+        ``var_xip``/``var_xim`` the error bars use
     output_path : str
         Output file path for the plot
     version : str
@@ -568,26 +595,24 @@ def plot_integration_vs_reporting(gg, gg_int, output_path, version):
 
     # Configure plot data for both xi+ and xi- in a consolidated loop
     plot_configs = [
-        ("+", "xip", "varxip", r"$\theta \xi_+(\theta) \times 10^4$"),
-        ("-", "xim", "varxim", r"$\theta \xi_-(\theta) \times 10^4$"),
+        ("+", "xip", r"$\theta \xi_+(\theta) \times 10^4$"),
+        ("-", "xim", r"$\theta \xi_-(\theta) \times 10^4$"),
     ]
 
     data_configs = [
-        (gg_int, "k.", 3, 0.3, "Integration"),
-        (gg, ".", 12, 1, "Reporting"),
+        ("_int", "k.", 3, 0.3, "Integration"),
+        ("", ".", 12, 1, "Reporting"),
     ]
 
-    for ax_idx, (xi_label, xi_attr, var_attr, ylabel) in enumerate(plot_configs):
-        for data, fmt, ms, alpha, label_type in data_configs:
-            xi_val = getattr(data, xi_attr)
-            yerr = (
-                data.meanr * np.sqrt(getattr(data, var_attr)) / 1e-4
-                if hasattr(data, var_attr) and label_type == "Reporting"
-                else None
-            )
+    for ax_idx, (xi_label, xi_attr, ylabel) in enumerate(plot_configs):
+        for suffix, fmt, ms, alpha, label_type in data_configs:
+            theta = results[f"theta{suffix}"]
+            xi_val = results[f"{xi_attr}{suffix}"]
+            var = results.get(f"var_{xi_attr}{suffix}")
+            yerr = theta * np.sqrt(var) / 1e-4 if var is not None else None
             axs[ax_idx].errorbar(
-                data.meanr,
-                data.meanr * xi_val / 1e-4,
+                theta,
+                theta * xi_val / 1e-4,
                 yerr=yerr,
                 fmt=fmt,
                 ms=ms,
@@ -596,8 +621,8 @@ def plot_integration_vs_reporting(gg, gg_int, output_path, version):
                 ls="" if label_type == "Reporting" else None,
                 label=(
                     rf"$\xi_{{{xi_label}}}$, {label_type}: "
-                    rf"${data.min_sep} < \theta < {data.max_sep}$, "
-                    rf"{data.nbins} bins"
+                    rf"${theta[0]:.2g} < \theta < {theta[-1]:.4g}$, "
+                    rf"{len(theta)} bins"
                 ),
             )
         axs[ax_idx].set(
@@ -613,7 +638,7 @@ def plot_integration_vs_reporting(gg, gg_int, output_path, version):
     plt.savefig(output_path, dpi=300, bbox_inches="tight")
 
 
-def _get_pte_from_scale_cut(pte_matrix, gg, scale_cut):
+def _get_pte_from_scale_cut(pte_matrix, edges, scale_cut):
     """
     Extract PTE value from matrix based on scale cut range using conservative logic.
 
@@ -621,8 +646,8 @@ def _get_pte_from_scale_cut(pte_matrix, gg, scale_cut):
     ----------
     pte_matrix : numpy.ndarray
         2D PTE matrix
-    gg : treecorr.GGCorrelation
-        Correlation function object with bin edges
+    edges : tuple of numpy.ndarray
+        ``(left_edges, right_edges)`` of the grid the matrix is indexed on
     scale_cut : tuple
         (min_scale, max_scale) angular range for scale cut
 
@@ -631,7 +656,8 @@ def _get_pte_from_scale_cut(pte_matrix, gg, scale_cut):
     float
         PTE value for the given scale cut, or full-range PTE if scale_cut is None
     """
-    nbins = len(gg.meanr)
+    left_edges, right_edges = edges
+    nbins = len(left_edges)
 
     if scale_cut is None:
         # Return full-range PTE (first row, last column)
@@ -639,8 +665,7 @@ def _get_pte_from_scale_cut(pte_matrix, gg, scale_cut):
 
     min_scale, max_scale = scale_cut
 
-    # Use conservative scale_cut_to_bins helper
-    start_bin, stop_bin = scale_cut_to_bins(gg, min_scale, max_scale)
+    start_bin, stop_bin = bins_from_edges(left_edges, right_edges, min_scale, max_scale)
 
     # Ensure valid range, otherwise fallback to full range
     if stop_bin <= start_bin or start_bin >= nbins or stop_bin <= 0:
@@ -671,19 +696,20 @@ def plot_pure_eb_correlations(
     fiducial_xim_scale_cut : tuple, optional
         (min_scale, max_scale) for xi- fiducial analysis, shown as gray regions
     """
-    gg = results["gg"]
-    nbins = gg.nbins
+    theta = results["theta"]
+    edges = (results["left_edges"], results["right_edges"])
+    nbins = len(theta)
     cov = results["cov"]
 
     # Calculate combined PTE using off-diagonal covariance blocks
     # Get scale cuts for both xi+ and xi-
     if fiducial_xip_scale_cut is not None:
-        xip_start_bin, xip_stop_bin = scale_cut_to_bins(gg, *fiducial_xip_scale_cut)
+        xip_start_bin, xip_stop_bin = bins_from_edges(*edges, *fiducial_xip_scale_cut)
     else:
         xip_start_bin, xip_stop_bin = 0, nbins
 
     if fiducial_xim_scale_cut is not None:
-        xim_start_bin, xim_stop_bin = scale_cut_to_bins(gg, *fiducial_xim_scale_cut)
+        xim_start_bin, xim_stop_bin = bins_from_edges(*edges, *fiducial_xim_scale_cut)
     else:
         xim_start_bin, xim_stop_bin = 0, nbins
 
@@ -718,7 +744,7 @@ def plot_pure_eb_correlations(
     if "eb_samples" in results:  # Semi-analytical case
         n_eff = results["eb_samples"].shape[0]
     else:  # Jackknife case
-        n_eff = gg.npatch1
+        n_eff = results["n_eff"]
 
     hartlap_factor = (n_eff - nbins_eff - 2) / (n_eff - 1)
     chi2_combined = hartlap_factor * (
@@ -728,10 +754,10 @@ def plot_pure_eb_correlations(
 
     # Extract PTE values for fiducial scale cuts (or full range)
     xip_B_pte = _get_pte_from_scale_cut(
-        results["pte_matrices"]["xip_B"], gg, fiducial_xip_scale_cut
+        results["pte_matrices"]["xip_B"], edges, fiducial_xip_scale_cut
     )
     xim_B_pte = _get_pte_from_scale_cut(
-        results["pte_matrices"]["xim_B"], gg, fiducial_xim_scale_cut
+        results["pte_matrices"]["xim_B"], edges, fiducial_xim_scale_cut
     )
 
     fig, axs = plt.subplots(1, 2, figsize=(14, 6), sharex=True, sharey=True)
@@ -743,14 +769,14 @@ def plot_pure_eb_correlations(
         (
             "xip",
             "+",
-            "varxip",
+            "var_xip",
             r"$\xi_{+}=\xi_{+}^{E}+\xi_{+}^{B}+\xi_{+}^{\mathrm{amb}}$",
             xip_B_pte,
         ),
         (
             "xim",
             "-",
-            "varxim",
+            "var_xim",
             r"$\xi_{-}=\xi_{-}^{E}-\xi_{-}^{B}+\xi_{-}^{\mathrm{amb}}$",
             xim_B_pte,
         ),
@@ -760,11 +786,11 @@ def plot_pure_eb_correlations(
         plot_configs
     ):
         # Plot main correlation function
-        xi_val = getattr(gg, xi_type)
+        xi_val = results[xi_type]
         axs[ax_idx].errorbar(
-            gg.meanr,
-            gg.meanr * xi_val / scale_factor,
-            yerr=gg.meanr * np.sqrt(getattr(gg, var_attr)) / scale_factor,
+            theta,
+            theta * xi_val / scale_factor,
+            yerr=theta * np.sqrt(results[var_attr]) / scale_factor,
             fmt="k.",
             capsize=3,
             label=main_label,
@@ -790,9 +816,9 @@ def plot_pure_eb_correlations(
 
         for key, color, alpha, label in plot_data:
             axs[ax_idx].errorbar(
-                gg.meanr,
-                gg.meanr * results[key] / scale_factor,
-                yerr=gg.meanr * results[f"std_{key}"] / scale_factor,
+                theta,
+                theta * results[key] / scale_factor,
+                yerr=theta * results[f"std_{key}"] / scale_factor,
                 color=color,
                 ls="",
                 marker=".",
@@ -822,12 +848,12 @@ def plot_pure_eb_correlations(
             xlim = original_xlims[ax_idx]
 
             # Use conservative scale_cut_to_bins helper for consistency
-            start_bin, stop_bin = scale_cut_to_bins(gg, min_scale, max_scale)
+            start_bin, stop_bin = bins_from_edges(*edges, min_scale, max_scale)
 
             # Show excluded regions based on bin edges used in PTE calculation
             # Lower exclusion: bins 0 to start_bin-1 are excluded
             if start_bin > 0:
-                lower_exclusion_edge = gg.right_edges[start_bin - 1]
+                lower_exclusion_edge = edges[1][start_bin - 1]
                 axs[ax_idx].axvspan(
                     xlim[0],
                     lower_exclusion_edge,
@@ -837,8 +863,8 @@ def plot_pure_eb_correlations(
                 )
 
             # Upper exclusion: bins stop_bin to end are excluded
-            if stop_bin < len(gg.left_edges):
-                upper_exclusion_edge = gg.left_edges[stop_bin]
+            if stop_bin < len(edges[0]):
+                upper_exclusion_edge = edges[0][stop_bin]
                 axs[ax_idx].axvspan(
                     upper_exclusion_edge,
                     xlim[1],
@@ -1042,8 +1068,9 @@ def plot_pte_2d_heatmaps(
     fiducial_xim_scale_cut : tuple, optional
         (min_scale, max_scale) for xi- fiducial analysis, shown as cross-hatched
     """
-    gg = results["gg"]
-    nbins = gg.nbins
+    theta = results["theta"]
+    edges = (results["left_edges"], results["right_edges"])
+    nbins = len(theta)
     pte_xip_B = results["pte_matrices"]["xip_B"]
     pte_xim_B = results["pte_matrices"]["xim_B"]
 
@@ -1105,7 +1132,7 @@ def plot_pte_2d_heatmaps(
     for ax_idx, fiducial_scale_cut in enumerate(fiducial_scale_cuts):
         if fiducial_scale_cut is not None:
             min_scale, max_scale = fiducial_scale_cut
-            start_bin, stop_bin = scale_cut_to_bins(gg, min_scale, max_scale)
+            start_bin, stop_bin = bins_from_edges(*edges, min_scale, max_scale)
 
             if stop_bin > start_bin and start_bin < nbins and stop_bin > 0:
                 rect_x = start_bin
@@ -1129,12 +1156,8 @@ def plot_pte_2d_heatmaps(
 
     # Set angular scale ticks
     tick_indices = np.arange(0, nbins)
-    x_tick_labels = [
-        f"{gg.left_edges[i]:.1f}" for i in tick_indices if i < len(gg.left_edges)
-    ]
-    y_tick_labels = [
-        f"{gg.right_edges[i]:.1f}" for i in tick_indices if i < len(gg.right_edges)
-    ]
+    x_tick_labels = [f"{edges[0][i]:.1f}" for i in tick_indices if i < len(edges[0])]
+    y_tick_labels = [f"{edges[1][i]:.1f}" for i in tick_indices if i < len(edges[1])]
     x_tick_positions = tick_indices + 0.5
     y_tick_positions = tick_indices + 0.5
 
@@ -1274,10 +1297,8 @@ def save_pure_eb_results(results, output_path):
     output_path : str
         Output .npz file path
     """
-    gg = results["gg"]
-
     # Data vectors and covariance
-    save_dict = {"theta": gg.meanr, "cov": results["cov"]}
+    save_dict = {"theta": results["theta"], "cov": results["cov"]}
     for key in _EB_KEYS:
         save_dict[key] = results[key]
 
@@ -1286,7 +1307,7 @@ def save_pure_eb_results(results, output_path):
         save_dict[f"pte_matrices_{key}"] = matrix
 
     # Metadata
-    save_dict["npatch"] = np.array(gg.npatch1)
+    save_dict["n_eff"] = np.array(results["n_eff"])
     if "eb_samples" in results:
         save_dict["var_method"] = np.array("semi-analytic")
         save_dict["n_samples"] = np.array(results["eb_samples"].shape[0])

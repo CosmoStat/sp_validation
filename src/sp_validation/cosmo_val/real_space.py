@@ -94,12 +94,13 @@ class RealSpaceMixin:
 
             # Process the catalog & write the correlation functions
             gg.process(cat_gal)
-            # Patch results and the jackknife covariance need npatch > 1: at
-            # npatch=1 var_method is "shot", so the covariance adds nothing over
-            # the varxip/varxim columns while the dense (2*nbins)^2 block would
-            # dominate the file on the fine integration grid (nbins ~ 1000).
-            write_cov = int(npatch) > 1
-            gg.write(out_fname, write_patch_results=write_cov, write_cov=write_cov)
+            # Never write_patch_results: a per-patch ξ± realisation is an
+            # unblinded data vector, and nothing downstream reads one — the
+            # covariance a consumer needs is the matrix, which the SACC part
+            # carries. The .txt keeps the matrix only where there are patches to
+            # estimate it from; at npatch=1 var_method is "shot" and it would add
+            # nothing over the varxip/varxim columns.
+            gg.write(out_fname, write_patch_results=False, write_cov=int(npatch) > 1)
 
         # Add correlation object to class
         if not hasattr(self, "cat_ggs"):
