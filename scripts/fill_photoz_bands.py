@@ -422,13 +422,17 @@ def check_tile_row_order(
     Returns
     -------
     tuple
-        (ok, n_checked, max_sep_arcsec).  ``max_sep_arcsec`` is ``numpy.nan``
-        if no row could be checked.
+        (ok, n_checked, max_sep_arcsec).  ``n_checked`` counts the sampled
+        rows with a valid sky position on both sides; only those are
+        compared.  ``ok`` is ``False`` if any compared pair is further apart
+        than ``tol_arcsec``, or if the sample holds no comparable row at all
+        (``n_checked == 0``, ``max_sep_arcsec`` is ``numpy.nan``): a tile
+        whose order cannot be verified is not written.
 
     """
     positions = sample_row_positions(len(sorted_idx), n_sample)
     if len(positions) == 0:
-        return True, 0, np.nan
+        return False, 0, np.nan
 
     ra_col_fits, dec_col_fits = fits_radec_cols
 
@@ -436,15 +440,31 @@ def check_tile_row_order(
     # sorted_idx is sorted, so the h5py selection is strictly increasing.
     rows_hdf5 = dset[sorted_idx[positions]]
 
-    sep = angular_separation_arcsec(
-        rows_hdf5[RA_COL_HDF5],
-        rows_hdf5[DEC_COL_HDF5],
-        fits_data[ra_col_fits][positions],
-        fits_data[dec_col_fits][positions],
-    )
-    max_sep = float(np.nanmax(sep))
+    ra_hdf5 = np.asarray(rows_hdf5[RA_COL_HDF5], dtype=np.float64)
+    dec_hdf5 = np.asarray(rows_hdf5[DEC_COL_HDF5], dtype=np.float64)
+    ra_fits = np.asarray(fits_data[ra_col_fits][positions], dtype=np.float64)
+    dec_fits = np.asarray(fits_data[dec_col_fits][positions], dtype=np.float64)
 
-    return bool(np.all(sep <= tol_arcsec)), len(positions), max_sep
+    # A row carries no information about the pairing if either side has no
+    # valid position (NaN, or a sentinel such as -199 outside the sky).
+    valid = (
+        np.isfinite(ra_hdf5)
+        & np.isfinite(dec_hdf5)
+        & np.isfinite(ra_fits)
+        & np.isfinite(dec_fits)
+        & (np.abs(dec_hdf5) <= 90)
+        & (np.abs(dec_fits) <= 90)
+    )
+    n_checked = int(valid.sum())
+    if n_checked == 0:
+        return False, 0, np.nan
+
+    sep = angular_separation_arcsec(
+        ra_hdf5[valid], dec_hdf5[valid], ra_fits[valid], dec_fits[valid]
+    )
+    max_sep = float(np.max(sep))
+
+    return bool(max_sep <= tol_arcsec), n_checked, max_sep
 
 
 def write_tile_to_hdf5(dset, hdf5_indices, fits_data, valid_keys):
@@ -785,13 +805,20 @@ def main(argv=None):
                             params["check_tol_arcsec"],
                         )
                         if not ok:
-                            warnings.warn(
-                                f"Tile {tile_str}: RA/Dec disagree for"
-                                f" {n_checked} checked rows (max separation"
-                                f" {max_sep:.3g} arcsec >"
-                                f" {params['check_tol_arcsec']} arcsec) —"
-                                " row order mismatch, skipping."
-                            )
+                            if n_checked == 0:
+                                warnings.warn(
+                                    f"Tile {tile_str}: no sampled row has a"
+                                    " valid RA/Dec on both sides —"
+                                    " row order unverifiable, skipping."
+                                )
+                            else:
+                                warnings.warn(
+                                    f"Tile {tile_str}: RA/Dec disagree for"
+                                    f" {n_checked} checked rows (max"
+                                    f" separation {max_sep:.3g} arcsec >"
+                                    f" {params['check_tol_arcsec']} arcsec)"
+                                    " — row order mismatch, skipping."
+                                )
                             n_skipped_order += 1
                             n_consec_fails += 1
                             pbar.set_postfix(

@@ -21,6 +21,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -235,3 +236,69 @@ def test_angular_separation_arcsec():
     # Across the RA=0 wrap: 359.999 deg vs 0.001 deg is 0.002 deg, not 360.
     sep = module.angular_separation_arcsec([359.999], [0.0], [0.001], [0.0])
     np.testing.assert_allclose(sep, [0.002 * 3600], rtol=1e-6)
+
+
+@pytest.mark.fast
+def test_check_tile_row_order_ignores_invalid_positions(tmp_path):
+    """Rows without a valid position on both sides are not compared.
+
+    A NaN or sentinel coordinate carries no information about the pairing,
+    so it must neither fail the check (NaN <= tol is False) nor pass it; a
+    sample with no comparable row at all is an unverifiable tile and fails.
+    """
+    module = _module()
+
+    n = 8
+    ra = 10.0 + 0.01 * np.arange(n)
+    dec = 20.0 + 0.01 * np.arange(n)
+    dtype = np.dtype([("RA", ">f8"), ("Dec", ">f8")])
+    data = np.empty(n, dtype=dtype)
+    data["RA"], data["Dec"] = ra, dec
+    with h5py.File(tmp_path / "cat.hdf5", "w") as hf:
+        dset = hf.create_dataset("dat", data=data)
+        sorted_idx = np.arange(n)
+        cols = ("ALPHA_J2000", "DELTA_J2000")
+
+        def fits_like(ra_f, dec_f):
+            rec = np.empty(n, dtype=[(cols[0], "<f8"), (cols[1], "<f8")])
+            rec[cols[0]], rec[cols[1]] = ra_f, dec_f
+            return rec
+
+        # Aligned, all valid.
+        ok, n_checked, max_sep = module.check_tile_row_order(
+            dset, sorted_idx, fits_like(ra, dec), cols, n, 0.5
+        )
+        assert ok and n_checked == n and max_sep < 1e-6
+
+        # NaN RA on the FITS side and a -199 Dec sentinel on the other row:
+        # those two rows are dropped, the remaining six still agree.
+        ra_f = ra.copy()
+        ra_f[2] = np.nan
+        dec_f = dec.copy()
+        dec_f[5] = -199.0
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            ok, n_checked, _ = module.check_tile_row_order(
+                dset, sorted_idx, fits_like(ra_f, dec_f), cols, n, 0.5
+            )
+        assert ok and n_checked == n - 2
+
+        # Same invalid rows, but the rest is reversed: still a failure.
+        ok, n_checked, max_sep = module.check_tile_row_order(
+            dset, sorted_idx, fits_like(ra_f[::-1], dec_f[::-1]), cols, n, 0.5
+        )
+        assert not ok and n_checked == n - 2 and max_sep > 0.5
+
+        # Nothing comparable at all: fail, no RuntimeWarning from an all-NaN max.
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            ok, n_checked, max_sep = module.check_tile_row_order(
+                dset, sorted_idx, fits_like(np.full(n, np.nan), dec), cols, n, 0.5
+            )
+        assert not ok and n_checked == 0 and np.isnan(max_sep)
+
+        # A single-row tile is a valid (one-element) fancy index.
+        ok, n_checked, _ = module.check_tile_row_order(
+            dset, sorted_idx[3:4], fits_like(ra, dec)[3:4], cols, 10, 0.5
+        )
+        assert ok and n_checked == 1
