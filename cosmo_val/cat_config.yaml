@@ -153,10 +153,10 @@ SP_v1.3.6:
   ls: dashed
   marker: h
   cov_th:
-    A: 2405.3892055695346
-    n_e: 6.128201234871523
+    A: 2894.0303815287743
+    n_e: 4.002931781928292
     n_psf: 0.752316232272063
-    sigma_e: 0.379587601488189
+    sigma_e: 0.3785853255980945
   mask: /home/guerrini/sp_validation/cosmo_inference/data/mask/mask_map_footprint_nside_4096.fits
   psf:
     PSF_flag: HSM_FLAG_PSF
