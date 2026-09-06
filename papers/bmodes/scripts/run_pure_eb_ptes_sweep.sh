@@ -19,12 +19,7 @@
 #     --out <output_dir> [--blind A] [--versions "v1 v2 ..."]
 set -euo pipefail
 
-CONTAINER=/n17data/cdaley/containers/containers/
-WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
-SRC=$WT/src
-WSCRIPTS=$WT/workflow/scripts
-PSCRIPTS=$WT/papers/bmodes/scripts
-BIND=/home,/scratch,/automnt,/n17data,/n23data1,/n09data
+. "$(dirname "${BASH_SOURCE[0]}")/container_env.sh"
 
 CONFIG=""; CATCONFIG=""; PUREEBSWEEP=""; COVSWEEP=""; OUT=""; BLIND="A"; VERSIONS=""
 while [ $# -gt 0 ]; do
@@ -42,10 +37,7 @@ done
 
 mkdir -p "$OUT"
 
-if [ -z "$VERSIONS" ]; then
-  VERSIONS=$(apptainer exec --bind "$BIND" --env PYTHONPATH="$SRC" "$CONTAINER" \
-    /usr/local/bin/python "$PSCRIPTS/sweep_versions.py" --config "$CONFIG")
-fi
+VERSIONS=$(sweep_versions "$CONFIG")
 
 for ver in $VERSIONS; do
   pureeb="$PUREEBSWEEP/${ver}_${BLIND}_pure_eb_semianalytic.npz"
@@ -55,8 +47,7 @@ for ver in $VERSIONS; do
     [ -f "$f" ] || { echo "MISSING upstream input for $ver: $f" >&2; exit 1; }
   done
   echo "[pure_eb_ptes_sweep] $ver"
-  apptainer exec --bind "$BIND" --env PYTHONPATH="$SRC" "$CONTAINER" \
-    /usr/local/bin/python "$PSCRIPTS/calculate_pure_eb_ptes.py" \
+  spv_python "$PSCRIPTS/calculate_pure_eb_ptes.py" \
     --version "$ver" --blind "$BLIND" \
     --pure-eb-data "$pureeb" --cov-integration "$covint" \
     --npatch 1 --n-samples 2000 --out "$OUT"

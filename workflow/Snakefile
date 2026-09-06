@@ -8,19 +8,15 @@
 # or run standalone with --configfile pointing at a paper config
 # (e.g. papers/bmodes/config/config.yaml).
 
-container: "/n17data/cdaley/containers/containers"
-
 envvars:
     "PYTHONUNBUFFERED",
 
 import os
 import sys
 
-# Host OpenMPI libs for MPI rules inside the container.
-# Apptainer passes APPTAINERENV_* vars into the container as their unprefixed names.
-# Only affects rules that import mpi4py; safe for all other rules.
-os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8/lib"
-
+# Machine-specific env belongs to the machine, so it rides the profile's
+# `apptainer-args --env`, not this file. See workflow/profiles/.
+#
 # Shared helpers live in common.py next to this Snakefile. Snakemake's `module`
 # imports rules, not Python globals, so helpers travel by plain Python import;
 # when composed, the paper Snakefile has already imported common and this hits
@@ -28,8 +24,13 @@ os.environ["APPTAINERENV_LD_LIBRARY_PATH"] = "/softs/openmpi/5.0.5-slurm-CentOS8
 sys.path.insert(0, os.path.realpath(str(workflow.basedir)))
 import common
 
+# configure() also puts this checkout's src/ on the container's PYTHONPATH --
+# see common.inject_checkout_pythonpath.
 common.configure(config)
 from common import *
+
+# The one image every rule runs in; see common.resolve_container.
+container: common.resolve_container(config.get("container"))
 
 # Wildcard constraints — centralized in common.py, not in individual rule files
 wildcard_constraints:

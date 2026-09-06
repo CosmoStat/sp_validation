@@ -62,30 +62,35 @@ directive imports the shared rules under each run's own config and an output
 `prefix`, so runs namespace under `results/<name>/` without clobbering one
 another.
 
-## Container Installation (Recommended)
+## Installation
 
-The easiest way to install sp_validation is via a container. Docker images are automatically built and pushed to the [GitHub Container Registry (GHCR)](https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation) on every push to `develop`. This image can be installed and run on most systems (including clusters) with just a few lines of code.
-
-We recommend running the image with **Apptainer** (formerly Singularity) which is installed on most HPC clusters. To simply run the image, use the following command:
-
-```bash
-# build writeable "sandbox" container in the current directory
-# ./sp_validation will be a directory that functions like a vm
-apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:develop
-
-# open a shell in the container
-apptainer shell --writable sp_validation 
-# and confirm that the installation was successful
-python -c "import sp_validation"
-```
-
-You can also run the image with **Docker**:
+`sp_validation` runs from a pre-built container: CI builds an image carrying
+the full scientific stack on every push and publishes it to the
+[GitHub Container Registry](https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation).
+The bundled `spv-container` CLI installs and manages your personal copy of it:
 
 ```bash
-docker run --rm -it ghcr.io/cosmostat/sp_validation:develop python -c "import sp_validation"
+git clone https://github.com/CosmoStat/sp_validation.git
+cd sp_validation
+ln -s "$PWD/src/sp_validation/container.py" ~/.local/bin/spv-container
+
+spv-container pull                                    # fetch the image (~1.5 GB)
+spv-container exec python -c "import sp_validation"   # confirm it works
 ```
 
-We do not currently build images for Apple Silicon/arm64; however the amd64 images should work on these systems, albeit with reduced performance.
+That is the whole install. `pull` puts the image at its canonical per-user
+path (`~/.cache/sp_validation/`), and everything else finds it there —
+`spv-container exec` for one-off commands (`spv-container exec bash` for an
+interactive shell) and the Snakemake workflow for cluster jobs.
+`spv-container status` says what you have and how current it is;
+`spv-container sandbox` gives you a writable copy for mid-analysis
+`pip install`s. On a cluster, run the pull from a compute node.
+
+To run the analysis workflow (`workflow/`), see
+[`workflow/README.md`](workflow/README.md): Snakemake runs on the host, and
+the profile puts each job in the container itself. For Docker, development
+installs, and more depth, see the
+[installation docs](https://cosmostat.github.io/sp_validation/installation.html).
 
 
 

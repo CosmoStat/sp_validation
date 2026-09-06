@@ -119,7 +119,7 @@ rule mock_cosebis_bias_test:
         ),
         xi_ref=f"{MOCK_RESULTS}/gg_glass_mock_00001_nbins=1000.fits",
         cov=str(
-            Path("/n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/data/covariance")
+            COSMO_INFERENCE / "data/covariance"
             / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked"
             / "covariance_SP_v1.4.6_leak_corr_A_g_minsep=0.5_maxsep=500.0_nbins=1000_masked_processed.txt"
         ),

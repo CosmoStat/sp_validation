@@ -26,12 +26,7 @@
 #     [--blind A] [--versions "v1 v2 ..."]
 set -euo pipefail
 
-CONTAINER=/n17data/cdaley/containers/containers/
-WT=/n17data/cdaley/unions/code/sp_validation.worktrees/repro-paper-ii-astra
-SRC=$WT/src
-WSCRIPTS=$WT/workflow/scripts
-PSCRIPTS=$WT/papers/bmodes/scripts
-BIND=/home,/scratch,/automnt,/n17data,/n23data1,/n09data
+. "$(dirname "${BASH_SOURCE[0]}")/container_env.sh"
 
 CONFIG=""; CATCONFIG=""; PLANCK18=""; MASKBASE=""; OUT=""; BLIND="A"; VERSIONS=""
 MINSEP=0.5; MAXSEP=300.0; NBINS=1000
@@ -50,10 +45,7 @@ done
 
 mkdir -p "$OUT"
 
-if [ -z "$VERSIONS" ]; then
-  VERSIONS=$(apptainer exec --bind "$BIND" --env PYTHONPATH="$SRC" "$CONTAINER" \
-    /usr/local/bin/python "$PSCRIPTS/sweep_versions.py" --config "$CONFIG")
-fi
+VERSIONS=$(sweep_versions "$CONFIG")
 
 for ver in $VERSIONS; do
   base="covariance_${ver}_${BLIND}_g_minsep=${MINSEP}_maxsep=${MAXSEP}_nbins=${NBINS}_masked"

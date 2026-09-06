@@ -11,7 +11,6 @@ def get_cat_params(version):
 
 
 # covariance_dir(), covariance_base(), covariance_path() defined in Snakefile
-# Additional wildcard constraints defined locally for pseudo-Cl rules (line 327)
 
 # DEFAULT_MASK_SUFFIX defined in Snakefile
 # Footprint mask power spectra (nside=4096, from comprehensive catalog with spatial cuts only)
@@ -145,6 +144,12 @@ EOF
 
 
 rule covariance_cosmocov:
+    """Run the host-compiled CosmoCov binary.
+
+    `container: None` on purpose: CosmoCov is a host-compiled Fortran/C binary
+    loaded through environment-modules (`module load gcc intelpython openmpi`),
+    not a Python entry point the container ships.
+    """
     input:
         rules.covariance_ini.output,
     output:
@@ -203,13 +208,13 @@ rule covariance_glass_mock:
             seed=range(config["glass_mocks"]["seed_range"][0], config["glass_mocks"]["seed_range"][1] + 1),
         ),
     output:
-        xi_covariance="/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/xi_covariance.npy",
-        cl_covariance="/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/cl_covariance.npy",
-        combined_covariance="/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/combined_covariance.npy",
-        correlation_plot="/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/combined_correlation.png",
-        xi_mean="/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/xi_mean.npy",
-        cl_mean="/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/cl_mean.npy",
-        combined_mean="/automnt/n17data/cdaley/unions/pure_eb/results/covariance/glass_mock_v1.4.6/combined_mean.npy",
+        xi_covariance="results/covariance/glass_mock_v1.4.6/xi_covariance.npy",
+        cl_covariance="results/covariance/glass_mock_v1.4.6/cl_covariance.npy",
+        combined_covariance="results/covariance/glass_mock_v1.4.6/combined_covariance.npy",
+        correlation_plot="results/covariance/glass_mock_v1.4.6/combined_correlation.png",
+        xi_mean="results/covariance/glass_mock_v1.4.6/xi_mean.npy",
+        cl_mean="results/covariance/glass_mock_v1.4.6/cl_mean.npy",
+        combined_mean="results/covariance/glass_mock_v1.4.6/combined_mean.npy",
     script:
         "../scripts/compute_glass_mock_covariance.py"
 
@@ -231,30 +236,21 @@ rule generate_glass_mock_rhotau_samples:
         mock_id="{mock_id}",
         output_dir="results/glass_mock_rhotau_samples",
     threads: 1
-    shell:
-        """
-        python /n17data/cdaley/unions/pure_eb/code/sp_validation/workflow/scripts/generate_glass_mock_rhotau_samples.py \
-            --cov-tau {input.cov_tau} \
-            --ref-tau {input.ref_tau} \
-            --output-dir {params.output_dir} \
-            --mock-ids {params.mock_id}
-        """
+    script:
+        "../scripts/generate_glass_mock_rhotau_samples.py"
 
 
 rule covariance_process:
+    """Post-process a raw CosmoCov matrix into the analysis-ready form."""
     input:
         str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}.txt")
     output:
         matrix=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed.txt"),
         gaussian=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_g.txt"),
         plot=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed_plot.pdf")
-    params:
-        output_stub=str(COSMO_INFERENCE / "data/covariance/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}/covariance_{version}_{blind}_{gaussian}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}{mask_suffix}_processed")
     threads: 1
-    shell:
-        """
-        python /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_inference/scripts/cosmocov_process.py {input} {params.output_stub}
-        """
+    script:
+        "../scripts/cosmocov_process.py"
 
 
 def fiducial_covariance_outputs(mask_suffix=""):

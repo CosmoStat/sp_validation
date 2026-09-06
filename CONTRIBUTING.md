@@ -13,15 +13,49 @@ inside the project container, which ships the full stack pre-built.
 
 ### Container (recommended)
 
+CI builds and pushes an image on **every** push, tagged by the sanitized branch
+name (see
+[`.github/workflows/deploy-image.yml`](.github/workflows/deploy-image.yml)), so
+`:develop` tracks the integration branch and your branch has an image of its
+own. Nothing is built by hand.
+
+You keep your own copy of the image. `spv-container` — stdlib-only, so it runs
+straight from a checkout: symlink it onto your PATH (`ln -s
+"$PWD/src/sp_validation/container.py" ~/.local/bin/spv-container`, the README's
+install step) or call it as `python3 src/sp_validation/container.py` — pulls it to
+`~/.cache/sp_validation/sp_validation.sif` and runs things inside it:
+
 ```bash
-# build a writeable sandbox from the published image
-apptainer build --sandbox sp_validation docker://ghcr.io/cosmostat/sp_validation:develop
-apptainer shell --writable sp_validation
+spv-container pull       # fetch :develop; ~1.5 GB, so do it from a compute node
+spv-container status     # which layer is live, and how current it is
+spv-container exec bash  # an interactive shell inside it
 ```
 
-The image is rebuilt and pushed on every push to `develop` (see
-[`.github/workflows/deploy-image.yml`](.github/workflows/deploy-image.yml)), so
-`:develop` always tracks the latest integration branch.
+That image is read-only. When you need a package it does not carry yet, unpack a
+writable sandbox once with `spv-container sandbox` and install into it with
+`spv-container exec --writable pip install <pkg>`; the sandbox then takes
+precedence everywhere, workflow jobs included. Treat it as an exploration tool —
+the real fix is adding the dependency to `pyproject.toml` — and reset it with
+`spv-container pull && spv-container sandbox --force`.
+
+Analysis runs through Snakemake, which wraps every job in `apptainer exec`
+against that same image for you — see
+[`workflow/README.md`](workflow/README.md) for the profiles and the details.
+
+Two things worth knowing while developing:
+
+- **Your checkout's code is what runs.** The workflow prepends the launched
+  checkout's `src/` to the container's `PYTHONPATH`, so the image supplies the
+  dependency stack and your working tree supplies `sp_validation`. No rebuild
+  needed to test a change. (Caveat: `rerun-triggers: code` does not watch
+  `src/`, so force reruns after editing a module.)
+- **To test a branch's own image** — when the *stack* changed, not just `src/` —
+  point the workflow at its CI tag:
+
+  ```bash
+  snakemake --profile workflow/profiles/candide \
+      --config container=docker://ghcr.io/cosmostat/sp_validation:my-branch <target>
+  ```
 
 ### Local install with `uv`
 
