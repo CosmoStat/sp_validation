@@ -50,6 +50,7 @@ def _eb_inputs():
 
     nbins=4, npatch=50 so the Hartlap factor (n_eff - nbins_eff - 2)/(n_eff-1)
     is well-defined and strictly positive for every scale-cut combination.
+    n_eff is the jackknife patch count, as it is for a jackknife covariance.
     The covariance is built SPD via A @ A.T + I; the B-mode vectors are O(1)
     so the chi-squared (and hence PTE) lands in a meaningful range rather than
     being saturated at 1.0.
@@ -60,8 +61,13 @@ def _eb_inputs():
     cov = A @ A.T + np.eye(6 * nbins)
     xip_B = rng.standard_normal(nbins)
     xim_B = rng.standard_normal(nbins)
-    gg = types.SimpleNamespace(nbins=nbins, npatch1=npatch)
-    return {"gg": gg, "cov": cov, "xip_B": xip_B, "xim_B": xim_B}, nbins
+    return {
+        "theta": np.geomspace(1.0, 100.0, nbins),
+        "n_eff": npatch,
+        "cov": cov,
+        "xip_B": xip_B,
+        "xim_B": xim_B,
+    }, nbins
 
 
 # ---------------------------------------------------------------------------
@@ -229,8 +235,8 @@ def test_calculate_eb_statistics_pte_matrices():
     """Pin representative PTE-matrix entries from the full 2D E/B analysis.
 
     Inputs are fixed (seed 12345, nbins=4, npatch=50, SPD cov = A@A.T + I,
-    O(1) B-mode vectors). With cov_path_int=None the Hartlap correction uses
-    n_eff = npatch = 50. For each of xip_B, xim_B and combined we pin the
+    O(1) B-mode vectors). The Hartlap correction uses n_eff = 50, the patch
+    count behind a jackknife covariance. For each of xip_B, xim_B and combined we pin the
     full-range entry [0, nbins-1] (start=0, stop=nbins) and an interior entry
     [0, 2] (start=0, stop=3). These chi2->sf PTE values are deterministic
     functions of the seeded input.
@@ -240,7 +246,7 @@ def test_calculate_eb_statistics_pte_matrices():
     arithmetic shifts them past tolerance.
     """
     results, nbins = _eb_inputs()
-    out = b_modes.calculate_eb_statistics(results, cov_path_int=None)
+    out = b_modes.calculate_eb_statistics(results)
     pm = out["pte_matrices"]
 
     # Full-range entries [0, nbins-1].
@@ -271,13 +277,13 @@ def test_calculate_eb_statistics_has_teeth():
     combined 0.99999 -> 0.0031.
     """
     results, nbins = _eb_inputs()
-    out = b_modes.calculate_eb_statistics(results, cov_path_int=None)
+    out = b_modes.calculate_eb_statistics(results)
     pm = out["pte_matrices"]
 
     loud, _ = _eb_inputs()
     loud["xip_B"] = loud["xip_B"] * 10.0
     loud["xim_B"] = loud["xim_B"] * 10.0
-    out_loud = b_modes.calculate_eb_statistics(loud, cov_path_int=None)
+    out_loud = b_modes.calculate_eb_statistics(loud)
     pm_loud = out_loud["pte_matrices"]
 
     for key in ("xip_B", "xim_B", "combined"):
@@ -285,3 +291,144 @@ def test_calculate_eb_statistics_has_teeth():
         loud_pte = pm_loud[key][0, nbins - 1]
         assert loud_pte < quiet_pte
         assert loud_pte < 0.05  # louder B-modes are clearly rejected
+
+
+# ---------------------------------------------------------------------------
+# 6. Grid edges and the COSEBIs covariance seam
+# ---------------------------------------------------------------------------
+
+
+def test_log_bin_edges_matches_the_grid_stub():
+    """Edges reconstructed from a binning are the ones TreeCorr would report.
+
+    A part stores bin centres only, so a consumer rebuilds the edges from the
+    binning it was measured on; the two must agree bin for bin.
+    """
+    left, right = b_modes.log_bin_edges(1.0, 100.0, _NBINS_GRID)
+    gg = _grid_gg()
+    npt.assert_allclose(left, gg.left_edges)
+    npt.assert_allclose(right, gg.right_edges)
+    # ...and they index scale cuts identically.
+    assert b_modes.bins_from_edges(left, right, 2.0, 50.0) == (2, 8)
+
+
+def test_cosebis_scan_propagates_the_supplied_covariance(monkeypatch):
+    """The COSEBIs covariance is the ξ± covariance through the same kernel.
+
+    The kernel is stubbed, so what is pinned is the seam: which ξ± covariance
+    sub-block is handed to the transform (the scale cut's, in [ξ+; ξ−] order)
+    and that Hartlap uses the supplied npatch.
+    """
+    nbins, nmodes = _NBINS_GRID, 3
+    theta = np.geomspace(1.2, 90.0, nbins)
+    cov_xipm = np.diag(np.arange(1.0, 2 * nbins + 1))
+    seen = {}
+
+    class _StubCOSEBIS:
+        def __init__(self, **kwargs):
+            seen["init"] = kwargs
+
+        def cosebis_from_xipm(self, theta_cut, xip_cut, xim_cut, parallel=True):
+            seen["n_theta"] = len(theta_cut)
+            return np.ones(nmodes), np.full(nmodes, 2.0)
+
+        def cosebis_covariance_from_xipm_covariance(self, theta_cut, cov_cut):
+            seen["cov_cut"] = cov_cut
+            return np.eye(2 * nmodes)
+
+    module = types.ModuleType("cosmo_numba.B_modes.cosebis")
+    module.COSEBIS = _StubCOSEBIS
+    monkeypatch.setitem(
+        __import__("sys").modules, "cosmo_numba.B_modes.cosebis", module
+    )
+
+    left, right = b_modes.log_bin_edges(1.0, 100.0, nbins)
+    results = b_modes.cosebis_scan_from_xi(
+        theta,
+        np.arange(nbins) * 1e-5,
+        np.arange(nbins) * 2e-5,
+        cov_xipm,
+        left,
+        right,
+        nmodes=nmodes,
+        scale_cuts=[(2.0, 50.0)],
+        npatch=100,
+    )
+
+    (result,) = results.values()
+    # The cut is bins 2..8, so the covariance sub-block is those rows/cols in
+    # both the ξ+ and the ξ− half.
+    inds = np.concatenate([np.arange(2, 8), np.arange(2, 8) + nbins])
+    npt.assert_array_equal(seen["cov_cut"], cov_xipm[np.ix_(inds, inds)])
+    assert seen["n_theta"] == 6
+    npt.assert_allclose(result["hartlap_factor"], (100 - 2 * nmodes - 2) / 99)
+    # χ² carries the Hartlap factor: modes are 1, cov is the identity.
+    npt.assert_allclose(result["chi2_E"], nmodes * result["hartlap_factor"])
+
+
+def test_cosebis_scan_theory_covariance_skips_hartlap(monkeypatch):
+    """A theory covariance has no realisations to debias, so Hartlap is 1."""
+    nbins, nmodes = _NBINS_GRID, 2
+
+    class _StubCOSEBIS:
+        def __init__(self, **kwargs):
+            pass
+
+        def cosebis_from_xipm(self, theta_cut, xip_cut, xim_cut, parallel=True):
+            return np.ones(nmodes), np.ones(nmodes)
+
+        def cosebis_covariance_from_xipm_covariance(self, theta_cut, cov_cut):
+            return np.eye(2 * nmodes)
+
+    module = types.ModuleType("cosmo_numba.B_modes.cosebis")
+    module.COSEBIS = _StubCOSEBIS
+    monkeypatch.setitem(
+        __import__("sys").modules, "cosmo_numba.B_modes.cosebis", module
+    )
+
+    left, right = b_modes.log_bin_edges(1.0, 100.0, nbins)
+    (result,) = b_modes.cosebis_scan_from_xi(
+        np.geomspace(1.2, 90.0, nbins),
+        np.zeros(nbins),
+        np.zeros(nbins),
+        np.eye(2 * nbins),
+        left,
+        right,
+        nmodes=nmodes,
+        npatch=None,
+    ).values()
+    assert result["hartlap_factor"] == 1
+
+
+def test_pure_eb_npz_carries_what_the_summary_reads(tmp_path):
+    """The .npz keys cv_summarize_bmodes reads are the ones the writer emits.
+
+    The two live in different rules, so the contract between them — the PTE
+    matrices under ``pte_matrices_{stat}`` and the realisation count under
+    ``n_eff`` — is pinned here rather than discovered on a cluster run.
+    """
+    results, nbins = _eb_inputs()
+    results.update(
+        {key: np.zeros(nbins) for key in b_modes._EB_KEYS if key not in results}
+    )
+    results = b_modes.calculate_eb_statistics(results)
+
+    out = tmp_path / "pure_eb_data.npz"
+    b_modes.save_pure_eb_results(results, str(out))
+    saved = np.load(out)
+
+    for stat in ("xip_B", "xim_B", "combined"):
+        assert f"pte_matrices_{stat}" in saved
+        assert saved[f"pte_matrices_{stat}"].shape == (nbins, nbins)
+    assert saved["n_eff"] == results["n_eff"]
+    npt.assert_allclose(saved["theta"], results["theta"])
+    for key in b_modes._EB_KEYS:
+        assert key in saved
+
+    # The summary reads the fiducial cut out of those matrices through the same
+    # helper the plots use, so a valid cut must resolve to a finite PTE.
+    edges = b_modes.log_bin_edges(1.0, 100.0, nbins)
+    pte = b_modes._get_pte_from_scale_cut(
+        saved["pte_matrices_xip_B"], edges, (1.0, 100.0)
+    )
+    assert np.isfinite(pte)

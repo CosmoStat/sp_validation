@@ -1,26 +1,71 @@
 """Rule cv_cosebis: COSEBIs E/B decomposition for one version.
 
-Compute + plot rule (per version). plot_cosebis calls calculate_cosebis over a
-fine integration binning (the 2000-bin TreeCorr is the dominant cost) and
-evaluates the configured scale cuts. Writes the {version}_eb_..._data.npz
-COSEBIs data product (declared output) plus figures, and the per-version
-COSEBIs PTE that cv_summarize_bmodes collects.
+A consumer of the ξ± part alone — values, covariance, PTEs and figures all
+derive from it, so nothing here touches a catalogue. The part's ξ± covariance
+goes through the same linear kernel as the modes to give the COSEBIs
+covariance; its ``npatch`` metadata sets the Hartlap debiasing.
 """
 
-from cv_runner import _unbuffer_streams, make_cv, verify_outputs
+from cv_runner import _unbuffer_streams, verify_outputs
 from snakemake.script import snakemake
 
+from sp_validation import sacc_io
+from sp_validation.b_modes import (
+    cosebis_scan_from_xi,
+    find_conservative_scale_cut_key,
+    log_bin_edges,
+    plot_cosebis_covariance_matrix,
+    plot_cosebis_modes,
+    plot_cosebis_scale_cut_heatmap,
+    save_cosebis_results,
+)
+from sp_validation.cosmo_val.sacc_writers import cosebis_to_sacc
+
 _unbuffer_streams()
-cv = make_cv(snakemake)
 p = snakemake.params
-cv.plot_cosebis(
-    version=p["version"],
-    min_sep_int=p["min_sep_int"],
-    max_sep_int=p["max_sep_int"],
-    nbins_int=p["nbins_int"],
-    npatch=p["npatch"],
+version = p["version"]
+fiducial_scale_cut = tuple(p["fiducial_scale_cut"])
+
+part = sacc_io.load(snakemake.input["xi"])
+theta, xip, xim = sacc_io.get_xi(part, (0, 0), grid="cosebis")
+edges = log_bin_edges(p["min_sep"], p["max_sep"], p["nbins"])
+
+results = cosebis_scan_from_xi(
+    theta,
+    xip,
+    xim,
+    part.covariance.dense,
+    *edges,
     nmodes=p["nmodes"],
     scale_cuts=[tuple(sc) for sc in p["scale_cuts"]],
-    fiducial_scale_cut=tuple(p["fiducial_scale_cut"]),
+    npatch=part.metadata["npatch"],
 )
+
+fiducial_key = find_conservative_scale_cut_key(results, fiducial_scale_cut)
+fiducial = results[fiducial_key]
+
+plot_cosebis_modes(
+    fiducial,
+    version,
+    snakemake.output["figure_modes"],
+    fiducial_scale_cut=fiducial_scale_cut,
+)
+plot_cosebis_covariance_matrix(
+    fiducial, version, "jackknife", snakemake.output["figure_covariance"]
+)
+plot_cosebis_scale_cut_heatmap(
+    results,
+    edges,
+    version,
+    snakemake.output["figure_scalecut_ptes"],
+    fiducial_scale_cut=fiducial_scale_cut,
+)
+
+save_cosebis_results(results, snakemake.output["npz"], fiducial_scale_cut)
+
+# The part inherits the ξ± part's provenance; `type` is re-stamped on save.
+metadata = {k: v for k, v in part.metadata.items() if k != "type"}
+s = cosebis_to_sacc({0: sacc_io.get_nz(part, 0)}, metadata, fiducial, fiducial_key)
+sacc_io.save(s, snakemake.output["sacc"], type="data")
+
 verify_outputs(snakemake)

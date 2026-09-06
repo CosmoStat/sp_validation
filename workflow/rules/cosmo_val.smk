@@ -3,29 +3,33 @@
 # The original cosmo_val/run_cosmo_val.py was one linear driver that built a
 # single in-memory `cv` (CosmologyValidation) and called ~13 cv.<method>()
 # diagnostics in sequence, linked only by lazy properties on that object. Here
-# each diagnostic is a rule, and the rules are linked by the *real* data
-# products each method writes under COSMO_VAL (= cosmo_val/output):
+# each diagnostic is a rule, and the rules are linked by the SACC parts and
+# products they write under COSMO_VAL (= cosmo_val/output):
 #
-#   rho/tau FITS  ──┬─→ rho/tau plots
-#                   ├─→ rho_tau_fits (PSF-error MCMC)
-#                   └─────────────────────────────┐
-#   additive bias ──→ xi (2pcf) ──┬─→ 2pcf plot   │
-#                                 ├─→ ratio_xi_sys_xi ←┘ (also needs xi_psf_sys)
-#                                 ├─→ pure_eb (npz) ─┐
-#                                 └─→ cosebis (npz) ─┤
-#   pseudo_cl FITS ──────────────────────────────────┼─→ summarize_bmodes
-#                                                     ┘
+#   catalogue ──→ xi (one job per grid: reporting, integration, cosebis)
+#                   │
+#                   ├─ reporting part ──┬─→ pure_eb (part, npz, figures)
+#                   ├─ integration part ┘        │
+#                   ├─ cosebis part ─────→ cosebis (part, npz, figures)
+#                   └─ reporting .txt ──→ 2pcf plot, ratio_xi_sys_xi
+#   catalogue ──→ pseudo_cl (part) ──┬─→ pseudo-Cl figures
+#   CosmoCov ──→ covariance ─────────┤
+#   rho/tau (part + FITS) ───────────┼─→ summarize_bmodes (reads the products)
+#                                    └─→ assemble_sacc ──→ {version}.sacc
 #
-# Granularity decision: methods that write durable data products
-# (calculate_rho_tau_stats, calculate_2pcf, calculate_pseudo_cl, plot_pure_eb,
-# plot_cosebis) own a compute rule keyed on those files. Methods that only
-# emit figures, or whose figure paths derive from internal handler state
-# (rho/tau plots, rho_tau_fits, objectwise leakage, 2pcf overlay), declare a
-# sentinel under COSMO_VAL/snakemake_sentinels so they stay DAG-trackable.
-# Lazy cv state that the original code never persists (c1/c2, xi_psf_sys) is
-# either materialized to a small JSON (additive bias) or recomputed in the one
-# rule that needs it (xi_psf_sys in ratio_xi_sys_xi) — recompute is cheap next
-# to the science it depends on. See workflow/scripts/cv_runner.py.
+# The B-mode rules are ingests: pure_eb, cosebis, the pseudo-Cl figures and the
+# summary all work from the parts and the covariance inputs, never from a
+# catalogue, so a blinded part keeps everything downstream blinded. The
+# analytic covariances (CosmoCov ξ±, NaMaster pseudo-Cℓ) are what assembly puts
+# in the terminal file, replacing the estimates a part was born with.
+#
+# Methods that only emit figures, or whose figure paths derive from internal
+# handler state (rho/tau plots, rho_tau_fits, objectwise leakage, 2pcf
+# overlay), declare a sentinel under COSMO_VAL/snakemake_sentinels so they stay
+# DAG-trackable. Lazy cv state the original code never persists (c1/c2,
+# xi_psf_sys) is either materialized to a small JSON (additive bias) or
+# recomputed in the one rule that needs it — recompute is cheap next to the
+# science it depends on. See workflow/scripts/cv_runner.py.
 
 CV = config["cosmo_val"]
 CV_VERSIONS = config["versions"]
@@ -52,13 +56,7 @@ def cv_xi_txt(version):
     Mirrors the out_fname f-string in cosmo_val.calculate_2pcf:
     {ver}_xi_minsep=..._maxsep=..._nbins=..._npatch=...txt
     """
-    return str(
-        COSMO_VAL
-        / (
-            f"{version}_xi_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_npatch={CV['npatch']}.txt"
-        )
-    )
+    return str(COSMO_VAL / f"{version}_xi_{xi_binning('reporting')}.txt")
 
 
 def cv_rho_stats(version):
@@ -73,39 +71,140 @@ def cv_tau_stats(version):
     )
 
 
-def cv_pure_eb_npz(version):
-    eb = CV["pure_eb"]
+def _pure_eb_stub(version):
+    """Shared stem of the pure-E/B diagnostic products (npz + figures)."""
+    eb = CV["integration"]
     return str(
         COSMO_VAL
         / (
             f"{version}_eb_minsep={CV['theta_min']}_maxsep={CV['theta_max']}"
-            f"_nbins={CV['nbins']}_minsepint={eb['min_sep_int']}"
-            f"_maxsepint={eb['max_sep_int']}_nbinsint={eb['nbins_int']}"
-            f"_npatch={CV['npatch']}_varmethod=jackknife_data.npz"
+            f"_nbins={CV['nbins']}_minsepint={eb['min_sep']}"
+            f"_maxsepint={eb['max_sep']}_nbinsint={eb['nbins']}"
+            f"_npatch={CV['npatch']}_varmethod=semi-analytic"
         )
     )
 
 
-def cv_cosebis_npz(version):
+def cv_pure_eb_npz(version):
+    """Pure-E/B data vectors + covariance .npz."""
+    return _pure_eb_stub(version) + "_data.npz"
+
+
+def cv_pure_eb_figures(version):
+    """The pure-E/B companion figures, by output key."""
+    stub = _pure_eb_stub(version)
+    return {
+        "figure_integration_vs_reporting": f"{stub}_integration_vs_reporting.png",
+        "figure_xis": f"{stub}_xis.png",
+        "figure_ptes": f"{stub}_ptes.png",
+        "figure_covariance": f"{stub}_covariance.png",
+    }
+
+
+def cv_xi_cov_integration(version):
+    """CosmoCov gaussian ξ± covariance on the integration grid.
+
+    The covariance model the pure-E/B Monte Carlo draws from; gaussian because
+    the draws only need the scatter a Gaussian field would give.
+    """
+    integ = CV["integration"]
+    return covariance_path(
+        version,
+        FIDUCIAL["blind"],
+        gaussian="g",
+        min_sep=integ["min_sep"],
+        max_sep=integ["max_sep"],
+        nbins=integ["nbins"],
+        mask_suffix=DEFAULT_MASK_SUFFIX,
+    )
+
+
+def _cosebis_stub(version):
+    """Shared stem of the COSEBIs diagnostic products (npz + figures).
+
+    varmethod names where the covariance came from, and these products are the
+    propagated one — which also keeps them clear of the paths plot_cosebis
+    builds for its own byproducts, so nothing overwrites a declared output.
+    """
     cb = CV["cosebis"]
     fsc = CV["fiducial_scale_cut"]
-    # Mirror calculate/plot_cosebis out_stub (cosmo_val.py): a distinct schema
-    # from pure_eb — _cosebis_ prefix, integration nbins, plus _nmodes= and
-    # _scalecut= segments. Must match save_cosebis_results exactly or
-    # verify_outputs raises and cv_summarize_bmodes deadlocks on this input.
     return str(
         COSMO_VAL
         / (
             f"{version}_cosebis_minsep={cb['min_sep_int']}"
             f"_maxsep={cb['max_sep_int']}_nbins={cb['nbins_int']}"
-            f"_npatch={cb['npatch']}_varmethod=jackknife_nmodes={cb['nmodes']}"
-            f"_scalecut={fsc[0]}-{fsc[1]}_data.npz"
+            f"_npatch={cb['npatch']}_varmethod=propagated_nmodes={cb['nmodes']}"
+            f"_scalecut={fsc[0]}-{fsc[1]}"
         )
     )
 
 
-def cv_pseudo_cl_fits(version):
-    return str(COSMO_VAL / f"pseudo_cl_{version}.fits")
+def cv_cosebis_npz(version):
+    """COSEBIs multi-cut diagnostic .npz (the PTE scan)."""
+    return _cosebis_stub(version) + "_data.npz"
+
+
+def cv_cosebis_figures(version):
+    """The COSEBIs companion figures, by output key."""
+    stub = _cosebis_stub(version)
+    return {
+        "figure_modes": f"{stub}_cosebis.png",
+        "figure_covariance": f"{stub}_covariance.png",
+        "figure_scalecut_ptes": f"{stub}_scalecut_ptes.png",
+    }
+
+
+_PSEUDO_CL_TAG = pseudo_cl_tag(config)
+
+
+def cv_pseudo_cl_analysis_sacc(version):
+    """Tagged pseudo-Cl SACC part: the harmonic block of the analysis file."""
+    return str(COSMO_VAL / f"pseudo_cl_{version}_{_PSEUDO_CL_TAG}.sacc")
+
+
+def cv_pseudo_cl_cov(version):
+    """NaMaster pseudo-Cl covariance FITS (COVAR_EE_EE/BB_BB/EB_EB extensions)."""
+    return str(COSMO_VAL / f"pseudo_cl_cov_{version}_{_PSEUDO_CL_TAG}.fits")
+
+
+def cv_xi_cov(version):
+    """CosmoCov-processed ξ± covariance, on the reporting grid's own binning."""
+    return covariance_path(
+        version,
+        FIDUCIAL["blind"],
+        gaussian="ng",
+        min_sep=CV["theta_min"],
+        max_sep=CV["theta_max"],
+        nbins=CV["nbins"],
+        mask_suffix=DEFAULT_MASK_SUFFIX,
+    )
+
+
+def cv_cosebis_sacc(version):
+    """COSEBIs SACC part, at the fiducial scale cut."""
+    return str(COSMO_VAL / f"{version}_cosebis.sacc")
+
+
+def cv_pure_eb_sacc(version):
+    """Pure-E/B SACC part."""
+    return str(COSMO_VAL / f"{version}_pure_eb.sacc")
+
+
+def cv_rho_tau_sacc(version):
+    """ρ/τ SACC part."""
+    return str(
+        COSMO_VAL / "rho_tau_stats" / f"rho_tau_{cv_basename(version, CV_FIDUCIAL)}.sacc"
+    )
+
+
+def cv_xi_sacc(version, grid):
+    """ξ± SACC part for a version on a named grid, named by that grid's binning."""
+    return str(COSMO_VAL / f"{version}_xi_{xi_binning(grid)}.sacc")
+
+
+def cv_analysis_sacc(version):
+    """Terminal assembled analysis file {version}.sacc."""
+    return str(COSMO_VAL / f"{version}.sacc")
 
 
 # Common params block shared by every cosmo_val rule: the cv constructor kwargs
@@ -274,18 +373,32 @@ rule cv_ratio_xi_sys_xi:
 # Harmonic-space pseudo-Cl
 # ---------------------------------------------------------------------------
 
-rule cv_pseudo_cl:
-    """Pseudo-Cl E/B spectra for all versions (NaMaster)."""
+def cv_pseudo_cl_figures():
+    """The pseudo-Cl figures, by output key (one per spectrum, all versions)."""
+    return {
+        f"figure_{name}": str(COSMO_VAL / f"cell_{name}.png")
+        for name in ("ee", "eb", "bb")
+    }
+
+
+rule cv_plot_pseudo_cl:
+    """The EE/EB/BB pseudo-Cl figures, from the analysis parts."""
+    input:
+        pseudo_cl=[cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS],
+        pseudo_cl_cov=[cv_pseudo_cl_cov(v) for v in CV_VERSIONS],
     output:
-        pseudo_cl=[cv_pseudo_cl_fits(v) for v in CV_VERSIONS],
+        **cv_pseudo_cl_figures(),
     params:
-        **cv_params(),
-    threads: 12
+        versions=CV_VERSIONS,
+        # Style is per catalogue, so the derived variants take their parent's.
+        markers=[CATALOG_CONFIG[base_version(v)]["marker"] for v in CV_VERSIONS],
+        colours=[CATALOG_CONFIG[base_version(v)]["colour"] for v in CV_VERSIONS],
+        rundir=CV_RUNDIR,
     resources:
-        mem_mb=32000,
-        runtime=180,
+        mem_mb=8000,
+        runtime=20,
     script:
-        "../scripts/cv_pseudo_cl.py"
+        "../scripts/cv_plot_pseudo_cl.py"
 
 
 # ---------------------------------------------------------------------------
@@ -293,18 +406,27 @@ rule cv_pseudo_cl:
 # ---------------------------------------------------------------------------
 
 rule cv_pure_eb:
-    """Pure E/B-mode decomposition for one version (config-space)."""
+    """Pure E/B-mode decomposition for one version, from its ξ± parts.
+
+    The modes come from the two parts; the covariance is Monte Carlo from the
+    integration-grid covariance model, so no patched estimator run is involved.
+    """
     input:
-        xi=lambda w: cv_xi_txt(w.version),
+        xi_reporting=lambda w: cv_xi_sacc(w.version, "reporting"),
+        xi_integration=lambda w: cv_xi_sacc(w.version, "integration"),
+        cov_integration=lambda w: cv_xi_cov_integration(w.version),
     output:
         npz=cv_pure_eb_npz("{version}"),
+        sacc=cv_pure_eb_sacc("{version}"),
+        **cv_pure_eb_figures("{version}"),
     params:
         version="{version}",
-        min_sep_int=CV["pure_eb"]["min_sep_int"],
-        max_sep_int=CV["pure_eb"]["max_sep_int"],
-        nbins_int=CV["pure_eb"]["nbins_int"],
+        min_sep=CV["theta_min"],
+        max_sep=CV["theta_max"],
+        nbins=CV["nbins"],
+        n_samples=CV.get("n_mc_samples", 1000),
+        cosmo_params=CV["cosmo_params"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        cv_init=lambda w: cv_init_params(config, version_list=[w.version]),
         rundir=CV_RUNDIR,
     threads: 24
     resources:
@@ -315,21 +437,25 @@ rule cv_pure_eb:
 
 
 rule cv_cosebis:
-    """COSEBIs E/B decomposition for one version (config-space, fine binning)."""
+    """COSEBIs E/B decomposition for one version, from its ξ± part.
+
+    Values, covariance and PTEs all come from the part: the COSEBIs covariance
+    is the part's ξ± covariance through the same kernel as the modes.
+    """
     input:
-        xi=lambda w: cv_xi_txt(w.version),
+        xi=lambda w: cv_xi_sacc(w.version, "cosebis"),
     output:
         npz=cv_cosebis_npz("{version}"),
+        sacc=cv_cosebis_sacc("{version}"),
+        **cv_cosebis_figures("{version}"),
     params:
         version="{version}",
-        min_sep_int=CV["cosebis"]["min_sep_int"],
-        max_sep_int=CV["cosebis"]["max_sep_int"],
-        nbins_int=CV["cosebis"]["nbins_int"],
-        npatch=CV["cosebis"]["npatch"],
+        min_sep=CV["cosebis"]["min_sep_int"],
+        max_sep=CV["cosebis"]["max_sep_int"],
+        nbins=CV["cosebis"]["nbins_int"],
         nmodes=CV["cosebis"]["nmodes"],
         scale_cuts=CV["cosebis"]["scale_cuts"],
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        cv_init=lambda w: cv_init_params(config, version_list=[w.version]),
         rundir=CV_RUNDIR,
     threads: 24
     resources:
@@ -345,30 +471,84 @@ rule cv_summarize_bmodes:
         pure_eb=[cv_pure_eb_npz(v) for v in CV_VERSIONS],
         cosebis=[cv_cosebis_npz(v) for v in CV_VERSIONS],
         pseudo_cl=(
-            [cv_pseudo_cl_fits(v) for v in CV_VERSIONS]
+            [cv_pseudo_cl_analysis_sacc(v) for v in CV_VERSIONS]
+            if CV.get("include_pseudo_cl", False) else []
+        ),
+        pseudo_cl_cov=(
+            [cv_pseudo_cl_cov(v) for v in CV_VERSIONS]
             if CV.get("include_pseudo_cl", False) else []
         ),
     output:
         summary_json=str(COSMO_VAL / "bmode_summary.json"),
     params:
+        versions=CV_VERSIONS,
         fiducial_scale_cut=CV["fiducial_scale_cut"],
-        pure_eb_min_sep_int=CV["pure_eb"]["min_sep_int"],
-        pure_eb_max_sep_int=CV["pure_eb"]["max_sep_int"],
-        pure_eb_nbins_int=CV["pure_eb"]["nbins_int"],
-        cosebis_min_sep_int=CV["cosebis"]["min_sep_int"],
-        cosebis_max_sep_int=CV["cosebis"]["max_sep_int"],
-        cosebis_nbins_int=CV["cosebis"]["nbins_int"],
-        cosebis_npatch=CV["cosebis"]["npatch"],
-        cosebis_nmodes=CV["cosebis"]["nmodes"],
-        cosebis_scale_cuts=CV["cosebis"]["scale_cuts"],
+        min_sep=CV["theta_min"],
+        max_sep=CV["theta_max"],
+        nbins=CV["nbins"],
         include_pseudo_cl=CV.get("include_pseudo_cl", False),
-        **cv_params(),
-    threads: 24
+        rundir=CV_RUNDIR,
     resources:
-        mem_mb=48000,
-        runtime=600,
+        mem_mb=8000,
+        runtime=20,
     script:
         "../scripts/cv_summarize_bmodes.py"
+
+
+# ---------------------------------------------------------------------------
+# Terminal analysis file: assemble the per-statistic SACC parts into {version}.sacc
+# ---------------------------------------------------------------------------
+# The terminal file carries the analysis vector only. The integration-grid ξ± is
+# deliberately not gathered: it stays a per-part intermediate. The two blocks
+# born without a covariance (ξ± reporting, pseudo-Cℓ) get theirs injected from
+# the covariance inputs below.
+
+
+def cv_assemble_inputs(version):
+    """The per-statistic SACC parts + covariance inputs assemble_sacc consumes.
+
+    Each part's filename carries enough to bind its producing rule's wildcards.
+    """
+    parts = dict(
+        xi_reporting=cv_xi_sacc(version, "reporting"),
+        xi_cov=cv_xi_cov(version),
+        cosebis=cv_cosebis_sacc(version),
+        pure_eb=cv_pure_eb_sacc(version),
+        rho_tau=cv_rho_tau_sacc(version),
+    )
+    if CV.get("include_pseudo_cl", False):
+        parts["pseudo_cl"] = cv_pseudo_cl_analysis_sacc(version)
+        parts["pseudo_cl_cov"] = cv_pseudo_cl_cov(version)
+    return parts
+
+
+rule assemble_sacc:
+    """Assemble the terminal {version}.sacc from the per-statistic SACC parts."""
+    input:
+        unpack(lambda w: cv_assemble_inputs(w.version)),
+    output:
+        sacc=cv_analysis_sacc("{version}"),
+    params:
+        version="{version}",
+        type=CV.get("type", "data"),
+        # The statistics this rule wired, so a typo'd input keyword cannot
+        # silently drop one.
+        expected=lambda w: [
+            k
+            for k in cv_assemble_inputs(w.version)
+            if k not in ("xi_cov", "pseudo_cl_cov")
+        ],
+    resources:
+        mem_mb=8000,
+        runtime=20,
+    script:
+        "../scripts/assemble_sacc.py"
+
+
+rule assemble_sacc_all:
+    """Assemble the analysis SACC file for every version."""
+    input:
+        [cv_analysis_sacc(v) for v in CV_VERSIONS],
 
 
 # ---------------------------------------------------------------------------
@@ -392,3 +572,6 @@ rule cosmo_val_all:
         str(COSMO_VAL / "ratio_xi_sys_xi.png"),
         # B-modes
         str(COSMO_VAL / "bmode_summary.json"),
+        list(cv_pseudo_cl_figures().values()) if CV.get("include_pseudo_cl", False) else [],
+        # Terminal analysis file: the assembled {version}.sacc per version
+        [cv_analysis_sacc(v) for v in CV_VERSIONS],

@@ -5,6 +5,13 @@ import os
 import re
 from pathlib import Path
 
+# The running checkout, for rules that shell out to a script directly rather
+# than through Snakemake's `script:` directive. Anchored on this module's own
+# location, not workflow.basedir — under `module` composition basedir reflects
+# the composing paper, not the running checkout.
+REPO_ROOT = Path(os.path.realpath(__file__)).parents[1]
+WORKFLOW_SCRIPTS = os.path.join(os.path.dirname(os.path.realpath(__file__)), "scripts")
+
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
 COSMO_VAL = Path(
@@ -18,6 +25,9 @@ COSMO_INFERENCE = Path(
     )
 )
 CAT_CONFIG = "/n17data/cdaley/unions/code/sp_validation/cosmo_val/cat_config.yaml"
+# "blind" is the glass-mock A/B/C realisation convention, NOT Smokescreen
+# blinding (a separate axis: the concealed=True SACC stamp). The name is baked
+# into on-disk filenames we do not own (e.g. nz_{version}_{A|B|C}.txt).
 BLINDS = ["A", "B", "C"]
 BLOCK_PAIRS = [("++", "1"), ("--", "2"), ("+-", "3")]
 
@@ -156,22 +166,122 @@ def covariance_path(
     return str(COSMO_INFERENCE / f"data/covariance/{base}/{base}{suffix}")
 
 
+def base_version(version):
+    """Strip the derived-catalogue suffixes to the base catalogue version.
+
+    The `_leak_corr` / `_ecut{N}` variants share their parent's n(z) and
+    `cov_th` survey parameters, so lookups keyed on either must strip both.
+    """
+    return re.sub(r"_ecut\d+", "", re.sub(r"_leak_corr$", "", version))
+
+
 def build_redshift_path(version, blind):
     """Construct n(z) filepath for given catalog version and blind."""
-    base_version = re.sub(r"_leak_corr$", "", version)
-    base_version = re.sub(r"_ecut\d+", "", base_version)
-    if "v1.4.11" in base_version:
-        base_version = "SP_v1.4.6"
-    version_dir = base_version.replace("SP_", "")
+    base = base_version(version)
+    if "v1.4.11" in base:
+        base = "SP_v1.4.6"
+    version_dir = base.replace("SP_", "")
+    return f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base}_{blind}.txt"
+
+
+# ---------------------------------------------------------------------------
+# ξ± angular grids
+# ---------------------------------------------------------------------------
+# A grid is a binning plus how its covariance is estimated: (min_sep, max_sep,
+# nbins, npatch, cov). `reporting` is the analysis grid, `integration` the fine
+# one the B-mode integrals run over, `cosebis` the fine patched grid COSEBIs
+# propagates its covariance from. cov is "jackknife" (dense, from the patches),
+# "diagonal" (TreeCorr varxip/varxim) or "none".
+XI_KEYS = (
+    "min_sep",
+    "max_sep",
+    "nbins",
+    "npatch",
+)  # the binning; cov is not in the name
+
+
+def xi_grids(config, fiducial):
+    """The named ξ± grids of a workflow, canonicalised.
+
+    Workflows carrying no cosmo_val block (e.g. papers/bmodes) fall back to
+    ``fiducial``. Values are coerced here — separations to float, counts to int
+    — so the tag the table stamps into a filename is the one the measurement
+    writes: the separations pass through float() on the way to TreeCorr, so a
+    YAML ``300`` must become ``300.0`` before it names a file, or producer and
+    consumer ask for different paths.
+    """
+    cv = config.get("cosmo_val", {})
+    grids = {
+        "reporting": (
+            {
+                "min_sep": cv["theta_min"],
+                "max_sep": cv["theta_max"],
+                "nbins": cv["nbins"],
+                "npatch": cv["npatch"],
+            }
+            if cv
+            else {k: fiducial[k] for k in XI_KEYS}
+        ),
+        "integration": dict(
+            cv.get("integration")
+            or {
+                "min_sep": fiducial["min_sep_int"],
+                "max_sep": fiducial["max_sep_int"],
+                "nbins": fiducial["nbins_int"],
+            }
+        ),
+    }
+    grids["integration"].setdefault("npatch", 1)
+    cb = cv.get("cosebis")
+    if cb:
+        grids["cosebis"] = {
+            "min_sep": cb["min_sep_int"],
+            "max_sep": cb["max_sep_int"],
+            "nbins": cb["nbins_int"],
+            "npatch": cb["npatch"],
+        }
+    for grid in grids.values():
+        for key in ("min_sep", "max_sep"):
+            grid[key] = float(grid[key])
+        for key in ("nbins", "npatch"):
+            grid[key] = int(grid[key])
+        # A jackknife estimate needs patches; at npatch=1 TreeCorr's var_method
+        # is "shot" and the diagonal is all it can offer.
+        grid.setdefault("cov", "jackknife" if grid["npatch"] > 1 else "none")
+    return grids
+
+
+def grid_binning(grid):
+    """The `minsep=..._maxsep=..._nbins=..._npatch=...` tag of one grid."""
     return (
-        f"/n17data/sguerrini/UNIONS/WL/nz/{version_dir}/nz_{base_version}_{blind}.txt"
+        f"minsep={grid['min_sep']}_maxsep={grid['max_sep']}"
+        f"_nbins={grid['nbins']}_npatch={grid['npatch']}"
     )
+
+
+def grid_of(grids, binning):
+    """Name of the grid a binning belongs to, compared numerically.
+
+    A "300" wildcard matches a 300.0 grid value. Binnings matching no named
+    grid (e.g. papers/bmodes' nbins=10000 convergence check) are reporting-style
+    measurements.
+    """
+    key = tuple(float(binning[k]) for k in XI_KEYS)
+    for name, grid in grids.items():
+        if tuple(float(grid[k]) for k in XI_KEYS) == key:
+            return name
+    return "reporting"
+
+
+def pseudo_cl_tag(config):
+    """Fiducial harmonic-binning tag stamped into pseudo-Cl filenames."""
+    fiducial = config["harmonic"]["fiducial"]
+    return f"blind={fiducial['blind']}_{fiducial['binning']}_nbins={fiducial['nbins']}"
 
 
 def get_shear_catalog(wildcards):
     """Resolve shear catalog path from config for a given version."""
-    base_version = wildcards.version.replace("_leak_corr", "")
-    cat_config = CATALOG_CONFIG[base_version]
+    cat_config = CATALOG_CONFIG[wildcards.version.replace("_leak_corr", "")]
     shear_path = cat_config["shear"]["path"]
     if shear_path.startswith("/"):
         return shear_path

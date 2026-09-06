@@ -697,4 +697,4 @@ class TestCosmologyValidation:
         # shape is pinned, not the values.
         cov = np.asarray(results["cov"])
         assert cov.shape == (6 * nbins, 6 * nbins)
-        assert results["gg"].npatch1 == npatch
+        assert results["n_eff"] == npatch

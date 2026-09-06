@@ -269,19 +269,13 @@ class PureEBMixin:
             )
 
             # Calculate E/B statistics for all bin combinations
-            version_results = calculate_eb_statistics(
-                version_results,
-                cov_path_int=cov_path_int,
-                n_samples=n_samples,
-                **kwargs,
-            )
-
-            # Generate all plots using specialized plotting functions
-            gg, gg_int = version_results["gg"], version_results["gg_int"]
+            version_results = calculate_eb_statistics(version_results, **kwargs)
 
             # Integration vs Reporting comparison plot
             plot_integration_vs_reporting(
-                gg, gg_int, out_stub + "_integration_vs_reporting.png", version
+                version_results,
+                out_stub + "_integration_vs_reporting.png",
+                version,
             )
 
             # E/B/Ambiguous correlation functions plot

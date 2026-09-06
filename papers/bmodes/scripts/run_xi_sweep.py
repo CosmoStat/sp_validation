@@ -2,8 +2,8 @@
 
 Loops the [non-fiducial version list](sweep_versions.nonfiducial_versions) and
 runs the same ``run_2pcf.run_2pcf`` compute the fiducial two_point recipes call,
-once per version, writing every version's ξ± text dump (+ ξ+/ξ- FITS) into one
-lc ``{output}`` dir under run_2pcf's native, already-canonical name
+once per version, writing every version's ξ± text dump into one lc ``{output}``
+dir under run_2pcf's native, already-canonical name
 ``{ver}_xi_minsep={min}_maxsep={max}_nbins={nbins}_npatch={npatch}.txt`` — the
 exact pattern ``cosebis_version_comparison._xi_integration`` reconstructs.
 
@@ -76,7 +76,7 @@ def _from_cli(argv=None):
                 ver=ver,
                 cat_config=a.cat_config,
                 output_dir=a.out,
-                save_fits=True,
+                grid=grid,
                 **GRIDS[grid],
             )
 

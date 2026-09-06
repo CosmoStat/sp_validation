@@ -57,7 +57,9 @@ import numpy.testing as npt
 import pytest
 import yaml
 
+from sp_validation import sacc_io
 from sp_validation.cosmo_val import CosmologyValidation
+from sp_validation.cosmo_val.sacc_writers import BIN as SACC_BIN
 from sp_validation.rho_tau import get_params_rho_tau
 
 # These tests need the full harmonic-space stack (pymaster/NaMaster + healpy),
@@ -112,6 +114,7 @@ def _write_synthetic_config(tmp_path):
 
     shear_cfg = {
         "path": "shear.fits",
+        "redshift_path": str(nz_dir / "dndz_SP_A.txt"),
         "w_col": "w",
         "e1_col": "e1",
         "e2_col": "e2",
@@ -508,24 +511,20 @@ def test_apply_random_rotation_reproducible_with_seed(cv, cat_and_params):
 # calculate_pseudo_cl_catalog -- deterministic end-to-end catalog path
 # ===========================================================================
 def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
-    """End-to-end catalog path: FITS round-trip of ell + EE/EB/BB.
+    """End-to-end catalog path: SACC round-trip of ell + EE/EB/BB.
 
     The catalog method has no random noise debiasing, so it is reproducible to
-    the same ~2e-12 catalog-path float noise. save_pseudo_cl stores ELL/EE/EB/BB
-    (it drops the BE row); we pin the round-tripped table.
+    the same ~2e-12 catalog-path float noise; we pin the round-tripped spectra.
     """
     ver = cv._test_version
     cv._pseudo_cls = {ver: {}}
-    out_path = cv._output_path(f"pseudo_cl_cat_{ver}.fits")
+    out_path = cv._output_path(f"pseudo_cl_{ver}.sacc")
     cv.calculate_pseudo_cl_catalog(ver, out_path)
 
     assert os.path.exists(out_path)
-    d = fits.getdata(out_path)
-    # FITS gives big-endian f8; normalize for value comparison.
-    ell = np.asarray(d["ELL"], dtype=np.float64)
-    ee = np.asarray(d["EE"], dtype=np.float64)
-    eb = np.asarray(d["EB"], dtype=np.float64)
-    bb = np.asarray(d["BB"], dtype=np.float64)
+    s = sacc_io.load(out_path, allow_unblinded=True)
+    ell, ee, bb, eb, window = sacc_io.get_pseudo_cl(s, SACC_BIN)
+    assert window is not None  # the shared BandpowerWindow rides the part
 
     npt.assert_allclose(
         ell,
@@ -590,3 +589,25 @@ def test_calculate_pseudo_cl_catalog_end_to_end(cv, tmp_path):
     params = get_params_rho_tau(cv.cc[ver], survey=ver)
     _, cl_prim, _ = cv.get_pseudo_cls_catalog(catalog=cat_gal, params=params)
     npt.assert_allclose(ee, cl_prim[0], rtol=RTOL_CAT, atol=ATOL_CAT)
+
+
+def test_calculate_pseudo_cl_out_path_born_at_declared_name(cv):
+    """calculate_pseudo_cl(out_path=...) writes to the given path, never the
+    untagged native name — so the tagged and diagnostic rules stay disjoint."""
+    ver = cv._test_version
+    cv._pseudo_cls = {}
+    tagged = cv._output_path(f"pseudo_cl_{ver}_blind=A_powspace_nbins=32.sacc")
+    native = cv._output_path(f"pseudo_cl_{ver}.sacc")
+
+    cv.calculate_pseudo_cl(out_path=tagged)
+
+    assert os.path.exists(tagged)
+    assert not os.path.exists(native)  # no undeclared native basename touched
+
+
+def test_calculate_pseudo_cl_out_path_rejects_multiversion(cv):
+    """out_path targets one part; a multi-version instance must fail loudly
+    rather than write every version to the same path."""
+    cv.versions = [cv._test_version, "SecondVersion"]
+    with pytest.raises(ValueError, match="one part to one path"):
+        cv.calculate_pseudo_cl(out_path=cv._output_path("pseudo_cl_x.sacc"))
