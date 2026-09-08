@@ -86,7 +86,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
 
       # Is this a PR whose head branch lives in THIS repo (not a fork)? Only then
       # can we push an autofix commit back to it with the workflow token.
