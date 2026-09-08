@@ -935,16 +935,16 @@ wheels = [
 
 [[package]]
 name = "fast-pt"
-version = "3.2"
+version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/11/83df1a1acc4c346f35219481f464f0264932ac3c57f053b1ce68f4d13d02/fast_pt-3.2.tar.gz", hash = "sha256:ec4cfdb4a352b300ca7ec2f313a73c5676ec61ef665345b0fc37a258f5ecbd5d", size = 37099, upload-time = "2024-11-01T00:45:36.156Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/da/1ac74db4cca1193e0ec74207748b9a7209807ad7234253569e1799e38ed8/fast_pt-4.0.0.tar.gz", hash = "sha256:070e9de13635711930f4ad19181f96c2dd3a85989c7a277b4b1e4c909ee817c5", size = 77292, upload-time = "2025-07-10T18:44:29.982Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/64/db25374b45218b0d305a4378a7fe8399406989e4a26f7cbafc4930200d5b/fast_pt-3.2-py3-none-any.whl", hash = "sha256:c988e312bc79df66f1719fcb198ab984fd614a6c942f1e3af6adb07180760387", size = 49051, upload-time = "2024-11-01T00:45:34.544Z" },
+    { url = "https://files.pythonhosted.org/packages/10/e1/9f7c5feacd4200cbb61726bdae6ccf58f354448a26f8cabaf313fb49dfba/fast_pt-4.0.0-py3-none-any.whl", hash = "sha256:ae9c4e7d2246721be68e669043ac62c5644faef27b93b589ff3714c676135f8e", size = 68086, upload-time = "2025-07-10T18:44:28.051Z" },
 ]
 
 [[package]]
@@ -3904,7 +3904,7 @@ requires-dist = [
     { name = "cryptography" },
     { name = "cs-util", git = "https://github.com/CosmoStat/cs_util.git?rev=develop" },
     { name = "emcee" },
-    { name = "fast-pt", marker = "extra == 'workflow'", specifier = ">=3.2,<4" },
+    { name = "fast-pt", marker = "extra == 'workflow'", specifier = ">=4,<5" },
     { name = "fitsio", marker = "extra == 'glass'" },
     { name = "getdist", git = "https://github.com/benabed/getdist.git?rev=113cd22a9a0d013b6f72fe734be81f260f3d3be5" },
     { name = "glass", marker = "extra == 'glass'", specifier = "==2025.1" },
