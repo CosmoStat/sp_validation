@@ -1,9 +1,35 @@
 """Shared helpers for the B-modes Snakemake workflow."""
 
+import importlib.util
 import json
 import os
 import re
+import sys
 from pathlib import Path
+
+# This checkout's importable source tree: workflow/common.py -> <repo>/src.
+REPO_SRC = Path(__file__).resolve().parent.parent / "src"
+
+# The container model lives in the package (``sp_validation/container.py``).
+# Taken from *this checkout's* src/, so the workflow and the ``spv-container``
+# CLI can never disagree about which image to run.
+#
+# Loaded by file path rather than as ``sp_validation.container``: snakemake runs
+# on the host, where sp_validation is usually not installed, and importing the
+# package would drag in ``__init__`` -> ``version`` -> a metadata warning on
+# every launch. The module itself is stdlib-only, so this costs nothing.
+_container = importlib.util.module_from_spec(
+    importlib.util.spec_from_file_location(
+        "_spv_container", REPO_SRC / "sp_validation" / "container.py"
+    )
+)
+sys.modules["_spv_container"] = _container
+_container.__loader__.exec_module(_container)
+
+compare_revision = _container.compare_revision
+image_revision = _container.image_revision
+resolve_image = _container.resolve_image
+
 
 # Output roots are env-overridable so a reproduction run can write into a
 # fresh tree without clobbering (or silently reusing) prior products.
@@ -50,9 +76,90 @@ CATALOG_CONFIG = None
 PLANCK18 = None
 
 
+def inject_checkout_pythonpath(workflow_config):
+    """Make the launched checkout's ``src`` win over the image's baked copy.
+
+    Snakemake's ``script:`` directive already runs the *checkout's* script
+    files, so without this a rule executes new script code against an old
+    ``import sp_validation`` -- the two halves of one commit, split. Prepending
+    ``REPO_SRC`` closes that: the image stays the frozen dependency stack, the
+    checkout supplies sp_validation.
+
+    Apptainer forwards ``APPTAINERENV_``-prefixed host variables into the job as
+    their unprefixed names, surviving the profile's ``--cleanenv``; setting it
+    here on the driver reaches every containerized rule. Any value the user
+    already exported is preserved behind ours.
+
+    Opt out with ``--config checkout_pythonpath=false`` to reproduce a run from
+    the image alone.
+    """
+    flag = workflow_config.get("checkout_pythonpath", True)
+    # `--config key=false` can arrive as the *string* "false" depending on how
+    # Snakemake parses the value, so don't lean on truthiness alone.
+    if isinstance(flag, str):
+        flag = flag.strip().lower() not in ("false", "no", "0", "off", "")
+    if not flag:
+        return
+    if not REPO_SRC.is_dir():
+        return
+    existing = os.environ.get("APPTAINERENV_PYTHONPATH", "")
+    parts = [str(REPO_SRC)] + [p for p in existing.split(":") if p]
+    os.environ["APPTAINERENV_PYTHONPATH"] = ":".join(parts)
+
+
+def resolve_container(override=None):
+    """Return the image every rule should run in.
+
+    ``override`` wins if set (a ``docker://`` tag, a ``.sif`` path or a sandbox
+    directory -- Snakemake's ``container:`` accepts all three); otherwise
+    ``resolve_image()``, so jobs run what interactive ``spv-container`` work
+    runs.
+    """
+    if override:
+        return str(override)
+    return resolve_image()[0]
+
+
+def warn_if_image_stale():
+    """Print one advisory line about a local image that is not pristine or current.
+
+    Never fatal. Two things worth saying at launch:
+
+    * a sandbox is in play, so what jobs run is not fully described by any
+      revision label -- deliberate, but it should not be a silent difference
+      from a clean run;
+    * the image predates the checkout. Usually fine, because the checkout's
+      ``src/`` is what rules import; it matters when the *dependency stack*
+      moved -- a new package, a lockfile bump.
+
+    Silent when there is no local image, no apptainer, or no revision label.
+    """
+    image, kind = resolve_image()
+    if kind == "tag":
+        return
+    revision = image_revision(image)
+    if kind == "sandbox":
+        built = f"built from {revision[:12]}" if revision else "revision unknown"
+        print(
+            f"[container] running the writable sandbox at {image} ({built}). "
+            "Anything installed into it is part of this run; "
+            "`spv-container status` for detail.",
+            file=sys.stderr,
+        )
+    if compare_revision(revision) == "behind":
+        print(
+            f"[container] image was built from {revision[:12]}, which is behind this "
+            "checkout. Fine unless the dependency stack moved; refresh with "
+            "`spv-container pull`.",
+            file=sys.stderr,
+        )
+
+
 def configure(workflow_config):
     """Install config-derived values after Snakemake has loaded configfiles."""
     global CATALOG_CONFIG, DEFAULT_MASK_SUFFIX, FIDUCIAL, PLANCK18
+    inject_checkout_pythonpath(workflow_config)
+    warn_if_image_stale()
     CATALOG_CONFIG = workflow_config
     FIDUCIAL = workflow_config["fiducial"]
     DEFAULT_MASK_SUFFIX = (

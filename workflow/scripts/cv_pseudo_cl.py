@@ -6,7 +6,6 @@ figure. The per-version FITS files are the declared outputs.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, verify_outputs
-from snakemake.script import snakemake
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

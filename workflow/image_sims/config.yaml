@@ -1,44 +1,31 @@
 # Image-simulation m-bias workflow configuration.
 #
-# Two kinds of keys live under `image_sims:`, and the split is the point:
-#
-#   * OPERATIONAL keys default here (active lines below) and *nowhere else* --
-#     the .smk reads them bare, so this file is their single home.  Override in
-#     a run config only when a run genuinely differs from the shared setup.
-#
-#   * SCIENCE keys have NO default -- not here, not in code.  They fix the
-#     estimator's scientific behaviour and must be stated per run, so they
-#     appear below only as commented template lines.  Supply them in a run
-#     config layered on top:
-#
-#         snakemake -s workflow/image_sims/Snakefile \
-#             --configfile workflow/image_sims/config.yaml \
-#             --configfile my_run.yaml \
-#             -j 4 im_mbias
-#
-# A run config that omits a science key fails at DAG parse, naming the key; an
-# unknown key under `image_sims:` fails as a typo.  The structural keys below
-# (sif, repos, data roots, num, tile_ids) also have no default and must be set.
+# OPERATIONAL keys default here and nowhere else -- the .smk reads them bare, so
+# this file is their single home. SCIENCE keys have no default anywhere and
+# appear below only as commented template lines: they fix the estimator's
+# behaviour, so each run must state them in a run config layered on top. A run
+# config that omits one fails at DAG parse, naming the key; an unknown key under
+# `image_sims:` fails as a typo.
 
 image_sims:
 
-  # --- containers -------------------------------------------------------
-  # Two images, one per half of the chain (the split gate766 ran).  One image
-  # is the eventual target -- the sp_validation image is FROM the ShapePipe
-  # image -- but until sp_validation is uv-locked with cosmo_numba declared,
-  # its published image can drift NumPy past numba's window (seen 2026-07-11:
-  # "Numba needs NumPy 2.4 or less. Got NumPy 2.5" at ngmix).  PYTHONPATH
-  # shadows pure-Python code only, never binary deps.
-  sif: /n17data/cdaley/containers/sp_validation_im_sims.sif          # extract/calibrate/m-bias
-  sif_pipeline: /n17data/cdaley/containers/shapepipe_im_sims-runtime.sif  # pipeline/merge
-  # Apptainer bind mounts.  /automnt is required when repos/data are
-  # automounted (candide gotcha); harmless otherwise.  [operational]
-  binds: /n17data,/n09data,/home,/automnt
+  # --- container --------------------------------------------------------
+  # One image for the whole chain: the sp_validation image is built FROM the
+  # ShapePipe image, so it carries both stacks. CI builds it from the uv lock --
+  # an unlocked build drifts NumPy past numba's ceiling and the ngmix stage dies
+  # ("Numba needs NumPy 2.4 or less").
+  #
+  # `null` means the workflow's one image: your own .sif if you have pulled one
+  # with `spv-container pull`, else the registry tag for Snakemake to autopull
+  # (workflow/README.md).  Neither is repeated here.
+  # Override with a local .sif path, or with a branch tag
+  # (docker://ghcr.io/cosmostat/sp_validation:<sanitized-branch>) to run a
+  # branch's own CI image.
+  sif: null
 
   # --- repositories -----------------------------------------------------
   # Bound into the image; both repos' src go on PYTHONPATH so this branch's
-  # code wins over the baked copies: ShapePipe's #766 build, and sp_validation's
-  # image_sims.py / catalog.match_catalogs_radec.
+  # code wins over the baked copies.
   shapepipe_repo: /n17data/cdaley/unions/code/shapepipe
   sp_validation_repo: /n17data/cdaley/unions/code/sp_validation
 
