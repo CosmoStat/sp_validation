@@ -23,6 +23,9 @@ jobs:
     permissions:
       contents: write
       packages: read
+    concurrency:
+      group: gh-pages-${{ github.ref }}
+      cancel-in-progress: true
 
     container:
       image: ghcr.io/cosmostat/sp_validation:develop
