@@ -113,6 +113,18 @@ wheels = [
 ]
 
 [[package]]
+name = "array-api-extra"
+version = "0.11.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "array-api-compat" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/63/eb18bc7d039c954da3cfb11293c7e461b03eb9682bb0b22733be43f75501/array_api_extra-0.11.4.tar.gz", hash = "sha256:66236f72aaa4cdf97a3c5581696e3a9c89513714612a9bc6010e19fad1a22012", size = 112368, upload-time = "2026-09-07T18:50:34.068Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/b3/fcf70b2ed935f26fc15dfd81f72f781d395b09e302af5c86ec285d63524e/array_api_extra-0.11.4-py3-none-any.whl", hash = "sha256:b2d5bd31b3072249fd3f90a2b1f7b398c78e3ccb7575e04e9e3348ae894da60f", size = 120196, upload-time = "2026-09-07T18:50:32.88Z" },
+]
+
+[[package]]
 name = "arrow"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1084,18 +1096,18 @@ wheels = [
 
 [[package]]
 name = "glass"
-version = "2025.1"
+version = "2026.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cosmology" },
+    { name = "array-api-compat" },
+    { name = "array-api-extra" },
     { name = "healpix" },
     { name = "healpy" },
-    { name = "numpy" },
     { name = "transformcl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a5/d6/26cd58e75834671259f26b9287a584d726e6023da35ddf7ca3b7f2c393fb/glass-2025.1.tar.gz", hash = "sha256:7b1aa2394e16010f7f1b4243f49e7e12d7a4dd28fcbf3e3f7cf25ce4905a8615", size = 48533, upload-time = "2025-02-21T18:43:48.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/c3/3b7d18cca8d0fa41dbb646ce16935804b380dcf766e7385799f44829b419/glass-2026.2.tar.gz", hash = "sha256:cf5ef6cb76b4738f8dc05ddfc18c359c558bb36e9cd09ca0115fa3ca3deb491f", size = 66236, upload-time = "2026-06-04T15:18:39.155Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/e7/3e89bc5147a3e84245c783098afffbbacbcdf5678ba1aacc2c9c035434da/glass-2025.1-py3-none-any.whl", hash = "sha256:d7919a7d19e05ab8da4e52dbfbcfb5bd1ed2b72e0cc3afde39ec94ced22883c5", size = 47185, upload-time = "2025-02-21T18:43:46.649Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/d1/55ea5e63e81db82806e92ba9f9c2b7277c0c2afe57bf8c1d3763e18005b2/glass-2026.2-py3-none-any.whl", hash = "sha256:0af0b5cd8708040925699c307076fb1c79bbb7e6cba4522764bcc21dd3bdadb8", size = 63746, upload-time = "2026-06-04T15:18:37.895Z" },
 ]
 
 [[package]]
@@ -3907,7 +3919,7 @@ requires-dist = [
     { name = "fast-pt", marker = "extra == 'workflow'", specifier = ">=3.2,<4" },
     { name = "fitsio", marker = "extra == 'glass'" },
     { name = "getdist", git = "https://github.com/benabed/getdist.git?rev=113cd22a9a0d013b6f72fe734be81f260f3d3be5" },
-    { name = "glass", marker = "extra == 'glass'", specifier = "==2025.1" },
+    { name = "glass", marker = "extra == 'glass'", specifier = "==2026.2" },
     { name = "glass-ext-camb", marker = "extra == 'glass'", specifier = "==2023.6" },
     { name = "h5py" },
     { name = "healpy" },
