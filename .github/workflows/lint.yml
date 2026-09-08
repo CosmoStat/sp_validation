@@ -224,7 +224,7 @@ jobs:
       - name: Tell the author (PR comment) or record it (develop-push issue)
         if: steps.ruff.outputs.tool_error == 'false'
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
           PASSED: ${{ steps.gate.outputs.passed }}
           AUTOFIXED: ${{ steps.gate.outputs.autofixed }}
