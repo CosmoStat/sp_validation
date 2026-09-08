@@ -101,6 +101,7 @@
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.calibration.html">sp_validation.calibration</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog.html">sp_validation.catalog</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.catalog_builders.html">sp_validation.catalog_builders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sp_validation.container.html">sp_validation.container</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.format.html">sp_validation.format</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.galaxy.html">sp_validation.galaxy</a></li>
 <li class="toctree-l2"><a class="reference internal" href="sp_validation.glass_mock.html">sp_validation.glass_mock</a></li>
@@ -147,22 +148,47 @@
 <section id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
 <p><code class="docutils literal notranslate"><span class="pre">sp_validation</span></code> is <strong>not</strong> distributed on PyPI.
-Install it from a pre-built container, or check out the source with <code class="docutils literal notranslate"><span class="pre">uv</span></code> when you need to edit it.</p>
-<section id="container-recommended">
-<h2>Container (recommended)<a class="headerlink" href="#container-recommended" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#container-recommended'">¶</a></h2>
-<p>Every push to <code class="docutils literal notranslate"><span class="pre">develop</span></code> builds an image carrying the full scientific stack and pushes it to the <a class="reference external" href="https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation">GitHub Container Registry (GHCR)</a>.
-The image runs on most systems, including HPC clusters, with no further setup.</p>
-<p><a class="reference external" href="https://apptainer.org">Apptainer</a> (formerly Singularity) is installed on most clusters and is the path we recommend:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="c1"># Build a writeable "sandbox" container in the current directory.</span>
-</span><span id="line-2"><span class="c1"># ./sp_validation is a directory that behaves like a small VM.</span>
-</span><span id="line-3">apptainer<span class="w"> </span>build<span class="w"> </span>--sandbox<span class="w"> </span>sp_validation<span class="w"> </span>docker://ghcr.io/cosmostat/sp_validation:develop
+It runs from a pre-built container, managed by the bundled <code class="docutils literal notranslate"><span class="pre">spv-container</span></code> CLI; check out the source with <code class="docutils literal notranslate"><span class="pre">uv</span></code> only when you need to edit the package itself.</p>
+<section id="container-via-spv-container-recommended">
+<h2>Container via <code class="docutils literal notranslate"><span class="pre">spv-container</span></code> (recommended)<a class="headerlink" href="#container-via-spv-container-recommended" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#container-via-spv-container-recommended'">¶</a></h2>
+<p>Every push builds an image carrying the full scientific stack and pushes it to the <a class="reference external" href="https://github.com/CosmoStat/sp_validation/pkgs/container/sp_validation">GitHub Container Registry (GHCR)</a>, tagged by branch — <code class="docutils literal notranslate"><span class="pre">:develop</span></code> tracks the integration branch.
+The image runs on most systems, including HPC clusters, with no further setup.
+<code class="docutils literal notranslate"><span class="pre">spv-container</span></code> installs your personal copy of it and manages it from then on:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">git<span class="w"> </span>clone<span class="w"> </span>https://github.com/CosmoStat/sp_validation.git
+</span><span id="line-2"><span class="nb">cd</span><span class="w"> </span>sp_validation
+</span><span id="line-3">ln<span class="w"> </span>-s<span class="w"> </span><span class="s2">"</span><span class="nv">$PWD</span><span class="s2">/src/sp_validation/container.py"</span><span class="w"> </span>~/.local/bin/spv-container
 </span><span id="line-4">
-</span><span id="line-5"><span class="c1"># Open a shell in the container, then confirm the install works.</span>
-</span><span id="line-6">apptainer<span class="w"> </span>shell<span class="w"> </span>--writable<span class="w"> </span>sp_validation
-</span><span id="line-7">python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import sp_validation"</span>
+</span><span id="line-5">spv-container<span class="w"> </span>pull<span class="w">                                    </span><span class="c1"># fetch the image (~1.5 GB)</span>
+</span><span id="line-6">spv-container<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import sp_validation"</span><span class="w">   </span><span class="c1"># confirm it works</span>
 </span></code></pre></div>
 </div>
-<p>The image also runs under Docker:</p>
+<p>The symlink works because <code class="docutils literal notranslate"><span class="pre">container.py</span></code> is deliberately stdlib-only: it runs on the <em>host</em>, where the science stack is not installed.
+(Inside the container the same CLI is on <code class="docutils literal notranslate"><span class="pre">PATH</span></code> as a console script.)
+<code class="docutils literal notranslate"><span class="pre">pull</span></code> requires <a class="reference external" href="https://apptainer.org">Apptainer</a> (formerly Singularity), which is installed on most clusters, and writes the image to one canonical per-user path, <code class="docutils literal notranslate"><span class="pre">~/.cache/sp_validation/sp_validation.sif</span></code>.
+Each user owns their copy: you refresh it when you want to, and nobody else’s refresh moves the ground under your running jobs.
+On a cluster, run the pull from a compute node — it moves ~1.5 GB.</p>
+<p>The subcommands:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">spv-container<span class="w"> </span>pull<span class="w">                     </span><span class="c1"># fetch the published image to the canonical path</span>
+</span><span id="line-2">spv-container<span class="w"> </span>status<span class="w">                   </span><span class="c1"># what is here, which commit built it, how current</span>
+</span><span id="line-3">spv-container<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;cmd...&gt;<span class="w">            </span><span class="c1"># run a command inside it (exec bash for a shell)</span>
+</span><span id="line-4">spv-container<span class="w"> </span>sandbox<span class="w">                  </span><span class="c1"># unpack into a writable dir, for pip installs</span>
+</span><span id="line-5">spv-container<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>--writable<span class="w"> </span>&lt;cmd...&gt;<span class="w"> </span><span class="c1"># ... with writes that persist</span>
+</span></code></pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">status</span></code> compares the image’s build commit against your checkout’s <code class="docutils literal notranslate"><span class="pre">HEAD</span></code>, so you always know whether a <code class="docutils literal notranslate"><span class="pre">pull</span></code> would refresh anything.
+The <strong>sandbox</strong> is the escape hatch for exploratory work that needs a package the image does not carry yet: once built, it takes precedence over the SIF everywhere — Snakemake workflow jobs included — until you reset with <code class="docutils literal notranslate"><span class="pre">spv-container</span> <span class="pre">pull</span></code> + <code class="docutils literal notranslate"><span class="pre">spv-container</span> <span class="pre">sandbox</span> <span class="pre">--force</span></code>.</p>
+<p>Everything resolves the image in one order — sandbox if it exists, else your SIF, else the registry tag — and that includes the analysis workflow.
+How the workflow uses the image (Snakemake runs on the host; the profile puts each job in the container) is covered in <code class="docutils literal notranslate"><span class="pre">workflow/README.md</span></code>.</p>
+</section>
+<section id="other-ways-to-run-the-image">
+<h2>Other ways to run the image<a class="headerlink" href="#other-ways-to-run-the-image" title="Link to this heading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#other-ways-to-run-the-image'">¶</a></h2>
+<p>The published image is a normal OCI image; <code class="docutils literal notranslate"><span class="pre">spv-container</span></code> is a convenience, not a gatekeeper.
+Run it directly with Apptainer:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">apptainer<span class="w"> </span>pull<span class="w"> </span>sp_validation.sif<span class="w"> </span>docker://ghcr.io/cosmostat/sp_validation:develop
+</span><span id="line-2">apptainer<span class="w"> </span>shell<span class="w"> </span>sp_validation.sif
+</span></code></pre></div>
+</div>
+<p>or with Docker:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>-it<span class="w"> </span>ghcr.io/cosmostat/sp_validation:develop<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">"import sp_validation"</span>
 </span></code></pre></div>
 </div>
@@ -211,7 +237,8 @@ For most users the container is the more reliable path.</p>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
-<li><a :data-current="activeSection === '#container-recommended'" class="reference internal" href="#container-recommended">Container (recommended)</a></li>
+<li><a :data-current="activeSection === '#container-via-spv-container-recommended'" class="reference internal" href="#container-via-spv-container-recommended">Container via <code class="docutils literal notranslate"><span class="pre">spv-container</span></code> (recommended)</a></li>
+<li><a :data-current="activeSection === '#other-ways-to-run-the-image'" class="reference internal" href="#other-ways-to-run-the-image">Other ways to run the image</a></li>
 <li><a :data-current="activeSection === '#development-install'" class="reference internal" href="#development-install">Development install</a></li>
 </ul>
 </div>
@@ -221,7 +248,7 @@ For most users the container is the more reliable path.</p>
 </div><footer class="py-6 border-t border-border md:py-0">
 <div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
 <div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
-<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 05 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2021, Martin Kilbinger, Cail Daley, Sacha Guerrini Last updated: 08 Sep, 2026. Built with <a class="font-medium underline underline-offset-4" href="https://www.sphinx-doc.org" rel="noreferrer">Sphinx 9.1.0</a></p>
 </div>
 </div>
 </footer>

@@ -25,6 +25,7 @@ Submodules
    sp_validation.calibration
    sp_validation.catalog
    sp_validation.catalog_builders
+   sp_validation.container
    sp_validation.format
    sp_validation.galaxy
    sp_validation.glass_mock
