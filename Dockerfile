@@ -25,16 +25,7 @@ RUN apt-get update -y --quiet --fix-missing && \
         ghostscript && \
     rm -rf /var/lib/apt/lists/*
 
-# TeX, for matplotlib's usetex path (paper.mplstyle) and any LaTeX output.
-# TinyTeX rather than apt's texlive-*: those metapackages cost ~1.3 GB and
-# still omit type1cm.sty, which matplotlib's usetex preamble loads. TinyTeX is
-# a minimal TeX Live with tlmgr, so the package set below is explicit and
-# adding one is a one-line change.
-#
-# Both halves are pinned to TeX Live 2025: the TinyTeX bundle v2026.02 is the
-# last release built on it, and tlmgr points at that year's frozen tlnet-final
-# historic mirror, so this layer resolves the same way forever. Update once a
-# year by bumping TINYTEX_VERSION and the mirror year together.
+# TinyTeX pinned to a TeX Live year (frozen tlnet-final mirror); bump both once a year.
 ENV TEXLIVE_YEAR=2025 \
     TINYTEX_VERSION=2026.02 \
     TINYTEX_DIR=/opt \
