@@ -19,7 +19,14 @@ RUN apt-get update -y --quiet --fix-missing && \
         liblapack-dev \
         libgsl-dev \
         libcfitsio-dev \
-        libfftw3-dev
+        libfftw3-dev \
+        texlive-latex-base \
+        texlive-latex-recommended \
+        texlive-fonts-recommended \
+        dvipng \
+        ghostscript \
+        cm-super && \
+    rm -rf /var/lib/apt/lists/*
 
 # The base shapepipe image provides a uv-managed venv at /app/.venv (exported as
 # VIRTUAL_ENV); install sp_validation's deps into that same venv rather than
