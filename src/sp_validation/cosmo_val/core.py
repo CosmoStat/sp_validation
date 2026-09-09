@@ -15,6 +15,7 @@ from ..b_modes import (
     find_conservative_scale_cut_key,
 )
 from ..statistics import chi2_and_pte
+from ..version import __version__
 from .catalog_characterization import CatalogCharacterizationMixin
 from .cosebis import CosebisMixin
 from .pseudo_cl import PseudoClMixin
@@ -22,8 +23,42 @@ from .psf_systematics import PSFSystematicsMixin
 from .pure_eb import PureEBMixin
 from .real_space import RealSpaceMixin
 
-
 # %%
+BMODE_COLUMNS = {
+    "xip_B": r"xi+B",
+    "xim_B": r"xi-B",
+    "combined": "Combined",
+    "COSEBIS": "COSEBIS",
+    "C_l_BB": "C_l^BB",
+}
+
+
+def print_bmode_summary(summary, fiducial_scale_cut, cov_methods=()):
+    """Print the B-mode PTE table for ``{version: {statistic: pte}}``.
+
+    Statistics absent from a row print as ``--``.
+    """
+    sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
+    sep = "\u2500" * 70
+    header = f"{'Version':<28s}" + "".join(
+        f"{label:>10s}" for label in BMODE_COLUMNS.values()
+    )
+
+    print(f"\nB-mode summary {sc_label}")
+    print(sep)
+    print(header)
+    print(sep)
+    for ver, row in summary.items():
+        cells = "".join(
+            f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}" for s in BMODE_COLUMNS
+        )
+        print(f"{ver:<28s}{cells}")
+    print(sep)
+    if cov_methods:
+        print(f"Covariance: {', '.join(sorted(cov_methods))}")
+    print()
+
+
 class CosmologyValidation(
     CosebisMixin,
     PureEBMixin,
@@ -380,6 +415,21 @@ class CosmologyValidation(
         """
         return os.path.abspath(os.path.join(self.cc["paths"]["output"], *parts))
 
+    def sacc_nz(self, version):
+        """Single-bin ``nz`` mapping ``{0: (z, nz)}`` for the SACC writers.
+
+        The round is single-bin, so the whole survey n(z) is bin 0.
+        """
+        return {0: tuple(self.get_redshift(version))}
+
+    def sacc_metadata(self, version):
+        """Provenance metadata stored on every SACC part for ``version``."""
+        return {
+            "catalogue_version": version,
+            "sp_validation_version": __version__,
+            "npatch": self.npatch,
+        }
+
     def get_redshift(self, version):
         """Load redshift distribution for a catalog version.
 
@@ -563,18 +613,18 @@ class CosmologyValidation(
             # Pure E/B PTEs from stored results
             if ver in self._pure_eb_results:
                 res = self._pure_eb_results[ver]
-                gg = res["gg"]
+                edges = (res["left_edges"], res["right_edges"])
                 try:
                     for stat in ("xip_B", "xim_B", "combined"):
                         row[stat] = _get_pte_from_scale_cut(
-                            res["pte_matrices"][stat], gg, fiducial_scale_cut
+                            res["pte_matrices"][stat], edges, fiducial_scale_cut
                         )
                 except (KeyError, RuntimeError):
                     pass
                 cov_methods.add(
                     "semi-analytic"
                     if "eb_samples" in res
-                    else f"jackknife ({gg.npatch1} patches)"
+                    else f"jackknife ({res['n_eff']} patches)"
                 )
 
             # COSEBIs PTE from stored results
@@ -602,37 +652,5 @@ class CosmologyValidation(
 
             summary[ver] = row
 
-        # Print summary table
-        col_labels = {
-            "xip_B": r"xi+B",
-            "xim_B": r"xi-B",
-            "combined": "Combined",
-            "COSEBIS": "COSEBIS",
-            "C_l_BB": "C_l^BB",
-        }
-        stats_order = list(col_labels)
-
-        sc_label = f"[{fiducial_scale_cut[0]}-{fiducial_scale_cut[1]} arcmin]"
-        sep = "\u2500" * 70
-        header = f"{'Version':<28s}" + "".join(
-            f"{label:>10s}" for label in col_labels.values()
-        )
-
-        print(f"\nB-mode summary {sc_label}")
-        print(sep)
-        print(header)
-        print(sep)
-
-        for ver in versions:
-            row = summary[ver]
-            cells = "".join(
-                f"{row[s]:>10.4f}" if s in row else f"{'--':>10s}" for s in stats_order
-            )
-            print(f"{ver:<28s}{cells}")
-
-        print(sep)
-        if cov_methods:
-            print(f"Covariance: {', '.join(sorted(cov_methods))}")
-        print()
-
+        print_bmode_summary(summary, fiducial_scale_cut, cov_methods)
         return summary

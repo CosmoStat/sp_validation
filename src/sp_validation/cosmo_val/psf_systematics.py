@@ -16,10 +16,12 @@ from shear_psf_leakage import plots as psfleak_plots
 from shear_psf_leakage.rho_tau_stat import PSFErrorFit
 from uncertainties import ufloat
 
+from .. import sacc_io
 from ..rho_tau import (
     get_rho_tau_w_cov,
     get_samples,
 )
+from .sacc_writers import rho_tau_to_sacc
 
 
 class PSFSystematicsMixin:
@@ -41,10 +43,41 @@ class PSFSystematicsMixin:
                 cov_rho=self.compute_cov_rho,
                 npatch=self.npatch,
             )
+            self.rho_tau_to_sacc_part(
+                ver, out_dir, base, rho_stat_handler, tau_stat_handler
+            )
         self.print_done("Rho stats finished")
 
         self._rho_stat_handler = rho_stat_handler
         self._tau_stat_handler = tau_stat_handler
+
+    def rho_tau_to_sacc_part(
+        self, version, out_dir, base, rho_stat_handler, tau_stat_handler
+    ):
+        """Write the ρ/τ SACC part for one version.
+
+        ρ_0…ρ_5 autos and τ_0/τ_2/τ_5 leakage from the handler tables. The
+        ``CovTauTh`` theory covariance ``cov_tau_{base}_th.npy`` is passed as
+        ``tau_cov_th`` when it exists; without it the τ block falls back —
+        loudly — to a variance diagonal.
+        """
+        tau_cov_path = os.path.join(out_dir, f"cov_tau_{base}_th.npy")
+        tau_cov_th = np.load(tau_cov_path) if os.path.exists(tau_cov_path) else None
+        if tau_cov_th is None:
+            self.print_magenta(
+                f"No τ theory covariance at {tau_cov_path}; writing ρ/τ SACC part "
+                "with a diagonal placeholder covariance (τ inference block is a "
+                "variance diagonal, not CovTauTh)."
+            )
+        s = rho_tau_to_sacc(
+            self.sacc_nz(version),
+            self.sacc_metadata(version),
+            rho_stat_handler.rho_stats,
+            tau_stat_handler.tau_stats,
+            tau_cov_th=tau_cov_th,
+        )
+        out_path = os.path.join(out_dir, f"rho_tau_{base}.sacc")
+        sacc_io.save(s, out_path, type="data")
 
     @property
     def rho_stat_handler(self):
