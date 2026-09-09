@@ -1,9 +1,11 @@
 # Config file for masking and calibration.
-# Standard cuts without halo masks, type v1.X.6.
+# Joint ShapePipe + PhotoPipe catalogue.
+# SP: Standard cuts without halo masks, type v1.X.6.
+# PP" Standard selection.
 
 # General parameters (can also given on command line)
 params:
-  input_path: unions_shapepipe_comprehensive_struc_2024_v1.X.c.hdf5
+  input_path: unions_shapepipe_comprehensive_struc_ugriz_2024_v1.X.c.hdf5
   cmatrices: False
   sky_regions: False
   verbose: True

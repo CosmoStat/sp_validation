@@ -189,7 +189,7 @@ add_cols = [
     "FLUX_APER",
     "FLUXERR_APER",
     "NGMIX_T_NOSHEAR",
-    "NGMIX_T_PSF_RECONV_NOSHEAR",
+    "NGMIX_Tpsf_NOSHEAR",
     "fwhm_PSF",
 ]
 add_cols_data = {}
