@@ -22,6 +22,7 @@ RUN apt-get update -y --quiet --fix-missing && \
         libfftw3-dev \
         texlive-latex-base \
         texlive-latex-recommended \
+        texlive-latex-extra \
         texlive-fonts-recommended \
         dvipng \
         ghostscript \
