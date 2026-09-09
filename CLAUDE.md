@@ -18,7 +18,7 @@ Tests live in `src/sp_validation/tests/` and import the full scientific stack,
 so run them inside the container.
 - Run all tests: `pytest` (collects from `src/sp_validation/tests`; coverage on by default)
 - Skip the slow tests: `pytest -m "not slow"`
-- Run a single test: `pytest src/sp_validation/tests/test_cosmology.py::test_function_name`
+- Run a single test: `pytest src/sp_validation/tests/test_cosmo_val.py::test_function_name`
 
 CI runs this same suite inside the freshly-built image before publishing it
 (see `.github/workflows/deploy-image.yml`).
@@ -57,11 +57,13 @@ is the container (full scientific stack pre-built). For a local dev environment:
 - **Healpy/HealSparse**: Sky map handling
 
 ### Cosmology Inference Pipeline (`cosmo_inference/`)
-Run via `./pipeline.sh` with flags:
-- `--pcf`: Calculate 2-point correlation functions
-- `--covmat`: Calculate covariance matrix with CosmoCov
-- `--inference`: Run CosmoSIS inference
-- `--mcmc_process`: Analyze MCMC chains
+Orchestrated through Snakemake, not a standalone driver; see
+`cosmo_inference/README.md`. From the repository root:
+
+```bash
+snakemake --profile workflow/profiles/candide -s workflow/Snakefile \
+    inference_fiducial --configfile <run config>
+```
 
 ### Configuration
 Main configuration in `scripts/calibration/params.py` with parameters:
