@@ -6,7 +6,6 @@ lands beside the first version's leakage products, not at a fixed path.
 """
 
 from cv_runner import _unbuffer_streams, make_cv, touch_sentinels
-from snakemake.script import snakemake
 
 _unbuffer_streams()
 cv = make_cv(snakemake)

@@ -59,7 +59,11 @@ rule talk_previews:
 
 
 rule talk_figure:
-    """Convert a single paper PDF to high-res PNG for the talk."""
+    """Convert a single paper PDF to high-res PNG for the talk.
+
+    `container: None` on purpose: ImageMagick's `convert` is a host tool and is
+    not installed in the sp_validation image.
+    """
     input:
         pdf=lambda w: TALK_FIGURES[w.name],
     output:
@@ -73,7 +77,11 @@ rule talk_figure:
 
 
 rule talk_figure_preview:
-    """Downscale a talk figure to < 1800px for safe AI reading."""
+    """Downscale a talk figure to < 1800px for safe AI reading.
+
+    `container: None` for the same reason as talk_figure: `convert` is a host
+    tool, absent from the image.
+    """
     input:
         f"{TALK_DIR}/images/{{name}}.png",
     output:
@@ -120,8 +128,6 @@ rule presentation_omega_m_difference:
         mock_summary="/n09data/guerrini/glass_mock_chains/summary_parameter_constraints_merged_v6.txt",
     output:
         f"{TALK_DIR}/images/omega_m_difference_config_harm.png",
-    container:
-        None
     shell:
         "python {TALK_DIR}/plot_omega_m_difference.py"
 
@@ -132,8 +138,6 @@ rule presentation_s8_scatter_mocks:
         mock_summary="/n09data/guerrini/glass_mock_chains/summary_parameter_constraints_merged_v6.txt",
     output:
         f"{TALK_DIR}/images/s8_scatter_config_vs_harmonic.png",
-    container:
-        None
     shell:
         "python {TALK_DIR}/plot_s8_scatter_mocks.py"
 
@@ -147,11 +151,5 @@ rule presentation_pte_cosebis:
         ],
     output:
         f"{TALK_DIR}/images/pte_cosebis_talk.png",
-    container:
-        None
     shell:
-        """
-        apptainer exec --bind /home,/scratch,/automnt,/n17data,/n23data1,/n09data \
-            /n17data/cdaley/containers/containers/ \
-            python {TALK_DIR}/plot_pte_cosebis_talk.py
-        """
+        "python {TALK_DIR}/plot_pte_cosebis_talk.py"

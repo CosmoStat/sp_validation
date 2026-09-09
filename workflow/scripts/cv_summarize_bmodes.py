@@ -11,7 +11,6 @@ import json
 
 import numpy as np
 from cv_runner import _unbuffer_streams, verify_outputs
-from snakemake.script import snakemake
 
 from sp_validation import sacc_io
 from sp_validation.b_modes import _get_pte_from_scale_cut, log_bin_edges

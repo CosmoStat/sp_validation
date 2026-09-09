@@ -13,7 +13,7 @@ integral kernels; the 20-bin reporting grid feeds the pure E/B sweep's output
 binning. Serial over versions — lc's dask handles cross-output concurrency, and
 TreeCorr already uses the recipe's full OpenMP allocation per call.
 
-    apptainer exec ... /usr/local/bin/python run_xi_sweep.py \
+    python run_xi_sweep.py \
         --config .../config.yaml --cat-config .../cat_config.yaml --out <dir>
 """
 

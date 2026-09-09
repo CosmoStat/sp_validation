@@ -49,24 +49,6 @@ rule xi:
         "../scripts/run_2pcf.py"
 
 
-rule run_cosmo_val:
-    """Full CosmoVal diagnostic suite."""
-    output:
-        sentinel=str(COSMO_VAL / "run_cosmo_val.done"),
-    threads: 24
-    resources:
-        mem_mb=60000,
-        disk_mb=20000,
-        runtime=360,
-    shell:
-        """
-        export PYTHONPATH="/home/cdaley/.local/lib/python3.12/site-packages:${{PYTHONPATH:-}}"
-        cd /n17data/cdaley/unions/pure_eb/code/sp_validation/cosmo_val \
-        && python run_cosmo_val.py \
-        && touch {output.sentinel}
-        """
-
-
 rule rho_tau_stats:
     output:
         rho_stats=str(COSMO_VAL / "rho_tau_stats/rho_stats_{version}_minsep={min_sep}_maxsep={max_sep}_nbins={nbins}_npatch={npatch}.fits"),
