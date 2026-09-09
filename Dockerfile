@@ -20,13 +20,44 @@ RUN apt-get update -y --quiet --fix-missing && \
         libgsl-dev \
         libcfitsio-dev \
         libfftw3-dev \
-        texlive-latex-base \
-        texlive-latex-recommended \
-        texlive-fonts-recommended \
-        dvipng \
-        ghostscript \
-        cm-super && \
+        perl \
+        curl \
+        ghostscript && \
     rm -rf /var/lib/apt/lists/*
+
+# TeX, for matplotlib's usetex path (paper.mplstyle) and any LaTeX output.
+# TinyTeX rather than apt's texlive-*: those metapackages cost ~1.3 GB and
+# still omit type1cm.sty, which matplotlib's usetex preamble loads. TinyTeX is
+# a minimal TeX Live with tlmgr, so the package set below is explicit and
+# adding one is a one-line change.
+#
+# Both halves are pinned to TeX Live 2025: the TinyTeX bundle v2026.02 is the
+# last release built on it, and tlmgr points at that year's frozen tlnet-final
+# historic mirror, so this layer resolves the same way forever. Update once a
+# year by bumping TINYTEX_VERSION and the mirror year together.
+ENV TEXLIVE_YEAR=2025 \
+    TINYTEX_VERSION=2026.02 \
+    TINYTEX_DIR=/opt \
+    PATH=/opt/.TinyTeX/bin/x86_64-linux:$PATH
+RUN set -eux; \
+    curl -fsSL https://yihui.org/tinytex/install-bin-unix.sh | sh; \
+    tlmgr option sys_bin /usr/local/bin; \
+    tlmgr option repository \
+      "https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/${TEXLIVE_YEAR}/tlnet-final/"; \
+    tlmgr option docfiles 0; \
+    tlmgr option srcfiles 0; \
+    tlmgr install \
+        type1cm \
+        cm-super \
+        dvipng \
+        underscore \
+        ulem \
+        amsmath \
+        amsfonts \
+        geometry \
+        xcolor; \
+    tlmgr path add; \
+    latex --version >/dev/null; dvipng --version >/dev/null
 
 # The base shapepipe image provides a uv-managed venv at /app/.venv (exported as
 # VIRTUAL_ENV); install sp_validation's deps into that same venv rather than
