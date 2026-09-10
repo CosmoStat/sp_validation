@@ -121,11 +121,30 @@ add_cols = [
     "NGMIX_T_PSF_RECONV_NOSHEAR",
 ]
 
+## ShapePipe v2 mask columns OR'd together for the galaxy selection cut
+mask_columns = [
+    "MASK_n4",
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n8",
+    "MASK_n1024",
+]
+
 ## Pre-calibration catalogue, including masked objects and mask flags
 add_cols_pre_cal = [
     "TILE_ID",
     "NUMBER",
-    "IMAFLAGS_ISO",
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n4",
+    "MASK_n8",
+    "MASK_n16",
+    "MASK_n32",
+    "MASK_n64",
+    "MASK_n128",
+    "MASK_n256",
+    "MASK_n1024",
+    "MASK_n2048",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -141,7 +160,6 @@ add_cols_pre_cal = [
 add_cols_pre_cal_format = {}
 for key in (
     "NUMBER",
-    "IMAFLAGS_ISO",
     "FLAGS",
     "NGMIX_MCAL_FLAGS",
     "NGMIX_MCAL_TYPES_FAIL",
@@ -149,6 +167,9 @@ for key in (
     "NGMIX_N_EPOCH",
 ):
     add_cols_pre_cal_format[key] = "I"
+
+for key in mask_columns:
+    add_cols_pre_cal_format[key] = "L"
 
 add_cols_pre_cal_format["TILE_ID"] = "A7"
 add_cols_pre_cal_format["NUMBER"] = "J"

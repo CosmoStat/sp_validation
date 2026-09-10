@@ -28,6 +28,87 @@ from tqdm import tqdm
 # required square root: FWHM = 2.35482 sqrt(T / 2)
 from sp_validation import io
 
+#: All mask columns written by ShapePipe v2 (bool, ``True`` = masked).
+#: n4 stars; n1/n2 faint/bright star halos; n8 manual galaxy mask;
+#: n1024 MaxiMask; n16..n256 per-band coverage; n2048 no PS-z2 coverage.
+#: These replace the single IMAFLAGS_ISO bitmask of ShapePipe v1.
+MASK_COLUMNS = (
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n4",
+    "MASK_n8",
+    "MASK_n16",
+    "MASK_n32",
+    "MASK_n64",
+    "MASK_n128",
+    "MASK_n256",
+    "MASK_n1024",
+    "MASK_n2048",
+)
+
+#: Mask columns OR'd together for the default galaxy selection. Deliberately
+#: not a blanket OR over MASK_COLUMNS: the per-band coverage columns
+#: (n16..n256) and n2048 would mask essentially the whole catalogue.
+DEFAULT_MASK_COLUMNS = (
+    "MASK_n4",
+    "MASK_n1",
+    "MASK_n2",
+    "MASK_n8",
+    "MASK_n1024",
+)
+
+
+def _column_names(dd):
+    """Return the column names of a structured array or mapping."""
+    dtype = getattr(dd, "dtype", None)
+    if dtype is not None and dtype.names is not None:
+        return tuple(dtype.names)
+    return tuple(dd.keys())
+
+
+def mask_cut(dd, mask_columns=None):
+    """Mask Cut.
+
+    Return a boolean mask that is ``True`` for objects *not* flagged by any
+    of the requested ShapePipe mask columns.
+
+    Parameters
+    ----------
+    dd : numpy.ndarray or dict
+        input catalogue
+    mask_columns : list of str, optional
+        mask columns to OR together; default is ``DEFAULT_MASK_COLUMNS``
+
+    Returns
+    -------
+    numpy.ndarray
+        boolean mask, ``True`` = keep
+
+    Raises
+    ------
+    KeyError
+        if any requested mask column is absent from the catalogue
+
+    """
+    columns = list(DEFAULT_MASK_COLUMNS if mask_columns is None else mask_columns)
+
+    available = _column_names(dd)
+    missing = [col for col in columns if col not in available]
+    if missing:
+        raise KeyError(
+            f"Mask column(s) {missing} not found in catalogue."
+            + " ShapePipe v2 catalogues carry the boolean columns"
+            + f" {list(MASK_COLUMNS)}; ShapePipe v1 catalogues carry"
+            + " IMAFLAGS_ISO instead and are not supported."
+            + f" Available columns: {sorted(available)}"
+        )
+
+    masked = np.zeros(len(dd[columns[0]]), dtype=bool)
+    for col in columns:
+        masked |= np.asarray(dd[col], dtype=bool)
+
+    return ~masked
+
 
 def classification_galaxy_overlap_ra_dec(dd, ra_key="XWIN_WORLD", dec_key="YWIN_WORLD"):
     """Classification Galaxy Overlap Ra Dec.
@@ -141,10 +222,17 @@ def classification_galaxy_base(
     gal_mag_faint=26,
     flags_keep=None,
     n_epoch_min=1,
+    mask_columns=None,
 ):
     """Classification Galaxy Base.
 
     Return mask corresponding to basic classification for galaxies.
+
+    Parameters
+    ----------
+    mask_columns : list of str, optional
+        ShapePipe mask columns OR'd together to reject masked objects;
+        default is ``DEFAULT_MASK_COLUMNS``
 
     """
     # SExtractor flags
@@ -172,7 +260,7 @@ def classification_galaxy_base(
         & cut_flags
         & (dd["MAG_AUTO"] <= gal_mag_faint)
         & (dd["MAG_AUTO"] >= gal_mag_bright)
-        & (dd["IMAFLAGS_ISO"] == 0)
+        & mask_cut(dd, mask_columns)
         & (dd["N_EPOCH"] >= n_epoch_min)
     )
 

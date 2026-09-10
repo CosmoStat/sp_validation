@@ -443,7 +443,6 @@ class JointCat(BaseCat):
             "RA",
             "Dec",
             "FLAGS",
-            "IMAFLAGS_ISO",
             "NUMBER",
         ]
         if dtype_in.kind == "U":
