@@ -292,8 +292,19 @@ def classification_galaxy_ngmix(
 
     Return mask corresponding to ngmix classification of galaxies
     """
+    # NGMIX_N_EPOCH == 0 marks objects ngmix never fit: ShapePipe's make_cat
+    # pre-fills every NGMIX_* column with sentinels (G1/G2 = -10, T/FLUX = 0)
+    # and only overwrites them for objects present in the ngmix output, so a
+    # never-fit object keeps NGMIX_MCAL_FLAGS == 0 and passes a flag-only cut.
+    # In final_cat_smk-g7.hdf5 this is 18,983 / 1,851,100 objects (1.03%);
+    # admitting them drags mean e1 to -0.096 (std 0.98) from +0.0001 (std
+    # 0.24). The coadd N_EPOCH cut in classification_galaxy_base does not
+    # catch them (18,750 of the 18,983 have N_EPOCH >= 1). Cut on N_EPOCH
+    # explicitly rather than relying on the -10 sentinel comparison below,
+    # which is an exact float equality against a value ShapePipe may change.
     m_gal_ngmix = (
         cut_common
+        & (dd["NGMIX_N_EPOCH"] > 0)
         & (dd["NGMIX_MCAL_FLAGS"] == 0)
         & (dd["NGMIX_G1_PSF_ORIG_NOSHEAR"] != -10)
         & (dd["NGMIX_MCAL_TYPES_FAIL"] == 0)
