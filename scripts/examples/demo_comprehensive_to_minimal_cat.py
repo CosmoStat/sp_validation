@@ -58,6 +58,7 @@ masks_to_apply = [
     "MASK_n1",
     "MASK_n2",
     "MASK_n8",
+    "MASK_n64",
     "MASK_n1024",
     "NGMIX_MCAL_TYPES_FAIL",
     "NGMIX_G1_PSF_ORIG_NOSHEAR",
