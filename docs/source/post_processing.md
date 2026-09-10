@@ -3,8 +3,8 @@
 ## Science-ready catalogue production
 
 Processing steps of `ShapePipe` output catalogues carried out by the `sp_validation` package to produce science-ready catalogues are:
-1. Extract relevant information from a final `ShapePipe` output catalogue per patch; run basic diagnostic tests, create pre-calibration shear catalogues.
-2. Merge pre-calibration catalogues created in the previous step, e.g. processed by individual patches, into one or more joint catalogues;
+1. Extract relevant information from a final `ShapePipe` output catalogue per campaign; run basic diagnostic tests, create pre-calibration shear catalogues.
+2. Merge pre-calibration catalogues created in the previous step, e.g. processed as individual campaigns, into one or more joint catalogues;
 3. Apply external area and footprint masks. These are the "structural" and the coverage masks.  
 4. Create calibrated galaxy shear catalogue. This step includes the tasks:  
    a. Mask objects using flags and criteria in `ShapePipe` output catalogues and external (e.g. mask) files;  
@@ -19,7 +19,7 @@ This is performed (version > v1.4.1, < v2.0) with the python script `scripts/cal
 
 This script creates three shear catalogues in FITS format:
 - _Basic_ catalogue containing
-  positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, patch ID. Masking and galaxy selection are applied.  
+  positions, shapes (calibrated +  PSF-leakage corrected), weights (DES), magnitude, campaign ID. Masking and galaxy selection are applied.  
 - _Extended_ catalogue containing **in addition**
   uncalibrated shapes inverse-variance weights, shear response matrices, SNR, flux, size, PSF quantities. Masking and galaxy selection are applied.  
 - _Comprehensive_ catalogue containing **in addition**
@@ -27,11 +27,11 @@ This script creates three shear catalogues in FITS format:
   This catalogue does not contain calibrated shear estimates, since the calibration is carried out after applying masking and selection.  
   This is the main output catalogue that will be processed further.
 
-This step is carried out per patch. Parameters have to be set via the python configuration file `params.py` (template at `scripts/calibration/params.py`).
+This step is carried out per campaign. Parameters have to be set via the python configuration file `params.py` (template at `scripts/calibration/params.py`).
 
 ### 2. Merge catalogues
 
-The patch-wise comprehensive catalogues extracted in the previous step are merged using the script `scripts/calibration/create_joint_comprehensive_cat.py`, which is a front-end
+The per-campaign comprehensive catalogues extracted in the previous step are merged using the script `scripts/calibration/create_joint_comprehensive_cat.py`, which is a front-end
 of the `sp_validation` library class `catalog_builders:JointCat`.
 
 ### 3. Apply external masks
@@ -57,8 +57,8 @@ The following describes the pre-v1.4.2 method to create a joint, calibrated shea
 Summary statistics created by shear validation runs of sub-areas of a survey
 can be combined to create joint summary statistics. This is useful in cases
 where the galaxy catalogue of an entire survey is too large to process, and
-needs to be broken down in smaller patches. This step provides global summary
-statistics from those patches.
+needs to be broken down into smaller campaigns. This step provides global
+summary statistics from those campaigns.
 
 Depending on the type of summary, their combination can be the sum (e.g. for
 number of objects), average, weighted average (e.g. for the additive bias), the
@@ -66,7 +66,7 @@ weighted average of the square (e.g. the ellipticity dispersion), the weighted
 variance (to combine variance estimates), or the weighted variance of the mean
 (to combine mean variance estimates).
 
-In a directory containing the subpatches as subdirectories, and within each
+In a directory containing the campaigns as subdirectories, and within each
 their own output directory (`sp_output`by default in `params.py`) with results
 of the validation runs, type
 ```bash
@@ -89,7 +89,7 @@ calibration outputs can be used to create a combined, globally calibrated shear
 catalogue. The calibration is obtained from the files `R.txt` and `c.txt`
 created above.
 
-In the same directory containing the subpatches as above, type
+In the same directory containing the campaigns as above, type
 ```bash
 create_joint_shape_cat.py
 ```

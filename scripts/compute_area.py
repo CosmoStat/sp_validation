@@ -21,7 +21,7 @@ def main(argv=None):
     random_log_path = "output/run_sp_Rc/random_cat_runner/logs"
     log_file_base = "process"
 
-    # Get expected number of tiles in patch
+    # Get expected number of tiles in campaign
     num_lines = sum(1 for _ in open(tile_ID_path))
     print(f"Found {num_lines} tiles in ID file {tile_ID_path}")
 
@@ -108,9 +108,9 @@ def main(argv=None):
     area_deg2_non_overl_tile = ufloat(
         np.mean(area_deg2_non_overl), np.std(area_deg2_non_overl)
     )
-    print(f"Patch area without overlap = {area_deg2_non_overl_total:.3f} deg^2")
+    print(f"Campaign area without overlap = {area_deg2_non_overl_total:.3f} deg^2")
     print(
-        f"Patch area without overlap and no 0 gal = {area_deg2_non_overl_total_wgal:.3f} deg^2"
+        f"Campaign area without overlap and no 0 gal = {area_deg2_non_overl_total_wgal:.3f} deg^2"
     )
     print(f"Tile area without overlap = {area_deg2_non_overl_tile:.3fP} deg^2")
 
@@ -120,10 +120,10 @@ def main(argv=None):
         np.mean(area_deg2_eff_non_overl), np.std(area_deg2_eff_non_overl)
     )
     print(
-        f"Unmasked patch area without overlap = {area_deg2_eff_non_overl_total:.3f} deg^2"
+        f"Unmasked campaign area without overlap = {area_deg2_eff_non_overl_total:.3f} deg^2"
     )
     print(
-        f"Unmasked patch area without overlap and no 0 gal = {area_deg2_eff_non_overl_total_wgal:.3f} deg^2"
+        f"Unmasked campaign area without overlap and no 0 gal = {area_deg2_eff_non_overl_total_wgal:.3f} deg^2"
     )
     print(
         f"Unmasked tile area without overlap = {area_deg2_eff_non_overl_tile:.3fP} deg^2"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """MERGE PSF CAT.
 
-Merge PSF catalogues (psf_catalog_ngmix.fits) from different patches
+Merge PSF catalogues (psf_catalog_ngmix.fits) from different campaigns
 into a single FITS file.
 
 :Author: Martin Kilbinger
@@ -18,7 +18,7 @@ from cs_util import cat, logging
 class MergePsfCat:
     """Merge Psf Cat.
 
-    Class to merge PSF catalogues from multiple patches.
+    Class to merge PSF catalogues from multiple campaigns.
 
     """
 
@@ -32,7 +32,7 @@ class MergePsfCat:
 
         """
         self._params = {
-            "patches": "v1",
+            "campaigns": None,
             "sh": "ngmix",
             "survey": "unions",
             "year": "2024",
@@ -43,7 +43,7 @@ class MergePsfCat:
             "verbose": False,
         }
         self._short_options = {
-            "patches": "-p",
+            "campaigns": "-p",
             "sh": "-g",
             "survey": "-s",
             "year": "-y",
@@ -55,15 +55,12 @@ class MergePsfCat:
             "hdu": "int",
         }
         self._help_strings = {
-            "patches": (
-                "list of patches separated by '+', or shortcut "
-                "(allowed are 'v1', 'v1.5'), default={}"
-            ),
+            "campaigns": "list of campaigns separated by '+'",
             "sh": "shape measurement method, default={}",
             "survey": "survey name, default={}",
             "year": "year of processing, default={}",
             "version": "catalogue version, default={}",
-            "base_path": "base path containing patch directories, default={}",
+            "base_path": "base path containing campaign directories, default={}",
             "hdu": "HDU number to read from input FITS files, default={}",
         }
 
@@ -85,40 +82,32 @@ class MergePsfCat:
 
         logging.log_command(args)
 
-    def get_patches(self):
-        """Get Patches.
+    def get_campaigns(self):
+        """Get Campaigns.
 
-        Return list of patches according to option parameter value.
+        Return list of campaigns according to option parameter value.
 
         Returns
         -------
         list
-            patches, list of str
+            campaigns, list of str
 
         """
-        if self._params["patches"] == "v1":
-            n_patch = 7
-            patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-        elif self._params["patches"] == "v1.5":
-            n_patch = 8
-            patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-        elif self._params["patches"] == "v1.6":
-            n_patch = 9
-            patches = [f"P{x}" for x in np.arange(n_patch) + 1]
-        else:
-            patches = self._params["patches"].split("+")
+        campaigns = self._params["campaigns"]
+        if not campaigns:
+            raise ValueError("No campaigns given; set 'campaigns'")
 
-        return patches
+        return campaigns.split("+")
 
-    def merge_catalogues(self, patches):
+    def merge_catalogues(self, campaigns):
         """Merge Catalogues.
 
-        Merge PSF catalogues from sub-patches into one FITS file.
+        Merge PSF catalogues from campaigns into one FITS file.
 
         Parameters
         ----------
-        patches : list of str
-            list of patches/sub-directories
+        campaigns : list of str
+            list of campaigns / sub-directories
 
         """
         base_path = self._params["base_path"]
@@ -133,11 +122,11 @@ class MergePsfCat:
         )
 
         dat_all = {}
-        for idx, patch in enumerate(patches):
+        for idx, campaign in enumerate(campaigns):
             if verbose:
-                print(f"  {patch}")
+                print(f"  {campaign}")
 
-            input_path = f"{base_path}/{patch}/{input_sub_path}"
+            input_path = f"{base_path}/{campaign}/{input_sub_path}"
             try:
                 dat = fits.getdata(input_path, hdu_in)
             except Exception:
@@ -149,18 +138,18 @@ class MergePsfCat:
                 col_names = dat.dtype.names
                 for name in col_names:
                     dat_all[name] = []
-                dat_all["patch"] = []
+                dat_all["campaign"] = []
 
             for name in col_names:
                 dat_all[name] = np.append(dat_all[name], dat[name])
 
-            dat_all["patch"] = np.append(dat_all["patch"], [idx + 1] * len(dat))
+            dat_all["campaign"] = np.append(dat_all["campaign"], [idx + 1] * len(dat))
 
-        col_names = col_names + ("patch",)
+        col_names = col_names + ("campaign",)
 
         column_all = []
         for name in col_names:
-            if name != "patch":
+            if name != "campaign":
                 my_format = "D"
             else:
                 my_format = "I"
@@ -177,12 +166,12 @@ class MergePsfCat:
         Main processing function.
 
         """
-        patches = self.get_patches()
+        campaigns = self.get_campaigns()
 
         if self._params["verbose"]:
-            print("Merging PSF catalogues from patches:", patches)
+            print("Merging PSF catalogues from campaigns:", campaigns)
 
-        self.merge_catalogues(patches)
+        self.merge_catalogues(campaigns)
 
 
 def main(argv=None):

@@ -28,9 +28,6 @@ class SurveyTestCase(TestCase):
         self._area_amin2 = 3600
         self._tile_IDs = (270.283, 188.308)
 
-        self._ra = np.array([240.0])
-        self._dec = np.array([32.0])
-        self._patch = ["P5"]
 
     def tearDown(self):
 
@@ -58,8 +55,3 @@ class SurveyTestCase(TestCase):
             msg=f"{tile_IDs}!={self._tile_IDs}",
         )
 
-    def test_get_footprint(self):
-        """Test ``sp_validation.survey_get_footprint`` method."""
-        for patch in self._patch:
-            coords = survey.get_footprint(patch, self._ra, self._dec)
-            self.assertTrue(coords[0])

@@ -23,7 +23,6 @@ from astropy.io import fits
 from cs_util import cat
 
 from sp_validation import format, io
-from sp_validation.survey import get_footprint
 from sp_validation.version import __version__
 
 
@@ -154,7 +153,6 @@ def check_matching(
     keys_2,
     thresh,
     stats_file,
-    name=None,
     verbose=False,
 ):
     """Check matching.
@@ -182,13 +180,7 @@ def check_matching(
         index list of tiles in footprint
 
     """
-    if name is not None:
-        # Filter stars outside footprint for efficiency
-        mask_area_tiles = get_footprint(name, d1[keys_1[0]], d1[keys_1[1]])
-        if len(np.where(mask_area_tiles)[0]) == 0:
-            raise ValueError(f"Error: no object found in field '{name}'")
-    else:
-        mask_area_tiles = np.arange(len(d1))
+    mask_area_tiles = np.arange(len(d1))
 
     # Match stars from exposure (PSF) catalogue to total catalogue
     ind = match_stars2(

@@ -149,7 +149,6 @@ if star_cat_path:
         [col_name_ra, col_name_dec],
         thresh,
         stats_file,
-        name=None,
         verbose=verbose,
     )
 
@@ -492,7 +491,7 @@ shape_IDs = galaxy_IDs[mask]
 write_tile_id_gal_counts(detection_IDs, galaxy_IDs, shape_IDs, fname)
 
 # +
-# Add all weights (for combining weighted averages of subpatches)
+# Add all weights (for combining weighted averages of sub-samples)
 
 w_tot = np.sum(w)
 
