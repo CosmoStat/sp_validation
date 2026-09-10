@@ -9,7 +9,6 @@ import numpy as np
 from astropy.io import fits
 
 from sp_validation import catalog as spv_cat
-
 from sp_validation.glass_mock import compute_leakage_harmony
 
 

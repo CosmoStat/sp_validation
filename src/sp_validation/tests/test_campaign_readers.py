@@ -1,6 +1,8 @@
 """Tests for the ShapePipe v2 campaign catalogue readers and mask cut."""
 
+import tempfile
 import unittest
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -8,9 +10,6 @@ import numpy.testing as npt
 
 from sp_validation import catalog, galaxy
 from sp_validation.catalog_builders import JointCat
-
-import tempfile
-from pathlib import Path
 
 GAL_DTYPE = np.dtype(
     [
@@ -114,7 +113,6 @@ class TestCampaignReader(unittest.TestCase):
             )
         self.assertIn("NOT_A_COLUMN", str(ctx.exception))
 
-
     def test_row_order_is_tile_name_order(self):
         """Keys inserted out of order still concatenate in name order."""
         path = self._dir / "unordered.hdf5"
@@ -164,16 +162,12 @@ class TestCampaignReader(unittest.TestCase):
 
     def test_dtype_promoted_across_tiles(self):
         """A per-tile dtype difference within a campaign is not truncated."""
-        narrow = np.zeros(
-            2, dtype=[("N_EPOCH", "i2"), ("TILE_ID", "S7"), ("RA", "f4")]
-        )
+        narrow = np.zeros(2, dtype=[("N_EPOCH", "i2"), ("TILE_ID", "S7"), ("RA", "f4")])
         narrow["N_EPOCH"] = [1, 2]
         narrow["TILE_ID"] = [b"123.456", b"123.457"]
         narrow["RA"] = [1.5, 2.5]
 
-        wide = np.zeros(
-            2, dtype=[("N_EPOCH", "i4"), ("TILE_ID", "S12"), ("RA", "f8")]
-        )
+        wide = np.zeros(2, dtype=[("N_EPOCH", "i4"), ("TILE_ID", "S12"), ("RA", "f8")])
         wide["N_EPOCH"] = [70000, 3]
         wide["TILE_ID"] = [b"999888.7776", b"123.458"]
         wide["RA"] = [3.123456789, 4.0]
@@ -198,9 +192,7 @@ class TestCampaignReader(unittest.TestCase):
 
         # campaign_shape must report the same promoted dtype, since the merge
         # preallocates from it.
-        n_rows, dtype_out = catalog.campaign_shape(
-            str(path), param_list=param_list
-        )
+        n_rows, dtype_out = catalog.campaign_shape(str(path), param_list=param_list)
         self.assertEqual(n_rows, 4)
         self.assertEqual(dtype_out, dat.dtype)
 
@@ -210,9 +202,7 @@ class TestCampaignReader(unittest.TestCase):
         write_campaign(path, "legacy", self._tiles)
 
         tiles = list(
-            catalog.iter_campaign_tiles(
-                str(path), param_list=["RA"], verbose=False
-            )
+            catalog.iter_campaign_tiles(str(path), param_list=["RA"], verbose=False)
         )
 
         self.assertEqual([len(tile) for tile in tiles], [3, 2])
@@ -339,20 +329,15 @@ class TestCampaignMerge(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_campaign_name(self):
-        self.assertEqual(
-            JointCat.campaign_name("/some/dir/final_cat_W3.hdf5"), "W3"
-        )
+        self.assertEqual(JointCat.campaign_name("/some/dir/final_cat_W3.hdf5"), "W3")
 
     def test_merge(self):
         dat = self._obj.merge_catalogues(self._paths)
 
         self.assertEqual(len(dat), 5)
         self.assertIn("campaign", dat.dtype.names)
-        npt.assert_array_equal(
-            dat["campaign"], np.array([b"W3"] * 3 + [b"SGC"] * 2)
-        )
+        npt.assert_array_equal(dat["campaign"], np.array([b"W3"] * 3 + [b"SGC"] * 2))
         npt.assert_array_equal(dat["RA"][:3], np.arange(3))
-
 
     def test_merge_promotes_column_widths(self):
         """A wider string/int column in a later file is not truncated."""
@@ -373,9 +358,7 @@ class TestCampaignMerge(unittest.TestCase):
 
         for paths in ([path_a, path_b], [path_b, path_a]):
             dat = self._obj.merge_catalogues([str(path) for path in paths])
-            by_campaign = {
-                name: row for name, row in zip(dat["campaign"], dat)
-            }
+            by_campaign = {name: row for name, row in zip(dat["campaign"], dat)}
             self.assertEqual(by_campaign[b"BBBBBBBB"]["TILE_ID"], b"999888.7776")
             self.assertEqual(by_campaign[b"BBBBBBBB"]["N"], 2**40)
             self.assertEqual(by_campaign[b"AA"]["TILE_ID"], b"123.456")

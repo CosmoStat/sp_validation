@@ -246,9 +246,7 @@ def main(argv=None):
 
     # Curve labels come from the input file names: the first file is the
     # reference (all objects), the others whatever selection they hold.
-    labels = ["all"] + [
-        os.path.splitext(os.path.basename(fn))[0] for fn in fnames[1:]
-    ]
+    labels = ["all"] + [os.path.splitext(os.path.basename(fn))[0] for fn in fnames[1:]]
 
     # read input files, append data
     theta = []

@@ -34,7 +34,6 @@ import sys
 
 import h5py
 import numpy as np
-from astropy.io import fits
 
 # from sp_validation.catalog import *
 from sp_validation import catalog as spv_cat
@@ -70,9 +69,7 @@ if extension == ".fits":
     dd = np.load(galaxy_cat_path, mmap_mode=mmap_mode)
 else:
     print("Loading galaxy .hdf5 file...")
-    dd = spv_cat.read_campaign_catalogue(
-        galaxy_cat_path, param_path=param_list_path
-    )
+    dd = spv_cat.read_campaign_catalogue(galaxy_cat_path, param_path=param_list_path)
 
 n_obj = len(dd)
 print_stats(
